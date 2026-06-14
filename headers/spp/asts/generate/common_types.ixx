@@ -38,6 +38,7 @@ namespace spp::asts::generate::common_types {
     SPP_EXP_FUN auto U256(std::size_t pos) -> Shared<TypeAst>;
     SPP_EXP_FUN auto USize(std::size_t pos) -> Shared<TypeAst>;
 
+    SPP_EXP_FUN auto CharType(std::size_t pos) -> Shared<TypeAst>;
     SPP_EXP_FUN auto VoidType(std::size_t pos) -> Shared<TypeAst>;
     SPP_EXP_FUN auto BooleanType(std::size_t pos) -> Shared<TypeAst>;
     SPP_EXP_FUN auto StringType(std::size_t pos) -> Shared<TypeAst>;
@@ -46,7 +47,7 @@ namespace spp::asts::generate::common_types {
     SPP_EXP_FUN auto CopyType(std::size_t pos) -> Shared<TypeAst>;
 
     SPP_EXP_FUN auto ArrayType(std::size_t pos, Shared<TypeAst> elem_type, Unique<ExpressionAst> &&size) -> Shared<TypeAst>;
-    SPP_EXP_FUN auto SliceType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto VecU8Type(std::size_t pos) -> Shared<TypeAst>;
     SPP_EXP_FUN auto VariantType(std::size_t pos, SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst>;
     SPP_EXP_FUN auto TupleType(std::size_t pos, SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst>;
     SPP_EXP_FUN auto TryType(std::size_t pos, Shared<TypeAst> output_type, Shared<TypeAst> residual_type) -> Shared<TypeAst>;
@@ -63,6 +64,9 @@ namespace spp::asts::generate::common_types {
 
     SPP_EXP_FUN auto IndexMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst>;
     SPP_EXP_FUN auto IndexRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst>;
+
+    SPP_EXP_FUN auto SliceMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto SliceRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst>;
 
     SPP_EXP_FUN auto FunRefType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst>;
     SPP_EXP_FUN auto FunMutType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst>;

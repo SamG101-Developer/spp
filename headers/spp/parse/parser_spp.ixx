@@ -127,6 +127,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct PostfixExpressionOperatorKeywordNotAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorKeywordResAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorRuntimeMemberAccessAst;
+    SPP_EXP_CLS struct PostfixExpressionOperatorSliceAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorStaticMemberAccessAst;
     SPP_EXP_CLS struct UnaryExpressionAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAst;
@@ -252,6 +253,7 @@ public:
     auto parse_postfix_expression_op_keyword_not() -> Unique<asts::PostfixExpressionOperatorKeywordNotAst>;
     auto parse_postfix_expression_op_keyword_res() -> Unique<asts::PostfixExpressionOperatorKeywordResAst>;
     auto parse_postfix_expression_op_index() -> Unique<asts::PostfixExpressionOperatorIndexAst>;
+    auto parse_postfix_expression_op_slice() -> Unique<asts::PostfixExpressionOperatorSliceAst>;
     auto parse_postfix_expression_strictly_static_access_zero() -> Unique<asts::ExpressionAst>;
     auto parse_postfix_expression_strictly_static_access_one() -> Unique<asts::ExpressionAst>;
 
@@ -384,7 +386,6 @@ public:
 
     auto parse_type_identifier() -> Unique<asts::TypeIdentifierAst>;
 
-    auto parse_type_slice() -> Unique<asts::TypeAst>;
     auto parse_type_array() -> Unique<asts::TypeAst>;
     auto parse_type_tuple() -> Unique<asts::TypeAst>;
     auto parse_type_tuple_0_types() -> Unique<asts::TypeAst>;
@@ -414,6 +415,7 @@ public:
     auto parse_numeric_prefix_op() -> Unique<asts::TokenAst>;
     auto parse_float_suffix_type() -> Unique<asts::TokenAst>;
     auto parse_integer_suffix_type() -> Unique<asts::TokenAst>;
+    auto parse_byte_prefix_type() -> Unique<asts::TokenAst>;
 
     auto parse_literal_tuple_1_element(std::function<Unique<asts::ExpressionAst>()> &&elem_parser) -> Unique<asts::TupleLiteralAst>;
     auto parse_literal_tuple_n_elements(std::function<Unique<asts::ExpressionAst>()> &&elem_parser) -> Unique<asts::TupleLiteralAst>;
@@ -509,6 +511,7 @@ public:
     auto parse_keyword_of() -> Unique<asts::TokenAst>;
     auto parse_keyword_loop() -> Unique<asts::TokenAst>;
     auto parse_keyword_in() -> Unique<asts::TokenAst>;
+    auto parse_keyword_to() -> Unique<asts::TokenAst>;
     auto parse_keyword_else() -> Unique<asts::TokenAst>;
     auto parse_keyword_gen() -> Unique<asts::TokenAst>;
     auto parse_keyword_with() -> Unique<asts::TokenAst>;

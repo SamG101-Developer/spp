@@ -69,6 +69,7 @@ SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
     KW_OF,
     KW_LOOP,
     KW_IN,
+    KW_TO,
     KW_ELSE,
     KW_GEN,
     KW_WITH,
@@ -110,6 +111,7 @@ SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
     KW_OF,
     KW_LOOP,
     KW_IN,
+    KW_TO,
     KW_ELSE,
     KW_GEN,
     KW_WITH,
@@ -216,6 +218,7 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> S
         case SppTokenType::KW_OF: return "of";
         case SppTokenType::KW_LOOP: return "loop";
         case SppTokenType::KW_IN: return "in";
+        case SppTokenType::KW_TO: return "to";
         case SppTokenType::KW_ELSE: return "else";
         case SppTokenType::KW_GEN: return "gen";
         case SppTokenType::KW_WITH: return "with";

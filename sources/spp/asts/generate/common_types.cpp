@@ -145,6 +145,13 @@ auto spp::asts::generate::common_types::USize(std::size_t pos) -> Shared<TypeAst
     return type;
 }
 
+auto spp::asts::generate::common_types::CharType(std::size_t pos) -> Shared<TypeAst> {
+    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Char"), nullptr);
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("char")), nullptr), std::move(type));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
+    return type;
+}
+
 auto spp::asts::generate::common_types::VoidType(std::size_t pos) -> Shared<TypeAst> {
     Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Void"), nullptr);
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("void")), nullptr), std::move(type));
@@ -199,13 +206,13 @@ auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAs
     return type;
 }
 
-auto spp::asts::generate::common_types::SliceType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::VecU8Type(const std::size_t pos) -> Shared<TypeAst> {
     auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(U8(pos));
     auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Slice"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("slice")), nullptr), std::move(type));
+    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Vec"), std::move(generics));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("vector")), nullptr), std::move(type));
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
     return type;
 }
@@ -352,6 +359,30 @@ auto spp::asts::generate::common_types::IndexRefType(std::size_t pos, Shared<Typ
     auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
     Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("IndexRef"), std::move(generics));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr), std::move(type));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
+    return type;
+}
+
+auto spp::asts::generate::common_types::SliceMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceMut"), std::move(generics));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr), std::move(type));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
+    return type;
+}
+
+auto spp::asts::generate::common_types::SliceRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceRef"), std::move(generics));
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr), std::move(type));
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));

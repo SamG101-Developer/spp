@@ -17,6 +17,9 @@ namespace spp::asts::generate::common_types_precompiled {
     SPP_EXP_CMP Shared<TypeAst> INDEX_REF = nullptr;
     SPP_EXP_CMP Shared<TypeAst> INDEX_MUT = nullptr;
 
+    SPP_EXP_CMP Shared<TypeAst> SLICE_REF = nullptr;
+    SPP_EXP_CMP Shared<TypeAst> SLICE_MUT = nullptr;
+
     SPP_EXP_CMP Shared<TypeAst> FUN_MOV = nullptr;
     SPP_EXP_CMP Shared<TypeAst> FUN_MUT = nullptr;
     SPP_EXP_CMP Shared<TypeAst> FUN_REF = nullptr;
