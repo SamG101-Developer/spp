@@ -167,8 +167,8 @@ namespace spp::analyse::utils::func_utils {
         asts::GenericParameterGroupAst const &p_group,
         asts::GenericArgumentGroupAst const &a_group,
         scopes::Scope const &owner_scope,
-        scopes::ScopeManager const &sm,
-        asts::meta::CompilerMetaData const &meta)
+        scopes::ScopeManager &sm,
+        asts::meta::CompilerMetaData &meta)
         -> void;
 
     SPP_EXP_FUN auto NameFnArgs(
@@ -197,7 +197,7 @@ namespace spp::analyse::utils::func_utils {
 
     SPP_EXP_FUN auto InferGnArgs(
         asts::GenericParameterGroupAst const &p_group,
-        asts::GenericArgumentGroupAst &args,
+        asts::GenericArgumentGroupAst &a_group,
         InferenceSourceMap infer_source,
         InferenceTargetMap infer_target,
         Shared<asts::Ast> const &owner,
@@ -207,31 +207,6 @@ namespace spp::analyse::utils::func_utils {
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
         -> void;
-
-    SPP_EXP_FUN auto InferGnArgsImplComp(
-        Vec<asts::GenericParameterCompAst*> const &comp_params,
-        Vec<Unique<asts::GenericArgumentCompKeywordAst>> const &comp_args,
-        Vec<asts::GenericArgumentAst*> &all_args,
-        InferenceSourceMap const &infer_source,
-        InferenceTargetMap const &infer_target,
-        Shared<asts::Ast> const &owner,
-        scopes::Scope const &owner_scope,
-        Shared<asts::IdentifierAst> const &variadic_fn_param_name,
-        scopes::ScopeManager &sm,
-        asts::meta::CompilerMetaData &meta)
-        -> Vec<Unique<asts::GenericArgumentCompKeywordAst>>;
-
-    SPP_EXP_FUN auto InferGnArgsImplType(
-        Vec<asts::GenericParameterTypeAst*> const &type_params,
-        Vec<Unique<asts::GenericArgumentTypeKeywordAst>> const &type_args,
-        InferenceSourceMap const &infer_source,
-        InferenceTargetMap const &infer_target,
-        Shared<asts::Ast> const &owner,
-        scopes::Scope const &owner_scope,
-        Shared<asts::IdentifierAst> const &variadic_fn_param_name,
-        scopes::ScopeManager &sm,
-        asts::meta::CompilerMetaData &meta)
-        -> Vec<Unique<asts::GenericArgumentTypeKeywordAst>>;
 
     SPP_EXP_FUN auto IsTargetCallable(
         asts::ExpressionAst &expr,
