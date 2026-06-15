@@ -368,7 +368,7 @@ auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
             | genex::to<Vec>();
 
         Raise<errors::SppFunctionCallNoValidSignaturesError>(
-            {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature),
+            {sm->CurrentScope}, ERR_ARGS(*fn_call.Source.OriginalExpr, failed_signatures_and_errors, arg_usage_signature),
             std::move(sub_errors));
     }
 
