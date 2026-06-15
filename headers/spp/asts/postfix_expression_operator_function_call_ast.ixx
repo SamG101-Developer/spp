@@ -13,6 +13,7 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
     SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
@@ -27,7 +28,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
 }
-
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
     /**
@@ -46,6 +46,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
      * the argument for the non-tuple parameters it has mapped to.
      */
     Unique<FoldExpressionAst> Fold;
+
+    struct {
+        Ast *OriginalExpr;
+    } Source;
 
     /**
      * Construct the PostfixExpressionOperatorFunctionCallAst with the arguments matching the members.

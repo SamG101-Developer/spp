@@ -696,7 +696,7 @@ spp::analyse::errors::SppFunctionCallTooManyArgumentsError::SppFunctionCallTooMa
 }
 
 spp::analyse::errors::SppFunctionCallNoValidSignaturesError::SppFunctionCallNoValidSignaturesError(
-    asts::PostfixExpressionOperatorFunctionCallAst const &call,
+    asts::Ast const &call,
     const StrView sigs,
     const StrView attempted) {
     AddHeaders(58, "Function Call No Valid Signatures Error");

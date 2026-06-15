@@ -66,6 +66,7 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
     _IsCoroAndAutoResume(false) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnArgGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
+    Source.OriginalExpr = this; // Can be overwritten by ASTs that transform into function calls (binary, index, etc).
 }
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::~PostfixExpressionOperatorFunctionCallAst() = default;
@@ -87,6 +88,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const
     // Clone all the members of the ast.
     auto ast = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
         AstClone(GnArgGroup), AstClone(FnArgGroup), AstClone(Fold));
+    ast->Source = Source;
     ast->_ClosureDummyProto = AstClone(_ClosureDummyProto);
     ast->_TransformedAst = AstClone(_TransformedAst);
     ast->_OverloadInfo = _OverloadInfo;

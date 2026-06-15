@@ -355,7 +355,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallTooManyArgumentsError fi
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallNoValidSignaturesError final : SemanticError {
-    explicit SppFunctionCallNoValidSignaturesError(asts::PostfixExpressionOperatorFunctionCallAst const &call, StrView sigs, StrView attempted);
+    explicit SppFunctionCallNoValidSignaturesError(asts::Ast const &call, StrView sigs, StrView attempted);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallOverloadAmbiguousError final : SemanticError {
