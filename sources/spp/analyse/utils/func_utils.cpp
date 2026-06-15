@@ -166,7 +166,8 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
     auto self_arg_val = asts::AstClone(lhs.Lhs);
 
     // Create the static method access (without the function call and args).
-    auto field = MakeUnique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, AstClone(&function_name));
+    auto field = MakeUnique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(
+        nullptr, AstClone(&function_name));
     auto field_access = MakeUnique<asts::PostfixExpressionAst>(
         AstClone(&function_owner_type), std::move(field));
 
@@ -181,6 +182,7 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
         AstClone(fn_call.GnArgGroup), AstClone(fn_call.FnArgGroup), nullptr);
     new_fn_call->FnArgGroup->Args = std::move(fn_args);
     new_fn_call->FnArgGroup->Args[0]->SetSelfType(lhs.Lhs->InferType(&sm, meta));
+    new_fn_call->Source = fn_call.Source;
 
     // Return the new ASTs.
     return MakePair(std::move(field_access), std::move(new_fn_call));
@@ -747,7 +749,6 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
     meta.Restore();
 }
 
-
 // Run RelaxedTypeEq on one (source, target) pair and distribute results by param kind.
 static auto CollectDirectInferences(
     spp::Shared<spp::asts::TypeAst> const &source_type,
@@ -860,7 +861,10 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
             // Find the inferred concrete type for this param.
             Shared<asts::TypeAst> inferred_type;
             for (auto const &[k, vals] : type_inferred) {
-                if (*k == *cast_name and not vals.IsEmpty()) { inferred_type = vals[0]; break; }
+                if (*k == *cast_name and not vals.IsEmpty()) {
+                    inferred_type = vals[0];
+                    break;
+                }
             }
             if (inferred_type == nullptr) { continue; }
 
@@ -883,9 +887,9 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
                 for (auto const &candidate : candidates) {
                     temp_gs.clear();
                     if (type_utils::RelaxedTypeEq(
-                            *candidate->WithoutConvention(),
-                            *constraint->WithoutConvention(),
-                            *sm.CurrentScope, owner_scope, temp_gs, false, false)) {
+                        *candidate->WithoutConvention(),
+                        *constraint->WithoutConvention(),
+                        *sm.CurrentScope, owner_scope, temp_gs, false, false)) {
                         break;
                     }
                 }
@@ -955,24 +959,24 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
         // Build unified "all other" substitution, skipping current name to avoid cycles.
         auto other_unified = type_utils::GenericInferenceMap();
         for (auto const &[n, v] : type_formatted) {
-            if (*n != *type_name) { other_unified.emplace(n,v.get()); }
+            if (*n != *type_name) { other_unified.emplace(n, v.get()); }
         }
         for (auto const &[n, v] : comp_formatted) { other_unified.emplace(n, v); }
         auto other_group = asts::GenericArgumentGroupAst::FromMap(other_unified);
-        auto other_args  = other_group->GetAllArgs();
+        auto other_args = other_group->GetAllArgs();
 
         auto t = type_formatted[type_name]->SubstituteGenerics(other_args);
         t->Stage7_AnalyseSemantics(&sm, &meta);
         type_formatted[type_name] = t;
     }
 
-    // Cmp argumnent type-checking (semantic stage only).
+    // Cmp argument type-checking (semantic stage only).
     if (meta.CurrentStage > 7) {
         auto all_final_unified = type_utils::GenericInferenceMap();
         for (auto const &[n, v] : type_formatted) { all_final_unified.emplace(n, v.get()); }
         for (auto const &[n, v] : comp_formatted) { all_final_unified.emplace(n, v); }
         auto all_final_group = asts::GenericArgumentGroupAst::FromMap(all_final_unified);
-        auto all_final_args  = all_final_group->GetAllArgs();
+        auto all_final_args = all_final_group->GetAllArgs();
 
         auto comp_p_name_index = ankerl::unordered_dense::map<StrView, std::size_t>();
         for (auto [i, p] : comp_p_names | genex::views::enumerate) { comp_p_name_index[p->Name] = i; }
