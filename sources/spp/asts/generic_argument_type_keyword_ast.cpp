@@ -21,9 +21,9 @@ auto spp::asts::GenericArgumentTypeKeywordAst::FromSym(
     analyse::scopes::TypeSymbol const &sym)
     -> Unique<GenericArgumentTypeKeywordAst> {
     // Extract the value from the symbol's scope, if it exists.
-    auto value = sym.LinkedScope != nullptr
-        ? sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()))
-        : MakeShared<TypeIdentifierAst>(0, "Self", nullptr);
+    auto value = sym.LinkedScope == nullptr
+        ? MakeShared<TypeIdentifierAst>(0, "Self", nullptr)
+        : sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()));
 
     // Wrap the value into a type argument.
     return MakeUnique<GenericArgumentTypeKeywordAst>(

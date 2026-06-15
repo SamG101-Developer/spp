@@ -163,6 +163,7 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
             | genex::to<Vec>();
 
         for (auto const &t : all_type_syms) {
+            if (t->LinkedScope == nullptr) { continue; }  // unresolved or Self - no concrete value to pre-seed
             if (genex::contains(type_names, *t->Name, genex::meta::deref)) { continue; }
             syms.EmplaceBack(asts::GenericArgumentTypeKeywordAst::FromSym(*t));
             type_names.EmplaceBack(t->Name);
@@ -214,7 +215,8 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     for (auto const *scope : scopes) {
         for (auto const &sym : scope->AllTypeSymbols(true)
              | genex::views::filter([](auto const &s) { return s->IsGeneric; })) {
-            syms.EmplaceBack(sym);
+            auto clone = std::make_shared<TypeSymbol>(sym->Name, nullptr, nullptr, nullptr, nullptr, true, sym->IsDirectlyCopyable);
+            syms.EmplaceBack(clone);
         }
 
         for (auto const &sym : scope->AllVarSymbols(true)
@@ -257,6 +259,9 @@ auto spp::analyse::scopes::Scope::AddVarSymbolCheckConflict(
 auto spp::analyse::scopes::Scope::AddTypeSymbol(
     Shared<TypeSymbol> const &sym)
     -> void {
+    if (sym.get() == reinterpret_cast<TypeSymbol*>(0x1dfc5340)) {
+        auto _ = 123;
+    }
     // Add a type symbol to the corresponding symbol table.
     InternalTable.TypeTbl.Add(sym->Name, sym);
 }

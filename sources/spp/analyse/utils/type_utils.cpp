@@ -906,9 +906,7 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
     if (const auto type_arg = generic.To<asts::GenericArgumentTypeKeywordAst>(); type_arg != nullptr) {
         // "Self" should not be looked up and changed.
         if (type_arg->Val->IsSelfType()) {
-            return MakeShared<scopes::TypeSymbol>(
-                type_arg->Name->TypeParts().Back(), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
-                true);
+            return MakeShared<scopes::TypeSymbol>(type_arg->Name->TypeParts().Back(), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true);
         }
 
         const auto true_val_sym = sm.CurrentScope->GetTypeSymbol(type_arg->Val);

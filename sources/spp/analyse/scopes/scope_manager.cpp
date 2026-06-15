@@ -192,7 +192,6 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     const auto scope_name = scope.TySym->FqName();
     if (sup_scopes.IsEmpty()) { return; }
     if (scope_name->IsCompilerGeneratedType()) { return; }
-    if (IsTypeFunc(*scope_name, scope)) { return; }
 
     // Clear the sup scopes list.
     scope.DirectSupScopes.Clear();
