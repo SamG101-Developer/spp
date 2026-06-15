@@ -96,6 +96,7 @@ auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
         : nullptr;
     auto arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->Rhs));
     fn_call->FnArgGroup->Args.EmplaceBack(std::move(arg));
+    fn_call->Source.OriginalExpr = &bin_expr;
     auto new_ast = MakeUnique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
     return new_ast;
 }
