@@ -365,6 +365,19 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->MoveToNextScope();
+
+    // Now we are inside a function, we need tor emap the "self" var symbol, changing the type from "Self" to the true
+    // type. This only applies to runtime methods, not static methods or free functions.
+    if (const auto self_param = FnParamGroup->GetSelfParam()) {
+        const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
+        const auto self_conv = self_param->Conv.get();
+        const auto true_type = _Ctx->To<SupPrototypeFunctionsAst>()
+            ? _Ctx->To<SupPrototypeFunctionsAst>()->Name
+            : _Ctx->To<SupPrototypeExtensionAst>()->Name;
+        const auto type_sym = sm->CurrentScope->GetTypeSymbol(true_type);
+        self_sym->Type = type_sym->FqName()->WithConvention(AstClone(self_conv));
+    }
+
     // SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
@@ -375,7 +388,7 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
     // Analyse the generic parameter group, and the parameter group.
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
-    FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
+    // FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
     // If this is a !compiler_builtin function, ensure a key exists in the "BUILTINS".
     if (BuiltinAnnotation) {
