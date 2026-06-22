@@ -134,8 +134,10 @@ auto spp::analyse::utils::type_utils::TypeEq(
 
     if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
-    // If the stripped types are not equal, return false (comparing by address is fine: ClassPrototypeAst* nodes).
-    if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) { return false; }
+    // If the stripped types are not equal, check forwarding compatibility before returning false.
+    if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) {
+        return TypeFwdEq(rhs_type, lhs_type, rhs_scope, lhs_scope);
+    }
     auto &lhs_generics = lhs_type.TypeParts().Back()->GnArgGroup->Args;
     auto &rhs_generics = rhs_type.TypeParts().Back()->GnArgGroup->Args;
 
@@ -177,6 +179,50 @@ auto spp::analyse::utils::type_utils::TypeEq(
     -> bool {
     // Simple equality between the expressions.
     return lhs_expr == rhs_expr;
+}
+
+auto spp::analyse::utils::type_utils::TypeFwdEq(
+    asts::TypeAst const &arg_type,
+    asts::TypeAst const &param_type,
+    scopes::Scope const &arg_scope,
+    scopes::Scope const &param_scope)
+    -> bool {
+    //
+    using asts::generate::common_types_precompiled::FWD_REF;
+    using asts::generate::common_types_precompiled::FWD_MUT;
+
+    // Ensure that the conventions match between the two types.
+    const auto arg_conv = arg_type.GetConvention();
+    const auto param_conv = param_type.GetConvention();
+    if (arg_conv == nullptr or param_conv == nullptr) { return false; }
+
+    // Determine if we are targeting a forward ref or mut variation.
+    const auto is_both_ref = (*arg_conv == asts::ConventionTag::REF) and (*param_conv == asts::ConventionTag::REF);
+    const auto is_both_mut = (*arg_conv == asts::ConventionTag::MUT) and (*param_conv == asts::ConventionTag::MUT);
+    if (not is_both_ref and not is_both_mut) { return false; }
+
+    // Generic types won't forward, so ignore them here.
+    // Todo: maybe allow via constraints at some point.
+    const auto &fwd_target = is_both_ref ? FWD_REF : FWD_MUT;
+    const auto arg_bare = arg_type.WithoutConvention();
+    const auto arg_bare_sym = arg_scope.GetTypeSymbol(arg_bare);
+    if (arg_bare_sym->IsGeneric) { return false; }
+
+    // Get all the super types that we want to consider.
+    auto sup_types = Vec{arg_bare};
+    sup_types.AppendRange(arg_bare_sym->LinkedScope->SupTypes());
+
+    // Check for a matching forwarding type, and compare to the inner type of it (the forwarding target).
+    // Todo: ensure only 1 forwarding superimposition is present for a given type.
+    // Todo: probably ensure that the ref & mut both forward to the same type?
+    for (auto const &sup_type : sup_types) {
+        if (not TypeEq(*sup_type->WithoutGenerics(), *fwd_target, arg_scope, arg_scope, false)) { continue; }
+        const auto inner_type = sup_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val->WithConvention(asts::AstClone(param_type.GetConvention()));
+        if (TypeEq(*inner_type, param_type, param_scope, param_scope)) { return true; }
+    }
+
+    // Otherwise, there is no forwarding match.
+    return false;
 }
 
 auto spp::analyse::utils::type_utils::RelaxedTypeEq(
