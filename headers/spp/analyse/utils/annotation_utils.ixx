@@ -39,6 +39,9 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::BuiltinAnnotations {
     constexpr static auto kVirtualMethod = "std::annotations::virtual_method";
     constexpr static auto kAbstractMethod = "std::annotations::abstract_method";
     constexpr static auto kFfi = "std::annotations::ffi";
+    constexpr static auto kZeroType = "std::annotations::zero_type";
+    constexpr static auto kCfg = "std::annotations::cfg";
+    constexpr static auto kVersioned = "std::annotations::versioned";
     constexpr static auto kLlvmInline = "std::llvm::inline";
     constexpr static auto kLlvmAlwaysInline = "std::llvm::always_inline";
     constexpr static auto kLlvmNoInline = "std::llvm::noinline";
