@@ -584,6 +584,10 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
     asts::TypeAst const &type,
     scopes::ScopeManager const &sm)
     -> Pair<Shared<const asts::TypeAst>, Shared<const asts::TypeAst>> {
+    //
+    using asts::generate::common_types_precompiled::FWD_MUT;
+    using asts::generate::common_types_precompiled::FWD_REF;
+
     // Generic types do not have forward types, so return nullptr.
     const auto type_sym = sm.CurrentScope->GetTypeSymbol(type.shared_from_this());
     if (type_sym->IsGeneric) { return {nullptr, nullptr}; }
@@ -594,12 +598,12 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
 
     // Search through the supertypes for a direct FwdRef type.
     const auto fwd_ref_type_candidates = sup_types
-        | genex::views::filter([&sm](auto &&sup_type) { return TypeEq(*sup_type, *asts::generate::common_types_precompiled::FWD_REF, *sm.CurrentScope, *sm.CurrentScope); })
+        | genex::views::filter([&sm](auto const &sup_type) { return TypeEq(*sup_type->WithoutGenerics(), *FWD_REF, *sm.CurrentScope, *sm.CurrentScope); })
         | genex::to<Vec>();
 
     // Search through the supertypes for a direct FwdMut type.
     const auto fwd_mut_type_candidates = sup_types
-        | genex::views::filter([&sm](auto &&sup_type) { return TypeEq(*sup_type, *asts::generate::common_types_precompiled::FWD_MUT, *sm.CurrentScope, *sm.CurrentScope); })
+        | genex::views::filter([&sm](auto const &sup_type) { return TypeEq(*sup_type->WithoutGenerics(), *FWD_MUT, *sm.CurrentScope, *sm.CurrentScope); })
         | genex::to<Vec>();
 
     // No error raised here; just return the pair of types (nullptr if not found).
