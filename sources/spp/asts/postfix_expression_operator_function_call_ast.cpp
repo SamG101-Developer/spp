@@ -350,7 +350,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
     CompilerMetaData *meta)
     -> Shared<TypeAst> {
     //
+    using generate::common_types::SelfType;
     using generate::common_types::TupleType;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
 
     // For function folding, collect a tuple of all return types.
     if (not _FoldedAsts.IsEmpty()) {
@@ -365,7 +367,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
     auto ret_type = _OverloadInfo->Proto->ReturnType;
 
     // If there is a scope present (non-closure), then fully qualify the return type.
-    if (_OverloadInfo->OverloadScope != nullptr) {
+    if (_OverloadInfo->OverloadScope != nullptr and not ret_type->IsSelfType()) {
         ret_type = _OverloadInfo->OverloadScope->GetTypeSymbol(ret_type)->FqName();
     }
 
