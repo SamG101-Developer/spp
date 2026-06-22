@@ -99,7 +99,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
 
     // Analyse the expression if it is present.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        Expr and not IsPrimaryExprTypeValid(*Expr),
+        Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
 
     // Check the depth of the loop is greater than or equal to the number of control statements.

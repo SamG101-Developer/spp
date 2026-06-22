@@ -80,7 +80,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
 
     // Check the value is a valid expression type.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Val),
+        not IsPrimaryExprTypeValid(*Val, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Val.get()));
 
     // An explicit type can only be applied if the left-hand-side is a single identifier.

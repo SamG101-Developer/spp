@@ -101,7 +101,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 
     // Analyse the repeated element.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Elem),
+        not IsPrimaryExprTypeValid(*Elem, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Elem));
     Elem->Stage7_AnalyseSemantics(sm, meta);
     const auto elem_type = Elem->InferType(sm, meta);
@@ -114,7 +114,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 
     // Check the size argument is a valid AST.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Size),
+        not IsPrimaryExprTypeValid(*Size, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Size));
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.

@@ -88,10 +88,10 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Ensure TypeAst's aren't used for expression for binary operands.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Lhs, {.AllowTokenAst = true}),
+        not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTokenAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Lhs));
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Rhs, {.AllowTokenAst = true}),
+        not IsPrimaryExprTypeValid(*Rhs, *sm, {.AllowTokenAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Rhs));
 
     // Handle lhs-folding.

@@ -26,6 +26,7 @@ namespace spp::analyse::utils::expr_utils {
 
     SPP_EXP_FUN auto IsPrimaryExprTypeValid(
         asts::ExpressionAst const &expr,
+        scopes::ScopeManager const &sm,
         PrimaryExpressionOptions &&options = {})
         -> bool;
 

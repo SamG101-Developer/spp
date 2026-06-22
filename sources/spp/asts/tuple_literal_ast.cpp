@@ -99,7 +99,7 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
     // Analyse the elements in the tuple.
     for (auto const &elem : Elems) {
         RaiseIf<SppInvalidPrimaryExpressionError>(
-            not IsPrimaryExprTypeValid(*elem),
+            not IsPrimaryExprTypeValid(*elem, *sm),
             {sm->CurrentScope}, ERR_ARGS(*elem));
         elem->Stage7_AnalyseSemantics(sm, meta);
     }

@@ -69,7 +69,7 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the lhs.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Lhs, {.AllowTypeAst = true}),
+        not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
 
     // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to

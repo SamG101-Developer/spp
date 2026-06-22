@@ -69,7 +69,7 @@ auto spp::asts::CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
 
     // Forward analysis into the expression.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr),
+        not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
     Expr->Stage7_AnalyseSemantics(sm, meta);
 

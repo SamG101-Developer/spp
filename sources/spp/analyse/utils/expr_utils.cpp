@@ -15,16 +15,23 @@ import spp.asts.ret_statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
 import spp.utils.strings;
 import genex;
 import std;
 
 auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
     asts::ExpressionAst const &expr,
+    scopes::ScopeManager const &sm,
     PrimaryExpressionOptions &&options)
     -> bool {
-    // Expression cast tests.
-    if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) { return false; }
+    // Only allow types if types are explicitly allowed, or are zero type.
+    if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
+        const auto type_sym = sm.CurrentScope->GetTypeSymbol(asts::AstClone(expr.To<asts::TypeAst>()));
+        return type_sym->IsZeroType();
+    }
+
+    // Only allow tokens when they're explicit allowed, like "5 + .."
     if (not options.AllowTokenAst and expr.To<asts::TokenAst>() != nullptr) { return false; }
     return true;
 }

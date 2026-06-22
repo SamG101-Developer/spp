@@ -80,7 +80,7 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
 
     // Ensure TypeAst's aren't used for expression for binary operands.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Lhs),
+        not IsPrimaryExprTypeValid(*Lhs, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
 
     _LhsAsId = AstClone(Lhs->To<IdentifierAst>());

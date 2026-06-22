@@ -26,6 +26,7 @@ import spp.asts.module_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.visibility_enabled_ast;
@@ -154,7 +155,6 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     meta->Restore();
 
     const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).First;
-    // if (sym == nullptr) { return; }
     const auto fq_name = sym->FqName()->ToString();
 
     // For the known builtin annotations, they will attempt to modify their contextual objects if possible, for required
@@ -208,6 +208,18 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
         if (fun_ctx) { fun_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
     }
 
+    // Mark a type symbol as being "zero type".
+    else if (fq_name == A::kZeroType and _Ctx->To<ClassPrototypeAst>()) {
+        const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
+        const auto type_sym = sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics());
+        type_sym->IsDirectlyZeroType = true;
+    }
+    else if (fq_name == A::kZeroType and _Ctx->To<TypeStatementAst>()) {
+        const auto cls_ctx = _Ctx->To<TypeStatementAst>();
+        sm->CurrentScope->GetTypeSymbol(cls_ctx->NewType->WithoutGenerics())->IsDirectlyZeroType = true;
+        sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType)->IsDirectlyZeroType = true;
+    }
+
     // Mark a function as being inlinable via llvm.
     else if (fq_name == A::kLlvmInline) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
@@ -250,6 +262,7 @@ auto spp::asts::AnnotationAst::Stage7_AnalyseSemantics(
     // Convert the target into a function call to ensure it exists.
     auto fn = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
         std::move(GnArgGroup), std::move(FnArgGroup), nullptr);
+    fn->Source.OriginalExpr = this;
     const auto fn_ptr = fn.get();
     const auto pf = MakeUnique<PostfixExpressionAst>(AstClone(Name), std::move(fn));
     pf->Stage7_AnalyseSemantics(sm, meta);

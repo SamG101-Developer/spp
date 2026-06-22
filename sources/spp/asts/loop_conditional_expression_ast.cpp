@@ -85,7 +85,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the condition expression.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Cond),
+        not IsPrimaryExprTypeValid(*Cond, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Cond));
     Cond->Stage7_AnalyseSemantics(sm, meta);
 

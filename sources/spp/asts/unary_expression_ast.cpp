@@ -60,7 +60,7 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the semantics of the right-hand-side.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr),
+        not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     // Analyse the operator and right-hand-side expression.

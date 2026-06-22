@@ -65,7 +65,7 @@ auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
 
     // Check the expression in the pattern guard.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr),
+        not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
     Expr->Stage7_AnalyseSemantics(sm, meta);
 

@@ -34,7 +34,7 @@ auto spp::asts::ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
 
     // Forward analysis into the value expression.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Val),
+        not IsPrimaryExprTypeValid(*Val, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Val));
     Val->Stage7_AnalyseSemantics(sm, meta);
 }

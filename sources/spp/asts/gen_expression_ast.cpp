@@ -89,7 +89,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the expression.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr),
+        not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     // Check the enclosing function is a coroutine and not a subroutine.

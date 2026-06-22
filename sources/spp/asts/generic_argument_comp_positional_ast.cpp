@@ -73,7 +73,7 @@ auto spp::asts::GenericArgumentCompPositionalAst::Stage7_AnalyseSemantics(
 
     // Analyse the value.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Val),
+        not IsPrimaryExprTypeValid(*Val, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Val.get()));
     Val->Stage7_AnalyseSemantics(sm, meta);
 }

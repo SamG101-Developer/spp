@@ -97,7 +97,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
 
     // Exp check.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Iterable),
+        not IsPrimaryExprTypeValid(*Iterable, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Iterable));
 
     // Simple statements to move from.

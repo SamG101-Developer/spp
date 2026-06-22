@@ -109,7 +109,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the condition expression.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Cond),
+        not IsPrimaryExprTypeValid(*Cond, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Cond));
 
     // Create the scope for the case expression.

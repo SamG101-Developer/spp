@@ -103,7 +103,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     // is an acceptable primary expression, ie not a TypeAst or a TokenAst.
     for (auto const &elem : Elems) {
         RaiseIf<SppInvalidPrimaryExpressionError>(
-            not IsPrimaryExprTypeValid(*elem),
+            not IsPrimaryExprTypeValid(*elem, *sm),
             {sm->CurrentScope}, ERR_ARGS(*elem));
         elem->Stage7_AnalyseSemantics(sm, meta);
     }
