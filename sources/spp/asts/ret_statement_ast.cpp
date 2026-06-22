@@ -74,18 +74,20 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeVoid;
     using analyse::utils::type_utils::TypeEq;
-    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
     using analyse::errors::SppCoroutineContainsReturnStatementError;
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppInvalidVoidValueError;
     using analyse::errors::SppTypeMismatchError;
+    using analyse::scopes::ScopeTypeIdentifierName;
     using generate::common_types::VoidType;
 
     // Analyse the expression.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        Expr and not IsPrimaryExprTypeValid(*Expr),
+        Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
@@ -96,17 +98,24 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 
     // Analyse the expression if it exists, and determine the type of the expression.
     auto expr_type = VoidType(PosStart());
+    _RetType = VoidType(PosStart());
     if (Expr != nullptr) {
         meta->Save();
-        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
-            meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType.Back();
-        }
 
         // For case conditions, we need an assignment target in case of variants.
         meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType.Back();
+        meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
         meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
+
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
+            meta->ReturnTypeOverloadResolverType = meta->AssignmentTargetType;
+        }
+
         Expr->Stage7_AnalyseSemantics(sm, meta);
         expr_type = Expr->InferType(sm, meta);
+
+        _RetType = meta->AssignmentTargetType;
+        Source._OriginalRetType = meta->EnclosingFunctionSourceRetType.Back();
         meta->Restore();
 
         // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
@@ -121,10 +130,6 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
         Source._OriginalRetType = _RetType;
         meta->EnclosingFunctionRetType.EmplaceBack(_RetType);
         meta->EnclosingFunctionSourceRetType.EmplaceBack(_RetType);
-    }
-    else {
-        _RetType = meta->EnclosingFunctionRetType.Back();
-        Source._OriginalRetType = meta->EnclosingFunctionSourceRetType.Back();
     }
 
     // Type check the expression type against the return type of the enclosing subroutine.
