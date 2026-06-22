@@ -43,6 +43,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
+import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
@@ -1224,4 +1225,26 @@ auto spp::analyse::utils::type_utils::GetFieldIndexInType(
     return all_attrs.Len();
 
     // return genex::position(all_attrs, genex::operations::eq_fixed(field_name), [](auto &&attr) -> decltype(auto) { return *attr.first->Name; });
+}
+
+auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData &meta)
+    -> Shared<asts::TypeAst> {
+    //
+    using asts::generate::common_types::SelfType;
+    const auto true_self_type = scope.GetEnclosingSelfType();
+
+    //
+    auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+        SelfType(0), nullptr, true_self_type);
+    const auto gg = asts::GenericArgumentGroupAst::NewEmpty();
+    gg->Args.PushBack(std::move(g));
+
+    //
+    auto t = type.SubstituteGenerics(gg->GetAllArgs());
+    t->Stage7_AnalyseSemantics(&sm, &meta);
+    return t;
 }
