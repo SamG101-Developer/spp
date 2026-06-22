@@ -246,19 +246,30 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> Shared<TypeAst> {
+    //
+    using analyse::utils::type_utils::GetFwdTypes;
+    using analyse::utils::type_utils::GetNthTypeOfIndexableType;
+
     // Get the type of the left-hand-side expression.
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
 
     // Numeric index access (for tuples).
     if (std::isdigit(Name->Val[0])) {
-        const auto elem_type = analyse::utils::type_utils::GetNthTypeOfIndexableType(
+        const auto elem_type = GetNthTypeOfIndexableType(
             std::stoul(Name->Val), *lhs_type, *sm->CurrentScope);
         return elem_type;
     }
 
-    // Get the field symbol and return its type.
-    const auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
-    const auto field_type = lhs_sym->LinkedScope->GetVarSymbol(Name)->Type;
+    // Get the field symbol and return its type, falling back to the forwarding type if needed.
+    auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+    auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name);
+    if (var_sym == nullptr) {
+        auto [fwd_ref_type, _] = GetFwdTypes(*lhs_type, *sm);
+        const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+        lhs_sym = sm->CurrentScope->GetTypeSymbol(inner_type);
+        var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name);
+    }
+    const auto field_type = var_sym->Type;
     return lhs_sym->LinkedScope->GetTypeSymbol(field_type)->FqName();
 }
 
