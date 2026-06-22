@@ -25,6 +25,7 @@ import spp.asts.function_implementation_lowered_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
@@ -239,7 +240,7 @@ auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
     -> void {
     //
     using analyse::scopes::ScopeBlockName;
-    using analyse::errors::SppSelfParamInFreeFunctionError;
+    using analyse::errors::SppSelfIdentifierInvalidContextError;
 
     // Create a new scope for the function prototype, and move into it.
     auto scope_name = ScopeBlockName::FromParts(
@@ -248,9 +249,9 @@ auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
     Ast::Stage2_GenTopLvlScopes(sm, meta);
 
     // If there is a self parameter in a free function, throw as error.
-    RaiseIf<SppSelfParamInFreeFunctionError>(
+    RaiseIf<SppSelfIdentifierInvalidContextError>(
         _Ctx->To<ModulePrototypeAst>() and FnParamGroup->GetSelfParam() != nullptr,
-        {sm->CurrentScope}, ERR_ARGS(*this, *FnParamGroup->GetSelfParam()));
+        {sm->CurrentScope}, ERR_ARGS(*FnParamGroup->GetSelfParam()));
 
     // Run steps for the annotations.
     for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
@@ -299,7 +300,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     // Ensure overloads have the same visibility by comparing to the master symbol.
     // Todo: Tidy this?
     if (Visibility.Second != nullptr and Name and not Name->Val.starts_with("$")) {
-        if (auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
+        if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
             if (const auto mock_sym = outer_scope->GetVarSymbol(Name, true)) {
                 if (mock_sym->Type and mock_sym->Type->IsCompilerGeneratedType()) {
                     // Enforce that all overloads have the same visibility.
@@ -325,20 +326,8 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
         IsTypeBorrowed(*ReturnType, *sm),
         {sm->CurrentScope}, ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
 
-    sm->MoveOutOfCurrentScope();
-}
-
-auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    //
     using analyse::utils::func_utils::CheckForConflictingOverload;
     using analyse::errors::SppFunctionPrototypeConflictError;
-
-    // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
-    sm->MoveToNextScope();
-    SPP_ASSERT(sm->CurrentScope == _Scope);
 
     const auto mod_ctx = _Ctx->To<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
@@ -350,6 +339,55 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     const auto conflict = CheckForConflictingOverload(*sm->CurrentScope, type_scope, *this, *sm, meta);
     RaiseIf<SppFunctionPrototypeConflictError>(
         conflict, {sm->CurrentScope}, ERR_ARGS(*conflict, *this));
+
+    sm->MoveOutOfCurrentScope();
+}
+
+auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    //
+    using analyse::utils::func_utils::CheckForConflictingOverload;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+    using analyse::errors::SppFunctionPrototypeConflictError;
+    using generate::common_types::SelfType;
+
+    // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
+    sm->MoveToNextScope();
+    SPP_ASSERT(sm->CurrentScope == _Scope);
+
+    // Now we are inside a function, we need to remap the "self" var symbol, changing the type from "Self" to the true
+    // type. This only applies to runtime methods, not static methods or free functions.
+    // if (const auto self_param = FnParamGroup->GetSelfParam()) {
+    //     const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
+    //     const auto self_conv = self_param->Conv.get();
+    //     const auto true_self_type = sm->CurrentScope->GetEnclosingSelfType();
+    //     self_sym->Type = true_self_type->WithConvention(AstClone(self_conv));
+    //
+    //     auto g = MakeUnique<GenericArgumentTypeKeywordAst>(SelfType(0), nullptr, true_self_type);
+    //     const auto gg = GenericArgumentGroupAst::NewEmpty();
+    //     gg->Args.PushBack(std::move(g));
+    //
+    //     for (auto const &param : FnParamGroup->GetAllParams()) {
+    //         const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName());
+    //         if (var_sym == nullptr) { continue; } // Destructuring parameters.
+    //         var_sym->Type = var_sym->Type->SubstituteGenerics(gg->GetAllArgs());
+    //     }
+    // }
+
+    // New version
+    if (const auto self_param = FnParamGroup->GetSelfParam()) {
+        const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
+        const auto self_conv = self_param->Conv.get();
+        self_sym->Type = ResolveAndSubstituteSelfType(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(AstClone(self_conv));
+
+        for (auto const &param : FnParamGroup->GetAllParams()) {
+            const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName());
+            if (var_sym == nullptr) { continue; } // Destructuring parameters.
+            var_sym->Type = ResolveAndSubstituteSelfType(*var_sym->Type, *sm->CurrentScope, *sm, *meta);
+        }
+    }
 
     // Move out of the function scope, as it is now complete.
     sm->MoveOutOfCurrentScope();
@@ -366,17 +404,7 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->MoveToNextScope();
 
-    // Now we are inside a function, we need tor emap the "self" var symbol, changing the type from "Self" to the true
-    // type. This only applies to runtime methods, not static methods or free functions.
-    if (const auto self_param = FnParamGroup->GetSelfParam()) {
-        const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
-        const auto self_conv = self_param->Conv.get();
-        const auto true_type = _Ctx->To<SupPrototypeFunctionsAst>()
-            ? _Ctx->To<SupPrototypeFunctionsAst>()->Name
-            : _Ctx->To<SupPrototypeExtensionAst>()->Name;
-        const auto type_sym = sm->CurrentScope->GetTypeSymbol(true_type);
-        self_sym->Type = type_sym->FqName()->WithConvention(AstClone(self_conv));
-    }
+
 
     // SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }

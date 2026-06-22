@@ -106,14 +106,15 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::errors::SppSelfIdentifierInvalidContextError;
     using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
     using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
 
     // Check there is a symbol with the same name in the current scope.
     const auto shared = AstCloneShared(this);
     if (not sm->CurrentScope->HasVarSymbol(shared) and not sm->CurrentScope->HasNsSymbol(shared)) {
-        RaiseMissingIdentifierAndClosestOptions(
-            *this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
+        RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
+        RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
     }
 
     // Enforce module-level visibility on the accessed symbol.

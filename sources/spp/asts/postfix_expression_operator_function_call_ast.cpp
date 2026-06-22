@@ -27,6 +27,7 @@ import spp.asts.function_prototype_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
@@ -66,7 +67,7 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
     _IsCoroAndAutoResume(false) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnArgGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
-    Source.OriginalExpr = this; // Can be overwritten by ASTs that transform into function calls (binary, index, etc).
+    Source.OriginalExpr = this;
 }
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::~PostfixExpressionOperatorFunctionCallAst() = default;
@@ -88,7 +89,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const
     // Clone all the members of the ast.
     auto ast = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
         AstClone(GnArgGroup), AstClone(FnArgGroup), AstClone(Fold));
-    ast->Source = Source;
+    if (Source.OriginalExpr != this) {
+        ast->Source.OriginalExpr = Source.OriginalExpr;
+    }
     ast->_ClosureDummyProto = AstClone(_ClosureDummyProto);
     ast->_TransformedAst = AstClone(_TransformedAst);
     ast->_OverloadInfo = _OverloadInfo;

@@ -309,7 +309,7 @@ auto spp::analyse::utils::type_utils::IsTypeVariant(
     -> bool {
     // Check the type against "std::variant::Variant[Ts...]".
     return
-        TypeEq(*type.WithoutGenerics(), *asts::generate::common_types_precompiled::VAR, scope, scope);
+        TypeEq(*type.WithoutConvention()->WithoutGenerics(), *asts::generate::common_types_precompiled::VAR, scope, scope);
 }
 
 auto spp::analyse::utils::type_utils::IsTypeBool(
@@ -725,7 +725,9 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
         old_cls_scope->Parent, old_cls_sym.IsGeneric, old_cls_sym.IsDirectlyCopyable, old_cls_sym.Visibility);
     const auto new_cls_scope_ptr = new_cls_scope.get();
 
-    new_cls_sym->IsCopyable = [&old_cls_sym] { return old_cls_sym.IsCopyable(); };
+    new_cls_sym->IsCopyable = [old_cls_sym] { return old_cls_sym.IsCopyable(); };
+    const auto raw_new_cls_sym = new_cls_sym.get();
+    new_cls_sym->IsZeroType = [old_cls_sym, raw_new_cls_sym] { return raw_new_cls_sym->IsDirectlyZeroType or old_cls_sym.IsZeroType(); };
     auto new_alias_stmt = asts::AstClone(old_cls_sym.AliasStmt);
     if (new_alias_stmt) {
         new_alias_stmt->MappedOldType = new_alias_stmt->MappedOldType->SubstituteGenerics(type_part.GnArgGroup->GetAllArgs());
@@ -1037,11 +1039,13 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraintsOneArg(
     // Determine the concrete symbol, and if non-generic, add its scope.
     const auto concrete_sym = concrete_scope.GetTypeSymbol(concrete_type.shared_from_this());
     auto sup_info = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
-    if (not concrete_sym->IsGeneric) {
+    if (not concrete_sym->IsGeneric and not concrete_sym->Name->IsSelfType()) {
+        // Todo: might need to keep the self sym, mapped to fq
         sup_info.EmplaceBack(concrete_sym->FqName(), concrete_sym->LinkedScope);
     }
 
     // Get all the sup scopes of the concrete type (none for generic).
+    // Using "SupScopes" not "SupTypes" because we need both the scopes and types.
     const auto sup_scopes = concrete_sym->LinkedScope ? concrete_sym->LinkedScope->SupScopes() : Vec<scopes::Scope*>{};
     for (auto const *sup_scope : sup_scopes) {
         if (sup_scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr) { continue; }

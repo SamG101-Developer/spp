@@ -37,6 +37,7 @@ import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.object_initializer_argument_ast;
+import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -70,12 +71,21 @@ auto spp::analyse::errors::SemanticError::AddHeaders(
     ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::HEADER, std::move(msg), "E" + std::to_string(err_code));
 }
 
+static auto UnwrapFunctionCallAst(spp::asts::Ast const *ast) -> spp::asts::Ast const* {
+    if (const auto pf = dynamic_cast<spp::asts::PostfixExpressionAst const*>(ast)) {
+        if (const auto fn_call = dynamic_cast<spp::asts::PostfixExpressionOperatorFunctionCallAst const*>(pf->Op.get())) {
+            return fn_call->Source.OriginalExpr;
+        }
+    }
+    return ast;
+}
+
 auto spp::analyse::errors::SemanticError::AddErr(
     asts::Ast const *ast,
     Str &&tag)
     -> void {
     // Add an error information entry for the given AST and tag.
-    ErrorInfo.EmplaceBack(ast, ErrorInformationType::ERROR, std::move(tag), "");
+    ErrorInfo.EmplaceBack(UnwrapFunctionCallAst(ast), ErrorInformationType::ERROR, std::move(tag), "");
 }
 
 auto spp::analyse::errors::SemanticError::AddCtxForErr(
@@ -83,7 +93,7 @@ auto spp::analyse::errors::SemanticError::AddCtxForErr(
     Str &&tag)
     -> void {
     // Add a context information entry for the given AST and tag.
-    ErrorInfo.EmplaceBack(ast, ErrorInformationType::CONTEXT, std::move(tag), "");
+    ErrorInfo.EmplaceBack(UnwrapFunctionCallAst(ast), ErrorInformationType::CONTEXT, std::move(tag), "");
 }
 
 auto spp::analyse::errors::SemanticError::AddFooter(
@@ -375,17 +385,6 @@ spp::analyse::errors::SppMultipleVariadicParametersError::SppMultipleVariadicPar
         "Remove one of the " + INLINE_HELP("variadic") + " parameters.");
 }
 
-spp::analyse::errors::SppSelfParamInFreeFunctionError::SppSelfParamInFreeFunctionError(
-    asts::FunctionPrototypeAst const &function_proto,
-    asts::FunctionParameterSelfAst const &self_param) {
-    AddHeaders(43, "Self Parameter In Free Function Error");
-    AddCtxForErr(&function_proto, "Free function defined here");
-    AddErr(&self_param, INLINE_INFO("Self") + " parameter defined here");
-    AddFooter(
-        "A free function cannot have a 'self' parameter.",
-        "Remove the 'self' parameter from the function, or make the function a method.");
-}
-
 spp::analyse::errors::SppFunctionPrototypeConflictError::SppFunctionPrototypeConflictError(
     asts::FunctionPrototypeAst const &first_proto,
     asts::FunctionPrototypeAst const &second_proto) {
@@ -431,6 +430,15 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
     AddFooter(
         "The " + INLINE_NOTE(Str(what)) + " is not defined in the current scope.",
         "Define the identifier or correct its name.");
+}
+
+spp::analyse::errors::SppSelfIdentifierInvalidContextError::SppSelfIdentifierInvalidContextError(
+    asts::Ast const &self) {
+    AddHeaders(35, "Self Identifier Invalid Context");
+    AddErr(&self, "Invalid " + INLINE_INFO("self") + " identifier introduced here");
+    AddFooter(
+        "The " + INLINE_NOTE("self") + " identifier can only be used in the context of a method.",
+        "Ensure the " + INLINE_HELP("self") + " identifier is used in a valid context, or remove it.");
 }
 
 spp::analyse::errors::SppUnreachableCodeError::SppUnreachableCodeError(
@@ -696,7 +704,7 @@ spp::analyse::errors::SppFunctionCallTooManyArgumentsError::SppFunctionCallTooMa
 }
 
 spp::analyse::errors::SppFunctionCallNoValidSignaturesError::SppFunctionCallNoValidSignaturesError(
-    asts::Ast const &call,
+    asts::PostfixExpressionOperatorFunctionCallAst const &call,
     const StrView sigs,
     const StrView attempted) {
     AddHeaders(58, "Function Call No Valid Signatures Error");

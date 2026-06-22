@@ -79,9 +79,9 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
         auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
-        temp_lhs->Stage7_AnalyseSemantics(sm, meta); // Todo: Don't this this is doing anything? FQ?
+        temp_lhs->Stage7_AnalyseSemantics(sm, meta); // Todo: Don't this this is doing anything? FQ? <- What was I even saying here?
         temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs)->FqName();
-        Lhs = AstClone(temp_lhs);
+        Lhs = AstClone(temp_lhs); // Todo: std::move here?
     }
     else {
         Lhs->Stage7_AnalyseSemantics(sm, meta);

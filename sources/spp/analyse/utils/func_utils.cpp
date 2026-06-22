@@ -182,7 +182,7 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
         AstClone(fn_call.GnArgGroup), AstClone(fn_call.FnArgGroup), nullptr);
     new_fn_call->FnArgGroup->Args = std::move(fn_args);
     new_fn_call->FnArgGroup->Args[0]->SetSelfType(lhs.Lhs->InferType(&sm, meta));
-    new_fn_call->Source = fn_call.Source;
+    new_fn_call->Source.OriginalExpr = fn_call.Source.OriginalExpr;
 
     // Return the new ASTs.
     return MakePair(std::move(field_access), std::move(new_fn_call));

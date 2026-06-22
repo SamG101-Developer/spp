@@ -96,7 +96,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
     if (_MappedFunc != nullptr) { return; }
 
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr),
+        not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     // Determine the left-hand-side type.
@@ -132,6 +132,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
     auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
     auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
     auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
+    func_call->Source.OriginalExpr = this;
     _MappedFunc = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }

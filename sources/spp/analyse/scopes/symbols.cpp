@@ -142,7 +142,9 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     Visibility(visibility),
     Convention(std::move(convention)),
     GenericImpl(this),
-    LlvmInfo(MakeShared<codegen::LlvmTypeSymInfo>()) {
+    LlvmInfo(MakeShared<codegen::LlvmTypeSymInfo>()),
+    IsDirectlyZeroType(false),
+    IsZeroType([this] { return this->IsDirectlyZeroType; }) {
 }
 
 spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
@@ -157,7 +159,9 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     IsCopyable(that.IsCopyable),
     Visibility(that.Visibility),
     Convention(asts::AstClone(that.Convention)),
-    GenericImpl(that.GenericImpl) {
+    GenericImpl(that.GenericImpl),
+    IsDirectlyZeroType(that.IsDirectlyZeroType),
+    IsZeroType(that.IsZeroType) {
     AliasStmt = asts::AstClone(that.AliasStmt);
     LlvmInfo = that.LlvmInfo;
 }

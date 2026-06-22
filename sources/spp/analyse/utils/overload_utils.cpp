@@ -54,8 +54,10 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     asts::meta::CompilerMetaData *meta)
     -> Pair<PassOverloadInfo, bool> {
     // Extract metadata about the target function's overloads (owner, scope, etc).
+    using scopes::ScopeManager;
     using errors::SppFunctionCallTooManyArgumentsError;
     using type_utils::TypeEq;
+    using type_utils::ResolveAndSubstituteSelfType;
     using func_utils::GetFuncOwnerTypeAndFuncName;
     auto lhs = meta->PostfixExpressionLhs;
 
@@ -131,7 +133,9 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         auto return_matches = Vec<PassOverloadInfo>();
         for (auto &&[fn_scope, fn_proto, fn_args, fn_generics] : pass_overloads) {
             auto ret = asts::AstCloneShared(fn_proto->ReturnType);
-            if (ret->IsSelfType()) { ret = asts::AstCloneShared(meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>()->Lhs->To<asts::TypeAst>()); }
+            auto tm = ScopeManager(sm->GlobalScope, const_cast<scopes::Scope*>(fn_scope));
+            ret = ResolveAndSubstituteSelfType(*ret, *fn_scope, tm, *meta);
+
             if (TypeEq(*ret, *meta->ReturnTypeOverloadResolverType, *fn_scope, *sm->CurrentScope)) {
                 return_matches.EmplaceBack(fn_scope, fn_proto, std::move(fn_args), std::move(fn_generics));
             }
@@ -333,7 +337,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
 
         // Save the generic implementation against the base function, and update the active scope and prototype.
         const auto new_fn_proto_ptr = new_fn_proto.get();
-        fn_proto->RegisteredGenericSubstitutions().back().Second = std::move(new_fn_proto);
+        asts::AstBody(fn_scope->AstNode)[0]->To<asts::FunctionPrototypeAst>()->RegisteredGenericSubstitutions().back().Second = std::move(new_fn_proto);
         return std::make_tuple(new_fn_proto_ptr, new_fn_scope);
     }
 
@@ -368,7 +372,7 @@ auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
             | genex::to<Vec>();
 
         Raise<errors::SppFunctionCallNoValidSignaturesError>(
-            {sm->CurrentScope}, ERR_ARGS(*fn_call.Source.OriginalExpr, failed_signatures_and_errors, arg_usage_signature),
+            {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature),
             std::move(sub_errors));
     }
 

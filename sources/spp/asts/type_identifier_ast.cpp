@@ -175,7 +175,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // }
 
     // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
-    if (not scope->HasTypeSymbol(shared_from_this())) {
+    if (not scope->HasTypeSymbol(AstClone(this))) {
         const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
         if (meta->CurrentStage >= 9) { EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta); }

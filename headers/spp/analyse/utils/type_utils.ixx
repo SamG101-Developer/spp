@@ -87,6 +87,13 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &rhs_scope)
         -> bool;
 
+    SPP_EXP_FUN auto TypeFwdEq(
+        asts::TypeAst const &arg_type,
+        asts::TypeAst const &param_type,
+        scopes::Scope const &arg_scope,
+        scopes::Scope const &param_scope)
+        -> bool;
+
     SPP_EXP_FUN auto RelaxedTypeEq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type,
@@ -311,4 +318,11 @@ namespace spp::analyse::utils::type_utils {
         asts::IdentifierAst const &field_name,
         scopes::ScopeManager *sm)
         -> std::size_t;
+
+    SPP_EXP_FUN auto ResolveAndSubstituteSelfType(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope,
+        scopes::ScopeManager &sm,
+        asts::meta::CompilerMetaData &meta)
+        -> Shared<asts::TypeAst>;
 }

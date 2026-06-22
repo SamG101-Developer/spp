@@ -3,11 +3,13 @@ module;
 
 module spp.asts.generic_argument_type_keyword_ast;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -88,12 +90,12 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Analyse the name and value of the generic type argument.
+    //
+    if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
+    if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(); }
     Val->Stage7_AnalyseSemantics(sm, meta);
-    if (const auto type = Val->To<TypeIdentifierAst>(); type and type->Name == "Self") {
-        return;
-    }
 
+    // Analyse the name and value of the generic type argument.
     const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val);
     const auto tmp2 = tmp1->FqName();
     auto tmp3 = AstClone(Val->GetConvention());

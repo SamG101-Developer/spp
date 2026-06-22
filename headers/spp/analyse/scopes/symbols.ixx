@@ -149,6 +149,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     Vec<Shared<TypeSymbol>> AliasedBySyms;
 
+    bool IsDirectlyZeroType;
+
+    Function<bool()> IsZeroType;
+
     TypeSymbol(
         Shared<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,

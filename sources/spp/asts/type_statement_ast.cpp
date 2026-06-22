@@ -184,6 +184,8 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
         const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType);
         _AliasSym->Type = old_sym->Type;
         _AliasSym->LinkedScope = old_sym->LinkedScope;
+        const auto alias_raw_s4 = _AliasSym.get();
+        _AliasSym->IsZeroType = [old_sym, alias_raw_s4] { return alias_raw_s4->IsDirectlyZeroType or old_sym->IsZeroType(); };
         old_sym->AliasedBySyms.EmplaceBack(_AliasSym);
     }
     MappedOldType = OldType;
@@ -225,10 +227,11 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
         OldType->Stage7_AnalyseSemantics(sm, meta);
 
         const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType);
-        if (cls_sym->Type)
+        if (cls_sym->Type) {
             EnforceGenericConstraintsAllArgs(
                 *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
                 *sm->CurrentScope, *sm, *meta);
+        }
 
         sm->MoveOutOfCurrentScope();
         return;

@@ -34,6 +34,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct CmpStatementAst;
     SPP_EXP_CLS struct LoopControlFlowStatementAst;
     SPP_EXP_CLS struct ObjectInitializerArgumentAst;
+    SPP_EXP_CLS struct PostfixExpressionAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct ModulePrototypeAst;
@@ -65,11 +66,11 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppMemoryOverlapUsageError;
     SPP_EXP_CLS struct SppMultipleSelfParametersError;
     SPP_EXP_CLS struct SppMultipleVariadicParametersError;
-    SPP_EXP_CLS struct SppSelfParamInFreeFunctionError;
     SPP_EXP_CLS struct SppFunctionPrototypeConflictError;
     SPP_EXP_CLS struct SppFunctionSubroutineContainsGenExpressionError;
     SPP_EXP_CLS struct SppYieldedTypeMismatchError;
     SPP_EXP_CLS struct SppIdentifierUnknownError;
+    SPP_EXP_CLS struct SppSelfIdentifierInvalidContextError;
     SPP_EXP_CLS struct SppUnreachableCodeError;
     SPP_EXP_CLS struct SppInvalidLocalVariableTypeAnnotationError;
     SPP_EXP_CLS struct SppMultipleRestPatternsError;
@@ -246,10 +247,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMultipleVariadicParametersError fina
     explicit SppMultipleVariadicParametersError(asts::FunctionParameterVariadicAst const &first_variadic, asts::FunctionParameterVariadicAst const &second_variadic);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppSelfParamInFreeFunctionError final : SemanticError {
-    explicit SppSelfParamInFreeFunctionError(asts::FunctionPrototypeAst const &function_proto, asts::FunctionParameterSelfAst const &self_param);
-};
-
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionPrototypeConflictError final : SemanticError {
     explicit SppFunctionPrototypeConflictError(asts::FunctionPrototypeAst const &first_proto, asts::FunctionPrototypeAst const &second_proto);
 };
@@ -264,6 +261,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppYieldedTypeMismatchError final : Sem
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierUnknownError final : SemanticError {
     explicit SppIdentifierUnknownError(asts::Ast const &name, StrView what, std::optional<Str> const &closest = {});
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppSelfIdentifierInvalidContextError final : SemanticError {
+    explicit SppSelfIdentifierInvalidContextError(asts::Ast const &self);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppUnreachableCodeError final : SemanticError {
@@ -355,7 +356,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallTooManyArgumentsError fi
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallNoValidSignaturesError final : SemanticError {
-    explicit SppFunctionCallNoValidSignaturesError(asts::Ast const &call, StrView sigs, StrView attempted);
+    explicit SppFunctionCallNoValidSignaturesError(asts::PostfixExpressionOperatorFunctionCallAst const &call, StrView sigs, StrView attempted);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallOverloadAmbiguousError final : SemanticError {

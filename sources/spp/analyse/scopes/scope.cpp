@@ -14,6 +14,7 @@ import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.identifier_ast;
@@ -22,6 +23,8 @@ import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -163,7 +166,7 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
             | genex::to<Vec>();
 
         for (auto const &t : all_type_syms) {
-            if (t->LinkedScope == nullptr) { continue; }  // unresolved or Self - no concrete value to pre-seed
+            if (t->LinkedScope == nullptr) { continue; } // unresolved or Self - no concrete value to pre-seed
             if (genex::contains(type_names, *t->Name, genex::meta::deref)) { continue; }
             syms.EmplaceBack(asts::GenericArgumentTypeKeywordAst::FromSym(*t));
             type_names.EmplaceBack(t->Name);
@@ -215,7 +218,9 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     for (auto const *scope : scopes) {
         for (auto const &sym : scope->AllTypeSymbols(true)
              | genex::views::filter([](auto const &s) { return s->IsGeneric; })) {
-            auto clone = std::make_shared<TypeSymbol>(sym->Name, nullptr, nullptr, nullptr, nullptr, true, sym->IsDirectlyCopyable);
+            auto clone = std::make_shared<TypeSymbol>(sym->Name, nullptr, nullptr, nullptr, nullptr, true);
+            clone->IsDirectlyCopyable = sym->IsDirectlyCopyable;
+            clone->IsDirectlyZeroType = sym->IsDirectlyZeroType;
             syms.EmplaceBack(clone);
         }
 
@@ -259,9 +264,6 @@ auto spp::analyse::scopes::Scope::AddVarSymbolCheckConflict(
 auto spp::analyse::scopes::Scope::AddTypeSymbol(
     Shared<TypeSymbol> const &sym)
     -> void {
-    if (sym.get() == reinterpret_cast<TypeSymbol*>(0x1dfc5340)) {
-        auto _ = 123;
-    }
     // Add a type symbol to the corresponding symbol table.
     InternalTable.TypeTbl.Add(sym->Name, sym);
 }
@@ -325,7 +327,7 @@ auto spp::analyse::scopes::Scope::AllVarSymbols(
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
-        for (auto const *sup_scope : DirectSupScopes) {
+        for (auto const *sup_scope : SupScopes()) {
             syms.AppendRange(sup_scope->AllVarSymbols(true, false));
         }
     }
@@ -614,6 +616,21 @@ auto spp::analyse::scopes::Scope::GetEnclosingTypeScope(
                 return ty_sym->LinkedScope;
             }
         }
+    }
+    return nullptr;
+}
+
+auto spp::analyse::scopes::Scope::GetEnclosingSelfType() const
+    -> Shared<asts::TypeAst> {
+    // Either teh parent sup scope, or parent class scope.
+    auto current_scope = this;
+    while (true) {
+        // Only get a scope right under the module scope.
+        if (not std::holds_alternative<ScopeIdentifierName>(current_scope->Parent->Name)) {
+            current_scope = current_scope->Parent;
+            continue;
+        }
+        return asts::AstName(current_scope->AstNode);
     }
     return nullptr;
 }

@@ -128,8 +128,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
             // access to their members.
             auto [fwd_ref_type, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type, *sm);
             if (fwd_ref_type != nullptr) {
-                const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
-                auto mock_init = MakeUnique<ObjectInitializerAst>(inner_type, nullptr);
+                const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
+                auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(inner_type), nullptr);
                 auto mock_access = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, Name);
                 const auto pf = MakeUnique<PostfixExpressionAst>(std::move(mock_init), std::move(mock_access));
                 pf->Stage7_AnalyseSemantics(sm, meta);
@@ -202,7 +202,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTime
     }
 
     // Handle normal attribute access (for objects).
-    auto cmp_obj = meta->CmpResult->To<ObjectInitializerAst>();
+    const auto cmp_obj = meta->CmpResult->To<ObjectInitializerAst>();
     meta->CmpResult = GetCompTimeAttrValue(cmp_obj, Name.get());
 }
 

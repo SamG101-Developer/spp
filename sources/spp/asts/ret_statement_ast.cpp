@@ -5,6 +5,7 @@ module;
 module spp.asts.ret_statement_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
@@ -129,10 +130,10 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     // Type check the expression type against the return type of the enclosing subroutine.
     if (function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
         const auto direct_match = TypeEq(*_RetType, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
-        // const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
+        const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
         RaiseIf<SppTypeMismatchError>(
             not direct_match, {meta->EnclosingFunctionScope, sm->CurrentScope},
-            ERR_ARGS(*Source._OriginalRetType, *_RetType, *Expr, *expr_type));
+            ERR_ARGS(*Source._OriginalRetType, *_RetType, *expr_for_err, *expr_type));
     }
 }
 
