@@ -650,18 +650,38 @@ auto spp::analyse::scopes::Scope::SupScopes() const
 auto spp::analyse::scopes::Scope::SupTypes() const
     -> Vec<Shared<asts::TypeAst>> {
     // Get all super types, recursively (filter and map the super scopes).
+    // For original generic class scopes, TySym is the bare symbol (no generic args) and _ClsSym holds
+    // the parameterized form (e.g. FwdRef[T=T]). Using bare TySym would drop the generic params, so we
+    // use _ClsSym->FqName() when TySym has no generic args. Newly-created concrete scopes always have a
+    // non-empty GnArgGroup in TySym, so those fall through to the normal path.
+    static const auto resolve_fq_name = [](auto *scope) -> Shared<asts::TypeAst> {
+        const auto cls_proto = scope->AstNode->template To<asts::ClassPrototypeAst>();
+        const auto cls_sym = cls_proto ? cls_proto->GetClsSym() : nullptr;
+        if (cls_sym and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) {
+            return cls_sym->FqName();
+        }
+        return scope->TySym->FqName();
+    };
     return SupScopes()
         | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
-        | genex::views::transform([](auto *scope) { return scope->TySym->FqName(); })
+        | genex::views::transform(resolve_fq_name)
         | genex::to<Vec>();
 }
 
 auto spp::analyse::scopes::Scope::DirectSupTypes() const
     -> Vec<Shared<asts::TypeAst>> {
     // Get all direct super types (filter and map the direct super scopes).
+    static const auto resolve_fq_name = [](auto *scope) -> Shared<asts::TypeAst> {
+        const auto cls_proto = scope->AstNode->template To<asts::ClassPrototypeAst>();
+        const auto cls_sym = cls_proto ? cls_proto->GetClsSym() : nullptr;
+        if (cls_sym and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) {
+            return cls_sym->FqName();
+        }
+        return scope->TySym->FqName();
+    };
     return DirectSupScopes
         | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
-        | genex::views::transform([](auto *scope) { return scope->TySym->FqName(); })
+        | genex::views::transform(resolve_fq_name)
         | genex::to<Vec>();
 }
 
