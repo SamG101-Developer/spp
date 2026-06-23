@@ -102,10 +102,10 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     // Analyse the element inside the array. Also enforce beforehand that the element
     // is an acceptable primary expression, ie not a TypeAst or a TokenAst.
     for (auto const &elem : Elems) {
+        elem->Stage7_AnalyseSemantics(sm, meta);
         RaiseIf<SppInvalidPrimaryExpressionError>(
             not IsPrimaryExprTypeValid(*elem, *sm),
             {sm->CurrentScope}, ERR_ARGS(*elem));
-        elem->Stage7_AnalyseSemantics(sm, meta);
     }
 
     // Get the 0th element information for comparisons (always exists due to parser

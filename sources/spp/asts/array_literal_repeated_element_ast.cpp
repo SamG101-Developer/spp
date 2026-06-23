@@ -100,10 +100,12 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::IsTypeBorrowed;
 
     // Analyse the repeated element.
+    Elem->Stage7_AnalyseSemantics(sm, meta);
+    Size->Stage7_AnalyseSemantics(sm, meta);
+
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Elem, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Elem));
-    Elem->Stage7_AnalyseSemantics(sm, meta);
     const auto elem_type = Elem->InferType(sm, meta);
     const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type);
 
@@ -123,7 +125,6 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
 
     // Ensure the size is a constant expression (if symbolic).
-    Size->Stage7_AnalyseSemantics(sm, meta);
     auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
     Size->Stage9_CompTimeResolve(&tm, meta);
 

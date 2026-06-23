@@ -107,10 +107,10 @@ auto spp::asts::GenericArgumentCompKeywordAst::Stage7_AnalyseSemantics(
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Analyse the value.
+    Val->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Val));
-    Val->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::GenericArgumentCompKeywordAst::Stage8_CheckMemory(

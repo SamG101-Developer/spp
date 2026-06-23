@@ -78,11 +78,6 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::TypeEq;
 
-    // Check the value is a valid expression type.
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Val, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Val.get()));
-
     // An explicit type can only be applied if the left-hand-side is a single identifier.
     RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
         Type != nullptr and Var->To<LocalVariableSingleIdentifierAst>() == nullptr,
@@ -97,7 +92,13 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     // Add the type into the return type overload resolver.
     meta->Save();
     meta->ReturnTypeOverloadResolverType = Type;
+
+    // Check the value is a valid expression type.
     Val->Stage7_AnalyseSemantics(sm, meta);
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Val, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+
     meta->AssignmentTarget = Var->ExtractName();
 
     // Ensure the value's type matches the type (if given), including variant matching.

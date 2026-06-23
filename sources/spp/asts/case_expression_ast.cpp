@@ -107,11 +107,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
-    // Analyse the condition expression.
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Cond, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Cond));
-
     // Create the scope for the case expression.
     auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
         "case-expr", {}, PosStart());
@@ -127,6 +122,11 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     else {
         Cond->Stage7_AnalyseSemantics(sm, meta);
     }
+
+    // Analyse the condition expression.
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Cond, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Cond));
 
     // Analyse eac branch of the case expression.
     for (auto const &branch : Branches) {

@@ -86,14 +86,6 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     // Todo: this guard shouldn't be needed.
     if (_MappedFunc) { return; }
 
-    // Ensure TypeAst's aren't used for expression for binary operands.
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTokenAst = true}),
-        {sm->CurrentScope}, ERR_ARGS(*Lhs));
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Rhs, *sm, {.AllowTokenAst = true}),
-        {sm->CurrentScope}, ERR_ARGS(*Rhs));
-
     // Handle lhs-folding.
     if (Lhs->To<FoldExpressionAst>()) {
         // Check the rhs is a tuple.

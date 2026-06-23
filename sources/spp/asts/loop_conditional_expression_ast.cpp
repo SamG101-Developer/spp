@@ -84,10 +84,10 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     Ast::Stage2_GenTopLvlScopes(sm, meta);
 
     // Analyse the condition expression.
+    Cond->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Cond, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Cond));
-    Cond->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the loop condition is boolean.
     const auto cond_type = Cond->InferType(sm, meta);

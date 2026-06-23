@@ -95,11 +95,6 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::GetGenAndYieldTypes;
 
-    // Exp check.
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Iterable, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Iterable));
-
     // Simple statements to move from.
     const auto uid = spp::utils::Uid(this);
     auto skip_stmt = LoopControlFlowStatementAst::Skip(PosStart());

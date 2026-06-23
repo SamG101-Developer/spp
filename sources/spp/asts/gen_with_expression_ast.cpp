@@ -85,11 +85,6 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppTypeMismatchError;
     using generate::common_types::VoidType;
 
-    // Analyse the expression.
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr));
-
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->EnclosingFunctionFlavour;
     RaiseIf<SppFunctionSubroutineContainsGenExpressionError>(
@@ -106,7 +101,13 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
     meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
     meta->PreventAutoGeneratorResume = true;
+
+    // Analyse the expression.
     Expr->Stage7_AnalyseSemantics(sm, meta);
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Expr, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Expr));
+
     expr_type = Expr->InferType(sm, meta);
     meta->Restore();
 

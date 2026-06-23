@@ -98,10 +98,10 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
 
     // Analyse the elements in the tuple.
     for (auto const &elem : Elems) {
+        elem->Stage7_AnalyseSemantics(sm, meta);
         RaiseIf<SppInvalidPrimaryExpressionError>(
             not IsPrimaryExprTypeValid(*elem, *sm),
             {sm->CurrentScope}, ERR_ARGS(*elem));
-        elem->Stage7_AnalyseSemantics(sm, meta);
     }
 
     // Check all the elements are owned by the tuple, not borrowed.

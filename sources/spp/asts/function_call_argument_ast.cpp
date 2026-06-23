@@ -39,10 +39,10 @@ auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppInvalidPrimaryExpressionError;
 
     // Analyse the semantics of the value expression.
+    Val->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Val));
-    Val->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage8_CheckMemory(

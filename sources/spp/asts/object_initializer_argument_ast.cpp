@@ -33,10 +33,10 @@ auto spp::asts::ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Forward analysis into the value expression.
+    Val->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Val));
-    Val->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::ObjectInitializerArgumentAst::Stage8_CheckMemory(

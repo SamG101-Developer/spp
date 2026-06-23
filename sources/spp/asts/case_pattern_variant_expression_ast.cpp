@@ -68,10 +68,10 @@ auto spp::asts::CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Forward analysis into the expression.
+    Expr->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
-    Expr->Stage7_AnalyseSemantics(sm, meta);
 
     CreateAndAnalysePatternEqFuncsDummyCore(
         {this}, sm, meta);

@@ -64,10 +64,10 @@ auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::IsTypeBool;
 
     // Check the expression in the pattern guard.
+    Expr->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
-    Expr->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the guard's type is boolean.
     const auto expr_type = Expr->InferType(sm, meta);

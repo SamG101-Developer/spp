@@ -61,10 +61,10 @@ auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Forward analysis into the expression.
+    Expr->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
-    Expr->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(

@@ -97,11 +97,6 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     const auto num_controls = TokSeqExit.Len() + (has_skip ? 1 : 0);
     const auto nested_loop_depth = meta->LoopCurrentDepth;
 
-    // Analyse the expression if it is present.
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
-
     // Check the depth of the loop is greater than or equal to the number of control statements.
     RaiseIf<SppLoopTooManyControlFlowStatementsError>(
         num_controls > nested_loop_depth, {sm->CurrentScope},
@@ -110,8 +105,14 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     // Save and compare the loop's "exiting" type against other nested loop's exit statement types.
     if (not has_skip) {
         auto expr_type = VoidType(PosStart());
+
+        // Analyse the expression if it is present.
         if (Expr != nullptr) {
             Expr->Stage7_AnalyseSemantics(sm, meta);
+            RaiseIf<SppInvalidPrimaryExpressionError>(
+                Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
+                {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+
             expr_type = Expr->InferType(sm, meta);
         }
 

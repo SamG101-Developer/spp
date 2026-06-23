@@ -78,11 +78,6 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
     using analyse::utils::bin_utils::ConvertIsExprToFuncCall;
     using analyse::errors::SppInvalidPrimaryExpressionError;
 
-    // Ensure TypeAst's aren't used for expression for binary operands.
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Lhs, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
-
     _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
 
     // Convert to a "case" destructure and analyse it.

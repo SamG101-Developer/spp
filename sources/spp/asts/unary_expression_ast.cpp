@@ -58,13 +58,11 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
-    // Analyse the semantics of the right-hand-side.
+    // Analyse the operator and right-hand-side expression.
+    Expr->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
-
-    // Analyse the operator and right-hand-side expression.
-    Expr->Stage7_AnalyseSemantics(sm, meta);
 
     meta->Save();
     meta->UnaryExpressionRhs = Expr.get();
