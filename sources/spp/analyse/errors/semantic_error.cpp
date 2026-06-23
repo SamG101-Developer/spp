@@ -572,17 +572,6 @@ spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguo
         "Ensure the expression has a clear and unambiguous generator type (only superimpose one).");
 }
 
-spp::analyse::errors::SppExpressionNotIndexableError::SppExpressionNotIndexableError(
-    asts::Ast const &expr,
-    asts::TypeAst const &expr_type,
-    const StrView what) {
-    AddHeaders(38, "Expression Not Indexable Error");
-    AddErr(&expr, "Expression inferred as " + INLINE_INFO(expr_type.ToString()));
-    AddFooter(
-        "This expression be an indexable type to be used for " + INLINE_NOTE(Str(what)) + ".",
-        "Superimpose " + INLINE_HELP("IndexRef") + " or " + INLINE_HELP("IndexMut") + " (or a subtype) over the expression type.");
-}
-
 spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguousIndexableError(
     asts::Ast const &expr,
     asts::TypeAst const &expr_type,

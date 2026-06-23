@@ -87,40 +87,18 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
     -> void {
     // Already analysed => return early.
     using analyse::errors::SppExpressionAmbiguousIndexableError;
-    using analyse::errors::SppExpressionNotIndexableError;
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::TypeEq;
-    using generate::common_types_precompiled::INDEX_MUT;
-    using generate::common_types_precompiled::INDEX_REF;
     if (_MappedFunc != nullptr) { return; }
-
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     // Determine the left-hand-side type.
     const auto lhs_type = const_shared_cast(
         meta->PostfixExpressionLhs->InferType(sm, meta));
 
-    // Ensure the type superimposes the correct indexing variation.
-    const auto &index_type = TokMut != nullptr ? INDEX_MUT : INDEX_REF;
-
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
     auto sup_types = Vec{lhs_type};
     sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-
-    const auto index_type_candidates = sup_types
-        | genex::views::filter([&sm, &index_type](auto const &sup_type) { return TypeEq(*sup_type->WithoutGenerics(), *index_type, *sm->CurrentScope, *sm->CurrentScope); })
-        | genex::to<Vec>();
-
-    RaiseIf<SppExpressionNotIndexableError>(
-        index_type_candidates.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, "runtime indexing"));
-
-    RaiseIf<SppExpressionAmbiguousIndexableError>(
-        index_type_candidates.Len() > 1, {sm->CurrentScope},
-        ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, "runtime indexing"));
 
     // Create the mapped function for the index operator; create the index argument.
     Unique<FunctionCallArgumentAst> arg = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(Expr));

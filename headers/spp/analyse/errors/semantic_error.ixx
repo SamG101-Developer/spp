@@ -82,7 +82,6 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppExpressionNotBooleanError;
     SPP_EXP_CLS struct SppExpressionNotGeneratorError;
     SPP_EXP_CLS struct SppExpressionAmbiguousGeneratorError;
-    SPP_EXP_CLS struct SppExpressionNotIndexableError;
     SPP_EXP_CLS struct SppExpressionAmbiguousIndexableError;
     SPP_EXP_CLS struct SppLoopTooManyControlFlowStatementsError;
     SPP_EXP_CLS struct SppObjectInitializerMultipleAutofillArgumentsError;
@@ -309,10 +308,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotGeneratorError final : 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousGeneratorError final : SemanticError {
     explicit SppExpressionAmbiguousGeneratorError(asts::Ast const &expr, asts::TypeAst const &expr_type, StrView what);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotIndexableError final : SemanticError {
-    explicit SppExpressionNotIndexableError(asts::Ast const &expr, asts::TypeAst const &expr_type, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousIndexableError final : SemanticError {

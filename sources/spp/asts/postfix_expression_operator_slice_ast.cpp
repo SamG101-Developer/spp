@@ -94,7 +94,6 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     -> void {
     // Already analysed => return early.
     using analyse::errors::SppExpressionAmbiguousIndexableError;
-    using analyse::errors::SppExpressionNotIndexableError;
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::TypeEq;
@@ -102,36 +101,13 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     using generate::common_types_precompiled::SLICE_REF;
     if (_MappedFunc != nullptr) { return; }
 
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*ExprLBound, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*ExprLBound));
-
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*ExprRBound, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*ExprRBound));
-
     // Determine the left-hand-side type.
     const auto lhs_type = const_shared_cast(
         meta->PostfixExpressionLhs->InferType(sm, meta));
 
-    // Ensure the type superimposes the correct slicing variation.
-    const auto &slice_type = TokMut != nullptr ? SLICE_MUT : SLICE_REF;
-
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
     auto sup_types = Vec{lhs_type};
     sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-
-    const auto slice_type_candidates = sup_types
-        | genex::views::filter([&sm, &slice_type](auto const &sup_type) { return TypeEq(*sup_type->WithoutGenerics(), *slice_type, *sm->CurrentScope, *sm->CurrentScope); })
-        | genex::to<Vec>();
-
-    RaiseIf<SppExpressionNotIndexableError>(
-        slice_type_candidates.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, "runtime slicing"));
-
-    RaiseIf<SppExpressionAmbiguousIndexableError>(
-        slice_type_candidates.Len() > 1, {sm->CurrentScope},
-        ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, "runtime slicing"));
 
     // Create the mapped function for the index operator; create the index argument.
     Unique<FunctionCallArgumentAst> arg1 = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(ExprLBound));
