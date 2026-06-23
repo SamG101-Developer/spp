@@ -572,8 +572,6 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
 
     // Generic types are not generators, so raise an error.
     const auto type_sym = scope.GetTypeSymbol(type.shared_from_this());
-    RaiseIf<SppExpressionNotGeneratorError>(
-        type_sym->IsGeneric, {&scope}, ERR_ARGS(expr, type, what));
 
     // Discover the supertypes and add the current type to it.=.
     auto sup_types = Vec{type.shared_from_this()};
