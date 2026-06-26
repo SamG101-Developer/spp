@@ -221,6 +221,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
             auto clone = std::make_shared<TypeSymbol>(sym->Name, nullptr, nullptr, nullptr, nullptr, true);
             clone->IsDirectlyCopyable = sym->IsDirectlyCopyable;
             clone->IsDirectlyZeroType = sym->IsDirectlyZeroType;
+            clone->GenericConstraints = sym->GenericConstraints;
             syms.EmplaceBack(clone);
         }
 
