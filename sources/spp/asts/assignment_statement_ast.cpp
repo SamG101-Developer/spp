@@ -120,22 +120,18 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
         RaiseIf<SppInvalidMutationError>(
-            IsIdentifier(lhs_expr)
-            and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
-            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization)));
+            IsIdentifier(lhs_expr) and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
+            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable symbol"));
 
         // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
         RaiseIf<SppInvalidMutationError>(
-            IsAttr(lhs_expr, sm)
-            and not(std::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
-            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization)));
+            IsAttr(lhs_expr, sm) and not(std::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
+            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable outermost symbol"));
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
         RaiseIf<SppInvalidMutationError>(
-            IsAttr(lhs_expr, sm)
-            and lhs_sym->Type->GetConvention()
-            and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
-            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization)));
+            IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
+            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
 
         // Prevent double initializations to immutable uninitialized let statements.
         if (IsIdentifier(lhs_expr)) {

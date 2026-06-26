@@ -171,7 +171,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCompileTimeConstantError final : Sem
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidMutationError final : SemanticError {
-    explicit SppInvalidMutationError(asts::Ast const &sym, asts::Ast const &mutator, asts::Ast const &initialization_location);
+    explicit SppInvalidMutationError(asts::Ast const &sym, asts::Ast const &mutator, asts::Ast const &initialization_location, StrView extra);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppUninitializedMemoryUseError final : SemanticError {

@@ -157,13 +157,14 @@ spp::analyse::errors::SppCompileTimeConstantError::SppCompileTimeConstantError(
 spp::analyse::errors::SppInvalidMutationError::SppInvalidMutationError(
     asts::Ast const &sym,
     asts::Ast const &mutator,
-    asts::Ast const &initialization_location) {
+    asts::Ast const &initialization_location,
+    StrView extra) {
     AddHeaders(5, "Invalid Mutation Error");
     AddCtxForErr(&sym, "Symbol immutably defined here");
     AddCtxForErr(&initialization_location, "Initialized here");
     AddErr(&mutator, "Invalid mutation attempted here");
     AddFooter(
-        "The symbol " + INLINE_NOTE(sym.ToString()) + " cannot be mutated because it declared immutably.",
+        "The symbol " + INLINE_NOTE(sym.ToString()) + " cannot be mutated because it's an " + INLINE_INFO(extra) + ".",
         "Declare the symbol as mutable or remove the mutation.");
 }
 

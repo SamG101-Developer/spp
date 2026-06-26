@@ -169,12 +169,12 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
         // Immutable symbols cannot be mutated.
         RaiseIf<SppInvalidMutationError>(
             not sym->IsMutable, {sm->CurrentScope},
-            ERR_ARGS(*sym->Name, *Conv, *std::get<0>(sym->MemInfo->AstInitialization)));
+            ERR_ARGS(*sym->Name, *Conv, *std::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
         RaiseIf<SppInvalidMutationError>(
             std::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
-            {sm->CurrentScope}, ERR_ARGS(*sym->Name, *Conv, *std::get<0>(sym->MemInfo->AstBorrowed)));
+            {sm->CurrentScope}, ERR_ARGS(*sym->Name, *Conv, *std::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
     }
 }
 
