@@ -199,6 +199,13 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
+
+    // Add the "Self" symbol into the scope, mirroring class/sup prototype logic.
+    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
+        MakeUnique<TypeIdentifierAst>(NewType->PosStart(), "Self", nullptr),
+        sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope);
+    sm->CurrentScope->AddTypeSymbol(self_sym);
+
     sm->MoveOutOfCurrentScope();
 }
 
