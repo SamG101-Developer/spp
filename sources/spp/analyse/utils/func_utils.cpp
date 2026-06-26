@@ -1040,12 +1040,17 @@ auto spp::analyse::utils::func_utils::IsTargetCallable(
     asts::ExpressionAst &expr,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> Shared<asts::TypeAst> {
-    // Get the type of the expression.
+    -> Shared<const asts::TypeAst> {
+    // Get the type of the expression, then find its functional
+    // type.
+    using type_utils::GetFunctionalType;
     auto expr_type = expr.InferType(&sm, meta);
-    const auto is_type_functional = type_utils::IsTypeFunc(
-        *expr_type, *sm.CurrentScope);
-    return is_type_functional ? std::move(expr_type) : nullptr;
+    auto func_type = GetFunctionalType(*expr_type, *sm.CurrentScope);
+
+    // Return the expr_type unless its generic, in which case
+    // return the "func_type" -> got from constraints.
+    const auto is_generic = sm.CurrentScope->GetTypeSymbol(expr_type)->IsGeneric;
+    return is_generic ? func_type : expr_type;
 }
 
 auto spp::analyse::utils::func_utils::CreateCallablePrototype(

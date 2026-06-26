@@ -212,7 +212,7 @@ namespace spp::analyse::utils::func_utils {
         asts::ExpressionAst &expr,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> Shared<asts::TypeAst>;
+        -> Shared<const asts::TypeAst>;
 
     SPP_EXP_FUN auto CreateCallablePrototype(
         asts::TypeAst const &expr_type)
