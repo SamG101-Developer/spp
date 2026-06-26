@@ -357,24 +357,13 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
-    // Now we are inside a function, we need to remap the "self" var symbol, changing the type from "Self" to the true
-    // type. This only applies to runtime methods, not static methods or free functions.
-    // if (const auto self_param = FnParamGroup->GetSelfParam()) {
-    //     const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
-    //     const auto self_conv = self_param->Conv.get();
-    //     const auto true_self_type = sm->CurrentScope->GetEnclosingSelfType();
-    //     self_sym->Type = true_self_type->WithConvention(AstClone(self_conv));
-    //
-    //     auto g = MakeUnique<GenericArgumentTypeKeywordAst>(SelfType(0), nullptr, true_self_type);
-    //     const auto gg = GenericArgumentGroupAst::NewEmpty();
-    //     gg->Args.PushBack(std::move(g));
-    //
-    //     for (auto const &param : FnParamGroup->GetAllParams()) {
-    //         const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName());
-    //         if (var_sym == nullptr) { continue; } // Destructuring parameters.
-    //         var_sym->Type = var_sym->Type->SubstituteGenerics(gg->GetAllArgs());
-    //     }
-    // }
+    // Apply constraints in the types.
+    for (auto const &param : FnParamGroup->GetAllParams()) {
+        param->Type->ResetCache();
+        param->Type->Stage7_AnalyseSemantics(sm, meta);
+    }
+    ReturnType->ResetCache();
+    ReturnType->Stage7_AnalyseSemantics(sm, meta);
 
     // New version
     if (const auto self_param = FnParamGroup->GetSelfParam()) {
@@ -404,8 +393,6 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->MoveToNextScope();
 
-
-
     // SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
@@ -416,7 +403,6 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
     // Analyse the generic parameter group, and the parameter group.
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
-    // FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
     // If this is a !compiler_builtin function, ensure a key exists in the "BUILTINS".
     if (BuiltinAnnotation) {
