@@ -129,6 +129,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     //
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
     using analyse::utils::func_utils::InferGnArgs;
+    using analyse::utils::func_utils::NameGnArgs;
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
     if (_HasAnalysed) { return; }
@@ -138,30 +139,32 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto type_sym = GetTypeSymOrError(
         *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
-    if (type_sym->IsGeneric) { return; }
-
-    const auto is_tuple = ( {
-        const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
-        as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->To<TypeUnaryExpressionAst>();
-    });
-
-    // Name all the generic arguments.
-    analyse::utils::func_utils::NameGnArgs(
-        *GnArgGroup,
-        *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
-        *this, *sm, *meta, is_tuple);
-
-    // Analyse the generic arguments.
-    if (meta->SkipTypeAnalysisGenericChecks) { return; }
-    meta->TypeAnalysisTypeScope = nullptr;
-    GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     const auto &gn_param_group = type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
 
-    // Infer the generic arguments from information given from object initialisation.
-    InferGnArgs(
-        *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget, type_sym->FqName(), *type_sym->LinkedScope,
-        nullptr, is_tuple, *sm, *meta);
-    GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    auto is_tuple = false;
+    if (not type_sym->IsGeneric) {
+        is_tuple = ( {
+            const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
+            as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->To<TypeUnaryExpressionAst>();
+        });
+
+        // Name all the generic arguments.
+        NameGnArgs(
+            *GnArgGroup,
+            *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
+            *this, *sm, *meta, is_tuple);
+
+        // Analyse the generic arguments.
+        if (meta->SkipTypeAnalysisGenericChecks) { return; }
+        meta->TypeAnalysisTypeScope = nullptr;
+        GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+
+        // Infer the generic arguments from information given from object initialisation.
+        InferGnArgs(
+            *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget, type_sym->FqName(), *type_sym->LinkedScope,
+            nullptr, is_tuple, *sm, *meta);
+        GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    }
 
     // For variant types, collapse any duplicate generic arguments.
     // if (TypeEq(*without_generics(), *generate::common_types_precompiled::VAR, *scope, *sm->CurrentScope, false)) {
@@ -178,7 +181,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     if (not scope->HasTypeSymbol(AstClone(this))) {
         const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
-        if (meta->CurrentStage >= 9) { EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta); }
+    }
+    if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 9) {
+        EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
     }
 
     _HasAnalysed = true;
