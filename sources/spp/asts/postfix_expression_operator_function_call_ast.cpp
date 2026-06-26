@@ -118,6 +118,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     -> void {
     //
     using analyse::errors::SppInvalidComptimeOperationError;
+    using analyse::utils::func_utils::IsTargetCallable;
     using analyse::utils::overload_utils::DetermineOverload;
     using analyse::utils::type_utils::TypeEq;
     using generate::common_types_precompiled::FUN_REF;
@@ -147,7 +148,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 
     // Special case for closures; apply the convention the closure name to ensure is it movable/mutable etc.
     if (is_closure) {
-        const auto lhs_type = analyse::utils::func_utils::IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
+        const auto lhs_type = IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
         auto dummy_self_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
             nullptr, nullptr, AstClone(meta->PostfixExpressionLhs));
 
@@ -378,8 +379,27 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
         ret_type = yield_type;
     }
 
+    const auto pf = meta->PostfixExpressionLhs->To<PostfixExpressionAst>();
+    const auto is_runtime = pf ? pf->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr : false;
+    const auto is_static = pf ? pf->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr and pf->Lhs->To<TypeAst>() : false;
+
     if (ret_type->IsSelfType()) {
         ret_type = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs->InferType(sm, meta)->WithConvention(nullptr);
+    }
+    else if (pf and (is_runtime or is_static)) {
+        // Perform a "Self=FQType" substitution to handle "Self" being part of the generics of the return type.
+        // Todo: use Resolve method (which scope??)
+        const auto inferred = is_runtime
+            ? pf->Lhs->InferType(sm, meta)
+            : AstClone(pf->Lhs->To<TypeAst>());
+
+        auto generic = MakeUnique<GenericArgumentTypeKeywordAst>(
+            SelfType(0), nullptr,
+            inferred->WithConvention(nullptr));
+
+        const auto generic_group = GenericArgumentGroupAst::NewEmpty();
+        generic_group->Args.PushBack(std::move(generic));
+        ret_type = ret_type->SubstituteGenerics(generic_group->GetAllArgs());
     }
 
     // Return the type.
