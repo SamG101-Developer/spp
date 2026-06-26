@@ -205,6 +205,11 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> Shared<asts::TypeAst>;
 
+    SPP_EXP_FUN auto GetFunctionalType(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> Shared<const asts::TypeAst>;
+
     SPP_EXP_FUN auto GetGenAndYieldTypes(
         asts::TypeAst const &type,
         scopes::Scope const &scope,

@@ -559,6 +559,24 @@ auto spp::analyse::utils::type_utils::GetNthTypeOfIndexableType(
         ERR_ARGS(type, "Non indexable type used in index access"));
 }
 
+auto spp::analyse::utils::type_utils::GetFunctionalType(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> Shared<const asts::TypeAst> {
+    //
+    const auto type_sym = scope.GetTypeSymbol(type.shared_from_this());
+
+    // Check the type itself and all its supertypes (a type
+    // superimposing a function type is also callable).
+    auto sup_types = Vec{type.shared_from_this()};
+    sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
+    for (auto const &sup_type : sup_types) {
+        if (IsTypeFunc(*sup_type, scope)) { return sup_type; }
+    }
+
+    return nullptr;
+}
+
 auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
     asts::TypeAst const &type,
     scopes::Scope const &scope,
@@ -974,6 +992,8 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
             true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true,
             true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
             asts::AstClone(type_arg->Val->GetConvention()));
+        sym->GenericConstraints = true_val_sym->GenericConstraints;
+        sym->IsDirectlyZeroType = true_val_sym->IsDirectlyZeroType;
 
         // Link the generic scope to the type symbol if it was created.
         // if (true_val_sym) {
@@ -1078,20 +1098,24 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraintsOneArg(
     scopes::Scope const &constraints_owner_scope,
     scopes::Scope const &concrete_scope)
     -> void {
-    //
+    // Note: concrete scope is where the type is being used; concrete_sym->LinkedScope is the scope of the type
+    // definition.
     using errors::SppGenericConstraintError;
 
     // Determine the concrete symbol, and if non-generic, add its scope.
     const auto concrete_sym = concrete_scope.GetTypeSymbol(concrete_type.shared_from_this());
     auto sup_info = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
-    if (not concrete_sym->IsGeneric and not concrete_sym->Name->IsSelfType()) {
+    if (concrete_type.IsSelfType() and not concrete_sym->IsGeneric) {
         // Todo: might need to keep the self sym, mapped to fq
         sup_info.EmplaceBack(concrete_sym->FqName(), concrete_sym->LinkedScope);
     }
 
     // Get all the sup scopes of the concrete type (none for generic).
     // Using "SupScopes" not "SupTypes" because we need both the scopes and types.
-    const auto sup_scopes = concrete_sym->LinkedScope ? concrete_sym->LinkedScope->SupScopes() : Vec<scopes::Scope*>{};
+    const auto sup_scopes = concrete_sym->LinkedScope
+        ? concrete_sym->LinkedScope->SupScopes()
+        : concrete_sym->GenericConstraints | genex::views::transform([&](auto const &constraint) { return constraints_owner_scope.GetTypeSymbol(constraint)->LinkedScope; }) | genex::to<Vec>();
+    sup_info.EmplaceBack(concrete_sym->FqName(), &concrete_scope);
     for (auto const *sup_scope : sup_scopes) {
         if (sup_scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr) { continue; }
         const auto &sup_sym = sup_scope->TySym;
@@ -1104,6 +1128,10 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraintsOneArg(
         for (auto const &[sup_type, sup_scope] : sup_info) {
             matched = TypeEq(*constraint, *sup_type, constraints_owner_scope, *sup_scope);
             if (matched) { break; }
+        }
+
+        if (not matched) {
+            auto _ = 123;
         }
 
         // If any constraint is not met, raise en error.
