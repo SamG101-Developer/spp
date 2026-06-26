@@ -184,7 +184,6 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     -> void {
     //
     using utils::type_utils::CreateGenericSupScope;
-    using utils::type_utils::IsTypeFunc;
     using utils::type_utils::RelaxedTypeEq;
     using utils::type_utils::GenericInferenceMap;
 
