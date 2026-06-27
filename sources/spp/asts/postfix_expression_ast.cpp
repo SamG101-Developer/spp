@@ -9,6 +9,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.type_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
@@ -65,6 +66,7 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::expr_utils::PrimaryExpressionOptions;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
     using analyse::errors::SppInvalidPrimaryExpressionError;
 
     // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
@@ -74,9 +76,10 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
         auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
-        temp_lhs->Stage7_AnalyseSemantics(sm, meta); // Todo: Don't this this is doing anything? FQ? <- What was I even saying here?
+        temp_lhs->Stage7_AnalyseSemantics(sm, meta);
+        temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
         temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs)->FqName();
-        Lhs = AstClone(temp_lhs); // Todo: std::move here?
+        Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
         Lhs->Stage7_AnalyseSemantics(sm, meta);
