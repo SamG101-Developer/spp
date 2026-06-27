@@ -287,7 +287,6 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
         is_variadic_fn ? fn_proto.FnParamGroup->GetVariadicParams()->ExtractName() : nullptr,
         false, *sm, *meta);
     explicit_gn_args.Args = std::move(temp_arg_group->Args);
-
     EnforceGenericConstraintsAllArgs(*fn_proto.GnParamGroup, explicit_gn_args, *fn_scope, *sm, *meta);
 }
 
