@@ -133,12 +133,13 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
     if (_HasAnalysed) { return; }
-    if (Name == "Self") { return; }
+    if (Name == "Self" and meta->CurrentStage < 9) { return; }
 
     // Determine the scope and get the type symbol.
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto type_sym = GetTypeSymOrError(
         *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
+    if (Name == "Self") { return; }
     const auto &gn_param_group = type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
 
     auto is_tuple = false;
