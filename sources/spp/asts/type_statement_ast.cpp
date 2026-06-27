@@ -173,6 +173,12 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
     OldType = MappedOldType;
 
+    // Add the "Self" symbol into the scope, mirroring class/sup prototype logic.
+    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
+        MakeUnique<TypeIdentifierAst>(NewType->PosStart(), "Self", nullptr),
+        sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope);
+    sm->CurrentScope->AddTypeSymbol(self_sym);
+
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics(), false);
     if (not stripped_old_sym->IsGeneric) {
@@ -199,13 +205,6 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
-
-    // Add the "Self" symbol into the scope, mirroring class/sup prototype logic.
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-        MakeUnique<TypeIdentifierAst>(NewType->PosStart(), "Self", nullptr),
-        sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
-
     sm->MoveOutOfCurrentScope();
 }
 
