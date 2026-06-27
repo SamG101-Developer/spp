@@ -92,7 +92,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
     -> void {
     //
     if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
-    if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(); }
+    if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
     Val->Stage7_AnalyseSemantics(sm, meta);
 
     // Analyse the name and value of the generic type argument.
