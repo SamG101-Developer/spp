@@ -1307,7 +1307,7 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
     -> Shared<asts::TypeAst> {
     //
     using asts::generate::common_types::SelfType;
-    const auto true_self_type = scope.GetEnclosingSelfType();
+    const auto true_self_type = scope.GetEnclosingSelfType(meta);
 
     //
     auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
