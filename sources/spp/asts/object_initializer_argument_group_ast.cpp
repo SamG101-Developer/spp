@@ -78,8 +78,24 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::errors::SppArgumentNameInvalidError;
     using analyse::errors::SppIdentifierDuplicateError;
+    using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
     using analyse::utils::type_utils::GetAllAttrs;
+
+    const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
+    const auto all_attr_names = all_attrs
+        | genex::views::transform([](auto const &x) { return x.First; })
+        | genex::to<Vec>();
+
+    // Check there is at most 1 autofill argument.
+    const auto af_args = GetShorthandArgs()
+        | genex::views::filter([](auto const &x) { return x->TokEllipsis != nullptr; })
+        | genex::to<Vec>();
+
+    RaiseIf<SppObjectInitializerMultipleAutofillArgumentsError>(
+        af_args.Len() > 1, {sm->CurrentScope},
+        ERR_ARGS(*af_args[0], *af_args[1]));
 
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
@@ -93,8 +109,19 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
         not duplicates.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(*duplicates[0], *duplicates[1], "keyword object initializer argument"));
 
-    // Get the attributes on the type and supertypes.
-    const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
+    // Check there are no invalidly named arguments.
+    auto arg_names = GetNonAutoFillArgs()
+        | genex::views::transform([](auto const &x) { return x->Name.get(); })
+        | genex::views::filter([](auto const * x) { return x != nullptr; }) // Filter bad unnamed args checked after.
+        | genex::to<Vec>();
+
+    const auto invalid_args = arg_names
+        | genex::views::not_in(all_attr_names, genex::meta::deref, genex::meta::deref)
+        | genex::to<Vec>();
+
+    RaiseIf<SppArgumentNameInvalidError>(
+        not invalid_args.IsEmpty(), {sm->CurrentScope},
+        ERR_ARGS(*meta->ObjectInitType, "attribute", *invalid_args[0], "object initializer argument"));
 
     // Analyse the arguments in the group.
     for (auto const &arg : Args) {
@@ -128,39 +155,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::TypeEq;
     using analyse::utils::type_utils::GetAllAttrs;
     using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
-    using analyse::errors::SppArgumentNameInvalidError;
     using analyse::errors::SppAmbiguousMemberAccessError;
     using analyse::errors::SppTypeMismatchError;
-    using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
 
     // Get the attributes on the type and supertypes.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType);
     const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
-    const auto all_attr_names = all_attrs
-        | genex::views::transform([](auto const &x) { return x.First; })
-        | genex::to<Vec>();
-
-    // Check there is at most 1 autofill argument.
-    const auto af_args = GetShorthandArgs()
-        | genex::views::filter([](auto const &x) { return x->TokEllipsis != nullptr; })
-        | genex::to<Vec>();
-
-    RaiseIf<SppObjectInitializerMultipleAutofillArgumentsError>(
-        af_args.Len() > 1, {sm->CurrentScope},
-        ERR_ARGS(*af_args[0], *af_args[1]));
-
-    // Check there are no invalidly named arguments.
-    auto arg_names = GetNonAutoFillArgs()
-        | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::to<Vec>();
-
-    const auto invalid_args = arg_names
-        | genex::views::not_in(all_attr_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
-
-    RaiseIf<SppArgumentNameInvalidError>(
-        not invalid_args.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(*meta->ObjectInitType, "attribute", *invalid_args[0], "object initializer argument"));
 
     // Type check the non-autofill arguments against the class attributes.
     for (auto const &arg : GetNonAutoFillArgs()) {
