@@ -621,11 +621,17 @@ auto spp::analyse::scopes::Scope::GetEnclosingTypeScope(
     return nullptr;
 }
 
-auto spp::analyse::scopes::Scope::GetEnclosingSelfType() const
+auto spp::analyse::scopes::Scope::GetEnclosingSelfType(
+    asts::meta::CompilerMetaData const &meta) const
     -> Shared<asts::TypeAst> {
     // Either teh parent sup scope, or parent class scope.
     auto current_scope = this;
     while (true) {
+        // Escape closure scopes for the Self type.
+        if (current_scope->NameAsString().starts_with("<closure-outer")) {
+            current_scope = meta.OverriddenScopeForClosure;
+        }
+
         // Only get a scope right under the module scope.
         if (not std::holds_alternative<ScopeIdentifierName>(current_scope->Parent->Name)) {
             current_scope = current_scope->Parent;

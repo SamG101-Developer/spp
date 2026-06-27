@@ -244,7 +244,7 @@ public:
 
     SPP_ATTR_NODISCARD auto GetEnclosingTypeScope(asts::meta::CompilerMetaData const &meta) const -> Scope*;
 
-    SPP_ATTR_NODISCARD auto GetEnclosingSelfType() const -> Shared<asts::TypeAst>;
+    SPP_ATTR_NODISCARD auto GetEnclosingSelfType(asts::meta::CompilerMetaData const &meta) const -> Shared<asts::TypeAst>;
 
     SPP_ATTR_NODISCARD auto SupScopes() const -> Vec<Scope*>;
 
