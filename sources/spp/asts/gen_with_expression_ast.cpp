@@ -123,16 +123,16 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
         _GenType = meta->EnclosingFunctionRetType[0];
     }
 
-    // Determine the "yield" type of the enclosing function (to type check the expression against).
-    auto [_, yield_type, _] = GetGenAndYieldTypes(
+    // Determine the "yield" type of the enclosing function and expression.
+    auto [_, yield_type1, _] = GetGenAndYieldTypes(
         *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
+    auto [_, yield_type2, _] = GetGenAndYieldTypes(
+        *expr_type, *sm->CurrentScope, *expr_type, "coroutine");
 
-    // The expression type must be a Gen type that exactly matches the function_ret_type.
-    // Todo: Known issue with the "yield_type" ast position being wrong.
     RaiseIf<SppTypeMismatchError>(
-        not TypeEq(*meta->EnclosingFunctionRetType[0], *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
+        not TypeEq(*yield_type1, *yield_type2, *meta->EnclosingFunctionScope, *sm->CurrentScope),
         {meta->EnclosingFunctionScope, sm->CurrentScope},
-        ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *meta->EnclosingFunctionRetType[0], *Expr, *expr_type));
+        ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *yield_type1, *Expr, *yield_type2));
 }
 
 auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
