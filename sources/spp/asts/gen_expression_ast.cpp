@@ -80,6 +80,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::GetGenAndYieldTypes;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
     using analyse::utils::type_utils::TypeEq;
     using generate::common_types::GenType;
     using generate::common_types::VoidType;
@@ -97,15 +98,13 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     auto expr_type = VoidType(PosStart());
     if (Expr != nullptr) {
         meta->Save();
-        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
-            auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
-                *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
-            meta->ReturnTypeOverloadResolverType = std::move(yield_type);
-        }
+        auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
+            *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
 
-        // Todo: What is ->AssignmentTarget(_type) doing here?
-        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : yield_type;
+        meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
         meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }
         Expr->Stage7_AnalyseSemantics(sm, meta);
 
         RaiseIf<SppInvalidPrimaryExpressionError>(
