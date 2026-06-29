@@ -94,13 +94,13 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
     auto expr_type = VoidType(PosStart());
     meta->Save();
-    SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
-        meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType[0];
-    }
 
+    // Todo: See GenExpressionAst - do we want to extract "yield" type here too?
     meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+    meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
     meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
     meta->PreventAutoGeneratorResume = true;
+    SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType[0]; }
 
     // Analyse the expression.
     Expr->Stage7_AnalyseSemantics(sm, meta);
