@@ -8,11 +8,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.asts.generate.common_types_precompiled;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
@@ -55,10 +57,16 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     //
     using analyse::errors::SppDereferenceNonBorrowedTypeError;
     using analyse::errors::SppNonCopyableTypeError;
+    using analyse::utils::type_utils::TypeEq;
+    using generate::common_types_precompiled::STR_VIEW;
+    using generate::common_types_precompiled::VIEW;
 
     // Get the right-hand-side expression's type for constraint checks.
     const auto lhs = meta->PostfixExpressionLhs;
     const auto lhs_type = lhs->InferType(sm, meta);
+    const auto is_view =
+        TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
+        TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
 
     // Check the right-hand-side expression is a borrowable type.
     RaiseIf<SppDereferenceNonBorrowedTypeError>(
@@ -68,7 +76,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
     const auto lhs_type_no_conv = lhs_type->WithoutConvention();
     RaiseIf<SppNonCopyableTypeError>(
-        not sm->CurrentScope->GetTypeSymbol(lhs_type)->IsCopyable() and not meta->AllowMoveDeref,
+        not sm->CurrentScope->GetTypeSymbol(lhs_type)->IsCopyable() and not meta->AllowMoveDeref and not is_view,
         {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
 }
 
