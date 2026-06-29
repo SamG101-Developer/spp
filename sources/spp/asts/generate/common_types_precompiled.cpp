@@ -44,6 +44,8 @@ auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
     F64 = nullptr;
     F128 = nullptr;
     CHAR = nullptr;
+    STR_VIEW = nullptr;
+    VIEW = nullptr;
 }
 
 auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
@@ -98,4 +100,6 @@ auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
     F128 = common_types::F128(0);
 
     CHAR = common_types::CharType(0);
+    STR_VIEW = common_types::StringViewType(0)->WithoutGenerics();
+    VIEW = common_types::ViewType(0, common_types::VoidType(0))->WithoutGenerics();
 }

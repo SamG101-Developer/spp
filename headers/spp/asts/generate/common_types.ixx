@@ -55,6 +55,7 @@ namespace spp::asts::generate::common_types {
     SPP_EXP_FUN auto OptionType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
     SPP_EXP_FUN auto MemoryType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
     SPP_EXP_FUN auto SingleType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto ViewType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
 
     SPP_EXP_FUN auto SomeType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
     SPP_EXP_FUN auto None(std::size_t pos) -> Shared<TypeAst>;
