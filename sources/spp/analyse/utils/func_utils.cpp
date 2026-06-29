@@ -762,12 +762,14 @@ static auto CollectDirectInferences(
     spp::analyse::utils::func_utils::InferenceResultTypeMap &type_inferred,
     spp::analyse::utils::func_utils::InferenceResultCompMap &comp_inferred)
     -> void {
+    //
     auto temp_gs = spp::analyse::utils::type_utils::GenericInferenceMap();
     spp::analyse::utils::type_utils::RelaxedTypeEq(
         *source_type->WithoutConvention(),
         *target_type->WithoutConvention(),
         *sm.CurrentScope, owner_scope, temp_gs, true);
 
+    //
     for (auto const &[inferred_name, inferred_val] : temp_gs) {
         if (genex::contains(type_p_names, *inferred_name, genex::meta::deref)) {
             auto *typed = inferred_val->To<spp::asts::TypeAst>();
