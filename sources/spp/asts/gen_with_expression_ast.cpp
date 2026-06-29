@@ -79,6 +79,7 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::GetGenAndYieldTypes;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
     using analyse::utils::type_utils::TypeEq;
     using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
     using analyse::errors::SppInvalidPrimaryExpressionError;
