@@ -972,7 +972,35 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
         type_formatted[type_name] = t;
     }
 
-    // Cmp argument type-checking (semantic stage only).
+    // Emit the final arg list sorted into parameter declaration order.
+    auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
+    for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
+        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
+    }
+
+    auto final_args = Vec<Unique<asts::GenericArgumentAst>>();
+    for (auto const &[key, val] : type_formatted) {
+        final_args.push_back(MakeUnique<asts::GenericArgumentTypeKeywordAst>(key, nullptr, val));
+    }
+    for (auto const &[key, val] : comp_formatted) {
+        if (const auto *val_as_type = val->To<asts::TypeAst>(); val_as_type != nullptr) {
+            final_args.push_back(MakeUnique<asts::GenericArgumentCompKeywordAst>(
+                asts::AstClone(key), nullptr, asts::IdentifierAst::FromType(*val_as_type)));
+        }
+        else {
+            final_args.push_back(MakeUnique<asts::GenericArgumentCompKeywordAst>(
+                asts::AstClone(key), nullptr, asts::AstClone(val)));
+        }
+    }
+    final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
+        return param_index[a->ViewName()] < param_index[b->ViewName()];
+    });
+    a_group.Args = std::move(final_args);
+
+    // Cmp argument type-checking (semantic stage only). Done after args are restored onto a_group so that the following
+    // issue is solved: when analysing SizedIntegerSigned[32_u32], 32_u32 is inferred and checked. But as it is
+    // inferred, the generics were missing, because this function temporarily removes them. So we only analyse AFTER
+    // they are re-added having been checked.
     if (meta.CurrentStage > 7) {
         auto all_final_unified = type_utils::GenericInferenceMap();
         for (auto const &[n, v] : type_formatted) { all_final_unified.emplace(n, v.get()); }
@@ -1011,31 +1039,6 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
                 {&owner_scope, sm.CurrentScope}, ERR_ARGS(*param, *p_type, *inferred_val, *raw_a_type));
         }
     }
-
-    // Emit the final arg list sorted into parameter declaration order.
-    auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
-    for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
-    }
-
-    auto final_args = Vec<Unique<asts::GenericArgumentAst>>();
-    for (auto const &[key, val] : type_formatted) {
-        final_args.push_back(MakeUnique<asts::GenericArgumentTypeKeywordAst>(key, nullptr, val));
-    }
-    for (auto const &[key, val] : comp_formatted) {
-        if (const auto *val_as_type = val->To<asts::TypeAst>(); val_as_type != nullptr) {
-            final_args.push_back(MakeUnique<asts::GenericArgumentCompKeywordAst>(
-                asts::AstClone(key), nullptr, asts::IdentifierAst::FromType(*val_as_type)));
-        }
-        else {
-            final_args.push_back(MakeUnique<asts::GenericArgumentCompKeywordAst>(
-                asts::AstClone(key), nullptr, asts::AstClone(val)));
-        }
-    }
-    final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        return param_index[a->ViewName()] < param_index[b->ViewName()];
-    });
-    a_group.Args = std::move(final_args);
 }
 
 auto spp::analyse::utils::func_utils::IsTargetCallable(
