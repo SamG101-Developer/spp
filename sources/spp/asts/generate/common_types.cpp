@@ -212,14 +212,18 @@ auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAs
     return type;
 }
 
-auto spp::asts::generate::common_types::VecU8Type(const std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::ViewU8Type(const std::size_t pos) -> Shared<TypeAst> {
     auto generics_lst = UniqueVec<GenericArgumentAst>(1);
     generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(U8(pos));
     auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Vec"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("vector")), nullptr), std::move(type));
+    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("View"), std::move(generics));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("view")), nullptr), std::move(type));
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
+
+    // As it is a view, we add the "&" convention by default.
+    auto op = MakeShared<TypeUnaryExpressionOperatorBorrowAst>(MakeUnique<ConventionRefAst>(nullptr));
+    type = MakeShared<TypeUnaryExpressionAst>(op, std::move(type));
     return type;
 }
 

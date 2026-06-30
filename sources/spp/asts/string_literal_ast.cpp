@@ -91,9 +91,9 @@ auto spp::asts::StringLiteralAst::InferType(
     -> Shared<TypeAst> {
     // A char literal is either a StrView or Vec[U8] type, depending on the "b" byte prefix.
     using generate::common_types::StringViewType;
-    using generate::common_types::VecU8Type;
+    using generate::common_types::ViewU8Type;
     return BytePrefix != nullptr
-        ? VecU8Type(PosStart())
+        ? ViewU8Type(PosStart())
         : StringViewType(PosStart());
 }
 
