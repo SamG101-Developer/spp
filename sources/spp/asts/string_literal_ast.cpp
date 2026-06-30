@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
+import spp.asts.convention_ref_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
@@ -93,8 +94,8 @@ auto spp::asts::StringLiteralAst::InferType(
     using generate::common_types::StringViewType;
     using generate::common_types::ViewU8Type;
     return BytePrefix != nullptr
-        ? ViewU8Type(PosStart())
-        : StringViewType(PosStart());
+        ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
+        : StringViewType(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
 }
 
 SPP_MOD_END
