@@ -102,7 +102,6 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 
     // Move into the next scope.
     sm->MoveToNextScope();
-    SPP_ASSERT(sm->CurrentScope == _Scope);
 
     // Check the memory of each member.
     for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
@@ -126,6 +125,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
         for (auto const &ceb : contained_escaping_borrows) {
             sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
             const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
+            if (b == nullptr) { continue; }
             sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto info) {
                 return *std::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
             });

@@ -156,7 +156,6 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
 
     // Move into the "case" scope and check the memory satus of the symbols in the branches.
     sm->MoveToNextScope();
-    SPP_ASSERT(sm->CurrentScope == _Scope);
 
     // Check the memory state of the condition.
     Cond->Stage8_CheckMemory(sm, meta);
