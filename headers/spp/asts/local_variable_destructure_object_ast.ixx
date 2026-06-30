@@ -8,6 +8,10 @@ import spp.utils.types;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct VariableSymbol;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantDestructureObjectAst;
     SPP_EXP_CLS struct IdentifierAst;
@@ -75,4 +79,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
 
 private:
     Vec<Unique<LetStatementInitializedAst>> _NewAsts;
+    Shared<analyse::scopes::VariableSymbol> _CondSym;
+    Shared<analyse::scopes::VariableSymbol> _FlowSym;
+    Unique<LetStatementInitializedAst> _CondLet;
 };

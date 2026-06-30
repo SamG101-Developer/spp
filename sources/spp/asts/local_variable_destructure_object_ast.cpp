@@ -15,9 +15,11 @@ import spp.asts.class_prototype_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_member_ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_destructure_attribute_binding_ast;
 import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
@@ -28,6 +30,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_ast;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 
 SPP_MOD_BEGIN
@@ -138,6 +141,22 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
         not missing_attributes.IsEmpty() and multi_arg_skips.IsEmpty(),
         {sm->CurrentScope}, ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
 
+    // Handle nested flow typing, like seen in the case pattern handler for object destructure.
+    Shared<IdentifierAst> uid_name = nullptr;
+    const ExpressionAst *effective_val = val;
+    if (_FromCasePattern and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
+        const auto uid = spp::utils::Uid(this);
+        uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
+        auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
+        _CondLet = MakeUnique<LetStatementInitializedAst>(nullptr, std::move(uid_var), nullptr, nullptr, AstClone(val));
+        _CondLet->Stage7_AnalyseSemantics(sm, meta);
+        _CondSym = sm->CurrentScope->GetVarSymbol(uid_name);
+        _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
+        _FlowSym->Type = Type;
+        sm->CurrentScope->AddVarSymbol(_FlowSym);
+        effective_val = uid_name.get();
+    }
+
     // Create expanded "let" statements for each part of the destructure.
     for (const auto elem : Elems | genex::views::ptr) {
         // Skip any conversion for unbound multi argument skipping.
@@ -147,7 +166,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
         // Skip any conversion for single argument skipping.
         else if (const auto cast_elem_1 = elem->To<LocalVariableSingleIdentifierAst>(); cast_elem_1 != nullptr) {
             auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, AstClone(cast_elem_1->Name));
-            auto pstfx = MakeUnique<PostfixExpressionAst>(AstClone(val), std::move(field));
+            auto pstfx = MakeUnique<PostfixExpressionAst>(AstClone(effective_val), std::move(field));
             auto new_ast = MakeUnique<LetStatementInitializedAst>(nullptr, AstClone(elem), nullptr, nullptr, std::move(pstfx));
             if (_FromCasePattern) { new_ast->Var->MarkFromCasePattern(); }
             new_ast->Stage7_AnalyseSemantics(sm, meta);
@@ -161,7 +180,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
         // Handle and other nested destructure or single identifier.
         else if (const auto cast_elem_2 = elem->To<LocalVariableDestructureAttributeBindingAst>(); cast_elem_2 != nullptr) {
             auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, AstClone(cast_elem_2->Name));
-            auto pstfx = MakeUnique<PostfixExpressionAst>(AstClone(val), std::move(field));
+            auto pstfx = MakeUnique<PostfixExpressionAst>(AstClone(effective_val), std::move(field));
             auto new_ast = MakeUnique<LetStatementInitializedAst>(nullptr, AstClone(cast_elem_2->Val), nullptr, nullptr, std::move(pstfx));
             if (_FromCasePattern) { new_ast->Var->MarkFromCasePattern(); }
             new_ast->Stage7_AnalyseSemantics(sm, meta);
@@ -174,6 +193,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Check the temp variable's memory first if flow typing introduced one.
+    if (_CondLet) { _CondLet->Stage8_CheckMemory(sm, meta); }
     // Check the memory state of the elements.
     for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
 }
@@ -182,6 +203,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Comptime resolve the temp variable first if flow typing introduced one.
+    if (_CondLet) { _CondLet->Stage9_CompTimeResolve(sm, meta); }
     // Comptime resolve each element.
     for (auto const &x : _NewAsts) { x->Stage9_CompTimeResolve(sm, meta); }
 }
@@ -191,6 +214,12 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // If flow typing introduced a temp variable, generate it. _FlowSym replaced _CondSym in
+    // the symbol table (same scope, same string key), so LocalVariableSingleIdentifierAst::Stage11
+    // inside _CondLet already sets _FlowSym->LlvmInfo->Alloca — no copy needed.
+    if (_CondLet) {
+        _CondLet->Stage11_CodeGen(sm, meta, ctx);
+    }
     // Generate the "let" statements for each element.
     for (auto const &ast : _NewAsts) { ast->Stage11_CodeGen(sm, meta, ctx); }
     return nullptr;
