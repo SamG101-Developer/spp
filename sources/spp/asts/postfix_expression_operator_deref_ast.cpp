@@ -61,6 +61,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     using generate::common_types_precompiled::STR_VIEW;
     using generate::common_types_precompiled::VIEW;
 
+    // Todo: some sort of inner mutability check?
     // Get the right-hand-side expression's type for constraint checks.
     const auto lhs = meta->PostfixExpressionLhs;
     const auto lhs_type = lhs->InferType(sm, meta);
