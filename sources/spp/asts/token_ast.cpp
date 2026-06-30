@@ -60,4 +60,9 @@ auto spp::asts::TokenAst::operator==(
     return TokenType == that.TokenType;
 }
 
+auto spp::asts::TokenAst::PatchPos(const std::size_t pos) -> void {
+    // Manually override the pos of this token.
+    _Pos = pos;
+}
+
 SPP_MOD_END

@@ -61,6 +61,8 @@ SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
      */
     auto operator==(TokenAst const &that) const -> bool;
 
+    auto PatchPos(std::size_t pos) -> void;
+
 private:
     std::size_t _Pos;
 };
