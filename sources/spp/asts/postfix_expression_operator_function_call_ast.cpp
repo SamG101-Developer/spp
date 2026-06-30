@@ -154,9 +154,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 
         if (TypeEq(*lhs_type->WithoutGenerics(), *FUN_MUT, *sm->CurrentScope, *sm->CurrentScope)) {
             dummy_self_arg->Conv = MakeUnique<ConventionMutAst>(nullptr, nullptr);
+            dummy_self_arg->Conv->To<ConventionMutAst>()->TokBorrow->PatchPos(meta->PostfixExpressionLhs->PosStart());
         }
         else if (TypeEq(*lhs_type->WithoutGenerics(), *FUN_REF, *sm->CurrentScope, *sm->CurrentScope)) {
             dummy_self_arg->Conv = MakeUnique<ConventionRefAst>(nullptr);
+            dummy_self_arg->Conv->To<ConventionRefAst>()->TokBorrow->PatchPos(meta->PostfixExpressionLhs->PosStart());
         }
         _ClosureDummyArg = std::move(dummy_self_arg);
     }
