@@ -247,20 +247,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
         Fold != nullptr,
         {sm->CurrentScope}, ERR_ARGS(*Fold));
 
-    // Create the argument map for the function to use.
+    // Create the argument map for the function to use. Positional arguments (including the implicit "self"
+    // injected for method-call syntax) are matched to parameters by position; keyword arguments by name.
+    const auto fn_params = fn_proto->FnParamGroup->GetAllParams();
     auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
-
-    const auto check_self = _SelfCompTime != nullptr;
-    if (check_self and not FnArgGroup->GetKeywordArgs().IsEmpty() and FnArgGroup->GetKeywordArgs().Front()->Name->Val == "self") {
-        // todo: use: .at("self") != nullptr
-        _SelfCompTime->Stage9_CompTimeResolve(sm, meta);
-        args.EmplaceBack(MakeUnique<IdentifierAst>(FnArgGroup->PosStart(), "self"), std::move(meta->CmpResult));
-    }
-
-    for (auto const &arg : FnArgGroup->GetKeywordArgs()) {
-        if (check_self and arg->Name->Val == "self") { continue; }
+    for (auto const &[i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
+        const auto kw_arg = arg->To<FunctionCallArgumentKeywordAst>();
+        auto name = kw_arg != nullptr ? kw_arg->Name : fn_params[i]->ExtractName();
         arg->Stage9_CompTimeResolve(sm, meta);
-        args.EmplaceBack(arg->Name, std::move(meta->CmpResult));
+        args.EmplaceBack(std::move(name), std::move(meta->CmpResult));
     }
     auto arg_map = decltype(meta->CmpArgs)();
     for (auto &&[name, val] : args) { arg_map[name] = std::move(val); }

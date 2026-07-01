@@ -106,7 +106,6 @@ private:
 
     Ast *_IsAsync;
     bool _IsCoroAndAutoResume;
-    Shared<IdentifierAst> _SelfCompTime;
 
     auto _HandleFunctionFolding(
         ScopeManager *sm,
