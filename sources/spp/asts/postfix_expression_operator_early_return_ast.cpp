@@ -21,6 +21,7 @@ import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.gen_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
@@ -35,6 +36,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_materialize;
+import spp.lex.tokens;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
@@ -79,6 +81,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
     using analyse::errors::SppTypeMismatchError;
     using analyse::utils::type_utils::GetTryType;
     using analyse::utils::type_utils::TypeEq;
+    using analyse::utils::type_utils::GetGenAndYieldTypes;
 
     // Get the left-hand-side information.
     const auto lhs = meta->PostfixExpressionLhs;
@@ -89,10 +92,23 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
 
     // Check the Residual type is compatible with the function's return type.
     const auto residual_type = try_type->TypeParts().Back()->GnArgGroup->TypeAt("Residual")->Val;
-    RaiseIf<SppTypeMismatchError>(
-        not TypeEq(*meta->EnclosingFunctionRetType[0], *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
-        {meta->EnclosingFunctionScope, sm->CurrentScope},
-        ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *meta->EnclosingFunctionRetType[0], *lhs, *residual_type));
+
+    // Subroutine return type check.
+    if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+        RaiseIf<SppTypeMismatchError>(
+            not TypeEq(*meta->EnclosingFunctionRetType[0], *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
+            {meta->EnclosingFunctionScope, sm->CurrentScope},
+            ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *meta->EnclosingFunctionRetType[0], *lhs, *residual_type));
+    }
+
+    // Coroutine return type check.
+    else {
+        auto [_, yield_type, _] = GetGenAndYieldTypes(*meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *lhs, "early return");
+        RaiseIf<SppTypeMismatchError>(
+            not TypeEq(*yield_type, *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
+            {meta->EnclosingFunctionScope, sm->CurrentScope},
+            ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *yield_type, *lhs, *residual_type));
+    }
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
@@ -127,10 +143,22 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
         std::move(is_expr);
     });
 
-    auto ret = ( {
+    // Ret statement if we are in a subroutine, otherwise
+    // a gen statement, followed by a no-expr ret statement.
+    // Todo: Test coroutines in test suite with "?"
+    auto extra_statements = Vec<Unique<StatementAst>>();
+    if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
         auto ret_expr = AstClone(lhs);
-        MakeUnique<RetStatementAst>(nullptr, std::move(ret_expr));
-    });
+        auto ret_stmt = MakeUnique<RetStatementAst>(nullptr, std::move(ret_expr));
+        extra_statements.EmplaceBack(std::move(ret_stmt));
+    }
+    else {
+        auto ret_expr = AstClone(lhs);
+        auto gen_expr = MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(ret_expr));
+        auto ret_stmt = MakeUnique<RetStatementAst>(nullptr, nullptr);
+        extra_statements.EmplaceBack(std::move(gen_expr));
+        extra_statements.EmplaceBack(std::move(ret_stmt));
+    }
 
     // Convert the "is" expression into a case condition with destructure.
     const auto current_scope = sm->CurrentScope;
@@ -138,7 +166,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
 
     type_check->Stage7_AnalyseSemantics(sm, meta);
     const auto check = type_check->GetMappedFunc();
-    check->Branches[0]->Body->Members.EmplaceBack(std::move(ret));
+    check->Branches[0]->Body->Members.AppendRange(std::move(extra_statements));
     sm->Reset(current_scope, current_scope_iterator);
 
     meta->Save();
@@ -153,6 +181,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
         auto output_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(output_field_name));
         auto postfix_output_field = MakeUnique<PostfixExpressionAst>(AstClone(lhs), std::move(output_field));
         auto call_output = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+        call_output->Source.OriginalExpr = this;
         auto postfix_call_output = MakeUnique<PostfixExpressionAst>(std::move(postfix_output_field), std::move(call_output));
         std::move(postfix_call_output);
     });
