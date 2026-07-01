@@ -109,7 +109,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
     LlvmPhi = state.LlvmPhi;
     CmpArgs = std::move(state.CmpArgs);
-    CmpResult = std::move(state.CmpResult);
+    // CmpResult = std::move(state.CmpResult);
     IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
 }
 
