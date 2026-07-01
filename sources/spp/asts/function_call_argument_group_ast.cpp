@@ -226,7 +226,15 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     for (auto const &arg : Args) {
         // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
         // track borrows to it, as it is a temporary value.
+
+        // When an argument is consumed by value, any escaping borrows established during its evaluation (e.g. from an
+        // inner coroutine call like "self.chars()") are released when the argument is consumed. Clear the assignment
+        // target so that those inner borrows are not incorrectly attributed to the outer handle.
+        const auto saved_assignment_target = meta->AssignmentTarget;
+        if (arg->Conv == nullptr) { meta->AssignmentTarget = nullptr; }
         arg->Stage8_CheckMemory(sm, meta);
+        meta->AssignmentTarget = saved_assignment_target;
+
         auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*arg->Val);
         if (sym == nullptr) { continue; }
 
