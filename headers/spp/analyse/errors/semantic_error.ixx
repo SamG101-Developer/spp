@@ -476,7 +476,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError final : SemanticError {
-    explicit SppCalledAnnotationAppliedToInvalidAstError(asts::Ast const &invalid_ast, asts::Ast const &annotation_call, asts::AnnotationAst const &annotation_definition);
+    explicit SppCalledAnnotationAppliedToInvalidAstError(asts::Ast const &invalid_ast, asts::Ast const &annotation_call, asts::Ast const &annotation_definition);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidBinaryFoldExpressionError final : SemanticError {

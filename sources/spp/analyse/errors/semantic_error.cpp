@@ -1040,7 +1040,7 @@ spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTarg
 spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalidAstError(
     asts::Ast const &invalid_ast,
     asts::Ast const &annotation_call,
-    asts::AnnotationAst const &annotation_definition) {
+    asts::Ast const &annotation_definition) {
     AddHeaders(88, "Called Annotation Applied To Invalid Ast Error");
     AddCtxForErr(&annotation_definition, "Annotation & possible targets defined here");
     AddCtxForErr(&annotation_call, "Annotation applied here");
