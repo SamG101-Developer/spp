@@ -304,35 +304,37 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
     const auto allowed_ctx = result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
     meta->Restore();
 
+    auto target = annotation_info->Definition->FnArgGroup->At("target");
+
     // Error for incompatible asts when classes are not valid targets.
     RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
         _Ctx->To<ClassPrototypeAst>() and not(allowed_ctx & AnnotationInfo::kClassContext),
-        {sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *annotation_info->Definition));
+        {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
     // Error for incompatible asts when free functions are not valid targets.
     RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
         _Ctx->To<FunctionPrototypeAst>() and outer_mod_ctx and not(allowed_ctx & AnnotationInfo::kFunctionCtx),
-        {sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *annotation_info->Definition));
+        {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
     // Error for incompatible asts when methods are not valid targets.
     RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
         _Ctx->To<FunctionPrototypeAst>() and outer_sup_ctx and not(allowed_ctx & AnnotationInfo::kMethodCtx),
-        {sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *annotation_info->Definition));
+        {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
     // Error for incompatible asts when overriding methods are not valid targets.
     RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
         _Ctx->To<FunctionPrototypeAst>() and outer_ext_ctx and not(allowed_ctx & AnnotationInfo::kExtensionContext),
-        {sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *annotation_info->Definition));
+        {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
     // Error for incompatible asts when type statements are not valid targets.
     RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
         _Ctx->To<TypeStatementAst>() and not(allowed_ctx & AnnotationInfo::kTypeStmtCtx),
-        {sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *annotation_info->Definition));
+        {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
     // Error for incompatible asts when cmp statements are not valid targets.
     RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
         _Ctx->To<CmpStatementAst>() and not(allowed_ctx & AnnotationInfo::kCmpStmtCtx),
-        {sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *annotation_info->Definition));
+        {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 }
 
 SPP_MOD_END
