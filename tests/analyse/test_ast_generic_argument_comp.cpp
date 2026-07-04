@@ -1,63 +1,86 @@
 #include "../test_macros.hpp"
 
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_comp_arg_matches_usize, R"(
+    cls A[cmp n: USize] { }
+
+    fun g() -> Void {
+        let x = A[123_uz]()
+    }
+)");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    GenericArgumentGroupAst,
-    test_invalid_generic_argument_group_duplicate_named_argument,
-    SppIdentifierDuplicateError, R"(
-    fun f[T, U]() -> std::void::Void { }
+    TestGenericArgumentComp,
+    test_invalid_comp_arg_type_mismatch,
+    SppTypeMismatchError, R"(
+    cls A[cmp n: USize] { }
 
-    fun g() -> std::void::Void {
-        f[T=std::boolean::Bool, T=std::boolean::Bool]()
+    fun g() -> Void {
+        let x = A[123]()
     }
 )");
 
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_comp_arg_generic_type_matches, R"(
+    cls A[T, cmp n: T] { }
+
+    fun g() -> Void {
+        let x = A[USize, 123_uz]()
+    }
+)");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    GenericArgumentGroupAst,
-    test_invalid_generic_argument_group_invalid_argument_order,
-    SppOrderInvalidError, R"(
-    fun f[T, U]() -> std::void::Void { }
+    TestGenericArgumentComp,
+    test_invalid_comp_arg_generic_type_mismatch,
+    SppTypeMismatchError, R"(
+    cls A[T, cmp n: T] { }
 
-    fun g() -> std::void::Void {
-        f[T=std::boolean::Bool, std::boolean::Bool]()
+    fun g() -> Void {
+        let x = A[USize, true]()
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    GenericArgumentGroupAst,
-    test_valid_generic_argument_group_different_names_from_sup_1,
-    R"(
-    cls A[T] { !public a: T }
+    TestGenericArgumentComp,
+    test_valid_reverse_infer_type_from_comp_arg, R"(
+    cls A[T, cmp n: T] { }
 
-    sup [T] A[T] {
-        !public fun f(&self) -> std::void::Void { }
-    }
-
-    fun g() -> std::void::Void {
-        let a = A(a=5)
-        a.f()
+    fun g() -> Void {
+        let x = A[n=123_uz]()
     }
 )");
 
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_reverse_infer_type_from_comp_arg_verified, R"(
+    cls A[T, cmp n: T] { a: T }
+
+    fun g() -> Void {
+        let mut x = A[n=123_uz](a=0_uz)
+        x.a = 456_uz
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_reverse_infer_wrong_attribute_type,
+    SppTypeMismatchError, R"(
+    cls A[T, cmp n: T] { a: T }
+
+    fun g() -> Void {
+        let x = A[n=123_uz](a=true)
+    }
+)");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    GenericArgumentGroupAst,
-    test_valid_generic_argument_group_different_names_from_sup_2,
-    R"(
-    cls A[T] { !public a: T }
-    sup [T] A[T] {
-        !public fun new(&self) -> A[T] { ret A[T]() }
-    }
+    TestGenericArgumentComp,
+    test_valid_reverse_infer_type_from_comp_arg_function, R"(
+    fun f[T, cmp n: T]() -> T { ret T() }
 
-    sup [T] A[T] {
-        !public fun f(&self) -> T { ret self.new().a }
-    }
-
-    fun g() -> std::void::Void {
-        let a = A(a=5)
-        let mut b = a.f()
-        b = a.a
+    fun g() -> Void {
+        let mut x = f[n=123_uz]()
+        x = 456_uz
     }
 )");

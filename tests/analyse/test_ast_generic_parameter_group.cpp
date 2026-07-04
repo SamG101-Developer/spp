@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstGenericParameterGroup,
     test_invalid_duplicate_type_identifier,
@@ -8,38 +7,33 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A[T, U, T] {}
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstGenericParameterGroup,
     test_invalid_duplicate_cmp_identifier,
     SppIdentifierDuplicateError, R"(
-    cls A[cmp t: std::string::Str, cmp u: std::string::Str, cmp t: std::number::S32] {}
+    cls A[cmp t: Str, cmp u: Str, cmp t: S32] {}
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstGenericParameterGroup,
-    test_invalid_order_opt_req,
+    test_invalid_order_opt_req_type,
     SppOrderInvalidError, R"(
-    cls A[T=std::string::Str, U] {}
+    cls A[T=Str, U] {}
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstGenericParameterGroup,
-    test_invalid_order_var_req,
+    test_invalid_order_var_req_type,
     SppOrderInvalidError, R"(
     cls A[..T, U] {}
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstGenericParameterGroup,
-    test_invalid_order_var_opt,
+    test_invalid_order_var_opt_type,
     SppOrderInvalidError, R"(
-    cls A[..T, U=std::string::Str] {}
+    cls A[..T, U=Str] {}
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
@@ -47,13 +41,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A[T] {}
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
     test_valid_opt, R"(
-    cls A[T = std::string::Str] {}
+    cls A[T = Str] {}
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
@@ -61,13 +53,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A[..T] {}
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
     test_valid_req_opt, R"(
-    cls A[T, U = std::boolean::Bool] {}
+    cls A[T, U = Bool] {}
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
@@ -75,16 +65,41 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A[T, ..U] {}
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
     test_valid_opt_var, R"(
-    cls A[T = std::string::Str, ..U] {}
+    cls A[T = Str, ..U] {}
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
     test_valid_order_req_opt_var, R"(
-    cls A[T, U=std::string::Str, ..V] {}
+    cls A[T, U=Str, ..V] {}
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstGenericParameterGroup,
+    test_valid_mixed_type_and_comp, R"(
+    cls A[T, cmp n: USize] {}
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstGenericParameterGroup,
+    test_invalid_order_opt_req_comp,
+    SppOrderInvalidError, R"(
+    cls A[cmp n: StrView = "hello", cmp m: S32] {}
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstGenericParameterGroup,
+    test_invalid_order_var_req_comp,
+    SppOrderInvalidError, R"(
+    cls A[..cmp n: StrView, cmp m: S32] {}
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstGenericParameterGroup,
+    test_invalid_order_var_opt_comp,
+    SppOrderInvalidError, R"(
+    cls A[..cmp n: StrView, cmp m: StrView = "hello"] {}
 )");

@@ -5,9 +5,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_function_constraint_mismatch,
     SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
-    fun g[T: A](t: T) -> std::void::Void { }
+    fun g[T: A](t: T) -> Void { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g(123)
     }
 )");
@@ -21,9 +21,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     cls C { }
     sup C ext A { }
-    fun g[T: A & B](t: T) -> std::void::Void { }
+    fun g[T: A & B](t: T) -> Void { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let c = C()
         g(c)
     }
@@ -33,9 +33,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
     test_valid_function_constraint, R"(
     cls A { }
-    fun g[T: A](t: T) -> std::void::Void { }
+    fun g[T: A](t: T) -> Void { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let a = A()
         g(a)
     }
@@ -51,9 +51,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup C ext A { }
     sup C ext B { }
 
-    fun g[T: A & B](t: T) -> std::void::Void { }
+    fun g[T: A & B](t: T) -> Void { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let c = C()
         g(c)
     }
@@ -66,8 +66,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
     cls B[T: A] { }
 
-    fun f() -> std::void::Void {
-        let b = B[std::number::U32]()
+    fun f() -> Void {
+        let b = B[U32]()
     }
 )");
 
@@ -82,7 +82,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup C ext A { }
     cls D[T: A & B] { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let c = C()
         let d = D[C]()
     }
@@ -94,7 +94,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     cls B[T: A] { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let a = A()
         let b = B[A]()
     }
@@ -111,7 +111,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup C ext B { }
     cls D[T: A & B] { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let c = C()
         let d = D[C]()
     }
@@ -177,12 +177,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppIdentifierUnknownError, R"(
     cls A[T] { }
 
-    sup [T: std::copy::Copy] A[T] {
+    sup [T: Copy] A[T] {
         !public fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {
-        let a = A[std::string::Str]()
+        let a = A[Str]()
         a.my_function()  # invalid; Str is not Copy
     }
 )");
@@ -193,12 +193,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     cls A[T] { }
 
-    sup [T: std::copy::Copy] A[T] {
+    sup [T: Copy] A[T] {
         !public fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {
-        let a = A[std::number::U32]()
+        let a = A[U32]()
         a.my_function()  # valid; U32 is Copy
     }
 )");

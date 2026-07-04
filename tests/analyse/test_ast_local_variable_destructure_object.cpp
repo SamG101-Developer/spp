@@ -5,11 +5,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_multiple_multi_skip,
     SppMultipleRestPatternsError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x, .., ..) = Point(x=1, y=2)
     }
 )");
@@ -19,11 +19,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_array_missing_attribute,
     SppArgumentMissingError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x) = Point(x=1, y=2)
     }
 )");
@@ -33,11 +33,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_array_invalid_attribute,
     SppIdentifierUnknownError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x, y, z) = Point(x=1, y=2)
     }
 )");
@@ -46,11 +46,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_valid_simple, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x, mut y) = Point(x=1, y=2)
     }
 )");
@@ -59,12 +59,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_valid_with_multi_skip, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
+        !public x: S32
+        !public y: S32
+        !public z: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x, .., mut z) = Point(x=1, y=2, z=3)
     }
 )");
@@ -74,12 +74,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_with_bound_multi_skip,
     SppVariableObjectDestructureWithBoundRestPatternError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
+        !public x: S32
+        !public y: S32
+        !public z: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x, ..y, z) = Point(x=1, y=2, z=3)
     }
 )");
@@ -88,13 +88,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_valid_nested_array, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
-        !public dir: [std::number::S32; 3_uz]
+        !public x: S32
+        !public y: S32
+        !public z: S32
+        !public dir: [S32; 3_uz]
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(.., dir=[xd, yd, mut zd]) = Point(x=1, y=2, z=3, dir=[1, 2, 3])
         zd = 4
     }
@@ -104,13 +104,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_valid_nested_tuple, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
-        !public dir: (std::number::S32, std::number::S32, std::number::S32)
+        !public x: S32
+        !public y: S32
+        !public z: S32
+        !public dir: (S32, S32, S32)
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(.., dir=(xd, yd, mut zd)) = Point(x=1, y=2, z=3, dir=(1, 2, 3))
         zd = 4
     }
@@ -120,8 +120,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_valid_nested_object, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
 
     cls Line {
@@ -129,7 +129,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public end: Point
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let line = Line(start=Point(x=1, y=2), end=Point(x=3, y=4))
         let Line(start=Point(mut x as sx, mut y as sy), end=Point(mut x as ex, mut y as ey)) = line
         sx = 10
@@ -143,11 +143,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_valid_assign_to_uninitialized_parts, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(mut x, mut y): Point
         x = 1
         y = 2
@@ -159,12 +159,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_explicit_type_missing_attribute,
     SppArgumentMissingError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
+        !public x: S32
+        !public y: S32
+        !public z: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x): Point
     }
 )");
@@ -174,11 +174,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_explicit_type_too_small,
     SppIdentifierUnknownError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(x, y, z): Point
     }
 )");
@@ -188,12 +188,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_assign_to_individual_part_wrong_type,
     SppTypeMismatchError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
+        !public x: S32
+        !public y: S32
+        !public z: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let Point(mut x, y, z): Point
         x = true
     }
@@ -204,12 +204,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_target_with_convention_ref,
     SppTypeMismatchError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
+        !public x: S32
+        !public y: S32
+        !public z: S32
     }
 
-    fun f(p: &Point) -> std::void::Void {
+    fun f(p: &Point) -> Void {
         let Point(mut x, y, z) = p
         x = 10
     }
@@ -220,12 +220,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_target_with_convention_mut,
     SppTypeMismatchError, R"(
     cls Point {
-        !public x: std::number::S32
-        !public y: std::number::S32
-        !public z: std::number::S32
+        !public x: S32
+        !public y: S32
+        !public z: S32
     }
 
-    fun f(p: &mut Point) -> std::void::Void {
+    fun f(p: &mut Point) -> Void {
         let Point(mut x, y, z) = p
         x = 10
     }
