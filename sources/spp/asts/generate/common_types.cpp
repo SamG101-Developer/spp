@@ -340,6 +340,7 @@ auto spp::asts::generate::common_types::ViewType(std::size_t pos, Shared<TypeAst
     MAKE_TYPE_WITH_GN("View")
     ADD_NAMESPACE("view")
     ADD_NAMESPACE("std")
+    ADD_BORROW()
     FINISH_TYPE()
 }
 
