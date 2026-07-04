@@ -90,7 +90,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    //
+    // TODO: Move the translation into "Stage1_PreProcess()" and just call that from here.
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::GetGenAndYieldTypes;
@@ -172,7 +172,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     // New boolean loop that manually iterates the iterable.
     auto loop_new = ( {
         auto cond = BooleanLiteralAst::True(PosStart());
-        MakeUnique<LoopConditionalExpressionAst>(nullptr, std::move(cond), nullptr, nullptr);
+        MakeUnique<LoopConditionalExpressionAst>(nullptr, std::move(cond), nullptr, std::move(ElseBlock));
     });
     loop_new->Body->Members.EmplaceBack(std::move(resume_let));
     loop_new->Body->Members.EmplaceBack(std::move(case_expr));
