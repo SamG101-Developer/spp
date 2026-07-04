@@ -99,7 +99,8 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
     SPP_ASSERT(borrow_val != nullptr);
 
     // Dereference the borrow to get the underlying value.
-    const auto deref_val = ctx->Builder.CreateLoad(borrow_val->getType(), borrow_val, "deref");
+    const auto deref_val = ctx->Builder.CreateLoad(
+        borrow_val->getType(), borrow_val, "deref");
     return deref_val;
 }
 
