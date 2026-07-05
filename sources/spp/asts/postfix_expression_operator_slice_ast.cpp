@@ -109,15 +109,24 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     auto sup_types = Vec{lhs_type};
     sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 
+    // Decide the function variation based upon if the lhs/rhs are nullptr or not.
+    const auto prefix = ExprLBound == nullptr and ExprRBound == nullptr
+        ? "full" : ExprLBound == nullptr
+        ? "to"   : ExprRBound == nullptr
+        ? "from" : "";
+
+    const auto mut = TokMut != nullptr ? "mut" : "ref";
+    const auto func_name = Str("slice_") + mut + (std::strlen(prefix) == 0 ? "" : "_") + prefix;
+
     // Create the mapped function for the index operator; create the index argument.
     Unique<FunctionCallArgumentAst> arg1 = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(ExprLBound));
     Unique<FunctionCallArgumentAst> arg2 = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(ExprRBound));
     auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<Unique<FunctionCallArgumentAst>>{}, nullptr);
-    arg_group->Args.EmplaceBack(std::move(arg1));
-    arg_group->Args.EmplaceBack(std::move(arg2));
+    if (arg1->Val) { arg_group->Args.EmplaceBack(std::move(arg1)); }
+    if (arg2->Val) { arg_group->Args.EmplaceBack(std::move(arg2)); }
 
     // Field name is either "index_ref" or "index_mut", then call it with the argument group (index).
-    auto field_name = MakeUnique<IdentifierAst>(PosStart(), TokMut != nullptr ? "slice_mut" : "slice_ref");
+    auto field_name = MakeUnique<IdentifierAst>(PosStart(), func_name);
     auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
     auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
     auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);

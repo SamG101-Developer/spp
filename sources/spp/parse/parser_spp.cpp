@@ -706,9 +706,9 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_slice()
     -> Unique<asts::PostfixExpressionOperatorSliceAst> {
     PARSE_ONCE(p1, parse_token_left_square_bracket);
     PARSE_OPTIONAL(p2, parse_keyword_mut);
-    PARSE_ONCE(p3, parse_expression);
+    PARSE_OPTIONAL(p3, parse_expression);
     PARSE_ONCE(p4, parse_keyword_to);
-    PARSE_ONCE(p5, parse_expression);
+    PARSE_OPTIONAL(p5, parse_expression);
     PARSE_ONCE(p6, parse_token_right_square_bracket);
     return CREATE_AST(asts::PostfixExpressionOperatorSliceAst, p1, p2, p3, p4, p5, p6);
 }
