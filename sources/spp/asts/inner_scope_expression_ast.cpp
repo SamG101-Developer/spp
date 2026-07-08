@@ -58,8 +58,10 @@ auto spp::asts::InnerScopeExpressionAst::PosEnd() const
 auto spp::asts::InnerScopeExpressionAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
-    return MakeUnique<InnerScopeExpressionAst>(
+    auto i = MakeUnique<InnerScopeExpressionAst>(
         AstClone(TokL), AstCloneVec(Members), AstClone(TokR));
+    i->_Scope = _Scope;
+    return i;
 }
 
 auto spp::asts::InnerScopeExpressionAst::ToString() const
