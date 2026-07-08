@@ -239,6 +239,12 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
+    // Re-analyse the superclass type so its generic-argument constraints are enforced at this pre-analysis
+    // stage. If they are done in stage 7, then we get misleading errors because when something else correctly fails, a
+    // missing constraint enforcement spews some inference error. Note to self: trust this comment.
+    SuperClass->ResetCache();
+    SuperClass->Stage7_AnalyseSemantics(sm, meta);
+
     // Get the symbols.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
     const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
