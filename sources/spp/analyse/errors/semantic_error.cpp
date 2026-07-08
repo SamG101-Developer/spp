@@ -13,6 +13,7 @@ module;
 module spp.analyse.errors.semantic_error;
 import spp.asts.ast;
 import spp.asts.annotation_ast;
+import spp.asts.binary_expression_ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -72,10 +73,14 @@ auto spp::analyse::errors::SemanticError::AddHeaders(
 }
 
 static auto UnwrapFunctionCallAst(spp::asts::Ast const *ast) -> spp::asts::Ast const* {
-    if (const auto pf = dynamic_cast<spp::asts::PostfixExpressionAst const*>(ast)) {
-        if (const auto fn_call = dynamic_cast<spp::asts::PostfixExpressionOperatorFunctionCallAst const*>(pf->Op.get())) {
-            return fn_call->Source.OriginalExpr;
+    if (const auto fn_call = ast->To<spp::asts::PostfixExpressionOperatorFunctionCallAst>()) {
+        if (fn_call->Source.OriginalExpr != fn_call) {
+            return UnwrapFunctionCallAst(fn_call->Source.OriginalExpr);
         }
+        return fn_call;
+    }
+    if (const auto pf = ast->To<spp::asts::PostfixExpressionAst>()) {
+        return UnwrapFunctionCallAst(pf->Op.get());
     }
     return ast;
 }
