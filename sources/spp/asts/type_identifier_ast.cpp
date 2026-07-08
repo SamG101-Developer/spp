@@ -183,7 +183,11 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
         const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
     }
-    if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 9) {
+
+    // Enforce generic constraints from the pre-analysis stage (CurrentStage >= 8) onwards, not just the main
+    // analysis stage. Sup scopes are fully loaded by the end of stage 5, so constraints can be reliably checked here,
+    // and some need to be done before stage 7 for order agnostic behaviour.
+    if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 8) {
         EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
     }
 
