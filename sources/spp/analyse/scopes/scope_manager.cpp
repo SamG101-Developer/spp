@@ -155,32 +155,44 @@ auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
 auto spp::analyse::scopes::ScopeManager::AttachAllSuperScopes(
     asts::meta::CompilerMetaData *meta)
     -> void {
-    // Ensure the scope manager is at the global scope.
+    // Ensure the scope manager is at the global scope. Attach every super scope structurally, deferring any generic
+    // constraint check. This is order-independent because it does not depend on other types' super scopes already being
+    // attached. The issue before was that some generic constraints checks were failing deep down because constraints
+    // themselves are modelled as sup-scopes. Note for future: just trust this comment.
     Reset();
+    auto deferred = Vec<DeferredSupConstraint>();
     for (auto *scope : Iter()) {
         if (scope->TySym == nullptr) { continue; }
-        AttachSpecificSuperScopes(*scope, meta);
+        AttachSpecificSuperScopes(*scope, meta, &deferred);
     }
+
+    // Now that every type has its super scopes, validate the deferred generic constraints and prune any attachment
+    // whose constraint is unsatisfied (eg "SliceMut[StrView, USize]" retains the constrained
+    // "sup [V, I: Zero] SliceMut[V, I]" block only if USize satisfies "Zero").
+    Reset();
+    PruneUnsatisfiedSupConstraints(deferred, meta);
     Reset();
 }
 
 auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
     Scope &scope,
-    asts::meta::CompilerMetaData *meta) const
+    asts::meta::CompilerMetaData *meta,
+    Vec<DeferredSupConstraint> *deferred) const
     -> void {
     // Handle type symbols.
     if (scope.TySym != nullptr) {
         const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics());
         auto scopes = normal_sup_blocks[non_generic_sym.get()];
         scopes.AppendRange(generic_sup_blocks);
-        AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta);
+        AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta, deferred);
     }
 }
 
 auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     Scope &scope,
     Vec<Scope*> &&sup_scopes,
-    asts::meta::CompilerMetaData *meta) const
+    asts::meta::CompilerMetaData *meta,
+    Vec<DeferredSupConstraint> *deferred) const
     -> void {
     //
     using utils::type_utils::CreateGenericSupScope;
@@ -210,6 +222,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
         auto new_sup_scope = static_cast<Scope*>(nullptr);
         auto new_cls_scope = static_cast<Scope*>(nullptr);
         auto sup_sym = static_cast<TypeSymbol*>(nullptr);
+        auto defer_constraint = false;
 
         // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
         if (not scope_generics->Args.IsEmpty() and not genex::contains(generic_sup_blocks, sup_scope)) {
@@ -217,8 +230,12 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
             std::tie(new_sup_scope, new_cls_scope) = CreateGenericSupScope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
             sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
 
+            // When deferring (the bulk pass), match structurally only and record the constraint for later; the
+            // constrained type's own super scopes might not be attached yet, so an inline check would be non order-
+            // agnostic. On-demand attachment (deferred == nullptr) checks the constraint inline as before.
             auto _ = GenericInferenceMap();
-            if (not RelaxedTypeEq(*fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *new_sup_scope, _)) { continue; }
+            if (not RelaxedTypeEq(*fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *new_sup_scope, _, false, deferred == nullptr)) { continue; }
+            defer_constraint = deferred != nullptr;
         }
         else {
             const auto sup_proto = sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>();
@@ -239,14 +256,55 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
 
         // Register the super scope's class scope against the current scope, if it is different. This "difference" check
         // ensures that "sup [T] T ext A" doesn't create a "sup A ext A" link.
-        if (new_cls_scope and scope.TySym != new_cls_scope->TySym) {
+        const auto cls_scope_attached = new_cls_scope and scope.TySym != new_cls_scope->TySym;
+        if (cls_scope_attached) {
             // Todo: is this definitely the generically substituted "new_cls_scope"?
             scope.DirectSupScopes.EmplaceBack(new_cls_scope);
+        }
+
+        // Record the constrained attachment so its generic constraint can be validated (and the attachment pruned
+        // if unsatisfied) once every type has its super scopes.
+        if (defer_constraint) {
+            deferred->EmplaceBack(DeferredSupConstraint{&scope, new_sup_scope, cls_scope_attached ? new_cls_scope : nullptr, sup_scope});
         }
 
         // Check for conflicting "cmp" or "type" statements in the super scopes.
         if (sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>() or sup_scope->AstNode->To<asts::SupPrototypeFunctionsAst>()) {
             CheckConflictingTypeOrCmpStatements(*cls_sym, *sup_scope);
+        }
+    }
+}
+
+auto spp::analyse::scopes::ScopeManager::PruneUnsatisfiedSupConstraints(
+    Vec<DeferredSupConstraint> &deferred,
+    asts::meta::CompilerMetaData * /*meta*/) const
+    -> void {
+    // Todo: Genex usage
+    using utils::type_utils::RelaxedTypeEq;
+    using utils::type_utils::GenericInferenceMap;
+
+    // Repeat until no further attachments are pruned: pruning one attachment can invalidate the constraint of
+    // another that depends on it (transitive constraint chains), so a single pass is not sufficient.
+    auto changed = true;
+    while (changed) {
+        changed = false;
+        for (auto &dc : deferred) {
+            // Skip records that have already been pruned.
+            if (dc.owner_scope == nullptr) { continue; }
+
+            // Re-run the constraint check that was deferred previously (RelaxedTypeEq with constraint checking
+            // enabled), now against the complete super scope graph.
+            auto _ = GenericInferenceMap();
+            const auto fq_type = dc.owner_scope->TySym->FqName();
+            if (RelaxedTypeEq(*fq_type, *asts::AstName(dc.base_sup_scope->AstNode), *dc.owner_scope->TySym->ScopeDefinedIn, *dc.sup_scope, _, false, true)) { continue; }
+
+            // The constraint is not satisfied, so remove the attached super scope (and its paired class scope).
+            auto &sup_scopes = dc.owner_scope->DirectSupScopes;
+            sup_scopes.Erase(
+                std::ranges::remove_if(sup_scopes, [&](auto const *s) { return s == dc.sup_scope or (dc.sup_cls_scope != nullptr and s == dc.sup_cls_scope); }).begin(),
+                sup_scopes.end());
+            dc.owner_scope = nullptr;
+            changed = true;
         }
     }
 }

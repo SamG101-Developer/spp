@@ -163,10 +163,30 @@ public:
         -> void;
 
     /**
+     * A super scope attachment whose generic constraint has not yet been verified. During the bulk
+     * @c AttachAllSuperScopes pass, constrained super scopes are attached structurally (without checking their
+     * constraints) so that attachment is order-independent; the constraints are then validated afterwards, once
+     * every type has its super scopes, and any attachment whose constraint is unsatisfied is pruned.
+     */
+    struct DeferredSupConstraint {
+        Scope *owner_scope;    ///< The scope the super scope was attached to (pruned if the constraint fails).
+        Scope *sup_scope;      ///< The (specialized) super scope that was attached.
+        Scope *sup_cls_scope;  ///< The paired super class scope also attached, or nullptr.
+        Scope *base_sup_scope; ///< The original (constrained) generic sup block.
+    };
+
+    /**
      * For every type discovered up until this point, attach the defined supertypes to them. At this point, all base
      * classes, and @c sup blocks, will have been injected into the symbol table, but possibly not all generic
      * substitutions of some of these type. This is fine because the @c TypeAst semantic analysis will call individual
      * sup scope attachment functions if needed.
+     *
+     * Attachment happens in two phases so that it is independent of the order types are visited in. Phase 1 attaches
+     * every super scope structurally, deferring the check of any generic constraint (eg @c {I: Zero} on
+     * @c {sup [V, I: Zero] SliceMut[V, I]}). Constraint checking walks the constrained type's own super scopes, which
+     * may not have been attached yet if that type is visited later, so checking inline would be order-dependent.
+     * Phase 2 validates the deferred constraints once every type has its super scopes, and prunes any attachment whose
+     * constraint is unsatisfied (repeated to a fixpoint so transitive constraint chains resolve).
      * @param meta The compiler metadata.
      */
     auto AttachAllSuperScopes(
@@ -180,10 +200,14 @@ public:
      * the superscopes of @c Vec[Str].
      * @param scope The scope representing the type to attach superscopes to.
      * @param meta The compiler metadata.
+     * @param deferred When non-null (the bulk @c AttachAllSuperScopes pass), generic constraints are not checked
+     * inline; instead each constrained attachment is recorded here for later validation. When null (on-demand
+     * attachment of a single newly-discovered type), constraints are checked inline as before.
      */
     auto AttachSpecificSuperScopes(
         Scope &scope,
-        asts::meta::CompilerMetaData *meta) const
+        asts::meta::CompilerMetaData *meta,
+        Vec<DeferredSupConstraint> *deferred = nullptr) const
         -> void;
 
 private:
@@ -199,6 +223,21 @@ private:
     auto AttachSpecificSuperScopesImpl(
         Scope &scope,
         Vec<Scope*> &&sup_scopes,
+        asts::meta::CompilerMetaData *meta,
+        Vec<DeferredSupConstraint> *deferred) const
+        -> void;
+
+    /**
+     * Validate the generic constraints of the super scope attachments deferred during phase 1 of
+     * @c AttachAllSuperScopes, and prune any attachment whose constraint is not satisfied. This runs after every type
+     * has had its super scopes attached, so the constraint checks (which walk the constrained type's super scopes) are
+     * order-independent. It is repeated to a fixpoint, because pruning one attachment can invalidate the constraint of
+     * another (transitive constraint chains).
+     * @param deferred The deferred constrained attachments recorded during phase 1.
+     * @param meta The compiler metadata.
+     */
+    auto PruneUnsatisfiedSupConstraints(
+        Vec<DeferredSupConstraint> &deferred,
         asts::meta::CompilerMetaData *meta) const
         -> void;
 
