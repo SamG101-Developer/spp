@@ -159,7 +159,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
 
     // For the known builtin annotations, they will attempt to modify their contextual objects if possible, for required
     // behaviour like virtual and abstract tags on function prototypes. If the context is incorrect, nothing happens,
-    // and a later stage will pickup the error, as there is a unified target-checking mechanism (custom and bulitin).
+    // and a later stage will pickup the error, as there is a unified target-checking mechanism (custom and builtin).
     if (fq_name == A::kIntrinsic) {
         const auto func_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (func_ctx) { func_ctx->BuiltinAnnotation = this; }
