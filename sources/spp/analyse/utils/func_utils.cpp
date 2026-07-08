@@ -800,6 +800,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData &meta)
     -> void {
+    using errors::SppGenericConstraintError;
     using errors::SppTypeMismatchError;
     using type_utils::TypeEq;
 
@@ -886,14 +887,33 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
             for (auto const &constraint : param->Constraints->Constraints) {
                 // Try each candidate in order and stop at the first match.
                 auto temp_gs = type_utils::GenericInferenceMap();
+                auto matched = false;
                 for (auto const &candidate : candidates) {
                     temp_gs.clear();
                     if (type_utils::RelaxedTypeEq(
                         *candidate->WithoutConvention(),
                         *constraint->WithoutConvention(),
-                        *sm.CurrentScope, owner_scope, temp_gs, false, false)) {
+                        *sm.CurrentScope, owner_scope, temp_gs, true, false)) {
+                        matched = true;
                         break;
                     }
+                }
+
+                // Niche constraint error that needs to be added here, otherwise we get misleading errors from
+                // fallthrough. The parameter had a concrete inferred type (so candidates were available), but none of
+                // them satisfied this constraint. If the constraint is what other generic parameters are inferred
+                // through (eg the "U" in "P: FunMov[(T,), Opt[U]]"), then the supplied argument simply does not fit the
+                // constraint's shape. Surface that as a constraint error now, rather than letting the dependent
+                // parameter fall through and fail later with a misleading "generic parameter not inferred" error that
+                // hides the real cause. Constraints that reference no other generics (eg "P: Copy") are left to the
+                // authoritative TypeEq-based EnforceGenericConstraintsAllArgs check, to avoid any RelaxedTypeEq
+                // false-negative rejecting a valid call here.
+                if (not candidates.IsEmpty() and not matched) {
+                    const auto constraint_drives_inference = genex::any_of(
+                        type_params, [&](auto const *other) { return constraint->ContainsGenerics(*other); });
+                    RaiseIf<SppGenericConstraintError>(
+                        constraint_drives_inference,
+                        {sm.CurrentScope, &owner_scope}, ERR_ARGS(*constraint, *inferred_type));
                 }
 
                 for (auto const &[inferred_name, inferred_val] : temp_gs) {
