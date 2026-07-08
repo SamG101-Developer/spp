@@ -89,6 +89,8 @@ auto spp::analyse::utils::type_utils::ConstraintEq(
     if (constraints.IsEmpty()) { return true; }
 
     // Check that all the constraints are satisfied.
+    // Todo: Use a non-throwing variant that returns true/false? we don't always want the error, and from TypeEq it's
+    //  horrible for performance.
     try {
         const auto gs = asts::GenericArgumentGroupAst::FromMap(generic_args);
         auto temp_constraints = constraints
@@ -1130,10 +1132,6 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraintsOneArg(
             if (matched) { break; }
         }
 
-        if (not matched) {
-            auto _ = 123;
-        }
-
         // If any constraint is not met, raise en error.
         RaiseIf<SppGenericConstraintError>(
             not matched, {&constraints_owner_scope, &concrete_scope},
@@ -1305,9 +1303,10 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData &meta)
     -> Shared<asts::TypeAst> {
-    //
+    // Todo: always clone here? performance hit i think.
     using asts::generate::common_types::SelfType;
     const auto true_self_type = scope.GetEnclosingSelfType(meta);
+    if (true_self_type == nullptr) { return AstClone(&type); }
 
     //
     auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
