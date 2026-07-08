@@ -261,7 +261,7 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
     NameFnArgs(fn_args, fn_params, *sm);
     NameGnArgs(explicit_gn_args, gn_params, *dynamic_shared_cast<asts::Ast>(fn_proto.Name), *sm, *meta);
 
-    // The inference source is all of the function arguments (except for "self")
+    // The inference source is all the function arguments (except for "self")
     auto generic_infer_source = fn_args.GetKeywordArgs()
         | genex::views::remove_if([](auto const &a) { return a->Name->Val == "self"; })
         | genex::views::transform([sm, meta](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
@@ -395,6 +395,28 @@ auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
     }
 }
 
+namespace {
+    /**
+     * Determine whether a (stripped) parameter type refers to a generic that is "rigid" at the call site: ie a
+     * generic parameter belonging to a scope that encloses the caller, and so is already fixed rather than being
+     * inferred/substituted for this particular call.
+     *
+     * When a parameter's type is such a rigid generic (eg calling @code slice_ref(from: I, into: I)@endcode from within
+     * a method of @code sup [V, I] SliceRef[V, I]@endcode), the argument must match that generic exactly. This is
+     * different from the "matches anything" behaviour of @code RelaxedTypeEq@endcode, which is only appropriate when a
+     * generic is genuinely free to be inferred for the call (eg a non-substitutable superclass generic in a sup-ext
+     * block, which is not visible as a generic from the caller's scope).
+     */
+    auto IsRigidGenericAtCaller(
+        spp::asts::TypeAst const &param_type,
+        spp::analyse::scopes::Scope const &caller_scope)
+        -> bool {
+        const auto stripped = param_type.WithoutGenerics()->WithoutConvention();
+        const auto sym = caller_scope.GetTypeSymbol(stripped);
+        return sym != nullptr and sym->IsGeneric;
+    }
+}
+
 auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
     asts::FunctionPrototypeAst const &fn_proto,
@@ -453,7 +475,7 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
         {}, [&](asts::FunctionCallArgumentKeywordAst *arg) { return genex::position(func_param_names, [&arg](auto const &param) { return *arg->Name == *param; }); });
 
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->GetAllParams())) {
-        auto p_type = fn_scope->GetTypeSymbol(param->Type)->FqName()->WithConvention(AstClone(param->Type->GetConvention()));
+        auto p_type = fn_scope->GetTypeSymbol(param->Type)->FqName()->WithConvention(asts::AstClone(param->Type->GetConvention()));
         if (p_type->IsSelfType()) {
             p_type = asts::AstClone(meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>()->Lhs->To<asts::TypeAst>())->WithConvention(asts::AstClone(p_type->GetConvention()));
         }
@@ -477,11 +499,12 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
         // superclass in sup-ext that cannot be substituted because they can be anything, so reverse type check
         // them with the "relaxed" variation. This is the only place this is required. Check testing with type
         // aliases to be sure.
-        // Todo: This is an issue bcoz prototypes still contain generics if they are from the sup block.
-        // Todo: Only an issue in final codegen.
         else if (not TypeEq(*p_type, *a_type, *fn_scope, *sm->CurrentScope)) {
+            // If the parameter's type is a generic that is rigid at the call site (defined in a scope
+            // enclosing the caller, so already fixed), the argument must match it exactly.
+            const auto param_is_rigid_generic = IsRigidGenericAtCaller(*p_type, *sm->CurrentScope);
             RaiseIf<SppTypeMismatchError>(
-                not RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp),
+                param_is_rigid_generic or not RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp),
                 {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
         }
     }
