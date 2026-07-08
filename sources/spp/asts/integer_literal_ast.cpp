@@ -18,6 +18,7 @@ import spp.lex.tokens;
 import spp.utils.strings;
 import ankerl.unordered_dense;
 import boost;
+import genex;
 import llvm;
 
 SPP_MOD_BEGIN
@@ -104,10 +105,15 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
     using spp::utils::strings::NormaliseIntegerString;
     using analyse::errors::SppIntegerOutOfBoundsError;
 
+    // For oct, we need to change "0o" to "0" for boost compatiblity. Replace "o" with "0".
+    auto data = Val->TokenData;
+    data |= genex::actions::replace('o', '0');
+
+
     // Get the lower and upper bounds as big ints.
     Type = Type.empty() ? "s32" : Type;
     auto const &[lower, upper] = kIntegerBounds.at(Type);
-    auto mapped_val = NormaliseIntegerString(Val->TokenData);
+    auto mapped_val = NormaliseIntegerString(data);
     if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
         mapped_val.backend().negate();
     }
