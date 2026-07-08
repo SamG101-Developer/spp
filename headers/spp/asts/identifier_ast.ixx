@@ -10,6 +10,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -20,6 +21,7 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, Enable
 
     static auto FromType(TypeAst const &val) -> Unique<IdentifierAst>;
     explicit IdentifierAst(std::size_t pos, decltype(Val) val);
+    static auto MappedFromTok(TokenAst const &tok, decltype(Val) val) -> Unique<IdentifierAst>;
     ~IdentifierAst() override;
 
     auto operator<=>(IdentifierAst const &that) const -> Ordering;
@@ -52,6 +54,7 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, Enable
 
 private:
     std::size_t _Pos;
+    std::size_t _ForTok = 0;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

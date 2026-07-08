@@ -31,6 +31,8 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
     TokOp(std::move(tok_op)),
     Rhs(std::move(rhs)),
     _MappedFunc(nullptr) {
+    Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
+    Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
 
 spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
@@ -38,13 +40,13 @@ spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 auto spp::asts::BinaryExpressionAst::PosStart() const
     -> std::size_t {
     // Use the left hand side operand.
-    return Lhs != nullptr ? Lhs->PosStart() : _MappedFunc->PosStart();
+    return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
 auto spp::asts::BinaryExpressionAst::PosEnd() const
     -> std::size_t {
     // Use the right hand side operand.
-    return Rhs ? Rhs->PosEnd() : _MappedFunc->PosEnd();
+    return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
 auto spp::asts::BinaryExpressionAst::Clone() const
@@ -53,6 +55,7 @@ auto spp::asts::BinaryExpressionAst::Clone() const
     auto ast = MakeUnique<BinaryExpressionAst>(
         AstClone(Lhs), AstClone(TokOp), AstClone(Rhs));
     ast->_MappedFunc = _MappedFunc;
+    ast->Source = Source;
     return ast;
 }
 

@@ -17,7 +17,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
     /**
      * The left-hand side expression of the is expression. This is the first operand.
@@ -33,6 +32,11 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
      * The right-hand side expression of the is expression. This is the second operand.
      */
     Unique<CasePatternVariantAst> Rhs;
+
+    struct {
+        std::size_t OriginalPosStart;
+        std::size_t OriginalPosEnd;
+    } Source;
 
     /**
      * Construct the IsExpressionAst with the arguments matching the members.

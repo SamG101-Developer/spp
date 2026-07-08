@@ -31,6 +31,8 @@ spp::asts::IsExpressionAst::IsExpressionAst(
     Rhs(std::move(rhs)),
     _MappedFunc(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokOp, lex::SppTokenType::KW_IS, "is");
+    Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
+    Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
 
 spp::asts::IsExpressionAst::~IsExpressionAst() = default;
@@ -38,13 +40,13 @@ spp::asts::IsExpressionAst::~IsExpressionAst() = default;
 auto spp::asts::IsExpressionAst::PosStart() const
     -> std::size_t {
     // Use the lhs, or the mapped function.
-    return Lhs ? Lhs->PosStart() : _MappedFunc->PosStart();
+    return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
 auto spp::asts::IsExpressionAst::PosEnd() const
     -> std::size_t {
     // Use the rhs, or the mapped function.
-    return Rhs ? Rhs->PosEnd() : _MappedFunc->PosEnd();
+    return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
 auto spp::asts::IsExpressionAst::Clone() const

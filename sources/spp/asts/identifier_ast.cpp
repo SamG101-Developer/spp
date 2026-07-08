@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.visibility_utils;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -32,6 +33,16 @@ spp::asts::IdentifierAst::IdentifierAst(
     decltype(Val) val) :
     Val(std::move(val)),
     _Pos(pos) {
+}
+
+auto spp::asts::IdentifierAst::MappedFromTok(
+    TokenAst const &tok,
+    decltype(Val) val)
+    -> Unique<IdentifierAst> {
+    //
+    auto id = MakeUnique<IdentifierAst>(tok.PosStart(), std::move(val));
+    id->_ForTok = tok.TokenData.length();
+    return id;
 }
 
 spp::asts::IdentifierAst::~IdentifierAst() = default;
@@ -76,7 +87,7 @@ auto spp::asts::IdentifierAst::PosStart() const
 
 auto spp::asts::IdentifierAst::PosEnd() const
     -> std::size_t {
-    return _Pos + Val.length();
+    return _ForTok ? _Pos + _ForTok : _Pos + Val.length();
 }
 
 auto spp::asts::IdentifierAst::Clone() const

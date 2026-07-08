@@ -40,6 +40,11 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
      */
     Unique<ExpressionAst> Rhs;
 
+    struct {
+        std::size_t OriginalPosStart;
+        std::size_t OriginalPosEnd;
+    } Source;
+
     /**
      * Construct the BinaryExpressionAst with the arguments matching the members.
      * @param[in] lhs The left-hand side expression of the binary expression.
