@@ -619,9 +619,9 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
         }
 
         // Otherwise, attach the single argument convention and value.
-        kw_arg->Conv = asts::AstClone(positional_arg->Conv);
+        kw_arg->Conv = std::move(positional_arg->Conv);
         kw_arg->SetSelfType(positional_arg->GetSelfType());
-        kw_arg->Val = asts::AstClone(positional_arg->Val);
+        kw_arg->Val = std::move(positional_arg->Val);
         a_group.Args[i] = std::move(kw_arg);
     }
 }
