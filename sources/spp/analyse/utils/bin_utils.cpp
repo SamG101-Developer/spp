@@ -82,8 +82,8 @@ auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
 
     // Get the method names based on the operator token.
     auto method_name = kBinMethods.at(new_bin_expr->TokOp->TokenType);
-    auto method_name_wrapped = MakeShared<asts::IdentifierAst>(
-        new_bin_expr->TokOp->PosStart(), std::move(method_name));
+    auto method_name_wrapped = asts::IdentifierAst::MappedFromTok(
+        *new_bin_expr->TokOp, std::move(method_name));
 
     // Construct the function call AST.
     auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(method_name_wrapped));
