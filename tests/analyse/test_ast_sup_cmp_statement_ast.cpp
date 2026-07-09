@@ -7,12 +7,35 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppTypeMismatchError, R"(
     cls MyType { }
     sup MyType {
-        !public cmp n: std::number::USize = 123_uz
+        !public cmp n: USize = 123_uz
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut local_n = MyType::n
         local_n = "hello world"
+    }
+)");
+
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstSupCmpStatementAst,
+    test_invalid_direct_type_mismatch,
+    SppTypeMismatchError, R"(
+    cls MyType { }
+    sup MyType {
+        !public cmp n: USize = "hello world"
+    }
+)");
+
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstSupCmpStatementAst,
+    test_invalid_duplicate_name_in_sup,
+    SppIdentifierDuplicateError, R"(
+    cls MyType { }
+    sup MyType {
+        !public cmp n: USize = 123_uz
+        !public cmp n: USize = 456_uz
     }
 )");
 
@@ -23,10 +46,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMovingEscapingBorrowedMemoryError, R"(
     cls MyType { }
     sup MyType {
-        !public cmp n: (std::string_view::StrView, std::string_view::StrView) = ("hello world", "hello world")
+        !public cmp n: (StrView, StrView) = ("hello world", "hello world")
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut local_n = MyType::n
         local_n = ("hello world", "hello world")
     }
@@ -42,8 +65,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cmp n: T = m
     }
 
-    fun f() -> std::void::Void {
-        let mut x = MyType[std::number::USize, 123_uz]::n
+    fun f() -> Void {
+        let mut x = MyType[USize, 123_uz]::n
         x = "hello world"
     }
 )");
@@ -54,10 +77,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_simple, R"(
     cls MyType { }
     sup MyType {
-        !public cmp n: std::number::USize = 123_uz
+        !public cmp n: USize = 123_uz
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut local_n = MyType::n
         local_n = 456_uz
     }
@@ -73,21 +96,21 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cmp n: T = m
     }
 
-    fun f() -> std::void::Void {
-        let mut x = MyType[std::string_view::StrView, "123"]::n
+    fun f() -> Void {
+        let mut x = MyType[StrView, "123"]::n
     }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstSupCmpStatementAst,
-    test_invalid_with_generic_copy, R"(
+    test_valid_with_generic_copy, R"(
     cls MyType[T, cmp m: T] { }
     sup [T: Copy, cmp m: T] MyType[T, m] {
         !public cmp n: T = m
     }
 
-    fun f() -> std::void::Void {
-        let mut x = MyType[std::number::S32, 123]::n
+    fun f() -> Void {
+        let mut x = MyType[S32, 123]::n
     }
 )");

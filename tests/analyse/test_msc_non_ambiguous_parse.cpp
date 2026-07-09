@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestNonAmbiguousParse,
     test_valid_calling_with_cmp_integer, R"(
@@ -14,7 +13,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestNonAmbiguousParse,

@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_simple, R"(
@@ -12,7 +11,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A(b=true)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
@@ -29,7 +27,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_number, R"(
@@ -41,7 +38,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A(b=123)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
@@ -58,7 +54,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         c = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
@@ -82,7 +77,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
     test_valid_number, R"(
@@ -99,7 +93,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_simple, R"(
@@ -115,7 +108,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         n = 0
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
@@ -139,7 +131,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_number, R"(
@@ -156,7 +147,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionReturnTypeAlias,
     test_valid_alias_simple, R"(
@@ -164,7 +154,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret true
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionReturnTypeAlias,
@@ -181,7 +170,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionReturnTypeAlias,
     test_valid_alias_number, R"(
@@ -189,7 +177,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret 123
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionParameterTypeAlias,
@@ -201,7 +188,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g(true)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionParameterTypeAlias,
@@ -217,7 +203,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionParameterTypeAlias,
     test_valid_alias_number, R"(
@@ -229,7 +214,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterCompTypeAlias,
     test_valid_alias_simple, R"(
@@ -240,7 +224,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g[true]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterCompTypeAlias,
@@ -256,7 +239,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterCompTypeAlias,
     test_valid_alias_number, R"(
@@ -267,7 +249,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g[123]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterTypeOptionalDefaultTypeAlias,
@@ -281,7 +262,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterTypeOptionalDefaultTypeAlias,
@@ -301,7 +281,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterTypeOptionalDefaultTypeAlias,
     test_valid_alias_number, R"(
@@ -315,7 +294,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentTypeTypeAlias,
     test_valid_simple, R"(
@@ -328,7 +306,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentTypeTypeAlias,
@@ -348,7 +325,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentTypeTypeAlias,
     test_valid_number, R"(
@@ -362,7 +338,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
@@ -375,7 +350,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
@@ -392,7 +366,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_number, R"(
@@ -402,7 +375,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
@@ -411,7 +383,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         data = std::vector::Vec[std::number::U8]::new()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
@@ -424,7 +395,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_number, R"(
@@ -432,7 +402,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let S32() = n
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementTypeAlias,
@@ -443,7 +412,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         t = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementTypeAlias,
@@ -457,7 +425,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementTypeAlias,
     test_valid_number, R"(
@@ -467,7 +434,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         n = 0
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCmpStatementTypeAlias,
@@ -479,7 +445,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCmpStatementTypeAlias,
@@ -494,7 +459,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCmpStatementTypeAlias,
     test_valid_number, R"(
@@ -506,7 +470,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementUninitializedTypeAlias,
     test_valid_simple, R"(
@@ -516,7 +479,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementUninitializedTypeAlias,
@@ -530,7 +492,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementUninitializedTypeAlias,
     test_valid_number, R"(
@@ -541,7 +502,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementInitializedTypeAlias,
     test_valid_simple, R"(
@@ -550,7 +510,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b = false
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementInitializedTypeAlias,
@@ -563,7 +522,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementInitializedTypeAlias,
     test_valid_number, R"(
@@ -573,7 +531,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestObjectInitializerTypeAlias,
     test_valid_simple, R"(
@@ -582,7 +539,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let c: std::boolean::Bool = b
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestObjectInitializerTypeAlias,
@@ -595,12 +551,186 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestObjectInitializerTypeAlias,
     test_valid_number, R"(
     fun f() -> std::void::Void {
         let n: S32 = S32()
         let m: std::number::S32 = n
+    }
+)");
+
+// --- Type-shorthand positions: an alias must work inside tuple/array/variant/function types. ---
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTupleTypeAlias,
+    test_valid_simple, R"(
+    fun f(mut t: (Bool, Bool)) -> std::void::Void {
+        t = (true, false)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTupleTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = std::vector::Vec[ZZ]
+
+    fun f(mut t: (MyVec[Bool], Bool)) -> std::void::Void {
+        t = (MyVec[Bool]::new(), false)
+        t = (std::vector::Vec[Bool]::new(), true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTupleTypeAlias,
+    test_valid_number, R"(
+    fun f(mut t: (S32, S32)) -> std::void::Void {
+        t = (1, 2)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestArrayTypeAlias,
+    test_valid_simple, R"(
+    fun f(mut a: [Bool; 2_uz]) -> std::void::Void {
+        a = [true, false]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestArrayTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = std::vector::Vec[ZZ]
+
+    fun f(mut a: [MyVec[Bool]; 2_uz]) -> std::void::Void {
+        a = [MyVec[Bool]::new(), std::vector::Vec[Bool]::new()]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestArrayTypeAlias,
+    test_valid_number, R"(
+    fun f(mut a: [S32; 3_uz]) -> std::void::Void {
+        a = [1, 2, 3]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypeAlias,
+    test_valid_simple, R"(
+    fun f(mut x: Bool or S32) -> std::void::Void {
+        x = true
+        x = 123
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = std::vector::Vec[ZZ]
+
+    fun f(mut x: MyVec[Bool] or Bool) -> std::void::Void {
+        x = MyVec[Bool]::new()
+        x = std::vector::Vec[Bool]::new()
+        x = true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypeAlias,
+    test_valid_number, R"(
+    fun f(mut x: S32 or Bool) -> std::void::Void {
+        x = 123
+        x = false
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFunctionTypeAlias,
+    test_valid_simple, R"(
+    fun f(g: FunRef[(Bool,), Bool]) -> std::void::Void {
+        let mut r = g(true)
+        r = false
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFunctionTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = std::vector::Vec[ZZ]
+
+    fun f(g: FunRef[(MyVec[Bool],), Bool]) -> std::void::Void {
+        let mut r = g(std::vector::Vec[Bool]::new())
+        r = false
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFunctionTypeAlias,
+    test_valid_number, R"(
+    fun f(g: FunRef[(S32,), S32]) -> std::void::Void {
+        let mut r = g(1)
+        r = 0
+    }
+)");
+
+// --- Generic constraint position: an alias must work as a `[T: Alias]` constraint. ---
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericConstraintTypeAlias,
+    test_valid_simple, R"(
+    fun g[T: Copy](t: T) -> std::void::Void { }
+
+    fun f() -> std::void::Void {
+        g(true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericConstraintTypeAlias,
+    test_valid_complex, R"(
+    cls Base { }
+    type BaseAlias = Base
+
+    cls Derived { }
+    sup Derived ext Base { }
+
+    fun g[T: BaseAlias](t: T) -> std::void::Void { }
+
+    fun f() -> std::void::Void {
+        let d = Derived()
+        g(d)
+    }
+)");
+
+// --- Nested type access through an alias: `Alias::Inner` must resolve like `Underlying::Inner`. ---
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNestedTypeAccessAlias,
+    test_valid_simple, R"(
+    cls Holder { }
+    sup Holder {
+        !public type Inner = Bool
+    }
+
+    type HolderAlias = Holder
+
+    fun f(mut x: HolderAlias::Inner) -> std::void::Void {
+        x = true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNestedTypeAccessAlias,
+    test_valid_complex, R"(
+    cls Holder[T] { }
+    sup [T] Holder[T] {
+        !public type Inner = T
+    }
+
+    type HolderAlias[T] = Holder[T]
+
+    fun f(mut x: HolderAlias[Bool]::Inner) -> std::void::Void {
+        x = true
     }
 )");

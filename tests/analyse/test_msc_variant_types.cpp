@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_1, R"(
@@ -8,7 +7,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a = "hello world"
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
@@ -18,7 +16,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_3, R"(
@@ -26,7 +23,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a = true
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
@@ -36,7 +32,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_subset_variant_2, R"(
@@ -44,7 +39,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a = b
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
@@ -54,7 +48,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_equal_variant, R"(
@@ -63,7 +56,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_collapse_arguments, R"(
@@ -71,7 +63,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a = b
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
@@ -82,7 +73,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_superset_variant,
@@ -92,7 +82,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_invalid_variant_some_overlap,
@@ -101,7 +90,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         a = b
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
@@ -115,7 +103,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
     test_variant_including_a_borrowed_type_2,
@@ -124,7 +111,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret a
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
@@ -136,5 +122,97 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (Some(val="hello world"), 123_u64)
         let a = g(t)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_variant_as_return_type, R"(
+    fun f() -> Bool or Str {
+        ret true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_variant_as_let_annotation, R"(
+    fun f() -> Void {
+        let x: Bool or Str = true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_variant_as_function_argument, R"(
+    fun g(x: Bool or Str) -> Void { }
+
+    fun f() -> Void {
+        g(true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_variant_as_class_attribute, R"(
+    cls A {
+        !public x: Bool or Str
+    }
+
+    fun f() -> Void {
+        let a = A(x=true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_variant_as_generic_argument, R"(
+    fun f() -> Void {
+        let v = Vec[Bool or Str]()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_variant_as_array_element, R"(
+    fun f(mut a: [Bool or StrView; 2_uz]) -> Void {
+        a = [true, "hello"]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    DISABLED_test_sub_variant_as_function_argument, R"(
+    fun g(x: Str or U64 or Bool) -> Void { }
+
+    fun f(b: Str or U64) -> Void {
+        g(b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    DISABLED_test_sub_variant_as_return_type, R"(
+    fun f(b: Str or U64) -> Str or U64 or Bool {
+        ret b
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    DISABLED_test_sub_variant_as_let_annotation, R"(
+    fun f(b: Str or U64) -> Void {
+        let x: Str or U64 or Bool = b
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    DISABLED_test_sub_variant_as_class_attribute, R"(
+    cls A {
+        !public x: Str or U64 or Bool
+    }
+
+    fun f(b: Str or U64) -> Void {
+        let a = A(x=b)
     }
 )");

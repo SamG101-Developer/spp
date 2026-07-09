@@ -1,16 +1,14 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
     test_invalid_memory_assign_attribute_to_non_initialized_value,
     SppUninitializedMemoryUseError, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut x: Str
         x.data = Vec[U8]()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
@@ -19,13 +17,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { !public str: StrView }
     cls B { !public a: A }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut b = B()
         let a = b.a
         b.a.str = "hello"
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
@@ -35,13 +32,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls B { !public a: A }
     cls C { !public b: B }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut c = C()
         let b = c.b
         c.b.a.str = "hello"
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
@@ -51,13 +47,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls B { !public a: A }
     cls C { !public b: B }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut c = C()
         let b = c.b.a
         c.b.a.str = "hello"
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPartialMoves,
@@ -66,7 +61,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls B { !public a: A }
     cls C { !public b: B }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut c = C()
         let x = c.b.a.str
         c.b.a.str = "hello"

@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_assignment, R"(
@@ -13,7 +12,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_let_statement, R"(
@@ -24,7 +22,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: Bool = g()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
@@ -37,7 +34,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_gen_expression, R"(
@@ -48,7 +44,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         gen g()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
@@ -77,7 +72,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_class_attribute, R"(
@@ -94,7 +88,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_generic_class_attribute_explicit_argument, R"(
@@ -110,7 +103,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = MyType[T=StrView](a=g())
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestReturnTypeOverloading,
@@ -129,7 +121,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_function_parameter, R"(
@@ -142,7 +133,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestReturnTypeOverloading,
     test_invalid_return_type_overloading_infer_from_function_parameter,
@@ -154,5 +144,29 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         h(g())
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestReturnTypeOverloading,
+    test_invalid_return_type_overloading_no_context,
+    SppFunctionCallOverloadAmbiguousError, R"(
+    fun g() -> StrView { ret "" }
+    fun g() -> Bool { ret false }
+
+    fun f() -> Void {
+        let x = g()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestReturnTypeOverloading,
+    test_invalid_return_type_overloading_target_matches_no_overload,
+    SppFunctionCallOverloadAmbiguousError, R"(
+    fun g() -> StrView { ret "" }
+    fun g() -> Bool { ret false }
+
+    fun f() -> Void {
+        let x: S32 = g()
     }
 )");

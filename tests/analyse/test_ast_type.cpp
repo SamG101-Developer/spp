@@ -178,7 +178,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let x: MyType[std::number::S32]::X
+        let x: MyType[S32]::X
         x = 10
     }
 )");
@@ -206,7 +206,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let x: TypeC[std::number::S32]::InnerC[StrView]::InnerB[Bool]::InnerA[std::number::U64]
+        let x: TypeC[S32]::InnerC[StrView]::InnerB[Bool]::InnerA[U64]
         x = (10, "hello", false, 10_u64)
     }
 )");
@@ -222,5 +222,48 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(a: TypeA::X) -> TypeA::X {
         ret "hello world"
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeAst,
+    test_valid_inherited_nested_type, R"(
+    cls Base { }
+    sup Base {
+        !public
+        type X = StrView
+    }
+
+    cls C { }
+    sup C ext Base { }
+
+    fun f() -> Void {
+        let x: C::X
+        x = "hello"
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestTypeAst,
+    test_invalid_ambiguous_nested_type,
+    SppAmbiguousMemberAccessError, R"(
+    cls Base1 { }
+    sup Base1 {
+        !public
+        type X = StrView
+    }
+
+    cls Base2 { }
+    sup Base2 {
+        !public
+        type X = Bool
+    }
+
+    cls C { }
+    sup C ext Base1 { }
+    sup C ext Base2 { }
+
+    fun f() -> Void {
+        let x: C::X
     }
 )");

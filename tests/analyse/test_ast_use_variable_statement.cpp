@@ -1,13 +1,11 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestUseVariableStatementAst,
     test_valid_use_variable_statement_reduction,
     R"(
     use std::abort::abort
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestUseVariableStatementAst,
@@ -20,14 +18,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUseVariableStatementAst,
     test_invalid_use_variable_statement_undefined_constant,
     SppIdentifierUnknownError, R"(
     use std::abort::invalid
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUseVariableStatementAst,
@@ -36,10 +32,24 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::abort
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUseVariableStatementAst,
     test_invalid_use_variable_statement_undefined_namespace,
     SppIdentifierUnknownError, R"(
     use std::other::abort
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestUseVariableStatementAst,
+    test_invalid_use_variable_statement_duplicate_explicit,
+    SppIdentifierDuplicateError, R"(
+    use std::abort::abort
+    use std::abort::abort
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestUseVariableStatementAst,
+    test_invalid_use_variable_statement_duplicate_of_prelude,
+    SppIdentifierDuplicateError, R"(
+    use std::annotations::public
 )");

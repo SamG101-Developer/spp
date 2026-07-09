@@ -310,3 +310,58 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = A().a
     }
 )");
+
+// Methods (functions in a sup block) at the SAME level: identical signatures conflict, but different
+// signatures are a valid overload set (overriding across levels is covered in test_msc_overrides).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestDuplicateMembers_SupFunction,
+    test_invalid_superimposition_function_same_levels_identical_signature,
+    SppFunctionPrototypeConflictError, R"(
+    cls A { }
+    sup A {
+        !public fun f(&self) -> std::void::Void { }
+    }
+
+    sup A {
+        !public fun f(&self) -> std::void::Void { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestDuplicateMembers_SupFunction,
+    test_invalid_superimposition_function_same_block_identical_signature,
+    SppFunctionPrototypeConflictError, R"(
+    cls A { }
+    sup A {
+        !public fun f(&self) -> std::void::Void { }
+        !public fun f(&self) -> std::void::Void { }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestDuplicateMembers_SupFunction,
+    test_valid_superimposition_function_same_levels_different_signature, R"(
+    cls A { }
+    sup A {
+        !public fun f(&self) -> std::void::Void { }
+    }
+
+    sup A {
+        !public fun f(&self, a: std::boolean::Bool) -> std::void::Void { }
+    }
+)");
+
+// Two coroutines with identical signatures conflict just like two subroutines do.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestDuplicateMembers_SupFunction,
+    test_invalid_superimposition_coroutine_same_levels_identical_signature,
+    SppFunctionPrototypeConflictError, R"(
+    cls A { }
+    sup A {
+        !public cor c(&self) -> std::generator::Gen[std::boolean::Bool] { }
+    }
+
+    sup A {
+        !public cor c(&self) -> std::generator::Gen[std::boolean::Bool] { }
+    }
+)");

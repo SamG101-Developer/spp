@@ -307,3 +307,56 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x.a = [1, 2, 3, 4]
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericInference_Variant,
+    test_valid_infer_from_optional_argument, R"(
+    fun f[T](a: Opt[T]) -> T { ret T() }
+
+    fun g() -> Void {
+        let opt: Opt[S32] = Some(val=123)
+        let mut x = f(opt)
+        x = 456
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericInference_Variant,
+    test_valid_infer_into_variant_return, R"(
+    fun f[T](a: T) -> Opt[T] { ret Some(val=a) }
+
+    fun g() -> Void {
+        let x = f(123)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericInference_Nested,
+    test_valid_infer_from_borrow_of_nested_generic, R"(
+    fun f[T](a: &Vec[T]) -> T { ret T() }
+
+    fun g(v: Vec[S32]) -> Void {
+        let mut x = f(&v)
+        x = 123
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericInference_Variadic,
+    test_valid_infer_variadic_type_args_as_pack, R"(
+    fun f[..Ts]() -> Void { }
+
+    fun g() -> Void {
+        f[S32, Bool]()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericInference_Variadic,
+    test_valid_infer_type_from_variadic_function_parameter, R"(
+    fun f[T](..a: T) -> Void { }
+
+    fun g() -> Void {
+        f(1, 2, 3)
+    }
+)");
