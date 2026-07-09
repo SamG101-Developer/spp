@@ -531,6 +531,8 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData &meta)
     -> void {
+    using errors::SppGenericConstraintError;
+
     // Extract important information.
     auto p_names = p_group.GetTypeParams()
         | genex::views::transform([](auto &&x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
@@ -573,7 +575,12 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
             | genex::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
             | genex::to<Vec>();
         if (matching.IsEmpty()) { continue; }
-        type_utils::EnforceGenericConstraintsOneArg(p_cons, *matching[0]->Val, owner_scope, *sm.CurrentScope);
+
+        // Raise an error if any constraint of this argument is not satisfied.
+        const auto unsatisfied = type_utils::EnforceGenericConstraintsOneArg(p_cons, *matching[0]->Val, owner_scope, *sm.CurrentScope);
+        RaiseIf<SppGenericConstraintError>(
+            unsatisfied != nullptr, {&owner_scope, sm.CurrentScope},
+            ERR_ARGS(*unsatisfied, *matching[0]->Val));
     }
 }
 

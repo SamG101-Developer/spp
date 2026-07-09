@@ -47,8 +47,7 @@ namespace spp::analyse::utils::type_utils {
         Vec<Shared<asts::TypeAst>> const &constraints,
         asts::TypeAst const &type,
         scopes::Scope const &constraint_scope,
-        scopes::Scope const &type_scope,
-        GenericInferenceMap const &generic_args)
+        scopes::Scope const &type_scope)
         -> bool;
 
     /**
@@ -293,12 +292,18 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm)
         -> scopes::Scope*;
 
+    /**
+     * Check that @p concrete_type (and its supertypes) satisfy every constraint in @p constraints. Returns the first
+     * unsatisfied constraint, or @c nullptr if they are all satisfied. This is a non-throwing check so that hot callers
+     * (eg @c ConstraintEq via @c TypeEq) can branch on the result without paying for exception machinery; callers that
+     * want an error should raise @c SppGenericConstraintError from the returned constraint.
+     */
     SPP_EXP_FUN auto EnforceGenericConstraintsOneArg(
         SharedVec<asts::TypeAst> const &constraints,
         asts::TypeAst const &concrete_type,
         scopes::Scope const &constraints_owner_scope,
         scopes::Scope const &concrete_scope)
-        -> void;
+        -> asts::TypeAst const*;
 
     SPP_EXP_FUN auto DedupVariableInnerTypes(
         asts::TypeAst const &type,

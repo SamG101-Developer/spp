@@ -81,27 +81,14 @@ auto spp::analyse::utils::type_utils::ConstraintEq(
     Vec<Shared<asts::TypeAst>> const &constraints,
     asts::TypeAst const &type,
     scopes::Scope const &constraint_scope,
-    scopes::Scope const &type_scope,
-    GenericInferenceMap const &generic_args)
+    scopes::Scope const &type_scope)
     -> bool {
     //
-    using errors::SppGenericConstraintError;
     if (constraints.IsEmpty()) { return true; }
 
-    // Check that all the constraints are satisfied.
-    // Todo: Use a non-throwing variant that returns true/false? we don't always want the error, and from TypeEq it's
-    //  horrible for performance.
-    try {
-        const auto gs = asts::GenericArgumentGroupAst::FromMap(generic_args);
-        auto temp_constraints = constraints
-            | genex::views::transform([&](auto const &constraint) { return constraint->SubstituteGenerics(gs->GetAllArgs()); })
-            | genex::to<Vec>();
-        EnforceGenericConstraintsOneArg(constraints, type, constraint_scope, type_scope);
-        return true;
-    }
-
-    // If an error was thrown, there is a constraint mismatch.
-    catch (SppGenericConstraintError const &) { return false; }
+    // Check that all the constraints are satisfied. Use the non-throwing variant: this is called from TypeEq, so paying
+    // for exception machinery on every mismatch is horrible for performance.
+    return EnforceGenericConstraintsOneArg(constraints, type, constraint_scope, type_scope) == nullptr;
 }
 
 auto spp::analyse::utils::type_utils::TypeEq(
@@ -245,7 +232,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     if (stripped_rhs_sym->IsGeneric) {
         const auto t = dynamic_shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
-        if (check_constraints and not ConstraintEq(stripped_rhs_sym->GenericConstraints, lhs_type, rhs_scope, lhs_scope, generic_args)) { return false; }
+        if (check_constraints and not ConstraintEq(stripped_rhs_sym->GenericConstraints, lhs_type, rhs_scope, lhs_scope)) { return false; }
         return true;
     }
 
@@ -257,7 +244,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     if (stripped_lhs_sym->IsGeneric) {
         const auto t = dynamic_shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
-        if (check_constraints and not ConstraintEq(stripped_lhs_sym->GenericConstraints, rhs_type, lhs_scope, rhs_scope, generic_args)) { return false; }
+        if (check_constraints and not ConstraintEq(stripped_lhs_sym->GenericConstraints, rhs_type, lhs_scope, rhs_scope)) { return false; }
         return true;
     }
 
@@ -1099,10 +1086,9 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraintsOneArg(
     asts::TypeAst const &concrete_type,
     scopes::Scope const &constraints_owner_scope,
     scopes::Scope const &concrete_scope)
-    -> void {
+    -> asts::TypeAst const* {
     // Note: concrete scope is where the type is being used; concrete_sym->LinkedScope is the scope of the type
     // definition.
-    using errors::SppGenericConstraintError;
 
     // Determine the concrete symbol, and if non-generic, add its scope.
     const auto concrete_sym = concrete_scope.GetTypeSymbol(concrete_type.shared_from_this());
@@ -1132,11 +1118,12 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraintsOneArg(
             if (matched) { break; }
         }
 
-        // If any constraint is not met, raise en error.
-        RaiseIf<SppGenericConstraintError>(
-            not matched, {&constraints_owner_scope, &concrete_scope},
-            ERR_ARGS(*constraint, concrete_type));
+        // If any constraint is not met, return it so the caller can decide whether to raise an error.
+        if (not matched) { return constraint.get(); }
     }
+
+    // All constraints are satisfied.
+    return nullptr;
 }
 
 auto spp::analyse::utils::type_utils::DedupVariableInnerTypes(
