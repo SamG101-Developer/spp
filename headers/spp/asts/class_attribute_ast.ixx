@@ -53,7 +53,7 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
     Unique<ExpressionAst> DefaultVal;
 
     struct {
-        std::shared_ptr<TypeAst> OriginalType;
+        Shared<TypeAst> OriginalType;
     } Source;
 
     /**
