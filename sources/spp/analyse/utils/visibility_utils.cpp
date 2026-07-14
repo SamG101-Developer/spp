@@ -1,5 +1,4 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.visibility_utils;
@@ -12,7 +11,6 @@ import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.visibility;
-import genex;
 
 auto spp::analyse::utils::visibility_utils::VisibilityName(
     const asts::utils::Visibility vis)
@@ -53,7 +51,7 @@ auto spp::analyse::utils::visibility_utils::CheckTypeMemberVisibility(
         {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 
     // Protected class member: only accessible from the same or subclass, in the module that class was defined in.
-    const auto good_protected = good_private or (enclosing_scope and genex::contains(enclosing_scope->SupScopes(), &type_scope) and accessing_module == enclosing_scope->ParentModule());
+    const auto good_protected = good_private or (enclosing_scope and std::ranges::contains(enclosing_scope->SupScopes(), &type_scope) and accessing_module == enclosing_scope->ParentModule());
     RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kProtected and not good_protected,
         {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
@@ -90,7 +88,7 @@ auto spp::analyse::utils::visibility_utils::CheckModuleMemberVisibility(
         {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 
     // Protected module member: accessible from children modules.
-    const auto good_protected = good_private or genex::contains(accessing_module->Ancestors(), definition_module);
+    const auto good_protected = good_private or std::ranges::contains(accessing_module->Ancestors(), definition_module);
     return RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kProtected and not good_protected,
         {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));

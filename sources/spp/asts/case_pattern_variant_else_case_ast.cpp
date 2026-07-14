@@ -46,32 +46,32 @@ auto spp::asts::CasePatternVariantElseCaseAst::ToString() const
 }
 
 auto spp::asts::CasePatternVariantElseCaseAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward analysis into the case expression.
     CaseExpr->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantElseCaseAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the case expression.
     CaseExpr->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantElseCaseAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the comptime result from the case expression.
     CaseExpr->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantElseCaseAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Delegate code generation to the case expression.
     return CaseExpr->Stage11_CodeGen(sm, meta, ctx);

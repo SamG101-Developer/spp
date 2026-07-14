@@ -88,8 +88,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::ToString() const
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::errors::SppCompileTimeConstantError;
@@ -125,7 +125,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
 
     // Ensure the size is a constant expression (if symbolic).
-    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+    auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, sm->CurrentScope);
     Size->Stage9_CompTimeResolve(&tm, meta);
 
     RaiseIf<SppCompileTimeConstantError>(
@@ -138,8 +138,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -150,8 +150,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Convert the inner element to a compile-time value.
     Elem->Stage9_CompTimeResolve(sm, meta);
@@ -162,8 +162,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the size from the generic comp arg.
@@ -211,17 +211,20 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Alias the common utils functions and types.
     using generate::common_types::ArrayType;
 
     // Create the standard "std::array::Arr[T, n]" type, with generic arguments.
-    auto elem_type = Elem->InferType(sm, meta);
+    auto elem_type = AstClone(Elem->InferType(sm, meta));
     auto array_type = ArrayType(TokL->PosStart(), std::move(elem_type), AstClone(Size));
     array_type->Stage7_AnalyseSemantics(sm, meta);
-    return array_type;
+    CACHE_TYPE_INFERENCE_AND_RETURN(array_type);
 }
 
 SPP_MOD_END

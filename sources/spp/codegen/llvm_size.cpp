@@ -14,12 +14,10 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
-import genex;
-
 
 auto spp::codegen::SizeOf(
     analyse::scopes::ScopeManager const &sm,
-    Shared<asts::TypeAst> const &type)
+    asts::TypeAst const *type)
     -> std::size_t {
     //
     using analyse::utils::type_utils::TypeEq;
@@ -81,7 +79,7 @@ auto spp::codegen::SizeOf(
 
     // Array (fixed length) size is element size * length.
     if (TypeEq(*type->WithoutGenerics(), *ARR, *sm.CurrentScope, *sm.CurrentScope)) {
-        const auto element_type = type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+        const auto element_type = type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val.Get();
         const auto length = std::stoll(type->TypeParts().Back()->GnArgGroup->CompAt("n")->Val->To<asts::IntegerLiteralAst>()->Val->TokenData);
         return SizeOf(sm, element_type) * static_cast<std::size_t>(length);
     }
@@ -89,26 +87,25 @@ auto spp::codegen::SizeOf(
     // Tuple (sum the sizes of its contained types).
     if (TypeEq(*type->WithoutGenerics(), *TUP, *sm.CurrentScope, *sm.CurrentScope)) {
         const auto all_types = type->TypeParts().Back()->GnArgGroup->GetTypeArgs()
-            | genex::views::transform([&sm](auto &&x) { return SizeOf(sm, x->Val); })
-            | genex::to<Vec>();
-        const auto total_size = genex::fold_left_first(all_types, std::plus{});
-        return total_size;
+            | std::views::transform([&sm](auto &&x) { return SizeOf(sm, x->Val.Get()); })
+            | std::ranges::to<Vec>();
+        const auto total_size = std::ranges::fold_left_first(all_types, std::plus{});
+        return *total_size;
     }
 
     // Variant size is the maximum of its contained types + a discriminator (usize).
     if (TypeEq(*type->WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope)) {
         auto min_size = std::numeric_limits<std::size_t>::max();
         for (auto const &inner_type : type->TypeParts().Back()->GnArgGroup->GetTypeArgs()) {
-            min_size = std::min(min_size, SizeOf(sm, inner_type->Val));
+            min_size = std::min(min_size, SizeOf(sm, inner_type->Val.Get()));
         }
         return min_size + sizeof(std::size_t);
     }
 
     // Otherwise, sum the attributes of the struct/class.
     const auto all_types = analyse::utils::type_utils::GetAllAttrs(*type, &sm)
-        | genex::views::transform([](auto &&x) { return x.Second->FqName(); })
-        | genex::views::transform([&sm](auto &&x) { return SizeOf(sm, x); })
-        | genex::to<Vec>();
-    const auto total_size = genex::fold_left_first(all_types, std::plus{});
-    return total_size;
+        | std::views::transform([](auto &&x) { return x.Second->FqName(); })
+        | std::views::transform([&sm](auto &&x) { return SizeOf(sm, x); });
+    const auto total_size = std::ranges::fold_left_first(all_types, std::plus{});
+    return *total_size;
 }

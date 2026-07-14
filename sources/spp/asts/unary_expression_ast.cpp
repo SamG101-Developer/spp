@@ -51,8 +51,8 @@ auto spp::asts::UnaryExpressionAst::ToString() const
 }
 
 auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -65,43 +65,46 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     meta->Save();
-    meta->UnaryExpressionRhs = Expr.get();
+    meta->UnaryExpressionRhs = Expr.Get();
     Op->Stage7_AnalyseSemantics(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the right-hand-side.
     Expr->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the right-hand-side expression.
     meta->Save();
-    meta->UnaryExpressionRhs = Expr.get();
+    meta->UnaryExpressionRhs = Expr.Get();
     const auto lhs_val = Op->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();
     return lhs_val;
 }
 
 auto spp::asts::UnaryExpressionAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Infer the type of the right-hand-side expression, adjusted by the operator.
     meta->Save();
-    meta->UnaryExpressionRhs = Expr.get();
-    auto type = Op->InferType(sm, meta);
+    meta->UnaryExpressionRhs = Expr.Get();
+    const auto inferred = Op->InferType(sm, meta);
     meta->Restore();
 
-    return type;
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 SPP_MOD_END

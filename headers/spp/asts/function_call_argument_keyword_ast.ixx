@@ -12,7 +12,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 /**
  * The FunctionCallArgumentKeywordAst represents a keyword argument in a function call. It is forces the argument
  * to be matched by a keyword rather than an index.
@@ -22,7 +21,7 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCal
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the function
      * call.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
@@ -38,7 +37,7 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCal
      * @param val The expression that is being passed as the argument to the function call.
      */
     FunctionCallArgumentKeywordAst(
-        decltype(Name) name,
+        decltype(Name) &&name,
         decltype(TokAssign) &&tok_assign,
         decltype(Conv) &&conv,
         decltype(Val) &&val);

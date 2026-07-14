@@ -21,7 +21,6 @@ import spp.asts.token_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
@@ -31,7 +30,7 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
     auto ast = MakeUnique<SubroutinePrototypeAst>(
         AstCloneVec(Annotations), AstClone(TokCmp), AstClone(TokFun), AstClone(Name), AstClone(GnParamGroup),
         AstClone(FnParamGroup), AstClone(TokArrow), AstClone(ReturnType), AstClone(Impl));
-    ast->_AnnotationInfo = _AnnotationInfo
+    ast->_AnnotationInfo = _AnnotationInfo != nullptr
         ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
         : nullptr;
     ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
@@ -46,13 +45,13 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
     ast->InlineAnnotation = InlineAnnotation;
     ast->Visibility = Visibility;
     ast->_LlvmFunc = _LlvmFunc;
-    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.Get()); }
     return ast;
 }
 
 auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::type_utils::TypeEq;
@@ -61,19 +60,19 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.Get());
 
     // Update the meta information for enclosing function information.
     meta->Save();
-    meta->EnclosingFunctionFlavour = this->TokFun.get();
+    meta->EnclosingFunctionFlavour = this->TokFun.Get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType.Get());
     meta->EnclosingFunctionScope = sm->CurrentScope;
-    meta->EnclosingFunctionCmp = TokCmp.get();
+    meta->EnclosingFunctionCmp = TokCmp.Get();
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Handle the "!" never type.
-    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope->Children[0].get());
+    auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, sm->CurrentScope->Children[0].Get());
     meta->Save();
     meta->IgnoreMissingElseBranchForInference = true;
     const auto is_never = not Impl->Members.IsEmpty() and TypeEq(
@@ -92,7 +91,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     sm->MoveOutOfCurrentScope();
     meta->Restore(true);
-    meta->LoopReturnTypes->clear();
+    meta->LoopReturnTypes.clear();
 }
 
 auto spp::asts::SubroutinePrototypeAst::IsCoroutine() const

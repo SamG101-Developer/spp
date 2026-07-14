@@ -5,7 +5,6 @@ export module spp.asts.type_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
-import spp.asts.type_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -27,6 +26,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct UseStatementAst;
 }
 
+COMMON_AST_IMPORTS
+
 /**
  * The TypeStatementAst is used to alias a type to a new name in this scope. It can also use generic parameters for more
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
@@ -37,7 +38,7 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMembe
 
     analyse::scopes::Scope *_TrackingScope = nullptr;
 
-    Shared<TypeAst> MappedOldType = nullptr; // TODO: Hide with accessors?
+    Unique<TypeAst> MappedOldType; // TODO: Hide with accessors?
 
     /**
      * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
@@ -53,14 +54,14 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMembe
      * The type that this type statement is defining. For example, for @code type Str = std::Str@endcode, the
      * @c new_type is @c Str.
      */
-    Shared<TypeIdentifierAst> NewType;
+    Unique<TypeIdentifierAst> NewType;
 
     /**
      * The generic parameter group for the new type. For example,
      * @code type MyVector[T] = Vec[T, A=SomeAlloc]@endcode defines @c T as a generic internal to this type
      * statement only.
      */
-    Shared<GenericParameterGroupAst> GnParamGroup;
+    Unique<GenericParameterGroupAst> GnParamGroup;
 
     /**
      * The @c = token that separates the new type from the old type.
@@ -71,10 +72,10 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMembe
      * The old (fully qualified) type that this type statement is defining. For example, for
      * @code type Str = std::Str@endcode, the fully qualified type is @c std::Str.
      */
-    Shared<TypeAst> OldType;
+    Unique<TypeAst> OldType;
 
     struct {
-        Shared<TypeAst> OriginalOldType;
+        Unique<TypeAst> OriginalOldType;
     } Source;
 
     /**
@@ -100,25 +101,25 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMembe
 
     auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage2_GenTopLvlScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *) -> void override;
 
-    auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage3_GenTopLvlAliases(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage6_PreAnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage10_PreCodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto MarkFromUseStatement() -> void;
 
@@ -131,7 +132,7 @@ private:
 
     bool _FromUseStatement = false;
 
-    Shared<analyse::scopes::TypeSymbol> _AliasSym;
+    analyse::scopes::TypeSymbol *_AliasSym;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeStatementAst)

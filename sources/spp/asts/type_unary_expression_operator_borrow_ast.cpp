@@ -19,7 +19,7 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::EqualsOpBorrow(
     TypeUnaryExpressionOperatorBorrowAst const &other) const
     -> Ordering {
     // Equality is based on the convention.
-    return *Conv == other.Conv.get() ? Ordering::equal : Ordering::less;
+    return *Conv == other.Conv.Get() ? Ordering::equal : Ordering::less;
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::Equals(
@@ -56,22 +56,12 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ToString() const
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::NsParts() const
-    -> Vec<Shared<const IdentifierAst>> {
-    return {};
-}
-
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::NsParts()
-    -> Vec<Shared<IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> {
-    return {};
-}
-
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> {
+    -> Vec<TypeIdentifierAst*> {
     return {};
 }
 

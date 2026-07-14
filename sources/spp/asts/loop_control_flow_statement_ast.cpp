@@ -16,7 +16,6 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.generate.common_types;
 import spp.lex.tokens;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::LoopControlFlowStatementAst::Skip(
@@ -61,7 +60,11 @@ auto spp::asts::LoopControlFlowStatementAst::PosStart() const
 auto spp::asts::LoopControlFlowStatementAst::PosEnd() const
     -> std::size_t {
     // Use expression or "skip" or last "exit".
-    return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.Back()->PosEnd();
+    return Expr != nullptr
+        ? Expr->PosEnd()
+        : TokSkip != nullptr
+        ? TokSkip->PosEnd()
+        : TokSeqExit.Back()->PosEnd();
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Clone() const
@@ -81,8 +84,8 @@ auto spp::asts::LoopControlFlowStatementAst::ToString() const
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -110,31 +113,31 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
         if (Expr != nullptr) {
             Expr->Stage7_AnalyseSemantics(sm, meta);
             RaiseIf<SppInvalidPrimaryExpressionError>(
-                Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
-                {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+                Expr != nullptr and not IsPrimaryExprTypeValid(*Expr, *sm),
+                {sm->CurrentScope}, ERR_ARGS(*Expr.Get()));
 
-            expr_type = Expr->InferType(sm, meta);
+            expr_type = AstClone(Expr->InferType(sm, meta));
         }
 
         // Insert or check the depth's corresponding exit type.
         const auto depth = nested_loop_depth - num_controls;
-        if (meta->LoopReturnTypes->contains(depth)) {
+        if (meta->LoopReturnTypes.contains(depth)) {
             // If the type is already set, check it matches the current expression's type.
-            auto [that_expr, that_expr_type, that_scope] = meta->LoopReturnTypes->at(depth);
+            auto const &[that_expr, that_expr_type, that_scope] = meta->LoopReturnTypes[depth];
             RaiseIf<SppTypeMismatchError>(
                 not TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
                 {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
         }
         else {
-            auto stored_expr = Expr ? Expr.get() : nullptr;
-            (*meta->LoopReturnTypes)[depth] = std::make_tuple(stored_expr, expr_type, sm->CurrentScope);
+            auto stored_expr = Expr != nullptr ? Expr.Get() : nullptr;
+            meta->LoopReturnTypes[depth] = std::make_tuple(stored_expr, std::move(expr_type), sm->CurrentScope);
         }
     }
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -147,8 +150,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // For "exit" statements, we need to branch to the end bb of N loops, N being the number of exit tokens.
@@ -158,16 +161,20 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
     // TODO
 
     // If there is an attached expression, code generate it.
-    return Expr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+    return Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
 }
 
 auto spp::asts::LoopControlFlowStatementAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // If there is an attached expression, return its type, otherwise Void.
     using generate::common_types::VoidType;
-    return Expr != nullptr ? Expr->InferType(sm, meta) : VoidType(PosStart());
+    auto inferred = Expr != nullptr ? AstClone(Expr->InferType(sm, meta)) : VoidType(PosStart());
+    CACHE_TYPE_INFERENCE_AND_RETURN(std::move(inferred));
 }
 
 SPP_MOD_END

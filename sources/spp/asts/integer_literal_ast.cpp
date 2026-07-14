@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -18,7 +19,6 @@ import spp.lex.tokens;
 import spp.utils.strings;
 import ankerl.unordered_dense;
 import boost;
-import genex;
 import llvm;
 
 SPP_MOD_BEGIN
@@ -54,7 +54,7 @@ auto spp::asts::IntegerLiteralAst::EqualsIntegerLiteral(
     -> Ordering {
     //
     if (
-        ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
+        ((TokSign == nullptr and other.TokSign == nullptr) or (TokSign != nullptr and other.TokSign != nullptr and *TokSign == *other.TokSign))
         and Val->TokenData == other.Val->TokenData
         and Type == other.Type) {
         return Ordering::equal;
@@ -72,7 +72,7 @@ auto spp::asts::IntegerLiteralAst::Equals(
 auto spp::asts::IntegerLiteralAst::PosStart() const
     -> std::size_t {
     // Use sign token or the value.
-    return TokSign ? TokSign->PosStart() : Val->PosStart();
+    return TokSign != nullptr ? TokSign->PosStart() : Val->PosStart();
 }
 
 auto spp::asts::IntegerLiteralAst::PosEnd() const
@@ -98,17 +98,16 @@ auto spp::asts::IntegerLiteralAst::ToString() const
 }
 
 auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     //
     using spp::utils::strings::NormaliseIntegerString;
     using analyse::errors::SppIntegerOutOfBoundsError;
 
-    // For oct, we need to change "0o" to "0" for boost compatiblity. Replace "o" with "0".
+    // For oct, we need to change "0o" to "0" for boost compatibility. Replace "o" with "0".
     auto data = Val->TokenData;
-    data |= genex::actions::replace('o', '0');
-
+    std::ranges::replace(data, 'o', '0');
 
     // Get the lower and upper bounds as big ints.
     Type = Type.empty() ? "s32" : Type;
@@ -125,16 +124,16 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
     // Clone and return the float literal as is for compile-time resolution.
     meta->CmpResult = AstClone(this);
 }
 
 auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the type of the integer literal.
@@ -149,15 +148,16 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::IntegerLiteralAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
-    //
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
     using namespace generate::common_types;
     using analyse::errors::SppInternalCompilerError;
+    USE_CACHED_TYPE_INFERENCE;
 
     // Map the type string literal to the correct SPP type.
-    auto spp_type = Shared<TypeAst>(nullptr);
+    auto spp_type = Unique<TypeAst>(nullptr);
     const auto p = PosStart();
     if (Type.empty()) { spp_type = S32(p); }
     else if (Type == "s8") { spp_type = S8(p); }
@@ -180,8 +180,8 @@ auto spp::asts::IntegerLiteralAst::InferType(
             ERR_ARGS(*this, "invalid integer literal type"));
     }
 
-    const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type);
-    return sym->FqName();
+    const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type.Get());
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(sym->FqName()));
 }
 
 template <typename T> requires std::integral<T>

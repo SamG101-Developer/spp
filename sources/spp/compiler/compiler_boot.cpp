@@ -17,6 +17,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.compiler.module_tree;
 import spp.lex.lexer;
@@ -24,12 +25,12 @@ import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
+import spp.utils.algorithms;
 import spp.utils.files;
 import llvm;
-import genex;
 
 #define PREP_SCOPE_MANAGER \
-    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
+    auto const &mod_in_tree = *std::ranges::find_if(tree, [&](auto &m) { return m->module_ast.Get() == mod; })
 
 #define PREP_SCOPE_MANAGER_AND_META(s)                                    \
     PREP_SCOPE_MANAGER;                                                   \
@@ -57,8 +58,8 @@ auto spp::compiler::CompilerBoot::Parse(
     -> void {
     // Parsing stage.
     for (auto const &mod : tree) {
-        mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
-        _Modules.EmplaceBack(mod->module_ast.get());
+        mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter->Clone()).parse();
+        _Modules.EmplaceBack(mod->module_ast.Get());
         bar.Next();
     }
     bar.Finish();
@@ -196,7 +197,7 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
     // Attach all LLVM type info to all types now.
     for (auto const &mod : _Modules) {
         auto ctx = codegen::LLvmCtx::NewCtx(mod->FilePath);
-        sm->AttachLlvmTypeInfo(*mod, ctx.get());
+        sm->AttachLlvmTypeInfo(*mod, ctx.Get());
         _LlvmCtxs.EmplaceBack(std::move(ctx));
     }
 }
@@ -222,7 +223,7 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Code generation stage.
-    for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
+    for (auto const &[mod, ctx] : std::views::zip(_Modules, _LlvmCtxs | spp::views::ptr)) {
         PREP_SCOPE_MANAGER_AND_META(11.0);
         mod->Stage10_PreCodeGen(sm, &meta, ctx);
         sm->Reset();
@@ -237,7 +238,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Code generation stage.
-    for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
+    for (auto const &[mod, ctx] : std::views::zip(_Modules, _LlvmCtxs | spp::views::ptr)) {
         PREP_SCOPE_MANAGER_AND_META(12.0);
         meta.LlvmCtx = ctx;
         mod->Stage11_CodeGen(sm, &meta, ctx);
@@ -290,7 +291,7 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
     auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
     for (auto const &top_level_child : sm->GlobalScope->Children) {
         if (const auto n = std::get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name); n and n->Name->Val == "main") {
-            main_scope = top_level_child.get();
+            main_scope = top_level_child.Get();
             break;
         }
     }
@@ -304,12 +305,12 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 
     // Check that the "main" function exists,
     catch (analyse::errors::SppIdentifierUnknownError const &) {
-        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
+        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope}, ERR_ARGS());
     }
 
     // Check that if the "main" function exists, the signature is compatible.
     catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
-        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
+        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope}, ERR_ARGS());
     }
 
     sm->Reset();
@@ -322,8 +323,8 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
     using namespace std::string_literals;
     // Create the module namespace as a list of strings.
     auto mod_ns = Vec<Str>(mod.path.begin(), mod.path.end());
-    if (genex::contains(mod_ns, "src"s)) {
-        const auto src_index = genex::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
+    if (std::ranges::contains(mod_ns, "src"s)) {
+        const auto src_index = std::ranges::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
         mod_ns = Vec(mod_ns.begin() + src_index, mod_ns.end());
         mod_ns.Back().erase(mod_ns.Back().length() - 4);
     }
@@ -334,23 +335,25 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
     // Iterate over the parts of the module namespace.
     for (auto const &part : mod_ns) {
         // Convert the string part into an IdentifierAst node.
-        auto identifier_part = MakeShared<asts::IdentifierAst>(0uz, Str(part));
+        auto identifier_part = MakeUnique<asts::IdentifierAst>(0uz, Str(part));
 
         // If the part exists in the current scope (starting from the global scope), then move into it.
-        if (const auto quick_ns_sym = sm->CurrentScope->GetNsSymbol(identifier_part, true); quick_ns_sym != nullptr) {
+        if (const auto quick_ns_sym = sm->CurrentScope->GetNsSymbol(identifier_part.Get(), true); quick_ns_sym != nullptr) {
             const auto ns_scope = quick_ns_sym->LinkedScope;
             sm->Reset(ns_scope);
         }
 
         // Otherwise, create a new scope and move into it.
         else {
-            const auto ns_sym = MakeShared<analyse::scopes::NamespaceSymbol>(identifier_part, nullptr);
-            sm->CurrentScope->AddNsSymbol(ns_sym);
-            const auto ns_scope_name = analyse::scopes::ScopeIdentifierName(identifier_part);
-            const auto ns_scope = sm->CreateAndMoveIntoNewScope(ns_scope_name, nullptr, mod.error_formatter.get());
-            ns_sym->LinkedScope = ns_scope;
-            ns_sym->LinkedScope->NsSym = ns_sym;
-            ns_sym->LinkedScope->AstNode = mod.module_ast.get();
+            auto ns_sym = MakeUnique<analyse::scopes::NamespaceSymbol>(identifier_part.Get(), nullptr);
+            const auto ns_sym_ptr = ns_sym.Get();
+            sm->CurrentScope->AddNsSymbol(std::move(ns_sym));
+
+            auto ns_scope_name = analyse::scopes::ScopeIdentifierName(std::move(identifier_part));
+            const auto ns_scope = sm->CreateAndMoveIntoNewScope(std::move(ns_scope_name), nullptr, mod.error_formatter.Get());
+            ns_sym_ptr->LinkedScope = ns_scope;
+            ns_sym_ptr->LinkedScope->NsSym = ns_sym_ptr;
+            ns_sym_ptr->LinkedScope->AstNode = mod.module_ast.Get();
         }
     }
 }

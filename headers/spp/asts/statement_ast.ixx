@@ -12,6 +12,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The StatementAst class is the base class for all statements in the abstract syntax tree. It is used to represent
@@ -29,7 +30,7 @@ SPP_EXP_CLS struct spp::asts::StatementAst : Ast, mixins::TypeInferrableAst {
      * @param meta Associated metadata.
      * @return The Void type, as all statements are void.
      */
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 
     /**
      * Test if the statement always terminates control flow with the "ret" instruction. For blocks, the final member is

@@ -80,7 +80,7 @@ static auto UnwrapFunctionCallAst(spp::asts::Ast const *ast) -> spp::asts::Ast c
         return fn_call;
     }
     if (const auto pf = ast->To<spp::asts::PostfixExpressionAst>()) {
-        return UnwrapFunctionCallAst(pf->Op.get());
+        return UnwrapFunctionCallAst(pf->Op.Get());
     }
     return ast;
 }

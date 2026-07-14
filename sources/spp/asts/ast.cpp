@@ -28,8 +28,8 @@ auto spp::asts::Ast::Stage1_PreProcess(
 }
 
 auto spp::asts::Ast::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     _Scope = sm->CurrentScope;
 }

@@ -4,9 +4,7 @@ module;
 module spp.lex.lexer;
 import spp.compiler.prelude;
 import spp.utils.strings;
-import genex;
 import magic_enum;
-
 
 SPP_MOD_BEGIN
 spp::lex::Lexer::Lexer(Str code, const bool add_prelude)
@@ -17,7 +15,6 @@ spp::lex::Lexer::Lexer(Str code, const bool add_prelude)
         m_code += "\n" + compiler::kPrelude;
     }
 }
-
 
 auto spp::lex::Lexer::Lex() const
     -> Vec<RawToken> {
@@ -34,8 +31,8 @@ auto spp::lex::Lexer::Lex() const
     for (auto [kw, kw_string] : magic_enum::enum_entries<RawTokenType>()) {
         if (kw_string.starts_with("KW_")) {
             keywords[kw] = kw_string.substr(3)
-                | genex::views::transform([](auto c) { return static_cast<char>(std::tolower(c)); })
-                | genex::to<Str>();
+                | std::views::transform([](auto c) { return static_cast<char>(std::tolower(c)); })
+                | std::ranges::to<Str>();
         }
     }
 
@@ -86,170 +83,170 @@ auto spp::lex::Lexer::Lex() const
 
         // Otherwise, match the character to known tokens and append them to the token list.
         switch (c) {
-        case '#': {
-            in_single_line_comment = true;
-            ++i;
-            continue;
-        }
-        case '=': {
-            tokens.EmplaceBack(RawTokenType::TK_EQUALS_TO, "=");
-            ++i;
-            continue;
-        }
-        case '<': {
-            tokens.EmplaceBack(RawTokenType::TK_LESS_THAN, "<");
-            ++i;
-            continue;
-        }
-        case '>': {
-            tokens.EmplaceBack(RawTokenType::TK_GREATER_THAN, ">");
-            ++i;
-            continue;
-        }
-        case '+': {
-            tokens.EmplaceBack(RawTokenType::TK_PLUS_SIGN, "+");
-            ++i;
-            continue;
-        }
-        case '-': {
-            tokens.EmplaceBack(RawTokenType::TK_HYPHEN, "-");
-            ++i;
-            continue;
-        }
-        case '*': {
-            tokens.EmplaceBack(RawTokenType::TK_ASTERISK, "*");
-            ++i;
-            continue;
-        }
-        case '/': {
-            tokens.EmplaceBack(RawTokenType::TK_SLASH, "/");
-            ++i;
-            continue;
-        }
-        case '%': {
-            tokens.EmplaceBack(RawTokenType::TK_PERCENT_SIGN, "%");
-            ++i;
-            continue;
-        }
-        case '(': {
-            tokens.EmplaceBack(RawTokenType::TK_LEFT_PARENTHESIS, "(");
-            ++i;
-            continue;
-        }
-        case ')': {
-            tokens.EmplaceBack(RawTokenType::TK_RIGHT_PARENTHESIS, ")");
-            ++i;
-            continue;
-        }
-        case '[': {
-            tokens.EmplaceBack(RawTokenType::TK_LEFT_SQUARE_BRACKET, "[");
-            ++i;
-            continue;
-        }
-        case ']': {
-            tokens.EmplaceBack(RawTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
-            ++i;
-            continue;
-        }
-        case '{': {
-            tokens.EmplaceBack(RawTokenType::TK_LEFT_CURLY_BRACE, "{");
-            ++i;
-            continue;
-        }
-        case '}': {
-            tokens.EmplaceBack(RawTokenType::TK_RIGHT_CURLY_BRACE, "}");
-            ++i;
-            continue;
-        }
-        case '?': {
-            tokens.EmplaceBack(RawTokenType::TK_QUESTION_MARK, "?");
-            ++i;
-            continue;
-        }
-        case ':': {
-            tokens.EmplaceBack(RawTokenType::TK_COLON, ":");
-            ++i;
-            continue;
-        }
-        case '&': {
-            tokens.EmplaceBack(RawTokenType::TK_AMPERSAND, "&");
-            ++i;
-            continue;
-        }
-        case '|': {
-            tokens.EmplaceBack(RawTokenType::TK_VERTICAL_BAR, "|");
-            ++i;
-            continue;
-        }
-        case '^': {
-            tokens.EmplaceBack(RawTokenType::TK_CARET, "^");
-            ++i;
-            continue;
-        }
-        case '.': {
-            tokens.EmplaceBack(RawTokenType::TK_PERIOD, ".");
-            ++i;
-            continue;
-        }
-        case ',': {
-            tokens.EmplaceBack(RawTokenType::TK_COMMA, ",");
-            ++i;
-            continue;
-        }
-        case '@': {
-            tokens.EmplaceBack(RawTokenType::TK_AT_SIGN, "@");
-            ++i;
-            continue;
-        }
-        case '_': {
-            tokens.EmplaceBack(RawTokenType::TK_UNDERSCORE, "_");
-            ++i;
-            continue;
-        }
-        case '\'': {
-            tokens.EmplaceBack(RawTokenType::TK_APOSTROPHE, "'");
-            in_char = !in_char;
-            ++i;
-            continue;
-        }
-        case '"': {
-            tokens.EmplaceBack(RawTokenType::TK_QUOTATION_MARK, "\"");
-            in_string = !in_string;
-            ++i;
-            continue;
-        }
-        case '!': {
-            tokens.EmplaceBack(RawTokenType::TK_EXCLAMATION_MARK, "!");
-            ++i;
-            continue;
-        }
-        case ';': {
-            tokens.EmplaceBack(RawTokenType::TK_SEMICOLON, ";");
-            ++i;
-            continue;
-        }
-        case '$': {
-            tokens.EmplaceBack(RawTokenType::TK_DOLLAR_SIGN, "$");
-            ++i;
-            continue;
-        }
-        case ' ': {
-            tokens.EmplaceBack(RawTokenType::TK_SPACE, " ");
-            ++i;
-            continue;
-        }
-        case '\n': {
-            tokens.EmplaceBack(RawTokenType::TK_LINE_FEED, "\n");
-            in_single_line_comment = false;
-            ++i;
-            continue;
-        }
-        case '\r': {
-            ++i;
-            continue;
-        }
-        default:
-            ;
+            case '#': {
+                in_single_line_comment = true;
+                ++i;
+                continue;
+            }
+            case '=': {
+                tokens.EmplaceBack(RawTokenType::TK_EQUALS_TO, "=");
+                ++i;
+                continue;
+            }
+            case '<': {
+                tokens.EmplaceBack(RawTokenType::TK_LESS_THAN, "<");
+                ++i;
+                continue;
+            }
+            case '>': {
+                tokens.EmplaceBack(RawTokenType::TK_GREATER_THAN, ">");
+                ++i;
+                continue;
+            }
+            case '+': {
+                tokens.EmplaceBack(RawTokenType::TK_PLUS_SIGN, "+");
+                ++i;
+                continue;
+            }
+            case '-': {
+                tokens.EmplaceBack(RawTokenType::TK_HYPHEN, "-");
+                ++i;
+                continue;
+            }
+            case '*': {
+                tokens.EmplaceBack(RawTokenType::TK_ASTERISK, "*");
+                ++i;
+                continue;
+            }
+            case '/': {
+                tokens.EmplaceBack(RawTokenType::TK_SLASH, "/");
+                ++i;
+                continue;
+            }
+            case '%': {
+                tokens.EmplaceBack(RawTokenType::TK_PERCENT_SIGN, "%");
+                ++i;
+                continue;
+            }
+            case '(': {
+                tokens.EmplaceBack(RawTokenType::TK_LEFT_PARENTHESIS, "(");
+                ++i;
+                continue;
+            }
+            case ')': {
+                tokens.EmplaceBack(RawTokenType::TK_RIGHT_PARENTHESIS, ")");
+                ++i;
+                continue;
+            }
+            case '[': {
+                tokens.EmplaceBack(RawTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+                ++i;
+                continue;
+            }
+            case ']': {
+                tokens.EmplaceBack(RawTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
+                ++i;
+                continue;
+            }
+            case '{': {
+                tokens.EmplaceBack(RawTokenType::TK_LEFT_CURLY_BRACE, "{");
+                ++i;
+                continue;
+            }
+            case '}': {
+                tokens.EmplaceBack(RawTokenType::TK_RIGHT_CURLY_BRACE, "}");
+                ++i;
+                continue;
+            }
+            case '?': {
+                tokens.EmplaceBack(RawTokenType::TK_QUESTION_MARK, "?");
+                ++i;
+                continue;
+            }
+            case ':': {
+                tokens.EmplaceBack(RawTokenType::TK_COLON, ":");
+                ++i;
+                continue;
+            }
+            case '&': {
+                tokens.EmplaceBack(RawTokenType::TK_AMPERSAND, "&");
+                ++i;
+                continue;
+            }
+            case '|': {
+                tokens.EmplaceBack(RawTokenType::TK_VERTICAL_BAR, "|");
+                ++i;
+                continue;
+            }
+            case '^': {
+                tokens.EmplaceBack(RawTokenType::TK_CARET, "^");
+                ++i;
+                continue;
+            }
+            case '.': {
+                tokens.EmplaceBack(RawTokenType::TK_PERIOD, ".");
+                ++i;
+                continue;
+            }
+            case ',': {
+                tokens.EmplaceBack(RawTokenType::TK_COMMA, ",");
+                ++i;
+                continue;
+            }
+            case '@': {
+                tokens.EmplaceBack(RawTokenType::TK_AT_SIGN, "@");
+                ++i;
+                continue;
+            }
+            case '_': {
+                tokens.EmplaceBack(RawTokenType::TK_UNDERSCORE, "_");
+                ++i;
+                continue;
+            }
+            case '\'': {
+                tokens.EmplaceBack(RawTokenType::TK_APOSTROPHE, "'");
+                in_char = !in_char;
+                ++i;
+                continue;
+            }
+            case '"': {
+                tokens.EmplaceBack(RawTokenType::TK_QUOTATION_MARK, "\"");
+                in_string = !in_string;
+                ++i;
+                continue;
+            }
+            case '!': {
+                tokens.EmplaceBack(RawTokenType::TK_EXCLAMATION_MARK, "!");
+                ++i;
+                continue;
+            }
+            case ';': {
+                tokens.EmplaceBack(RawTokenType::TK_SEMICOLON, ";");
+                ++i;
+                continue;
+            }
+            case '$': {
+                tokens.EmplaceBack(RawTokenType::TK_DOLLAR_SIGN, "$");
+                ++i;
+                continue;
+            }
+            case ' ': {
+                tokens.EmplaceBack(RawTokenType::TK_SPACE, " ");
+                ++i;
+                continue;
+            }
+            case '\n': {
+                tokens.EmplaceBack(RawTokenType::TK_LINE_FEED, "\n");
+                in_single_line_comment = false;
+                ++i;
+                continue;
+            }
+            case '\r': {
+                ++i;
+                continue;
+            }
+            default:
+                ;
         }
 
         // No symbolic tokens match, so try to match a keyword.

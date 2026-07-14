@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
 
@@ -13,6 +14,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
+
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixExpressionOperatorAst {
     /**
@@ -62,9 +65,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
      * @param[in,out] sm The scope manager to use for analysis.
      * @param[in,out] meta Associated metadata.
      */
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     /**
      * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For
@@ -74,8 +77,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
      * @param[in,out] meta Associated metadata.
      * @return
      */
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 
 private:
-    Shared<PostfixExpressionAst> _MappedFunc;
+    Unique<PostfixExpressionAst> _MappedFunc;
 };

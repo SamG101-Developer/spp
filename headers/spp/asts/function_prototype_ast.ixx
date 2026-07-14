@@ -13,6 +13,10 @@ import spp.utils.types;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct FunctionImplementationAst;
@@ -27,9 +31,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
+COMMON_AST_IMPORTS
 
 /**
  * The @c FunctionPrototypeAst represents the prototype of a function. It defines the structure of a function, including
@@ -101,7 +103,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
      * The name of the function prototype. This is the identifier that is used to refer to the function. Uniqueness is
      * not strictly required, as overloading is supported.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The optional generic parameter group for the function prototype. This is used to define generic types that the
@@ -125,7 +127,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
      * The return type of the function prototype. This is the type that the function will return. This is required, and
      * is never "inferrable" from the expressions inside the function.
      */
-    Shared<TypeAst> ReturnType;
+    Unique<TypeAst> ReturnType;
 
     /**
      * The implementation of the function prototype. This is the body of the function, and contains the actual code that
@@ -134,7 +136,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     Unique<FunctionImplementationAst> Impl;
 
     struct {
-        Shared<TypeAst> OriginalReturnType;
+        Unique<TypeAst> OriginalReturnType;
         Unique<FunctionImplementationAst> OriginalImpl;
     } Source;
 
@@ -167,27 +169,27 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
     auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage2_GenTopLvlScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage3_GenTopLvlAliases(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage6_PreAnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage10_PreCodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
+    SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> codegen::LlvmFuncWrapper const*;
 
     SPP_ATTR_NODISCARD auto PrintSignature(Str const &owner) const -> Str;
 
@@ -205,7 +207,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
     SPP_ATTR_NODISCARD auto GetAnnotationInfo() const -> analyse::utils::annotation_utils::AnnotationInfo*;
 
-    virtual auto GenerateLlvmDeclaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> Shared<codegen::LlvmFuncWrapper>;
+    virtual auto GenerateLlvmDeclaration(
+        analyse::scopes::ScopeManager *sm,
+        meta::CompilerMetaData *meta,
+        codegen::LLvmCtx *ctx)
+        -> codegen::LlvmFuncWrapper*;
 
     virtual auto IsCoroutine() const -> bool = 0;
 
@@ -222,13 +228,13 @@ protected:
      * for further codegen in the second pass (for function calls, etc). Double shared pointer for altering the value,
      * and updating in cloned ASTs that share this target.
      */
-    Shared<Shared<codegen::LlvmFuncWrapper>> _LlvmFunc;
+    codegen::LlvmFuncWrapper _LlvmFunc;
 
     Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
 
-    SPP_ATTR_NODISCARD auto _DeduceMockClassType() const -> Shared<TypeAst>;
+    SPP_ATTR_NODISCARD auto _DeduceMockClassType() const -> Unique<TypeAst>;
 
-    SPP_ATTR_NODISCARD auto _IsPureGeneric(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
+    SPP_ATTR_NODISCARD auto _IsPureGeneric(analyse::scopes::ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)

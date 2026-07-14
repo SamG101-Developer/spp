@@ -44,7 +44,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::PosEnd() const
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Clone() const
     -> Unique<Ast> {
     auto a = MakeUnique<CasePatternVariantSingleIdentifierAst>(
-        AstClone(Conv), AstClone(TokMut), AstCloneShared(Name), AstClone(Alias));
+        AstClone(Conv), AstClone(TokMut), AstClone(Name), AstClone(Alias));
     a->_MappedLet = AstClone(_MappedLet);
     return a;
 }
@@ -59,8 +59,8 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::ToString() const
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the variable name.
     auto var = ConvToVar(meta);
@@ -72,20 +72,20 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the name and alias.
     _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::ConvToVar(
-    CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> Unique<LocalVariableAst> {
     // Create the local variable single identifier binding AST. (Note no convention is propagated into the variable,
     // as conventions are only relevant at the pattern matching site, not the variable declaration site).
     auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
-        AstClone(TokMut), AstCloneShared(Name), AstClone(Alias));
+        AstClone(TokMut), AstClone(Name), AstClone(Alias));
     var->Conv = AstClone(Conv);
     var->MarkFromCasePattern();
     return var;

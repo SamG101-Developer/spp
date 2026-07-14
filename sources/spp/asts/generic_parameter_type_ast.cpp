@@ -33,41 +33,41 @@ spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
 spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
 
 auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     //
     using utils::Visibility;
 
     // Create a dummy scope for the generic type.
     auto dummy_scope_name = analyse::scopes::ScopeBlockName::FromParts(
-        "generic-parameter-type", {Name->TypeParts().Back().get()}, PosStart());
+        "generic-parameter-type", {Name->TypeParts().Back()}, PosStart());
     _DummyAst = MakeUnique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, nullptr, nullptr, nullptr);
     auto dummy_scope = MakeUnique<analyse::scopes::Scope>(
-        dummy_scope_name, sm->CurrentScope, _DummyAst.get());
+        dummy_scope_name, sm->CurrentScope, _DummyAst.Get());
 
     // Create the type symbol for the generic parameter.
-    const auto sym = MakeShared<analyse::scopes::TypeSymbol>(
-        AstCloneShared(Name->TypeParts().Back()), nullptr, dummy_scope.get(), sm->CurrentScope, nullptr, true, false,
-        Visibility::kPublic, nullptr, Constraints->Constraints);
-    sm->CurrentScope->AddTypeSymbol(sym);
-    dummy_scope->TySym = sym;
+    auto sym = MakeUnique<analyse::scopes::TypeSymbol>(
+        Name->TypeParts().Back(), nullptr, dummy_scope.Get(), sm->CurrentScope, nullptr, true, false,
+        Visibility::kPublic, nullptr, Constraints->GetAllConstraints());
+    dummy_scope->TySym = sym.Get();
+    sm->CurrentScope->AddTypeSymbol(std::move(sym));
 
-    _DummyScopes.EmplaceBack(dummy_scope.get());
-    ScopeManager::temp_scopes.EmplaceBack(std::move(dummy_scope));
+    _DummyScopes.EmplaceBack(dummy_scope.Get());
+    analyse::scopes::ScopeManager::temp_scopes.EmplaceBack(std::move(dummy_scope));
 }
 
 auto spp::asts::GenericParameterTypeAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the name.
     Name->Stage4_QualifyTypes(sm, meta);
 }
 
 auto spp::asts::GenericParameterTypeAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the name.
     Name->Stage7_AnalyseSemantics(sm, meta);

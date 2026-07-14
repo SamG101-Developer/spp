@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.analyse.errors.semantic_error;
@@ -50,7 +51,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosStart() const
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosEnd() const
     -> std::size_t {
     // Use the argument group if it exists, otherwise use the "res" token.
-    return FnArgGroup ? FnArgGroup->PosEnd() : TokRes->PosEnd();
+    return FnArgGroup != nullptr ? FnArgGroup->PosEnd() : TokRes->PosEnd();
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const
@@ -58,7 +59,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const
     // Clone all the members of the ast.
     auto ast = MakeUnique<PostfixExpressionOperatorKeywordResAst>(
         AstClone(TokDot), AstClone(TokRes), AstClone(FnArgGroup));
-    ast->_MappedFunc = _MappedFunc;
+    ast->_MappedFunc = AstClone(_MappedFunc);
     return ast;
 }
 
@@ -72,8 +73,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Already analysed => return early.
     using analyse::utils::type_utils::GetGenAndYieldTypes;
@@ -95,16 +96,16 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward the memory check to the mapped function, which will check the arguments, and the function call.
     _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // TODO
@@ -138,15 +139,18 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Get the generator type.
     using analyse::utils::type_utils::GetGenAndYieldTypes;
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
     auto [_, yield_type, _] = GetGenAndYieldTypes(
         *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
-    return yield_type;
+    CACHE_TYPE_INFERENCE_AND_RETURN(yield_type);
 }
 
 SPP_MOD_END

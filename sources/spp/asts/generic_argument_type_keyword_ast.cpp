@@ -24,18 +24,18 @@ auto spp::asts::GenericArgumentTypeKeywordAst::FromSym(
     -> Unique<GenericArgumentTypeKeywordAst> {
     // Extract the value from the symbol's scope, if it exists.
     auto value = sym.LinkedScope == nullptr
-        ? MakeShared<TypeIdentifierAst>(0, "Self", nullptr)
-        : sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()));
+        ? MakeUnique<TypeIdentifierAst>(0uz, "Self", nullptr)
+        : sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.Get()));
 
     // Wrap the value into a type argument.
     return MakeUnique<GenericArgumentTypeKeywordAst>(
-        sym.Name, nullptr, std::move(value));
+        AstClone(sym.Name), nullptr, std::move(value));
 }
 
 spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
-    decltype(Name) name,
+    decltype(Name) &&name,
     decltype(TokAssign) &&tok_assign,
-    decltype(Val) val) :
+    decltype(Val) &&val) :
     GenericArgumentTypeAst(std::move(val), utils::OrderableTag::kKeywordArg),
     Name(std::move(name)),
     TokAssign(std::move(tok_assign)) {
@@ -74,7 +74,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<GenericArgumentTypeKeywordAst>(
-        AstCloneShared(Name), AstClone(TokAssign), AstCloneShared(Val));
+        AstClone(Name), AstClone(TokAssign), AstClone(Val));
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::ToString() const
@@ -87,8 +87,8 @@ auto spp::asts::GenericArgumentTypeKeywordAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
@@ -96,11 +96,11 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
     Val->Stage7_AnalyseSemantics(sm, meta);
 
     // Analyse the name and value of the generic type argument.
-    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val);
+    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val.Get());
     const auto tmp2 = tmp1->FqName();
     auto tmp3 = AstClone(Val->GetConvention());
-    const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
-    Val = tmp4;
+    auto tmp4 = tmp2->WithConvention(std::move(tmp3));
+    Val = std::move(tmp4);
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::ViewName() const

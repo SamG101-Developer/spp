@@ -29,8 +29,8 @@ auto spp::asts::FunctionImplementationAst::Clone() const
 }
 
 auto spp::asts::FunctionImplementationAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Inject the argument values. Todo: && & std::move?
     for (auto const &[arg_name, arg_comp] : meta->CmpArgs) {

@@ -31,13 +31,12 @@ namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaData;
 }
 
-
 namespace spp::analyse::utils::overload_utils {
     using OverloadInfo = std::tuple<
         scopes::Scope const*,
         asts::FunctionPrototypeAst*,
         Unique<asts::GenericArgumentGroupAst>,
-        Shared<asts::TypeAst>>;
+        asts::TypeAst*>;
 
     using PassOverloadInfo = std::tuple<
         scopes::Scope const*,
@@ -74,7 +73,7 @@ namespace spp::analyse::utils::overload_utils {
         -> std::tuple<bool, Unique<asts::FunctionPrototypeAst>, Vec<OverloadInfo>>;
 
     SPP_EXP_FUN auto RetrieveImplicitGenericArgsForCall(
-        Shared<asts::TypeAst> const &fwd_type,
+        asts::TypeAst const *fwd_type,
         Vec<Unique<asts::GenericArgumentAst>> &&sup_gn_args,
         asts::meta::CompilerMetaData const *meta)
         -> Unique<asts::GenericArgumentGroupAst>;

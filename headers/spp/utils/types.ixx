@@ -8,14 +8,11 @@ export module spp.utils.types;
 import std;
 
 namespace spp {
-    SPP_EXP_CLS template <typename T>
-    using Shared = std::shared_ptr<T>;
+    // SPP_EXP_CLS template <typename T>
+    // using Unique = Unique<T>;
 
     SPP_EXP_CLS template <typename T>
-    using Weak = std::weak_ptr<T>;
-
-    SPP_EXP_CLS template <typename T>
-    using Unique = std::unique_ptr<T>;
+    class Unique;
 
     SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
     class Vec;
@@ -26,9 +23,6 @@ namespace spp {
     SPP_EXP_CLS
     using StrView = std::string_view; // stringzilla::string_view;
 
-    SPP_EXP_CLS template <typename T, typename A = std::allocator<Shared<T>>>
-    using SharedVec = Vec<Shared<T>, A>;
-
     SPP_EXP_CLS template <typename T, typename A = std::allocator<Unique<T>>>
     using UniqueVec = Vec<Unique<T>, A>;
 
@@ -37,9 +31,6 @@ namespace spp {
 
     SPP_EXP_CLS template <typename K, typename V>
     struct Pair;
-
-    SPP_EXP_CLS template <typename T>
-    using EnableLocalSharedFromThis = std::enable_shared_from_this<T>;
 
     SPP_EXP_CLS template <typename Sig>
     // requires std::copyable_function<Sig>
@@ -50,13 +41,8 @@ namespace spp {
     using FunctionRef = std::function_ref<Sig>;
 
     SPP_EXP_FUN template <typename T, typename... Args>
-    SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeShared(Args &&... args) -> Shared<T> {
-        return std::make_shared<T>(std::forward<Args>(args)...);
-    }
-
-    SPP_EXP_FUN template <typename T, typename... Args>
     SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeUnique(Args &&... args) -> Unique<T> {
-        return std::make_unique<T>(std::forward<Args>(args)...);
+        return Unique<T>(new T(std::forward<Args>(args)...));
     }
 
     SPP_EXP_FUN template <typename K, typename V>
@@ -82,6 +68,62 @@ namespace spp {
     template <typename T, typename A = std::allocator<T>>
     Vec(std::initializer_list<T>, A const & = A()) -> Vec<T, A>;
 }
+
+SPP_EXP_CLS template <typename T>
+class spp::Unique {
+    T *_Ptr = nullptr;
+
+public:
+    template <typename U>
+    friend class Unique;
+
+    using ElementType = T;
+    using PointerType = T*;
+
+    constexpr Unique() noexcept = default;
+    constexpr Unique(std::nullptr_t) noexcept {}
+    constexpr explicit Unique(T *ptr) noexcept { _Ptr = ptr; }
+    ~Unique() { delete _Ptr; }
+
+    Unique(const Unique &) = delete;
+    constexpr Unique(Unique &&o) noexcept { _Ptr = std::exchange(o._Ptr, nullptr); }
+
+    template <typename U> requires std::is_convertible_v<U*, T*>
+    constexpr Unique(Unique<U> &&o) noexcept { _Ptr = std::exchange(o._Ptr, nullptr); }
+
+    Unique& operator=(const Unique &) = delete;
+
+    constexpr Unique& operator=(Unique &&o) noexcept {
+        _Ptr = std::exchange(o._Ptr, nullptr);
+        return *this;
+    }
+
+    constexpr Unique& operator=(std::nullptr_t) noexcept {
+        delete std::exchange(_Ptr, nullptr);
+        return *this;
+    }
+
+    SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT
+    constexpr auto Get() const noexcept -> T* { return _Ptr; }
+
+    SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
+    constexpr auto operator*() const -> T& { return *_Ptr; }
+
+    SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT
+    constexpr auto operator->() const noexcept -> T* { return _Ptr; }
+
+    SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
+    constexpr auto Release() noexcept -> T* { return std::exchange(_Ptr, nullptr); }
+
+    SPP_ATTR_ALWAYS_INLINE
+    constexpr void Reset(T *ptr = nullptr) noexcept { delete std::exchange(_Ptr, ptr); }
+
+    SPP_ATTR_ALWAYS_INLINE
+    constexpr void Swap(Unique &o) noexcept { std::swap(_Ptr, o._Ptr); }
+
+    friend constexpr bool operator==(const Unique &a, const Unique &b) noexcept { return a._Ptr == b._Ptr; }
+    friend constexpr bool operator==(const Unique &a, std::nullptr_t) noexcept { return a._Ptr == nullptr; }
+};
 
 SPP_EXP_CLS template <typename T, typename A>
 class spp::Vec {
@@ -118,8 +160,8 @@ public:
     template <typename I> requires std::input_iterator<I>
     Vec(I first, I last, A const &allocator = A()) : _Vec(first, last, allocator) {}
 
-    Vec(Vec const &other, A const &allocator = A()) : _Vec(other._Vec, allocator) {}
-    Vec(Vec &&other, A const &allocator = A()) : _Vec(std::move(other._Vec), allocator) {}
+    Vec(Vec const &other, A const &allocator = A()) requires std::copyable<T> : _Vec(other._Vec, allocator) {}
+    Vec(Vec &&other, A const &allocator = A()) noexcept requires std::movable<T> : _Vec(std::move(other._Vec), allocator) {}
     ~Vec() = default;
 
     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
@@ -127,6 +169,9 @@ public:
 
     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
     auto Len() const noexcept -> std::size_t { return _Vec.size(); }
+
+    SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
+    auto LenInt() const noexcept -> std::size_t { return static_cast<int>(_Vec.size()); }
 
     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
     auto MaxSize() const noexcept -> std::size_t { return _Vec.max_size(); }
@@ -208,8 +253,8 @@ public:
         return *this;
     }
 
-    auto operator=(Vec const &other) -> Vec& = default;
-    auto operator=(Vec &&other) noexcept -> Vec& = default;
+    auto operator=(Vec const &other) -> Vec& requires std::copyable<T> = default;
+    auto operator=(Vec &&other) noexcept -> Vec& requires std::movable<T> = default;
 
     SPP_ATTR_ALWAYS_INLINE
     auto Assign(size_type n, const_reference v) { _Vec.assign(n, v); }
@@ -266,7 +311,7 @@ public:
     auto AppendRange(Vec &&other) { _Vec.insert(_Vec.end(), std::make_move_iterator(other._Vec.begin()), std::make_move_iterator(other._Vec.end())); }
 
     template <typename R>
-    requires (std::ranges::range<R> and std::constructible_from<value_type, std::ranges::range_value_t<R>>)
+        requires (std::ranges::range<R> and std::constructible_from<value_type, std::ranges::range_value_t<R>>)
     SPP_ATTR_ALWAYS_INLINE
     auto AppendRange(R &&range) { _Vec.insert(_Vec.end(), std::make_move_iterator(std::ranges::begin(range)), std::make_move_iterator(std::ranges::end(range))); }
 
@@ -589,19 +634,19 @@ struct spp::Pair {
     auto operator=(Pair &&) noexcept -> Pair& = default;
 
     template <typename K2, typename V2>
-    requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
+        requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
     explicit Pair(Pair<K2, V2> const &other)
         noexcept(std::is_nothrow_constructible_v<K, K2 const&> && std::is_nothrow_constructible_v<V, V2 const&>) :
         First(other.First), Second(other.Second) {}
 
     template <typename K2, typename V2>
-    requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
+        requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
     explicit Pair(Pair<K2, V2> &&other)
         noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
         First(std::move(other.First)), Second(std::move(other.Second)) {}
 
     template <typename K2, typename V2>
-    requires std::assignable_from<K&, K2 const&> && std::assignable_from<V&, V2 const&>
+        requires std::assignable_from<K&, K2 const&> && std::assignable_from<V&, V2 const&>
     auto operator=(Pair<K2, V2> const &other)
         noexcept(std::is_nothrow_assignable_v<K, K2 const&> && std::is_nothrow_assignable_v<V, V2 const&>) -> Pair& {
         First = other.First;
@@ -610,7 +655,7 @@ struct spp::Pair {
     }
 
     template <typename K2, typename V2>
-    requires std::assignable_from<K&, K2&&> && std::assignable_from<V&, V2&&>
+        requires std::assignable_from<K&, K2&&> && std::assignable_from<V&, V2&&>
     auto operator=(Pair<K2, V2> &&other)
         noexcept(std::is_nothrow_assignable_v<K, K2&&> && std::is_nothrow_assignable_v<V, V2&&>) -> Pair& {
         First = std::move(other.First);
@@ -619,20 +664,20 @@ struct spp::Pair {
     }
 
     template <typename K2, typename V2>
-    requires std::convertible_to<K2, K> && std::convertible_to<V2, V>
+        requires std::convertible_to<K2, K> && std::convertible_to<V2, V>
     Pair(K2 &&key, V2 &&value)
         noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
         First(std::forward<K2>(key)), Second(std::forward<V2>(value)) {}
 
     template <typename K2, typename V2>
-    requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
+        requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
     operator std::pair<K2, V2>() const
         noexcept(std::is_nothrow_constructible_v<K2, K const&> && std::is_nothrow_constructible_v<V2, V const&>) {
         return std::pair<K2, V2>(First, Second);
     }
 
     template <typename K2, typename V2>
-    requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
+        requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
     operator std::pair<K2, V2>() && noexcept(std::is_nothrow_constructible_v<K2, K&&> && std::is_nothrow_constructible_v<V2, V&&>) {
         return std::pair<K2, V2>(std::move(First), std::move(Second));
     }

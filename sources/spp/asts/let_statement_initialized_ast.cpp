@@ -69,8 +69,8 @@ auto spp::asts::LetStatementInitializedAst::ToString() const
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -86,52 +86,52 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     // Analyse the type if it has been given.
     if (Type != nullptr) {
         Type->Stage7_AnalyseSemantics(sm, meta);
-        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+        Type = sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
     }
 
     // Add the type into the return type overload resolver.
     meta->Save();
-    meta->ReturnTypeOverloadResolverType = Type;
+    meta->ReturnTypeOverloadResolverType = Type.Get();
 
     // Check the value is a valid expression type.
     Val->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+        {sm->CurrentScope}, ERR_ARGS(*Val.Get()));
 
     meta->AssignmentTarget = Var->ExtractName();
 
     // Ensure the value's type matches the type (if given), including variant matching.
     if (Type != nullptr) {
-        meta->AssignmentTargetType = Type;
+        meta->AssignmentTargetType = Type.Get();
         const auto val_type = Val->InferType(sm, meta);
         RaiseIf<analyse::errors::SppTypeMismatchError>(
             not TypeEq(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
             {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Val, *val_type));
     }
 
-    meta->LetStatementExplicitType = Type;
-    meta->LetStatementValue = Val.get();
+    meta->LetStatementExplicitType = Type.Get();
+    meta->LetStatementValue = Val.Get();
     Var->Stage7_AnalyseSemantics(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
     meta->Save();
     meta->AssignmentTarget = Var->ExtractName();
-    meta->LetStatementExplicitType = Type;
-    meta->LetStatementValue = Val.get();
+    meta->LetStatementExplicitType = Type.Get();
+    meta->LetStatementValue = Val.Get();
     Var->Stage8_CheckMemory(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Comptime resolve the value.
     Val->Stage9_CompTimeResolve(sm, meta);
@@ -139,23 +139,26 @@ auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
     // Assign the comptime value to the variable.
     meta->Save();
     meta->AssignmentTarget = Var->ExtractName();
-    meta->LetStatementExplicitType = Type;
-    meta->LetStatementValue = Val.get();
+    meta->LetStatementExplicitType = Type.Get();
+    meta->LetStatementValue = Val.Get();
     Var->Stage9_CompTimeResolve(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    //
+    const auto inferred = Val->InferType(sm, meta);
+
     // Delegate the code generation to the variable, after setting up the meta.
     meta->Save();
     meta->AssignmentTarget = Var->ExtractName();
-    meta->AssignmentTargetType = Type ? Type : Val->InferType(sm, meta);
-    meta->LetStatementExplicitType = Type ? Type : Val->InferType(sm, meta);
-    meta->LetStatementValue = Val.get();
+    meta->AssignmentTargetType = Type != nullptr ? Type.Get() : inferred;
+    meta->LetStatementExplicitType = Type != nullptr ? Type.Get() : inferred;
+    meta->LetStatementValue = Val.Get();
     const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();
     return alloca;

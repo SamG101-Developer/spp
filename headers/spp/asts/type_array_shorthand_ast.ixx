@@ -14,7 +14,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeArrayShorthandAst final : Ast, mixins::TempTypeAst {
     /**
      * The left square bracket token that represents the start of the array type.
@@ -24,7 +23,7 @@ SPP_EXP_CLS struct spp::asts::TypeArrayShorthandAst final : Ast, mixins::TempTyp
     /**
      * The type of the elements in the array.
      */
-    Shared<TypeAst> ElemType;
+    Unique<TypeAst> ElemType;
 
     /**
      * The @code ;@endcode token that separates the element type from the size in the array type declaration.

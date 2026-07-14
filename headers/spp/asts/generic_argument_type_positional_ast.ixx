@@ -11,6 +11,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The GenericArgumentTypePositionalAst represents a positional argument in a generic argument context. It is forces the
@@ -34,8 +35,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentTypePositionalAst)

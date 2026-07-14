@@ -20,7 +20,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
-import genex;
+import spp.utils.algorithms;
 
 SPP_MOD_BEGIN
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
@@ -31,8 +31,8 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
     TokOp(std::move(tok_op)),
     Rhs(std::move(rhs)),
     _MappedFunc(nullptr) {
-    Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
-    Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
+    Source.OriginalPosStart = Lhs != nullptr ? Lhs->PosStart() : 0;
+    Source.OriginalPosEnd = Rhs != nullptr ? Rhs->PosEnd() : 0;
 }
 
 spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
@@ -40,13 +40,13 @@ spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 auto spp::asts::BinaryExpressionAst::PosStart() const
     -> std::size_t {
     // Use the left hand side operand.
-    return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
+    return Lhs != nullptr ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
 auto spp::asts::BinaryExpressionAst::PosEnd() const
     -> std::size_t {
     // Use the right hand side operand.
-    return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
+    return Rhs != nullptr ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
 auto spp::asts::BinaryExpressionAst::Clone() const
@@ -54,7 +54,7 @@ auto spp::asts::BinaryExpressionAst::Clone() const
     // Clone all the members of the ast.
     auto ast = MakeUnique<BinaryExpressionAst>(
         AstClone(Lhs), AstClone(TokOp), AstClone(Rhs));
-    ast->_MappedFunc = _MappedFunc;
+    ast->_MappedFunc = AstClone(_MappedFunc);
     ast->Source = Source;
     return ast;
 }
@@ -75,8 +75,8 @@ auto spp::asts::BinaryExpressionAst::ToString() const
 }
 
 auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::bin_utils::ConvertBinExprToFuncCall;
@@ -87,7 +87,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppInvalidBinaryFoldExpressionError;
 
     // Todo: this guard shouldn't be needed.
-    if (_MappedFunc) { return; }
+    if (_MappedFunc == nullptr) { return; }
 
     // Handle lhs-folding.
     if (Lhs->To<FoldExpressionAst>()) {
@@ -116,7 +116,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
         // Convert "t = (0, 1, 2, 3)", ".. + t" into "(((t.0 + t.1) + t.2) + t.3)".
         Lhs = std::move(new_asts[0]);
         Rhs = std::move(new_asts[1]);
-        for (auto &&new_ast : new_asts | genex::views::move | genex::views::drop(2)) {
+        for (auto &&new_ast : new_asts | spp::views::move | std::views::drop(2)) {
             Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
             Rhs = std::move(new_ast);
         }
@@ -151,7 +151,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
         // Convert "t = (0, 1, 2, 3)", "t + .." into "(t.0 + (t.1 + (t.2 + t.3)))".
         Lhs = std::move(new_asts[new_asts.Len() - 2]);
         Rhs = std::move(new_asts[new_asts.Len() - 1]);
-        for (auto &&new_ast : new_asts | genex::views::move_reverse | genex::views::drop(2)) {
+        for (auto &&new_ast : new_asts | spp::views::move | std::views::reverse | std::views::drop(2)) {
             Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
             Lhs = std::move(new_ast);
         }
@@ -167,24 +167,24 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
     _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward the compile-time resolution to the mapped function.
     _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward the code generation to the mapped function.
@@ -192,15 +192,15 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::BinaryExpressionAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Infer the type from the function mapping of the binary expression.
-    // if (_MappedFunc == nullptr) {
-    //     // Todo: Needed?
-    //     Stage7_AnalyseSemantics(sm, meta);
-    // }
-    return _MappedFunc->InferType(sm, meta);
+    const auto inferred = _MappedFunc->InferType(sm, meta);
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 SPP_MOD_END

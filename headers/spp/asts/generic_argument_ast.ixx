@@ -18,7 +18,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
 }
 
-
 namespace spp::asts::detail {
     SPP_EXP_CLS template <typename GenericArgType>
     struct make_keyword_arg {
@@ -36,8 +35,7 @@ namespace spp::asts::detail {
     };
 
     SPP_EXP_CLS template <typename T>
-    using make_keyword_arg_t = typename make_keyword_arg<T>::type;
-
+    using make_keyword_arg_t = make_keyword_arg<T>::type;
 
     SPP_EXP_CLS template <typename GenericArgType>
     struct make_positional_arg {
@@ -55,9 +53,8 @@ namespace spp::asts::detail {
     };
 
     SPP_EXP_CLS template <typename T>
-    using make_positional_arg_t = typename make_positional_arg<T>::type;
+    using make_positional_arg_t = make_positional_arg<T>::type;
 }
-
 
 /**
  * The GenericArgumentAst is the base class for all generic arguments. It is inherited by the @c GenericArgumentCompAst

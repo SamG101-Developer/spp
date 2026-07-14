@@ -70,7 +70,7 @@ public:
      * to be created sometimes, where the global scope will be shared. Not a raw pointer as the scope managers do own
      * the global scope.
      */
-    Shared<Scope> GlobalScope;
+    Scope *GlobalScope;
 
     /**
      * A @c Scope type owns its children with @c Unique types, so the @c Scope stored by the manager as the
@@ -86,7 +86,7 @@ public:
      * @param current_scope The current scope that this manager will "start" in.
      */
     explicit ScopeManager(
-        Shared<Scope> const &global_scope,
+        Scope *global_scope,
         Scope *current_scope = nullptr);
 
     ~ScopeManager();
@@ -127,7 +127,7 @@ public:
      * its parent scope.
      */
     auto CreateAndMoveIntoNewScope(
-        ScopeName const &name,
+        ScopeName &&name,
         asts::Ast *ast = nullptr,
         utils::errors::ErrorFormatter *error_formatter = nullptr)
         -> Scope*;
@@ -169,9 +169,9 @@ public:
      * every type has its super scopes, and any attachment whose constraint is unsatisfied is pruned.
      */
     struct DeferredSupConstraint {
-        Scope *owner_scope;    ///< The scope the super scope was attached to (pruned if the constraint fails).
-        Scope *sup_scope;      ///< The (specialized) super scope that was attached.
-        Scope *sup_cls_scope;  ///< The paired super class scope also attached, or nullptr.
+        Scope *owner_scope; ///< The scope the super scope was attached to (pruned if the constraint fails).
+        Scope *sup_scope; ///< The (specialized) super scope that was attached.
+        Scope *sup_cls_scope; ///< The paired super class scope also attached, or nullptr.
         Scope *base_sup_scope; ///< The original (constrained) generic sup block.
     };
 

@@ -68,7 +68,7 @@
         const auto _alt_pos = _Pos;                      \
         auto _alt_tmp = method();                        \
         if (_alt_tmp != nullptr) {                       \
-            _pa = Unique<base_type>(_alt_tmp.release()); \
+            _pa = Unique<base_type>(_alt_tmp.Release()); \
             break;                                       \
         }                                                \
         _Pos = _alt_pos;                                 \

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.loop_expression_ast;
 import spp.asts.primary_expression_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
 
@@ -18,12 +19,9 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::LoopExpressionAst : PrimaryExpressionAst {
-protected:
-    std::optional<std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
-
-public:
     /**
      * The @c loop token that indicates the start of a loop expression.
      */
@@ -53,5 +51,8 @@ public:
 
     ~LoopExpressionAst() override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
+
+protected:
+    std::tuple<ExpressionAst*, Unique<TypeAst>, analyse::scopes::Scope*>* _LoopExitTypeInfo;
 };

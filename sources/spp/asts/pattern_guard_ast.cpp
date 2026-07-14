@@ -21,7 +21,7 @@ spp::asts::PatternGuardAst::PatternGuardAst(
     decltype(Expr) &&expression) :
     TokAnd(std::move(tok_and)),
     Expr(std::move(expression)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAnd, lex::SppTokenType::KW_AND, "and", Expr ? Expr->PosStart() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAnd, lex::SppTokenType::KW_AND, "and", Expr != nullptr ? Expr->PosStart() : 0);
 }
 
 spp::asts::PatternGuardAst::~PatternGuardAst() = default;
@@ -54,8 +54,8 @@ auto spp::asts::PatternGuardAst::ToString() const
 }
 
 auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -67,7 +67,7 @@ auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
     Expr->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+        {sm->CurrentScope}, ERR_ARGS(*Expr.Get()));
 
     // Check the guard's type is boolean.
     const auto expr_type = Expr->InferType(sm, meta);
@@ -77,8 +77,8 @@ auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -90,16 +90,16 @@ auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::PatternGuardAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Resolve the expression at compile-time.
     Expr->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PatternGuardAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the expression.

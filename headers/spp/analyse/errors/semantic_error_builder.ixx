@@ -5,11 +5,11 @@ module;
 export module spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.errors.semantic_error;
+import spp.utils.algorithms;
 import spp.utils.errors;
 import spp.utils.error_formatter;
 import spp.utils.types;
 import colex;
-import genex;
 import std;
 
 namespace spp::analyse::errors {
@@ -72,19 +72,19 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
     }
 
     SPP_ATTR_NORETURN auto Raise() -> void override {
-        const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
+        const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.Get());
 
         // Cycle the formatters to match the number of strings being formatted.
         auto formatters = this->_ErrFormatters
-            | genex::views::cycle
-            | genex::views::take(cast_error->ErrorInfo.Len())
-            | genex::to<Vec>();
+            | spp::views::cycle
+            | std::views::take(cast_error->ErrorInfo.Len())
+            | std::ranges::to<Vec>();
 
         // Format all the error strings by the correct formatter (file agnostic).
-        cast_error->messages = cast_error->ErrorInfo
-            | genex::views::zip(std::move(formatters))
-            | genex::views::transform([this](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
-            | genex::to<Vec>();
+        auto tmp = std::views::zip(cast_error->ErrorInfo, std::move(formatters)) | std::ranges::to<Vec>();
+        cast_error->messages = tmp
+            | std::views::transform([this](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
+            | std::ranges::to<Vec>();
 
         // Format and append each per-overload sub-error consecutively beneath the main error.
         auto i = 1;

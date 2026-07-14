@@ -68,8 +68,8 @@ auto spp::asts::LoopConditionalExpressionAst::ToString() const
 }
 
 auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -100,8 +100,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     meta->LoopCurrentDepth += 1;
     meta->LoopCurrentAst = this;
     Body->Stage7_AnalyseSemantics(sm, meta);
-    if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-        m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+    if (meta->LoopReturnTypes.contains(meta->LoopCurrentDepth - 1)) {
+        _LoopExitTypeInfo = &meta->LoopReturnTypes[meta->LoopCurrentDepth - 1];
     }
     meta->Restore();
 
@@ -115,8 +115,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -127,7 +127,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
 
     // Check twice so that invalidation fails on the second loop.
     // Todo: use the "reset" on "sm" like in TypeStatementAst?
-    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+    auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope, sm->CurrentIterator());
 
     ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, true, meta);
@@ -146,8 +146,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Move into the loop scope.
@@ -211,34 +211,21 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::LoopConditionalExpressionAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    //
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
     using generate::common_types::NeverType;
-
-    // If the condition is a boolean literal "true" and no flow control statements exist, return the never type.
-    // if (const auto cond_bool_lit = cond->To<BooleanLiteralAst>()) {
-    //     if (cond_bool_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
-    //         if (m_loop_exit_type_info.has_value()) {
-    //             const auto [exit_expr, _, _] = *m_loop_exit_type_info;
-    //             if (exit_expr == nullptr) {
-    //                 return generate::common_types::never_type(PosStart());
-    //             }
-    //         }
-    //     }
-    // }
+    USE_CACHED_TYPE_INFERENCE;
 
     // A "loop true" with no exit statements returns "Never".
     const auto cond_lit = Cond->To<BooleanLiteralAst>();
     if (cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE) {
-        // Check the internal flow controls.
-        if (not m_loop_exit_type_info.has_value()) {
-            return NeverType(PosStart());
-        }
+        if (not _LoopExitTypeInfo) { CACHE_TYPE_INFERENCE_AND_RETURN(NeverType(PosStart())); }
     }
 
-    return LoopExpressionAst::InferType(sm, meta);
+    const auto inferred = LoopExpressionAst::InferType(sm, meta);
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 auto spp::asts::LoopConditionalExpressionAst::Terminates() const

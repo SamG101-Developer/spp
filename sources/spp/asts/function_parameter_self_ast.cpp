@@ -46,7 +46,7 @@ auto spp::asts::FunctionParameterSelfAst::Clone() const
     // Clone all the members of the ast.
     auto p = MakeUnique<FunctionParameterSelfAst>(
         AstClone(Conv), AstClone(Var));
-    p->Type = AstCloneShared(Type);
+    p->Type = AstClone(Type);
     return p;
 }
 
@@ -59,8 +59,8 @@ auto spp::asts::FunctionParameterSelfAst::ToString() const
 }
 
 auto spp::asts::FunctionParameterSelfAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
     FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);
@@ -68,7 +68,7 @@ auto spp::asts::FunctionParameterSelfAst::Stage7_AnalyseSemantics(
     // Special mutability rules for the "self" parameter.
     const auto sym = sm->CurrentScope->GetVarSymbol(Var->ExtractName());
     sym->IsMutable = Var->To<LocalVariableSingleIdentifierAst>()->TokMut != nullptr
-        or (Conv and *Conv == ConventionTag::MUT);
+        or (Conv != nullptr and *Conv == ConventionTag::MUT);
 
     // Apply the convention from the attribute.
     sym->Type = Type->WithConvention(AstClone(Conv));

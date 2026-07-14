@@ -11,6 +11,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionParameterSelfAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
     /**
@@ -32,5 +33,5 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameter
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 };

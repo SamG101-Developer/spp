@@ -24,12 +24,13 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import spp.utils.ptr;
 import ankerl.unordered_dense;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::GenericArgumentGroupAst::NewEmpty()
@@ -49,14 +50,14 @@ auto spp::asts::GenericArgumentGroupAst::FromParams(
         // Map type generic parameters to keyword type arguments.
         if (const auto type_param = param->To<GenericParameterTypeAst>()) {
             auto val = AstClone(type_param->Name);
-            auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(type_param->Name, nullptr, std::move(val));
+            auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(AstClone(type_param->Name), nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }
 
         // Map comptime generic parameters to keyword comptime arguments.
         else if (const auto comp_param = param->To<GenericParameterCompAst>()) {
-            auto val = IdentifierAst::FromType(*comp_param->Name);
-            auto arg = MakeUnique<GenericArgumentCompKeywordAst>(comp_param->Name, nullptr, std::move(val));
+            auto val = AstClone(IdentifierAst::FromType(*comp_param->Name));
+            auto arg = MakeUnique<GenericArgumentCompKeywordAst>(AstClone(comp_param->Name), nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }
     }
@@ -73,18 +74,18 @@ auto spp::asts::GenericArgumentGroupAst::FromMap(
     // Create the list of arguments, initially empty.
     auto mapped_args = Vec<Unique<GenericArgumentAst>>();
 
-    for (auto const &[arg_name, arg_val] : std::move(map)) {
+    for (auto [arg_name, arg_val] : std::move(map)) {
         // Map type ASTs to keyword type arguments.
         if (auto *arg_val_for_type = arg_val->To<TypeAst>()) {
             auto val = AstClone(arg_val_for_type);
-            auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(arg_name, nullptr, std::move(val));
+            auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(AstClone(arg_name), nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }
 
         // Map expression ASTs to keyword comptime arguments.
         else if (auto *arg_val_for_comp = arg_val->To<ExpressionAst>()) {
             auto val = AstClone(arg_val_for_comp);
-            auto arg = MakeUnique<GenericArgumentCompKeywordAst>(arg_name, nullptr, std::move(val));
+            auto arg = MakeUnique<GenericArgumentCompKeywordAst>(AstClone(arg_name), nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }
     }
@@ -98,7 +99,7 @@ auto spp::asts::GenericArgumentGroupAst::FromMap(
     -> Unique<GenericArgumentGroupAst> {
     // Cast the values to "ExpressionAst const*".
     auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
-    for (auto const &[k, v] : map) { mapped_args[k] = v.get(); }
+    for (auto &&[k, v] : map) { mapped_args[k] = v.Get(); }
     return FromMap(mapped_args);
 }
 
@@ -175,8 +176,8 @@ auto spp::asts::GenericArgumentGroupAst::operator+(
 }
 
 auto spp::asts::GenericArgumentGroupAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     for (auto const &x : Args) {
         x->Stage4_QualifyTypes(sm, meta);
@@ -184,42 +185,39 @@ auto spp::asts::GenericArgumentGroupAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppIdentifierDuplicateError;
     using analyse::errors::SppOrderInvalidError;
+    using analyse::utils::order_utils::DoOrderArgs;
 
     // Check there are no duplicate type argument names.
-    const auto type_arg_names = GetKeywordArgs()
-        | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::to<Vec>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<Vec>();
+    const auto type_arg_names = GetTypeKeywordArgs()
+        | std::views::transform([](auto const &x) { return x->Name.Get(); })
+        | spp::views::duplicates({}, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppIdentifierDuplicateError>(
         not type_arg_names.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(*type_arg_names[0], *type_arg_names[1], "keyword generic type argument"));
 
     // Check there are no duplicate comp argument names.
-    const auto comp_arg_names = GetKeywordArgs()
-        | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
-        | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::to<Vec>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<Vec>();
+    const auto comp_arg_names = GetCompKeywordArgs()
+        | std::views::transform([](auto const &x) { return x->Name.Get(); })
+        | spp::views::duplicates({}, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppIdentifierDuplicateError>(
         not comp_arg_names.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(*comp_arg_names[0], *comp_arg_names[1], "keyword generic comp argument"));
 
     // Check the arguments are in the correct order.
-    const auto unordered_args = analyse::utils::order_utils::DoOrderArgs(Args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::to<Vec>());
+    const auto unordered_args = DoOrderArgs(Args
+        | spp::views::ptr
+        | spp::views::cast_dynamic<mixins::OrderableAst*>
+        | std::ranges::to<Vec>());
 
     RaiseIf<SppOrderInvalidError>(
         not unordered_args.IsEmpty(), {sm->CurrentScope},
@@ -230,8 +228,8 @@ auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenericArgumentGroupAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the arguments for memory issues.
     for (auto const &x : Args) { x->Stage8_CheckMemory(sm, meta); }
@@ -241,8 +239,8 @@ auto spp::asts::GenericArgumentGroupAst::TypeAt(
     const char *key) const
     -> GenericArgumentTypeAst const* {
     // Iterate the type arguments to find the matching key.
-    for (const auto *arg : GetTypeArgs() | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()) {
-        if (dynamic_shared_cast<TypeIdentifierAst>(arg->Name->TypeParts().Back())->Name == key) {
+    for (const auto *arg : GetTypeKeywordArgs()) {
+        if (arg->Name->TypeParts().Back()->Name == key) {
             return arg;
         }
     }
@@ -253,8 +251,8 @@ auto spp::asts::GenericArgumentGroupAst::CompAt(
     const char *key) const
     -> GenericArgumentCompAst const* {
     // Iterate the comptime arguments to find the matching key.
-    for (const auto *arg : GetCompArgs() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
-        if (dynamic_shared_cast<TypeIdentifierAst>(arg->Name->TypeParts().Back())->Name == key) {
+    for (const auto *arg : GetCompKeywordArgs()) {
+        if (arg->Name->TypeParts().Back()->Name == key) {
             return arg;
         }
     }
@@ -360,7 +358,7 @@ auto spp::asts::GenericArgumentGroupAst::GetAllArgs() const
     // Convert args to raw pointers.
     auto out = Vec<GenericArgumentAst*>();
     for (auto const &arg : Args) {
-        out.EmplaceBack(arg.get());
+        out.EmplaceBack(arg.Get());
     }
     return out;
 }

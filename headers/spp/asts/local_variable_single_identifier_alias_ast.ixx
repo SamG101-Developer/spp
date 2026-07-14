@@ -12,7 +12,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast {
     /**
      * The @c as token that indicates the alias for the local variable. This separates the identifier from the alias.
@@ -23,7 +22,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast 
      * The identifier that is used as the alias for the local variable. This will be the name on the symbol that is
      * introduced.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * Construct the LocalVariableSingleIdentifierAliasAst with the arguments matching the members.

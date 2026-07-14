@@ -4,7 +4,6 @@ module;
 module spp.analyse.utils.mem_info_utils;
 import spp.asts.ast;
 import spp.asts.utils.ast_utils;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::InitializedBy(
@@ -33,9 +32,10 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::RemovePartialMoves(
     scopes::Scope *scope)
     -> void {
     // Use "string" comparison; same as overlap checking mechanism.
-    genex::actions::remove(
+    const auto [first, last] = std::ranges::remove(
         AstPartialMoves, ast.ToString(),
         [](auto const &x) { return x->ToString(); });
+    AstPartialMoves.Erase(first, last);
     if (not AstPartialMoves.IsEmpty()) {
         InitializedBy(ast, scope);
     }

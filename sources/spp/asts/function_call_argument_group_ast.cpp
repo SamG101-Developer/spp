@@ -29,7 +29,7 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import genex;
+import spp.utils.algorithms;
 import sys;
 
 SPP_MOD_BEGIN
@@ -86,7 +86,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::GetAllArgs() const
     // Filter by casting.
     auto out = Vec<FunctionCallArgumentAst*>();
     for (auto const &arg : Args) {
-        out.EmplaceBack(arg.get());
+        out.EmplaceBack(arg.Get());
     }
     return out;
 }
@@ -116,8 +116,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::GetPositionalArgs() const
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppExpansionOfNonTupleError;
@@ -129,10 +129,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Check there are no duplicate argument names.
     const auto arg_names = GetKeywordArgs()
-        | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::to<Vec>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x->Name.Get(); })
+        | spp::views::duplicates({}, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppIdentifierDuplicateError>(
         not arg_names.IsEmpty(), {sm->CurrentScope},
@@ -140,9 +139,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Check the arguments are in the correct order.
     const auto unordered_args = DoOrderArgs(Args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::to<Vec>());
+        | spp::views::ptr
+        | spp::views::cast_dynamic<mixins::OrderableAst*>
+        | std::ranges::to<Vec>());
 
     RaiseIf<SppOrderInvalidError>(
         not unordered_args.IsEmpty(), {sm->CurrentScope},
@@ -150,7 +149,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
     // Must use "materialize" because the list gets updates from within the loop.
-    for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate | genex::to<Vec>()) {
+    for (auto const &[i, arg] : Args | std::views::enumerate) {
         // Only check position arguments that have ".." tokens.
         const auto pos_arg = arg->To<FunctionCallArgumentPositionalAst>();
         if (pos_arg == nullptr or pos_arg->TokUnpack == nullptr) { continue; }
@@ -171,7 +170,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
             auto new_arg = MakeUnique<FunctionCallArgumentPositionalAst>(AstClone(arg->Conv), nullptr, std::move(new_ast));
             Args.Insert(Args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
         }
-        genex::actions::erase(Args, Args.begin() + static_cast<std::ptrdiff_t>(i) + max);
+        Args.Erase(Args.begin() + static_cast<std::ptrdiff_t>(i) + max);
     }
 
     // Analyse the arguments
@@ -194,8 +193,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppMemoryOverlapUsageError;
@@ -253,9 +252,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
             if (not sm->CurrentScope->GetTypeSymbol(arg->Val->InferType(sm, meta))->IsCopyable()) {
-                auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
-                    | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
-                    | genex::to<Vec>();
+                auto overlaps = std::views::concat(borrows_ref, borrows_mut)
+                    | std::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
+                    | std::ranges::to<Vec>();
 
                 RaiseIf<SppMemoryOverlapUsageError>(
                     not overlaps.IsEmpty(), {sm->CurrentScope},
@@ -263,11 +262,11 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
             }
         }
 
-        else if (arg->Conv and *arg->Conv == ConventionTag::REF) {
+        else if (arg->Conv != nullptr and *arg->Conv == ConventionTag::REF) {
             // Generate the list of overlapping borrows for immutable borrows.
             auto overlaps = borrows_mut
-                | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
-                | genex::to<Vec>();
+                | std::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
+                | std::ranges::to<Vec>();
 
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
             RaiseIf<SppMemoryOverlapUsageError>(
@@ -277,19 +276,19 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
             // Save any escaping borrows into the handle's memory info.
             if (handle and pins_required) {
                 // TODO: Test suite needs to take handle/lack of handle into account
-                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), false, sm->CurrentScope);
-                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
+                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.Get(), false, sm->CurrentScope);
+                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name, arg->Val.Get());
             }
 
             // Add the immutable borrow to the immutable borrow set.
-            borrows_ref.EmplaceBack(arg->Val.get());
+            borrows_ref.EmplaceBack(arg->Val.Get());
         }
 
-        else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
+        else if (arg->Conv != nullptr and *arg->Conv == ConventionTag::MUT) {
             // Generate the list of overlapping borrows for mutable borrows.
-            auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
-                | genex::views::filter([&arg](auto &&x) { return MemRegionOverlap(*x, *arg->Val); })
-                | genex::to<Vec>();
+            auto overlaps = std::ranges::views::concat(borrows_ref, borrows_mut)
+                | std::ranges::views::filter([&arg](auto &&x) { return MemRegionOverlap(*x, *arg->Val); })
+                | std::ranges::to<Vec>();
 
             // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
             RaiseIf<SppMemoryOverlapUsageError>(
@@ -299,12 +298,12 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
             // Save any escaping borrows into the handle's memory info.
             if (handle and pins_required) {
                 // TODO: Test suite needs to take handle/lack of handle into account
-                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), true, sm->CurrentScope);
-                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
+                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.Get(), true, sm->CurrentScope);
+                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name, arg->Val.Get());
             }
 
             // Add the mutable borrow to the mutable borrow set.
-            borrows_mut.EmplaceBack(arg->Val.get());
+            borrows_mut.EmplaceBack(arg->Val.Get());
         }
     }
 }

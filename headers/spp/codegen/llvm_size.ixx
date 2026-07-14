@@ -13,10 +13,9 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 namespace spp::codegen {
     SPP_EXP_FUN auto SizeOf(
         analyse::scopes::ScopeManager const &sm,
-        Shared<asts::TypeAst> const &type)
+        asts::TypeAst const *type)
         -> std::size_t;
 }

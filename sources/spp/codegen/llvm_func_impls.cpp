@@ -12,6 +12,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
+import spp.asts.utils.ast_utils;
 import llvm;
 
 template <typename F>
@@ -25,7 +26,7 @@ auto spp::codegen::func_impls::simple_intrinsic_binop(
     // Create the binary function.
     const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
     const auto fn_ty = llvm::FunctionType::get(ty, {ty, ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.Get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", fn);
 
     // Build the function body.
@@ -49,7 +50,7 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
     const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto fn_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty, ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.Get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, fn);
 
     // Build the function body.
@@ -76,7 +77,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop(
     const auto uid = spp::utils::Uid();
     const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
     const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.Get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, fn);
 
     // Build the function body.
@@ -98,7 +99,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
     const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto fn_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.Get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, fn);
 
     // Build the function body.
@@ -122,14 +123,14 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call(
     const auto uid = spp::utils::Uid();
     const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
     const auto fn_ty = llvm::FunctionType::get(ty, {ty, ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.Get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, fn);
 
     // Build the function body.
     ctx->Builder.SetInsertPoint(entry_bb);
     const auto lhs = fn->arg_begin();
     const auto rhs = fn->arg_begin() + 1;
-    const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {ty});
+    const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.Get(), intrinsic, {ty});
     const auto result = ctx->Builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
     ctx->Builder.CreateRet(result);
 }
@@ -144,13 +145,13 @@ auto spp::codegen::func_impls::simple_unary_intrinsic_call(
     const auto uid = spp::utils::Uid();
     const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
     const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.Get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, fn);
 
     // Build the function body.
     ctx->Builder.SetInsertPoint(entry_bb);
     const auto operand = fn->arg_begin();
-    const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {ty});
+    const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.Get(), intrinsic, {ty});
     const auto result = ctx->Builder.CreateCall(intrinsic_fn, {operand}, "intrinsic.result" + uid);
     ctx->Builder.CreateRet(result);
 }
@@ -223,13 +224,13 @@ auto spp::codegen::func_impls::std_abort_abort(analyse::scopes::ScopeManager con
     const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
     const auto fn_type = llvm::FunctionType::get(void_ty, {i8_ptr_ty, i64_ty}, false);
     const auto fn = llvm::Function::Create(
-        fn_type, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+        fn_type, llvm::Function::ExternalLinkage, name, ctx->Module.Get());
     fn->addFnAttr(llvm::Attribute::NoReturn);
 
     // Create the entry basic block.
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", fn);
     const auto trap_intrinsic = llvm::Intrinsic::getOrInsertDeclaration(
-        ctx->Module.get(), llvm::Intrinsic::trap);
+        ctx->Module.Get(), llvm::Intrinsic::trap);
     ctx->Builder.SetInsertPoint(entry_bb);
     ctx->Builder.CreateCall(trap_intrinsic, {});
     ctx->Builder.CreateUnreachable();
@@ -487,16 +488,16 @@ auto spp::codegen::func_impls::std_memory_clear(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
     LLvmCtx *ctx,
-    Shared<asts::TypeAst> const &spp_ty)
+    asts::TypeAst const *spp_ty)
     -> void {
     // Define the types that will be used in the function.
     const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty)), ctx);
-    const auto usize_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, asts::AstClone(spp_ty)).Get()), ctx);
+    const auto usize_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).Get()), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->Context, 0)}, false);
     const auto fn = llvm::Function::Create(
-        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.get());
+        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.Get());
 
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", fn);
     ctx->Builder.SetInsertPoint(entry_bb);
@@ -516,7 +517,7 @@ auto spp::codegen::func_impls::std_memory_clear(
     const auto ptr = ctx->Builder.CreateLoad(ptr_type, ptr_addr, "ptr");
 
     // Zero out the memory by calling llvm.memset.
-    const auto memset_intrinsic = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), llvm::Intrinsic::memset);
+    const auto memset_intrinsic = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.Get(), llvm::Intrinsic::memset);
     const auto zero_val = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), 0);
     const auto is_volatile = llvm::ConstantInt::getFalse(*ctx->Context);
     ctx->Builder.CreateCall(memset_intrinsic, {ptr, zero_val, llvm::ConstantInt::get(usize_ty, 0), is_volatile});
@@ -527,18 +528,18 @@ auto spp::codegen::func_impls::std_memory_place_element(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
     LLvmCtx *ctx,
-    Shared<asts::TypeAst> const &spp_ty)
+    asts::TypeAst const *spp_ty)
     -> void {
     // Define the types that will be used in the function.
     const auto ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(spp_ty), ctx);
     const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, asts::AstClone(spp_ty)).Get()), ctx);
+    const auto ptr_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, asts::AstClone(spp_ty)).Get()), ctx);
+    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).Get()), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->Context, 0), size_ty, ty}, false);
     const auto fn = llvm::Function::Create(
-        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.get());
+        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.Get());
 
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", fn);
     ctx->Builder.SetInsertPoint(entry_bb);
@@ -568,18 +569,18 @@ auto spp::codegen::func_impls::std_memory_take_element(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
     LLvmCtx *ctx,
-    Shared<asts::TypeAst> const &spp_ty)
+    asts::TypeAst const *spp_ty)
     -> void {
     // Define the types that will be used in the function.
     const auto ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(spp_ty), ctx);
-    const auto opt_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::OptionType(0, spp_ty)), ctx);
-    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto opt_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::OptionType(0, asts::AstClone(spp_ty)).Get()), ctx);
+    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, asts::AstClone(spp_ty)).Get()), ctx);
+    const auto ptr_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, asts::AstClone(spp_ty)).Get()), ctx);
+    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).Get()), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(opt_ty, {llvm::PointerType::get(*ctx->Context, 0), size_ty}, false);
     const auto fn = llvm::Function::Create(
-        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.get());
+        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.Get());
 
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", fn);
     ctx->Builder.SetInsertPoint(entry_bb);
@@ -637,14 +638,14 @@ auto spp::codegen::func_impls::std_memops_sizeof(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
     LLvmCtx *ctx,
-    Shared<asts::TypeAst> const &spp_ty) -> void {
+    asts::TypeAst const *spp_ty) -> void {
     // Calculate the size of the type of object, known at compile time.
-    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).Get()), ctx);
     const auto size_const = llvm::ConstantInt::get(size_ty, SizeOf(*sm, spp_ty));
 
     const auto fn_ty = llvm::FunctionType::get(size_ty, {}, false);
     const auto fn = llvm::Function::Create(
-        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.get());
+        fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->Module.Get());
 
     // Create the entry basic block.
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", fn);
@@ -662,7 +663,7 @@ auto spp::codegen::func_impls::std_memops_sizeof(
 //
 //     const auto fn_ty = llvm::FunctionType::get(size_ty, {llvm::PointerType::get(*ctx->context, 0)}, false);
 //     const auto fn = llvm::Function::Create(
-//         fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->module.get());
+//         fn_ty, llvm::Function::ExternalLinkage, mangle::mangle_fun_name(*sm->CurrentScope, *proto), ctx->module.Get());
 //
 //     // Create the entry basic block.
 //     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", fn);
@@ -673,7 +674,7 @@ auto spp::codegen::func_impls::std_memops_sizeof(
 //
 //     // Call llvm.sizeof intrinsic.
 //     const auto sizeof_intrinsic = llvm::Intrinsic::getOrInsertDeclaration(
-//         ctx->module.get(), llvm::Intrinsic::objectsize, {llvm::PointerType::get(*ctx->context, 0), size_ty});
+//         ctx->module.Get(), llvm::Intrinsic::objectsize, {llvm::PointerType::get(*ctx->context, 0), size_ty});
 //     const auto size_val = ctx->Builder.CreateCall(sizeof_intrinsic, {self}, "size_val");
 //     ctx->Builder.CreateRet(size_val);
 // }

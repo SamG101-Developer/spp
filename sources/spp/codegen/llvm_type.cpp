@@ -19,10 +19,8 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
 import spp.lex.tokens;
 import spp.utils.types;
-import genex;
 import llvm;
 import std;
-
 
 auto spp::codegen::register_llvm_type_info(
     asts::ClassPrototypeAst const *cls_proto,
@@ -41,13 +39,12 @@ auto spp::codegen::register_llvm_type_info(
     const auto scope = cls_proto->GetAstScope();
     const auto cls_sym = scope->TySym;
 
-    // For compiler known types, specialize the llvm type symbols.
+    // For compiler known types, specialise the llvm type symbols.
     const auto ancestor_names = scope->Ancestors()
-        | genex::views::drop_last(1)
-        | genex::views::transform([](auto *x) { return x->NameAsString(); })
-        | genex::to<Vec>()
-        | genex::views::reverse
-        | genex::to<Vec>();
+        | std::views::take(scope->Ancestors().Len() - 1) // Skip the module scope.
+        | std::views::transform([](auto *x) { return x->NameAsString(); })
+        | std::views::reverse
+        | std::ranges::to<Vec>();
 
     if (ancestor_names == Vec<Str>{"std", "void", "Void"}) {
         // Lower S++ "Void" to the llvm "void" type.
@@ -98,7 +95,6 @@ auto spp::codegen::register_llvm_type_info(
         }
     }
 
-
     // If the type already exists in LLVM, skip.
     if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->Context, mangle::mangle_type_name(*cls_sym)); llvm_type != nullptr) {
         cls_sym->LlvmInfo->LlvmType = llvm_type;
@@ -108,7 +104,6 @@ auto spp::codegen::register_llvm_type_info(
     // Empty struct, will fill in stage_10 when all attributes' types have been generated.
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
 }
-
 
 auto spp::codegen::llvm_type(
     analyse::scopes::TypeSymbol const &type_sym,

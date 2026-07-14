@@ -12,6 +12,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : Ast {
     /**
@@ -23,7 +24,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : A
      * The constraints for the generic type parameter. Any generic argument passed into the generic parameter must
      * satisfy these constraints.
      */
-    Vec<Shared<TypeAst>> Constraints;
+    Vec<Unique<TypeAst>> Constraints;
 
     static auto NewEmpty() -> Unique<GenericParameterTypeInlineConstraintsAst>;
 
@@ -40,5 +41,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : A
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
+
+    SPP_ATTR_NODISCARD auto GetAllConstraints() const -> Vec<TypeAst*>;
 };

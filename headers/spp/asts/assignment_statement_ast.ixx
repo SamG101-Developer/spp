@@ -18,6 +18,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * An assignment statement allows for one value to be moved or copied into another variable or property (or multiple
@@ -85,7 +86,7 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * symbolic.
      * @throw spp::analyse::errors::SppInvalidMutationError if any of the left-hand-side expressions are not mutable.
      */
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     /**
      * The memory checks for assignment statements fall under the following categories:
@@ -108,7 +109,7 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param[in] sm The scope manager to find the symbols of the left-hand-side and right-hand-side expressions in.
      * @param[in,out] meta Associated metadata.
      */
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     /**
      * Resolve the assignment statement at compile time. This is only possible if all the right-hand-side expressions
@@ -118,7 +119,7 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param meta Associated metadata.
      * @return The result of the compile time resolution.
      */
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     /**
      * Create the LLVM IR code to perform the assignment operation. This involves generating the code for both the
@@ -129,5 +130,5 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the assignment operation.
      */
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

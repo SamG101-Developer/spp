@@ -13,6 +13,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
     SPP_AST_KEY_FUNCTIONS;
@@ -21,7 +22,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst f
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The @c = token that separates the attribute name from the value in the destructure binding.
@@ -46,5 +47,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst f
 
     ~CasePatternVariantDestructureAttributeBindingAst() override;
 
-    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+    auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

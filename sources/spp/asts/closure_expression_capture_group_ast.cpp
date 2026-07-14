@@ -22,8 +22,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import spp.utils.uid;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::ClosureExpressionCaptureGroupAst::NewEmpty()
@@ -71,8 +71,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::ToString() const
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Add the capture variables after analysis, otherwise their symbol checks refer to the new captures, not the
     // original asts from the argument group analysis.
@@ -84,58 +84,54 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
         let->Stage7_AnalyseSemantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = sm->CurrentScope->GetVarSymbol(AstCloneShared(cap->Val->To<IdentifierAst>()));
-        const auto conv = cap->Conv.get();
+        const auto sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+        const auto conv = cap->Conv.Get();
         sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
         sym->Type = sym->Type->WithConvention(AstClone(cap->Conv));
     }
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Any borrowed captures need pinning and marking as extended borrows.
-    auto ass_sym = Shared<analyse::scopes::VariableSymbol>(nullptr);
-    if (meta->AssignmentTarget != nullptr) {
-        ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).First;
-    }
     for (auto const &cap : Captures) {
         if (cap->Conv != nullptr) {
             // Mark the pins on the capture and the target.
             const auto cap_val = cap->Val->To<IdentifierAst>();
-            auto cap_sym = sm->CurrentScope->GetVarSymbol(AstCloneShared(cap_val));
-            cap_sym->MemInfo->AstBorrowed = {cap->Conv.get(), sm->CurrentScope};
-            // if (ass_sym != nullptr) { ass_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get()); }
+            auto cap_sym = sm->CurrentScope->GetVarSymbol(cap_val);
+            cap_sym->MemInfo->AstBorrowed = {cap->Conv.Get(), sm->CurrentScope};
+            // if (ass_sym != nullptr) { ass_sym->MemInfo->AstPins.EmplaceBack(cap->Val.Get()); }
             // TODO: New escaping borrow system needs using here
 
-            cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(AstCloneShared(cap_val));
-            // cap_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get());
+            cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap_val);
+            // cap_sym->MemInfo->AstPins.EmplaceBack(cap->Val.Get());
         }
         else {
             // Mark the symbol from the outer context as moved.
-            const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(AstCloneShared(cap->Val->To<IdentifierAst>()));
+            const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
             cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
         }
     }
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
     // variables get loaded from the environment struct.
     const auto uid = spp::utils::Uid(this);
-    for (auto const &[i, capture] : Captures | genex::views::ptr | genex::views::enumerate) {
+    for (auto const &[i, capture] : Captures | std::views::enumerate) {
         const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
-        const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
+        const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), static_cast<std::uint64_t>(i));
 
         // For the capture x, mock "let x = env.x".
         const auto cap_val = capture->Val->To<IdentifierAst>();
-        const auto cap_ty = capture->InferType(sm, meta);
-        const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(cap_ty);
+        auto cap_ty = capture->InferType(sm, meta);
+        // const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(*cap_ty);
         const auto cap_llvm_type = codegen::llvm_type(
             *sm->CurrentScope->GetTypeSymbol(cap_ty), ctx);
 
@@ -154,8 +150,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
 
         // Add the alloca to the current scope as a variable symbol.
         // Todo: Handle mutability properly.
-        auto var_sym = MakeShared<analyse::scopes::VariableSymbol>(
-            AstClone(cap_val), cap_ty, sm->CurrentScope, false, false);
+        auto var_sym = MakeUnique<analyse::scopes::VariableSymbol>(
+            cap_val, AstClone(cap_ty), sm->CurrentScope, false, false);
         var_sym->LlvmInfo->Alloca = alloca;
         sm->CurrentScope->AddVarSymbol(std::move(var_sym));
     }

@@ -13,5 +13,4 @@ spp::asts::GenericArgumentCompAst::GenericArgumentCompAst(
 }
 
 spp::asts::GenericArgumentCompAst::~GenericArgumentCompAst() = default;
-
 SPP_MOD_END

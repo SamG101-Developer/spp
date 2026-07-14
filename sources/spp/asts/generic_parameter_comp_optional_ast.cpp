@@ -63,8 +63,8 @@ auto spp::asts::GenericParameterCompOptionalAst::ToString() const
 }
 
 auto spp::asts::GenericParameterCompOptionalAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the default value.
     using analyse::errors::SppTypeMismatchError;
@@ -80,8 +80,8 @@ auto spp::asts::GenericParameterCompOptionalAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenericParameterCompOptionalAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the default value for memory issues.
     using analyse::utils::mem_utils::ValidateSymbolMemory;

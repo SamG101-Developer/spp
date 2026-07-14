@@ -28,7 +28,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import genex;
+import spp.utils.algorithms;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
@@ -75,8 +75,8 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::ToString() const
 }
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
@@ -89,30 +89,30 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
 
     // Note there is no nested analysis of "elems", because the "let" statement handles it.
     CreateAndAnalysePatternEqFuncsDummyCore(
-        Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+        Elems | spp::views::ptr | std::ranges::to<Vec>(), sm, meta);
 }
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward memory checking to the mapped let statement.
     _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
 
     // Transform the pattern into comptime values; all need to be true.
     auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
-        Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+        Elems | spp::views::ptr | std::ranges::to<Vec>(), sm, meta);
 
     // All must be true for the pattern to match (look for any false).
-    const auto all_true = genex::all_of(
+    const auto all_true = std::ranges::all_of(
         comptime_transforms,
         [](auto const &x) { return x->template To<BooleanLiteralAst>()->IsTrue(); });
 
@@ -125,8 +125,8 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     //
@@ -143,23 +143,23 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
 
     // Combine all the generated transforms into a single "AND"ed statement.
     auto llvm_transforms = CreateAndAnalysePatternEqFuncsLlvm(
-        Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
+        Elems | spp::views::ptr | std::ranges::to<Vec>(), sm, meta, ctx);
     const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->Builder.CreateAnd(a, b); };
     const auto llvm_master_transform = llvm_transforms.IsEmpty()
         ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->Context))
-        : genex::fold_left_first(llvm_transforms, std::move(combine_func));
+        : *std::ranges::fold_left_first(llvm_transforms, std::move(combine_func));
 
     // Return the combined statement.
     return llvm_master_transform;
 }
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::ConvToVar(
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> Unique<LocalVariableAst> {
     // Recursively map the elements to their local variable counterparts.
     auto mapped_elems = Elems
-        | genex::views::transform([&](auto const &x) { return x->ConvToVar(meta); })
-        | genex::to<Vec>();
+        | std::views::transform([&](auto const &x) { return x->ConvToVar(meta); })
+        | std::ranges::to<Vec>();
 
     // Create the final local variable wrapping, tag it and return it.
     auto var = MakeUnique<LocalVariableDestructureTupleAst>(nullptr, std::move(mapped_elems), nullptr);

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.fold_expression_ast;
 import spp.asts.primary_expression_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
 
@@ -12,6 +13,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
     /**
@@ -30,5 +32,5 @@ SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 };

@@ -22,9 +22,9 @@ import spp.asts.generic_parameter_type_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::TypeStatementAst::TypeStatementAst(
@@ -34,7 +34,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(GnParamGroup) &&generic_param_group,
     decltype(TokAssign) &&tok_assign,
     decltype(OldType) old_type) :
-    MappedOldType(old_type),
+    MappedOldType(AstClone(old_type)),
     Annotations(std::move(annotations)),
     TokType(std::move(tok_type)),
     NewType(std::move(new_type)),
@@ -68,14 +68,15 @@ auto spp::asts::TypeStatementAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     auto ast = MakeUnique<TypeStatementAst>(
-        AstCloneVec(Annotations), AstClone(TokType), NewType, AstClone(GnParamGroup), AstClone(TokAssign), OldType);
+        AstCloneVec(Annotations), AstClone(TokType), AstClone(NewType), AstClone(GnParamGroup), AstClone(TokAssign),
+        AstClone(OldType));
     ast->_Ctx = _Ctx;
     ast->_Scope = _Scope;
     ast->_TrackingScope = _TrackingScope;
     ast->_FromUseStatement = _FromUseStatement;
-    ast->MappedOldType = MappedOldType;
+    ast->MappedOldType = AstClone(MappedOldType);
     ast->Visibility = Visibility;
-    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.Get()); }
     return ast;
 }
 
@@ -100,8 +101,8 @@ auto spp::asts::TypeStatementAst::Stage1_PreProcess(
 }
 
 auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -114,14 +115,15 @@ auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
         {sm->CurrentScope}, ERR_ARGS(*this, *NewType, "type statement new type"));
 
     // Create the type symbol for this type, that will point to the old type.
-    _AliasSym = MakeShared<analyse::scopes::TypeSymbol>(
-        NewType, nullptr, nullptr, sm->CurrentScope, sm->CurrentScope->ParentModule());
+    auto alias_sym = MakeUnique<analyse::scopes::TypeSymbol>(
+        NewType.Get(), nullptr, nullptr, sm->CurrentScope, sm->CurrentScope->ParentModule());
+    _AliasSym = alias_sym.Get();
     _AliasSym->AliasStmt = Unique<TypeStatementAst>(this); // This is BAD but "cleanup" handles mem error.
-    sm->CurrentScope->AddTypeSymbolCheckConflict(_AliasSym);
+    sm->CurrentScope->AddTypeSymbolCheckConflict(std::move(alias_sym));
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
-        "type-stmt", {NewType.get()}, PosStart());
+        "type-stmt", {NewType.Get()}, PosStart());
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
 
     Ast::Stage2_GenTopLvlScopes(sm, meta);
@@ -132,8 +134,8 @@ auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Skip the class scope, and enter the type statement scope.
     sm->MoveToNextScope();
@@ -149,58 +151,60 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
     auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::RecursiveAliasSearch(
         *this, _FromUseStatement, sm->CurrentScope->Parent, sm, meta);
 
-    const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics());
+    const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().Get());
     _AliasSym->Type = final_sym->Type;
     _AliasSym->LinkedScope = final_sym->LinkedScope;
     _AliasSym->IsCopyable = [final_sym] { return final_sym->IsCopyable(); };
     _TrackingScope = tracking_scope;
-    MappedOldType = mapped_old_type;
+    MappedOldType = std::move(mapped_old_type);
 
     if (attach_generics != nullptr and not attach_generics->Params.IsEmpty()) {
-        GnParamGroup = attach_generics;
+        GnParamGroup = AstClone(attach_generics);
         GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
     }
     sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
+    //
+    using generate::common_types_precompiled::SELF;
+
     // Skip the class scope, and enter the type statement scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
-    OldType = MappedOldType;
+    OldType = AstClone(MappedOldType);
 
     // Add the "Self" symbol into the scope, mirroring class/sup prototype logic.
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-        MakeUnique<TypeIdentifierAst>(NewType->PosStart(), "Self", nullptr),
-        sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
+    auto self_sym = MakeUnique<analyse::scopes::TypeSymbol>(
+        SELF->To<TypeIdentifierAst>(), sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope);
+    sm->CurrentScope->AddTypeSymbol(std::move(self_sym));
 
     // Get the old type's symbol, without generics.
-    const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics(), false);
+    const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics().Get(), false);
     if (not stripped_old_sym->IsGeneric) {
         auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, _TrackingScope);
         GnParamGroup->Stage4_QualifyTypes(&tm, meta);
         OldType->Stage4_QualifyTypes(&tm, meta); // Qualify from scope of lowest level alias
         OldType->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
 
-        const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType);
+        const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType.Get());
         _AliasSym->Type = old_sym->Type;
         _AliasSym->LinkedScope = old_sym->LinkedScope;
-        const auto alias_raw_s4 = _AliasSym.get();
+        const auto alias_raw_s4 = _AliasSym;
         _AliasSym->IsZeroType = [old_sym, alias_raw_s4] { return alias_raw_s4->IsDirectlyZeroType or old_sym->IsZeroType(); };
         old_sym->AliasedBySyms.EmplaceBack(_AliasSym);
     }
-    MappedOldType = OldType;
+    MappedOldType = AstClone(OldType);
     sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -209,8 +213,8 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::TypeStatementAst::Stage6_PreAnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -218,8 +222,8 @@ auto spp::asts::TypeStatementAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
@@ -232,7 +236,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
         OldType->ResetCache();
         OldType->Stage7_AnalyseSemantics(sm, meta);
 
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType.Get());
         if (cls_sym->Type) {
             EnforceGenericConstraintsAllArgs(
                 *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
@@ -260,8 +264,8 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypeStatementAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -269,8 +273,8 @@ auto spp::asts::TypeStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::TypeStatementAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -279,8 +283,8 @@ auto spp::asts::TypeStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
     sm->MoveToNextScope();
@@ -290,8 +294,8 @@ auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::TypeStatementAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
     sm->MoveToNextScope();
@@ -317,7 +321,7 @@ auto spp::asts::TypeStatementAst::CleanUp()
     // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
     // it here prevents the type symbol from destroying it.
     if (_AliasSym != nullptr) {
-        (void)_AliasSym->AliasStmt.release();
+        (void)_AliasSym->AliasStmt.Release();
         _AliasSym = nullptr;
     }
 

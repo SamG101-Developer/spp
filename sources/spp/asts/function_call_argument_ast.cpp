@@ -31,8 +31,8 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -46,24 +46,24 @@ auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory status of the value expression.
     Val->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Delegate comptime resolution to the value expression.
     Val->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }
@@ -83,7 +83,7 @@ auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
 
     // Materialize the lhs expression into a temporary.
     const auto materialized_val = codegen::llvm_materialize(*Val, sm, meta, ctx);
-    const auto materialized_sym = sm->CurrentScope->GetVarSymbol(AstClone(materialized_val));
+    const auto materialized_sym = sm->CurrentScope->GetVarSymbol(materialized_val);
 
     const auto llvm_alloca = materialized_sym->LlvmInfo->Alloca;
     SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
@@ -91,28 +91,41 @@ auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
 }
 
 auto spp::asts::FunctionCallArgumentAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    // Infer the type from the value expression, unless an explicit "self" type has been given.
-    if (_InjectedSelfType != nullptr) { return _InjectedSelfType; }
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
 
-    auto type = Val->InferType(sm, meta);
-    if (Conv) { type = type->WithConvention(AstClone(Conv)); }
-    return type;
+    // If an explicit "Self" type has been given, from the "self"
+    // parameter, then use that as an "override".
+    if (_InjectedSelfType != nullptr) {
+        CACHE_TYPE_INFERENCE_AND_RETURN(_InjectedSelfType);
+    }
+
+    // Infer the type from the argument's value, and if there is
+    // a convention, apply it and cache the resulting AST.
+    const auto type = Val->InferType(sm, meta);
+    if (Conv != nullptr) {
+        CACHE_TYPE_INFERENCE_AND_RETURN(type->WithConvention(AstClone(Conv)));
+    }
+
+    // Otherwise, clone the argument's value's inferred type and
+    // cache the clone.
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(type));
 }
 
 auto spp::asts::FunctionCallArgumentAst::SetSelfType(
-    Shared<TypeAst> self_type)
+    Unique<TypeAst> self_type)
     -> void {
     // Set the self type to the given type.
     _InjectedSelfType = std::move(self_type);
 }
 
-auto spp::asts::FunctionCallArgumentAst::GetSelfType()
-    -> Shared<TypeAst> {
+auto spp::asts::FunctionCallArgumentAst::GetSelfType() const
+    -> TypeAst* {
     // Get the self type.
-    return _InjectedSelfType;
+    return _InjectedSelfType.Get();
 }
 
 SPP_MOD_END

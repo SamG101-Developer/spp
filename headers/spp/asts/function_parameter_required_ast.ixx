@@ -10,7 +10,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionParameterRequiredAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
     /**
      * Construct the FunctionParameterRequiredAst with the arguments matching the members.

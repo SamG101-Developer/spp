@@ -13,7 +13,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins::TempTypeAst {
     /**
      * The left parenthesis token that represents the start of the parenthesised expression.
@@ -23,7 +22,7 @@ SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins
     /**
      * The type expression that is enclosed within the parentheses.
      */
-    Shared<TypeAst> Expr;
+    Unique<TypeAst> Expr;
 
     /**
      * The right parenthesis token that represents the end of the parenthesised expression.
@@ -38,7 +37,7 @@ SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins
      */
     TypeParenthesisedExpressionAst(
         decltype(TokL) &&tok_l,
-        decltype(Expr) expr,
+        decltype(Expr) &&expr,
         decltype(TokR) &&tok_r);
 
     ~TypeParenthesisedExpressionAst() override;

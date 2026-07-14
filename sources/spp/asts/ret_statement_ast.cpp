@@ -35,7 +35,7 @@ spp::asts::RetStatementAst::RetStatementAst(
     decltype(Expr) &&val) :
     TokRet(std::move(tok_ret)),
     Expr(std::move(val)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokRet, lex::SppTokenType::KW_RET, "ret", Expr ? Expr->PosStart() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokRet, lex::SppTokenType::KW_RET, "ret", Expr != nullptr ? Expr->PosStart() : 0);
     Source._OriginalRetType = nullptr;
     _RetType = nullptr;
 }
@@ -51,7 +51,7 @@ auto spp::asts::RetStatementAst::PosStart() const
 auto spp::asts::RetStatementAst::PosEnd() const
     -> std::size_t {
     // Use the expression if it exists, otherwise use the "ret" token.
-    return Expr ? Expr->PosEnd() : TokRet->PosEnd();
+    return Expr != nullptr ? Expr->PosEnd() : TokRet->PosEnd();
 }
 
 auto spp::asts::RetStatementAst::Clone() const
@@ -70,8 +70,8 @@ auto spp::asts::RetStatementAst::ToString() const
 }
 
 auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -87,7 +87,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 
     // Analyse the expression.
     RaiseIf<SppInvalidPrimaryExpressionError>(
-        Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
+        Expr != nullptr and not IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
@@ -103,16 +103,18 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
         meta->Save();
 
         // For case conditions, we need an assignment target in case of variants.
-        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
-        meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
-        meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
-        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = meta->AssignmentTargetType; }
+        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0].Get();
+        const auto tmp = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+        const auto id = IdentifierAst::FromType(*meta->AssignmentTargetType);
+        meta->AssignmentTargetType = tmp.Get();
+        meta->AssignmentTarget = meta->AssignmentTargetType ? id : nullptr;
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.Get()) { meta->ReturnTypeOverloadResolverType = meta->AssignmentTargetType; }
 
         Expr->Stage7_AnalyseSemantics(sm, meta);
-        expr_type = Expr->InferType(sm, meta);
+        expr_type = AstClone(Expr->InferType(sm, meta));
 
-        _RetType = meta->AssignmentTargetType;
-        Source._OriginalRetType = meta->EnclosingFunctionSourceRetType[0];
+        _RetType = AstClone(meta->AssignmentTargetType);
+        Source._OriginalRetType = AstClone(meta->EnclosingFunctionSourceRetType[0]);
         meta->Restore();
 
         // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
@@ -123,16 +125,16 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->EnclosingFunctionRetType.IsEmpty()) {
-        _RetType = expr_type;
-        Source._OriginalRetType = _RetType;
-        meta->EnclosingFunctionRetType.EmplaceBack(_RetType);
-        meta->EnclosingFunctionSourceRetType.EmplaceBack(_RetType);
+        _RetType = AstClone(expr_type);
+        Source._OriginalRetType = AstClone(_RetType);
+        meta->EnclosingFunctionRetType.EmplaceBack(_RetType.Get());
+        meta->EnclosingFunctionSourceRetType.EmplaceBack(_RetType.Get());
     }
 
     // Type check the expression type against the return type of the enclosing subroutine.
     if (function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
         const auto direct_match = TypeEq(*_RetType, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
-        const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
+        const auto expr_for_err = Expr != nullptr ? Expr->To<Ast>() : TokRet->To<Ast>();
         RaiseIf<SppTypeMismatchError>(
             not direct_match, {meta->EnclosingFunctionScope, sm->CurrentScope},
             ERR_ARGS(*Source._OriginalRetType, *_RetType, *expr_for_err, *expr_type));
@@ -140,8 +142,8 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::RetStatementAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // If there is no expression, then now ork needs to be done.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -153,8 +155,8 @@ auto spp::asts::RetStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // If there is no expression, then return nullptr.
     if (Expr == nullptr) { return; }
@@ -164,8 +166,8 @@ auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::RetStatementAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Use the return void instruction if there is no return value.
@@ -177,7 +179,7 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
     // Temp holder for non-symbolic condition.
     if (sm->CurrentScope->GetVarSymbolOutermost(*Expr).First == nullptr) {
         meta->Save();
-        meta->AssignmentTargetType = _RetType;
+        meta->AssignmentTargetType = _RetType.Get();
         const auto ret_val = codegen::llvm_materialize(*Expr, sm, meta, ctx);
         const auto llvm_ret_val = ret_val->Stage11_CodeGen(sm, meta, ctx);
         ctx->Builder.CreateRet(llvm_ret_val);

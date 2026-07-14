@@ -19,12 +19,12 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
     /**
      * The @c :: operator token that represents the namespace operator.
      */
-    std::unique_ptr<TokenAst> TokSep;
+    Unique<TokenAst> TokSep;
 
     /**
      * The nested type identifier. This is the type that is being accessed within the outer type.
      */
-    std::shared_ptr<TypeIdentifierAst> Name;
+    Unique<TypeIdentifierAst> Name;
 
     /**
      * Construct the TypePostfixExpressionOperatorNestedTypeAst with the arguments matching the members.
@@ -33,7 +33,7 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
      */
     TypePostfixExpressionOperatorNestedTypeAst(
         decltype(TokSep) &&tok_sep,
-        decltype(Name) name);
+        decltype(Name) &&name);
 
     ~TypePostfixExpressionOperatorNestedTypeAst() override;
 
@@ -43,13 +43,13 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto NsParts() const -> Vec<Shared<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts() const -> Vec<IdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto NsParts() -> Vec<Shared<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts() -> Vec<IdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto TypeParts() const -> Vec<Shared<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts() const -> Vec<TypeIdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto TypeParts() -> Vec<Shared<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts() -> Vec<TypeIdentifierAst*> override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypePostfixExpressionOperatorNestedTypeAst)

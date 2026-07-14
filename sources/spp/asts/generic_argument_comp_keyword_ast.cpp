@@ -25,7 +25,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::FromSym(
     analyse::scopes::VariableSymbol const &sym)
     -> Unique<GenericArgumentCompKeywordAst> {
     // Get the comptime value from the symbol's memory info.
-    const auto c = sym.MemInfo->AstCompTime.get();
+    const auto c = sym.MemInfo->AstCompTime.Get();
     Unique<ExpressionAst> value = nullptr;
 
     // Depending on that the comptime AST is, get the value.
@@ -35,8 +35,8 @@ auto spp::asts::GenericArgumentCompKeywordAst::FromSym(
     else if (const auto comptime_arg = c->To<GenericArgumentCompAst>(); comptime_arg != nullptr) {
         value = AstClone(comptime_arg->Val);
     }
-    if (auto *value_as_type = value->To<TypeIdentifierAst>(); value_as_type != nullptr) {
-        value = IdentifierAst::FromType(*AstCloneShared(value_as_type)); // Don't remove "shared_ptr". Todo: Try new "AstCloneShared"
+    if (const auto value_as_type = value->To<TypeIdentifierAst>(); value_as_type != nullptr) {
+        value = AstClone(IdentifierAst::FromType(*value_as_type));
     }
 
     // Create the GenericArgumentCompKeywordAst with the name and value.
@@ -99,8 +99,8 @@ auto spp::asts::GenericArgumentCompKeywordAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentCompKeywordAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -114,8 +114,8 @@ auto spp::asts::GenericArgumentCompKeywordAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenericArgumentCompKeywordAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;

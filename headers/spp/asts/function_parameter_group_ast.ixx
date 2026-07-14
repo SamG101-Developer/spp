@@ -18,6 +18,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.
@@ -55,11 +56,11 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     SPP_ATTR_NODISCARD auto GetAllParams() const -> Vec<FunctionParameterAst*>;
 

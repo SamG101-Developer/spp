@@ -10,9 +10,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst_BuiltinVirtualMethod,
-    test_invalid_usage_on_function, R"(
+    test_invalid_usage_on_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !virtual_method
     fun f() -> Void { }
 )");
@@ -27,9 +28,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst_BuiltinAbstractMethod,
-    test_invalid_usage_on_function, R"(
+    test_invalid_usage_on_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !abstract_method
     fun f() -> Void { }
 )");

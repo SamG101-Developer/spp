@@ -26,8 +26,8 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import spp.utils.ptr;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::GenericParameterGroupAst::NewEmpty()
@@ -37,8 +37,8 @@ auto spp::asts::GenericParameterGroupAst::NewEmpty()
 }
 
 auto spp::asts::GenericParameterGroupAst::NewEmptyShared()
-    -> Shared<GenericParameterGroupAst> {
-    return MakeShared<GenericParameterGroupAst>(
+    -> Unique<GenericParameterGroupAst> {
+    return MakeUnique<GenericParameterGroupAst>(
         nullptr, decltype(Params)(), nullptr);
 }
 
@@ -110,7 +110,7 @@ auto spp::asts::GenericParameterGroupAst::MergeGenerics(
     for (auto &&p : std::move(other_params)) {
         // Don't add duplicate named parameters.
         auto new_name = p->Name->ToString();
-        if (genex::contains(existing_names, new_name)) { continue; }
+        if (std::ranges::contains(existing_names, new_name)) { continue; }
         Params.EmplaceBack(std::move(p));
         existing_names.EmplaceBack(new_name);
     }
@@ -190,7 +190,7 @@ auto spp::asts::GenericParameterGroupAst::GetAllParams() const
     // Return all parameters.
     auto out = Vec<GenericParameterAst*>();
     for (auto const &p : Params) {
-        out.EmplaceBack(p.get());
+        out.EmplaceBack(p.Get());
     }
     return out;
 }
@@ -219,16 +219,16 @@ auto spp::asts::GenericParameterGroupAst::OptToReq() const
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the generation steps on the parameters in the group.
     for (auto const &p : Params) { p->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the type qualifier steps on each parameter in the group.
     for (auto const &p : Params) { p->Stage4_QualifyTypes(sm, meta); }
@@ -240,19 +240,19 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
 
         // Attach the scopes of the constraint types as sup-scopes to the generic scope.
         for (auto const &constraint : p->Constraints->Constraints) {
-            auto constraint_scope = sm->CurrentScope->GetTypeSymbol(constraint)->LinkedScope;
+            auto constraint_scope = sm->CurrentScope->GetTypeSymbol(constraint.Get())->LinkedScope;
             for (auto const &dummy_scope : p->GetDummyScopes()) {
                 dummy_scope->DirectSupScopes.EmplaceBack(constraint_scope);
             }
         }
 
-        p->GetDummyScopes()[0]->TySym->GenericConstraints = AstCloneVecShared(p->Constraints->Constraints);
+        p->GetDummyScopes()[0]->TySym->GenericConstraints = p->Constraints->GetAllConstraints();
     }
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppIdentifierDuplicateError;
@@ -261,21 +261,20 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
 
     //
     const auto param_names = Params
-        | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::to<Vec>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x->Name.Get(); })
+        | spp::views::duplicates({}, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::to<Vec>());
+        | spp::views::ptr
+        | spp::views::cast_dynamic<mixins::OrderableAst*>
+        | std::ranges::to<Vec>());
 
     // Mark copyable generics.
     for (auto const &p : GetTypeParams()) {
         for (auto const &constraint : p->Constraints->Constraints) {
             if (IsTypeCopyable(*constraint, *sm)) {
-                const auto generic_sym = sm->CurrentScope->GetTypeSymbol(p->Name);
+                const auto generic_sym = sm->CurrentScope->GetTypeSymbol(p->Name.Get());
                 generic_sym->IsDirectlyCopyable = true;
             }
         }
@@ -296,16 +295,16 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the memory checks on each parameter in the group.
     for (auto const &p : Params) { p->Stage8_CheckMemory(sm, meta); }
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Run the code generation steps on each parameter in the group.

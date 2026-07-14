@@ -19,13 +19,12 @@ import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import spp.utils.ptr;
-import genex;
 
 SPP_MOD_BEGIN
 spp::analyse::scopes::Symbol::~Symbol() = default;
 
 spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
-    Shared<asts::IdentifierAst> name,
+    asts::IdentifierAst *name,
     Scope *scope) :
     Name(std::move(name)),
     LinkedScope(scope) {
@@ -47,8 +46,8 @@ auto spp::analyse::scopes::NamespaceSymbol::operator==(
 }
 
 spp::analyse::scopes::VariableSymbol::VariableSymbol(
-    Shared<asts::IdentifierAst> name,
-    Shared<asts::TypeAst> type,
+    asts::IdentifierAst *name,
+    Unique<asts::TypeAst> &&type,
     Scope *ScopeDefinedIn,
     const bool is_mutable,
     const bool is_generic,
@@ -60,14 +59,16 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     IsGeneric(is_generic),
     Visibility(visibility),
     MemInfo(MakeUnique<utils::mem_info_utils::MemoryInfo>()) {
+    // Todo: Initializer list?
     LlvmInfo = MakeUnique<codegen::LlvmVarSymInfo>();
     CompTimeValue = nullptr;
+    AliasSym = nullptr;
 }
 
 spp::analyse::scopes::VariableSymbol::VariableSymbol(
     VariableSymbol const &that) :
-    Name(AstCloneShared(that.Name)),
-    Type(AstCloneShared(that.Type)),
+    Name(that.Name),
+    Type(asts::AstClone(that.Type)),
     ScopeDefinedIn(that.ScopeDefinedIn),
     IsMutable(that.IsMutable),
     IsGeneric(that.IsGeneric),
@@ -76,6 +77,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     MemInfo(that.MemInfo->Clone()),
     LlvmInfo(MakeUnique<codegen::LlvmVarSymInfo>()) {
     LlvmInfo->Alloca = that.LlvmInfo->Alloca;
+    AliasSym = that.AliasSym; // ?
 }
 
 spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
@@ -87,8 +89,8 @@ auto spp::analyse::scopes::VariableSymbol::operator==(
 }
 
 auto spp::analyse::scopes::VariableSymbol::FqName() const
-    -> Shared<asts::ExpressionAst> {
-    if (IsGeneric) { return Name; }
+    -> Unique<asts::ExpressionAst> {
+    if (IsGeneric) { return AstClone(Name); }
 
     // Fully qualify the name from the root scope.
     auto qualifier_scope = ScopeDefinedIn;
@@ -104,15 +106,15 @@ auto spp::analyse::scopes::VariableSymbol::FqName() const
 
     auto qualified_name = Unique<asts::ExpressionAst>(nullptr);
     qualified_name = asts::AstClone(std::get<ScopeIdentifierName>(scopes.Back()->Name).Name);
-    for (auto qualifier_scope : scopes | genex::views::reverse | genex::views::drop(1)) {
-        const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->Name).Name.get();
-        auto ns_name = MakeShared<asts::IdentifierAst>(raw_ns_name->PosStart(), raw_ns_name->Val);
+    for (auto qualifier_scope : scopes | std::views::reverse | std::views::drop(1)) {
+        const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->Name).Name.Get();
+        auto ns_name = MakeUnique<asts::IdentifierAst>(raw_ns_name->PosStart(), raw_ns_name->Val);
         auto ns_op = MakeUnique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, std::move(ns_name));
         qualified_name = MakeUnique<asts::PostfixExpressionAst>(std::move(qualified_name), std::move(ns_op));
         qualifier_scope = qualifier_scope->Parent;
     }
 
-    auto ns_op = MakeUnique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, asts::AstCloneShared(Name));
+    auto ns_op = MakeUnique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, asts::AstClone(Name));
     qualified_name = MakeUnique<asts::PostfixExpressionAst>(std::move(qualified_name), std::move(ns_op));
 
     // Return the qualified expression (either IdentifierAst or PostfixExpressionAst)
@@ -120,7 +122,7 @@ auto spp::analyse::scopes::VariableSymbol::FqName() const
 }
 
 spp::analyse::scopes::TypeSymbol::TypeSymbol(
-    Shared<asts::TypeIdentifierAst> name,
+    asts::TypeIdentifierAst *name,
     asts::ClassPrototypeAst *type,
     Scope *scope,
     Scope *scope_defined_in,
@@ -129,7 +131,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     const bool is_directly_copyable,
     const asts::utils::Visibility visibility,
     Unique<asts::ConventionAst> &&convention,
-    Vec<Shared<asts::TypeAst>> const &generic_constraints) :
+    Vec<asts::TypeAst*> const &generic_constraints) :
     Name(std::move(name)),
     Type(type),
     LinkedScope(scope),
@@ -142,9 +144,12 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     Visibility(visibility),
     Convention(std::move(convention)),
     GenericImpl(this),
-    LlvmInfo(MakeShared<codegen::LlvmTypeSymInfo>()),
+    LlvmInfo(MakeUnique<codegen::LlvmTypeSymInfo>()),
     IsDirectlyZeroType(false),
     IsZeroType([this] { return this->IsDirectlyZeroType; }) {
+    if (this == reinterpret_cast<TypeSymbol*>(0x9e2f7a0)) {
+        auto _ = 123;
+    }
 }
 
 spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
@@ -163,7 +168,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     IsDirectlyZeroType(that.IsDirectlyZeroType),
     IsZeroType(that.IsZeroType) {
     AliasStmt = asts::AstClone(that.AliasStmt);
-    LlvmInfo = that.LlvmInfo;
+    LlvmInfo = that.LlvmInfo->Clone();
 }
 
 spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
@@ -176,33 +181,38 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
 
 auto spp::analyse::scopes::TypeSymbol::FqName(
     const bool ignore_dollar) const
-    -> Shared<asts::TypeAst> {
+    -> asts::TypeAst* {
+    if (_Fq != nullptr) { return _Fq.Get(); }
+
     // For aliases, return the fully qualified name of the aliased type.
     if (AliasStmt != nullptr) {
-        return AliasStmt->MappedOldType;
+        _Fq = asts::AstClone(AliasStmt->MappedOldType);
+        return _Fq.Get();
     }
 
     // If the type is generic, or the name starts with a '$', return the name as-is.
     if (IsGeneric or LinkedScope == nullptr or (ignore_dollar and Name->IsCompilerGeneratedType()) or Name->Name == "Self") {
-        return Name;
+        _Fq = asts::AstClone(Name);
+        return _Fq.Get();
     }
 
     // Fully qualify the name from the root scope.
     auto qualifier_scope = LinkedScope->Parent;
-    auto qualified_name = dynamic_shared_cast<asts::TypeAst>(Name);
+    auto qualified_name = AstClone(Name->To<asts::TypeAst>());
     while (qualifier_scope->Parent != nullptr) {
         while (std::holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
             qualifier_scope = qualifier_scope->Parent;
         }
-        const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->Name).Name.get();
-        auto ns_name = MakeShared<asts::IdentifierAst>(raw_ns_name->PosStart(), raw_ns_name->Val);
-        auto ns_op = MakeShared<asts::TypeUnaryExpressionOperatorNamespaceAst>(std::move(ns_name), nullptr);
-        qualified_name = MakeShared<asts::TypeUnaryExpressionAst>(std::move(ns_op), std::move(qualified_name));
+        const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->Name).Name.Get();
+        auto ns_name = MakeUnique<asts::IdentifierAst>(raw_ns_name->PosStart(), raw_ns_name->Val);
+        auto ns_op = MakeUnique<asts::TypeUnaryExpressionOperatorNamespaceAst>(std::move(ns_name), nullptr);
+        qualified_name = MakeUnique<asts::TypeUnaryExpressionAst>(std::move(ns_op), std::move(qualified_name));
         qualifier_scope = qualifier_scope->Parent;
     }
 
     // Re-add the convention of the type if it exists.
-    return Convention ? qualified_name->WithConvention(asts::AstClone(Convention)) : qualified_name;
+    _Fq = Convention != nullptr ? qualified_name->WithConvention(asts::AstClone(Convention)) : std::move(qualified_name);
+    return _Fq.Get();
 }
 
 SPP_MOD_END

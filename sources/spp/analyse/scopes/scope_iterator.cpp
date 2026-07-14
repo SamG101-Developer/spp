@@ -42,7 +42,7 @@ auto spp::analyse::scopes::ScopeIterator::operator++()
     auto [node, idx] = _Stack.Back();
     if (idx < node->Children.Len()) {
         _Stack.Back().Seen += 1;
-        _Stack.EmplaceBack(node->Children[idx].get(), 0);
+        _Stack.EmplaceBack(node->Children[idx].Get(), 0);
         return *this;
     }
 
@@ -54,7 +54,7 @@ auto spp::analyse::scopes::ScopeIterator::operator++()
         auto &top = _Stack.Back();
         if (top.Seen < top.Node->Children.Len()) {
             top.Seen += 1;
-            _Stack.EmplaceBack(top.Node->Children[top.Seen - 1].get(), 0);
+            _Stack.EmplaceBack(top.Node->Children[top.Seen - 1].Get(), 0);
             return *this;
         }
         _Stack.PopBack();

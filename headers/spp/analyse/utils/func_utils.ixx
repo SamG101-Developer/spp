@@ -9,7 +9,6 @@ import ankerl.unordered_dense;
 import llvm;
 import std;
 
-
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
     SPP_EXP_CLS struct ExpressionAst;
@@ -41,43 +40,42 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;
 }
 
-
 namespace spp::analyse::utils::func_utils {
     using InferenceSourceMap = ankerl::unordered_dense::map<
-        Shared<asts::IdentifierAst>,
-        Shared<asts::TypeAst>,
-        spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
-        spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
+        asts::IdentifierAst*,
+        asts::TypeAst*,
+        spp::utils::ptr::ptr_hash<asts::IdentifierAst*>,
+        spp::utils::ptr::ptr_eq<asts::IdentifierAst*>>;
 
     using InferenceTargetMap = ankerl::unordered_dense::map<
-        Shared<asts::IdentifierAst>,
-        Shared<asts::TypeAst>,
-        spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
-        spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
+        asts::IdentifierAst*,
+        asts::TypeAst*,
+        spp::utils::ptr::ptr_hash<asts::IdentifierAst*>,
+        spp::utils::ptr::ptr_eq<asts::IdentifierAst*>>;
 
     using InferenceResultCompMap = ankerl::unordered_dense::map<
-        Shared<asts::TypeIdentifierAst>,
+        asts::TypeIdentifierAst*,
         Vec<asts::ExpressionAst*>,
-        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
+        spp::utils::ptr::ptr_hash<asts::TypeIdentifierAst*>,
+        spp::utils::ptr::ptr_eq<asts::TypeIdentifierAst*>>;
 
     using InferenceResultTypeMap = ankerl::unordered_dense::map<
-        Shared<asts::TypeIdentifierAst>,
-        Vec<Shared<asts::TypeAst>>,
-        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
+        asts::TypeIdentifierAst*,
+        Vec<Unique<asts::TypeAst>>,
+        spp::utils::ptr::ptr_hash<asts::TypeIdentifierAst*>,
+        spp::utils::ptr::ptr_eq<asts::TypeIdentifierAst*>>;
 
     SPP_EXP_CLS using InferenceFinalCompMap = ankerl::unordered_dense::map<
-        Shared<asts::TypeIdentifierAst>,
+        asts::TypeIdentifierAst*,
         asts::ExpressionAst*,
-        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
+        spp::utils::ptr::ptr_hash<asts::TypeIdentifierAst*>,
+        spp::utils::ptr::ptr_eq<asts::TypeIdentifierAst*>>;
 
     SPP_EXP_CLS using InferenceFinalTypeMap = ankerl::unordered_dense::map<
-        Shared<asts::TypeIdentifierAst>,
-        Shared<asts::TypeAst>,
-        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
+        asts::TypeIdentifierAst*,
+        Unique<asts::TypeAst>,
+        spp::utils::ptr::ptr_hash<asts::TypeIdentifierAst*>,
+        spp::utils::ptr::ptr_eq<asts::TypeIdentifierAst*>>;
 
     /**
      * Get the function owner type, scope and name from an expression AST. This is used to determine information related
@@ -101,7 +99,7 @@ namespace spp::analyse::utils::func_utils {
         asts::ExpressionAst const &lhs,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>>;
+        -> std::tuple<Unique<asts::TypeAst>, scopes::Scope const*, asts::IdentifierAst*>;
 
     SPP_EXP_FUN auto ConvertMethodToFuncForm(
         asts::TypeAst const &function_owner_type,
@@ -117,7 +115,7 @@ namespace spp::analyse::utils::func_utils {
         scopes::Scope const *target_scope,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>>;
+        -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, asts::TypeAst*>>;
 
     SPP_EXP_FUN auto CheckForConflictingOverload(
         scopes::Scope const &this_scope,
@@ -156,10 +154,10 @@ namespace spp::analyse::utils::func_utils {
         -> void;
 
     SPP_EXP_FUN auto EnforceNoUninferredGnArgs(
-        Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
-        Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
+        Vec<asts::TypeIdentifierAst*> const &p_names,
+        Vec<asts::TypeIdentifierAst*> const &i_names,
         scopes::Scope const &owner_scope,
-        Shared<asts::Ast> const &owner,
+        asts::Ast const *owner,
         scopes::ScopeManager &sm)
         -> void;
 
@@ -200,9 +198,9 @@ namespace spp::analyse::utils::func_utils {
         asts::GenericArgumentGroupAst &a_group,
         InferenceSourceMap infer_source,
         InferenceTargetMap infer_target,
-        Shared<asts::Ast> const &owner,
+        asts::Ast const *owner,
         scopes::Scope const &owner_scope,
-        Shared<asts::IdentifierAst> const &variadic_fn_param_name,
+        asts::IdentifierAst const *variadic_fn_param_name,
         bool is_tuple_owner,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
@@ -212,7 +210,7 @@ namespace spp::analyse::utils::func_utils {
         asts::ExpressionAst &expr,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> Shared<const asts::TypeAst>;
+        -> Unique<asts::TypeAst>;
 
     SPP_EXP_FUN auto CreateCallablePrototype(
         asts::TypeAst const &expr_type)
@@ -220,6 +218,6 @@ namespace spp::analyse::utils::func_utils {
 
     SPP_EXP_FUN auto GetOverloadTypes(
         asts::TypeAst const &overload_set_type,
-        scopes::Scope const& scope)
-        -> Vec<Shared<asts::TypeAst>>;
+        scopes::Scope const &scope)
+        -> Vec<asts::TypeAst*>;
 }

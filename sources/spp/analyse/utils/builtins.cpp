@@ -9,12 +9,12 @@ import ankerl.unordered_dense;
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name)
 #define SPP_DEFINE_BUILTIN_FUNC(scoped_name, func_name) \
     map.emplace(scoped_name, LoweredFuncImpl{           \
-        .cmp_fn=nullptr})
+        .CmpFn=nullptr})
 
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name),
 #define SPP_DEFINE_BUILTIN_FUNC_CMP(scoped_name, func_name) \
     map.emplace(scoped_name, LoweredFuncImpl{               \
-        .cmp_fn=cmp_utils::make_cmp_fn(cmp_utils::func_name)})
+        .CmpFn=cmp_utils::make_cmp_fn(cmp_utils::func_name)})
 
 auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
     -> ankerl::unordered_dense::map<Str, LoweredFuncImpl> {

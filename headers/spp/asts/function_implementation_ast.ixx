@@ -11,6 +11,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionImplementationAst;
 }
 
+COMMON_AST_IMPORTS
+
 /**
  * The FunctionImplementationAst represents the implementation of a function. It is used to define the body of a
  * function and contains the statements that make up the function's implementation. Semantically equivalent to a basic
@@ -25,5 +27,5 @@ SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAs
 
     ~FunctionImplementationAst() override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 };

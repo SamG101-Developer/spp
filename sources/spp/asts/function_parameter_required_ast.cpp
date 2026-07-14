@@ -36,7 +36,7 @@ auto spp::asts::FunctionParameterRequiredAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<FunctionParameterRequiredAst>(
-        AstClone(Var), AstClone(TokColon), AstCloneShared(Type));
+        AstClone(Var), AstClone(TokColon), AstClone(Type));
 }
 
 auto spp::asts::FunctionParameterRequiredAst::ToString() const

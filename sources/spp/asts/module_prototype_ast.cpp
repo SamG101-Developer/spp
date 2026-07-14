@@ -6,7 +6,6 @@ import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(
@@ -50,72 +49,72 @@ auto spp::asts::ModulePrototypeAst::Stage1_PreProcess(
 }
 
 auto spp::asts::ModulePrototypeAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage2_GenTopLvlScopes(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage3_GenTopLvlAliases(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage3_GenTopLvlAliases(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage4_QualifyTypes(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage5_LoadSupScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage5_LoadSupScopes(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage6_PreAnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage6_PreAnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
     Impl->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::ModulePrototypeAst::Stage10_PreCodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Shift to implementation.
@@ -123,8 +122,8 @@ auto spp::asts::ModulePrototypeAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::ModulePrototypeAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Add the entry building block for module level code.
@@ -146,18 +145,16 @@ auto spp::asts::ModulePrototypeAst::Name() const
 
     // Check if "src" is in the file path.
     auto name = Str();
-    if (genex::contains(parts, "src"s)) {
+    if (std::ranges::contains(parts, "src"s)) {
         name = parts
-            | genex::views::drop(genex::position(parts, [](auto const &x) { return x == "src"; }))
-            | genex::views::intersperse("::"s)
-            | genex::views::join
-            | genex::to<Str>();
+            | std::views::drop(std::ranges::find_if(parts, [](auto const &p) { return p == "src"s; }) - parts.begin())
+            | std::views::join_with("::"s)
+            | std::ranges::to<Str>();
     }
     else {
-        name = Vec<Str>{parts[0], parts[1] + ".spp"_str}
-            | genex::views::intersperse("::"s)
-            | genex::views::join
-            | genex::to<Str>();
+        name = Vec{parts[0], parts[1] + ".spp"_str}
+            | std::views::join_with("::"s)
+            | std::ranges::to<Str>();
     }
 
     return MakeUnique<IdentifierAst>(PosStart(), std::move(name));

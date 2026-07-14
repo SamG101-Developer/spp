@@ -30,7 +30,7 @@ auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::PosStart() con
 auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::PosEnd() const
     -> std::size_t {
     // Use the binding or the ".." token.
-    return Binding ? Binding->PosEnd() : TokEllipsis->PosEnd();
+    return Binding != nullptr ? Binding->PosEnd() : TokEllipsis->PosEnd();
 }
 
 auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::Clone() const
@@ -49,17 +49,17 @@ auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ToString() con
 }
 
 auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     // If there is a binding, use it, otherwise there are no names for this.
-    return Binding != nullptr ? Binding->ExtractNames() : Vec<Shared<IdentifierAst>>();
+    return Binding != nullptr ? Binding->ExtractNames() : Vec<IdentifierAst*>();
 }
 
 auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ExtractName() const
-    -> Shared<IdentifierAst> {
+    -> IdentifierAst* {
     // If there is a binding, use it, otherwise this is unmatchable.
     return Binding != nullptr
         ? Binding->ExtractName()
-        : analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
+        : analyse::utils::destructure_utils::UnmatchableSingleIdentifier();
 }
 
 SPP_MOD_END

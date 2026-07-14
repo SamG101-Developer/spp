@@ -4,7 +4,6 @@ module;
 module spp.cli2;
 import spp.utils.types;
 import cli11;
-import genex;
 
 inline constexpr spp::Str OUT_FOLDER_NAME = "out";
 inline constexpr spp::Str SRC_FOLDER_NAME = "src";
@@ -39,9 +38,9 @@ auto FormatDefaultContents(
     -> spp::Str {
     // Remove the first newline, and replace "    " with "".
     auto out = spp::Str();
-    for (auto const &line : contents | genex::views::split('\n')) {
+    for (auto const &line : contents | std::views::split('\n')) {
         if (line.size() <= 0) { continue; }
-        auto formatted = line | genex::to<spp::Str>();
+        auto formatted = line | std::ranges::to<spp::Str>();
         formatted.replace(formatted.find("    "), 4, "");
     }
     return out;

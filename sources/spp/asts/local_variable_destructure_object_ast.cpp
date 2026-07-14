@@ -30,8 +30,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_ast;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import spp.utils.uid;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
@@ -67,7 +67,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<LocalVariableDestructureObjectAst>(
-        AstCloneShared(Type), AstClone(TokL), AstCloneVec(Elems), AstClone(TokR));
+        AstClone(Type), AstClone(TokL), AstCloneVec(Elems), AstClone(TokR));
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::ToString() const
@@ -81,8 +81,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::ToString() const
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppArgumentMissingError;
@@ -95,31 +95,31 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     const auto val = meta->LetStatementValue;
     const auto val_type = val->InferType(sm, meta);
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
-    const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type)->Type;
-    const auto cls_attrs = cls_proto != nullptr ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>() : Vec<Ast*>{};
+    const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type.Get())->Type;
+    const auto cls_attrs = cls_proto != nullptr ? cls_proto->Impl->Members | spp::views::ptr | std::ranges::to<Vec>() : Vec<Ast*>{};
 
     const auto attributes = cls_attrs
-        | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::to<Vec>();
+        | spp::views::cast_dynamic<ClassAttributeAst*>
+        | std::ranges::to<Vec>();
 
     const auto multi_arg_skips = Elems
-        | genex::views::ptr
-        | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>
+        | std::ranges::to<Vec>();
 
     const auto assigned_attributes = Elems
-        | genex::views::ptr
-        | genex::views::filter([](auto const &x) { return x->template To<LocalVariableDestructureSkipMultipleArgumentsAst>() == nullptr; })
-        | genex::views::transform([](auto const &x) { return x->ExtractName(); })
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | std::views::filter([](auto const &x) { return x->template To<LocalVariableDestructureSkipMultipleArgumentsAst>() == nullptr; })
+        | std::views::transform([](auto const &x) { return x->ExtractName(); })
+        | std::ranges::to<Vec>();
 
     const auto missing_attributes = attributes
-        | genex::views::transform([](auto const &x) { return x->Name; })
-        | genex::to<Vec>()
-        | genex::views::not_in(assigned_attributes, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x->Name.Get(); })
+        | std::ranges::to<Vec>()
+        | spp::views::not_in(assigned_attributes, spp::meta::deref, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     // Check the type matches.
     RaiseIf<SppTypeMismatchError>(
@@ -142,23 +142,26 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
 
     // Handle nested flow typing, like seen in the case pattern handler for object destructure.
-    Shared<IdentifierAst> uid_name = nullptr;
+    Unique<IdentifierAst> uid_name = nullptr;
     const ExpressionAst *effective_val = val;
     if (_FromCasePattern and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
         const auto uid = spp::utils::Uid(this);
-        uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
-        auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
+        uid_name = MakeUnique<IdentifierAst>(PosStart(), uid);
+        const auto uid_name_ptr = uid_name.Get();
+        auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(uid_name), nullptr);
         _CondLet = MakeUnique<LetStatementInitializedAst>(nullptr, std::move(uid_var), nullptr, nullptr, AstClone(val));
         _CondLet->Stage7_AnalyseSemantics(sm, meta);
-        _CondSym = sm->CurrentScope->GetVarSymbol(uid_name);
-        _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
-        _FlowSym->Type = Type;
-        sm->CurrentScope->AddVarSymbol(_FlowSym);
-        effective_val = uid_name.get();
+        _CondSym = sm->CurrentScope->GetVarSymbol(uid_name_ptr);
+
+        auto flow_sym = MakeUnique<analyse::scopes::VariableSymbol>(*_CondSym);
+        flow_sym->Type = AstClone(Type);
+        _FlowSym = flow_sym.Get();
+        sm->CurrentScope->AddVarSymbol(std::move(flow_sym));
+        effective_val = uid_name_ptr;
     }
 
     // Create expanded "let" statements for each part of the destructure.
-    for (const auto elem : Elems | genex::views::ptr) {
+    for (const auto elem : Elems | spp::views::ptr) {
         // Skip any conversion for unbound multi argument skipping.
         if (elem->To<LocalVariableDestructureSkipMultipleArgumentsAst>() != nullptr) {
         }
@@ -190,34 +193,34 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the temp variable's memory first if flow typing introduced one.
-    if (_CondLet) { _CondLet->Stage8_CheckMemory(sm, meta); }
+    if (_CondLet != nullptr) { _CondLet->Stage8_CheckMemory(sm, meta); }
     // Check the memory state of the elements.
     for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Comptime resolve the temp variable first if flow typing introduced one.
-    if (_CondLet) { _CondLet->Stage9_CompTimeResolve(sm, meta); }
+    if (_CondLet != nullptr) { _CondLet->Stage9_CompTimeResolve(sm, meta); }
     // Comptime resolve each element.
     for (auto const &x : _NewAsts) { x->Stage9_CompTimeResolve(sm, meta); }
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // If flow typing introduced a temp variable, generate it. _FlowSym replaced _CondSym in
     // the symbol table (same scope, same string key), so LocalVariableSingleIdentifierAst::Stage11
     // inside _CondLet already sets _FlowSym->LlvmInfo->Alloca — no copy needed.
-    if (_CondLet) {
+    if (_CondLet != nullptr) {
         _CondLet->Stage11_CodeGen(sm, meta, ctx);
     }
     // Generate the "let" statements for each element.
@@ -226,15 +229,15 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     // Walk the nested bindings for variable names.
     return analyse::utils::destructure_utils::GetNestedBindingIdentifiers(Elems);
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::ExtractName() const
-    -> Shared<IdentifierAst> {
+    -> IdentifierAst* {
     // No single identifier for destructured bindings.
-    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
+    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier();
 }
 
 SPP_MOD_END

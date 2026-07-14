@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.loop_iterable_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -87,8 +86,8 @@ auto spp::asts::LoopIterableExpressionAst::ToString() const
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // TODO: Move the translation into "Stage1_PreProcess()" and just call that from here.
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -96,19 +95,19 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::GetGenAndYieldTypes;
 
     // Simple statements to move from.
-    const auto uid = spp::utils::Uid(this);
+    const auto uid = utils::Uid(this);
     auto skip_stmt = LoopControlFlowStatementAst::Skip(PosStart());
     auto exit_stmt = LoopControlFlowStatementAst::Exit(PosStart(), 1);
-    auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter_" + uid);
-    auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res_" + uid);
+    const auto iterable_name = MakeUnique<IdentifierAst>(PosStart(), "$_iter_" + uid);
+    const auto resume_name = MakeUnique<IdentifierAst>(PosStart(), "$_res_" + uid);
 
     // Grab the generator's inner type.
     auto [_, yield_type, _] = ( {
-        auto clone_expr = AstClone(Iterable);
-        auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+        const auto clone_expr = AstClone(Iterable);
+        auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, sm->CurrentScope);
         tm.Reset(sm->CurrentScope, sm->CurrentIterator());
         clone_expr->Stage7_AnalyseSemantics(&tm, meta);
-        auto iterable_type = clone_expr->InferType(&tm, meta);
+        const auto iterable_type = clone_expr->InferType(&tm, meta);
         GetGenAndYieldTypes(
             *iterable_type, *tm.CurrentScope, *Iterable, "loop iterable");
     });
@@ -116,7 +115,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     // Create the initial let statement to materialize the condition being iterated.
     // Translated: "let $_iter = <iterable>".
     auto iterable_let = ( {
-        auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, iterable_name, nullptr);
+        auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, AstClone(iterable_name), nullptr);
         auto iterable_val = std::move(Iterable);
         MakeUnique<LetStatementInitializedAst>(nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
     });
@@ -126,7 +125,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto resume_let = ( {
         auto resume_fn_call = MakeUnique<PostfixExpressionOperatorKeywordResAst>(nullptr, nullptr, nullptr);
         auto resume_val = MakeUnique<PostfixExpressionAst>(AstClone(iterable_name), std::move(resume_fn_call));
-        auto resume_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, resume_name, nullptr);
+        const auto resume_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, AstClone(resume_name), nullptr);
         MakeUnique<LetStatementInitializedAst>(nullptr, AstClone(resume_var), nullptr, nullptr, std::move(resume_val));
     });
 
@@ -134,7 +133,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     // Translated: "<case-of-expr> is &Str::Str(..) { ... }".
     auto case_valid_branch = ( {
         auto ignore_fields = MakeUnique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(nullptr, nullptr);
-        auto case_type_pattern = CasePatternVariantDestructureObjectAst::FromType(yield_type);
+        auto case_type_pattern = CasePatternVariantDestructureObjectAst::FromType(std::move(yield_type));
         case_type_pattern->Elems.EmplaceBack(std::move(ignore_fields));
 
         auto is_tok = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_IS, "is");
@@ -187,15 +186,15 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     meta->LoopCurrentDepth += 1;
     meta->LoopCurrentAst = this;
     _TransformedLoop->Stage7_AnalyseSemantics(sm, meta);
-    if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-        m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+    if (meta->LoopReturnTypes.contains(meta->LoopCurrentDepth - 1)) {
+        _LoopExitTypeInfo = &meta->LoopReturnTypes[meta->LoopCurrentDepth - 1];
     }
     meta->Restore();
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Call the memory check on the transformed loop.
     _TransformedLet->Stage8_CheckMemory(sm, meta);
@@ -203,8 +202,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the code for the transformed loop.

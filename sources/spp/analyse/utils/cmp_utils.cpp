@@ -22,8 +22,6 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
-import genex;
-import opex.ops;
 
 #define cmp_abs 0 <_cmp_abs_>
 #define cmp_smax <_cmp_smax_>
@@ -192,7 +190,7 @@ auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
     scopes::ScopeManager const *sm)
     -> void {
     // Firstly, we need to split the "attribute" as it may be a dotted path.
-    auto attr_path = Vec<Shared<asts::IdentifierAst>>();
+    auto attr_path = Vec<asts::IdentifierAst*>();
     while (true) {
         // Ensure we are looking at a postfix expression.
         const auto postfix = attribute->To<asts::PostfixExpressionAst>();
@@ -203,32 +201,33 @@ auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
         if (member_access == nullptr) { break; }
 
         // Push the member name to the path and continue down the lhs.
-        attr_path.push_back(member_access->Name);
-        attribute = postfix->Lhs.get();
+        attr_path.EmplaceBack(member_access->Name.Get());
+        attribute = postfix->Lhs.Get();
     }
 
     // Reverse the attribute path to get the correct order.
-    attr_path |= genex::actions::reverse;
-    attr_path |= genex::actions::pop_front;
+    attr_path.PopBack();
+    std::ranges::reverse(attr_path);
 
     // For each attribute, check if the initializer exists for tis attribute.
     // For example, if we have x.y.z = 5, and the types are x->X, y->Y, z->Z,
     //  we need to ensure that X has a Y initializer, which has a Z initializer.
     //  each inner initializer may exist, may not, so check and create if needed.
     auto current_obj_init = object;
-    auto current_obj_type = object->Type;
+    auto current_obj_type = object->Type.Get();
     auto current_obj_sym = sm->CurrentScope->GetTypeSymbol(current_obj_type);
 
-    for (auto const &attr_name : attr_path) {
+    for (const auto attr_name : attr_path) {
         const auto is_final = attr_name == attr_path.Back();
-        current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type;
+        current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type.Get();
         current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type);
 
         // Check if the attribute already exists in the current object initializer.
-        const auto found = genex::contains(current_obj_init->ArgGroup->GetAllArgs(), *attr_name, [](auto const *x) -> decltype(auto) { return *x->Name; });
+        const auto found = std::ranges::contains(current_obj_init->ArgGroup->GetAllArgs(), *attr_name, [](auto const *x) -> decltype(auto) { return *x->Name; });
         if (found) {
-            auto const &arg = **genex::find_if(current_obj_init->ArgGroup->GetAllArgs(), [&](auto const *x) { return *x->Name == *attr_name; });
-            const auto obj = arg.Val->To<asts::ObjectInitializerAst>();
+            const auto args = current_obj_init->ArgGroup->GetAllArgs();
+            const auto arg = *std::ranges::find_if(args, [&](auto const *x) { return *x->Name == *attr_name; });
+            const auto obj = arg->Val->To<asts::ObjectInitializerAst>();
 
             // Case: attribute exists, but not as an object initializer. Replace it, but keep old object as the "else"
             // in the initializer, to use all of its other attributes.
@@ -236,13 +235,13 @@ auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
                 const auto old_obj_init = current_obj_init;
                 auto new_init = is_final
                     ? std::move(value)
-                    : MakeUnique<asts::ObjectInitializerAst>(current_obj_sym->FqName(), nullptr);
+                    : MakeUnique<asts::ObjectInitializerAst>(AstClone(current_obj_sym->FqName()), nullptr);
                 current_obj_init = new_init->To<asts::ObjectInitializerAst>();
 
                 old_obj_init->ArgGroup->Args.EmplaceBack(
-                    MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(new_init)));
+                    MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(asts::AstClone(attr_name), nullptr, std::move(new_init)));
                 old_obj_init->ArgGroup->Args.EmplaceBack(
-                    asts::ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(asts::AstClone(arg.Val)));
+                    asts::ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(asts::AstClone(arg->Val)));
                 continue;
             }
 
@@ -250,24 +249,24 @@ auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
             // initializer.
             if (not is_final) {
                 current_obj_init = obj;
-                current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type;
+                current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type.Get();
                 current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type);
                 continue;
             }
             current_obj_init->ArgGroup->Args.EmplaceBack(
-                MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(value)));
+                MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(asts::AstClone(attr_name), nullptr, std::move(value)));
         }
 
         // Case: attribute does not exist, so create a new object initializer for it.
         else {
             const auto old_obj_init = current_obj_init;
             auto new_init = is_final
-                                ? std::move(value)
-                                : MakeUnique<asts::ObjectInitializerAst>(current_obj_sym->FqName(), nullptr);
+                ? std::move(value)
+                : MakeUnique<asts::ObjectInitializerAst>(asts::AstClone(current_obj_sym->FqName()), nullptr);
             current_obj_init = new_init->To<asts::ObjectInitializerAst>();
 
             old_obj_init->ArgGroup->Args.EmplaceBack(
-                MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(AstCloneShared(attr_name), nullptr, std::move(new_init)));
+                MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(asts::AstClone(attr_name), nullptr, std::move(new_init)));
         }
     }
 }

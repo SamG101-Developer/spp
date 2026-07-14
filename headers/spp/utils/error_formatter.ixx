@@ -28,6 +28,8 @@ public:
 
     auto ErrorAstMinimal(asts::Ast const *ast, Str &&tag_message) -> Str;
 
+    auto Clone() -> Unique<ErrorFormatter>;
+
 private:
     Vec<lex::RawToken> _Tokens;
     Str _FilePath;

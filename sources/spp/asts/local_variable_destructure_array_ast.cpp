@@ -26,9 +26,8 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.type_identifier_ast;
+import spp.utils.algorithms;
 import spp.lex.tokens;
-import genex;
-import opex.cast;
 
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
@@ -73,8 +72,8 @@ auto spp::asts::LocalVariableDestructureArrayAst::ToString() const
 }
 
 auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppMultipleRestPatternsError;
@@ -84,9 +83,9 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
 
     // Only 1 "multi-skip" allowed in a destructure.
     const auto multi_arg_skips = Elems
-        | genex::views::ptr
-        | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppMultipleRestPatternsError>(
         multi_arg_skips.Len() > 1, {sm->CurrentScope},
@@ -111,29 +110,29 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = Unique<ArrayLiteralExplicitElementsAst>(nullptr);
     if (not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr) {
-        const auto m = genex::position(Elems | genex::views::ptr, [&multi_arg_skips](auto const &x) { return x == multi_arg_skips[0]; }) as USize;
-        auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
-            | genex::views::transform([val](const auto i) {
+        const auto m = static_cast<std::size_t>(std::ranges::find_if(Elems, [&](auto const &x) { return x.Get() == multi_arg_skips[0]; }) - Elems.begin());
+        auto new_elems = std::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
+            | std::views::transform([val](const auto i) {
                 auto id = MakeUnique<IdentifierAst>(val->PosEnd(), std::to_string(i));
                 auto rm = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
                 auto pf = MakeUnique<PostfixExpressionAst>(AstClone(val), std::move(rm));
                 return pf;
             })
-            | genex::views::cast_smart<ExpressionAst>()
-            | genex::to<Vec>();
+            | spp::views::cast_unique<ExpressionAst>
+            | std::ranges::to<Vec>();
 
         bound_multi_skip = MakeUnique<ArrayLiteralExplicitElementsAst>(nullptr, std::move(new_elems), nullptr);
     }
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.IsEmpty()
-        ? genex::position(Elems | genex::views::ptr, [&](auto const &x) { return x == multi_arg_skips[0]; }) as USize
+        ? static_cast<std::size_t>(std::ranges::find_if(Elems, [&](auto const &x) { return x.Get() == multi_arg_skips[0]; }) - Elems.begin())
         : Elems.Len() - 1;
-    auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<Vec>();
-    indexes.AppendRange(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<Vec>());
+    auto indexes = std::views::iota(0uz, skip_index + 1uz) | std::ranges::to<Vec>();
+    indexes.AppendRange(std::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | std::ranges::to<Vec>());
 
     // Create expanded "let" statements for each part of the destructure.
-    for (auto const &[i, elem] : genex::views::zip(indexes, Elems | genex::views::ptr)) {
+    for (auto const &[i, elem] : std::views::zip(indexes, Elems)) {
         const auto cast_elem = elem->To<LocalVariableDestructureSkipMultipleArgumentsAst>();
 
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.
@@ -166,24 +165,24 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LocalVariableDestructureArrayAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
     for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
 }
 
 auto spp::asts::LocalVariableDestructureArrayAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Comptime resolve each element.
     for (auto const &x : _NewAsts) { x->Stage9_CompTimeResolve(sm, meta); }
 }
 
 auto spp::asts::LocalVariableDestructureArrayAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
@@ -192,15 +191,15 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage11_CodeGen(
 }
 
 auto spp::asts::LocalVariableDestructureArrayAst::ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     // Walk the nested bindings for variable names.
     return analyse::utils::destructure_utils::GetNestedBindingIdentifiers(Elems);
 }
 
 auto spp::asts::LocalVariableDestructureArrayAst::ExtractName() const
-    -> Shared<IdentifierAst> {
+    -> IdentifierAst* {
     // No single identifier for destructured bindings.
-    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
+    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier();
 }
 
 SPP_MOD_END

@@ -6,68 +6,70 @@ import spp.asts.type_ast;
 import spp.utils.types;
 import std;
 
-
 namespace spp::asts::generate::common_types_precompiled {
     /**
      * The fixed @code std::generator::Gen@endcode type, with no generic arguments.
+     * Todo: For some reason, `Unique` won't work here,
      */
-    SPP_EXP_CMP Shared<TypeAst> GEN = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> GEN_ONCE = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> GEN = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> GEN_ONCE = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> INDEX_REF = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> INDEX_MUT = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> INDEX_REF = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> INDEX_MUT = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> SLICE_REF = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> SLICE_MUT = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> SLICE_REF = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> SLICE_MUT = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> FUN_MOV = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> FUN_MUT = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> FUN_REF = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> FUN_MOV = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> FUN_MUT = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> FUN_REF = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> ARR = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> TUP = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> VAR = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> TRY = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> FUT = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> ARR = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> TUP = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> VAR = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> TRY = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> FUT = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> BOOL = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> VOID = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> BOOL = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> VOID = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> NEVER = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> COPY = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> NEVER = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> COPY = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> SINGLE = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> SHARED = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> SHADOW = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> SINGLE = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> SHARED = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> SHADOW = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> FWD_MUT = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> FWD_REF = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> FWD_MUT = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> FWD_REF = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> S8 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> S16 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> S32 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> S64 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> S128 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> S256 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> SSIZE = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> S8 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> S16 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> S32 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> S64 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> S128 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> S256 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> SSIZE = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> U8 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> U16 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> U32 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> U64 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> U128 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> U256 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> USIZE = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> U8 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> U16 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> U32 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> U64 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> U128 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> U256 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> USIZE = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> F8 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> F16 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> F32 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> F64 = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> F128 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> F8 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> F16 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> F32 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> F64 = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> F128 = nullptr;
 
-    SPP_EXP_CMP Shared<TypeAst> CHAR = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> STR_VIEW = nullptr;
-    SPP_EXP_CMP Shared<TypeAst> VIEW = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> CHAR = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> STR_VIEW = nullptr;
+    SPP_EXP_CMP Unique<TypeAst> VIEW = nullptr;
+
+    SPP_EXP_CMP Unique<TypeAst> SELF = nullptr;
 
     /**
      * Initialize the precompiled common types. This must be called before using any of the precompiled types.

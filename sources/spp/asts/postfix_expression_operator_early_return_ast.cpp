@@ -74,8 +74,8 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppTypeMismatchError;
@@ -91,7 +91,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
     const auto try_type = GetTryType(*lhs_type, *lhs, *sm);
 
     // Check the Residual type is compatible with the function's return type.
-    const auto residual_type = try_type->TypeParts().Back()->GnArgGroup->TypeAt("Residual")->Val;
+    const auto residual_type = AstClone(try_type->TypeParts().Back()->GnArgGroup->TypeAt("Residual")->Val);
 
     // Subroutine return type check.
     if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
@@ -112,8 +112,8 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     //
@@ -132,7 +132,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
     // Create the condition by attempting an "is" against the residual.
     const auto type_check = ( {
         auto is_expr_lhs = AstClone(lhs);
-        auto is_expr_rhs = try_type->TypeParts().Back()->GnArgGroup->TypeAt("Residual")->Val;
+        auto is_expr_rhs = AstClone(try_type->TypeParts().Back()->GnArgGroup->TypeAt("Residual")->Val);
 
         auto skip_all = MakeUnique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(nullptr, nullptr);
         auto destructures = Vec<Unique<CasePatternVariantAst>>{};
@@ -191,17 +191,21 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    // Get the left-hand-side information.
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
     using analyse::utils::type_utils::GetTryType;
+    USE_CACHED_TYPE_INFERENCE;
+
+    // Get the left-hand-side information.
     const auto lhs = meta->PostfixExpressionLhs;
     const auto lhs_type = lhs->InferType(sm, meta);
 
     // Get the Try type's Output generic argument.
     const auto try_type = GetTryType(*lhs_type, *lhs, *sm);
-    return try_type->TypeParts().Back()->GnArgGroup->TypeAt("Value")->Val;
+    const auto inferred = try_type->TypeParts().Back()->GnArgGroup->TypeAt("Value")->Val.Get();
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 SPP_MOD_END

@@ -3,7 +3,7 @@ module;
 
 export module spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_comp_ast;
-import spp.asts.token_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
 
@@ -13,9 +13,11 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The GenericArgumentCompKeywordAst represents a keyword argument in a generic argument context. It is forces the argument
@@ -28,7 +30,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the generic
      * call.
      */
-    Shared<TypeAst> Name;
+    Unique<TypeAst> Name;
 
     /**
      * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
@@ -57,12 +59,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     SPP_ATTR_NODISCARD auto ViewName() const -> StrView override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentCompKeywordAst)

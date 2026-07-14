@@ -66,7 +66,7 @@ auto spp::asts::FloatLiteralAst::EqualsFloatLiteral(
     -> Ordering {
     // Equality based on the sign, integer part, fractional part, and type postfix.
     if (
-        ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
+        ((TokSign == nullptr and other.TokSign == nullptr) or (TokSign != nullptr and other.TokSign != nullptr and *TokSign == *other.TokSign))
         and IntVal->TokenData == other.IntVal->TokenData
         and FracVal->TokenData == other.FracVal->TokenData
         and Type == other.Type) {
@@ -85,7 +85,7 @@ auto spp::asts::FloatLiteralAst::Equals(
 auto spp::asts::FloatLiteralAst::PosStart() const
     -> std::size_t {
     // Use the sign token or the integer part.
-    return TokSign ? TokSign->PosStart() : IntVal->PosStart();
+    return TokSign != nullptr ? TokSign->PosStart() : IntVal->PosStart();
 }
 
 auto spp::asts::FloatLiteralAst::PosEnd() const
@@ -113,8 +113,8 @@ auto spp::asts::FloatLiteralAst::ToString() const
 }
 
 auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     //
     using spp::utils::strings::NormalizeFloatString;
@@ -135,16 +135,16 @@ auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
     // Clone and return the float literal as is for compile-time resolution.
     meta->CmpResult = AstClone(this);
 }
 
 auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the type of the float literal.
@@ -160,15 +160,16 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::FloatLiteralAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
-    //
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
     using analyse::errors::SppInternalCompilerError;
     using namespace generate::common_types;
+    USE_CACHED_TYPE_INFERENCE;
 
     // Map the type string literal to the correct SPP type.
-    auto spp_type = Shared<TypeAst>(nullptr);
+    auto spp_type = Unique<TypeAst>(nullptr);
     const auto p = PosStart();
     if (Type.empty()) { spp_type = F32(p); }
     else if (Type == "f8") { spp_type = F8(p); }
@@ -182,8 +183,9 @@ auto spp::asts::FloatLiteralAst::InferType(
             ERR_ARGS(*this, "invalid float literal type"));
     }
 
-    const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type);
-    return sym->FqName();
+    const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type.Get());
+    auto inferred = AstClone(sym->FqName());
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 template <typename T> requires std::floating_point<T>

@@ -16,7 +16,6 @@ import spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.utils.files;
 import cli11;
-import genex;
 import tomlplusplus;
 
 
@@ -291,7 +290,7 @@ auto spp::cli::handle_validate(
 
     // Check the version follows "major.minor.patch" format.
     const auto version = project->at("version").value<Str>().value_or("");
-    const auto version_parts = version | genex::views::split('.') | genex::to<Vec>();
+    const auto version_parts = version | std::views::split('.') | std::ranges::to<Vec>();
     if (version_parts.Len() != 3) {
         std::cerr << "Error: Invalid version format in spp.toml. Version must follow 'major.minor.patch' format.\n";
         return false;
@@ -393,9 +392,9 @@ auto spp::cli::format_default_file_contents(
     return Str(contents);
     // // Remove the first newline, and replace "    " with "".
     // auto out = Str();
-    // for (const auto&line: contents | genex::views::split('\n')) {
+    // for (const auto&line: contents | std::ranges::views::split('\n')) {
     //     if (line.Len() <= 0) { continue; }
-    //     auto formatted = line | genex::to<Str>();
+    //     auto formatted = line | std::ranges::to<Str>();
     //     formatted.replace(formatted.find("    "), 4, "");
     // }
     // return out;

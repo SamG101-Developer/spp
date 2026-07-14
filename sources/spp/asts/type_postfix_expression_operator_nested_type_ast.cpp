@@ -13,7 +13,7 @@ import spp.lex.tokens;
 SPP_MOD_BEGIN
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
     decltype(TokSep) &&tok_sep,
-    decltype(Name) name) :
+    decltype(Name) &&name) :
     TokSep(std::move(tok_sep)),
     Name(std::move(name)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokSep, lex::SppTokenType::TK_DOUBLE_COLON, "::");
@@ -51,7 +51,7 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
-        AstClone(TokSep), AstCloneShared(Name));
+        AstClone(TokSep), AstClone(Name));
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ToString() const
@@ -63,23 +63,23 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ToString() const
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts() const
-    -> Vec<Shared<const IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     return {};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts()
-    -> Vec<Shared<IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     return {};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> {
-    return {Name};
+    -> Vec<TypeIdentifierAst*> {
+    return {Name.Get()};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> {
-    return {Name};
+    -> Vec<TypeIdentifierAst*> {
+    return {Name.Get()};
 }
 
 SPP_MOD_END

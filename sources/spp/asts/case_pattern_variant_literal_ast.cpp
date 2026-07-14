@@ -57,24 +57,24 @@ auto spp::asts::CasePatternVariantLiteralAst::ToString() const
 }
 
 auto spp::asts::CasePatternVariantLiteralAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward analysis into the literal.
     Literal->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantLiteralAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the literal.
     Literal->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantLiteralAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Transform the pattern into comptime values; all need to be true.
     using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
@@ -86,8 +86,8 @@ auto spp::asts::CasePatternVariantLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CasePatternVariantLiteralAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     //
@@ -98,11 +98,11 @@ auto spp::asts::CasePatternVariantLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CasePatternVariantLiteralAst::ConvToVar(
-    CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> Unique<LocalVariableAst> {
     // Create the local variable literal binding AST.
     const auto uid = spp::utils::Uid(this);
-    auto var_name = MakeShared<IdentifierAst>(PosStart(), uid);
+    auto var_name = MakeUnique<IdentifierAst>(PosStart(), uid);
     auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
         nullptr, std::move(var_name), nullptr);
     var->MarkFromCasePattern();

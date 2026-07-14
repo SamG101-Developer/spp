@@ -8,6 +8,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct ClassMemberAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The ClassMemberAst class is the base class for all members of a class in the abstract syntax tree. This is only

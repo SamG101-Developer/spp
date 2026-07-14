@@ -10,7 +10,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeRequiredAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAst {
     /**
      * Construct the GenericParameterTypeRequiredAst with the arguments matching the members.

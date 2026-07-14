@@ -17,7 +17,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import spp.utils.strings;
-import genex;
+import spp.utils.types;
 import std;
 
 auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
@@ -27,7 +27,7 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
     -> bool {
     // Only allow types if types are explicitly allowed, or are zero type.
     if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
-        const auto type_sym = sm.CurrentScope->GetTypeSymbol(asts::AstClone(expr.To<asts::TypeAst>()));
+        const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<asts::TypeAst>());
         return type_sym->IsZeroType();
     }
 
@@ -44,19 +44,19 @@ auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
     using errors::SppUnreachableCodeError;
 
     // Check for statements after a terminating statement has been reached.
-    for (auto const &[i, member] : members | genex::views::enumerate) {
+    for (auto const &[i, member] : members | std::views::enumerate) {
         const auto ret_stmt = member->To<asts::RetStatementAst>();
         const auto loop_flow_stmt = member->To<asts::LoopControlFlowStatementAst>();
         RaiseIf<SppUnreachableCodeError>(
             (ret_stmt or loop_flow_stmt) and (member != members.Back()),
-            {sm.CurrentScope}, ERR_ARGS(*member, *members[i + 1]));
+            {sm.CurrentScope}, ERR_ARGS(*member, *members[static_cast<std::size_t>(i) + 1]));
     }
 }
 
 auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
     asts::IdentifierAst const &identifier,
-    Vec<Shared<scopes::VariableSymbol>> const &var_symbols,
-    Vec<Shared<scopes::NamespaceSymbol>> const &ns_symbols,
+    Vec<scopes::VariableSymbol*> const &var_symbols,
+    Vec<scopes::NamespaceSymbol*> const &ns_symbols,
     scopes::ScopeManager const &sm)
     -> void {
     //
@@ -64,13 +64,9 @@ auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
     using errors::SppIdentifierUnknownError;
 
     //
-    const auto v_alternatives = var_symbols
-        | genex::views::transform([](auto const &x) { return x->Name->Val; })
-        | genex::to<Vec>();
-    const auto ns_alternatives = ns_symbols
-        | genex::views::transform([](auto const &x) { return x->Name->Val; })
-        | genex::to<Vec>();
-    const auto alternatives = genex::views::concat(v_alternatives, ns_alternatives) | genex::to<Vec>();
+    const auto v_alternatives = var_symbols | std::views::transform([](auto const &x) { return x->Name->Val; });
+    const auto ns_alternatives = ns_symbols | std::views::transform([](auto const &x) { return x->Name->Val; });
+    const auto alternatives = std::views::concat(v_alternatives, ns_alternatives) | std::ranges::to<Vec>();
 
     //
     const auto closest_match = ClosestMatch(identifier.Val, alternatives);
@@ -80,7 +76,7 @@ auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
 
 auto spp::analyse::utils::expr_utils::RaiseMissingTypeIdentifierAndClosestOptions(
     asts::TypeIdentifierAst const &identifier,
-    Vec<Shared<scopes::TypeSymbol>> const &symbols,
+    Vec<scopes::TypeSymbol*> const &symbols,
     scopes::ScopeManager const &sm)
     -> void {
     //
@@ -88,9 +84,9 @@ auto spp::analyse::utils::expr_utils::RaiseMissingTypeIdentifierAndClosestOption
 
     //
     const auto alternatives = symbols
-        | genex::views::filter([](auto const &x) { return not x->Name->IsCompilerGeneratedType(); })
-        | genex::views::transform([](auto const &x) { return x->Name->Name; })
-        | genex::to<Vec>();
+        | std::views::filter([](auto const &x) { return not x->Name->IsCompilerGeneratedType(); })
+        | std::views::transform([](auto const &x) { return x->Name->Name; })
+        | std::ranges::to<Vec>();
 
     //
     const auto closest_match = ClosestMatch(identifier.Name, alternatives);

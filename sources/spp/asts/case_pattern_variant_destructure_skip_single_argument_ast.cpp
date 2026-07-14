@@ -42,7 +42,7 @@ auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::ToString() c
 }
 
 auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::ConvToVar(
-    CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> Unique<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
     auto var = MakeUnique<LocalVariableDestructureSkipSingleArgumentAst>(nullptr);

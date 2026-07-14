@@ -16,6 +16,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The GenericArgumentTypeKeywordAst represents a keyword argument in a generic argument context. It is forces the
@@ -27,7 +28,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
     /**
      * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
      */
-    Shared<TypeAst> Name;
+    Unique<TypeAst> Name;
 
     /**
      * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
@@ -44,9 +45,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
      * @param val The value of the generic type argument.
      */
     GenericArgumentTypeKeywordAst(
-        decltype(Name) name,
+        decltype(Name) &&name,
         decltype(TokAssign) &&tok_assign,
-        decltype(Val) val);
+        decltype(Val) &&val);
 
     ~GenericArgumentTypeKeywordAst() override;
 
@@ -56,10 +57,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
 
     SPP_AST_KEY_FUNCTIONS
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     SPP_ATTR_NODISCARD auto ViewName() const -> StrView override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentTypeKeywordAst)

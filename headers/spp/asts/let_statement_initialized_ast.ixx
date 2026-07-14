@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.let_statement_initialized_ast;
 import spp.asts.let_statement_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -15,6 +16,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
+
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
     /**
@@ -32,7 +35,7 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
      * The optionally provided type of the variable. Variable type's can always be inferred from their value, but
      * providing the type allows for variant types to be used with values of an inner type.
      */
-    Shared<TypeAst> Type;
+    Unique<TypeAst> Type;
 
     /**
      * The @c = token that indicates the assignment of a value to the variable. This is used to indicate that the
@@ -47,7 +50,7 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
     Unique<ExpressionAst> Val;
 
     struct {
-        Shared<TypeAst> OriginalType;
+        Unique<TypeAst> OriginalType;
     } Source;
 
     /**
@@ -69,11 +72,11 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.char_literal_ast;
 import spp.analyse.scopes.scope;
@@ -27,7 +28,7 @@ auto spp::asts::CharLiteralAst::EqualsCharLiteral(
     CharLiteralAst const &other) const
     -> Ordering {
     // Equality based on the token data.
-    const auto matching_byte_prefix = static_cast<bool>(BytePrefix) == static_cast<bool>(other.BytePrefix);
+    const auto matching_byte_prefix = (BytePrefix == nullptr) == (other.BytePrefix == nullptr);
     return matching_byte_prefix and Val->TokenData == other.Val->TokenData ? Ordering::equal : Ordering::less;
 }
 
@@ -66,16 +67,16 @@ auto spp::asts::CharLiteralAst::ToString() const
 }
 
 auto spp::asts::CharLiteralAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
     // Clone and return the char literal as is for compile-time resolution.
     meta->CmpResult = AstClone(this);
 }
 
 auto spp::asts::CharLiteralAst::Stage11_CodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the LLVM constant integer value.
@@ -84,15 +85,18 @@ auto spp::asts::CharLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CharLiteralAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
-    // A char literal is either a Char or U8 type, depending on the "b" byte prefix.
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
     using generate::common_types::U8;
     using generate::common_types::CharType;
-    return BytePrefix != nullptr
-        ? U8(Val->PosStart())
-        : CharType(Val->PosStart());
+    USE_CACHED_TYPE_INFERENCE;
+
+    // A char literal is either a Char or U8 type, depending
+    // on the "b" byte prefix.
+    auto inferred = BytePrefix != nullptr ? U8(Val->PosStart()) : CharType(Val->PosStart());
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

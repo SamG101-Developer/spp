@@ -32,12 +32,11 @@ import spp.lex.tokens;
 import spp.utils.strings;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
     decltype(TokDot) &&tok_dot,
-    decltype(Name) name) :
+    decltype(Name) &&name) :
     TokDot(std::move(tok_dot)),
     Name(std::move(name)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokDot, lex::SppTokenType::TK_DOT, ".");
@@ -73,8 +72,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() cons
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppMemberAccessNonIndexableError;
@@ -93,7 +92,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     // Numeric index access (for tuples).
     if (std::isdigit(Name->Val[0])) {
         const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+        // const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.Get());
 
         // Check the lhs is a tuple/array (the only indexable types).
         RaiseIf<SppMemberAccessNonIndexableError>(
@@ -110,11 +109,11 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     // Accessing a regular attribute/method on an instance.
     else {
         const auto lhs_as_ident_raw = meta->PostfixExpressionLhs->To<IdentifierAst>();
-        const auto lhs_as_ident = lhs_as_ident_raw ? MakeShared<IdentifierAst>(lhs_as_ident_raw->PosStart(), lhs_as_ident_raw->Val) : nullptr;
+        const auto lhs_as_ident = lhs_as_ident_raw ? MakeUnique<IdentifierAst>(lhs_as_ident_raw->PosStart(), lhs_as_ident_raw->Val) : nullptr;
         const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
 
-        const auto lhs_ns_sym = sm->CurrentScope->GetNsSymbol(lhs_as_ident);
-        const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(lhs_as_ident);
+        const auto lhs_ns_sym = sm->CurrentScope->GetNsSymbol(lhs_as_ident.Get());
+        const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(lhs_as_ident.Get());
         const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
 
         // Check the lhs is a variable and not a namespace.
@@ -123,14 +122,14 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
             ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "namespace"));
 
         // Check the target field exists on the type.
-        if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name, true)) {
+        if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.Get(), true)) {
             // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
             // access to their members.
             auto [fwd_ref_type, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type, *sm);
             if (fwd_ref_type != nullptr) {
                 const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
                 auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(inner_type), nullptr);
-                auto mock_access = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, Name);
+                auto mock_access = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, AstClone(Name));
                 const auto pf = MakeUnique<PostfixExpressionAst>(std::move(mock_init), std::move(mock_access));
                 pf->Stage7_AnalyseSemantics(sm, meta);
                 return;
@@ -141,29 +140,29 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
                 *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
         }
 
-        auto scopes_and_syms = Vec{lhs_type_sym->LinkedScope}
-            | genex::views::concat(lhs_type_sym->LinkedScope->SupScopes())
-            | genex::views::transform([name=Name.get()](auto const &x) { return MakePair(x, x->GetVarSymbol(AstCloneShared(name), true, false)); })
-            | genex::views::filter([](auto const &x) { return x.Second != nullptr and not x.Second->Type->IsCompilerGeneratedType(); })
-            | genex::views::transform([&](auto const &x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
-            | genex::to<Vec>();
+        auto scopes_and_syms = std::views::concat(Vec{lhs_type_sym->LinkedScope}, lhs_type_sym->LinkedScope->SupScopes())
+            | std::views::transform([name=Name.Get()](auto const &x) { return MakePair(x, x->GetVarSymbol(name, true, false)); })
+            | std::views::filter([](auto const &x) { return x.Second != nullptr and not x.Second->Type->IsCompilerGeneratedType(); })
+            | std::views::transform([&](auto const &x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
+            | std::ranges::to<Vec>();
 
         // If we only have functional types, just return.
         if (scopes_and_syms.Len() < 1) { return; }
 
-        auto min_depth = genex::min_element(scopes_and_syms
-            | genex::views::transform([](auto const &x) { return std::get<0>(x); })
-            | genex::to<Vec>());
+        auto tmp1 = scopes_and_syms
+            | std::views::transform([](auto const &x) { return std::get<0>(x); })
+            | std::ranges::to<Vec>();
+        auto min_depth = *std::ranges::min_element(tmp1);
 
         auto closest = scopes_and_syms
-            | genex::views::filter([min_depth](auto const &x) { return std::get<0>(x) == min_depth; })
-            | genex::views::transform([](auto const &x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
-            | genex::to<Vec>();
+            | std::views::filter([min_depth](auto const &x) { return std::get<0>(x) == min_depth; })
+            | std::views::transform([](auto const &x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+            | std::ranges::to<Vec>();
 
         // Enforce visibility on the accessed member.
         if (not closest.IsEmpty()) {
             const auto scope = closest[0].First->NonGenericScope;
-            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name, true), *Name, *scope, *sm, *meta);
+            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.Get(), true), *Name, *scope, *sm, *meta);
         }
 
         if (closest.Len() <= 1) { return; }
@@ -174,8 +173,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::cmp_utils::GetCompTimeAttrValue;
@@ -203,12 +202,12 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTime
 
     // Handle normal attribute access (for objects).
     const auto cmp_obj = meta->CmpResult->To<ObjectInitializerAst>();
-    meta->CmpResult = GetCompTimeAttrValue(cmp_obj, Name.get());
+    meta->CmpResult = GetCompTimeAttrValue(cmp_obj, Name.Get());
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the type of the left-hand-side expression.
@@ -243,39 +242,40 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    //
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
     using analyse::utils::type_utils::GetFwdTypes;
     using analyse::utils::type_utils::GetNthTypeOfIndexableType;
+    USE_CACHED_TYPE_INFERENCE;
 
     // Get the type of the left-hand-side expression.
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
 
     // Numeric index access (for tuples).
     if (std::isdigit(Name->Val[0])) {
-        const auto elem_type = GetNthTypeOfIndexableType(
-            std::stoul(Name->Val), *lhs_type, *sm->CurrentScope);
-        return elem_type;
+        const auto elem_type = GetNthTypeOfIndexableType(std::stoul(Name->Val), *lhs_type, *sm->CurrentScope);
+        CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(elem_type));
     }
 
     // Get the field symbol and return its type, falling back to the forwarding type if needed.
     auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
-    auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name);
+    auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.Get());
     if (var_sym == nullptr) {
         auto [fwd_ref_type, _] = GetFwdTypes(*lhs_type, *sm);
-        const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
-        lhs_sym = sm->CurrentScope->GetTypeSymbol(inner_type);
-        var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name);
+        lhs_sym = sm->CurrentScope->GetTypeSymbol(fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val.Get());
+        var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.Get());
     }
-    const auto field_type = var_sym->Type;
-    return lhs_sym->LinkedScope->GetTypeSymbol(field_type)->FqName();
+
+    const auto field_type = var_sym->Type.Get();
+    const auto inferred = lhs_sym->LinkedScope->GetTypeSymbol(field_type)->FqName();
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const
     -> Vec<Ast*> {
-    return {Name.get()};
+    return {Name.Get()};
 }
 
 SPP_MOD_END

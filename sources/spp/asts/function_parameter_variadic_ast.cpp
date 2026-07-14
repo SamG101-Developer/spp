@@ -19,7 +19,7 @@ spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
     decltype(Type) type) :
     FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::kVariadicParam),
     TokEllipsis(std::move(tok_ellipsis)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..", var ? var->PosStart() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..", var != nullptr ? var->PosStart() : 0);
 }
 
 spp::asts::FunctionParameterVariadicAst::~FunctionParameterVariadicAst() = default;
@@ -40,7 +40,7 @@ auto spp::asts::FunctionParameterVariadicAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<FunctionParameterVariadicAst>(
-        AstClone(TokEllipsis), AstClone(Var), AstClone(TokColon), AstCloneShared(Type));
+        AstClone(TokEllipsis), AstClone(Var), AstClone(TokColon), AstClone(Type));
 }
 
 auto spp::asts::FunctionParameterVariadicAst::ToString() const

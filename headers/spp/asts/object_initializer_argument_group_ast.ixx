@@ -14,6 +14,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The ObjectInitializerArgumentGroupAst represents a group of object initializer arguments. It is used to group
@@ -57,11 +58,11 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage6_PreAnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     auto GetAllArgs() -> Vec<ObjectInitializerArgumentAst*>;
 

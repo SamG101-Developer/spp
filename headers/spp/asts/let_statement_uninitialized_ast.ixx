@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.let_statement_uninitialized_ast;
 import spp.asts.let_statement_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -14,6 +15,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
+
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::LetStatementUninitializedAst final : LetStatementAst {
     /**
@@ -37,10 +40,10 @@ SPP_EXP_CLS struct spp::asts::LetStatementUninitializedAst final : LetStatementA
      * The type of the uninitialized variable. This is used to check that values being assigned to the variable in the
      * future are of the correct type.
      */
-    Shared<TypeAst> Type;
+    Unique<TypeAst> Type;
 
     struct {
-        Shared<TypeAst> OriginalType;
+        Unique<TypeAst> OriginalType;
     } Source;
 
     /**
@@ -60,9 +63,9 @@ SPP_EXP_CLS struct spp::asts::LetStatementUninitializedAst final : LetStatementA
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

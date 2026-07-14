@@ -19,12 +19,14 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
+
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {
     /**
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by
      * attribute type inference)
      */
-    Shared<TypeAst> Type;
+    Unique<TypeAst> Type;
 
     /**
      * The @code (@endcode token that indicates the start of a object destructuring pattern.
@@ -43,7 +45,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
     Unique<TokenAst> TokR;
 
     struct {
-        Shared<TypeAst> OriginalType;
+        Unique<TypeAst> OriginalType;
     } Source;
 
     /**
@@ -62,22 +64,22 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
     ~CasePatternVariantDestructureObjectAst() override;
 
     static auto FromType(
-        Shared<TypeAst> const &type)
+        Unique<TypeAst> &&type)
         -> Unique<CasePatternVariantDestructureObjectAst>;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+    auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 
 private:
-    Shared<analyse::scopes::VariableSymbol> _CondSym;
-    Shared<analyse::scopes::VariableSymbol> _FlowSym;
+    analyse::scopes::VariableSymbol *_CondSym;
+    analyse::scopes::VariableSymbol *_FlowSym;
 };

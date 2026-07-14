@@ -45,16 +45,16 @@ auto spp::asts::CasePatternVariantElseAst::ToString() const
 }
 
 auto spp::asts::CasePatternVariantElseAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
     // The "else" pattern always matches, so return "true".
     meta->CmpResult = BooleanLiteralAst::True(TokElse->PosStart());
 }
 
 auto spp::asts::CasePatternVariantElseAst::Stage11_CodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // The "else" pattern always matches, so return "true".

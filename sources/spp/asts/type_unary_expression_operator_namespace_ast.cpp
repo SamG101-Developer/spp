@@ -48,7 +48,7 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<TypeUnaryExpressionOperatorNamespaceAst>(
-        AstCloneShared(Ns), AstClone(TokSep));
+        AstClone(Ns), AstClone(TokSep));
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ToString() const
@@ -60,22 +60,12 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ToString() const
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts() const
-    -> Vec<Shared<const IdentifierAst>> {
-    return {Ns};
-}
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts()
-    -> Vec<Shared<IdentifierAst>> {
-    return {Ns};
+    -> Vec<IdentifierAst*> {
+    return {Ns.Get()};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> {
-    return {};
-}
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> {
+    -> Vec<TypeIdentifierAst*> {
     return {};
 }
 

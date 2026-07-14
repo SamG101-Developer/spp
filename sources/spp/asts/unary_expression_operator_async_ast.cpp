@@ -55,8 +55,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::ToString() const
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppAsyncTargetNotFunctionCallError;
@@ -72,8 +72,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // We need a "Fut[T]" object to work with immediately.
@@ -96,7 +96,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
 
         const auto fut_closure = llvm::Function::Create(
             fut_closure_type, llvm::Function::InternalLinkage,
-            "async.fut.closure" + uid, ctx->Module.get());
+            "async.fut.closure" + uid, ctx->Module.Get());
 
         // Create the entry block for the closure.
         const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "async.fut.closure.entry" + uid, fut_closure);
@@ -109,7 +109,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
         meta->Restore();
 
         // Get the function calls type information.
-        const auto rhs_type = meta->UnaryExpressionRhs->InferType(sm, meta);
+        // const auto rhs_type = meta->UnaryExpressionRhs->InferType(sm, meta);
         const auto fut_param = fut_closure->getArg(0);
 
         // Set the future's state to completed.
@@ -136,17 +136,18 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    //
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
     using generate::common_types::FutureType;
 
     // Wrap the function call inside a "Future" type.
-    auto inner_type = meta->UnaryExpressionRhs->InferType(sm, meta);
-    auto future_type = FutureType(TokAsync->PosStart(), std::move(inner_type));
+    const auto inner_type = meta->UnaryExpressionRhs->InferType(sm, meta);
+    auto future_type = FutureType(TokAsync->PosStart(), AstClone(inner_type));
     future_type->Stage7_AnalyseSemantics(sm, meta);
-    return future_type;
+    CACHE_TYPE_INFERENCE_AND_RETURN(future_type);
 }
 
 SPP_MOD_END

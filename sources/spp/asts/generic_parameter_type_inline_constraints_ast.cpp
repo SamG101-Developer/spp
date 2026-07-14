@@ -13,7 +13,6 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
-import genex;
 
 // Todo: second-class borrow violation unit test.
 
@@ -29,7 +28,7 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineC
     Vec<Unique<TypeAst>> &&constraints) :
     TokColon(std::move(tok_colon)) {
     for (auto &&constraint : std::move(constraints)) { // Todo: tidy this up (simple assignment preferably).
-        this->Constraints.EmplaceBack(Shared(std::move(constraint)));
+        this->Constraints.EmplaceBack(std::move(constraint));
     }
 }
 
@@ -64,8 +63,8 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::ToString() const
 }
 
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Prepare the fully qualified constraints vector.
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -79,13 +78,19 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
             {sm->CurrentScope}, ERR_ARGS(*this, *this, "generic type constraint"));
 
         constraint->Stage7_AnalyseSemantics(sm, meta);
-        auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics());
+        auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics().Get());
         fq_constraints.EmplaceBack(
             constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->TypeParts().Back()->GnArgGroup)));
     }
 
     // Replace the constraints with their fully qualified versions.
     Constraints = std::move(fq_constraints);
+}
+
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::GetAllConstraints() const -> Vec<TypeAst*> {
+    return Constraints
+        | std::views::transform([](auto const &x) { return x.Get(); })
+        | std::ranges::to<Vec>();
 }
 
 SPP_MOD_END

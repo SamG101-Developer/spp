@@ -30,6 +30,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.lex.tokens;
 import spp.utils.uid;
+import spp.utils.types;
 import llvm;
 
 SPP_MOD_BEGIN
@@ -74,8 +75,8 @@ auto spp::asts::GenExpressionAst::ToString() const
 }
 
 auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -96,36 +97,37 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the expression if it exists, and determine the type of the expression.
     auto expr_type = VoidType(PosStart());
-    if (Expr != nullptr) {
+    if (Expr == nullptr) {
         meta->Save();
         auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
             *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
 
-        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : yield_type;
-        meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : yield_type.Get();
+        const auto tmp = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+        meta->AssignmentTargetType = tmp.Get();
         meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
-        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.Get()) { meta->ReturnTypeOverloadResolverType = yield_type.Get(); }
         Expr->Stage7_AnalyseSemantics(sm, meta);
 
         RaiseIf<SppInvalidPrimaryExpressionError>(
             not IsPrimaryExprTypeValid(*Expr, *sm),
             {sm->CurrentScope}, ERR_ARGS(*Expr));
 
-        expr_type = Expr->InferType(sm, meta);
-        if (Conv) expr_type = expr_type->WithConvention(AstClone(Conv));
+        expr_type = AstClone(Expr->InferType(sm, meta));
+        if (Conv != nullptr) expr_type = expr_type->WithConvention(AstClone(Conv));
         meta->Restore();
     }
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->EnclosingFunctionRetType.IsEmpty()) {
-        _GenType = GenType(Expr->PosStart(), expr_type);
+        _GenType = GenType(Expr->PosStart(), AstClone(expr_type));
         _GenType->Stage7_AnalyseSemantics(sm, meta);
-        meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
-        meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);
+        meta->EnclosingFunctionRetType.EmplaceBack(AstClone(_GenType));
+        meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type.Get());
     }
     else {
         // Todo - this list isn't getting cleared, so [0] != [last] (using .Back() hides the bug - TEMP FIX).
-        _GenType = meta->EnclosingFunctionRetType.Back();
+        _GenType = AstClone(meta->EnclosingFunctionRetType.Back());
     }
 
     // Determine the "Yield" type of the enclosing function (to type check the expression against).
@@ -136,12 +138,12 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     // Todo: Known issue with the "yield_type" ast position being wrong.
     RaiseIf<SppYieldedTypeMismatchError>(
         not direct_match, {sm->CurrentScope},
-        ERR_ARGS(*yield_type, *yield_type, Expr ? *Expr->To<Ast>() : *TokGen->To<Ast>(), *expr_type));
+        ERR_ARGS(*yield_type, *yield_type, Expr != nullptr ? *Expr->To<Ast>() : *TokGen->To<Ast>(), *expr_type));
 }
 
 auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -158,13 +160,13 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
     auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*Expr);
     if (sym == nullptr) { return; }
 
-    if (Conv == nullptr) {
+    if (Conv != nullptr) {
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
         ValidateSymbolMemory(*Expr, *TokGen, *sm, false, false, true, true, true, meta);
     }
 
-    else if (*Conv == ConventionTag::MUT) {
+    if (*Conv == ConventionTag::MUT) {
         // Immutable symbols cannot be mutated.
         RaiseIf<SppInvalidMutationError>(
             not sym->IsMutable, {sm->CurrentScope},
@@ -178,8 +180,8 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::GenExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     //
@@ -193,8 +195,8 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
     const auto uid = spp::utils::Uid(this);
     const auto [_, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
         *_GenType, *sm->CurrentScope, *_GenType, "gen");
-    const auto yielded_type = Expr ? Expr->InferType(sm, meta) : nullptr;
-    const auto is_exception = yielded_type and TypeEq(
+    const auto yielded_type = Expr != nullptr ? Expr->InferType(sm, meta) : nullptr;
+    const auto is_exception = yielded_type != nullptr and TypeEq(
         *yield_type, *yielded_type, *sm->CurrentScope, *sm->CurrentScope);
     const auto gen_env_type = llvm::PointerType::get(*ctx->Context, 0);
 
@@ -235,7 +237,7 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
 
     // Continuation block.
     const auto cont_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.cont" + uid, ctx->Builder.GetInsertBlock()->getParent());
-    ctx->YieldContinuations.push_back(cont_bb);
+    ctx->YieldContinuations.EmplaceBack(cont_bb);
     ctx->Builder.SetInsertPoint(cont_bb);
 
     // If this gen expression was "sent" a value, return it. Read off of the "send" slot.
@@ -245,12 +247,16 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::GenExpressionAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Get the "Send" generic type parameter from the generator type.
-    auto send_type = _GenType->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
-    return send_type;
+    const auto send_type = _GenType->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val.Get();
+    auto inferred = AstClone(send_type);
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

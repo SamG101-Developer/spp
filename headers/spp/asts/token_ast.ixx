@@ -13,7 +13,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
-
 /**
  * A TokenAST represents a low level token created by the lexer. This includes @c = or @c + for example, seen in
  * statements and expressions. Associated token data is needed when strings or numbers are created for example. This AST

@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_expression_branch_ast;
 import spp.analyse.errors.semantic_error;
@@ -23,8 +24,8 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import spp.utils.uid;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
@@ -45,7 +46,7 @@ spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 auto spp::asts::CaseExpressionBranchAst::PosStart() const
     -> std::size_t {
     // Use the op or first pattern
-    return Op ? Op->PosStart() : Patterns.Front()->PosStart();
+    return Op != nullptr ? Op->PosStart() : Patterns.Front()->PosStart();
 }
 
 auto spp::asts::CaseExpressionBranchAst::PosEnd() const
@@ -66,14 +67,14 @@ auto spp::asts::CaseExpressionBranchAst::ToString() const
     SPP_STRING_START;
     SPP_STRING_APPEND(Op).append(" ");
     SPP_STRING_EXTEND(Patterns, ", ").append(" ");
-    SPP_STRING_APPEND(Guard).append(Guard ? " " : "");
+    SPP_STRING_APPEND(Guard).append(Guard != nullptr ? " " : "");
     SPP_STRING_APPEND(Body);
     SPP_STRING_END;
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a scope for the branch - this is where destructures of patterns will reside.
     auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
@@ -86,19 +87,19 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
     }
 
     // Ensure the functions exist for the comparisons (whichever op is used except "is").
-    if (Op.get() and Op->TokenType != lex::SppTokenType::KW_IS) {
+    if (Op.Get() and Op->TokenType != lex::SppTokenType::KW_IS) {
         for (auto const &p : Patterns) {
             const auto pe = p->To<CasePatternVariantExpressionAst>();
             const auto bin_ast = MakeUnique<BinaryExpressionAst>(
-                MakeUnique<ObjectInitializerAst>(meta->CaseCondition->InferType(sm, meta), nullptr),
+                MakeUnique<ObjectInitializerAst>(AstClone(meta->CaseCondition->InferType(sm, meta)), nullptr),
                 AstClone(Op),
-                MakeUnique<ObjectInitializerAst>(pe->Expr->InferType(sm, meta), nullptr));
+                MakeUnique<ObjectInitializerAst>(AstClone(pe->Expr->InferType(sm, meta)), nullptr));
             bin_ast->Stage7_AnalyseSemantics(sm, meta);
         }
     }
 
     // Analyse the guard and body.
-    if (Guard) { Guard->Stage7_AnalyseSemantics(sm, meta); }
+    if (Guard != nullptr) { Guard->Stage7_AnalyseSemantics(sm, meta); }
     Body->Stage7_AnalyseSemantics(sm, meta);
 
     // Exit the scope.
@@ -106,15 +107,15 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the branch's scope.
     sm->MoveToNextScope();
 
     // Check the patterns, guard and body.
     for (auto const &p : Patterns) { p->Stage8_CheckMemory(sm, meta); }
-    if (Guard) { Guard->Stage8_CheckMemory(sm, meta); }
+    if (Guard != nullptr) { Guard->Stage8_CheckMemory(sm, meta); }
     Body->Stage8_CheckMemory(sm, meta);
 
     // Move out of the branch's scope.
@@ -122,8 +123,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Combine the case expression with the pattern to determine if this branch should be taken, at compile-time.
     sm->MoveToNextScope();
@@ -131,7 +132,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
         pattern->Stage9_CompTimeResolve(sm, meta);
 
         // Determine if this branch is not a match (false).
-        const auto cmp_pat_bool = meta->CmpResult ? meta->CmpResult->To<BooleanLiteralAst>() : nullptr;
+        const auto cmp_pat_bool = meta->CmpResult != nullptr ? meta->CmpResult->To<BooleanLiteralAst>() : nullptr;
         if (cmp_pat_bool == nullptr or not cmp_pat_bool->IsTrue()) {
             sm->ExhaustScope();
             continue;
@@ -140,7 +141,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
         // Check with the branch guard if it exists.
         if (Guard != nullptr) {
             Guard->Stage9_CompTimeResolve(sm, meta);
-            const auto cmp_guard_bool = meta->CmpResult ? meta->CmpResult->To<BooleanLiteralAst>() : nullptr;
+            const auto cmp_guard_bool = meta->CmpResult != nullptr ? meta->CmpResult->To<BooleanLiteralAst>() : nullptr;
             if (not cmp_guard_bool or not cmp_guard_bool->IsTrue()) {
                 sm->ExhaustScope();
                 continue;
@@ -159,8 +160,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the branch architecture.
@@ -200,26 +201,30 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CaseExpressionBranchAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Forward type inference to the body.
-    return Body->InferType(sm, meta);
+    auto inferred = AstClone(Body->InferType(sm, meta));
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) const
     -> llvm::Value* {
     // If there is only one pattern, generate its condition directly.
     // Otherwise, collect all the pattern conditions and combine them with OR.
     auto llvm_combined_pattern = Patterns.Front()->Stage11_CodeGen(sm, meta, ctx);
-    for (auto const &pattern : Patterns | genex::views::ptr | genex::views::drop(1)) {
+    for (auto const &pattern : Patterns | std::views::drop(1)) {
         const auto llvm_pattern = pattern->Stage11_CodeGen(sm, meta, ctx);
         llvm_combined_pattern = ctx->Builder.CreateOr(llvm_combined_pattern, llvm_pattern);
     }
-    if (Guard) {
+    if (Guard != nullptr) {
         const auto llvm_guard = Guard->Stage11_CodeGen(sm, meta, ctx);
         llvm_combined_pattern = ctx->Builder.CreateAnd(llvm_combined_pattern, llvm_guard, "case.pattern.guard.match");
     }

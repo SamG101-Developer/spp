@@ -24,7 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import genex;
+import spp.utils.algorithms;
 
 SPP_MOD_BEGIN
 spp::asts::AssignmentStatementAst::AssignmentStatementAst(
@@ -69,8 +69,8 @@ auto spp::asts::AssignmentStatementAst::ToString() const
 }
 
 auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::errors::SppInvalidMutationError;
@@ -93,29 +93,30 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     }
 
     // Ensure the RHS is semantically valid.
-    for (auto [i, rhs_expr] : Rhs | genex::views::ptr | genex::views::enumerate) {
+    for (auto [i, rhs_expr] : Rhs | std::views::enumerate) {
         meta->Save();
+        auto inferred = Lhs[static_cast<std::size_t>(i)]->InferType(sm, meta);
 
         // Handle return type overloading matching for the lhs target types.
         if (const auto pf = rhs_expr->To<PostfixExpressionAst>(); pf != nullptr) {
             if (const auto fc = pf->Op->To<PostfixExpressionOperatorFunctionCallAst>(); fc != nullptr) {
-                meta->ReturnTypeOverloadResolverType = Lhs[i]->InferType(sm, meta);
+                meta->ReturnTypeOverloadResolverType = inferred;
             }
         }
 
         // Analyse the RHS expression.
-        meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
-        meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
+        meta->AssignmentTarget = Lhs[static_cast<std::size_t>(i)]->To<IdentifierAst>();
+        meta->AssignmentTargetType = inferred;
         rhs_expr->Stage7_AnalyseSemantics(sm, meta);
         meta->Restore();
     }
 
     // For each assignment, get the outermost symbol of the expression.
     auto lhs_syms = Lhs
-        | genex::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); });
+        | std::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); });
 
     // Create quick access derefs for the looping.
-    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
+    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : std::views::zip(Lhs | spp::views::ptr, Rhs | spp::views::ptr, lhs_syms)) {
         auto const &[lhs_sym, _] = lhs_sym_and_scope;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
@@ -148,8 +149,8 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::assignment_utils::IsAttr;
@@ -159,10 +160,10 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 
     // For each assignment, check the memory status and resolve any (partial-)moves.
     auto lhs_syms = Lhs
-        | genex::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); })
-        | genex::to<Vec>();
+        | std::views::transform([&](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); })
+        | std::ranges::to<Vec>();
 
-    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
+    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : std::views::zip(Lhs | spp::views::ptr, Rhs | spp::views::ptr, lhs_syms)) {
         auto const &[lhs_sym, _] = lhs_sym_and_scope;
 
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
@@ -170,8 +171,9 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
         ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, true, false, meta);
 
         meta->Save();
-        meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
-        meta->AssignmentTargetType = lhs_expr->InferType(sm, meta);
+        const auto inferred = lhs_expr->InferType(sm, meta);
+        meta->AssignmentTarget = lhs_expr->To<IdentifierAst>();
+        meta->AssignmentTargetType = inferred;
         rhs_expr->Stage8_CheckMemory(sm, meta);
         meta->Restore();
 
@@ -180,7 +182,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 
         if (IsAttr(lhs_expr, sm)) {
             const auto pf = lhs_expr->To<PostfixExpressionAst>();
-            const auto check_partial_move = IsAttr(pf->Lhs.get(), sm);
+            const auto check_partial_move = IsAttr(pf->Lhs.Get(), sm);
             ValidateSymbolMemory(*lhs_expr, *TokAssign, *sm, true, check_partial_move, false, true, false, meta);
         }
 
@@ -196,13 +198,13 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
         const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).First;
         const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).First;
         PreventBorrowLifetimeExtension(
-            *rhs_expr, lhs_outermost.get(), rhs_outermost.get(), this, *sm);
+            *rhs_expr, lhs_outermost, rhs_outermost, this, *sm);
     }
 }
 
 auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::assignment_utils::IsAttr;
@@ -215,15 +217,15 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
         const auto lhs_sym = sm->CurrentScope->GetVarSymbolOutermost(*Lhs[i]).First;
 
         // Assign to a full identifier.
-        if (IsIdentifier(Lhs[i].get())) {
+        if (IsIdentifier(Lhs[i].Get())) {
             lhs_sym->CompTimeValue = std::move(meta->CmpResult);
         }
 
         // Assign to an attribute.
-        else if (IsAttr(Lhs[i].get(), sm)) {
+        else if (IsAttr(Lhs[i].Get(), sm)) {
             SetCompTimeAttrValue(
                 lhs_sym->CompTimeValue->To<ObjectInitializerAst>(),
-                Lhs[i].get(), std::move(meta->CmpResult), sm);
+                Lhs[i].Get(), std::move(meta->CmpResult), sm);
         }
 
         // Otherwise, unsupported in the comptime context.
@@ -235,16 +237,17 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for each assignment in sequence.
     for (auto i = 0uz; i < Lhs.Len(); ++i) {
         // Set the meta information for generating with values.
+        const auto inferred = Lhs[i]->InferType(sm, meta);
         meta->Save();
-        meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
-        meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
+        meta->AssignmentTarget = Lhs[i]->To<IdentifierAst>();
+        meta->AssignmentTargetType = inferred;
 
         // Generate the RHS value.
         const auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);

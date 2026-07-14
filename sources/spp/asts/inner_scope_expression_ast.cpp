@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.inner_scope_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -20,8 +21,8 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import spp.utils.ptr;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::InnerScopeExpressionAst::NewEmpty()
@@ -74,8 +75,8 @@ auto spp::asts::InnerScopeExpressionAst::ToString() const
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::expr_utils::ValidateNoUnreachableCode;
@@ -88,7 +89,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
 
     // Check for unreachable code.
     ValidateNoUnreachableCode(
-        this->Members | genex::views::ptr | genex::to<Vec>(), *sm);
+        this->Members | spp::views::ptr | std::ranges::to<Vec>(), *sm);
 
     // Analyse the members of the inner scope.
     for (auto const &x : this->Members) { x->Stage7_AnalyseSemantics(sm, meta); }
@@ -96,8 +97,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -121,16 +122,20 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
     // scope.
     for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
         auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows
-            | genex::views::filter([&](auto const &x) { return std::get<2>(x) == sm->CurrentScope; })
-            | genex::to<Vec>();
+            | std::views::filter([&](auto const &x) { return std::get<2>(x) == sm->CurrentScope; })
+            | std::ranges::to<Vec>();
 
         for (auto const &ceb : contained_escaping_borrows) {
-            sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
-            const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
+            auto &contained = sym->MemInfo->AstContainedEscapingBorrows;
+            const auto [ceb_first, ceb_last] = std::ranges::remove(contained, ceb);
+            contained.Erase(ceb_first, ceb_last);
+            const auto b = std::get<0>(ceb)->To<IdentifierAst>();
             if (b == nullptr) { continue; }
-            sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto info) {
+            auto &containers = sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows;
+            const auto [con_first, con_last] = std::ranges::remove_if(containers, [&](auto info) {
                 return *std::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
             });
+            containers.Erase(con_first, con_last);
         }
     }
 
@@ -150,13 +155,13 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Comptime resolve each member of the inner scope.
     sm->MoveToNextScope();
     for (auto const &m : this->Members) {
-        const auto did_ret = m->template To<RetStatementAst>() != nullptr;
+        const auto did_ret = m->To<RetStatementAst>() != nullptr;
         m->Stage9_CompTimeResolve(sm, meta);
         if (did_ret) { break; }
     }
@@ -166,8 +171,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
@@ -190,17 +195,22 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::InnerScopeExpressionAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // If there are any members, return the last member's inferred type.
     if (not this->Members.IsEmpty()) {
-        auto tm = ScopeManager(sm->GlobalScope, GetAstScope());
-        return this->Members.Back()->InferType(&tm, meta);
+        auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, GetAstScope());
+        const auto inferred = this->Members.Back()->InferType(&tm, meta);
+        CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
     }
 
     // Otherwise, return the void type.
-    return generate::common_types::VoidType(PosStart());
+    auto inferred = generate::common_types::VoidType(PosStart());
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 auto spp::asts::InnerScopeExpressionAst::Terminates() const

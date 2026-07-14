@@ -13,7 +13,7 @@ import spp.asts.utils.orderable;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
-    decltype(Name) name,
+    decltype(Name) &&name,
     decltype(TokAssign) &&tok_assign,
     decltype(Conv) &&conv,
     decltype(Val) &&val) :
@@ -41,7 +41,7 @@ auto spp::asts::FunctionCallArgumentKeywordAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<FunctionCallArgumentKeywordAst>(
-        AstCloneShared(Name), AstClone(TokAssign), AstClone(Conv), AstClone(Val));
+        AstClone(Name), AstClone(TokAssign), AstClone(Conv), AstClone(Val));
 }
 
 auto spp::asts::FunctionCallArgumentKeywordAst::ToString() const

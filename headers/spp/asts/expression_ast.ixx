@@ -23,6 +23,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypePostfixExpressionAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The ExpressionAst class is the base class for all expressions in the abstract syntax tree. It inherits from

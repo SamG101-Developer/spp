@@ -36,7 +36,7 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<CasePatternVariantDestructureAttributeBindingAst>(
-        AstCloneShared(Name), AstClone(TokAssign), AstClone(Val));
+        AstClone(Name), AstClone(TokAssign), AstClone(Val));
 }
 
 auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ToString() const
@@ -49,11 +49,11 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ToString() con
 }
 
 auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ConvToVar(
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> Unique<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
     auto var = MakeUnique<LocalVariableDestructureAttributeBindingAst>(
-        AstCloneShared(Name), nullptr, Val->ConvToVar(meta));
+        AstClone(Name), nullptr, Val->ConvToVar(meta));
     var->MarkFromCasePattern();
     return var;
 }

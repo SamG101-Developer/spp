@@ -25,7 +25,7 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
     decltype(TokEllipsis) &&tok_ellipsis,
     decltype(Val) &&val) :
-    ObjectInitializerArgumentAst(AstCloneShared(val->To<IdentifierAst>()), std::move(val)),
+    ObjectInitializerArgumentAst(AstClone(val->To<IdentifierAst>()), std::move(val)),
     TokEllipsis(std::move(tok_ellipsis)) {
 }
 
@@ -59,8 +59,8 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppObjectInitializerInvalidArgumentError;

@@ -43,5 +43,5 @@ private:
     Vec<Unique<codegen::LLvmCtx>> _LlvmCtxs;
 
     auto _ValidateEntryPoint(analyse::scopes::ScopeManager *sm) -> void;
-    static auto _MoveScopeManagerToNs(analyse::scopes::ScopeManager *sm, Module const &mod) -> void;
+    static auto _MoveScopeManagerToNs(analyse::scopes::ScopeManager *sm, const Module &mod) -> void;
 };

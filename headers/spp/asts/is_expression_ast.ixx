@@ -17,6 +17,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
+
 SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
     /**
      * The left-hand side expression of the is expression. This is the first operand.
@@ -53,18 +55,17 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 
-    SPP_ATTR_NODISCARD auto GetMappedFunc() const -> Shared<CaseExpressionAst>;
+    SPP_ATTR_NODISCARD auto GetMappedFunc() const -> CaseExpressionAst*;
 
 private:
-    Shared<CaseExpressionAst> _MappedFunc;
-
-    Shared<IdentifierAst> _LhsAsId;
+    Unique<CaseExpressionAst> _MappedFunc;
+    Unique<IdentifierAst> _LhsAsId;
 };

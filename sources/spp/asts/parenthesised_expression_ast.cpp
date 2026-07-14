@@ -53,8 +53,8 @@ auto spp::asts::ParenthesisedExpressionAst::ToString() const
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -64,12 +64,12 @@ auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
     Expr->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+        {sm->CurrentScope}, ERR_ARGS(*Expr.Get()));
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -80,16 +80,16 @@ auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward comptime resolution into the expression.
     Expr->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the inner expression.
@@ -97,11 +97,15 @@ auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ParenthesisedExpressionAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Get the inner expression's type.
-    return Expr->InferType(sm, meta);
+    const auto inferred = Expr->InferType(sm, meta);
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 SPP_MOD_END

@@ -15,7 +15,6 @@ namespace spp::codegen {
     auto global_context = new llvm::LLVMContext();
 }
 
-
 SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     llvm::LLVMContext *Context;
     Unique<llvm::Module> Module;

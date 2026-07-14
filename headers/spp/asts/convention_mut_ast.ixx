@@ -11,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 /**
  * The ConventionMutAst represents a convention for mutable borrows. If the borrow is for an argument, this symbol must
  * be mutably defined.

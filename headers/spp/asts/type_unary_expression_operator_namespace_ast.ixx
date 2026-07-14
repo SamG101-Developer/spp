@@ -13,14 +13,13 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
     SPP_GCC_VTABLE_FIX
 
     /**
      * The namespace token that represents the namespace in which the type is defined.
      */
-    Shared<IdentifierAst> Ns;
+    Unique<IdentifierAst> Ns;
 
     /**
      * The @c :: operator token that represents the namespace operator.
@@ -44,18 +43,9 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
 
     SPP_AST_KEY_FUNCTIONS
 
-    SPP_ATTR_NODISCARD auto NsParts() const
-        -> Vec<Shared<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts() const -> Vec<IdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto NsParts()
-        -> Vec<Shared<IdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto TypeParts() const
-        -> Vec<Shared<const TypeIdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto TypeParts()
-        -> Vec<Shared<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts() const -> Vec<TypeIdentifierAst*> override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorNamespaceAst)

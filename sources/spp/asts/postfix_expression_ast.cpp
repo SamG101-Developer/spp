@@ -60,8 +60,8 @@ auto spp::asts::PostfixExpressionAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -75,30 +75,30 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     meta->ReturnTypeOverloadResolverType = nullptr;
     meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
-        auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
+        auto temp_lhs = Unique<TypeAst>(Lhs.Release()->To<TypeAst>());
         temp_lhs->Stage7_AnalyseSemantics(sm, meta);
         temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
-        temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs)->FqName();
+        temp_lhs = AstClone(sm->CurrentScope->GetTypeSymbol(temp_lhs.Get())->FqName());
         Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
         Lhs->Stage7_AnalyseSemantics(sm, meta);
         RaiseIf<SppInvalidPrimaryExpressionError>(
             not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
-            {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
+            {sm->CurrentScope}, ERR_ARGS(*Lhs.Get()));
     }
     meta->Restore();
 
     // Re-attach the meta info, as it is targeting the lhs.
     meta->Save();
-    meta->PostfixExpressionLhs = Lhs.get();
+    meta->PostfixExpressionLhs = Lhs.Get();
     Op->Stage7_AnalyseSemantics(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -113,7 +113,7 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     // Check the memory of the lhs.
     Lhs->Stage8_CheckMemory(sm, meta);
     meta->Save();
-    meta->PostfixExpressionLhs = Lhs.get();
+    meta->PostfixExpressionLhs = Lhs.Get();
     if (Lhs->To<IdentifierAst>() != nullptr) {
         ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, true, false, false, false, false, meta);
     }
@@ -122,19 +122,19 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward into the operator AST.
     meta->Save();
-    meta->PostfixExpressionLhs = Lhs.get();
+    meta->PostfixExpressionLhs = Lhs.Get();
     Op->Stage9_CompTimeResolve(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Memory analysis used the transformed AST to not repeat lhs as self.
@@ -146,7 +146,7 @@ auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
 
     // Forward into the operator AST.
     meta->Save();
-    meta->PostfixExpressionLhs = Lhs.get();
+    meta->PostfixExpressionLhs = Lhs.Get();
     const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();
     return ret_val;
@@ -154,17 +154,18 @@ auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
 
 auto spp::asts::PostfixExpressionAst::InferType(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    // Check cache.
-    // if (Source.CachedInference != nullptr) { return Source.CachedInference; }
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
 
     // Forward into the operator AST.
     meta->Save();
-    meta->PostfixExpressionLhs = Lhs.get();
-    auto x = Op->InferType(sm, meta);
+    meta->PostfixExpressionLhs = Lhs.Get();
+    const auto inferred = Op->InferType(sm, meta);
     meta->Restore();
-    return x;
+
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 auto spp::asts::PostfixExpressionAst::ExprParts() const

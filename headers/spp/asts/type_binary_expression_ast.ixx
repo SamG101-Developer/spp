@@ -13,12 +13,11 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : Ast, mixins::TempTypeAst {
     /**
      * The left-hand side expression of the type binary expression. This is the first operand.
      */
-    Shared<TypeAst> Lhs;
+    Unique<TypeAst> Lhs;
 
     /**
      * The operator token that represents the type binary operation. This indicates the type of operation being
@@ -29,7 +28,7 @@ SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : Ast, mixins::TempT
     /**
      * The right-hand side expression of the type binary expression. This is the second operand.
      */
-    Shared<TypeAst> Rhs;
+    Unique<TypeAst> Rhs;
 
     /**
      * Construct the TypeBinaryExpressionAst with the arguments matching the members.

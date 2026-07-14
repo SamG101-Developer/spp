@@ -14,6 +14,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The FunctionCallArgumentGroupAst represents a group of function call arguments. It is used to group multiple
@@ -61,9 +62,9 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
 
     SPP_ATTR_NODISCARD auto GetPositionalArgs() const -> Vec<FunctionCallArgumentPositionalAst*>;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     auto At(const char *key) const -> FunctionCallArgumentAst const*;
 };

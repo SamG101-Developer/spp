@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
@@ -10,6 +11,8 @@ import std;
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
 }
+
+COMMON_AST_IMPORTS
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeAst;
@@ -39,11 +42,11 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
 
     ~GenericParameterTypeAst() override;
 
-    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage2_GenTopLvlScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *) -> void override;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     SPP_ATTR_NODISCARD auto GetDummyScopes() const -> std::span<analyse::scopes::Scope* const>;
 

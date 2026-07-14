@@ -54,8 +54,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppExpressionNotBooleanError;
@@ -69,8 +69,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // The "lhs" will be boolean based on previous analysis.
     meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
@@ -82,12 +82,16 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
-    // The type of a "not" expression is always boolean.
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
     using generate::common_types::BooleanType;
-    return BooleanType(PosStart());
+    USE_CACHED_TYPE_INFERENCE;
+
+    // The type of a "not" expression is always boolean.
+    auto inferred = BooleanType(PosStart());
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

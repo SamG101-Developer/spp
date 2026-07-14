@@ -14,9 +14,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
- * The ObjectInitializerArgumentAst is the base class representing an argument in a object initialization. It is
+ * The ObjectInitializerArgumentAst is the base class representing an argument in an object initialisation. It is
  * inherited into the "shorthand" and "keyword" variants.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeInferrableAst {
@@ -25,7 +26,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
      * shorthand args, this is autofilled by cloning the value, and casting it to an IdentifierAst. Otherwise, it is
      * passed explicitly from the keyword arg parser.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The expression that is being passed as the argument to the object initialization. Both positional and keyword
@@ -39,16 +40,16 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
      * @param[in] val The expression that is being passed as the argument to the object initialization.
      */
     explicit ObjectInitializerArgumentAst(
-        decltype(Name) name,
+        decltype(Name) &&name,
         decltype(Val) &&val);
 
     ~ObjectInitializerArgumentAst() override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 };

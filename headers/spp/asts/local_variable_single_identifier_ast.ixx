@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -16,6 +17,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The LocalVariableSingleIdentifierAst represents a local variable that is defined by a single identifier. This is used
@@ -46,7 +48,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
      * The name of the local variable. This is the identifier that is used to refer to the variable in the local scope.
      * It will be saved against the symbol in the symbol table of the current scope.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The optional alias for the local variable. This is used to create an alias for the variable, which can be used to
@@ -63,22 +65,22 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
      */
     LocalVariableSingleIdentifierAst(
         decltype(TokMut) &&tok_mut,
-        decltype(Name) name,
+        decltype(Name) &&name,
         decltype(Alias) &&alias);
 
     ~LocalVariableSingleIdentifierAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<IdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto ExtractName() const -> IdentifierAst* override;
 };

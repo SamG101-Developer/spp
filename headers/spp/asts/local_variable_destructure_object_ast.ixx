@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.local_variable_destructure_object_ast;
 import spp.asts.local_variable_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -21,12 +22,14 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
+
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVariableAst {
     /**
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by
      * attribute type inference)
      */
-    Shared<TypeAst> Type;
+    Unique<TypeAst> Type;
 
     /**
      * The @code (@endcode token that indicates the start of a object destructuring pattern.
@@ -45,7 +48,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
     Unique<TokenAst> TokR;
 
     struct {
-        Shared<TypeAst> OriginalType;
+        Unique<TypeAst> OriginalType;
     } Source;
 
     /**
@@ -65,21 +68,21 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<IdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto ExtractName() const -> IdentifierAst* override;
 
 private:
     Vec<Unique<LetStatementInitializedAst>> _NewAsts;
-    Shared<analyse::scopes::VariableSymbol> _CondSym;
-    Shared<analyse::scopes::VariableSymbol> _FlowSym;
+    analyse::scopes::VariableSymbol *_CondSym;
+    analyse::scopes::VariableSymbol *_FlowSym;
     Unique<LetStatementInitializedAst> _CondLet;
 };

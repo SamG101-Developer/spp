@@ -24,7 +24,7 @@ spp::asts::FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst
 auto spp::asts::FunctionCallArgumentPositionalAst::PosStart() const
     -> std::size_t {
     // Use the ".." token or the value.
-    return TokUnpack ? TokUnpack->PosStart() : Val->PosStart();
+    return TokUnpack != nullptr ? TokUnpack->PosStart() : Val->PosStart();
 }
 
 auto spp::asts::FunctionCallArgumentPositionalAst::PosEnd() const

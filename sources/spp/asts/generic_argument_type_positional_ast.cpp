@@ -52,7 +52,7 @@ auto spp::asts::GenericArgumentTypePositionalAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<GenericArgumentTypePositionalAst>(
-        AstCloneShared(Val));
+        AstClone(Val));
 }
 
 auto spp::asts::GenericArgumentTypePositionalAst::ToString() const
@@ -63,8 +63,8 @@ auto spp::asts::GenericArgumentTypePositionalAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
@@ -72,11 +72,11 @@ auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
     Val->Stage7_AnalyseSemantics(sm, meta);
 
     // Analyse the name and value of the generic type argument.
-    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val);
+    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val.Get());
     const auto tmp2 = tmp1->FqName();
     auto tmp3 = AstClone(Val->GetConvention());
-    const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
-    Val = tmp4;
+    auto tmp4 = tmp2->WithConvention(std::move(tmp3));
+    Val = std::move(tmp4);
 }
 
 SPP_MOD_END

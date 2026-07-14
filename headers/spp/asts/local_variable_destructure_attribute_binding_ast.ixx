@@ -12,13 +12,12 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
     /**
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The @c = token that separates the attribute name from the value in the destructure binding.
@@ -37,7 +36,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final 
      * @param val The value of the attribute.
      */
     LocalVariableDestructureAttributeBindingAst(
-        decltype(Name) name,
+        decltype(Name) &&name,
         decltype(TokAssign) &&tok_assign,
         decltype(Val) &&val);
 
@@ -45,5 +44,5 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final 
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto ExtractName() const -> IdentifierAst* override;
 };

@@ -19,7 +19,7 @@ spp::asts::ClosureExpressionCaptureAst::~ClosureExpressionCaptureAst() = default
 auto spp::asts::ClosureExpressionCaptureAst::PosStart() const
     -> std::size_t {
     // Use the convention or the value.
-    return Conv ? Conv->PosStart() : Val->PosStart();
+    return Conv != nullptr ? Conv->PosStart() : Val->PosStart();
 }
 
 auto spp::asts::ClosureExpressionCaptureAst::PosEnd() const

@@ -42,15 +42,15 @@ auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ToString() const
 }
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     // There are no names for this "_" single skip.
     return {};
 }
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractName() const
-    -> Shared<IdentifierAst> {
+    -> IdentifierAst* {
     // There is no single name for this "_" single skip.
-    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
+    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier();
 }
 
 SPP_MOD_END

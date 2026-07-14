@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_identifier_ast;
 import spp.analyse.scopes.scope;
@@ -27,19 +28,18 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import ankerl.unordered_dense;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::TypeIdentifierAst::FromIdentifier(
     IdentifierAst const &identifier)
-    -> Shared<TypeIdentifierAst> {
-    return MakeShared<TypeIdentifierAst>(identifier.PosStart(), Str(identifier.Val), nullptr);
+    -> Unique<TypeIdentifierAst> {
+    return MakeUnique<TypeIdentifierAst>(identifier.PosStart(), Str(identifier.Val), nullptr);
 }
 
 auto spp::asts::TypeIdentifierAst::FromString(
     Str const &identifier)
-    -> Shared<TypeIdentifierAst> {
-    return MakeShared<TypeIdentifierAst>(0uz, Str(identifier), nullptr);
+    -> Unique<TypeIdentifierAst> {
+    return MakeUnique<TypeIdentifierAst>(0uz, Str(identifier), nullptr);
 }
 
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
@@ -99,7 +99,6 @@ auto spp::asts::TypeIdentifierAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     auto t = MakeUnique<TypeIdentifierAst>(_Pos, Str(Name), AstClone(GnArgGroup));
-    t->_CachedWithoutGenerics = _CachedWithoutGenerics;
     t->_IsNeverType = _IsNeverType;
     return t;
 }
@@ -113,8 +112,8 @@ auto spp::asts::TypeIdentifierAst::ToString() const
 }
 
 auto spp::asts::TypeIdentifierAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the generic argument types.
     for (auto const &g : GnArgGroup->GetTypeArgs()) {
@@ -123,8 +122,8 @@ auto spp::asts::TypeIdentifierAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
@@ -140,19 +139,21 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     const auto type_sym = GetTypeSymOrError(
         *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
     if (Name == "Self") { return; }
-    const auto &gn_param_group = type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
+    const auto &gn_param_group = type_sym->AliasStmt != nullptr ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
 
     auto is_tuple = false;
     if (not type_sym->IsGeneric) {
         is_tuple = ( {
-            const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
+            // Keep the owning Unique alive for the comparison; WithoutGenerics() returns a temporary and To<>() is non-owning.
+            const auto without_generics = type_sym->FqName()->WithoutGenerics();
+            const auto as_unary = without_generics->To<TypeUnaryExpressionAst>();
             as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->To<TypeUnaryExpressionAst>();
         });
 
         // Name all the generic arguments.
         NameGnArgs(
             *GnArgGroup,
-            *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
+            *(type_sym->AliasStmt != nullptr ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
             *this, *sm, *meta, is_tuple);
 
         // Analyse the generic arguments.
@@ -162,8 +163,8 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
         // Infer the generic arguments from information given from object initialisation.
         InferGnArgs(
-            *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget, type_sym->FqName(), *type_sym->LinkedScope,
-            nullptr, is_tuple, *sm, *meta);
+            *gn_param_group, *GnArgGroup, std::move(meta->InferSource), std::move(meta->InferTarget),
+            type_sym->FqName(), *type_sym->LinkedScope, nullptr, is_tuple, *sm, *meta);
         GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     }
 
@@ -175,11 +176,11 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     //     meta->TypeAnalysisTypeScope = type_scope;
     //     inner_types_as_tup->Stage7_AnalyseSemantics(sm, meta);
     //     meta->Restore();
-    //     ast_cast<GenericArgumentTypeAst>(generic_arg_group->Args[0].get())->val = std::move(inner_types_as_tup);
+    //     ast_cast<GenericArgumentTypeAst>(generic_arg_group->Args[0].Get())->val = std::move(inner_types_as_tup);
     // }
 
     // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
-    if (not scope->HasTypeSymbol(AstClone(this))) {
+    if (not scope->HasTypeSymbol(this)) {
         const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
     }
@@ -194,45 +195,44 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     _HasAnalysed = true;
 }
 
-auto spp::asts::TypeIdentifierAst::Iterator() const
-    -> Vec<Shared<const TypeIdentifierAst>> {
-    // First yield is the original type being iterated over.
-    auto parts = Vec<Shared<const TypeIdentifierAst>>{};
-    parts.EmplaceBack(dynamic_shared_cast<const TypeIdentifierAst>(
-        shared_from_this()));
-
-    for (auto &&g : GnArgGroup->Args) {
-        // Positional generic comp argument with identifier value.
-        if (auto &&comp_positional_arg = g->To<GenericArgumentCompPositionalAst>()) {
-            if (auto &&ident_val = comp_positional_arg->Val->To<IdentifierAst>()) {
-                parts.EmplaceBack(FromIdentifier(*ident_val));
-            }
-        }
-
-        // Keyword generic comp argument with identifier value.
-        else if (auto &&comp_keyword_arg = g->To<GenericArgumentCompKeywordAst>()) {
-            if (auto &&ident_val = comp_keyword_arg->Val->To<IdentifierAst>()) {
-                parts.EmplaceBack(FromIdentifier(*ident_val));
-            }
-        }
-
-        // Positional generic type arguments => recursive iteration.
-        else if (auto &&type_positional_arg = g->To<GenericArgumentTypePositionalAst>()) {
-            for (auto &&ti : type_positional_arg->Val->Iterator()) {
-                parts.EmplaceBack(ti);
-            }
-        }
-
-        // Keyword generic type arguments => recursive iteration.
-        else if (auto &&type_keyword_arg = g->To<GenericArgumentTypeKeywordAst>()) {
-            for (auto &&ti : type_keyword_arg->Val->Iterator()) {
-                parts.EmplaceBack(ti);
-            }
-        }
-    }
-
-    return parts;
-}
+// auto spp::asts::TypeIdentifierAst::Iterator() const
+//     -> Vec<TypeIdentifierAst*> {
+//     // First yield is the original type being iterated over.
+//     auto parts = Vec<TypeIdentifierAst*>();
+//     parts.EmplaceBack(this);
+//
+//     for (auto &&g : GnArgGroup->Args) {
+//         // Positional generic comp argument with identifier value.
+//         if (auto &&comp_positional_arg = g->To<GenericArgumentCompPositionalAst>()) {
+//             if (auto &&ident_val = comp_positional_arg->Val->To<IdentifierAst>()) {
+//                 parts.EmplaceBack(FromIdentifier(*ident_val));
+//             }
+//         }
+//
+//         // Keyword generic comp argument with identifier value.
+//         else if (auto &&comp_keyword_arg = g->To<GenericArgumentCompKeywordAst>()) {
+//             if (auto &&ident_val = comp_keyword_arg->Val->To<IdentifierAst>()) {
+//                 parts.EmplaceBack(FromIdentifier(*ident_val));
+//             }
+//         }
+//
+//         // Positional generic type arguments => recursive iteration.
+//         else if (auto &&type_positional_arg = g->To<GenericArgumentTypePositionalAst>()) {
+//             for (auto &&ti : type_positional_arg->Val->Iterator()) {
+//                 parts.EmplaceBack(ti);
+//             }
+//         }
+//
+//         // Keyword generic type arguments => recursive iteration.
+//         else if (auto &&type_keyword_arg = g->To<GenericArgumentTypeKeywordAst>()) {
+//             for (auto &&ti : type_keyword_arg->Val->Iterator()) {
+//                 parts.EmplaceBack(ti);
+//             }
+//         }
+//     }
+//
+//     return parts;
+// }
 
 auto spp::asts::TypeIdentifierAst::IsNeverType() const noexcept
     -> bool {
@@ -245,28 +245,18 @@ auto spp::asts::TypeIdentifierAst::IsSelfType() const noexcept
 }
 
 auto spp::asts::TypeIdentifierAst::NsParts() const
-    -> Vec<Shared<const IdentifierAst>> {
-    return {};
-}
-
-auto spp::asts::TypeIdentifierAst::NsParts()
-    -> Vec<Shared<IdentifierAst>> {
+    -> Vec<IdentifierAst*> {
     return {};
 }
 
 auto spp::asts::TypeIdentifierAst::TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> {
-    return Vec{dynamic_shared_cast<const TypeIdentifierAst>(shared_from_this())};
-}
-
-auto spp::asts::TypeIdentifierAst::TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> {
-    return Vec{dynamic_shared_cast<TypeIdentifierAst>(shared_from_this())};
+    -> Vec<TypeIdentifierAst*> {
+    return Vec{const_cast<TypeIdentifierAst*>(this)};
 }
 
 auto spp::asts::TypeIdentifierAst::WithoutConvention() const
-    -> Shared<const TypeAst> {
-    return shared_from_this();
+    -> TypeAst* {
+    return const_cast<TypeIdentifierAst*>(this);
 }
 
 auto spp::asts::TypeIdentifierAst::GetConvention() const
@@ -276,26 +266,22 @@ auto spp::asts::TypeIdentifierAst::GetConvention() const
 
 auto spp::asts::TypeIdentifierAst::WithConvention(
     Unique<ConventionAst> &&conv) const
-    -> Shared<TypeAst> {
-    if (conv == nullptr) { return AstCloneShared(this); }
+    -> Unique<TypeAst> {
+    if (conv == nullptr) { return AstClone(this); }
 
     auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
-    auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
+    auto wrapped = MakeUnique<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
     return wrapped;
 }
 
 auto spp::asts::TypeIdentifierAst::WithoutGenerics() const
-    -> Shared<TypeAst> {
-    // Use cache if available.
-    if (not _CachedWithoutGenerics) {
-        _CachedWithoutGenerics = MakeShared<TypeIdentifierAst>(_Pos, Str(Name), nullptr);
-    }
-    return _CachedWithoutGenerics;
+    -> Unique<TypeAst> {
+    return MakeUnique<TypeIdentifierAst>(_Pos, Str(Name), nullptr);
 }
 
 auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
     Vec<GenericArgumentAst*> const &args) const
-    -> Shared<TypeAst> {
+    -> Unique<TypeAst> {
     if (args.IsEmpty() or GnArgGroup == nullptr) { return AstClone(this); }
 
     // Get the generic type and comp arguments, split and transformed.
@@ -303,10 +289,10 @@ auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
     auto gen_comp_args = Vec<Pair<TypeIdentifierAst*, ExpressionAst*>>{};
     for (auto const &arg : args) {
         if (auto const *type_kw_arg = arg->To<GenericArgumentTypeKeywordAst>()) {
-            gen_type_args.EmplaceBack(type_kw_arg->Name->To<TypeIdentifierAst>(), type_kw_arg->Val.get());
+            gen_type_args.EmplaceBack(type_kw_arg->Name->To<TypeIdentifierAst>(), type_kw_arg->Val.Get());
         }
         else if (auto const *comp_kw_arg = arg->To<GenericArgumentCompKeywordAst>()) {
-            gen_comp_args.EmplaceBack(comp_kw_arg->Name->To<TypeIdentifierAst>(), comp_kw_arg->Val.get());
+            gen_comp_args.EmplaceBack(comp_kw_arg->Name->To<TypeIdentifierAst>(), comp_kw_arg->Val.Get());
         }
     }
 
@@ -341,18 +327,34 @@ auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
 auto spp::asts::TypeIdentifierAst::ContainsGenerics(
     GenericParameterAst const &generic) const
     -> bool {
-    // Check if the parameter's name is in the type parts iterated from this type.
+    // Check if this type identifier is the generic parameter itself (e.g. the "T" in "sup [T] T").
     auto cast_name = generic.Name->To<TypeIdentifierAst>();
-    return genex::any_of(
-        Iterator() | genex::to<Vec>(), [&cast_name](auto ti) { return *ti == *cast_name; });
+    if (*this == *cast_name) { return true; }
+
+    // Otherwise recurse into the generic argument group, so nested usages like the "T" in "BaseClass[T]" are found.
+    for (auto const &g : GnArgGroup->Args) {
+        if (auto const *comp_positional_arg = g->To<GenericArgumentCompPositionalAst>(); comp_positional_arg != nullptr) {
+            if (auto const *ident_val = comp_positional_arg->Val->To<IdentifierAst>(); ident_val != nullptr and *FromIdentifier(*ident_val) == *cast_name) { return true; }
+        }
+        else if (auto const *comp_keyword_arg = g->To<GenericArgumentCompKeywordAst>(); comp_keyword_arg != nullptr) {
+            if (auto const *ident_val = comp_keyword_arg->Val->To<IdentifierAst>(); ident_val != nullptr and *FromIdentifier(*ident_val) == *cast_name) { return true; }
+        }
+        else if (auto const *type_positional_arg = g->To<GenericArgumentTypePositionalAst>(); type_positional_arg != nullptr) {
+            if (type_positional_arg->Val->ContainsGenerics(generic)) { return true; }
+        }
+        else if (auto const *type_keyword_arg = g->To<GenericArgumentTypeKeywordAst>(); type_keyword_arg != nullptr) {
+            if (type_keyword_arg->Val->ContainsGenerics(generic)) { return true; }
+        }
+    }
+    return false;
 }
 
 auto spp::asts::TypeIdentifierAst::WithGenerics(
     Unique<GenericArgumentGroupAst> &&arg_group) const
-    -> Shared<TypeAst> {
+    -> Unique<TypeAst> {
     // Attach the new generic argument group to a clone of this type identifier.
-    arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
-    return MakeShared<TypeIdentifierAst>(_Pos, Str(Name), std::move(arg_group));
+    arg_group = arg_group != nullptr ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
+    return MakeUnique<TypeIdentifierAst>(_Pos, Str(Name), std::move(arg_group));
 }
 
 auto spp::asts::TypeIdentifierAst::IsCompilerGeneratedType() const
@@ -373,14 +375,18 @@ auto spp::asts::TypeIdentifierAst::IsTypeIdentifier() const noexcept
 }
 
 auto spp::asts::TypeIdentifierAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Fully qualify this type name from the scope.
     // Have to AstClone because PostfixExpressionAst lhs (will change with removal of all shared pointers)
     const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-    const auto type_sym = type_scope->GetTypeSymbol(AstClone(this));
-    return type_sym->FqName();
+    const auto type_sym = type_scope->GetTypeSymbol(this);
+    auto inferred = AstClone(type_sym->FqName());
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 auto spp::asts::TypeIdentifierAst::AnkerlHash() const

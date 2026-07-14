@@ -35,7 +35,7 @@ auto spp::asts::GenericParameterCompRequiredAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<GenericParameterCompRequiredAst>(
-        AstClone(TokCmp), AstCloneShared(Name), AstClone(TokColon), AstCloneShared(Type));
+        AstClone(TokCmp), AstClone(Name), AstClone(TokColon), AstClone(Type));
 }
 
 auto spp::asts::GenericParameterCompRequiredAst::ToString() const

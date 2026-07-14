@@ -51,8 +51,8 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppDereferenceNonBorrowedTypeError;
@@ -82,16 +82,16 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // As this is cmp context, just return the "lhs" generation.
     meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the value underlying the borrow.
@@ -105,15 +105,17 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Get the right-hand-side expression's type.
     const auto lhs = meta->PostfixExpressionLhs;
     const auto lhs_type = lhs->InferType(sm, meta);
-
-    // Return the dereferenced type.
-    return AstClone(lhs_type->WithoutConvention());
+    const auto no_conv = lhs_type->WithoutConvention();
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(no_conv));
 }
 
 SPP_MOD_END

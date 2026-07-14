@@ -16,6 +16,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to
@@ -33,7 +34,7 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
      * The name of the class attribute. This is the identifier that is used to refer to the attribute on the class, and
      * must be unique to the class.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The token that represents the colon @c : in the class attribute definition. This separates the name from the type.
@@ -43,7 +44,7 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
     /**
      * The type of the class attribute. This is the type that the attribute will hold, and must be specified.
      */
-    Shared<TypeAst> Type;
+    Unique<TypeAst> Type;
 
     /**
      * An optional default value for the class attribute. This is the value that will be assigned to the attribute if no
@@ -53,7 +54,7 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
     Unique<ExpressionAst> DefaultVal;
 
     struct {
-        Shared<TypeAst> OriginalType;
+        Unique<TypeAst> OriginalType;
     } Source;
 
     /**
@@ -77,18 +78,17 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
 
     auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage2_GenTopLvlScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassAttributeAst)

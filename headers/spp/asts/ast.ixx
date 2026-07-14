@@ -8,7 +8,6 @@ import std;
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
 }
 
 namespace spp::asts {
@@ -26,6 +25,8 @@ namespace spp::asts {
 namespace spp::asts::meta {
     SPP_EXP_CLS class AstPrinter;
 }
+
+COMMON_AST_IMPORTS
 
 /**
  * The AST base class is inherited by all other AST classes, provided base functionality, including formatted printing
@@ -112,7 +113,7 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
      * @param sm The scope manager to use for setting the scope of this AST (current scope).
      * @param meta Associated metadata (unused in default implementation).
      */
-    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage2_GenTopLvlScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     SPP_ATTR_NODISCARD auto GetAstCtx() const -> Ast*;
 

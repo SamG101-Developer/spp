@@ -27,7 +27,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ptr;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
@@ -68,7 +67,7 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Clone() const
     // Clone all the members of the ast.
     auto ast = MakeUnique<PostfixExpressionOperatorSliceAst>(
         AstClone(TokL), AstClone(TokMut), AstClone(ExprLBound), AstClone(TokTo), AstClone(ExprRBound), AstClone(TokR));
-    ast->_MappedFunc = _MappedFunc;
+    ast->_MappedFunc = AstClone(_MappedFunc);
     return ast;
 }
 
@@ -80,7 +79,7 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::ToString() const
         SPP_STRING_END;
     }
     SPP_STRING_APPEND(TokL);
-    SPP_STRING_APPEND(TokMut).append(TokMut ? " " : "");
+    SPP_STRING_APPEND(TokMut).append(TokMut != nullptr ? " " : "");
     SPP_STRING_APPEND(ExprLBound);
     SPP_STRING_APPEND(TokTo).append(" ");
     SPP_STRING_APPEND(ExprRBound);
@@ -89,8 +88,8 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Already analysed => return early.
     using analyse::errors::SppExpressionAmbiguousIndexableError;
@@ -102,12 +101,10 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     if (_MappedFunc != nullptr) { return; }
 
     // Determine the left-hand-side type.
-    const auto lhs_type = const_shared_cast(
-        meta->PostfixExpressionLhs->InferType(sm, meta));
-
+    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
-    auto sup_types = Vec{lhs_type};
-    sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
+    auto sup_types = type_sym->LinkedScope->SupTypes();
+    sup_types.EmplaceBack(lhs_type);
 
     // Decide the function variation based upon if the lhs/rhs are nullptr or not.
     const auto prefix = ExprLBound == nullptr and ExprRBound == nullptr
@@ -122,8 +119,8 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     Unique<FunctionCallArgumentAst> arg1 = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(ExprLBound));
     Unique<FunctionCallArgumentAst> arg2 = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(ExprRBound));
     auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<Unique<FunctionCallArgumentAst>>{}, nullptr);
-    if (arg1->Val) { arg_group->Args.EmplaceBack(std::move(arg1)); }
-    if (arg2->Val) { arg_group->Args.EmplaceBack(std::move(arg2)); }
+    if (arg1->Val != nullptr) { arg_group->Args.EmplaceBack(std::move(arg1)); }
+    if (arg2->Val != nullptr) { arg_group->Args.EmplaceBack(std::move(arg2)); }
 
     // Field name is either "index_ref" or "index_mut", then call it with the argument group (index).
     auto field_name = MakeUnique<IdentifierAst>(PosStart(), func_name);
@@ -131,13 +128,13 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
     auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
     func_call->Source.OriginalExpr = this;
-    _MappedFunc = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+    _MappedFunc = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward to the mapped function.
     _MappedFunc->Stage9_CompTimeResolve(sm, meta);
@@ -145,10 +142,14 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::InferType(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Forward to the mapped function's return type.
-    return _MappedFunc->InferType(sm, meta);
+    const auto inferred = _MappedFunc->InferType(sm, meta);
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 SPP_MOD_END

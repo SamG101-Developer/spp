@@ -16,8 +16,8 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.utils.algorithms;
 import spp.utils.types;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
@@ -60,8 +60,8 @@ auto spp::asts::FunctionParameterGroupAst::ToString() const
 }
 
 auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppMultipleSelfParametersError;
@@ -71,26 +71,25 @@ auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
 
     // Create sets of parameters based on conditions.
     const auto self_params = Params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<FunctionParameterSelfAst*>
+        | std::ranges::to<Vec>();
 
     const auto variadic_params = Params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<FunctionParameterVariadicAst*>
+        | std::ranges::to<Vec>();
 
     const auto param_names = Params
-        | genex::views::transform([](auto const &x) { return x->ExtractNames(); })
-        | genex::views::join
-        | genex::to<Vec>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x->ExtractNames(); })
+        | std::views::join
+        | spp::views::duplicates({}, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::to<Vec>());
+        | spp::views::ptr
+        | spp::views::cast_dynamic<mixins::OrderableAst*>
+        | std::ranges::to<Vec>());
 
     // Check there is only 1 "self" parameter.
     RaiseIf<SppMultipleSelfParametersError>(
@@ -117,16 +116,16 @@ auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionParameterGroupAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check each parameter's memory.
     for (auto const &param : Params) { param->Stage8_CheckMemory(sm, meta); }
 }
 
 auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code generate each parameter.
@@ -138,7 +137,7 @@ auto spp::asts::FunctionParameterGroupAst::GetAllParams() const
     -> Vec<FunctionParameterAst*> {
     // Filter by casting.
     auto out = Vec<FunctionParameterAst*>();
-    for (auto const &param : Params) { out.push_back(param.get()); }
+    for (auto const &param : Params) { out.EmplaceBack(param.Get()); }
     return out;
 }
 
@@ -147,7 +146,7 @@ auto spp::asts::FunctionParameterGroupAst::GetSelfParam() const
     // Filter by casting.
     auto out = Vec<FunctionParameterSelfAst*>();
     for (auto const &param : Params) {
-        if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) { out.push_back(self_param); }
+        if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.Get())) { out.EmplaceBack(self_param); }
     }
     return out.IsEmpty() ? nullptr : out[0];
 }
@@ -157,7 +156,7 @@ auto spp::asts::FunctionParameterGroupAst::GetRequiredParams() const
     // Filter by casting.
     auto out = Vec<FunctionParameterRequiredAst*>();
     for (auto const &param : Params) {
-        if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.get())) { out.push_back(req_param); }
+        if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.Get())) { out.EmplaceBack(req_param); }
     }
     return out;
 }
@@ -167,7 +166,7 @@ auto spp::asts::FunctionParameterGroupAst::GetOptionalParams() const
     // Filter by casting.
     auto out = Vec<FunctionParameterOptionalAst*>();
     for (auto const &param : Params) {
-        if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.get())) { out.push_back(opt_param); }
+        if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.Get())) { out.EmplaceBack(opt_param); }
     }
     return out;
 }
@@ -177,7 +176,7 @@ auto spp::asts::FunctionParameterGroupAst::GetVariadicParams() const
     // Filter by casting.
     auto out = Vec<FunctionParameterVariadicAst*>();
     for (auto const &param : Params) {
-        if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) { out.push_back(var_param); }
+        if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.Get())) { out.EmplaceBack(var_param); }
     }
     return out.IsEmpty() ? nullptr : out[0];
 }
@@ -187,7 +186,7 @@ auto spp::asts::FunctionParameterGroupAst::GetNonSelfParams() const
     // Filter by casting.
     auto out = Vec<FunctionParameterAst*>();
     for (auto const &param : Params) {
-        if (dynamic_cast<FunctionParameterSelfAst*>(param.get()) == nullptr) { out.push_back(param.get()); }
+        if (dynamic_cast<FunctionParameterSelfAst*>(param.Get()) == nullptr) { out.EmplaceBack(param.Get()); }
     }
     return out;
 }

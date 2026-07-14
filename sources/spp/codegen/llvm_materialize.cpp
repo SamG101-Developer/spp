@@ -22,13 +22,14 @@ auto spp::codegen::llvm_materialize(
     -> asts::IdentifierAst* {
     // Materialise an expression by assigning it to a temporary variable.
     auto uid = spp::utils::Uid(&ast);
-    auto var_name = MakeShared<asts::IdentifierAst>(ast.PosStart(), "$temp" + std::move(uid));
+    auto var_name = MakeUnique<asts::IdentifierAst>(ast.PosStart(), "$temp" + std::move(uid));
     const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
+    const auto ty = ast.InferType(sm, meta);
 
     // Analyse semantics and generate code for the let statement.
     meta->Save();
     meta->LetStatementFromUninitialized = true; // Prevent double analysis of the expression.
-    meta->LetStatementExplicitType = ast.InferType(sm, meta);
+    meta->LetStatementExplicitType = ty; // Safe as we restore in this scope.
     var->Stage7_AnalyseSemantics(sm, meta);
 
     // Set the lhs to the variable name.
@@ -36,6 +37,6 @@ auto spp::codegen::llvm_materialize(
     meta->LetStatementValue = &ast;
     var->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();
-    const auto materialized_val = var->To<asts::LocalVariableSingleIdentifierAst>()->Name.get();
+    const auto materialized_val = var->To<asts::LocalVariableSingleIdentifierAst>()->Name.Get();
     return materialized_val;
 }

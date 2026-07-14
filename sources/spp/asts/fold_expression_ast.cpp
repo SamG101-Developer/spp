@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.fold_expression_ast;
 import spp.asts.token_ast;
@@ -42,12 +43,16 @@ auto spp::asts::FoldExpressionAst::ToString() const
 }
 
 auto spp::asts::FoldExpressionAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Fold expressions are always "Void".
     using generate::common_types::VoidType;
-    return VoidType(PosStart());
+    auto inferred = VoidType(PosStart());
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

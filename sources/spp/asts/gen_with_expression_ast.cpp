@@ -72,8 +72,8 @@ auto spp::asts::GenWithExpressionAst::ToString() const
 }
 
 auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Todo: Just map this to a loop and individual "gen" inside?
     //
@@ -94,34 +94,38 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
     auto expr_type = VoidType(PosStart());
-    meta->Save();
+    {
+        meta->Save();
 
-    // Todo: See GenExpressionAst - do we want to extract "yield" type here too?
-    meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
-    meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
-    meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
-    meta->PreventAutoGeneratorResume = true;
-    SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType[0]; }
+        // Todo: See GenExpressionAst - do we want to extract "yield" type here too?
+        const auto identifier_mapping = IdentifierAst::FromType(*meta->AssignmentTargetType);
+        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0].Get();
+        const auto tmp = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+        meta->AssignmentTargetType = tmp.Get();
+        meta->AssignmentTarget = identifier_mapping;
+        meta->PreventAutoGeneratorResume = true;
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.Get()) { meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType[0].Get(); }
 
-    // Analyse the expression.
-    Expr->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr));
+        // Analyse the expression.
+        Expr->Stage7_AnalyseSemantics(sm, meta);
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Expr, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Expr));
 
-    expr_type = Expr->InferType(sm, meta);
-    meta->Restore();
+        expr_type = AstClone(Expr->InferType(sm, meta));
+        meta->Restore();
+    }
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->EnclosingFunctionRetType.IsEmpty()) {
-        _GenType = generate::common_types::GenType(Expr->PosStart(), expr_type);
+        _GenType = generate::common_types::GenType(Expr->PosStart(), AstClone(expr_type));
         _GenType->Stage7_AnalyseSemantics(sm, meta);
-        meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
-        meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);
+        meta->EnclosingFunctionRetType.EmplaceBack(_GenType.Get());
+        meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type.Get());
         meta->EnclosingFunctionScope = sm->CurrentScope;
     }
     else {
-        _GenType = meta->EnclosingFunctionRetType[0];
+        _GenType = AstClone(meta->EnclosingFunctionRetType[0]);
     }
 
     // Determine the "yield" type of the enclosing function and expression.
@@ -137,8 +141,8 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the expression for memory issues.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -150,20 +154,20 @@ auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Build the iterable for the loop; the iterable is just the expression, mapped into a different AST.
-    auto temp_var_name = MakeShared<IdentifierAst>(0uz, "_coro_temp");
+    auto temp_var_name = MakeUnique<IdentifierAst>(0uz, "_coro_temp");
     auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(temp_var_name), nullptr);
 
     // Build the "gen" expression for the individual yielding.
     auto gen_value = MakeUnique<IdentifierAst>(0uz, "_coro_temp");
     auto gen_expression = MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
-    auto loop_body = MakeUnique<decltype(LoopIterableExpressionAst::Body)::element_type>(
+    auto loop_body = MakeUnique<decltype(LoopIterableExpressionAst::Body)::ElementType>(
         nullptr, Vec<Unique<StatementAst>>(), nullptr);
-    loop_body->Members.EmplaceBack(Unique<StatementAst>(gen_expression.release()));
+    loop_body->Members.EmplaceBack(Unique<StatementAst>(gen_expression.Release()));
 
     // Build the loop expression with the iterable condition.
     const auto loop_expr = MakeUnique<LoopIterableExpressionAst>(
@@ -180,12 +184,16 @@ auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::GenWithExpressionAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Get the "Send" generic type parameter from the generator type.
-    auto send_type = _GenType->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
-    return send_type;
+    const auto send_type = _GenType->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val.Get();
+    auto inferred = AstClone(send_type);
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

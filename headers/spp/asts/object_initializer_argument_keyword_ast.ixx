@@ -11,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 /**
  * The ObjectInitializerArgumentKeywordAst represents a keyword argument in a object initializer. It is forces the
  * argument to be matched by a keyword rather than shorthand value.
@@ -30,7 +29,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : Object
      * @param val The expression that is being passed as the argument to the object initializer.
      */
     ObjectInitializerArgumentKeywordAst(
-        decltype(Name) name,
+        decltype(Name) &&name,
         decltype(TokAssign) &&tok_assign,
         decltype(Val) &&val);
 

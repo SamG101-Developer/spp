@@ -12,7 +12,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst; // TODO: GCC BUG REQUIRES THIS
 }
 
-
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
     PostfixExpressionOperatorAst();
 

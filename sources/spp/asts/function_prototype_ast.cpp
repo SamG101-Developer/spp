@@ -46,7 +46,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
-import genex;
+import spp.utils.algorithms;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
@@ -84,7 +84,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     Source.OriginalImpl = AstClone(this->Impl);
     Source.OriginalReturnType = AstClone(this->ReturnType);
     _NonGenericImpl = this;
-    _LlvmFunc = MakeShared<Shared<codegen::LlvmFuncWrapper>>(nullptr);
+    _LlvmFunc = codegen::LlvmFuncWrapper();
 }
 
 spp::asts::FunctionPrototypeAst::~FunctionPrototypeAst() = default;
@@ -92,7 +92,7 @@ spp::asts::FunctionPrototypeAst::~FunctionPrototypeAst() = default;
 auto spp::asts::FunctionPrototypeAst::PosStart() const
     -> std::size_t {
     // Use the "fun"/"cor" token.
-    return TokCmp ? TokCmp->PosStart() : TokFun->PosStart();
+    return TokCmp != nullptr ? TokCmp->PosStart() : TokFun->PosStart();
 }
 
 auto spp::asts::FunctionPrototypeAst::PosEnd() const
@@ -112,7 +112,7 @@ auto spp::asts::FunctionPrototypeAst::ToString() const
     -> Str {
     SPP_STRING_START;
     SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
-    SPP_STRING_APPEND(TokCmp).append(TokCmp ? " " : "");
+    SPP_STRING_APPEND(TokCmp).append(TokCmp != nullptr ? " " : "");
     SPP_STRING_APPEND(TokFun).append(" ");
     SPP_STRING_APPEND(Name);
     SPP_STRING_APPEND(GnParamGroup);
@@ -125,9 +125,9 @@ auto spp::asts::FunctionPrototypeAst::ToString() const
 
 auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
-    -> Shared<codegen::LlvmFuncWrapper> {
+    -> codegen::LlvmFuncWrapper* {
     // Generate the return and parameter types.
     auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, ctx);
 
@@ -139,12 +139,12 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
         // Create the LLVM function and add it to the context.
         const auto created_llvm_func = llvm::Function::Create(
             llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->CurrentScope, *this),
-            ctx->Module.get());
-        const auto func = MakeShared<codegen::LlvmFuncWrapper>(created_llvm_func);
+            ctx->Module.Get());
+        auto func = codegen::LlvmFuncWrapper(created_llvm_func);
 
         // Apply standard optimization flags.
-        func->Target->addFnAttr(llvm::Attribute::NoUnwind);
-        func->Target->addFnAttr(llvm::Attribute::NoInline);
+        func.Target->addFnAttr(llvm::Attribute::NoUnwind);
+        func.Target->addFnAttr(llvm::Attribute::NoInline);
         // llvm_func->addFnAttr(analyse::utils::type_utils::is_type_never(*return_type, *sm->CurrentScope)
         //                          ? llvm::Attribute::NoReturn
         //                          : llvm::Attribute::WillReturn);
@@ -167,9 +167,9 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
         //     }
         // }
 
-        *_LlvmFunc = func;
+        _LlvmFunc = std::move(func);
     }
-    return *_LlvmFunc;
+    return &_LlvmFunc;
 }
 
 auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
@@ -184,10 +184,10 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
     auto function_call = MakeUnique<IdentifierAst>(Name->PosStart(), "call");
 
     // If this is the first overload being converted, then the class needs to be made for the mock type.
-    const auto needs_generation = genex::operations::empty(AstBody(ctx)
-        | genex::views::cast_dynamic<ClassPrototypeAst*>()
-        | genex::views::filter([&mock_class_name](auto const &x) { return x->Name->WithoutGenerics() == mock_class_name->WithoutGenerics(); })
-        | genex::to<Vec>());
+    const auto needs_generation = std::ranges::empty(AstBody(ctx)
+        | spp::views::cast_dynamic<ClassPrototypeAst*>
+        | std::views::filter([&mock_class_name](auto const &x) { return x->Name->WithoutGenerics() == mock_class_name->WithoutGenerics(); })
+        | std::ranges::to<Vec>());
 
     if (needs_generation) {
         auto mock_class_ast = MakeUnique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, AstClone(mock_class_name), nullptr, nullptr);
@@ -211,7 +211,7 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
     // Superimpose the function type over the mock class.
     auto sup_ext_impl_members = Vec<Unique<Ast>>();
     auto clone = AstClone(this);
-    for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.get()); }
+    for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.Get()); }
     sup_ext_impl_members.EmplaceBack(std::move(clone));
     auto mock_sup_ext_impl = MakeUnique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
     auto mock_sup_ext = MakeUnique<SupPrototypeExtensionAst>(
@@ -222,21 +222,24 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
     // Manipulate the context body with the new mock superimposition extension.
     if (const auto mod_ctx = ctx->To<ModulePrototypeAst>()) {
         mod_ctx->Impl->Members.Insert(mod_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
-        mod_ctx->Impl->Members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
+        const auto to_remove = std::ranges::remove_if(mod_ctx->Impl->Members, [this](auto const &x) { return x.Get() == this; });
+        mod_ctx->Impl->Members.Erase(to_remove.begin(), to_remove.end());
     }
     else if (const auto sup_ctx = ctx->To<SupPrototypeFunctionsAst>()) {
         sup_ctx->Impl->Members.Insert(sup_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
-        sup_ctx->Impl->Members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
+        const auto to_remove = std::ranges::remove_if(sup_ctx->Impl->Members, [this](auto const &x) { return x.Get() == this; });
+        sup_ctx->Impl->Members.Erase(to_remove.begin(), to_remove.end());
     }
     else if (const auto ext_ctx = ctx->To<SupPrototypeExtensionAst>()) {
         ext_ctx->Impl->Members.Insert(ext_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
-        ext_ctx->Impl->Members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
+        const auto to_remove = std::ranges::remove_if(ext_ctx->Impl->Members, [this](auto const &x) { return x.Get() == this; });
+        ext_ctx->Impl->Members.Erase(to_remove.begin(), to_remove.end());
     }
 }
 
 auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::scopes::ScopeBlockName;
@@ -244,7 +247,7 @@ auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
 
     // Create a new scope for the function prototype, and move into it.
     auto scope_name = ScopeBlockName::FromParts(
-        "function", {Name.get()}, PosStart());
+        "function", {Name.Get()}, PosStart());
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
     Ast::Stage2_GenTopLvlScopes(sm, meta);
 
@@ -263,7 +266,7 @@ auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
 
 auto spp::asts::FunctionPrototypeAst::Stage3_GenTopLvlAliases(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Skip the function scope, as it is already generated.
     sm->MoveToNextScope();
@@ -273,7 +276,7 @@ auto spp::asts::FunctionPrototypeAst::Stage3_GenTopLvlAliases(
 
 auto spp::asts::FunctionPrototypeAst::Stage4_QualifyTypes(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Skip the function scope, as it is already qualified.
     sm->MoveToNextScope();
@@ -286,7 +289,7 @@ auto spp::asts::FunctionPrototypeAst::Stage4_QualifyTypes(
 
 auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -299,10 +302,10 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
 
     // Ensure overloads have the same visibility by comparing to the master symbol.
     // Todo: Tidy this?
-    if (Visibility.Second != nullptr and Name and not Name->Val.starts_with("$")) {
+    if (Visibility.Second != nullptr and Name != nullptr and not Name->Val.starts_with("$")) {
         if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
-            if (const auto mock_sym = outer_scope->GetVarSymbol(Name, true)) {
-                if (mock_sym->Type and mock_sym->Type->IsCompilerGeneratedType()) {
+            if (const auto mock_sym = outer_scope->GetVarSymbol(Name.Get(), true)) {
+                if (mock_sym->Type != nullptr and mock_sym->Type->IsCompilerGeneratedType()) {
                     // Enforce that all overloads have the same visibility.
                     if (mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.First) {
                         Raise<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
@@ -319,7 +322,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     // Carry the convention for error purposes.
     FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     ReturnType->Stage7_AnalyseSemantics(sm, meta);
-    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType)->FqName()->WithConvention(AstClone(ReturnType->GetConvention()));
+    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType.Get())->FqName()->WithConvention(AstClone(ReturnType->GetConvention()));
 
     // Ensure the function's return type does not have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -345,7 +348,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
 
 auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::func_utils::CheckForConflictingOverload;
@@ -367,8 +370,8 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
 
     // New version
     if (const auto self_param = FnParamGroup->GetSelfParam()) {
-        const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
-        const auto self_conv = self_param->Conv.get();
+        const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeUnique<IdentifierAst>(0uz, "self").Get());
+        const auto self_conv = self_param->Conv.Get();
         self_sym->Type = ResolveAndSubstituteSelfType(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(AstClone(self_conv));
 
         for (auto const &param : FnParamGroup->GetAllParams()) {
@@ -384,11 +387,12 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
 
 auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppSecondClassBorrowViolationError;
     using analyse::utils::type_utils::IsTypeBorrowed;
+    using namespace std::string_literals;
 
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->MoveToNextScope();
@@ -406,14 +410,12 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
     // If this is a !compiler_builtin function, ensure a key exists in the "BUILTINS".
     if (BuiltinAnnotation) {
-        auto scope_vec = sm->CurrentScope->ParentModule()->Ancestors()
-            | genex::views::transform([](auto const &x) { return x->NameAsString(); })
-            | genex::to<Vec>()
-            | genex::views::reverse
-            | genex::views::drop(1)
-            | genex::views::intersperse(Str("::"))
-            | genex::to<Vec>();
-        auto scope_str = genex::fold_left_first(scope_vec, std::plus<Str>{});
+        auto scope_str = sm->CurrentScope->ParentModule()->Ancestors()
+            | std::views::transform([](auto const &x) { return x->NameAsString(); })
+            | std::views::reverse
+            | std::views::drop(1)
+            | std::views::join_with("::"s)
+            | std::ranges::to<Str>();
         scope_str.append("::").append(Name->Val);
 
         auto lowered_impl = FunctionImplementationLoweredAst::NewEmpty();
@@ -438,7 +440,7 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
 auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the function scope, as it is now ready for memory checking.
     sm->MoveToNextScope();
@@ -454,7 +456,7 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
 
 auto spp::asts::FunctionPrototypeAst::Stage9_CompTimeResolve(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Manual scope skipping.
     sm->MoveToNextScope();
@@ -465,7 +467,7 @@ auto spp::asts::FunctionPrototypeAst::Stage9_CompTimeResolve(
 
 auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the declaration, but not the definition, of the function. This allows for order-agnostic behaviour.
@@ -477,7 +479,7 @@ auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
 
     // Handle generic substitutions of a function.
     for (auto const &[generic_scope, generic_ast] : _GenericSubstitutions) {
-        auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
+        auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, generic_scope.Get());
         generic_ast->GenerateLlvmDeclaration(&tm, meta, ctx);
     }
 
@@ -492,7 +494,7 @@ auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
 
 auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Build the function body.
@@ -509,11 +511,11 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
         GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
     }
 
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.Get());
     meta->Save();
-    meta->EnclosingFunctionFlavour = TokFun.get();
+    meta->EnclosingFunctionFlavour = TokFun.Get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType.Get());
     meta->EnclosingFunctionScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code.
@@ -546,11 +548,11 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     // TODO: Remove this? func_call() generates generic target when needed,
     //  Do same with generic classes & object instantiation?
     for (auto const &[generic_scope, generic_proto] : _GenericSubstitutions) {
-        auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
+        auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, generic_scope.Get());
         if (std::get<0>(generic_proto->_IsPureGeneric(&tm, ctx))) { continue; }
 
         auto cloned_scope_set = MakeUnique<analyse::scopes::Scope>(*_Scope->Children[0]);
-        generic_scope->Children[0]->Children.push_back(std::move(cloned_scope_set));
+        generic_scope->Children[0]->Children.EmplaceBack(std::move(cloned_scope_set));
         generic_scope->FixChildrenToParentPointer();
 
         tm.Reset(tm.CurrentScope);
@@ -568,8 +570,8 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
 }
 
 auto spp::asts::FunctionPrototypeAst::GetLlvmFunc() const
-    -> Shared<codegen::LlvmFuncWrapper> {
-    return *_LlvmFunc;
+    -> codegen::LlvmFuncWrapper const* {
+    return &_LlvmFunc;
 }
 
 auto spp::asts::FunctionPrototypeAst::PrintSignature(
@@ -594,8 +596,8 @@ auto spp::asts::FunctionPrototypeAst::RegisterGenericSubstitution(
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions() const
     -> std::list<Pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
     return _GenericSubstitutions
-        | genex::views::transform([](auto const &x) { return MakePair(x.First.get(), x.Second.get()); })
-        | genex::to<std::list>();
+        | std::views::transform([](auto const &x) { return MakePair(x.First.Get(), x.Second.Get()); })
+        | std::ranges::to<std::list>();
 }
 
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions()
@@ -622,11 +624,11 @@ auto spp::asts::FunctionPrototypeAst::MarkAsAnnotation()
 
 auto spp::asts::FunctionPrototypeAst::GetAnnotationInfo() const
     -> analyse::utils::annotation_utils::AnnotationInfo* {
-    return _AnnotationInfo.get();
+    return _AnnotationInfo.Get();
 }
 
 auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
-    -> Shared<TypeAst> {
+    -> Unique<TypeAst> {
     //
     using generate::common_types::FunMovType;
     using generate::common_types::FunMutType;
@@ -635,27 +637,27 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 
     // Extract the parameter types.
     auto param_types = FnParamGroup->Params
-        | genex::views::transform([](auto &&x) { return x->Type; })
-        | genex::to<Vec>();
+        | std::views::transform([](auto &&x) { return AstClone(x->Type); })
+        | std::ranges::to<Vec>();
 
     // Module level functions, and static methods, are always FunRef.
     if (_Ctx->To<ModulePrototypeAst>() == nullptr or FnParamGroup->GetSelfParam() == nullptr) {
-        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), AstClone(ReturnType));
     }
 
     // Class methods with "self" are the FunMov type.
     if (FnParamGroup->GetSelfParam()->Conv == nullptr) {
-        return FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), AstClone(ReturnType));
     }
 
     // Class methods with "&mut self" are the FunMut type.
     if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::MUT) {
-        return FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), AstClone(ReturnType));
     }
 
     // Class methods with "&self" are the FunRef type.
     if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::REF) {
-        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), AstClone(ReturnType));
     }
 
     std::unreachable();
@@ -666,13 +668,13 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
     codegen::LLvmCtx *ctx) const
     -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
-    const auto llvm_ret_type = codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(ReturnType), ctx);
+    const auto llvm_ret_type = codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(ReturnType.Get()), ctx);
     const auto llvm_param_types = FnParamGroup->GetNonSelfParams()
-        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(x->Type), ctx); })
-        | genex::to<Vec>();
+        | std::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(x->Type.Get()), ctx); })
+        | std::ranges::to<Vec>();
 
     // Check if any of the types failed to convert.
-    const auto is_generic = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
+    const auto is_generic = llvm_ret_type != nullptr and std::ranges::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
     return std::make_tuple(not is_generic, llvm_ret_type, llvm_param_types);
 }
 

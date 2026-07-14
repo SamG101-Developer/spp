@@ -37,7 +37,8 @@ spp::asts::LoopExpressionAst::LoopExpressionAst(
     decltype(ElseBlock) &&else_block) :
     TokLoop(std::move(tok_loop)),
     Body(std::move(body)),
-    ElseBlock(std::move(else_block)) {
+    ElseBlock(std::move(else_block)),
+    _LoopExitTypeInfo(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLoop, lex::SppTokenType::KW_LOOP, "loop");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Body);
 }
@@ -45,19 +46,18 @@ spp::asts::LoopExpressionAst::LoopExpressionAst(
 spp::asts::LoopExpressionAst::~LoopExpressionAst() = default;
 
 auto spp::asts::LoopExpressionAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    //
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
     using analyse::errors::SppTypeMismatchError;
     using analyse::utils::type_utils::TypeEq;
     using generate::common_types::VoidType;
+    USE_CACHED_TYPE_INFERENCE;
 
     // Get the loop's exit type (or Void if there are no exits from inside the loop).
-    auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
-        ? *m_loop_exit_type_info
-        : std::make_tuple(nullptr, VoidType(PosStart()), nullptr);
-    exit_expr = exit_expr ? exit_expr : this;
+    auto loop_type = _LoopExitTypeInfo ? AstClone(std::get<1>(*_LoopExitTypeInfo)) : VoidType(PosStart());
+    const auto exit_expr = _LoopExitTypeInfo ? std::get<0>(*_LoopExitTypeInfo) : this;
 
     // Check the else block's type is the same as the loop exit type.
     if (ElseBlock != nullptr and not meta->IgnoreMissingElseBranchForInference) {
@@ -68,8 +68,7 @@ auto spp::asts::LoopExpressionAst::InferType(
             {sm->CurrentScope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
     }
 
-    // Return the loop type.
-    return loop_type;
+    CACHE_TYPE_INFERENCE_AND_RETURN(loop_type);
 }
 
 SPP_MOD_END

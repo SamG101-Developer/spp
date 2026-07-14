@@ -13,7 +13,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressionOperatorAst {
     SPP_GCC_VTABLE_FIX
 
@@ -38,18 +37,9 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto NsParts() const
-        -> Vec<Shared<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts() const -> Vec<IdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto NsParts()
-        -> Vec<Shared<IdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto TypeParts() const
-        -> Vec<Shared<const TypeIdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto TypeParts()
-        -> Vec<Shared<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts() const -> Vec<TypeIdentifierAst*> override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorBorrowAst)

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.case_expression_ast;
 import spp.asts.primary_expression_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -16,6 +17,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The CaseExpressionAst represents conditional branching, of either an if-like or switch-like nature. If the @c of
@@ -47,7 +49,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
      * The inner scope of the case branches. This is where the branches of the case expression are defined, and allows
      * symbols to be created inside the @c case expression scope, but available to all branches, if need be.
      */
-    UniqueVec<CaseExpressionBranchAst> Branches;
+    Vec<Unique<CaseExpressionBranchAst>> Branches;
 
     /**
      * Construct the CaseExpressionAst with the arguments matching the members.
@@ -76,7 +78,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
      * @param sm The scope manager to use for analysis.
      * @param meta Associated metadata.
      */
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     /**
      * Validate the condition's memory status, and then validate the consistency of the memory state within the
@@ -84,7 +86,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
      * @param sm The scope manager to use for memory checking.
      * @param meta Associated metadata.
      */
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     /**
      * Compute the branches at compile-time, by evaluating the condition and then evaluating the branches in order until
@@ -92,11 +94,11 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
      * @param sm
      * @param meta
      */
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 
     /**
      * A @c case block only terminates (is terminatable) if one or more of its branches can terminate. This is because

@@ -12,7 +12,6 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.traits;
-import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::FunctionImplementationLoweredAst::NewEmpty()
@@ -33,17 +32,17 @@ auto spp::asts::FunctionImplementationLoweredAst::Clone() const
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
-    if (analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
+    if (analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).CmpFn == nullptr) {
         return;
     }
 
-    auto &lowered_cmp_code = *analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn;
-    auto extracted_args = Vec<Unique<ExpressionAst>>{};
+    auto &lowered_cmp_code = *analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).CmpFn;
+    auto extracted_args = Vec<Unique<ExpressionAst>>();
     for (auto &&[_, arg] : std::move(meta->CmpArgs)) {
-        extracted_args.push_back(std::move(arg));
+        extracted_args.EmplaceBack(std::move(arg));
     }
     meta->CmpResult = lowered_cmp_code.invoke(std::move(extracted_args));
 
@@ -53,8 +52,8 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
     // Todo: inject raw llvm somehow. Maybe read from annotation args.

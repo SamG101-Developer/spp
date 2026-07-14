@@ -16,7 +16,7 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
-    decltype(Name) name,
+    decltype(Name) &&name,
     decltype(Val) &&val) :
     Name(std::move(name)),
     Val(std::move(val)) {
@@ -25,8 +25,8 @@ spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
 spp::asts::ObjectInitializerArgumentAst::~ObjectInitializerArgumentAst() = default;
 
 auto spp::asts::ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -40,8 +40,8 @@ auto spp::asts::ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerArgumentAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the value expression.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -50,19 +50,23 @@ auto spp::asts::ObjectInitializerArgumentAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ObjectInitializerArgumentAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Comptime resolve the value expression.
     Val->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::ObjectInitializerArgumentAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Infer the type of the value expression.
-    return Val->InferType(sm, meta);
+    const auto inferred = Val->InferType(sm, meta);
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 SPP_MOD_END

@@ -15,7 +15,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
 }
 
-
 /**
  * The GenericArgumentCompAst represents a generic argument that accepts a compile time value (not a type). Any type is
  * allowed, as any type can be represented at compile time.
@@ -40,6 +39,5 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
 
     ~GenericArgumentCompAst() override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentCompAst)

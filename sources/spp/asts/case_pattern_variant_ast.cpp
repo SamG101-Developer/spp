@@ -12,8 +12,8 @@ spp::asts::CasePatternVariantAst::CasePatternVariantAst() :
 }
 
 auto spp::asts::CasePatternVariantAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // No behaviour but c++ module issues require this be defined here.
 }

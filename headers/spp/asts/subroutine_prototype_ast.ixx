@@ -10,6 +10,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct SubroutinePrototypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
     using FunctionPrototypeAst::FunctionPrototypeAst;
@@ -18,7 +19,7 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
 
     SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     auto IsCoroutine() const -> bool override;
 };

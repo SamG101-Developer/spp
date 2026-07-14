@@ -32,7 +32,7 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::PosStart(
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::PosEnd() const
     -> std::size_t {
     // Use the binding or the ".." token.
-    return Binding ? Binding->PosEnd() : TokEllipsis->PosEnd();
+    return Binding != nullptr ? Binding->PosEnd() : TokEllipsis->PosEnd();
 }
 
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::Clone() const
@@ -51,11 +51,11 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::ToString(
 }
 
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::ConvToVar(
-    CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> Unique<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
     auto var = MakeUnique<LocalVariableDestructureSkipMultipleArgumentsAst>(
-        nullptr, Binding ? Binding->ConvToVar(meta) : nullptr);
+        nullptr, Binding != nullptr ? Binding->ConvToVar(meta) : nullptr);
     var->MarkFromCasePattern();
     return var;
 }

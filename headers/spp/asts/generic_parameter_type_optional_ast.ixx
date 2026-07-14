@@ -12,6 +12,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAst {
     /**
@@ -22,7 +23,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericPar
     /**
      * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
      */
-    Shared<TypeAst> DefaultVal;
+    Unique<TypeAst> DefaultVal;
 
     /**
      * Construct the GenericParameterTypeOptionalAst with the arguments matching the members.
@@ -41,7 +42,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericPar
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 };

@@ -1,7 +1,6 @@
 module spp.analyse.utils.order_utils;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
-import genex;
 import magic_enum;
 import std;
 
@@ -23,22 +22,24 @@ auto spp::analyse::utils::order_utils::DoOrder(
     -> Vec<Pair<Str, asts::Ast*>> {
     // Tag each argument with its "order tag".
     auto tagged_args = args
-        | genex::views::transform([](auto *x) { return MakePair(x->GetOrderTag(), x); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return MakePair(x->GetOrderTag(), x); })
+        | std::ranges::to<Vec>();
+    auto args_sorted = tagged_args; // Copy
 
     // Sort the arguments based on the correct order.
-    auto args_sorted = genex::sorted(tagged_args, [&](auto &&arg_a, auto &&arg_b) {
-        auto a = genex::position(order, [&](auto x) { return x == arg_a.First; });
-        auto b = genex::position(order, [&](auto x) { return x == arg_b.First; });
+    std::ranges::sort(args_sorted, [&](auto &&arg_a, auto &&arg_b) {
+        auto a = std::ranges::find(order, arg_a.First) - order.begin();
+        auto b = std::ranges::find(order, arg_b.First) - order.begin();
         return a < b;
     });
 
     // Return arguments that are out of order.
-    auto out_of_order = genex::views::zip(tagged_args, args_sorted)
-        | genex::views::filter([](auto &&x) { return std::get<0>(x) != std::get<1>(x); })
-        | genex::views::transform([](auto &&x) { return std::get<1>(x); })
-        | genex::views::transform([](auto &&x) { return MakePair(Str(magic_enum::enum_name(x.First)), dynamic_cast<asts::Ast*>(x.Second)); })
-        | genex::to<Vec>();
+    auto tmp = std::ranges::views::zip(tagged_args, args_sorted);
+    auto out_of_order = tmp
+        | std::views::filter([](auto &&x) { return std::get<0>(x) != std::get<1>(x); })
+        | std::views::transform([](auto &&x) { return std::get<1>(x); })
+        | std::views::transform([](auto &&x) { return MakePair(Str(magic_enum::enum_name(x.First)), dynamic_cast<asts::Ast*>(x.Second)); })
+        | std::ranges::to<Vec>();
     return out_of_order;
 }
 

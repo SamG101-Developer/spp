@@ -4,7 +4,6 @@ module;
 export module spp.utils.errors;
 import spp.utils.error_formatter;
 import spp.utils.types;
-import genex;
 import std;
 
 namespace spp::utils::errors {
@@ -65,8 +64,8 @@ public:
     SPP_ATTR_NORETURN virtual auto Raise() -> void {
         // Throw the error object.
         this->_ErrObj->final_message = this->_ErrObj->messages
-            | genex::views::join_with('\n')
-            | genex::to<Str>();
+            | std::views::join_with('\n')
+            | std::ranges::to<Str>();
         throw T(*_ErrObj);
     }
 };

@@ -18,7 +18,6 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.strings;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::UseStatementVariableAst::UseStatementVariableAst(
@@ -52,7 +51,7 @@ auto spp::asts::UseStatementVariableAst::Clone() const
         AstCloneVec(Annotations), AstClone(TokUse), AstClone(OldVar));
     ast->_Ctx = _Ctx;
     ast->_Scope = _Scope;
-    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.Get()); }
     return ast;
 }
 
@@ -74,8 +73,8 @@ auto spp::asts::UseStatementVariableAst::Stage1_PreProcess(
 }
 
 auto spp::asts::UseStatementVariableAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the steps for the annotations.
     Ast::Stage2_GenTopLvlScopes(sm, meta);
@@ -83,7 +82,7 @@ auto spp::asts::UseStatementVariableAst::Stage2_GenTopLvlScopes(
 
     // Create the conversion.
     // Todo: Error based on ordering. move this into stage 3?
-    auto identifier = AstCloneShared(OldVar->ExprParts().Back()->To<IdentifierAst>());
+    auto identifier = AstClone(OldVar->ExprParts().Back()->To<IdentifierAst>());
     _Conversion = MakeUnique<CmpStatementAst>(
         std::move(Annotations), nullptr, std::move(identifier), nullptr, nullptr, nullptr, AstClone(OldVar));
     _Conversion->MarkFromUseStatement();
@@ -92,24 +91,24 @@ auto spp::asts::UseStatementVariableAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::UseStatementVariableAst::Stage3_GenTopLvlAliases(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Generate the top-level alias for the converted type statement.
-    // const auto scope = sm->CurrentScope->convert_postfix_to_nested_scope(old_var->To<PostfixExpressionAst>()->lhs.get());
+    // const auto scope = sm->CurrentScope->convert_postfix_to_nested_scope(old_var->To<PostfixExpressionAst>()->lhs.Get());
     const auto [old_var_sym, scope] = sm->CurrentScope->GetVarSymbolOutermost(*OldVar);
     if (old_var_sym != nullptr) {
         // Cmp statements
-        _Conversion->Type = scope->GetTypeSymbol(old_var_sym->Type)->FqName(false);
-        old_var_sym->Type = _Conversion->Type;
+        _Conversion->Type = AstClone(scope->GetTypeSymbol(old_var_sym->Type.Get())->FqName(false));
+        old_var_sym->Type = AstClone(_Conversion->Type);
 
         _Conversion->_AliasSym->AliasSym = old_var_sym;
-        _Conversion->_AliasSym->Type = _Conversion->Type;
+        _Conversion->_AliasSym->Type = AstClone(_Conversion->Type);
         _Conversion->Stage3_GenTopLvlAliases(sm, meta);
         return;
     }
 
-    // const auto old_ns_sym = sm->CurrentScope->convert_postfix_to_nested_scope(old_var.get());
+    // const auto old_ns_sym = sm->CurrentScope->convert_postfix_to_nested_scope(old_var.Get());
     if (old_var_sym == nullptr) {
         // and old_ns_sym == nullptr) {
         // Todo: alternatives based on lhs of the old var.
@@ -122,56 +121,56 @@ auto spp::asts::UseStatementVariableAst::Stage3_GenTopLvlAliases(
 }
 
 auto spp::asts::UseStatementVariableAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the types in the conversion AST.
     _Conversion->Stage4_QualifyTypes(sm, meta);
 }
 
 auto spp::asts::UseStatementVariableAst::Stage5_LoadSupScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Load the super scopes for the conversion AST.
     _Conversion->Stage5_LoadSupScopes(sm, meta);
 }
 
 auto spp::asts::UseStatementVariableAst::Stage6_PreAnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Pre-analyse semantics for the conversion AST.
     _Conversion->Stage6_PreAnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::UseStatementVariableAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse semantics for the conversion AST.
     _Conversion->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::UseStatementVariableAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check memory for the conversion AST.
     _Conversion->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::UseStatementVariableAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Comptime resolve the conversion AST.
     _Conversion->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::UseStatementVariableAst::Stage10_PreCodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.

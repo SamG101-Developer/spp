@@ -19,7 +19,6 @@ namespace spp::codegen {
     SPP_EXP_CLS struct LLvmCtx;
 }
 
-
 /**
  * This namespace provides implementations of functions whose implementations are so low that they cannot be expressed
  * in safe S++. The code presented in LLVM IR is all safe, manually checked rather than via S++ borrow checker or other
@@ -97,13 +96,13 @@ export namespace spp::codegen::func_impls {
 
     auto std_generator_once_send(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
 
-    auto std_memory_clear(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memory_clear(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, asts::TypeAst const *spp_ty) -> void;
 
-    auto std_memory_place_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memory_place_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, asts::TypeAst const *spp_ty) -> void;
 
-    auto std_memory_take_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memory_take_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, asts::TypeAst const *spp_ty) -> void;
 
-    auto std_memops_sizeof(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memops_sizeof(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, asts::TypeAst const *spp_ty) -> void;
 
     // auto std_memops_sizeof_value(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
 

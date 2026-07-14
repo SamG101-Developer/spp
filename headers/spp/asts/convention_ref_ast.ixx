@@ -11,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 /**
  * The ConventionRefAst represents a convention for immutable borrows. Immutable borrows can be taken from immutable or
  * mutable values.

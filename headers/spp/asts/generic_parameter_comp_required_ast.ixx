@@ -10,7 +10,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterCompRequiredAst;
 }
 
-
 /**
  * The GenericParameterCompRequiredAst represents required generic @c cmp parameters in classes, function,
  * superimpositions etc. They look like: @code cls MyClass[cmp n: USize] { ... }@endcode.

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.closure_expression_ast;
 import spp.asts.primary_expression_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
 import spp.utils.types;
@@ -16,6 +17,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
     /**
@@ -37,7 +39,7 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
     Unique<ExpressionAst> Body;
 
     struct {
-        Shared<TypeAst> _OriginalRetType;
+        Unique<TypeAst> _OriginalRetType;
     } Source;
 
     /**
@@ -55,26 +57,26 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 
-    SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
+    SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> codegen::LlvmFuncWrapper*;
 
 private:
     /**
      * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
      * consistent with each returning value of the closure body.
      */
-    Shared<TypeAst> _RetType;
+    Unique<TypeAst> _RetType;
 
     /**
      * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to
      * call the closure when it is invoked.
      */
-    Shared<codegen::LlvmFuncWrapper> _LlvmFunc;
+    Unique<codegen::LlvmFuncWrapper> _LlvmFunc;
 };

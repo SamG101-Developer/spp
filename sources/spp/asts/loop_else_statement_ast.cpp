@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.loop_else_statement_ast;
 import spp.analyse.scopes.scope_block_name;
@@ -50,8 +51,8 @@ auto spp::asts::LoopElseStatementAst::ToString() const
 }
 
 auto spp::asts::LoopElseStatementAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a scope and analyse the body.
     auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
@@ -62,8 +63,8 @@ auto spp::asts::LoopElseStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LoopElseStatementAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the body for memory issues.
     sm->MoveToNextScope();
@@ -72,8 +73,8 @@ auto spp::asts::LoopElseStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopElseStatementAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for the body.
@@ -84,11 +85,15 @@ auto spp::asts::LoopElseStatementAst::Stage11_CodeGen(
 }
 
 auto spp::asts::LoopElseStatementAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // The type of an else statement is the type of its body.
-    return Body->InferType(sm, meta);
+    auto inferred = AstClone(Body->InferType(sm, meta));
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

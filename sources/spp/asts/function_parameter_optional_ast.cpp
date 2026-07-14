@@ -46,7 +46,7 @@ auto spp::asts::FunctionParameterOptionalAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<FunctionParameterOptionalAst>(
-        AstClone(Var), AstClone(TokColon), AstCloneShared(Type), AstClone(TokAssign), AstClone(DefaultVal));
+        AstClone(Var), AstClone(TokColon), AstClone(Type), AstClone(TokAssign), AstClone(DefaultVal));
 }
 
 auto spp::asts::FunctionParameterOptionalAst::ToString() const
@@ -61,8 +61,8 @@ auto spp::asts::FunctionParameterOptionalAst::ToString() const
 }
 
 auto spp::asts::FunctionParameterOptionalAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
     using analyse::errors::SppTypeMismatchError;
@@ -81,8 +81,8 @@ auto spp::asts::FunctionParameterOptionalAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionParameterOptionalAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Perform default memory checking steps.
     using analyse::utils::mem_utils::ValidateSymbolMemory;

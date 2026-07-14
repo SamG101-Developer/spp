@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -28,6 +29,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
 }
+
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
     /**
@@ -67,15 +70,15 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 
     auto MarkAsAsync(Ast *async_token) -> void;
 
@@ -108,7 +111,7 @@ private:
     bool _IsCoroAndAutoResume;
 
     auto _HandleFunctionFolding(
-        ScopeManager *sm,
-        CompilerMetaData *meta)
+        analyse::scopes::ScopeManager *sm,
+        meta::CompilerMetaData *meta)
         -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;
 };

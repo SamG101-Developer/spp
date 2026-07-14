@@ -12,7 +12,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVariableAst {
     /**
      * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
@@ -32,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst fina
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<IdentifierAst*> override;
 
-    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto ExtractName() const -> IdentifierAst* override;
 };

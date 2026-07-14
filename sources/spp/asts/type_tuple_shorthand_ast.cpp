@@ -35,7 +35,7 @@ auto spp::asts::TypeTupleShorthandAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<TypeTupleShorthandAst>(
-        AstClone(TokL), AstCloneVecShared(ElemTypes), AstClone(TokR));
+        AstClone(TokL), AstCloneVec(ElemTypes), AstClone(TokR));
 }
 
 auto spp::asts::TypeTupleShorthandAst::ToString() const

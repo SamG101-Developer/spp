@@ -16,6 +16,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVariantAst {
     /**
@@ -35,7 +36,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
      * The name of the single identifier pattern. This is the identifier that is used to refer to the variable being
      * introduced by the pattern.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The optional alias for the single identifier pattern. This will cause the matching to happen against @c name, but
@@ -60,9 +61,9 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+    auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

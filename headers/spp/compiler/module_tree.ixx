@@ -21,14 +21,14 @@ SPP_EXP_CLS struct spp::compiler::Module {
     Str code;
     Vec<lex::RawToken> tokens = {};
     Unique<asts::ModulePrototypeAst> module_ast;
-    Shared<utils::errors::ErrorFormatter> error_formatter;
+    Unique<utils::errors::ErrorFormatter> error_formatter;
 
     Module(
         std::filesystem::path path,
         Str code,
         Vec<lex::RawToken> tokens,
         Unique<asts::ModulePrototypeAst> module_ast,
-        Shared<utils::errors::ErrorFormatter> error_formatter);
+        Unique<utils::errors::ErrorFormatter> &&error_formatter);
 
     static auto FromPath(std::filesystem::path const &path);
 };

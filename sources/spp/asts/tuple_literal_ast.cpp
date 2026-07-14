@@ -18,7 +18,6 @@ import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::TupleLiteralAst::TupleLiteralAst(
@@ -41,8 +40,8 @@ auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
     if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
 
     // Ensure each element of the two array literals are equal.
-    if (genex::all_of(
-        genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr) | genex::to<Vec>(),
+    if (std::ranges::all_of(
+        std::views::zip(Elems, other.Elems),
         [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return Ordering::equal;
     }
@@ -87,8 +86,8 @@ auto spp::asts::TupleLiteralAst::ToString() const
 }
 
 auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -105,7 +104,7 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
     }
 
     // Check all the elements are owned by the tuple, not borrowed.
-    for (auto const &elem : Elems | genex::views::ptr) {
+    for (auto const &elem : Elems) {
         auto elem_type = elem->InferType(sm, meta);
         RaiseIf<SppSecondClassBorrowViolationError>(
             IsTypeBorrowed(*elem_type, *sm),
@@ -117,8 +116,8 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -131,8 +130,8 @@ auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Convert the inner elements to compile-time values.
     auto cmp_elems = Vec<Unique<ExpressionAst>>();
@@ -147,8 +146,8 @@ auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
@@ -179,21 +178,22 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::TupleLiteralAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    //
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
     using generate::common_types::TupleType;
+    USE_CACHED_TYPE_INFERENCE;
 
     // Create a "..Ts" type, for the tuple type.
     auto types_gen = Elems
-        | genex::views::transform([sm, meta](auto const &elem) { return elem->InferType(sm, meta); })
-        | genex::to<Vec>();
+        | std::views::transform([sm, meta](auto const &elem) { return AstClone(elem->InferType(sm, meta)); })
+        | std::ranges::to<Vec>();
 
     // Create a tuple type with the inferred element types.
     auto tuple_type = TupleType(PosStart(), std::move(types_gen));
     tuple_type->Stage7_AnalyseSemantics(sm, meta);
-    return tuple_type;
+    CACHE_TYPE_INFERENCE_AND_RETURN(tuple_type);
 }
 
 SPP_MOD_END

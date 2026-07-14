@@ -24,6 +24,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
     SPP_GCC_VTABLE_FIX
@@ -81,11 +82,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
     auto operator+(const GenericArgumentGroupAst &other) const -> Unique<GenericArgumentGroupAst>;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     auto TypeAt(const char *key) const -> GenericArgumentTypeAst const*;
 
@@ -107,6 +108,5 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
     SPP_ATTR_NODISCARD auto GetAllArgs() const -> Vec<GenericArgumentAst*>;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentGroupAst)

@@ -11,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeVariadicAst final : GenericParameterTypeAst {
     /**
      * The token that represents the @c .. ellipsis in the generic parameter. This indicates that the parameter is

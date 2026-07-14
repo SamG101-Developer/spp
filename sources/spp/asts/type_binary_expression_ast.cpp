@@ -36,7 +36,7 @@ auto spp::asts::TypeBinaryExpressionAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<TypeBinaryExpressionAst>(
-        AstCloneShared(Lhs), AstClone(TokOp), AstCloneShared(Rhs));
+        AstClone(Lhs), AstClone(TokOp), AstClone(Rhs));
 }
 
 auto spp::asts::TypeBinaryExpressionAst::ToString() const
@@ -54,7 +54,7 @@ auto spp::asts::TypeBinaryExpressionAst::Convert()
     using generate::common_types::VariantType;
 
     if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
-        auto inner_types = Vec<Shared<TypeAst>>(2);
+        auto inner_types = Vec<Unique<TypeAst>>(2);
         const auto pos = PosStart();
         inner_types[0] = std::move(Lhs);
         inner_types[1] = std::move(Rhs);

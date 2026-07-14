@@ -12,6 +12,7 @@ import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.utils.progress;
+import spp.utils.types;
 import std;
 
 SPP_MOD_BEGIN
@@ -58,16 +59,16 @@ auto spp::compiler::Compiler::Compile() -> void {
     asts::generate::common_types_precompiled::InitTypes();
 
     m_boot->Stage1_PreProcess(**ps++, *m_modules, nullptr);
-    m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
-    m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.Get());
+    m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.Get());
+    m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.Get());
+    m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.Get());
+    m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.Get());
+    m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.Get());
+    m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.Get());
+    m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.Get());
+    // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.Get());
+    // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.Get());
     Cleanup();
 }
 

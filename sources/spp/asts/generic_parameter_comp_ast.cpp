@@ -25,9 +25,9 @@ import spp.lex.tokens;
 SPP_MOD_BEGIN
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     decltype(TokCmp) &&tok_cmp,
-    decltype(Name) name,
+    decltype(Name) &&name,
     decltype(TokColon) &&tok_colon,
-    decltype(Type) type,
+    decltype(Type) &&type,
     const utils::OrderableTag order_tag) :
     GenericParameterAst(std::move(name), order_tag),
     TokCmp(std::move(tok_cmp)),
@@ -42,14 +42,14 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
 spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
 
 auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     // Create a variable symbol for this constant in the current scope (class / function).
     auto sym = MakeUnique<analyse::scopes::VariableSymbol>(
-        IdentifierAst::FromType(*Name), Type, sm->CurrentScope,
+        IdentifierAst::FromType(*Name), AstClone(Type), sm->CurrentScope,
         false, true, utils::Visibility::kPublic);
-    // sym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
+    // sym->MemInfo->AstPins.EmplaceBack(Name.Get()); TODO
     sym->MemInfo->AstCompTime = AstClone(this);
     sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     sym->CompTimeValue = AstClone(this); // TODO: this or name?
@@ -57,8 +57,8 @@ auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -66,7 +66,7 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
 
     // Qualify the type on the generic parameter.
     meta->Save();
-    meta->IgnoreCmpGeneric = Name;
+    meta->IgnoreCmpGeneric = Name.Get();
 
     // Ensure that the convention type doesn't have a convention.
     // Todo: an we safely allow this? I don't really see why not?
@@ -76,43 +76,43 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
 
     // Check the type exists and qualify.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+    Type = AstClone(sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName());
     const auto sym = sm->CurrentScope->GetVarSymbol(IdentifierAst::FromType(*Name));
-    sym->Type = Type;
+    sym->Type = AstClone(Type);
     meta->Restore();
 }
 
 auto spp::asts::GenericParameterCompAst::Stage7_AnalyseSemantics(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Analyse the type.
     // type->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::GenericParameterCompAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
     // Return the identifier.
-    meta->CmpResult = IdentifierAst::FromType(*Name);
+    meta->CmpResult = AstClone(IdentifierAst::FromType(*Name));
 }
 
 auto spp::asts::GenericParameterCompAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // The compile time constants' symbols need to be allocated into the function.
     // Todo: need to be done as a "constant" (see GlobalConstantAst)
-    auto cast_name = IdentifierAst::FromType(*Name);
+    const auto cast_name = IdentifierAst::FromType(*Name);
     const auto is_opt = To<GenericParameterCompOptionalAst>();
 
     meta->Save();
-    meta->LetStatementExplicitType = Type;
+    meta->LetStatementExplicitType = Type.Get();
     meta->LetStatementFromUninitialized = not is_opt;
-    meta->LetStatementValue = is_opt ? is_opt->DefaultVal.get() : nullptr;
-    const auto var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cast_name), nullptr);
+    meta->LetStatementValue = is_opt ? is_opt->DefaultVal.Get() : nullptr;
+    const auto var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, AstClone(cast_name), nullptr);
     const auto alloca = var->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();
 

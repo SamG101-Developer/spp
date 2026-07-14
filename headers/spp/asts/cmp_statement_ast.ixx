@@ -25,6 +25,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
+
 /**
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
@@ -48,7 +50,7 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
      * The name of the cmp statement. This is the identifier that is used to refer to the compile time definition, and
      * must be unique within the scope.
      */
-    Shared<IdentifierAst> Name;
+    Unique<IdentifierAst> Name;
 
     /**
      * The token that represents the colon @c : in the cmp statement definition. This separates the name from the type.
@@ -60,7 +62,7 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
      * specified. Needs to be specified rather than inferred, because the type must be known at an early stage that
      * needs to be completed before type-inference can be considered.
      */
-    Shared<TypeAst> Type;
+    Unique<TypeAst> Type;
 
     /**
      * The token that represents the assignment operator @c = in the cmp statement definition. This separates the type
@@ -76,7 +78,7 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
     Unique<ExpressionAst> Value;
 
     struct {
-        Shared<TypeAst> OriginalType;
+        Unique<TypeAst> OriginalType;
     } Source;
 
     /**
@@ -104,19 +106,19 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
 
     auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage2_GenTopLvlScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *) -> void override;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage10_PreCodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto MarkFromUseStatement() -> void;
 
@@ -124,6 +126,5 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
 
 private:
     bool _FromUseStatement = false;
-
-    Shared<analyse::scopes::VariableSymbol> _AliasSym;
+    analyse::scopes::VariableSymbol *_AliasSym;
 };

@@ -19,7 +19,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.uid;
-import genex;
 import llvm;
 
 SPP_MOD_BEGIN
@@ -44,9 +43,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitEleme
     if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
 
     // Ensure each element of the two array literals are equal.
-    if (genex::all_of(
-        genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr),
-        [](auto const &pair) { return *genex::get<0>(pair) == *genex::get<1>(pair); })) {
+    if (std::ranges::all_of(
+        std::views::zip(Elems, other.Elems),
+        [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return Ordering::equal;
     }
     return Ordering::less;
@@ -88,8 +87,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::ToString() const
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -111,7 +110,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     // Get the 0th element information for comparisons (always exists due to parser
     // rules). This will be the "correct type" that all elems are compared against.
     // Array elements cannot be borrowed, so check this too.
-    const auto z_elem = Elems[0].get();
+    const auto z_elem = Elems[0].Get();
     const auto z_type = z_elem->InferType(sm, meta);
 
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -121,7 +120,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     // Check all of the remaining elements have the same type as the 0th element.
     // This also covers the borrow checking for all other elements as they will
     // mismatch with the already validated 0th element.
-    for (auto const &c_elem : Elems | genex::views::ptr | genex::views::drop(1)) {
+    for (auto const &c_elem : Elems | std::views::drop(1)) {
         auto c_type = c_elem->InferType(sm, meta);
 
         RaiseIf<SppTypeMismatchError>(
@@ -136,8 +135,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -150,11 +149,11 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Convert the inner elements to compile-time values.
-    auto cmp_elems = UniqueVec<ExpressionAst>();
+    auto cmp_elems = Vec<Unique<ExpressionAst>>();
     for (auto const &elem : Elems) {
         elem->Stage9_CompTimeResolve(sm, meta);
         cmp_elems.EmplaceBack(std::move(meta->CmpResult));
@@ -166,8 +165,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Alias the common utils functions and types.
@@ -217,18 +216,21 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Create a "T" type and "n" size, for the array type.
     auto size_tok = MakeUnique<TokenAst>(TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
     auto size_gen = MakeUnique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");
-    auto elem_gen = Elems[0]->InferType(sm, meta);
+    auto elem_gen = AstClone(Elems[0]->InferType(sm, meta));
 
     // Create an array type with the inferred element type and size.
     auto array_type = generate::common_types::ArrayType(PosStart(), std::move(elem_gen), std::move(size_gen));
     array_type->Stage7_AnalyseSemantics(sm, meta);
-    return array_type;
+    CACHE_TYPE_INFERENCE_AND_RETURN(array_type);
 }
 
 SPP_MOD_END

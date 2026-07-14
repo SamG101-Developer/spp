@@ -9,7 +9,7 @@ import spp.asts.utils.ast_utils;
 SPP_MOD_BEGIN
 spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
     decltype(TokL) &&tok_l,
-    decltype(Expr) expr,
+    decltype(Expr) &&expr,
     decltype(TokR) &&tok_r) :
     TokL(std::move(tok_l)),
     Expr(std::move(expr)),
@@ -34,7 +34,7 @@ auto spp::asts::TypeParenthesisedExpressionAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<TypeParenthesisedExpressionAst>(
-        AstClone(TokL), AstCloneShared(Expr), AstClone(TokR));
+        AstClone(TokL), AstClone(Expr), AstClone(TokR));
 }
 
 auto spp::asts::TypeParenthesisedExpressionAst::ToString() const

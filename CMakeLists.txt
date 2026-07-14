@@ -25,12 +25,11 @@ fetch_git_repo(nlohmann_json https://github.com/nlohmann/json.git develop)
 fetch_git_repo(stringzilla https://github.com/ashvardanian/stringzilla.git main)
 fetch_git_repo(magic_enum https://github.com/Neargye/magic_enum.git master)
 fetch_git_repo(CLI11 https://github.com/CLIUtils/CLI11.git main)
-fetch_git_repo(GenEx https://github.com/SamG101-Developer/GenEx.git master)
 fetch_git_repo(ColEx https://github.com/SamG101-Developer/ColEx.git master)
 fetch_git_repo(OpEx https://github.com/SamG101-Developer/OpEx.git master)
 
 FetchContent_MakeAvailable(
-        unordered_dense tomlplusplus nlohmann_json stringzilla magic_enum CLI11 GenEx ColEx OpEx)
+        unordered_dense tomlplusplus nlohmann_json stringzilla magic_enum CLI11 ColEx OpEx)
 
 find_package(Boost 1.91.0 REQUIRED) # Boost libraries
 find_package(LLVM 22.0.0 REQUIRED CONFIG) # LLVM libraries
@@ -59,7 +58,7 @@ target_include_directories(${PROJECT_NAME}_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(${PROJECT_NAME}_lib PUBLIC
         unordered_dense unordered_dense_module
         nlohmann_json tomlplusplus::tomlplusplus tomlplusplus_modules
-        magic_enum Boost::boost CLI11_Module ColEx OpEx GenEx
+        magic_enum Boost::boost CLI11_Module ColEx OpEx
         LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 
 add_executable(${PROJECT_NAME} main.cpp)

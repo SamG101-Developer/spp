@@ -34,7 +34,7 @@ auto spp::asts::LocalVariableSingleIdentifierAliasAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<LocalVariableSingleIdentifierAliasAst>(
-        AstClone(TokAs), AstCloneShared(Name));
+        AstClone(TokAs), AstClone(Name));
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAliasAst::ToString() const

@@ -22,7 +22,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import genex;
+import spp.utils.algorithms;
 
 SPP_MOD_BEGIN
 auto spp::asts::ObjectInitializerArgumentGroupAst::NewEmpty()
@@ -74,8 +74,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppArgumentNameInvalidError;
@@ -85,13 +85,13 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
     const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
     const auto all_attr_names = all_attrs
-        | genex::views::transform([](auto const &x) { return x.First; })
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x.First; })
+        | std::ranges::to<Vec>();
 
     // Check there is at most 1 autofill argument.
     const auto af_args = GetShorthandArgs()
-        | genex::views::filter([](auto const &x) { return x->TokEllipsis != nullptr; })
-        | genex::to<Vec>();
+        | std::views::filter([](auto const &x) { return x->TokEllipsis != nullptr; })
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppObjectInitializerMultipleAutofillArgumentsError>(
         af_args.Len() > 1, {sm->CurrentScope},
@@ -100,10 +100,9 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = GetKeywordArgs()
-        | genex::views::transform([](auto const &x) { return x->Name; })
-        | genex::to<Vec>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x->Name.Get(); })
+        | spp::views::duplicates({}, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppIdentifierDuplicateError>(
         not duplicates.IsEmpty(), {sm->CurrentScope},
@@ -111,13 +110,13 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
     // Check there are no invalidly named arguments.
     auto arg_names = GetNonAutoFillArgs()
-        | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::views::filter([](auto const * x) { return x != nullptr; }) // Filter bad unnamed args checked after.
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x->Name.Get(); })
+        | std::views::filter([](auto const * x) { return x != nullptr; }) // Filter bad unnamed args checked after.
+        | std::ranges::to<Vec>();
 
     const auto invalid_args = arg_names
-        | genex::views::not_in(all_attr_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
+        | spp::views::not_in(all_attr_names, spp::meta::deref, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppArgumentNameInvalidError>(
         not invalid_args.IsEmpty(), {sm->CurrentScope},
@@ -127,18 +126,19 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     for (auto const &arg : Args) {
         // Return type overload helper.
         meta->Save();
+        auto attr_type = static_cast<TypeAst*>(nullptr);
         if (const auto kw_arg = arg->To<ObjectInitializerArgumentKeywordAst>(); kw_arg != nullptr) {
-            SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
+            SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.Get()) {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
-                    | genex::views::filter([kw_arg](auto const &x) { return *x.First == *kw_arg->Name; })
-                    | genex::to<Vec>();
+                    | std::views::filter([kw_arg](auto const &x) { return *x.First == *kw_arg->Name; })
+                    | std::ranges::to<Vec>();
                 if (attrs.Len() > 1) { continue; }
 
                 // Use the type off the single matching attribute.
                 const auto attr_type_sym = attrs[0].Second;
-                const auto attr_type = attr_type_sym->IsGeneric ? nullptr : attr_type_sym->FqName();
-                meta->ReturnTypeOverloadResolverType = std::move(attr_type);
+                attr_type = attr_type_sym->IsGeneric ? nullptr : attr_type_sym->FqName();
+                meta->ReturnTypeOverloadResolverType = attr_type;
             }
         }
 
@@ -148,8 +148,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::type_utils::TypeEq;
@@ -165,8 +165,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     // Type check the non-autofill arguments against the class attributes.
     for (auto const &arg : GetNonAutoFillArgs()) {
         auto matching_attrs = all_attrs
-            | genex::views::filter([&arg](auto const &x) { return *x.First == *arg->Name; })
-            | genex::to<Vec>();
+            | std::views::filter([&arg](auto const &x) { return *x.First == *arg->Name; })
+            | std::ranges::to<Vec>();
 
         RaiseIf<SppAmbiguousMemberAccessError>(
             matching_attrs.Len() > 1, {sm->CurrentScope},
@@ -177,7 +177,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
         // Enforce visibility on the field being initialized.
         {
             const auto scope = cls_sym->LinkedScope->NonGenericScope;
-            const auto sym = scope->GetVarSymbol(arg->Name, true);
+            const auto sym = scope->GetVarSymbol(arg->Name.Get(), true);
             CheckTypeMemberVisibility(*sym, *arg->Name, *scope, *sm, *meta);
         }
 
@@ -203,8 +203,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the arguments.
     for (auto const &arg : Args) { arg->Stage8_CheckMemory(sm, meta); }
@@ -214,18 +214,18 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::GetAllArgs()
     -> Vec<ObjectInitializerArgumentAst*> {
     // Get all arguments in the group.
     return Args
-        | genex::views::ptr
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | std::ranges::to<Vec>();
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::GetAutoFillArg()
     -> ObjectInitializerArgumentShorthandAst* {
     // Get the first shorthand argument tagged with the ".." token.
     const auto filtered = Args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
-        | genex::views::filter([](auto const &x) { return x != nullptr and x->TokEllipsis != nullptr; })
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>
+        | std::views::filter([](auto const &x) { return x != nullptr and x->TokEllipsis != nullptr; })
+        | std::ranges::to<Vec>();
     return filtered.IsEmpty() ? nullptr : filtered[0];
 }
 
@@ -233,27 +233,27 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::GetNonAutoFillArgs()
     -> Vec<ObjectInitializerArgumentAst*> {
     // Get the first shorthand argument tagged with the ".." token.
     return Args
-        | genex::views::ptr
-        | genex::views::remove(GetAutoFillArg())
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::remove(GetAutoFillArg())
+        | std::ranges::to<Vec>();
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::GetShorthandArgs()
     -> Vec<ObjectInitializerArgumentShorthandAst*> {
     // Get all shorthand arguments tagged with the ".." token.
     return Args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>
+        | std::ranges::to<Vec>();
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::GetKeywordArgs()
     -> Vec<ObjectInitializerArgumentKeywordAst*> {
     // Get all keyword arguments.
     return Args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>
+        | std::ranges::to<Vec>();
 }
 
 SPP_MOD_END

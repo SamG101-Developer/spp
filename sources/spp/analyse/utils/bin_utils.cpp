@@ -27,7 +27,6 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
-import genex;
 
 auto spp::analyse::utils::bin_utils::CombineCompOps(
     asts::BinaryExpressionAst &bin_expr,
@@ -38,8 +37,8 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
     const auto bin_lhs = bin_expr.Lhs->To<asts::BinaryExpressionAst>();
     if (
         bin_lhs == nullptr or
-        not genex::contains(kBinComparisonOps, bin_expr.TokOp->TokenType) or
-        not genex::contains(kBinComparisonOps, bin_lhs->TokOp->TokenType)) {
+        not std::ranges::contains(kBinComparisonOps, bin_expr.TokOp->TokenType) or
+        not std::ranges::contains(kBinComparisonOps, bin_lhs->TokOp->TokenType)) {
         return MakeUnique<asts::BinaryExpressionAst>(
             std::move(bin_expr.Lhs),
             std::move(bin_expr.TokOp),
@@ -48,13 +47,13 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
 
     // Non-symbolic value being re-used -> put it into a variable first.
     if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).First == nullptr) {
-        const auto temp_var_name = ( {
-            const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
-            MakeShared<asts::IdentifierAst>(bin_lhs->Rhs->PosStart(), uid);
+        auto temp_var_name = ( {
+            const auto uid = spp::utils::Uid(bin_lhs->Rhs.Get());
+            MakeUnique<asts::IdentifierAst>(bin_lhs->Rhs->PosStart(), uid);
         });
 
         const auto temp_let = ( {
-            auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
+            auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(temp_var_name), nullptr);
             MakeUnique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
         });
 
@@ -91,7 +90,7 @@ auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
     auto fn_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
 
     // Set the arguments for the function call, and return the AST.
-    auto conv = genex::contains(kBinComparisonOps, new_bin_expr->TokOp->TokenType)
+    auto conv = std::ranges::contains(kBinComparisonOps, new_bin_expr->TokOp->TokenType)
         ? MakeUnique<asts::ConventionRefAst>(nullptr)
         : nullptr;
     auto arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->Rhs));

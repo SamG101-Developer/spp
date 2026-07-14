@@ -17,10 +17,9 @@ namespace spp::parse {
     SPP_EXP_CLS class ParserBase;
 }
 
-
 SPP_EXP_CLS class spp::parse::ParserBase {
 public:
-    explicit ParserBase(Vec<lex::RawToken> tokens, Shared<utils::errors::ErrorFormatter> const &error_formatter = nullptr);
+    explicit ParserBase(Vec<lex::RawToken> tokens, Unique<utils::errors::ErrorFormatter> &&error_formatter = nullptr);
     virtual ~ParserBase();
 
 protected:
@@ -28,7 +27,7 @@ protected:
     Vec<lex::RawToken> _Tokens = {};
     std::size_t _TokensLen = 0uz;
     Unique<errors::SyntacticErrorBuilder<errors::SppSyntaxError>> _ErrorBuilder;
-    Shared<utils::errors::ErrorFormatter> _ErrorFormatter;
+    Unique<utils::errors::ErrorFormatter> _ErrorFormatter;
 
     template <typename T>
     using parser_method_t = std::function<Unique<T>()>;

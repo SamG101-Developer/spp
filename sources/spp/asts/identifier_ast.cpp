@@ -18,14 +18,13 @@ import spp.asts.utils.ast_utils;
 import spp.utils.strings;
 import spp.utils.uid;
 import ankerl.unordered_dense;
-import genex;
 import llvm;
 
 SPP_MOD_BEGIN
 auto spp::asts::IdentifierAst::FromType(
     TypeAst const &val)
-    -> Unique<IdentifierAst> {
-    return MakeUnique<IdentifierAst>(val.PosStart(), Str(val.TypeParts().Back()->Name));
+    -> IdentifierAst* {
+    return reinterpret_cast<IdentifierAst*>(val.TypeParts().Back());
 }
 
 spp::asts::IdentifierAst::IdentifierAst(
@@ -113,8 +112,8 @@ auto spp::asts::IdentifierAst::operator+(
 }
 
 auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppSelfIdentifierInvalidContextError;
@@ -122,14 +121,13 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
 
     // Check there is a symbol with the same name in the current scope.
-    const auto shared = AstCloneShared(this);
-    if (not sm->CurrentScope->HasVarSymbol(shared) and not sm->CurrentScope->HasNsSymbol(shared)) {
+    if (not sm->CurrentScope->HasVarSymbol(this) and not sm->CurrentScope->HasNsSymbol(this)) {
         RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
         RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
     }
 
     // Enforce module-level visibility on the accessed symbol.
-    if (const auto sym = sm->CurrentScope->GetVarSymbol(shared)) {
+    if (const auto sym = sm->CurrentScope->GetVarSymbol(this)) {
         if (sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
             CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
         }
@@ -137,14 +135,14 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppCompileTimeConstantError;
 
     // Extract the value from the symbol table and return it.
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
     auto tm = analyse::scopes::ScopeManager(
         sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
 
@@ -156,8 +154,8 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::IdentifierAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     //
@@ -165,7 +163,7 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
 
     // Get the allocation for the variable from the current scope.
     const auto uid = spp::utils::Uid(this);
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
     SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
 
     // Handle local variable allocation extraction + load.
@@ -187,12 +185,16 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
 }
 
 auto spp::asts::IdentifierAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // Extract the symbol from the current scope, as a variable symbol.
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
-    return var_sym ? var_sym->Type : nullptr;
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
+    auto inferred = var_sym ? AstClone(var_sym->Type) : nullptr;
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 auto spp::asts::IdentifierAst::ToFuncIdentifier() const

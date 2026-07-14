@@ -64,8 +64,8 @@ auto spp::asts::GenericArgumentCompPositionalAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -75,12 +75,12 @@ auto spp::asts::GenericArgumentCompPositionalAst::Stage7_AnalyseSemantics(
     Val->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+        {sm->CurrentScope}, ERR_ARGS(*Val.Get()));
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;

@@ -33,9 +33,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import spp.utils.uid;
-import genex;
-import opex.cast;
 
 SPP_MOD_BEGIN
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -47,8 +46,8 @@ spp::asts::CaseExpressionAst::CaseExpressionAst(
     Cond(std::move(cond)),
     TokOf(std::move(tok_of)),
     Branches(std::move(branches)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCase, lex::SppTokenType::KW_CASE, "case", cond ? cond->PosStart() : 0);
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokOf, lex::SppTokenType::KW_OF, "of", cond ? cond->PosEnd() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCase, lex::SppTokenType::KW_CASE, "case", cond != nullptr ? cond->PosStart() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokOf, lex::SppTokenType::KW_OF, "of", cond != nullptr ? cond->PosEnd() : 0);
 }
 
 spp::asts::CaseExpressionAst::~CaseExpressionAst() = default;
@@ -99,8 +98,8 @@ auto spp::asts::CaseExpressionAst::ToString() const
 }
 
 auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::errors::SppCaseBranchElseNotLastError;
@@ -137,7 +136,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 
         // Analyse the branch.
         meta->Save();
-        meta->CaseCondition = Cond.get();
+        meta->CaseCondition = Cond.Get();
         branch->Stage7_AnalyseSemantics(sm, meta);
         meta->Restore();
     }
@@ -147,8 +146,8 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::mem_utils::ValidateInconsistentMemory;
@@ -163,9 +162,9 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
 
     // Validate the memory state across all branches (also calls stage 8 from within).
     meta->Save();
-    meta->CaseCondition = Cond.get();
+    meta->CaseCondition = Cond.Get();
     ValidateInconsistentMemory(
-        this, Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
+        this, Branches | spp::views::ptr | std::ranges::to<Vec>(), sm, meta);
     meta->Restore();
 
     // Move out of the case expression scope.
@@ -173,15 +172,15 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::CaseExpressionAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Scopes.
     sm->MoveToNextScope();
 
     // Load meta information for compile-time resolution.
     meta->Save();
-    meta->CaseCondition = Cond.get();
+    meta->CaseCondition = Cond.Get();
 
     // Delegate to the branches' compile-time resolution (break at first match).
     meta->CmpResult = nullptr;
@@ -196,8 +195,8 @@ auto spp::asts::CaseExpressionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Scope shift.
@@ -218,12 +217,12 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     if (is_expr) {
         ctx->Builder.SetInsertPoint(case_entry_bb);
         const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta));
-        phi = ctx->Builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), Branches.Len() as U32, "case.phi" + uid);
+        phi = ctx->Builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), static_cast<unsigned>(Branches.Len()), "case.phi" + uid);
     }
 
     // Set "case" information to the meta struct for branches and patterns to use.
     meta->Save();
-    meta->CaseCondition = Cond.get();
+    meta->CaseCondition = Cond.Get();
     meta->LlvmEndBB = case_end_bb;
     meta->LlvmPhi = phi;
 
@@ -240,17 +239,18 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CaseExpressionAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    // Alias the common utils functions and types.
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> TypeAst* {
+    // Try from the cache first.
     using analyse::errors::SppCaseBranchMissingElseError;
     using analyse::utils::type_utils::ValidateInconsistentTypes;
     using generate::common_types::VoidType;
+    USE_CACHED_TYPE_INFERENCE;
 
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = ValidateInconsistentTypes(
-        Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
+        Branches | spp::views::ptr | std::ranges::to<Vec>(), sm, meta);
 
     // Ensure there is an "else" branch if the branches are not exhaustive.
     // Todo: Need to investigate how to detect exhaustion.
@@ -259,13 +259,14 @@ auto spp::asts::CaseExpressionAst::InferType(
         {sm->CurrentScope}, ERR_ARGS(*this, *Branches.Back()));
 
     // Return the branches' return type. If there are any branches, otherwise Void.
-    return branches_type_info.IsEmpty() ? VoidType(PosStart()) : master_branch_type_info.Second;
+    auto inferred = branches_type_info.IsEmpty() ? VoidType(PosStart()) : AstClone(master_branch_type_info.Second);
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 auto spp::asts::CaseExpressionAst::Terminates() const
     -> bool {
     // The case expression only terminates if all branches terminate.
-    return not genex::any_of(
+    return not std::ranges::any_of(
         Branches, [](auto const &branch) { return not branch->Body->Terminates(); });
 }
 

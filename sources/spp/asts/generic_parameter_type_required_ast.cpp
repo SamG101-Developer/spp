@@ -33,7 +33,7 @@ auto spp::asts::GenericParameterTypeRequiredAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<GenericParameterTypeRequiredAst>(
-        AstCloneShared(Name), AstClone(Constraints));
+        AstClone(Name), AstClone(Constraints));
 }
 
 auto spp::asts::GenericParameterTypeRequiredAst::ToString() const

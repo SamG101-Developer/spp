@@ -2,19 +2,19 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-#define MAKE_VARIADIC_COMP_ARGS(What)                                                                          \
-    What                                                                                                       \
-    | genex::views::move                                                                                       \
-    | genex::views::drop(i)                                                                                    \
-    | genex::views::transform([](auto &&x) { return asts::AstClone(x->template To<GenericArgType>()->Val); }) \
-    | genex::to<Vec>();
+#define MAKE_VARIADIC_COMP_ARGS(What)                                                                       \
+    What                                                                                                    \
+    | std::views::drop(i)                                                                                   \
+    | std::views::transform([](auto &&x) { return asts::AstClone(x->template To<GenericArgType>()->Val); }) \
+    | spp::views::move                                                                                      \
+    | std::ranges::to<Vec>();
 
-#define MAKE_VARIADIC_TYPE_ARGS(What)                                                                               \
-    What                                                                                                            \
-    | genex::views::move                                                                                            \
-    | genex::views::drop(i)                                                                                         \
-    | genex::views::transform([](auto &&x) { return asts::AstCloneShared(x->template To<GenericArgType>()->Val); }) \
-    | genex::to<Vec>();
+#define MAKE_VARIADIC_TYPE_ARGS(What)                                                                       \
+    What                                                                                                    \
+    | std::views::drop(i)                                                                                   \
+    | std::views::transform([](auto &&x) { return asts::AstClone(x->template To<GenericArgType>()->Val); }) \
+    | spp::views::move                                                                                      \
+    | std::ranges::to<Vec>();
 
 module spp.analyse.utils.func_utils;
 import spp.analyse.errors.semantic_error;
@@ -80,17 +80,17 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
-import spp.utils.uid;
+import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.types;
+import spp.utils.uid;
 import ankerl.unordered_dense;
-import genex;
 
 auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
     asts::ExpressionAst const &lhs,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>> {
+    -> std::tuple<Unique<asts::TypeAst>, scopes::Scope const*, asts::IdentifierAst*> {
     //
     using expr_utils::RaiseMissingIdentifierAndClosestOptions;
 
@@ -108,40 +108,40 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
     const auto lhs_as_ident = lhs.To<asts::IdentifierAst>();
 
     // If the lhs is an identifier, it must be a variable symbol, not a namespace symbol.
-    if (lhs_as_ident and sm.CurrentScope->GetVarSymbol(asts::AstClone(lhs_as_ident)) == nullptr) {
+    if (lhs_as_ident and sm.CurrentScope->GetVarSymbol(lhs_as_ident) == nullptr) {
         RaiseMissingIdentifierAndClosestOptions(*lhs_as_ident, sm.CurrentScope->AllVarSymbols(), {}, sm);
     }
 
     // Variables that will be set in each branch, and returned.
-    auto fn_owner_type = Shared<asts::TypeAst>(nullptr);
+    auto fn_owner_type = Unique<asts::TypeAst>(nullptr);
     auto fn_owner_scope = static_cast<scopes::Scope const*>(nullptr);
-    auto fn_name = Shared<asts::IdentifierAst>(nullptr);
+    auto fn_name = static_cast<asts::IdentifierAst*>(nullptr);
 
     // Runtime access into an object: "object.method()".
     if (postfix_lhs != nullptr and runtime_field != nullptr) {
-        fn_owner_type = postfix_lhs->Lhs->InferType(&sm, meta);
-        fn_name = runtime_field->Name;
-        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type)->LinkedScope;
+        fn_owner_type = asts::AstClone(postfix_lhs->Lhs->InferType(&sm, meta));
+        fn_name = runtime_field->Name.Get();
+        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type.Get())->LinkedScope;
     }
 
     // Static access into a type: "Type::method()" or "ns::Type::method()".
     else if (static_field != nullptr and postfix_lhs_as_type != nullptr) {
-        fn_owner_type = asts::AstCloneShared(postfix_lhs_as_type);
-        fn_name = static_field->Name;
-        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type)->LinkedScope;
+        fn_owner_type = asts::AstClone(postfix_lhs_as_type);
+        fn_name = static_field->Name.Get();
+        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type.Get())->LinkedScope;
     }
 
     // Direct access into a namespaced free function: "std::io::print(variable)".
     else if (postfix_lhs != nullptr and static_field != nullptr) {
-        fn_owner_scope = sm.CurrentScope->ConvertPostfixToNestedScope(postfix_lhs->Lhs.get());
-        fn_name = static_field->Name;
-        fn_owner_type = fn_owner_scope->GetVarSymbol(fn_name)->Type;
+        fn_owner_scope = sm.CurrentScope->ConvertPostfixToNestedScope(postfix_lhs->Lhs.Get());
+        fn_name = static_field->Name.Get();
+        fn_owner_type = asts::AstClone(fn_owner_scope->GetVarSymbol(fn_name)->Type);
     }
 
     // Direct access into a non-namespaced function: "function()":
     else if (lhs_as_ident != nullptr) {
         fn_owner_type = nullptr;
-        fn_name = asts::AstCloneShared(lhs_as_ident);
+        fn_name = const_cast<asts::IdentifierAst*>(lhs_as_ident);
         fn_owner_scope = sm.CurrentScope->ParentModule();
     }
 
@@ -152,7 +152,7 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
         fn_owner_scope = nullptr;
     }
 
-    return std::make_tuple(fn_owner_type, fn_owner_scope, fn_name);
+    return std::make_tuple(std::move(fn_owner_type), fn_owner_scope, fn_name);
 }
 
 auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
@@ -181,7 +181,7 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
     auto new_fn_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(
         AstClone(fn_call.GnArgGroup), AstClone(fn_call.FnArgGroup), nullptr);
     new_fn_call->FnArgGroup->Args = std::move(fn_args);
-    new_fn_call->FnArgGroup->Args[0]->SetSelfType(lhs.Lhs->InferType(&sm, meta));
+    new_fn_call->FnArgGroup->Args[0]->SetSelfType(asts::AstClone(lhs.Lhs->InferType(&sm, meta)));
     new_fn_call->Source.OriginalExpr = fn_call.Source.OriginalExpr;
 
     // Return the new ASTs.
@@ -193,7 +193,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     scopes::Scope const *target_scope,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>> {
+    -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, asts::TypeAst*>> {
     // Todo: TIDY this function big time. I WANT TO VOMIT.
     // If the name is empty (non-symbolic call) then return "no scopes".
     // If the target scope is nullptr, then the functions are bein superimposed over a generic type.
@@ -201,21 +201,21 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
 
     // Get the function-type name from the function: "func()" => "$Func".
     const auto mapped_name = target_fn_name.ToFuncIdentifier();
-    auto overload_scopes = Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>>();
+    auto overload_scopes = Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, asts::TypeAst*>>();
 
-    auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
+    auto is_valid_ext_scope = [mapped_name=mapped_name.Get()](auto const *scope) {
         const auto ext = scope->AstNode->template To<asts::SupPrototypeExtensionAst>();
         if (ext == nullptr) { return false; }
-        const auto ext_name = dynamic_shared_cast<asts::TypeIdentifierAst>(ext->Name);
+        const auto ext_name = ext->Name->template To<asts::TypeIdentifierAst>();
         return ext_name != nullptr and ext_name->Name == mapped_name->Val;
     };
 
     // Check for namespaced (module-level) functions (they will have no inheritable generics).
     if (target_scope->NsSym != nullptr) {
         for (auto *ancestor_scope : target_scope->Ancestors()) {
-            for (auto const *sup_scope : ancestor_scope->Children | genex::views::ptr | genex::views::filter(is_valid_ext_scope)) {
+            for (const auto sup_scope : ancestor_scope->Children | spp::views::ptr | std::views::filter(is_valid_ext_scope)) {
                 auto generics = asts::GenericArgumentGroupAst::NewEmpty();
-                auto scope = sup_scope; // not for_override ? sup_scope->children[0].get() : sup_scope;
+                auto scope = sup_scope; // not for_override ? sup_scope->children[0].Get() : sup_scope;
                 auto proto = asts::AstBody(sup_scope->AstNode)[0]->To<asts::FunctionPrototypeAst>();
                 overload_scopes.EmplaceBack(scope, proto, std::move(generics), nullptr);
             }
@@ -226,13 +226,13 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
         const auto sup_scopes = target_scope->AstNode->To<asts::ClassPrototypeAst>() != nullptr
-            ? target_scope->SupScopes() | genex::views::transform([](auto x) -> scopes::Scope const* { return x; }) | genex::to<Vec>()
+            ? target_scope->SupScopes() | std::views::transform([](auto x) -> scopes::Scope const* { return x; }) | std::ranges::to<Vec>()
             : Vec{target_scope};
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions. The TypeIdentifier cast is always valid because the function types are always the target - "$Func" etc.
         // Todo: use the "is_valid_ext_scope"?
         for (auto *sup_scope : sup_scopes) {
-            for (auto *sup_ast : asts::AstBody(sup_scope->AstNode) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
+            for (auto *sup_ast : asts::AstBody(sup_scope->AstNode) | spp::views::cast_dynamic<asts::SupPrototypeExtensionAst*>) {
                 if (sup_ast->Name->To<asts::TypeIdentifierAst>()->Name == mapped_name->Val) {
                     auto generics = MakeUnique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->GetGenerics(), nullptr);
                     auto scope = sup_scope;
@@ -252,7 +252,8 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
 
                     auto conflict = CheckForConflictingOverride(*fn_1->GetAstScope()->Parent, scope_2, *fn_1, sm, meta);
                     if (conflict != nullptr) {
-                        overload_scopes |= genex::actions::remove_if([conflict](auto &&info) { return std::get<1>(info) == conflict; });
+                        const auto [first, last] = std::ranges::remove_if(overload_scopes, [conflict](auto &&info) { return std::get<1>(info) == conflict; });
+                        overload_scopes.Erase(first, last);
                     }
                     fn_1->GetAstScope()->Parent->Parent = temp;
                 }
@@ -260,10 +261,10 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
         }
 
         // Adjust the scope in the tuple to the inner function scope.
-        for (auto &&[i, info] : overload_scopes | genex::views::move | genex::views::enumerate | genex::to<Vec>()) {
+        for (auto &&[i, info] : overload_scopes | spp::views::move | std::views::enumerate) {
             auto &[scope, proto, generics, t] = info;
-            scope = (scope->Children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::to<Vec>())[0];
-            overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics), t);
+            scope = (scope->Children | spp::views::ptr | std::views::filter(is_valid_ext_scope) | std::ranges::to<Vec>())[0];
+            overload_scopes[static_cast<std::size_t>(i)] = std::make_tuple(scope, proto, std::move(generics), t);
         }
     }
 
@@ -271,10 +272,10 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     if (target_scope->TySym != nullptr and meta->CurrentStage >= 9.0) {
         auto [fwd_ref_type, fwd_mut_type] = type_utils::GetFwdTypes(*target_scope->TySym->FqName(), sm);
         if (fwd_ref_type != nullptr) {
-            const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+            const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val.Get();
             auto inner_scopes = GetAllFunctionScopes(target_fn_name, sm.CurrentScope->GetTypeSymbol(inner_type)->LinkedScope, sm, meta);
             for (auto &&i : inner_scopes) {
-                std::get<3>(i) = asts::AstCloneShared(inner_type);
+                std::get<3>(i) = inner_type;
             }
             std::ranges::move(inner_scopes, std::back_inserter(overload_scopes));
         }
@@ -296,11 +297,11 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
 
     // Get the methods that belong to this type, or any of its supertypes.
     auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>();
-    auto existing_fns = existing | genex::views::tuple_nth<1>();
+    auto existing_scopes = existing | spp::views::get_nth<0>;
+    auto existing_fns = existing | spp::views::get_nth<1>;
 
     // Check for an overload conflict with all functions of the same name.
-    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
+    for (auto [old_scope, old_fn] : std::views::zip(existing_scopes, existing_fns)) {
         // Ignore if the method is an identical match on a base class (override) or is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_fn == CheckForConflictingOverride(this_scope, old_scope, new_fn, sm, meta, old_scope)) { continue; }
@@ -317,21 +318,22 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
         auto params_old = asts::AstCloneVec(old_fn->FnParamGroup->Params);
 
         // Remove all the required parameters on the first parameter list off of the other parameter list.
-        for (auto [p, q] : genex::views::zip(new_fn.FnParamGroup->Params | genex::views::ptr, old_fn->FnParamGroup->Params | genex::views::ptr)) {
+        for (auto const &[p, q] : std::views::zip(new_fn.FnParamGroup->Params, old_fn->FnParamGroup->Params)) {
             if (TypeEq(*p->Type, *q->Type, this_scope, *old_scope)) {
-                params_new |= genex::actions::remove_if([pe=p->ExtractNames()](auto &&x) { return genex::equals(x->ExtractNames(), std::move(pe), {}, genex::meta::deref, genex::meta::deref); });
-                params_old |= genex::actions::remove_if([qe=q->ExtractNames()](auto &&x) { return genex::equals(x->ExtractNames(), std::move(qe), {}, genex::meta::deref, genex::meta::deref); });
+                const auto [new_first, new_last] = std::ranges::remove_if(params_new, [pe=p->ExtractNames()](auto &&x) { return std::ranges::equal(x->ExtractNames(), pe, std::ranges::equal_to{}, spp::meta::deref, spp::meta::deref); });
+                params_new.Erase(new_first, new_last);
+                const auto [old_first, old_last] = std::ranges::remove_if(params_old, [qe=q->ExtractNames()](auto &&x) { return std::ranges::equal(x->ExtractNames(), qe, std::ranges::equal_to{}, spp::meta::deref, spp::meta::deref); });
+                params_old.Erase(old_first, old_last);
             }
         }
 
         // If neither parameter list contains a required parameter, throw an error.
-        if (genex::operations::empty(params_new
-            | genex::views::ptr
-            | genex::views::concat(params_old | genex::views::ptr)
-            | genex::views::cast_dynamic<asts::FunctionParameterRequiredAst*>()
-            | genex::to<Vec>())) {
-            return old_fn;
-        }
+        auto tmp1 = params_new | spp::views::ptr | std::ranges::to<Vec>();
+        auto tmp2 = params_old | spp::views::ptr | std::ranges::to<Vec>();
+        auto tmp3 = std::views::concat(tmp1, tmp2)
+            | spp::views::cast_dynamic<asts::FunctionParameterRequiredAst*>
+            | std::ranges::to<Vec>();
+        if (std::ranges::empty(tmp3)) { return old_fn; }
     }
     return nullptr;
 }
@@ -354,25 +356,23 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
 
     // Helper function to get the type of the convention AST applied to the "self" parameter.
     auto sc = [&hs](asts::FunctionPrototypeAst const *f) {
-        return hs(f) ? f->FnParamGroup->GetSelfParam()->Conv.get() : nullptr;
+        return hs(f) ? f->FnParamGroup->GetSelfParam()->Conv.Get() : nullptr;
     };
 
     // Get the existing functions that belong to this type, or any of its supertypes.
     auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>();
-    auto existing_fns = existing | genex::views::tuple_nth<1>();
+    auto existing_scopes = existing | spp::views::get_nth<0>;
+    auto existing_fns = existing | spp::views::get_nth<1>;
 
     auto param_names_eq = [](auto const &a, auto const &b) {
         if (a.Len() != b.Len()) { return false; }
-        for (auto const &[x, y] : genex::views::zip(a, b)) {
-            if (*x != *y) { return false; }
-        }
+        for (auto const &[x, y] : std::views::zip(a, b)) { if (*x != *y) { return false; } }
         return true;
     };
 
     // Check for an overload conflict with all functions of the same name.
     // Note that the "cmp" state does NOT have to match.
-    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
+    for (auto [old_scope, old_fn] : std::views::zip(existing_scopes, existing_fns)) {
         // Ignore if the method is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_scope == exclude_scope) { continue; }
@@ -385,15 +385,15 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
         if (params_new.Len() != params_old.Len()) { continue; }
 
         // All parameters must have the same names.
-        if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::to<Vec>(),
+        if (std::ranges::any_of(
+            std::views::zip(params_new, params_old),
             [&](auto pq) { return not param_names_eq(std::get<0>(pq)->ExtractNames(), std::get<1>(pq)->ExtractNames()); })) {
             continue;
         }
 
         // All parameters must have the same types.
-        if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::to<Vec>(),
+        if (std::ranges::any_of(
+            std::views::zip(params_new, params_old),
             [&](auto pq) { return not TypeEq(*std::get<0>(pq)->Type, *std::get<1>(pq)->Type, this_scope, *old_scope, false); })) {
             continue;
         }
@@ -430,18 +430,18 @@ auto spp::analyse::utils::func_utils::EnforceNoInvalidFnArgs(
 
     // Get the parameter names using the extraction method.
     const auto p_names = params
-        | genex::views::transform([](auto *x) { return x->ExtractName(); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return x->ExtractName(); })
+        | std::ranges::to<Vec>();
 
     // Get the argument names using the attribute.
     const auto a_names = named_args
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return x->Name.Get(); })
+        | std::ranges::to<Vec>();
 
     // Check for invalid argument names against parameter names.
     const auto invalid_arg_names = a_names
-        | genex::views::not_in(p_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
+        | spp::views::not_in(p_names, spp::meta::deref, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     // Raise an error if any invalid argument names were found.
     RaiseIf<SppArgumentNameInvalidError>(
@@ -461,20 +461,20 @@ auto spp::analyse::utils::func_utils::EnforceNoInvalidGnArgs(
 
     // Get the parameter names using the attribute.
     const auto p_names = params
-        | genex::views::cast_dynamic<GenericParamType*>()
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::to<Vec>();
+        | spp::views::cast_dynamic<GenericParamType*>
+        | std::views::transform([](auto *x) { return x->Name.Get(); })
+        | std::ranges::to<Vec>();
 
     // Get the argument names using the attribute.
     const auto a_names = named_args
-        | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>()
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::to<Vec>();
+        | spp::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>
+        | std::views::transform([](auto *x) { return x->Name.Get(); })
+        | std::ranges::to<Vec>();
 
     // Check for invalid argument names against parameter names.
     const auto invalid_arg_names = a_names
-        | genex::views::not_in(p_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
+        | spp::views::not_in(p_names, spp::meta::deref, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     // Raise an error if any invalid argument names were found.
     RaiseIf<SppArgumentNameInvalidError>(
@@ -492,11 +492,12 @@ auto spp::analyse::utils::func_utils::EnforceNoConflictingInferredGnArgs(
     using errors::SppGenericParameterInferredConflictInferredError;
 
     // Check for conflicting inferred arguments.
-    for (auto [a_name, a_vals] : inferred) {
+    for (auto &&[a_name, a_vals] : inferred) {
         auto mismatches = a_vals
-            | genex::views::drop(1)
-            | genex::views::filter([&](auto &&e) { return not TypeEq(*e, *a_vals[0], *sm.CurrentScope, *sm.CurrentScope); })
-            | genex::to<Vec>();
+            | std::views::drop(1)
+            | std::views::filter([&](auto &&e) { return not TypeEq(*e, *a_vals[0], *sm.CurrentScope, *sm.CurrentScope); })
+            | std::views::transform([](auto &&e) { return std::addressof(*e); })
+            | std::ranges::to<Vec>();
 
         RaiseIf<SppGenericParameterInferredConflictInferredError>(
             not mismatches.IsEmpty(), {sm.CurrentScope},
@@ -505,10 +506,10 @@ auto spp::analyse::utils::func_utils::EnforceNoConflictingInferredGnArgs(
 }
 
 auto spp::analyse::utils::func_utils::EnforceNoUninferredGnArgs(
-    Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
-    Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
+    Vec<asts::TypeIdentifierAst*> const &p_names,
+    Vec<asts::TypeIdentifierAst*> const &i_names,
     scopes::Scope const &owner_scope,
-    Shared<asts::Ast> const &owner,
+    asts::Ast const *owner,
     scopes::ScopeManager &sm)
     -> void {
     //
@@ -516,8 +517,8 @@ auto spp::analyse::utils::func_utils::EnforceNoUninferredGnArgs(
 
     // Check for uninferred arguments.
     const auto uninferred_params = p_names
-        | genex::views::not_in(i_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
+        | spp::views::not_in(i_names, spp::meta::deref, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     RaiseIf<SppGenericParameterNotInferredError>(
         not uninferred_params.IsEmpty(), {sm.CurrentScope, &owner_scope},
@@ -535,45 +536,45 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
 
     // Extract important information.
     auto p_names = p_group.GetTypeParams()
-        | genex::views::transform([](auto &&x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto &&x) { return x->Name->template To<asts::TypeIdentifierAst>(); })
+        | std::ranges::to<Vec>();
     auto p_con_groups = p_group.GetTypeParams()
-        | genex::views::transform([](auto &&x) { return x->Constraints->Constraints; })
-        | genex::to<Vec>();
+        | std::views::transform([](auto &&x) { return x->Constraints->GetAllConstraints(); })
+        | std::ranges::to<Vec>();
     const auto all_args = a_group.GetAllArgs();
     const auto type_args = a_group.GetTypeArgs();
 
     // Define the cloned constraint groups.
-    auto p_con_groups_cloned = Vec<Vec<Shared<asts::TypeAst>>>();
+    auto p_con_groups_cloned = Vec<Vec<Unique<asts::TypeAst>>>();
     p_con_groups_cloned.reserve(p_names.Len());
 
     // Cross apply inferred into constraints firstly.
     for (auto const &p_con_group : p_con_groups) {
-        auto con_group_cloned = Vec<Shared<asts::TypeAst>>();
+        auto con_group_cloned = Vec<Unique<asts::TypeAst>>();
         for (auto p_con : p_con_group) {
             auto def_type_raw = p_con->WithoutGenerics();
-            if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw); def_val_type_sym != nullptr and meta.CurrentStage > 4) {
-                auto temp = def_val_type_sym->FqName();
-                temp = temp->WithGenerics(asts::AstClone(p_con->TypeParts().Back()->GnArgGroup));
-                p_con = std::move(temp);
+            auto clone = asts::AstClone(p_con);
+            if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.Get()); def_val_type_sym != nullptr and meta.CurrentStage > 4) {
+                auto temp = def_val_type_sym->FqName()->WithGenerics(asts::AstClone(p_con->TypeParts().Back()->GnArgGroup));
+                clone = std::move(temp);
             }
 
-            const auto sub = p_con->SubstituteGenerics(all_args);
+            auto sub = clone->SubstituteGenerics(all_args);
             sub->Stage7_AnalyseSemantics(&sm, &meta);
-            con_group_cloned.push_back(sub);
+            con_group_cloned.EmplaceBack(std::move(sub));
         }
-        p_con_groups_cloned.push_back(std::move(con_group_cloned));
+        p_con_groups_cloned.EmplaceBack(std::move(con_group_cloned));
     }
 
     // Now check that each argument satisfied its constraints.
     // Look up each arg by name rather than by position: type_args may also contain
     // class-level generic args that are absent from p_group, so a positional loop
     // would produce index offsets and check the wrong arg against the wrong constraint.
-    for (auto [i, p_name] : p_names | genex::views::enumerate) {
-        const auto p_cons = p_con_groups_cloned[i];
+    for (auto [i, p_name] : p_names | std::views::enumerate) {
+        const auto p_cons = p_con_groups_cloned[static_cast<std::size_t>(i)] | spp::views::ptr | std::ranges::to<Vec>();
         auto matching = type_args
-            | genex::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
-            | genex::to<Vec>();
+            | std::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
+            | std::ranges::to<Vec>();
         if (matching.IsEmpty()) { continue; }
 
         // Raise an error if any constraint of this argument is not satisfied.
@@ -594,42 +595,42 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
 
     // Get the names of the keyword arguments.
     auto a_names = a_group.GetKeywordArgs()
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return x->Name.Get(); })
+        | std::ranges::to<Vec>();
 
     // Get the names of the leftover parameters.
     auto p_names = p_group.GetAllParams()
-        | genex::views::transform([](auto *x) { return x->ExtractName(); })
-        | genex::views::not_in(a_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return x->ExtractName(); })
+        | spp::views::not_in(a_names, spp::meta::deref, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     // Check for the existence of a variadic parameter.
     const auto is_variadic = p_group.GetVariadicParams() != nullptr;
 
-    for (auto [i, positional_arg] : a_group.GetPositionalArgs() | genex::views::enumerate) {
+    for (auto [i, positional_arg] : a_group.GetPositionalArgs() | std::views::enumerate) {
         // Create the keyword argument from the positional argument.
         auto kw_arg = MakeUnique<asts::FunctionCallArgumentKeywordAst>(
-            p_names.Front(), nullptr, nullptr, nullptr);
-        p_names |= genex::actions::pop_front();
+            asts::AstClone(p_names.Front()), nullptr, nullptr, nullptr);
+        p_names.Erase(p_names.begin());
 
         // The variadic parameter requires a tuple of the remaining arguments.
         if (p_names.IsEmpty() and is_variadic) {
             auto elems = a_group.Args
-                | genex::views::move
-                | genex::views::drop(i)
-                | genex::views::transform([](auto &&x) { return asts::AstClone(x->Val); })
-                | genex::to<Vec>();
+                | std::views::drop(i)
+                | std::views::transform([](auto &&x) { return asts::AstClone(x->Val); })
+                | spp::views::move
+                | std::ranges::to<Vec>();
             kw_arg->Val = MakeUnique<asts::TupleLiteralAst>(nullptr, std::move(elems), nullptr);
-            a_group.Args[i] = std::move(kw_arg);
-            a_group.Args |= genex::actions::take(i + 1);
+            a_group.Args[static_cast<std::size_t>(i)] = std::move(kw_arg);
+            a_group.Args.Erase(a_group.Args.begin() + (i + 1), a_group.Args.end());
             break;
         }
 
         // Otherwise, attach the single argument convention and value.
         kw_arg->Conv = std::move(positional_arg->Conv);
-        kw_arg->SetSelfType(positional_arg->GetSelfType());
+        kw_arg->SetSelfType(asts::AstClone(positional_arg->GetSelfType()));
         kw_arg->Val = std::move(positional_arg->Val);
-        a_group.Args[i] = std::move(kw_arg);
+        a_group.Args[static_cast<std::size_t>(i)] = std::move(kw_arg);
     }
 }
 
@@ -649,9 +650,9 @@ auto spp::analyse::utils::func_utils::NameGnArgs(
     const auto type_args = asts::GenericArgumentGroupAst::NewEmpty();
     for (auto &arg : a_group.Args) {
         if (arg->To<asts::GenericArgumentCompAst>())
-            comp_args->Args.push_back(std::move(arg));
+            comp_args->Args.EmplaceBack(std::move(arg));
         else
-            type_args->Args.push_back(std::move(arg));
+            type_args->Args.EmplaceBack(std::move(arg));
     }
     a_group.Args.Clear();
 
@@ -671,11 +672,11 @@ auto spp::analyse::utils::func_utils::NameGnArgs(
 
     // Build index map once for O(n).
     auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
-    for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
+    for (auto [i, p] : p_group.GetAllParams() | std::views::enumerate) {
+        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = static_cast<std::size_t>(i);
     }
 
-    a_group.Args |= genex::actions::sort([&](auto const &a, auto const &b) {
+    std::ranges::sort(a_group.Args, [&](auto const &a, auto const &b) {
         return param_index[a->ViewName()] < param_index[b->ViewName()];
     });
 }
@@ -698,32 +699,32 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
 
     // Get the names of the keyword arguments.
     auto a_names = a_group.GetKeywordArgs()
-        | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>()
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::to<Vec>();
+        | spp::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>
+        | std::views::transform([](auto *x) { return x->Name.Get(); })
+        | std::ranges::to<Vec>();
 
     // Get the names of the leftover parameters.
     auto p_names = params
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::views::not_in(a_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return x->Name.Get(); })
+        | spp::views::not_in(a_names, spp::meta::deref, spp::meta::deref)
+        | std::ranges::to<Vec>();
 
     // Check for the existence of a variadic parameter.
-    const auto is_variadic = genex::any_of(params, [](auto *p) {
+    const auto is_variadic = std::ranges::any_of(params, [](auto *p) {
         return p->template To<GenericParamTypeVariadicAst>() != nullptr;
     });
 
     meta.Save();
     meta.TypeAnalysisTypeScope = nullptr;
 
-    for (auto [i, positional_arg] : a_group.GetPositionalArgs() | genex::views::enumerate) {
+    for (auto [i, positional_arg] : a_group.GetPositionalArgs() | std::views::enumerate) {
         RaiseIf<SppGenericArgumentTooManyError>(
             p_names.IsEmpty(), {sm.CurrentScope},
             ERR_ARGS(params.IsEmpty() ? owner : *params[0], owner, *positional_arg));
 
         // Create the keyword argument from the positional argument (no value yet).
-        auto kw_arg = MakeUnique<asts::detail::make_keyword_arg_t<GenericArgType>>(p_names.Front(), nullptr, nullptr);
-        p_names |= genex::actions::pop_front();
+        auto kw_arg = MakeUnique<asts::detail::make_keyword_arg_t<GenericArgType>>(asts::AstClone(p_names.Front()), nullptr, nullptr);
+        p_names.Erase(p_names.begin());
 
         // The variadic parameter requires a tuple of the remaining arguments.
         if (p_names.IsEmpty() and is_variadic) {
@@ -742,15 +743,15 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
                 kw_arg->Val = std::move(tuple);
             }
 
-            a_group.Args[i] = std::move(kw_arg);
-            a_group.Args |= genex::actions::take(i + 1);
+            a_group.Args[static_cast<std::size_t>(i)] = std::move(kw_arg);
+            a_group.Args.Erase(a_group.Args.begin() + (i + 1), a_group.Args.end());
             break;
         }
 
         // Otherwise, attach the single argument convention and value.
         kw_arg->Val = asts::AstClone(positional_arg->To<GenericArgType>()->Val);
         if (meta.CurrentStage > 5) { kw_arg->Val->Stage7_AnalyseSemantics(&sm, &meta); }
-        a_group.Args[i] = std::move(kw_arg);
+        a_group.Args[static_cast<std::size_t>(i)] = std::move(kw_arg);
     }
 
     meta.Restore();
@@ -758,12 +759,12 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
 
 // Run RelaxedTypeEq on one (source, target) pair and distribute results by param kind.
 static auto CollectDirectInferences(
-    spp::Shared<spp::asts::TypeAst> const &source_type,
-    spp::Shared<spp::asts::TypeAst> const &target_type,
-    spp::Shared<spp::asts::IdentifierAst> const &target_name,
-    spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &type_p_names,
-    spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &comp_p_names,
-    spp::Shared<spp::asts::IdentifierAst> const &variadic_fn_param_name,
+    spp::asts::TypeAst const *source_type,
+    spp::asts::TypeAst const *target_type,
+    spp::asts::IdentifierAst const *target_name,
+    spp::Vec<spp::asts::TypeIdentifierAst*> const &type_p_names,
+    spp::Vec<spp::asts::TypeIdentifierAst*> const &comp_p_names,
+    spp::asts::IdentifierAst const *variadic_fn_param_name,
     spp::analyse::scopes::Scope const &owner_scope,
     spp::analyse::scopes::ScopeManager &sm,
     spp::analyse::utils::func_utils::InferenceResultTypeMap &type_inferred,
@@ -778,18 +779,17 @@ static auto CollectDirectInferences(
 
     //
     for (auto const &[inferred_name, inferred_val] : temp_gs) {
-        if (genex::contains(type_p_names, *inferred_name, genex::meta::deref)) {
+        if (std::ranges::contains(type_p_names, *inferred_name, spp::meta::deref)) {
             auto *typed = inferred_val->To<spp::asts::TypeAst>();
             if (typed == nullptr) { continue; }
-            auto shared = typed->shared_from_this();
             // Variadic unwrap: inferred value is Tup[T]; extract the inner type.
             if (variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name) {
-                auto &inner = shared->TypeParts().Back()->GnArgGroup->Args[0];
-                shared = inner->To<spp::asts::GenericArgumentTypeAst>()->Val;
+                auto &inner = typed->TypeParts().Back()->GnArgGroup->Args[0];
+                typed = inner->To<spp::asts::GenericArgumentTypeAst>()->Val.Get();
             }
-            type_inferred[inferred_name].EmplaceBack(std::move(shared));
+            type_inferred[inferred_name].EmplaceBack(spp::asts::AstClone(typed));
         }
-        else if (genex::contains(comp_p_names, *inferred_name, genex::meta::deref)) {
+        else if (std::ranges::contains(comp_p_names, *inferred_name, spp::meta::deref)) {
             comp_inferred[inferred_name].EmplaceBack(inferred_val);
         }
     }
@@ -800,9 +800,9 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     asts::GenericArgumentGroupAst &a_group,
     InferenceSourceMap infer_source,
     InferenceTargetMap infer_target,
-    Shared<asts::Ast> const &owner,
+    asts::Ast const *owner,
     scopes::Scope const &owner_scope,
-    Shared<asts::IdentifierAst> const &variadic_fn_param_name,
+    asts::IdentifierAst const *variadic_fn_param_name,
     const bool is_tuple_owner,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData &meta)
@@ -811,9 +811,6 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     using errors::SppTypeMismatchError;
     using type_utils::TypeEq;
 
-    meta.InferSource = {};
-    meta.InferTarget = {};
-
     if (is_tuple_owner or p_group.Params.IsEmpty()) { return; }
 
     // Separate param lists and extract names and constraint groups.
@@ -821,34 +818,34 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     const auto comp_params = p_group.GetCompParams();
 
     auto type_p_names = type_params
-        | genex::views::transform([](auto *x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return x->Name->template To<asts::TypeIdentifierAst>(); })
+        | std::ranges::to<Vec>();
     auto comp_p_names = comp_params
-        | genex::views::transform([](auto *x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto *x) { return x->Name->template To<asts::TypeIdentifierAst>(); })
+        | std::ranges::to<Vec>();
 
     // Split explicit args into type and comp args.
     auto explicit_type_args = Vec<Unique<asts::GenericArgumentTypeKeywordAst>>();
     auto explicit_comp_args = Vec<Unique<asts::GenericArgumentCompKeywordAst>>();
     for (auto &&a : std::move(a_group.Args)) {
         if (a->To<asts::GenericArgumentCompAst>())
-            explicit_comp_args.push_back(dynamic_unique_cast<asts::GenericArgumentCompKeywordAst>(std::move(a)));
+            explicit_comp_args.EmplaceBack(dynamic_unique_cast<asts::GenericArgumentCompKeywordAst>(std::move(a)));
         else
-            explicit_type_args.push_back(dynamic_unique_cast<asts::GenericArgumentTypeKeywordAst>(std::move(a)));
+            explicit_type_args.EmplaceBack(dynamic_unique_cast<asts::GenericArgumentTypeKeywordAst>(std::move(a)));
     }
     auto type_a_names = explicit_type_args
-        | genex::views::transform([](auto const &x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &x) { return x->Name->template To<asts::TypeIdentifierAst>(); })
+        | std::ranges::to<Vec>();
 
     // Build the 2 inference maps at the same time for future cross application.
     auto type_inferred = InferenceResultTypeMap();
     auto comp_inferred = InferenceResultCompMap();
 
     for (auto const &arg : explicit_type_args) {
-        type_inferred[dynamic_shared_cast<asts::TypeIdentifierAst>(arg->Name)].EmplaceBack(arg->Val);
+        type_inferred[arg->Name->To<asts::TypeIdentifierAst>()].EmplaceBack(asts::AstClone(arg->Val));
     }
     for (auto const &arg : explicit_comp_args) {
-        comp_inferred[dynamic_shared_cast<asts::TypeIdentifierAst>(arg->Name)].EmplaceBack(arg->Val.get());
+        comp_inferred[arg->Name->To<asts::TypeIdentifierAst>()].EmplaceBack(arg->Val.Get());
     }
 
     // First inference comes from the infer source and target maps.
@@ -862,25 +859,25 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     // Next is constraint based inference, where for example [U, F: FunRef[(), U]] can infer U from the return type of
     // whatever subtype of F is FunRef, and U is extractable as a generic argument.
     {
-        auto type_i_names_seen = type_inferred | genex::views::keys | genex::to<Vec>();
+        auto type_i_names_seen = type_inferred | std::views::keys | std::ranges::to<Vec>();
 
         for (auto *param : type_params) {
             if (param->Constraints->Constraints.IsEmpty()) { continue; }
-            const auto cast_name = dynamic_shared_cast<asts::TypeIdentifierAst>(param->Name);
+            const auto cast_name = param->Name->To<asts::TypeIdentifierAst>();
 
             // Find the inferred concrete type for this param.
-            Shared<asts::TypeAst> inferred_type;
-            for (auto const &[k, vals] : type_inferred) {
+            auto inferred_type = Unique<asts::TypeAst>(nullptr);
+            for (auto &&[k, vals] : type_inferred) {
                 if (*k == *cast_name and not vals.IsEmpty()) {
-                    inferred_type = vals[0];
+                    inferred_type = std::move(vals[0uz]); // Todo: maybe clone
                     break;
                 }
             }
             if (inferred_type == nullptr) { continue; }
 
             // Build the candidate list from the type and all subtypes.
-            const auto concrete_sym = sm.CurrentScope->GetTypeSymbol(inferred_type);
-            auto candidates = Vec<Shared<asts::TypeAst>>{};
+            const auto concrete_sym = sm.CurrentScope->GetTypeSymbol(inferred_type.Get());
+            auto candidates = Vec<Unique<asts::TypeAst>>{};
             if (concrete_sym != nullptr and not concrete_sym->IsGeneric) {
                 candidates.EmplaceBack(concrete_sym->FqName());
                 if (concrete_sym->LinkedScope != nullptr) {
@@ -916,7 +913,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
                 // authoritative TypeEq-based EnforceGenericConstraintsAllArgs check, to avoid any RelaxedTypeEq
                 // false-negative rejecting a valid call here.
                 if (not candidates.IsEmpty() and not matched) {
-                    const auto constraint_drives_inference = genex::any_of(
+                    const auto constraint_drives_inference = std::ranges::any_of(
                         type_params, [&](auto const *other) { return constraint->ContainsGenerics(*other); });
                     RaiseIf<SppGenericConstraintError>(
                         constraint_drives_inference,
@@ -925,15 +922,15 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
 
                 for (auto const &[inferred_name, inferred_val] : temp_gs) {
                     // Skip names already present in the map to avoid duplicate entries.
-                    if (genex::contains(type_i_names_seen, *inferred_name, genex::meta::deref)) { continue; }
+                    if (std::ranges::contains(type_i_names_seen, *inferred_name, spp::meta::deref)) { continue; }
 
-                    if (genex::contains(type_p_names, *inferred_name, genex::meta::deref)) {
-                        auto *typed = inferred_val->To<asts::TypeAst>();
+                    if (std::ranges::contains(type_p_names, *inferred_name, spp::meta::deref)) {
+                        auto typed = inferred_val->To<asts::TypeAst>();
                         if (typed == nullptr) { continue; }
-                        type_inferred[inferred_name].EmplaceBack(typed->shared_from_this());
-                        type_i_names_seen = type_inferred | genex::views::keys | genex::to<Vec>();
+                        type_inferred[inferred_name].EmplaceBack(asts::AstClone(typed));
+                        type_i_names_seen = type_inferred | std::views::keys | std::ranges::to<Vec>();
                     }
-                    else if (genex::contains(comp_p_names, *inferred_name, genex::meta::deref)) {
+                    else if (std::ranges::contains(comp_p_names, *inferred_name, spp::meta::deref)) {
                         comp_inferred[inferred_name].EmplaceBack(inferred_val);
                     }
                 }
@@ -942,30 +939,30 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     }
 
     // Apply optional defaults for still unknown type params. Type params may need qualification.
-    auto type_i_names = type_inferred | genex::views::keys | genex::to<Vec>();
-    for (auto *opt_param : type_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-        const auto cast_name = dynamic_shared_cast<asts::TypeIdentifierAst>(opt_param->Name);
-        if (genex::contains(type_i_names, *cast_name, genex::meta::deref)) { continue; }
-        auto def_type = opt_param->DefaultVal;
+    auto type_i_names = type_inferred | std::views::keys | std::ranges::to<Vec>();
+    for (auto *opt_param : type_params | spp::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>) {
+        const auto cast_name = opt_param->Name->To<asts::TypeIdentifierAst>();
+        if (std::ranges::contains(type_i_names, *cast_name, spp::meta::deref)) { continue; }
+        auto def_type = asts::AstClone(opt_param->DefaultVal);
         auto def_type_raw = def_type->WithoutGenerics();
-        if (auto def_sym = sm.CurrentScope->GetTypeSymbol(def_type_raw); def_sym != nullptr and meta.CurrentStage > 4) {
+        if (auto def_sym = sm.CurrentScope->GetTypeSymbol(def_type_raw.Get()); def_sym != nullptr and meta.CurrentStage > 4) {
             auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
             if (not type_utils::IsTypeSelf(*def_type)) {
                 temp = temp->WithGenerics(asts::AstClone(def_type->TypeParts().Back()->GnArgGroup));
             }
             def_type = std::move(temp);
         }
-        type_inferred[cast_name].EmplaceBack(def_type);
-        type_i_names = type_inferred | genex::views::keys | genex::to<Vec>();
+        type_inferred[cast_name].EmplaceBack(std::move(def_type));
+        type_i_names = type_inferred | std::views::keys | std::ranges::to<Vec>();
     }
 
     // Apply optional defaults for still unknown comp params.
-    auto comp_i_names = comp_inferred | genex::views::keys | genex::to<Vec>();
-    for (auto *opt_param : comp_params | genex::views::cast_dynamic<asts::GenericParameterCompOptionalAst*>()) {
-        const auto cast_name = dynamic_shared_cast<asts::TypeIdentifierAst>(opt_param->Name);
-        if (genex::contains(comp_i_names, *cast_name, genex::meta::deref)) { continue; }
-        comp_inferred[cast_name].EmplaceBack(opt_param->DefaultVal.get());
-        comp_i_names = comp_inferred | genex::views::keys | genex::to<Vec>();
+    auto comp_i_names = comp_inferred | std::views::keys | std::ranges::to<Vec>();
+    for (auto *opt_param : comp_params | spp::views::cast_dynamic<asts::GenericParameterCompOptionalAst*>) {
+        const auto cast_name = opt_param->Name->To<asts::TypeIdentifierAst>();
+        if (std::ranges::contains(comp_i_names, *cast_name, spp::meta::deref)) { continue; }
+        comp_inferred[cast_name].EmplaceBack(opt_param->DefaultVal.Get());
+        comp_i_names = comp_inferred | std::views::keys | std::ranges::to<Vec>();
     }
 
     // Validate there are no conflicting candidates or uninferred required params.
@@ -976,19 +973,19 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
 
     // Collapse the inferences to "single winner" maps (all are matching).
     auto type_formatted = InferenceFinalTypeMap();
-    for (auto [name, vals] : type_inferred) { type_formatted[name] = vals[0]; }
+    for (auto &&[name, vals] : type_inferred) { type_formatted[name] = std::move(vals[0uz]); }
     auto comp_formatted = InferenceFinalCompMap();
-    for (auto [name, vals] : comp_inferred) { comp_formatted[name] = vals[0]; }
+    for (auto &&[name, vals] : comp_inferred) { comp_formatted[name] = std::move(vals[0uz]); }
 
     // Cross-apply: substitute all known values (type + comp together) into each type param's resolved type. Handles
     // "Vec[T, A=Alloc[T]]" style defaults and type<->comp cross-substitution.
     for (auto const &type_name : type_i_names) {
-        if (genex::contains(type_a_names, *type_name, genex::meta::deref)) { continue; }
+        if (std::ranges::contains(type_a_names, *type_name, spp::meta::deref)) { continue; }
 
         // Build unified "all other" substitution, skipping current name to avoid cycles.
         auto other_unified = type_utils::GenericInferenceMap();
-        for (auto const &[n, v] : type_formatted) {
-            if (*n != *type_name) { other_unified.emplace(n, v.get()); }
+        for (auto &&[n, v] : type_formatted) {
+            if (*n != *type_name) { other_unified.emplace(n, v.Get()); }
         }
         for (auto const &[n, v] : comp_formatted) { other_unified.emplace(n, v); }
         auto other_group = asts::GenericArgumentGroupAst::FromMap(other_unified);
@@ -996,30 +993,30 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
 
         auto t = type_formatted[type_name]->SubstituteGenerics(other_args);
         t->Stage7_AnalyseSemantics(&sm, &meta);
-        type_formatted[type_name] = t;
+        type_formatted[type_name] = std::move(t);
     }
 
     // Emit the final arg list sorted into parameter declaration order.
     auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
-    for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
+    for (auto [i, p] : p_group.GetAllParams() | std::views::enumerate) {
+        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = static_cast<std::size_t>(i);
     }
 
     auto final_args = Vec<Unique<asts::GenericArgumentAst>>();
-    for (auto const &[key, val] : type_formatted) {
-        final_args.push_back(MakeUnique<asts::GenericArgumentTypeKeywordAst>(key, nullptr, val));
+    for (auto &&[key, val] : type_formatted) {
+        final_args.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(asts::AstClone(key), nullptr, asts::AstClone(val)));
     }
-    for (auto const &[key, val] : comp_formatted) {
+    for (auto &&[key, val] : comp_formatted) {
         if (const auto *val_as_type = val->To<asts::TypeAst>(); val_as_type != nullptr) {
-            final_args.push_back(MakeUnique<asts::GenericArgumentCompKeywordAst>(
-                asts::AstClone(key), nullptr, asts::IdentifierAst::FromType(*val_as_type)));
+            final_args.EmplaceBack(MakeUnique<asts::GenericArgumentCompKeywordAst>(
+                asts::AstClone(key), nullptr, AstClone(asts::IdentifierAst::FromType(*val_as_type))));
         }
         else {
-            final_args.push_back(MakeUnique<asts::GenericArgumentCompKeywordAst>(
+            final_args.EmplaceBack(MakeUnique<asts::GenericArgumentCompKeywordAst>(
                 asts::AstClone(key), nullptr, asts::AstClone(val)));
         }
     }
-    final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
+    std::ranges::sort(final_args, [&param_index](auto const &a, auto const &b) {
         return param_index[a->ViewName()] < param_index[b->ViewName()];
     });
     a_group.Args = std::move(final_args);
@@ -1030,30 +1027,30 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     // they are re-added having been checked.
     if (meta.CurrentStage > 7) {
         auto all_final_unified = type_utils::GenericInferenceMap();
-        for (auto const &[n, v] : type_formatted) { all_final_unified.emplace(n, v.get()); }
+        for (auto const &[n, v] : type_formatted) { all_final_unified.emplace(n, v.Get()); }
         for (auto const &[n, v] : comp_formatted) { all_final_unified.emplace(n, v); }
         auto all_final_group = asts::GenericArgumentGroupAst::FromMap(all_final_unified);
         auto all_final_args = all_final_group->GetAllArgs();
 
         auto comp_p_name_index = ankerl::unordered_dense::map<StrView, std::size_t>();
-        for (auto [i, p] : comp_p_names | genex::views::enumerate) { comp_p_name_index[p->Name] = i; }
+        for (auto [i, p] : comp_p_names | std::views::enumerate) { comp_p_name_index[p->Name] = static_cast<std::size_t>(i); }
 
-        auto sorted_comp = comp_formatted | genex::to<Vec>();
-        sorted_comp |= genex::actions::sort([&](auto const &a, auto const &b) {
+        auto sorted_comp = comp_formatted | std::ranges::to<Vec>();
+        std::ranges::sort(sorted_comp, [&comp_p_name_index](auto const &a, auto const &b) {
             return comp_p_name_index[a.first->Name] < comp_p_name_index[b.first->Name];
         });
 
-        for (auto &&[kv, param] : genex::views::zip(sorted_comp, comp_params)) {
+        for (auto &&[kv, param] : std::views::zip(sorted_comp, comp_params)) {
             auto *inferred_val = kv.second;
             auto a_type = owner_scope.GetTypeSymbol(inferred_val->InferType(&sm, &meta))->FqName();
             auto p_type = param->Type->SubstituteGenerics(all_final_args);
 
             if (param->To<asts::GenericParameterCompVariadicAst>()) {
                 for (auto const &inner : a_type->TypeParts().Back()->GnArgGroup->Args
-                     | genex::views::ptr
-                     | genex::views::cast_dynamic<asts::GenericArgumentTypePositionalAst*>()
-                     | genex::views::transform([](auto *g) { return g->Val; })
-                     | genex::to<Vec>()) {
+                     | spp::views::ptr
+                     | spp::views::cast_dynamic<asts::GenericArgumentTypePositionalAst*>
+                     | std::views::transform([](auto *g) { return g->Val.Get(); })
+                     | std::ranges::to<Vec>()) {
                     RaiseIf<SppTypeMismatchError>(
                         not TypeEq(*p_type, *inner, owner_scope, *sm.CurrentScope),
                         {&owner_scope, sm.CurrentScope}, ERR_ARGS(*param, *p_type, *inferred_val, *inner));
@@ -1072,28 +1069,28 @@ auto spp::analyse::utils::func_utils::IsTargetCallable(
     asts::ExpressionAst &expr,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> Shared<const asts::TypeAst> {
+    -> Unique<asts::TypeAst> {
     // Get the type of the expression, then find its functional
     // type.
     using type_utils::GetFunctionalType;
-    auto expr_type = expr.InferType(&sm, meta);
-    auto func_type = GetFunctionalType(*expr_type, *sm.CurrentScope);
+    const auto expr_type = expr.InferType(&sm, meta);
+    const auto func_type = GetFunctionalType(*expr_type, *sm.CurrentScope);
 
     // Return the expr_type unless its generic, in which case
     // return the "func_type" -> got from constraints.
     const auto is_generic = sm.CurrentScope->GetTypeSymbol(expr_type)->IsGeneric;
-    return is_generic ? func_type : expr_type;
+    return is_generic ? asts::AstClone(func_type) : asts::AstClone(expr_type);
 }
 
 auto spp::analyse::utils::func_utils::CreateCallablePrototype(
     asts::TypeAst const &expr_type)
     -> Unique<asts::FunctionPrototypeAst> {
     // Extract the parameter and return types from the expression type.
-    auto dummy_return_type = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Out")->Val;
+    const auto dummy_return_type = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Out")->Val.Get();
     auto dummy_param_types = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Args")->Val->TypeParts().Back()->GnArgGroup->GetTypeArgs()
-        | genex::views::transform([](auto *g) { return MakeUnique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, g->Val); })
-        | genex::views::cast_smart<asts::FunctionParameterAst>()
-        | genex::to<Vec>();
+        | std::views::transform([](auto *g) { return MakeUnique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, asts::AstClone(g->Val)); })
+        | spp::views::cast_unique<asts::FunctionParameterAst>
+        | std::ranges::to<Vec>();
 
     // Create a function prototype based off of the parameter and return type.
     // Todo: When might it be a coroutine, not a subroutine?
@@ -1102,7 +1099,7 @@ auto spp::analyse::utils::func_utils::CreateCallablePrototype(
     auto dummy_name = MakeUnique<asts::IdentifierAst>(0uz, "<anonymous>");
     auto dummy_overload = MakeUnique<asts::SubroutinePrototypeAst>(
         SPP_NO_ANNOTATIONS, nullptr, nullptr, std::move(dummy_name), nullptr, std::move(dummy_param_group), nullptr,
-        std::move(dummy_return_type), nullptr);
+        AstClone(dummy_return_type), nullptr);
 
     // Return the function prototype.
     return dummy_overload;
@@ -1111,11 +1108,11 @@ auto spp::analyse::utils::func_utils::CreateCallablePrototype(
 auto spp::analyse::utils::func_utils::GetOverloadTypes(
     asts::TypeAst const &overload_set_type,
     scopes::Scope const &scope)
-    -> Vec<Shared<asts::TypeAst>> {
+    -> Vec<asts::TypeAst*> {
     // Extract the overload types from the overload set type and are functional.
-    return scope.GetTypeSymbol(overload_set_type.shared_from_this())->LinkedScope->SupTypes()
-        | genex::views::filter([&](auto &&t) { return type_utils::IsTypeFunc(*t, scope); })
-        | genex::to<Vec>();
+    return scope.GetTypeSymbol(&overload_set_type)->LinkedScope->SupTypes()
+        | std::views::filter([&](auto &&t) { return type_utils::IsTypeFunc(*t, scope); })
+        | std::ranges::to<Vec>();
 }
 
 template auto spp::analyse::utils::func_utils::NameGnArgsImpl<

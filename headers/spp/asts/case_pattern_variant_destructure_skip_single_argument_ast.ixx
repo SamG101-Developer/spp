@@ -12,6 +12,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
     /**
@@ -32,5 +33,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+    auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

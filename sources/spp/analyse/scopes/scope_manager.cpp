@@ -28,14 +28,13 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.utils.error_formatter;
-import genex;
 
 SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeManager::ScopeManager(
-    Shared<Scope> const &global_scope,
+    Scope *global_scope,
     Scope *current_scope) :
     GlobalScope(global_scope),
-    CurrentScope(current_scope ? current_scope : global_scope.get()) {
+    CurrentScope(current_scope ? current_scope : global_scope) {
 }
 
 spp::analyse::scopes::ScopeManager::~ScopeManager() = default;
@@ -50,22 +49,22 @@ auto spp::analyse::scopes::ScopeManager::Reset(
     std::optional<ScopeIterator> iterator)
     -> void {
     // Set the current scope to the provided scope or global scope.
-    CurrentScope = scope ? scope : GlobalScope.get();
+    CurrentScope = scope ? scope : GlobalScope;
     _It = iterator.has_value() ? *iterator : ScopeIterator{CurrentScope};
 }
 
 auto spp::analyse::scopes::ScopeManager::CreateAndMoveIntoNewScope(
-    ScopeName const &name,
+    ScopeName &&name,
     asts::Ast *ast,
     spp::utils::errors::ErrorFormatter *error_formatter)
     -> Scope* {
     // Create a new scope, using the current scope as the parent scope.
-    auto scope = MakeUnique<Scope>(name, CurrentScope, ast, error_formatter);
+    auto scope = MakeUnique<Scope>(std::move(name), CurrentScope, ast, error_formatter);
     CurrentScope->Children.EmplaceBack(std::move(scope));
     ++_It;
 
     // Set the new scope as the current scope, and advance the iterator to match.
-    CurrentScope = CurrentScope->Children.Back().get();
+    CurrentScope = CurrentScope->Children.Back().Get();
     return CurrentScope;
 }
 
@@ -181,8 +180,8 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
     -> void {
     // Handle type symbols.
     if (scope.TySym != nullptr) {
-        const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics());
-        auto scopes = normal_sup_blocks[non_generic_sym.get()];
+        const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics().Get());
+        auto scopes = normal_sup_blocks[non_generic_sym];
         scopes.AppendRange(generic_sup_blocks);
         AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta, deferred);
     }
@@ -225,10 +224,10 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
         auto defer_constraint = false;
 
         // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
-        if (not scope_generics->Args.IsEmpty() and not genex::contains(generic_sup_blocks, sup_scope)) {
+        if (not scope_generics->Args.IsEmpty() and not std::ranges::contains(generic_sup_blocks, sup_scope)) {
             const auto external_generics = scope.TySym->ScopeDefinedIn->GetExtendedGenericSymbols(scope_generics->GetAllArgs());
             std::tie(new_sup_scope, new_cls_scope) = CreateGenericSupScope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
-            sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
+            sup_sym = new_cls_scope ? new_cls_scope->TySym : nullptr;
 
             // When deferring (the bulk pass), match structurally only and record the constraint for later; the
             // constrained type's own super scopes might not be attached yet, so an inline check would be non order-
@@ -240,8 +239,8 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
         else {
             const auto sup_proto = sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>();
             new_sup_scope = sup_scope;
-            new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass)->LinkedScope : nullptr;
-            sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
+            new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass.Get())->LinkedScope : nullptr;
+            sup_sym = new_cls_scope ? new_cls_scope->TySym : nullptr;
         }
 
         // Prevent double inheritance, cyclic inheritance and self extension.
@@ -316,38 +315,38 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
     // Get the scopes to check for conflicts in.
     auto dummy = utils::type_utils::GenericInferenceMap();
     const auto existing_scopes = cls_sym.LinkedScope->DirectSupScopes
-        | genex::views::filter([&](auto *scope) { return scope->AstNode->template To<asts::SupPrototypeExtensionAst>() or scope->AstNode->template To<asts::SupPrototypeFunctionsAst>(); })
-        | genex::views::filter([&](auto *scope) { return utils::type_utils::RelaxedTypeEq(*asts::AstName(sup_scope.AstNode), *asts::AstName(scope->AstNode), sup_scope, *scope->AstNode->GetAstScope(), dummy); })
-        | genex::to<Vec>();
+        | std::views::filter([&](auto *scope) { return scope->AstNode->template To<asts::SupPrototypeExtensionAst>() or scope->AstNode->template To<asts::SupPrototypeFunctionsAst>(); })
+        | std::views::filter([&](auto *scope) { return utils::type_utils::RelaxedTypeEq(*asts::AstName(sup_scope.AstNode), *asts::AstName(scope->AstNode), sup_scope, *scope->AstNode->GetAstScope(), dummy); })
+        | std::ranges::to<Vec>();
 
     // Check for conflicting "type" statements.
-    Vec<Shared<asts::TypeIdentifierAst>> new_types;
-    for (auto const *scope : existing_scopes) {
+    Vec<asts::TypeIdentifierAst*> new_types;
+    for (const auto scope : existing_scopes) {
         auto body = asts::AstBody(scope->AstNode);
-        for (auto const *member : body) {
-            if (auto const *type_stmt = member->To<asts::TypeStatementAst>(); type_stmt != nullptr) {
-                for (auto const &new_type : new_types) {
+        for (const auto member : body) {
+            if (const auto type_stmt = member->To<asts::TypeStatementAst>(); type_stmt != nullptr) {
+                for (const auto new_type : new_types) {
                     RaiseIf<errors::SppIdentifierDuplicateError>(
                         *new_type == *type_stmt->NewType, {scope, &sup_scope},
                         ERR_ARGS(*new_type, *type_stmt->NewType, "associated type"));
                 }
-                new_types.EmplaceBack(type_stmt->NewType);
+                new_types.EmplaceBack(type_stmt->NewType.Get());
             }
         }
     }
 
     // Check for conflicting "cmp" statements.
-    Vec<Shared<asts::IdentifierAst>> new_cmps;
-    for (const auto *scope : existing_scopes) {
+    Vec<asts::IdentifierAst*> new_cmps;
+    for (const auto scope : existing_scopes) {
         auto body = asts::AstBody(scope->AstNode);
-        for (auto const *member : body) {
-            if (auto const *cmp_stmt = member->To<asts::CmpStatementAst>(); cmp_stmt != nullptr and not cmp_stmt->Type->IsCompilerGeneratedType()) {
-                for (auto const &new_cmp : new_cmps) {
+        for (const auto member : body) {
+            if (const auto cmp_stmt = member->To<asts::CmpStatementAst>(); cmp_stmt != nullptr and not cmp_stmt->Type->IsCompilerGeneratedType()) {
+                for (auto const new_cmp : new_cmps) {
                     RaiseIf<errors::SppIdentifierDuplicateError>(
                         *new_cmp == *cmp_stmt->Name, {scope, &sup_scope},
                         ERR_ARGS(*new_cmp, *cmp_stmt->Name, "comptime constant"));
                 }
-                new_cmps.EmplaceBack(cmp_stmt->Name);
+                new_cmps.EmplaceBack(cmp_stmt->Name.Get());
             }
         }
     }
@@ -360,7 +359,7 @@ auto spp::analyse::scopes::ScopeManager::CurrentIterator()
 
 auto spp::analyse::scopes::ScopeManager::SelfProto() const
     -> asts::ClassPrototypeAst* {
-    return _SelfProto.get();
+    return _SelfProto.Get();
 }
 
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {

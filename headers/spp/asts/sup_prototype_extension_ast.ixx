@@ -25,6 +25,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The SupPrototypeExtensionAst represents a superimposition of a type over a type. This is used to "inherit" a type.
@@ -52,7 +53,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
      * The name of the type that is being extended. This is the type that will gain the additional methods defined in
      * the body of this superimposition.
      */
-    Shared<TypeAst> Name;
+    Unique<TypeAst> Name;
 
     /**
      * The @c ext keyword that represents the type that is being extended. This is used to indicate that an extension,
@@ -64,7 +65,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
      * The name of the super class that is this type is being extended from. The attributes and methods of this type
      * will now be available on the superimposed type.
      */
-    Shared<TypeAst> SuperClass;
+    Unique<TypeAst> SuperClass;
 
     /**
      * The body of the superimposition. This is a list of methods that are being added to the type. Each method is
@@ -73,8 +74,8 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
     Unique<SupImplementationAst> Impl;
 
     struct {
-        Shared<TypeAst> OriginalName;
-        Shared<TypeAst> OriginalSuperClass;
+        Unique<TypeAst> OriginalName;
+        Unique<TypeAst> OriginalSuperClass;
     } Source;
 
     /**
@@ -100,25 +101,25 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
 
     auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage2_GenTopLvlScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *) -> void override;
 
-    auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage3_GenTopLvlAliases(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage6_PreAnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage10_PreCodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto CheckCyclicExtension(
         analyse::scopes::TypeSymbol const &sup_sym,

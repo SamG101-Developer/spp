@@ -6,9 +6,9 @@ import spp.asts.ast;
 
 namespace spp::asts {
     SPP_EXP_CLS enum class ConventionTag { MOV, MUT, REF };
+
     SPP_EXP_CLS struct ConventionAst;
 }
-
 
 /**
  * The ConventionAst class represents a convention for either a function parameter, function argument, or a generated

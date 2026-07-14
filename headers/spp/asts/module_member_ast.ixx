@@ -8,6 +8,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct ModuleMemberAst;
 }
 
+COMMON_AST_IMPORTS
+
 /**
  * The ModuleMemberAst class is the base class for all members of a module in the abstract syntax tree. This is
  * applicable to CmpStatementAst, ClassPrototypeAst, FunctionPrototypeAst, SupPrototypeExtensionAst,

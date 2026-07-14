@@ -49,7 +49,7 @@ auto spp::asts::LetStatementUninitializedAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<LetStatementUninitializedAst>(
-        AstClone(TokLet), AstClone(Var), AstClone(TokColon), AstCloneShared(Type));
+        AstClone(TokLet), AstClone(Var), AstClone(TokColon), AstClone(Type));
 }
 
 auto spp::asts::LetStatementUninitializedAst::ToString() const
@@ -63,33 +63,33 @@ auto spp::asts::LetStatementUninitializedAst::ToString() const
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
-    // Create a mock value for analysis.
-    const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);
+    // Create a mock value for analysis. Todo -> std::move & restore?
+    const auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(Type), nullptr);
 
     // Update the meta arguments.
     meta->Save();
-    meta->LetStatementValue = mock_init.get(); // Safe, because only used within inner frame, then reset.
-    meta->LetStatementExplicitType = Type;
+    meta->LetStatementValue = mock_init.Get();
+    meta->LetStatementExplicitType = Type.Get();
     meta->LetStatementFromUninitialized = true;
     Var->Stage7_AnalyseSemantics(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the variable for memory issues.
     meta->Save();
     meta->LetStatementValue = nullptr;
-    meta->LetStatementExplicitType = Type;
+    meta->LetStatementExplicitType = Type.Get();
     meta->LetStatementFromUninitialized = true;
     Var->Stage8_CheckMemory(sm, meta);
     for (auto const &v : Var->ExtractNames()) {
@@ -99,14 +99,14 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
     meta->Save();
     meta->LetStatementValue = nullptr;
-    meta->LetStatementExplicitType = Type;
+    meta->LetStatementExplicitType = Type.Get();
     meta->LetStatementFromUninitialized = true;
     const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();

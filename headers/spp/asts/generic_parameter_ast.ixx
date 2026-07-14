@@ -20,7 +20,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 namespace spp::asts::detail {
     SPP_EXP_CLS template <typename GenericParameterType>
     struct make_required_param {
@@ -38,8 +37,7 @@ namespace spp::asts::detail {
     };
 
     SPP_EXP_CLS template <typename GenericParameterType>
-    using make_required_param_t = typename make_required_param<GenericParameterType>::type;
-
+    using make_required_param_t = make_required_param<GenericParameterType>::type;
 
     SPP_EXP_CLS template <typename GenericParameterType>
     struct make_optional_param {
@@ -57,8 +55,7 @@ namespace spp::asts::detail {
     };
 
     SPP_EXP_CLS template <typename GenericParameterType>
-    using make_optional_param_t = typename make_optional_param<GenericParameterType>::type;
-
+    using make_optional_param_t = make_optional_param<GenericParameterType>::type;
 
     SPP_EXP_CLS template <typename GenericParameterType>
     struct make_variadic_param {
@@ -76,8 +73,7 @@ namespace spp::asts::detail {
     };
 
     SPP_EXP_CLS template <typename GenericParameterType>
-    using make_variadic_param_t = typename make_variadic_param<GenericParameterType>::type;
-
+    using make_variadic_param_t = make_variadic_param<GenericParameterType>::type;
 
     SPP_EXP_CLS template <typename GenericParameterType>
     struct generic_param_value_type;
@@ -89,13 +85,12 @@ namespace spp::asts::detail {
 
     template <>
     struct generic_param_value_type<GenericParameterTypeAst> {
-        using type = Shared<TypeAst>;
+        using type = Unique<TypeAst>;
     };
 
     SPP_EXP_CLS template <typename GenericParameterType>
-    using value_type_t = typename generic_param_value_type<GenericParameterType>::type;
+    using value_type_t = generic_param_value_type<GenericParameterType>::type;
 }
-
 
 /**
  * The GenericParameterAst is the base class for all generic parameters. It is inherited by the GenericParameterCompAst
@@ -106,10 +101,10 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst : Ast, mixins::OrderableAst {
      * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
      * generic type.
      */
-    Shared<TypeAst> Name;
+    Unique<TypeAst> Name;
 
     explicit GenericParameterAst(
-        Shared<TypeAst> name,
+        decltype(Name) &&name,
         utils::OrderableTag order_tag);
 
     ~GenericParameterAst() override;

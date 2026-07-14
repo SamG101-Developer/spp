@@ -34,7 +34,7 @@ namespace spp::asts {
 SPP_EXP_CLS template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    ankerl::unordered_dense::map<Str, Shared<S>, TransparentStringHash, std::equal_to<>> _Table;
+    ankerl::unordered_dense::map<Str, Unique<S>, TransparentStringHash, std::equal_to<>> _Table;
 
 public:
     IndividualSymbolTable();
@@ -55,18 +55,18 @@ public:
     auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
     SPP_ATTR_HOT
-    auto Add(Shared<I> const &sym_name, Shared<S> const &sym) -> void;
+    auto Add(I *sym_name, Unique<S> &&sym) -> void;
 
-    auto Rem(Shared<I> const &sym_name) -> Shared<S>;
+    auto Rem(I const *sym_name) -> Unique<S>;
 
     SPP_ATTR_NODISCARD SPP_ATTR_HOT
-    auto Get(Shared<I> const &sym_name) const -> Shared<S>;
+    auto Get(I const *sym_name) const -> S*;
 
     SPP_ATTR_NODISCARD
-    auto Has(Shared<I> const &sym_name) const -> bool;
+    auto Has(I *sym_name) const -> bool;
 
     SPP_ATTR_NODISCARD
-    auto All() const -> Vec<Shared<S>>;
+    auto All() const -> Vec<S*>;
 };
 
 SPP_EXP_CLS class spp::analyse::scopes::SymbolTable {

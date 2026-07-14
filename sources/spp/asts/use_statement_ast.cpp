@@ -10,7 +10,6 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::UseStatementAst::UseStatementAst(
@@ -41,10 +40,10 @@ auto spp::asts::UseStatementAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     auto ast = MakeUnique<UseStatementAst>(
-        AstCloneVec(Annotations), AstClone(TokUse), AstCloneShared(OldType));
+        AstCloneVec(Annotations), AstClone(TokUse), AstClone(OldType));
     ast->_Ctx = _Ctx;
     ast->_Scope = _Scope;
-    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.Get()); }
     return ast;
 }
 
@@ -66,83 +65,82 @@ auto spp::asts::UseStatementAst::Stage1_PreProcess(
 }
 
 auto spp::asts::UseStatementAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the steps for the annotations.
     Ast::Stage2_GenTopLvlScopes(sm, meta);
     for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
     // Create the type statement AST conversion.
-    const auto new_type = dynamic_shared_cast<TypeIdentifierAst>(
-        OldType->TypeParts().Back()->WithoutGenerics());
+    const auto new_type = OldType->TypeParts().Back()->WithoutGenerics()->To<TypeIdentifierAst>();
 
     _Conversion = MakeUnique<TypeStatementAst>(
-        std::move(Annotations), nullptr, new_type, nullptr, nullptr, AstCloneShared(OldType));
+        std::move(Annotations), nullptr, AstClone(new_type), nullptr, nullptr, AstClone(OldType));
     _Conversion->MarkFromUseStatement();
     _Conversion->Stage2_GenTopLvlScopes(sm, meta);
     _Generated = true;
 }
 
 auto spp::asts::UseStatementAst::Stage3_GenTopLvlAliases(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Generate the top-level alias for the converted type statement.
     _Conversion->Stage3_GenTopLvlAliases(sm, meta);
 }
 
 auto spp::asts::UseStatementAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the types in the conversion AST.
     _Conversion->Stage4_QualifyTypes(sm, meta);
 }
 
 auto spp::asts::UseStatementAst::Stage5_LoadSupScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Load the super scopes for the conversion AST.
     _Conversion->Stage5_LoadSupScopes(sm, meta);
 }
 
 auto spp::asts::UseStatementAst::Stage6_PreAnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Skip all scopes, as this is a pre-generated AST.
     _Conversion->Stage6_PreAnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::UseStatementAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the conversion AST.
     _Conversion->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::UseStatementAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check memory for the conversion AST.
     _Conversion->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::UseStatementAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Comptime resolve the conversion AST.
     return _Conversion->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::UseStatementAst::Stage10_PreCodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.
@@ -150,8 +148,8 @@ auto spp::asts::UseStatementAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::UseStatementAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.

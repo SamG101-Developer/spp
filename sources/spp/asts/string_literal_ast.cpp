@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.string_literal_ast;
 import spp.analyse.scopes.scope;
@@ -28,7 +29,7 @@ auto spp::asts::StringLiteralAst::EqualsStringLiteral(
     StringLiteralAst const &other) const
     -> Ordering {
     // Equality is based on the internal string value.
-    const auto matching_byte_prefix = static_cast<bool>(BytePrefix) == static_cast<bool>(other.BytePrefix);
+    const auto matching_byte_prefix = (BytePrefix == nullptr) == (other.BytePrefix == nullptr);
     return matching_byte_prefix and Val->TokenData == other.Val->TokenData ? Ordering::equal : Ordering::less;
 }
 
@@ -67,35 +68,39 @@ auto spp::asts::StringLiteralAst::ToString() const
 }
 
 auto spp::asts::StringLiteralAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
     // Clone and return the float literal as is for compile-time resolution.
     meta->CmpResult = AstClone(this);
 }
 
 auto spp::asts::StringLiteralAst::Stage11_CodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create a global string for the string literal.
     const auto bytes = Val->TokenData;
     const auto str_alloc = ctx->Builder.CreateGlobalString(
-        bytes, "string_literal", 0, ctx->Module.get(), false);
+        bytes, "string_literal", 0, ctx->Module.Get(), false);
     return str_alloc;
 }
 
 auto spp::asts::StringLiteralAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
-    // A char literal is either a StrView or Vec[U8] type, depending on the "b" byte prefix.
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
     using generate::common_types::StringViewType;
     using generate::common_types::ViewU8Type;
-    return BytePrefix != nullptr
+
+    // A char literal is either a StrView or Vec[U8] type, depending on the "b" byte prefix.
+    const auto inferred = BytePrefix != nullptr
         ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
         : StringViewType(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
+    CACHE_TYPE_INFERENCE_AND_RETURN(AstClone(inferred));
 }
 
 SPP_MOD_END

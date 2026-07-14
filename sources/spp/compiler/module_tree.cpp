@@ -3,8 +3,8 @@ module;
 
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
+import spp.utils.algorithms;
 import spp.utils.files;
-import genex;
 import std;
 import sys;
 
@@ -14,7 +14,7 @@ spp::compiler::Module::Module(
     Str code,
     Vec<lex::RawToken> tokens,
     Unique<asts::ModulePrototypeAst> module_ast,
-    Shared<utils::errors::ErrorFormatter> error_formatter) :
+    Unique<utils::errors::ErrorFormatter> &&error_formatter) :
     path(std::move(path)),
     code(std::move(code)),
     tokens(std::move(tokens)),
@@ -37,16 +37,16 @@ spp::compiler::ModuleTree::ModuleTree(
 
     // Get all the modules from the src and vcs path.
     auto src_modules = spp::utils::files::GlobSpp(m_src_path)
-        | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &p) { return Module::FromPath(p); })
+        | std::ranges::to<Vec>();
 
     auto vcs_modules = spp::utils::files::GlobSpp(m_vcs_path)
-        | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &p) { return Module::FromPath(p); })
+        | std::ranges::to<Vec>();
 
     auto ffi_modules = spp::utils::files::GlobSpp(m_ffi_path)
-        | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &p) { return Module::FromPath(p); })
+        | std::ranges::to<Vec>();
 
     // Remove the "main.spp" files from the vcs modules.
     auto filtered_vcs_modules = decltype(vcs_modules)();
@@ -54,7 +54,11 @@ spp::compiler::ModuleTree::ModuleTree(
         auto relative_path = std::filesystem::relative(m->path, m_vcs_path);
         auto inner_path = std::filesystem::path();
         constexpr auto sep = std::filesystem::path::preferred_separator;
-        for (auto const &part : std::filesystem::path(relative_path.display_string() | genex::views::split(sep) | genex::views::drop(1) | genex::to<Vec>() | genex::views::join_with(sep) | genex::to<Str>())) {
+        for (auto const &part : std::filesystem::path(relative_path.display_string()
+                 | std::ranges::views::split(sep)
+                 | std::ranges::views::drop(1)
+                 | std::ranges::views::join_with(sep)
+                 | std::ranges::to<Str>())) {
             inner_path /= part;
         }
 
@@ -110,7 +114,7 @@ auto spp::compiler::ModuleTree::end()
 
 auto spp::compiler::ModuleTree::GetModules()
     -> Vec<Module*> {
-    return m_modules | genex::views::ptr | genex::to<Vec>();
+    return m_modules | spp::views::ptr | std::ranges::to<Vec>();
 }
 
 auto spp::compiler::ModuleTree::RootPath() const

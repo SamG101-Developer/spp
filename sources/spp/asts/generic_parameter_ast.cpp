@@ -6,7 +6,7 @@ import spp.asts.type_ast;
 
 SPP_MOD_BEGIN
 spp::asts::GenericParameterAst::GenericParameterAst(
-    decltype(Name) name,
+    decltype(Name) &&name,
     const utils::OrderableTag order_tag) :
     OrderableAst(order_tag),
     Name(std::move(name)) {

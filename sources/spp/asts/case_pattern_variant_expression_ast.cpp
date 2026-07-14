@@ -59,8 +59,8 @@ auto spp::asts::CasePatternVariantExpressionAst::ToString() const
 }
 
 auto spp::asts::CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -78,8 +78,8 @@ auto spp::asts::CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CasePatternVariantExpressionAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -90,8 +90,8 @@ auto spp::asts::CasePatternVariantExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Transform the pattern into comptime values; all need to be true.
     using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
@@ -103,8 +103,8 @@ auto spp::asts::CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CasePatternVariantExpressionAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     //

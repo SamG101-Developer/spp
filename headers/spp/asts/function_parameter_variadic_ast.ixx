@@ -11,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
-
 /**
  * The FunctionParameterVariadicAst represents a variadic parameter in a function prototype. It is used to define
  * parameters that can accept an arbitrary number of arguments, such as @c *args in Python.

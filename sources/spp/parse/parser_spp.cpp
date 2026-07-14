@@ -14,7 +14,6 @@ import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.algorithms;
 import spp.utils.ptr;
-import genex;
 import std;
 
 SPP_MOD_BEGIN
@@ -439,7 +438,8 @@ auto spp::parse::ParserSpp::parse_generic_argument_type()
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_type_positional()
-    -> Unique<asts::GenericArgumentTypePositionalAst> { // 1964
+    -> Unique<asts::GenericArgumentTypePositionalAst> {
+    // 1964
     PARSE_ONCE(p1, parse_type_expression);
     return CREATE_AST(asts::GenericArgumentTypePositionalAst, asts::AstClone(p1));
 }
@@ -492,7 +492,7 @@ auto spp::parse::ParserSpp::parse_binary_expression(const std::uint8_t min_prec)
 
     auto try_tok = [this](auto fn, const std::uint8_t prec, const bool is_is = false) -> std::optional<BinOpInfo> {
         const auto pos = _Pos;
-        if (auto tok = fn()) return BinOpInfo{std::move(tok), prec, is_is};
+        if (auto tok = fn(); tok != nullptr) return BinOpInfo{std::move(tok), prec, is_is};
         _Pos = pos;
         return std::nullopt;
     };
@@ -575,7 +575,7 @@ auto spp::parse::ParserSpp::parse_binary_expression(const std::uint8_t min_prec)
     while (true) {
         const auto saved = _Pos;
         auto bin_op = try_bin_op();
-        if (!bin_op.tok || bin_op.prec < min_prec) {
+        if (bin_op.tok == nullptr || bin_op.prec < min_prec) {
             _Pos = saved;
             break;
         }
@@ -586,7 +586,7 @@ auto spp::parse::ParserSpp::parse_binary_expression(const std::uint8_t min_prec)
         }
         else {
             auto rhs = parse_binary_expression(static_cast<std::uint8_t>(bin_op.prec + 1));
-            if (!rhs) {
+            if (rhs == nullptr) {
                 _Pos = saved;
                 break;
             }
@@ -1490,7 +1490,7 @@ auto spp::parse::ParserSpp::parse_binary_type_expression(const std::uint8_t min_
 
     auto try_tok = [this](auto fn, const std::uint8_t prec) -> std::optional<BinOpInfo> {
         const auto pos = _Pos;
-        if (auto tok = fn()) return BinOpInfo{std::move(tok), prec};
+        if (auto tok = fn(); tok != nullptr) return BinOpInfo{std::move(tok), prec};
         _Pos = pos;
         return std::nullopt;
     };
@@ -1519,13 +1519,13 @@ auto spp::parse::ParserSpp::parse_binary_type_expression(const std::uint8_t min_
         const auto saved = _Pos;
         auto [op, prec] = try_bin_op();
 
-        if (!op || prec < min_prec) {
+        if (op == nullptr || prec < min_prec) {
             _Pos = saved;
             break;
         }
 
         auto rhs = parse_binary_type_expression(static_cast<std::uint8_t>(prec + 1));
-        if (!rhs) {
+        if (rhs == nullptr) {
             _Pos = saved;
             break;
         }
@@ -1666,7 +1666,7 @@ auto spp::parse::ParserSpp::parse_type_tuple()
 auto spp::parse::ParserSpp::parse_type_tuple_0_types()
     -> Unique<asts::TypeAst> {
     PARSE_ONCE(p1, parse_token_left_parenthesis);
-    auto p2 = Vec<Shared<asts::TypeAst>>();
+    auto p2 = Vec<Unique<asts::TypeAst>>();
     PARSE_ONCE(p3, parse_token_right_parenthesis);
     return CREATE_AST(asts::TypeTupleShorthandAst, p1, p2, p3)->Convert();
 }
@@ -1678,8 +1678,8 @@ auto spp::parse::ParserSpp::parse_type_tuple_1_types()
     PARSE_ONCE(p3, parse_token_comma);
     PARSE_ONCE(p4, parse_token_right_parenthesis);
 
-    auto temp = Vec<Shared<asts::TypeAst>>();
-    temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(p2)));
+    auto temp = Vec<Unique<asts::TypeAst>>();
+    temp.EmplaceBack(std::move(p2));
     return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p4)->Convert();
 }
 
@@ -1689,8 +1689,8 @@ auto spp::parse::ParserSpp::parse_type_tuple_n_types()
     PARSE_TWO_OR_MORE(p2, parse_type_expression, parse_token_comma);
     PARSE_ONCE(p3, parse_token_right_parenthesis);
 
-    auto temp = Vec<Shared<asts::TypeAst>>();
-    for (auto &&x : p2) { temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(x))); }
+    auto temp = Vec<Unique<asts::TypeAst>>();
+    for (auto &&x : p2) { temp.EmplaceBack(std::move(x)); }
     return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p3)->Convert();
 }
 
@@ -1794,7 +1794,7 @@ auto spp::parse::ParserSpp::parse_literal_float_b10()
     PARSE_ONCE(p3, parse_token_dot);
     PARSE_ONCE(p4, parse_lexeme_dec_integer);
     PARSE_OPTIONAL(p5, parse_float_suffix_type);
-    return CREATE_AST(asts::FloatLiteralAst, p1, p2, p3, p4, p5 ? p5->TokenData : "");
+    return CREATE_AST(asts::FloatLiteralAst, p1, p2, p3, p4, p5 != nullptr ? p5->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b02()
@@ -1802,7 +1802,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b02()
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_bin_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 != nullptr ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b08()
@@ -1810,7 +1810,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b08()
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_oct_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 != nullptr ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b10()
@@ -1818,7 +1818,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b10()
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_dec_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 != nullptr ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b16()
@@ -1826,7 +1826,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b16()
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_hex_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 != nullptr ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_numeric_prefix_op()

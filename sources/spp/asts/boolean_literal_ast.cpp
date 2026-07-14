@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.boolean_literal_ast;
 import spp.asts.ast;
@@ -88,16 +89,16 @@ auto spp::asts::BooleanLiteralAst::CppVal() const
 }
 
 auto spp::asts::BooleanLiteralAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *meta)
     -> void {
     // Clone and return the boolean literal as is for compile-time resolution.
     meta->CmpResult = AstClone(this);
 }
 
 auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Map the boolean literal to an LLVM constant integer.
@@ -109,12 +110,16 @@ auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::BooleanLiteralAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // The boolean ast is always inferred as "std::boolean::Bool".
     using generate::common_types::BooleanType;
-    return BooleanType(PosStart());
+    auto inferred = BooleanType(PosStart());
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

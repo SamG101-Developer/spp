@@ -18,7 +18,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     ClsSym = nullptr;
     EnclosingFunctionScope = nullptr;
     EnclosingFunctionFlavour = nullptr;
-    EnclosingFunctionRetType = {};
+    // EnclosingFunctionRetType = {};
     EnclosingFunctionSourceRetType = {};
     EnclosingFunctionCmp = nullptr;
     OverriddenScopeForClosure = nullptr;
@@ -32,10 +32,10 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     LoopDoubleCheckActive = false;
     LoopCurrentDepth = 0;
     LoopCurrentAst = nullptr;
-    LoopReturnTypes = MakeShared<ankerl::unordered_dense::map<std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
+    LoopReturnTypes = decltype(LoopReturnTypes)();
     ObjectInitType = nullptr;
-    InferSource = {};
-    InferTarget = {};
+    // InferSource = {};
+    // InferTarget = {};
     PostfixExpressionLhs = nullptr;
     UnaryExpressionRhs = nullptr;
     SkipTypeAnalysisGenericChecks = false;
@@ -55,14 +55,14 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
     _History.emplace(
         CurrentStage, ReturnTypeOverloadResolverType, AssignmentTarget,
         AssignmentTargetType, IgnoreMissingElseBranchForInference, CaseCondition, ClsSym,
-        OverriddenScopeForClosure, EnclosingFunctionScope, EnclosingFunctionFlavour, EnclosingFunctionRetType,
+        OverriddenScopeForClosure, EnclosingFunctionScope, EnclosingFunctionFlavour, std::move(EnclosingFunctionRetType),
         EnclosingFunctionSourceRetType, EnclosingFunctionCmp, CurrentLambdaOuterScope, TargetCallFunctionPrototype,
         TargetCallWasFunctionAsync, PreventAutoGeneratorResume, LetStatementExplicitType, LetStatementValue,
-        LetStatementFromUninitialized, LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst, LoopReturnTypes,
-        ObjectInitType, InferSource, InferTarget, PostfixExpressionLhs, UnaryExpressionRhs,
-        SkipTypeAnalysisGenericChecks, TypeAnalysisTypeScope, IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx,
-        LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, std::move(CmpArgs), nullptr,
-        IgnoreAccessModifierViolations);
+        LetStatementFromUninitialized, LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst,
+        std::move(LoopReturnTypes), ObjectInitType, std::move(InferSource), std::move(InferTarget),
+        PostfixExpressionLhs, UnaryExpressionRhs, SkipTypeAnalysisGenericChecks, TypeAnalysisTypeScope,
+        IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx, LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi,
+        std::move(CmpArgs), nullptr, IgnoreAccessModifierViolations);
 }
 
 auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
@@ -78,7 +78,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     if (heavy) {
         EnclosingFunctionScope = state.EnclosingFunctionScope;
         EnclosingFunctionFlavour = state.EnclosingFunctionFlavour;
-        EnclosingFunctionRetType = state.EnclosingFunctionRetType;
+        EnclosingFunctionRetType = std::move(state.EnclosingFunctionRetType);
         EnclosingFunctionSourceRetType = state.EnclosingFunctionSourceRetType;
         EnclosingFunctionCmp = state.EnclosingFunctionCmp;
     }
@@ -93,10 +93,10 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     LoopDoubleCheckActive = state.LoopDoubleCheckActive;
     LoopCurrentDepth = state.LoopCurrentDepth;
     LoopCurrentAst = state.LoopCurrentAst;
-    LoopReturnTypes = state.LoopReturnTypes;
+    LoopReturnTypes = std::move(state.LoopReturnTypes);
     ObjectInitType = state.ObjectInitType;
-    InferSource = state.InferSource;
-    InferTarget = state.InferTarget;
+    InferSource = std::move(state.InferSource);
+    InferTarget = std::move(state.InferTarget);
     PostfixExpressionLhs = state.PostfixExpressionLhs;
     UnaryExpressionRhs = state.UnaryExpressionRhs;
     SkipTypeAnalysisGenericChecks = state.SkipTypeAnalysisGenericChecks;

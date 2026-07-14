@@ -39,7 +39,7 @@ auto spp::asts::TypeArrayShorthandAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<TypeArrayShorthandAst>(
-        AstClone(TokL), AstCloneShared(ElemType), AstClone(TokSemiColon), AstClone(Size), AstClone(TokR));
+        AstClone(TokL), AstClone(ElemType), AstClone(TokSemiColon), AstClone(Size), AstClone(TokR));
 }
 
 auto spp::asts::TypeArrayShorthandAst::ToString() const

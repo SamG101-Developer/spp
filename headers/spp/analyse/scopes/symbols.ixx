@@ -10,7 +10,6 @@ import spp.codegen.llvm_sym_info;
 import spp.utils.types;
 import std;
 
-
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct ClassPrototypeAst;
@@ -29,7 +28,6 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct VariableSymbol;
 }
 
-
 /**
  * The base Symbol type for all symb variations to inherit from. This provides a common interface for all symbols, and
  * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
@@ -46,16 +44,15 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
     virtual ~Symbol();
 };
 
-
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
 
-    Shared<asts::IdentifierAst> Name;
+    asts::IdentifierAst *Name;
 
     Scope *LinkedScope;
 
     NamespaceSymbol(
-        Shared<asts::IdentifierAst> name,
+        asts::IdentifierAst *name,
         Scope *scope);
 
     NamespaceSymbol(
@@ -68,13 +65,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
         -> bool;
 };
 
-
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
 
-    Shared<asts::IdentifierAst> Name;
+    asts::IdentifierAst *Name;
 
-    Shared<asts::TypeAst> Type;
+    Unique<asts::TypeAst> Type;
 
     Scope *ScopeDefinedIn;
 
@@ -92,11 +88,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     Unique<asts::Ast> CompTimeValue;
 
-    Shared<VariableSymbol> AliasSym;
+    VariableSymbol *AliasSym;
 
     VariableSymbol(
-        Shared<asts::IdentifierAst> name,
-        Shared<asts::TypeAst> type,
+        asts::IdentifierAst *name,
+        Unique<asts::TypeAst> &&type,
         Scope *ScopeDefinedIn,
         bool is_mutable = false,
         bool is_generic = false,
@@ -112,14 +108,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
         -> bool;
 
     SPP_ATTR_NODISCARD auto FqName() const
-        -> Shared<asts::ExpressionAst>;
+        -> Unique<asts::ExpressionAst>;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
 
-    Shared<asts::TypeIdentifierAst> Name;
+    asts::TypeIdentifierAst *Name;
 
     asts::ClassPrototypeAst *Type;
 
@@ -131,7 +126,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     bool IsGeneric = false;
 
-    Vec<Shared<asts::TypeAst>> GenericConstraints;
+    Vec<asts::TypeAst*> GenericConstraints;
 
     bool IsDirectlyCopyable = false;
 
@@ -143,18 +138,18 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     TypeSymbol *GenericImpl;
 
-    Shared<codegen::LlvmTypeSymInfo> LlvmInfo;
+    Unique<codegen::LlvmTypeSymInfo> LlvmInfo;
 
     Unique<asts::TypeStatementAst> AliasStmt;
 
-    Vec<Shared<TypeSymbol>> AliasedBySyms;
+    Vec<TypeSymbol*> AliasedBySyms;
 
     bool IsDirectlyZeroType;
 
     Function<bool()> IsZeroType;
 
     TypeSymbol(
-        Shared<asts::TypeIdentifierAst> name,
+        asts::TypeIdentifierAst *name,
         asts::ClassPrototypeAst *type,
         Scope *scope,
         Scope *scope_defined_in,
@@ -163,7 +158,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         bool is_directly_copyable = false,
         asts::utils::Visibility visibility = asts::utils::Visibility::kPublic,
         Unique<asts::ConventionAst> &&convention = nullptr,
-        Vec<Shared<asts::TypeAst>> const &generic_constraints = {});
+        Vec<asts::TypeAst*> const &generic_constraints = {});
 
     TypeSymbol(
         TypeSymbol const &that);
@@ -174,10 +169,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         TypeSymbol const &that) const
         -> bool;
 
-    SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = true) const
-        -> Shared<asts::TypeAst>;
-};
+    SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = true) const -> asts::TypeAst*;
 
+    auto ResetFqCache() -> void;
+
+private:
+    mutable Unique<asts::TypeAst> _Fq;
+};
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::NamespaceSymbol)

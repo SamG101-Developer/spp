@@ -12,6 +12,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The ObjectInitializerArgumentShorthandAst represents a shorthand argument in an object initializer. It is forces the
@@ -50,5 +51,5 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 };

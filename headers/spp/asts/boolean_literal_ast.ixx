@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.boolean_literal_ast;
 import spp.asts.literal_ast;
+import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -14,6 +15,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
 
 /**
  * The BooleanLiteralAst represents a boolean literal in the source code, which can be either @c true or @c false.
@@ -91,7 +93,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @param meta Associated metadata.
      * @return The compile time resolved boolean literal.
      */
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
     /**
      * Generate the LLVM IR code for the boolean literal. This will produce an LLVM constant integer value of 1 for
@@ -101,7 +103,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @param ctx The LLVM context to generate code in.
      * @return The generated LLVM value representing the boolean literal.
      */
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The boolean literal's type is always @c std::boolean::Bool, the compiler known type that represents a boolean
@@ -110,8 +112,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @param meta Associated metadata.
      * @return The standard boolean type @code std::boolean::Bool@endcode.
      */
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+    auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> TypeAst* override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BooleanLiteralAst)

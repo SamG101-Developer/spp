@@ -18,7 +18,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
-
 /**
  * For scopes that aren't for a function or type, they don't have an @c IdentifierAst or @c TypeIdentifierAst to name
  * them. Instead, they have a simple name, which is just a string. This is used for things like loops, conditionals,
@@ -62,17 +61,15 @@ public:
     ScopeBlockName(ScopeBlockName &&) noexcept = default;
 };
 
-
 SPP_EXP_CLS struct spp::analyse::scopes::ScopeIdentifierName {
-    Shared<asts::IdentifierAst> Name;
+    Unique<asts::IdentifierAst> Name;
 
-    explicit ScopeIdentifierName(Shared<asts::IdentifierAst> const &name);
+    explicit ScopeIdentifierName(Unique<asts::IdentifierAst> &&name);
 };
 
-
 SPP_EXP_CLS struct spp::analyse::scopes::ScopeTypeIdentifierName {
-    Shared<asts::TypeIdentifierAst> Name;
+    asts::TypeIdentifierAst *Name;
 
-    explicit ScopeTypeIdentifierName(Shared<asts::TypeAst> const &name);
-    explicit ScopeTypeIdentifierName(Shared<asts::TypeIdentifierAst> const &name);
+    explicit ScopeTypeIdentifierName(asts::TypeAst *name);
+    explicit ScopeTypeIdentifierName(asts::TypeIdentifierAst *name);
 };

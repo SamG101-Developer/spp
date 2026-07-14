@@ -17,7 +17,6 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::ClassAttributeAst::ClassAttributeAst(
@@ -56,7 +55,7 @@ auto spp::asts::ClassAttributeAst::Clone() const
     ast->Source.OriginalType = AstClone(Source.OriginalType);
     ast->_Ctx = _Ctx;
     ast->_Scope = _Scope;
-    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.Get()); }
     return ast;
 }
 
@@ -80,29 +79,29 @@ auto spp::asts::ClassAttributeAst::Stage1_PreProcess(
 }
 
 auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the generation steps for the annotations.
     for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
     // Create a variable symbol for this attribute in the current scope (class scope).
-    auto sym = MakeShared<analyse::scopes::VariableSymbol>(
-        Name, Type, sm->CurrentScope, false, false, Visibility.First);
+    auto sym = MakeUnique<analyse::scopes::VariableSymbol>(
+        Name.Get(), AstClone(Type), sm->CurrentScope, false, false, Visibility.First);
     sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
 auto spp::asts::ClassAttributeAst::Stage4_QualifyTypes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
 }
 
 auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -110,14 +109,14 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
     // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
-    const auto sym = sm->CurrentScope->GetVarSymbol(Name, true);
+    const auto sym = sm->CurrentScope->GetVarSymbol(Name.Get(), true);
     sym->Visibility = Visibility.First;
     sym->VisibilityAnnotation = Visibility.Second;
 
     // Check the type is valid before scopes are attached.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
-    sm->CurrentScope->GetVarSymbol(Name)->Type = Type;
+    Type = AstClone(sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName());
+    sm->CurrentScope->GetVarSymbol(Name.Get())->Type = AstClone(Type);
 
     // Ensure that the convention type doesn't have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -126,8 +125,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // This can be reached via stage 4 generic substitution, so prevent that.
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -140,15 +139,15 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
         for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
     }
 
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.Get());
     Type->Stage7_AnalyseSemantics(sm, meta);
     if (not IsTypeSelf(*Type)) {
-        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+        Type = AstClone(sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName());
         RaiseIf<SppSecondClassBorrowViolationError>(
             IsTypeBorrowed(*Type, *sm),
             {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
     }
-    var_sym->Type = Type;
+    var_sym->Type = AstClone(Type);
 
     if (meta->CurrentStage == 9 and DefaultVal != nullptr) {
         DefaultVal->Stage7_AnalyseSemantics(sm, meta);
@@ -162,8 +161,8 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // If there is a default value, check it for memory errors.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -174,8 +173,8 @@ auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClassAttributeAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }

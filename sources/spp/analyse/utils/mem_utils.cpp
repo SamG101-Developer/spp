@@ -29,9 +29,8 @@ import spp.asts.tuple_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
+import spp.utils.algorithms;
 import ankerl.unordered_dense;
-import genex;
-import opex.cast;
 
 auto spp::analyse::utils::mem_utils::MemRegionOverlap(
     asts::Ast const &ast_1,
@@ -62,7 +61,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     asts::meta::CompilerMetaData *meta) -> void {
     // For tuple and array literals, recursively analyse each element.
     if (auto const *arr_literal = value_ast.To<asts::ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
-        const auto x = arr_literal->Elem.get();
+        const auto x = arr_literal->Elem.Get();
         ValidateSymbolMemory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         return;
     }
@@ -82,8 +81,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
     auto [var_sym, var_scope] = sm.CurrentScope->GetVarSymbolOutermost(value_ast);
     if (var_sym == nullptr) { return; }
-    const auto temp = var_scope->GetTypeSymbol(var_sym->Type);
-    const auto copies = var_scope->GetTypeSymbol(var_sym->Type)->IsCopyable();
+    const auto copies = var_scope->GetTypeSymbol(var_sym->Type.Get())->IsCopyable();
     const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta))->IsCopyable();
 
     // Check for inconsistent memory initialization (from branching).
@@ -146,8 +144,8 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     // Check the symbol doesn't have any outstanding partial moves (directly moving a partial move).
     if (check_partial_move and not var_sym->MemInfo->AstPartialMoves.IsEmpty() and value_ast.To<asts::IdentifierAst>() == nullptr) {
         const auto overlaps = var_sym->MemInfo->AstPartialMoves
-            | genex::views::filter([&](auto const &x) { return MemRegionRightOverlap(*x, value_ast); })
-            | genex::to<Vec>();
+            | std::views::filter([&](const auto x) { return MemRegionRightOverlap(*x, value_ast); })
+            | std::ranges::to<Vec>();
         if (not overlaps.IsEmpty()) {
             const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
             const auto where_pm = overlaps.Front();
@@ -188,20 +186,20 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
     auto vs = sm->CurrentScope->AllVarSymbols();
     auto pre_analysis_mem_info = vs
-        | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
-        | genex::to<Vec>();
+        | std::views::transform([](const auto x) { return MakePair(x, x->MemInfo->Snapshot()); })
+        | std::ranges::to<Vec>();
 
     // Make a record of the symbols' memory status in the scope before the branch is analysed.
     auto old_symbol_mem_info = vs
-        | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
-        | genex::to<Vec>();
+        | std::views::transform([](const auto x) { return MakePair(x, x->MemInfo->Snapshot()); })
+        | std::ranges::to<Vec>();
 
     for (auto &&branch : branches) {
         // Analyse the memory and then recheck the symbols' memory status.
         branch->Stage8_CheckMemory(sm, meta);
         auto new_symbol_mem_info = vs
-            | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
-            | genex::to<Vec>();
+            | std::views::transform([](const auto x) { return MakePair(x, x->MemInfo->Snapshot()); })
+            | std::ranges::to<Vec>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.
         // Todo: Scopes need restoring properly too.
@@ -224,12 +222,12 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     }
 
     // Get the first "non-terminating" branch, and update the symbols to reflect its memory state.
-    const auto non_terminating_branch = genex::find_if(
-        branches, [](auto const &x) { return not x->Body->Terminates(); });
+    const auto non_terminating_branch = std::ranges::find_if(
+        branches, [](const auto x) { return not x->Body->Terminates(); });
     const auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
-    const auto first_branch_index = non_terminating_branch != branches.end() ? genex::iterators::distance(branches.begin(), non_terminating_branch) as SSize : -1;
-    const auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
-        return first_branch_index != -1 ? branch_mem_info.At(first_branch_index as USize).Second : branch_mem_info.Back().Second;
+    const auto first_branch_index = non_terminating_branch != branches.end() ? non_terminating_branch - branches.begin() : -1;
+    const auto first_branch_mem_info_getter = [&](const auto branch_mem_info) {
+        return first_branch_index != -1 ? branch_mem_info.At(static_cast<std::size_t>(first_branch_index)).Second : branch_mem_info.Back().Second;
     };
 
     const auto has_else_branch = not branches.IsEmpty() ? branches.Back()->Patterns[0]->To<asts::CasePatternVariantElseAst>() : nullptr;
@@ -250,9 +248,9 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
 
         // Check the new memory status for each symbol is consistent across all branches that don't terminate.
         auto applicable_branch_memory_info_lists = branches_memory_info_lists
-            | genex::views::drop_last(1)
-            | genex::views::remove_if([&](auto const &x) { return x.First->Body->Terminates(); })
-            | genex::to<Vec>();
+            | spp::views::drop_last(1)
+            | spp::views::remove_if([&](const auto x) { return x.First->Body->Terminates(); })
+            | std::ranges::to<Vec>();
 
         for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
             // Check for consistent initialization.
@@ -294,10 +292,11 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
     // Prevent a borrow being placed into a value with a longer lifetime.
     const auto is_rhs_borrow = override_borrow or (rhs_outermost and std::get<0>(rhs_outermost->MemInfo->AstBorrowed) != nullptr);
     if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
-        const auto rhs_borrow_scope = std::get<1>(rhs_outermost->MemInfo->AstBorrowed) ?: sm.CurrentScope;
+        const auto rhs_borrow_scope = std::get<1>(rhs_outermost->MemInfo->AstBorrowed) ? : sm.CurrentScope;
         const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
         if (lhs_init_scope != nullptr) {
-            const auto scope_depth_difference = genex::position(lhs_init_scope->Ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
+            auto ancestors = lhs_init_scope->Ancestors();
+            const auto scope_depth_difference = std::ranges::find_if(ancestors, [&](auto x) { return x == rhs_borrow_scope; }) - ancestors.begin();
             RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
                 scope_depth_difference < 0, {sm.CurrentScope},
                 ERR_ARGS(*owner, *lhs_outermost->Name, *(std::get<0>(rhs_outermost->MemInfo->AstBorrowed) ?: &rhs_expr)));
@@ -308,10 +307,11 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
     else if (lhs_outermost != nullptr and rhs_outermost != nullptr) {
         const auto escaping_borrows = rhs_outermost->MemInfo->AstContainedEscapingBorrows;
         const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
-        for (auto const &[e, _, _] : escaping_borrows) {
+        for (const auto [e, _, _] : escaping_borrows) {
             const auto escaping_borrow_scope = sm.CurrentScope->GetVarSymbolOutermost(*e).First->ScopeDefinedIn;
             if (not escaping_borrow_scope) { continue; }
-            const auto scope_depth_difference = genex::position(lhs_init_scope->Ancestors(), genex::operations::eq_fixed{escaping_borrow_scope});
+            auto ancestors = lhs_init_scope->Ancestors();
+            const auto scope_depth_difference = std::ranges::find_if(ancestors, [&](auto x) { return x == escaping_borrow_scope; }) - ancestors.begin();
             RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
                 scope_depth_difference < 0, {sm.CurrentScope},
                 ERR_ARGS(*owner, *lhs_outermost->Name, *e));
@@ -321,17 +321,17 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
     // Ensure a value that contains escaping borrows isn't increasing the escaping borrows' lifetimes for "gen.res()"
     // As the borrow is a temporary (no scope), the topmost branch uses "current scope".
     else if (const auto pf = rhs_expr.To<asts::PostfixExpressionAst>(); pf and pf->Op->To<asts::PostfixExpressionOperatorKeywordResAst>()) {
-        const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.get();
+        const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First;
         PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, true);
     }
 
     // Finally, an inline coroutine call, such as "x = coro(&borrow)" also needs checking.
     // This is also a temporary borrow, but being contained rather than yielded at this point.
     // else if (pf and pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>()) {
-    //     const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.get();
+    //     const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.Get();
     //     const auto lhs_func = pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>();
     //     const auto lhs_func_call_is_coro = lhs_func->Target()->IsCoroutine();
-    //     const auto has_borrowed_args = lhs_func_call_is_coro and genex::any_of(lhs_func->FnArgGroup->Args, [&](auto const &arg) {
+    //     const auto has_borrowed_args = lhs_func_call_is_coro and genex::any_of(lhs_func->FnArgGroup->Args, [&](const auto arg) {
     //         return arg->Conv != nullptr;
     //     });
     //     PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, lhs_func_call_is_coro and has_borrowed_args);

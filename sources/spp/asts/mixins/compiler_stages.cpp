@@ -21,57 +21,57 @@ auto spp::asts::mixins::CompilerStages::Stage1_PreProcess(
 }
 
 auto spp::asts::mixins::CompilerStages::Stage2_GenTopLvlScopes(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: no actions.
 }
 
 auto spp::asts::mixins::CompilerStages::Stage3_GenTopLvlAliases(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: no actions.
 }
 
 auto spp::asts::mixins::CompilerStages::Stage4_QualifyTypes(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: no actions.
 }
 
 auto spp::asts::mixins::CompilerStages::Stage5_LoadSupScopes(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: no actions.
 }
 
 auto spp::asts::mixins::CompilerStages::Stage6_PreAnalyseSemantics(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: no actions.
 }
 
 auto spp::asts::mixins::CompilerStages::Stage7_AnalyseSemantics(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: no actions.
 }
 
 auto spp::asts::mixins::CompilerStages::Stage8_CheckMemory(
-    ScopeManager *,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: no actions.
 }
 
 auto spp::asts::mixins::CompilerStages::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
     -> void {
     // Default behaviour: this AST does not support comptime resolution, so throw an error.
     using analyse::errors::SppInvalidComptimeOperationError;
@@ -80,8 +80,8 @@ auto spp::asts::mixins::CompilerStages::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::mixins::CompilerStages::Stage10_PreCodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
     // Default behaviour: no llvm generation => nullptr value returned,
@@ -89,8 +89,8 @@ auto spp::asts::mixins::CompilerStages::Stage10_PreCodeGen(
 }
 
 auto spp::asts::mixins::CompilerStages::Stage11_CodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
+    analyse::scopes::ScopeManager *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
     // Default behaviour: no llvm generation => nullptr value returned,

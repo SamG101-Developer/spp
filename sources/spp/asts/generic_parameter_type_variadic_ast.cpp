@@ -36,7 +36,7 @@ auto spp::asts::GenericParameterTypeVariadicAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<GenericParameterTypeVariadicAst>(
-        AstClone(TokEllipsis), AstCloneShared(Name), AstClone(Constraints));
+        AstClone(TokEllipsis), AstClone(Name), AstClone(Constraints));
 }
 
 auto spp::asts::GenericParameterTypeVariadicAst::ToString() const

@@ -22,13 +22,13 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
+import spp.utils.algorithms;
 import spp.utils.uid;
 import llvm;
-import genex;
 
 SPP_MOD_BEGIN
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(
-    decltype(Type) type,
+    decltype(Type) &&type,
     decltype(ArgGroup) &&arg_group) :
     Type(std::move(type)),
     ArgGroup(std::move(arg_group)) {
@@ -66,8 +66,8 @@ auto spp::asts::ObjectInitializerAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -85,7 +85,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
         IsTypeBorrowed(*Type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
 
-    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics());
+    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics().Get());
 
     // Generic types cannot have any attributes set.
     // TODO: future with constraints will allow some.
@@ -99,21 +99,24 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     }
 
     // Prepare the object initializer arguments.
-    meta->Save();
-    meta->ObjectInitType = Type->WithoutGenerics();
-    ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
-    meta->Restore();
+    {
+        meta->Save();
+        const auto non_generic = Type->WithoutGenerics();
+        meta->ObjectInitType = non_generic.Get();
+        ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
+        meta->Restore();
+    }
 
     // Determine the generic inference source and target values.
     auto generic_infer_source = ArgGroup->Args
-        | genex::views::transform([sm, meta](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
-        | genex::to<Vec>();
+        | std::views::transform([sm, meta](auto const &x) { return MakePair(x->Name.Get(), x->Val->InferType(sm, meta)); })
+        | std::ranges::to<Vec>();
 
     auto generic_infer_target = base_cls_sym->Type->Impl->Members
-        | genex::views::ptr
-        | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([&](auto const &x) { return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type)->FqName()); })
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | spp::views::cast_dynamic<ClassAttributeAst*>
+        | std::views::transform([&](auto const &x) { return MakePair(x->Name.Get(), base_cls_sym->LinkedScope->GetTypeSymbol(x->Type.Get())->FqName()); })
+        | std::ranges::to<Vec>();
 
     // Analyse the type and object argument group. TODO: might still need this
     // auto tm = ScopeManager(sm->GlobalScope, base_cls_sym->scope);
@@ -123,65 +126,65 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     meta->InferSource = {generic_infer_source.begin(), generic_infer_source.end()};
     meta->InferTarget = {generic_infer_target.begin(), generic_infer_target.end()};
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+    Type = AstClone(sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName());
     meta->Restore();
 
     meta->Save();
-    meta->ObjectInitType = Type;
+    meta->ObjectInitType = Type.Get();
     ArgGroup->Stage7_AnalyseSemantics(sm, meta);
     meta->Restore();
 }
 
 auto spp::asts::ObjectInitializerAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the object argument group.
     ArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::ObjectInitializerAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Convert the inner elements to compile-time values.
     auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
     for (auto const &elem : ArgGroup->Args) {
         elem->Stage9_CompTimeResolve(sm, meta);
-        auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(elem->Name, nullptr, std::move(meta->CmpResult));
+        auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(AstClone(elem->Name), nullptr, std::move(meta->CmpResult));
         cmp_elems->Args.EmplaceBack(std::move(cmp_arg));
     }
 
     // Wrap the compile-time array value.
     meta->CmpResult = MakeUnique<ObjectInitializerAst>(
-        Type, std::move(cmp_elems));
+        AstClone(Type), std::move(cmp_elems));
 }
 
 auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
     const auto uid = spp::utils::Uid(this);
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.Get());
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Re-order the arguments to match the fields on the type.
     // Todo: use the type_utils::get_attrs() function here?
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Type);
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Type.Get());
     const auto attr_names = analyse::utils::type_utils::GetAllAttrs(*cls_sym->FqName(), sm)
-        | genex::views::transform([](auto const &attr) { return attr.First; })
-        | genex::to<Vec>();
+        | std::views::transform([](auto const &attr) { return attr.First; })
+        | std::ranges::to<Vec>();
 
     // Sort the arguments (by name) to match the type's attributes.
     auto sorted_args = ArgGroup->Args
-        | genex::views::ptr
-        | genex::to<Vec>();
+        | spp::views::ptr
+        | std::ranges::to<Vec>();
 
-    sorted_args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::position(attr_names, [&a](auto const &attr_name) { return *attr_name == *a->Name; });
-        const auto b_index = genex::position(attr_names, [&b](auto const &attr_name) { return *attr_name == *b->Name; });
+    std::ranges::sort(sorted_args, [&](auto const &a, auto const &b) {
+        const auto a_index = std::ranges::find_if(attr_names, [&a](auto const &attr_name) { return *attr_name == *a->Name; }) - attr_names.begin();
+        const auto b_index = std::ranges::find_if(attr_names, [&b](auto const &attr_name) { return *attr_name == *b->Name; }) - attr_names.begin();
         return a_index < b_index;
     });
 
@@ -218,20 +221,16 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ObjectInitializerAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> TypeAst* {
+    // Try from the cache first.
+    USE_CACHED_TYPE_INFERENCE;
+
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
-    return sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
-}
-
-auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
-    // Use the source original type.
-    return Source.OriginalType;
+    auto inferred = sm->CurrentScope->GetTypeSymbol(Type.Get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    CACHE_TYPE_INFERENCE_AND_RETURN(inferred);
 }
 
 SPP_MOD_END

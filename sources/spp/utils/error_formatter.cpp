@@ -1,14 +1,12 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 
 module spp.utils.error_formatter;
 import spp.asts.ast;
 import spp.lex.tokens;
 import colex;
-import genex;
-import opex.cast;
 import std;
+import sys;
 
 SPP_MOD_BEGIN
 spp::utils::errors::ErrorFormatter::ErrorFormatter(Vec<lex::RawToken> tokens, Str file_path) :
@@ -35,22 +33,20 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
     // Find the start of the error line: the token immediately after the last newline before this one.
     // genex::position_last returns std::size_t(-1) when nothing is found; +1 then wraps to 0, which
     // is the correct fallback (start of file) because the lexer always prepends "\n" at token 0.
-    const auto error_line_start_pos = genex::position_last(
-        _Tokens | genex::views::take(ast_start_pos) | genex::to<Vec>(),
-        [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; },
-        {}, 0uz) + 1uz;
+    const auto tmp1 = _Tokens | std::views::take(ast_start_pos) | std::ranges::to<Vec>();
+    const auto error_line_start_pos = static_cast<std::size_t>(std::ranges::find_last_if(
+        tmp1, [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }).begin() - tmp1.begin()) + 1uz;
 
     // Find the end of the error line: the first newline after the error token (or EOF).
-    const auto error_line_end_pos = genex::position(
-        _Tokens | genex::views::drop(ast_start_pos) | genex::to<Vec>(),
-        [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; },
-        {}, _Tokens.Len() - ast_start_pos) + ast_start_pos;
+    const auto tmp2 = _Tokens | std::views::drop(ast_start_pos) | std::ranges::to<Vec>();
+    const auto error_line_end_pos = static_cast<std::size_t>(std::ranges::find_if(
+        tmp2, [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }) - tmp2.begin()) + ast_start_pos;
 
     // Build the source line string by concatenating raw token data.
     auto error_line_tokens = Vec(
-        _Tokens.begin() + (error_line_start_pos as SSize),
-        _Tokens.begin() + (error_line_end_pos as SSize));
-    auto error_line_as_string = genex::fold_left(
+        _Tokens.begin() + (static_cast<sys::ssize_t>(error_line_start_pos)),
+        _Tokens.begin() + (static_cast<sys::ssize_t>(error_line_end_pos)));
+    auto error_line_as_string = std::ranges::fold_left(
         error_line_tokens, Str(),
         [](Str const &acc, const lex::RawToken &token) { return acc + token.data; });
     while (!error_line_as_string.empty() and error_line_as_string.back() == ' ') {
@@ -61,10 +57,10 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
     }
 
     // Count line feeds before this token to get the 1-based line number.
-    auto error_line_number = std::to_string(genex::operations::size(_Tokens
-        | genex::views::take(ast_start_pos)
-        | genex::views::filter([](const lex::RawToken &token) { return token.type == RawTokenType::TK_LINE_FEED; })
-        | genex::to<Vec>()));
+    auto error_line_number = std::to_string(std::ranges::size(_Tokens
+        | std::views::take(ast_start_pos)
+        | std::views::filter([](const lex::RawToken &token) { return token.type == RawTokenType::TK_LINE_FEED; })
+        | std::ranges::to<Vec>()));
 
     // Compute the character offset within the line by summing the data lengths of all raw tokens
     // between the line start and the error token. This correctly handles keywords (one multi-char
@@ -151,6 +147,10 @@ auto spp::utils::errors::ErrorFormatter::ErrorAstMinimal(
     -> Str {
     return ErrorRawPosMinimal(
         ast->PosStart(), ast->PosEnd() - ast->PosStart(), std::move(tag_message));
+}
+
+auto spp::utils::errors::ErrorFormatter::Clone() -> Unique<ErrorFormatter> {
+    return MakeUnique<ErrorFormatter>(_Tokens, _FilePath);
 }
 
 SPP_MOD_END

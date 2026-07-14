@@ -31,17 +31,17 @@ auto spp::analyse::scopes::ScopeBlockName::FromParts(
 }
 
 spp::analyse::scopes::ScopeIdentifierName::ScopeIdentifierName(
-    Shared<asts::IdentifierAst> const &name) :
-    Name(name) {
+    Unique<asts::IdentifierAst> &&name) :
+    Name(std::move(name)) {
 }
 
 spp::analyse::scopes::ScopeTypeIdentifierName::ScopeTypeIdentifierName(
-    Shared<asts::TypeAst> const &name) :
-    Name(dynamic_shared_cast<asts::TypeIdentifierAst>(name)) {
+    asts::TypeAst *name) :
+    Name(dynamic_cast<asts::TypeIdentifierAst*>(name)) {
 }
 
 spp::analyse::scopes::ScopeTypeIdentifierName::ScopeTypeIdentifierName(
-    Shared<asts::TypeIdentifierAst> const &name) :
+    asts::TypeIdentifierAst *name) :
     Name(name) {
 }
 

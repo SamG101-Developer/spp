@@ -28,10 +28,10 @@ namespace spp::asts {
 /**
  * The TypeAst is a base class for all type-related AST nodes in the SPP language.
  */
-SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, EnableLocalSharedFromThis<TypeAst> {
+SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst {
     SPP_GCC_VTABLE_FIX
 
-    mutable utils::Cache<analyse::scopes::Scope const*, Weak<analyse::scopes::TypeSymbol>> CachedTypeSymbols;
+    mutable utils::Cache<analyse::scopes::Scope const*, analyse::scopes::TypeSymbol*> CachedTypeSymbols;
 
     TypeAst();
 
@@ -42,8 +42,6 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTy
     SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept -> bool { return false; }
 
 protected:
-    mutable Shared<TypeAst> _CachedWithoutGenerics;
-
     mutable Str _CachedStringification;
 };
 

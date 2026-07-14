@@ -13,7 +13,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTypeAst {
     /**
      * The left parenthesis token that represents the start of the tuple type.
@@ -23,7 +22,7 @@ SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTyp
     /**
      * The types of the elements in the tuple.
      */
-    Vec<Shared<TypeAst>> ElemTypes;
+    Vec<Unique<TypeAst>> ElemTypes;
 
     /**
      * The right parenthesis token that represents the end of the tuple type.

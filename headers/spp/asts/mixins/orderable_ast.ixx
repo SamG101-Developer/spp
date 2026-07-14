@@ -4,11 +4,9 @@ module;
 export module spp.asts.mixins.orderable_ast;
 import spp.asts.utils.orderable;
 
-
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct OrderableAst;
 }
-
 
 /**
  * An @c OrderableAst is an AST that contains a vector attribute that required some sort of ordering based on type. For

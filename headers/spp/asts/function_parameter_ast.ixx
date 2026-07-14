@@ -18,6 +18,9 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
+COMMON_AST_IMPORTS
+
+
 /**
  * The FunctionParameterAst provides a common base to all parameter types in a function prototype. It is inherited by
  * the required, optional, variadic and self parameters, and provides the common functionality for all of them.
@@ -39,10 +42,10 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
      * The type of the parameter. This is used to specify the type of the parameter, such as @c I32 or @c F64 . This is
      * a required field, as the type of the parameter must be known at compile time.
      */
-    Shared<TypeAst> Type;
+    Unique<TypeAst> Type;
 
     struct {
-        Shared<TypeAst> OriginalType;
+        Unique<TypeAst> OriginalType;
     } Source;
 
     /**
@@ -60,13 +63,13 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
 
     ~FunctionParameterAst() override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>>;
+    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<IdentifierAst*>;
 
-    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst>;
+    SPP_ATTR_NODISCARD auto ExtractName() const -> IdentifierAst*;
 };

@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.coroutine_prototype_ast;
 import spp.analyse.errors.semantic_error;
@@ -25,7 +24,6 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
-import genex;
 import llvm;
 
 SPP_MOD_BEGIN
@@ -36,7 +34,7 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
     auto ast = MakeUnique<CoroutinePrototypeAst>( // Todo: why no "cmp"?
         AstCloneVec(Annotations), nullptr, AstClone(TokFun), AstClone(Name), AstClone(GnParamGroup),
         AstClone(FnParamGroup), AstClone(TokArrow), AstClone(ReturnType), AstClone(Impl));
-    ast->_AnnotationInfo = _AnnotationInfo
+    ast->_AnnotationInfo = _AnnotationInfo != nullptr
         ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
         : nullptr;
     ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
@@ -54,13 +52,13 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
     ast->LlvmCoroYieldSlot = LlvmCoroYieldSlot;
     ast->LlvmGenEnv = LlvmGenEnv;
     ast->_LlvmResumeFunc = _LlvmResumeFunc;
-    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.Get()); }
     return ast;
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::type_utils::IsTypeGen;
@@ -68,29 +66,30 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.Get());
 
     // Update the meta information for enclosing function information.
+    const auto ret_fq = ret_type_sym->FqName();
     meta->Save();
-    meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFunctionFlavour = TokFun.Get();
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_fq);
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType.Get());
     meta->EnclosingFunctionScope = sm->CurrentScope;
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the return type superimposes the generator type.
     GetGenAndYieldTypes(
-        *ret_type_sym->FqName(), *sm->CurrentScope, *Source.OriginalReturnType, "coroutine return type");
+        *ret_fq, *sm->CurrentScope, *Source.OriginalReturnType, "coroutine return type");
 
     // Analyse the semantics of the function body, and move out the scope.
     sm->MoveOutOfCurrentScope();
     meta->Restore(true);
-    meta->LoopReturnTypes->clear();
+    meta->LoopReturnTypes.clear();
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Move into the coroutine scope.
@@ -114,14 +113,17 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
         const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, llvm_coro_resume_func);
         ctx->Builder.SetInsertPoint(entry_bb);
 
-        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
-        meta->Save();
-        meta->EnclosingFunctionFlavour = TokFun.get();
-        meta->EnclosingFunctionScope = sm->CurrentScope;
-        meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-        meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-        Impl->Stage11_CodeGen(sm, meta, ctx);
-        meta->Restore();
+        {
+            const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.Get());
+            const auto ret_fq = ret_type_sym->FqName();
+            meta->Save();
+            meta->EnclosingFunctionFlavour = TokFun.Get();
+            meta->EnclosingFunctionScope = sm->CurrentScope;
+            meta->EnclosingFunctionRetType.EmplaceBack(ret_fq);
+            meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType.Get());
+            Impl->Stage11_CodeGen(sm, meta, ctx);
+            meta->Restore();
+        }
 
         // Reset to the start of the resume function to build the switch.
         ctx->Builder.SetInsertPoint(entry_bb);
@@ -163,7 +165,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     if (llvm_gen_env == nullptr) {
         // Analyse to make a new scope in the correct place.
         for (auto const &[_, generic_impl] : _GenericSubstitutions) {
-            auto tm = ScopeManager(sm->GlobalScope, _Scope->Parent);
+            auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, _Scope->Parent);
             tm.Reset(tm.CurrentScope);
             generic_impl->Stage11_CodeGen(&tm, meta, ctx);
         }

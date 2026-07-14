@@ -9,7 +9,7 @@ import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
-    decltype(Name) name,
+    decltype(Name) &&name,
     decltype(TokAssign) &&tok_assign,
     decltype(Val) &&val) :
     ObjectInitializerArgumentAst(std::move(name), std::move(val)),
@@ -35,7 +35,7 @@ auto spp::asts::ObjectInitializerArgumentKeywordAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<ObjectInitializerArgumentKeywordAst>(
-        AstCloneShared(Name), AstClone(TokAssign), AstClone(Val));
+        AstClone(Name), AstClone(TokAssign), AstClone(Val));
 }
 
 auto spp::asts::ObjectInitializerArgumentKeywordAst::ToString() const

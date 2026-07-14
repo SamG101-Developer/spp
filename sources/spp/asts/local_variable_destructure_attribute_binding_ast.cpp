@@ -9,7 +9,7 @@ import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(
-    decltype(Name) name,
+    decltype(Name) &&name,
     decltype(TokAssign) &&tok_assign,
     decltype(Val) &&val) :
     Name(std::move(name)),
@@ -36,7 +36,7 @@ auto spp::asts::LocalVariableDestructureAttributeBindingAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<LocalVariableDestructureAttributeBindingAst>(
-        AstCloneShared(Name), AstClone(TokAssign), AstClone(Val));
+        AstClone(Name), AstClone(TokAssign), AstClone(Val));
 }
 
 auto spp::asts::LocalVariableDestructureAttributeBindingAst::ToString() const
@@ -49,9 +49,9 @@ auto spp::asts::LocalVariableDestructureAttributeBindingAst::ToString() const
 }
 
 auto spp::asts::LocalVariableDestructureAttributeBindingAst::ExtractName() const
-    -> Shared<IdentifierAst> {
+    -> IdentifierAst* {
     // Return the direct name of this attribute binding => this is the attribute being bound.
-    return Name;
+    return Name.Get();
 }
 
 SPP_MOD_END
