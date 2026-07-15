@@ -31,7 +31,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-// import genex;
+import genex;
 
 SPP_MOD_BEGIN
 spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
@@ -128,8 +128,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
     // Check every generic parameter is constrained by the type.
     if (not Name->IsCompilerGeneratedType()) {
         const auto unconstrained = GnParamGroup->GetAllParams()
-            | std::ranges::views::filter([this](auto const &x) { return not(Name->ContainsGenerics(*x) or SuperClass->ContainsGenerics(*x)); })
-            | std::ranges::to<Vec>();
+            | genex::views::filter([this](auto const &x) { return not(Name->ContainsGenerics(*x) or SuperClass->ContainsGenerics(*x)); })
+            | genex::to<Vec>();
         RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(
             not unconstrained.IsEmpty(), {sm->CurrentScope},
             ERR_ARGS(*unconstrained[0]));
@@ -411,8 +411,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        std::ranges::any_of(sm->CurrentScope->AllTypeSymbols(true), [](auto const &x) { return x->IsGeneric; }) or
-        std::ranges::any_of(sm->CurrentScope->AllVarSymbols(true), [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
+        genex::any_of(sm->CurrentScope->AllTypeSymbols(true), [](auto const &x) { return x->IsGeneric; }) or
+        genex::any_of(sm->CurrentScope->AllVarSymbols(true), [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
 
     // Generate the implementation if not a generic scope.
     if (not is_generic_scope) {
@@ -454,9 +454,9 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
     const auto existing_sup_scopes = sup_sym.LinkedScope->SupScopes()
-        | std::ranges::views::filter(check_cycle)
-        | std::ranges::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
-        | std::ranges::to<Vec>();
+        | genex::views::filter(check_cycle)
+        | genex::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
+        | genex::to<Vec>();
 
     RaiseIf<SppSuperimpositionCyclicExtensionError>(
         not existing_sup_scopes.IsEmpty(), {&check_scope},
@@ -485,9 +485,9 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
     auto all_sup_scopes = cls_sym.LinkedScope->SupScopes();
     const auto existing_sup_scopes = all_sup_scopes
-        | std::ranges::views::filter(check_double)
-        | std::ranges::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
-        | std::ranges::to<Vec>();
+        | genex::views::filter(check_double)
+        | genex::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
+        | genex::to<Vec>();
 
     RaiseIf<SppSuperimpositionDoubleExtensionError>(
         not existing_sup_scopes.IsEmpty(), {&check_scope},

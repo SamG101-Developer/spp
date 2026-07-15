@@ -144,7 +144,7 @@ auto spp::analyse::utils::type_utils::TypeEq(
     // Ensure each generic argument is symbolically equal to the other.
     // Todo: why genex broke here?
     // Todo: different lengths?
-    for (auto const &[lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
+    for (auto const &[lhs_generic, rhs_generic] : std::views::zip(lhs_generics, rhs_generics)) {
         if (lhs_generic->To<asts::GenericArgumentTypeAst>()) {
             const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentTypeAst>();
             const auto rhs_generic_part = rhs_generic->To<asts::GenericArgumentTypeAst>();
@@ -281,7 +281,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     }
 
     // Ensure each generic argument is symbolically equal to the other. Todo: why genex broke here?
-    for (auto [lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
+    for (auto [lhs_generic, rhs_generic] : std::views::zip(lhs_generics, rhs_generics)) {
         if (rhs_generic->To<asts::GenericArgumentTypeAst>()) {
             const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentTypeAst>();
             const auto rhs_generic_part = rhs_generic->To<asts::GenericArgumentTypeAst>();
