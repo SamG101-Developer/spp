@@ -356,13 +356,13 @@ auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
     if (pass_overloads.IsEmpty()) {
         auto failed_signatures_and_errors = "\n" + (fail_overloads
             | genex::views::transform([](auto const &f) { return "    - "s + std::get<1>(f)->PrintSignature("") + ": "s + std::get<3>(f); })
-            | genex::views::intersperse("\n"s)
+            | genex::views::intersperse("\n"_str)
             | genex::views::join
             | genex::to<Str>());
 
         auto arg_usage_signature = arg_group.Args
             | genex::views::transform([sm, meta](auto const &x) { return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self"; })
-            | genex::views::intersperse(", "s)
+            | genex::views::intersperse(", "_str)
             | genex::views::join
             | genex::to<Str>();
 
@@ -380,13 +380,13 @@ auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
     if (pass_overloads.Len() > 1) {
         auto signatures = "\n" + (pass_overloads
             | genex::views::transform([](auto const &x) { return "    - "s + std::get<1>(x)->PrintSignature(""); })
-            | genex::views::intersperse("\n"s)
+            | genex::views::intersperse("\n"_str)
             | genex::views::join
             | genex::to<Str>());
 
         auto arg_usage_signature = arg_group.Args
             | genex::views::transform([sm, meta](auto const &x) { return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self"; })
-            | genex::views::intersperse(", "s)
+            | genex::views::intersperse(", "_str)
             | genex::views::join
             | genex::to<Str>();
 

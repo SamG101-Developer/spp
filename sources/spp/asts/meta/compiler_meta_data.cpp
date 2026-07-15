@@ -5,7 +5,7 @@ module spp.asts.meta.compiler_meta_data;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
-import ankerl.unordered_dense;
+import ankerl;
 
 SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {

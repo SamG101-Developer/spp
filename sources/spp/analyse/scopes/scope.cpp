@@ -33,8 +33,9 @@ import spp.asts.utils.ast_utils;
 import spp.compiler.module_tree;
 import spp.utils.error_formatter;
 import spp.utils.functions;
+import spp.utils.algorithms;
 import spp.utils.ptr;
-import ankerl.unordered_dense;
+import ankerl;
 import genex;
 
 SPP_MOD_BEGIN
@@ -196,7 +197,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
         | genex::views::transform([this](auto const &gen_arg) { return GetTypeSymbol(gen_arg->Val); })
         | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsGeneric; })
-        | genex::views::cast_smart<Symbol>()
+        | genex::views::transform([](auto const &sym) { return std::dynamic_pointer_cast<Symbol>(sym); })
         | genex::to<Vec>();
 
     const auto comp_syms = generics
@@ -204,7 +205,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
         | genex::views::filter([&ignore](auto const &gen_arg) { return ignore == nullptr or *gen_arg->Val != *ignore; })
         | genex::views::transform([this](auto const &gen_arg) { return GetVarSymbol(asts::AstCloneShared(gen_arg->Val->template To<asts::IdentifierAst>())); })
         | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsGeneric; })
-        | genex::views::cast_smart<Symbol>()
+        | genex::views::transform([](auto const &sym) { return std::dynamic_pointer_cast<Symbol>(sym); })
         | genex::to<Vec>();
 
     auto syms = type_syms;
@@ -660,23 +661,20 @@ auto spp::analyse::scopes::Scope::SupScopes() const
 
 auto spp::analyse::scopes::Scope::SupTypes() const
     -> Vec<Shared<asts::TypeAst>> {
-    // Get all super types, recursively (filter and map the super scopes).
-    // For original generic class scopes, TySym is the bare symbol (no generic args) and _ClsSym holds
-    // the parameterized form (e.g. FwdRef[T=T]). Using bare TySym would drop the generic params, so we
-    // use _ClsSym->FqName() when TySym has no generic args. Newly-created concrete scopes always have a
-    // non-empty GnArgGroup in TySym, so those fall through to the normal path.
     static const auto resolve_fq_name = [](auto *scope) -> Shared<asts::TypeAst> {
         const auto cls_proto = scope->AstNode->template To<asts::ClassPrototypeAst>();
         const auto cls_sym = cls_proto ? cls_proto->GetClsSym() : nullptr;
-        if (cls_sym and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) {
-            return cls_sym->FqName();
-        }
+        if (cls_sym and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) { return cls_sym->FqName(); }
         return scope->TySym->FqName();
     };
-    return SupScopes()
+
+    auto ts = SupScopes()
         | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
         | genex::views::transform(resolve_fq_name)
+        | genex::views::filter([](auto const &type) { return type != nullptr; }) // Todo: shouldn't need.
         | genex::to<Vec>();
+
+    return ts;
 }
 
 auto spp::analyse::scopes::Scope::DirectSupTypes() const

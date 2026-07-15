@@ -44,8 +44,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitEleme
     if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
 
     // Ensure each element of the two array literals are equal.
+    auto temp = genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr) | genex::to<Vec>();
     if (genex::all_of(
-        genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr),
+        temp,
         [](auto const &pair) { return *genex::get<0>(pair) == *genex::get<1>(pair); })) {
         return Ordering::equal;
     }

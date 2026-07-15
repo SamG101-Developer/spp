@@ -35,6 +35,7 @@ auto spp::analyse::utils::order_utils::DoOrder(
 
     // Return arguments that are out of order.
     auto out_of_order = genex::views::zip(tagged_args, args_sorted)
+        | genex::to<Vec>()
         | genex::views::filter([](auto &&x) { return std::get<0>(x) != std::get<1>(x); })
         | genex::views::transform([](auto &&x) { return std::get<1>(x); })
         | genex::views::transform([](auto &&x) { return MakePair(Str(magic_enum::enum_name(x.First)), dynamic_cast<asts::Ast*>(x.Second)); })

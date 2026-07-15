@@ -9,31 +9,18 @@ set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 include(FetchContent)
-set(FETCHCONTENT_QUIET OFF)
-set(ANKERL_ENABLE_MODULES ON CACHE BOOL "" FORCE)
-set(TOMLPLUSPLUS_BUILD_MODULES ON CACHE BOOL "" FORCE)
-set(CLI11_MODULES ON CACHE BOOL "" FORCE)
 
 # Find dependencies.
-function(fetch_git_repo name repo tag)
-    FetchContent_Declare(${name} GIT_REPOSITORY ${repo} GIT_TAG ${tag} GIT_SHALLOW TRUE)
-endfunction()
-
-fetch_git_repo(unordered_dense https://github.com/martinus/unordered_dense.git main)
-fetch_git_repo(tomlplusplus https://github.com/marzer/tomlplusplus.git master)
-fetch_git_repo(nlohmann_json https://github.com/nlohmann/json.git develop)
-fetch_git_repo(stringzilla https://github.com/ashvardanian/stringzilla.git main)
-fetch_git_repo(magic_enum https://github.com/Neargye/magic_enum.git master)
-fetch_git_repo(CLI11 https://github.com/CLIUtils/CLI11.git main)
-fetch_git_repo(GenEx https://github.com/SamG101-Developer/GenEx.git master)
-fetch_git_repo(ColEx https://github.com/SamG101-Developer/ColEx.git master)
-fetch_git_repo(OpEx https://github.com/SamG101-Developer/OpEx.git master)
-
-FetchContent_MakeAvailable(
-        unordered_dense tomlplusplus nlohmann_json stringzilla magic_enum CLI11 GenEx ColEx OpEx)
-
 find_package(Boost 1.91.0 REQUIRED) # Boost libraries
 find_package(LLVM 22.0.0 REQUIRED CONFIG) # LLVM libraries
+find_package(unordered_dense CONFIG REQUIRED) # unordered_dense library
+find_package(tomlplusplus CONFIG REQUIRED) # tomlplusplus library
+find_package(nlohmann_json CONFIG REQUIRED) # nlohmann_json library
+find_package(magic_enum CONFIG REQUIRED) # magic_enum library
+find_package(CLI11 CONFIG REQUIRED) # CLI11 library
+find_package(GenEx CONFIG REQUIRED) # GenEx library
+find_package(ColEx CONFIG REQUIRED) # ColEx library
+find_package(OpEx CONFIG REQUIRED) # OpEx library
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 
 # Collect all source files and create the library.
@@ -57,9 +44,8 @@ target_compile_definitions(${PROJECT_NAME}_lib PRIVATE ${LLVM_DEFINITIONS_LIST})
 target_include_directories(${PROJECT_NAME}_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 
 target_link_libraries(${PROJECT_NAME}_lib PUBLIC
-        unordered_dense unordered_dense_module
-        nlohmann_json tomlplusplus::tomlplusplus tomlplusplus_modules
-        magic_enum Boost::boost CLI11_Module ColEx OpEx GenEx
+        unordered_dense::unordered_dense nlohmann_json::nlohmann_json tomlplusplus::tomlplusplus
+        magic_enum::magic_enum Boost::boost CLI11::CLI11 ColEx::ColEx OpEx::OpEx GenEx::GenEx
         LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 
 add_executable(${PROJECT_NAME} main.cpp)

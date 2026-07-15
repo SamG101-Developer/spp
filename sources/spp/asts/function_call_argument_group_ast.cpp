@@ -253,7 +253,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
             if (not sm->CurrentScope->GetTypeSymbol(arg->Val->InferType(sm, meta))->IsCopyable()) {
-                auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
+                auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
                     | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
                     | genex::to<Vec>();
 
@@ -287,7 +287,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
 
         else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
             // Generate the list of overlapping borrows for mutable borrows.
-            auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
+            auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
                 | genex::views::filter([&arg](auto &&x) { return MemRegionOverlap(*x, *arg->Val); })
                 | genex::to<Vec>();
 

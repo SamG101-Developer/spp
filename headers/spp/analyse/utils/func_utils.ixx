@@ -5,7 +5,7 @@ export module spp.analyse.utils.func_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl.unordered_dense;
+import ankerl;
 import llvm;
 import std;
 

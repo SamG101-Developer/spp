@@ -17,8 +17,7 @@ import spp.lex.tokens;
 import spp.utils.files;
 import cli11;
 import genex;
-import tomlplusplus;
-
+import tomlpp;
 
 inline constexpr spp::Str OUT_FOLDER = "out";
 inline constexpr spp::Str SRC_FOLDER = "src";
@@ -40,7 +39,6 @@ inline const spp::Str CONFIG_FILE_CONTENTS = R"(
 
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
-
 
 auto spp::cli::run_cli(
     const std::int32_t argc,
@@ -89,7 +87,6 @@ auto spp::cli::run_cli(
     return 0;
 }
 
-
 auto spp::cli::handle_init()
     -> void {
     // Check if the current directory is empty or not.
@@ -112,7 +109,6 @@ auto spp::cli::handle_init()
     utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
     utils::files::WriteFile(cwd / CONFIG_FILE, create_default_config_for(cwd.filename().display_string()));
 }
-
 
 auto spp::cli::handle_vcs()
     -> void {
@@ -165,7 +161,6 @@ auto spp::cli::handle_vcs()
     std::filesystem::current_path(cwd);
 }
 
-
 auto spp::cli::handle_build(
     Str const &mode,
     const bool skip_vcs)
@@ -198,7 +193,6 @@ auto spp::cli::handle_build(
     c.Compile();
 }
 
-
 auto spp::cli::handle_run(
     Str const &mode)
     -> void {
@@ -208,7 +202,6 @@ auto spp::cli::handle_run(
     // Run the executable.
     // TODO
 }
-
 
 auto spp::cli::handle_clean(
     Str const &mode)
@@ -226,7 +219,6 @@ auto spp::cli::handle_clean(
     }
 }
 
-
 auto spp::cli::handle_test()
     -> void {
     // Validate the project structure first.
@@ -234,7 +226,6 @@ auto spp::cli::handle_test()
 
     // TODO
 }
-
 
 auto spp::cli::handle_validate(
     const bool is_exe)
@@ -336,13 +327,11 @@ auto spp::cli::handle_validate(
     return true;
 }
 
-
 auto spp::cli::handle_version()
     -> void {
     // Print the version information.
     std::cout << "SPP version " << SPP_VERSION << "\n";
 }
-
 
 auto spp::cli::create_default_config_for(
     Str const &project_name)
@@ -353,7 +342,6 @@ auto spp::cli::create_default_config_for(
     contents.replace(pos, 1, project_name);
     return contents;
 }
-
 
 auto spp::cli::get_system_shared_library_extension()
     -> Str {
@@ -366,7 +354,6 @@ auto spp::cli::get_system_shared_library_extension()
     return "so";
 #endif
 }
-
 
 auto spp::cli::unit_test(
     Str const &mode,
@@ -385,7 +372,6 @@ auto spp::cli::unit_test(
     const auto c = compiler::Compiler::ForUnitTests(m, std::move(main_code));
     c->Compile();
 }
-
 
 auto spp::cli::format_default_file_contents(
     const StrView contents)

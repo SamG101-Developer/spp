@@ -27,6 +27,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.type_identifier_ast;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import genex;
 import opex.cast;
 
@@ -113,13 +114,13 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     if (not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr) {
         const auto m = genex::position(Elems | genex::views::ptr, [&multi_arg_skips](auto const &x) { return x == multi_arg_skips[0]; }) as USize;
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
-            | genex::views::transform([val](const auto i) {
+            | genex::to<Vec>()
+            | genex::views::transform([val](const auto i) -> Unique<ExpressionAst> {
                 auto id = MakeUnique<IdentifierAst>(val->PosEnd(), std::to_string(i));
                 auto rm = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
                 auto pf = MakeUnique<PostfixExpressionAst>(AstClone(val), std::move(rm));
                 return pf;
             })
-            | genex::views::cast_smart<ExpressionAst>()
             | genex::to<Vec>();
 
         bound_multi_skip = MakeUnique<ArrayLiteralExplicitElementsAst>(nullptr, std::move(new_elems), nullptr);

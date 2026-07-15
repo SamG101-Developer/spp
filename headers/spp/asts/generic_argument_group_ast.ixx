@@ -7,7 +7,7 @@ import spp.analyse.utils.type_utils; // Todo: refactor typedefs
 import spp.asts.ast;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl.unordered_dense;
+import ankerl;
 import std;
 
 namespace spp::asts {

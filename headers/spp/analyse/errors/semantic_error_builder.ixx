@@ -81,8 +81,8 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
             | genex::to<Vec>();
 
         // Format all the error strings by the correct formatter (file agnostic).
-        cast_error->messages = cast_error->ErrorInfo
-            | genex::views::zip(std::move(formatters))
+        cast_error->messages = genex::views::zip(cast_error->ErrorInfo, std::move(formatters))
+            | genex::to<Vec>()
             | genex::views::transform([this](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
             | genex::to<Vec>();
 

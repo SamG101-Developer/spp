@@ -28,7 +28,7 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ptr;
-import ankerl.unordered_dense;
+import ankerl;
 import genex;
 
 SPP_MOD_BEGIN

@@ -17,18 +17,21 @@ spp::utils::errors::ErrorFormatter::ErrorFormatter(Vec<lex::RawToken> tokens, St
 }
 
 auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
-    const std::size_t ast_start_pos,
-    const std::size_t ast_size,
+    std::size_t ast_start_pos,
+    std::size_t ast_size,
     Str &&tag_message)
     -> std::tuple<Str, Str, Str, Str, Str> {
     using lex::RawTokenType;
     using namespace std::literals;
 
+    ast_size = ast_size > 1000 ? 1 : ast_size;
+    ast_start_pos = ast_start_pos > _Tokens.Len() ? _Tokens.Len() - 1 : ast_start_pos;
+
     // Synthetic/generated ASTs have no real source position (pos == 0 is the lexer's
     // prepended newline sentinel). Show a placeholder rather than pointing at the wrong line.
     if (ast_start_pos == 0) {
         return std::make_tuple(
-            _FilePath, "?"s, "<generated code>"s, ""s,
+            _FilePath, "?"_str, "<generated code>"_str, ""_str,
             " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message);
     }
 

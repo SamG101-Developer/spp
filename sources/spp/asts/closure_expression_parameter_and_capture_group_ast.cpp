@@ -19,6 +19,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
+import spp.utils.algorithms;
 import genex;
 
 SPP_MOD_BEGIN
@@ -69,11 +70,14 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    if (this == reinterpret_cast<ClosureExpressionParameterAndCaptureGroupAst*>(0x3b3ed10)) {
+        auto _ = 123;
+    }
+
     // Analyse the arguments against the outer scope's symbols (temp move asts).
     auto caps = CaptureGroup->Captures
         | genex::views::move
-        | genex::views::cast_smart<FunctionCallArgumentAst>()
-        | genex::to<Vec>();
+        | spp::views::cast_unique<FunctionCallArgumentAst>();
 
     const auto cap_group = MakeUnique<FunctionCallArgumentGroupAst>(
         nullptr, std::move(caps), nullptr);
@@ -85,8 +89,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
     CaptureGroup->Captures = cap_group->Args
         | genex::views::move
-        | genex::views::cast_smart<ClosureExpressionCaptureAst>()
-        | genex::to<Vec>();
+        | spp::views::cast_unique<ClosureExpressionCaptureAst>();
 
     // Analyse the parameters and captures.
     ParamGroup->Stage7_AnalyseSemantics(sm, meta);
@@ -101,8 +104,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory
     meta->CurrentLambdaOuterScope = sm->CurrentScope;
     auto caps = CaptureGroup->Captures
         | genex::views::move
-        | genex::views::cast_smart<FunctionCallArgumentAst>()
-        | genex::to<Vec>();
+        | spp::views::cast_unique<FunctionCallArgumentAst>();
     const auto cap_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(caps), nullptr);
     cap_group->Stage8_CheckMemory(sm, meta);
 
@@ -110,8 +112,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory
     sm->MoveToNextScope();
     CaptureGroup->Captures = cap_group->Args
         | genex::views::move
-        | genex::views::cast_smart<ClosureExpressionCaptureAst>()
-        | genex::to<Vec>();
+        | spp::views::cast_unique<ClosureExpressionCaptureAst>();
 
     // Check the parameters and captures.
     ParamGroup->Stage8_CheckMemory(sm, meta);

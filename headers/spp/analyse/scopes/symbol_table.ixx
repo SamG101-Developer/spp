@@ -4,7 +4,7 @@ module;
 export module spp.analyse.scopes.symbol_table;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl.unordered_dense;
+import ankerl;
 import std;
 
 namespace spp::analyse::scopes {

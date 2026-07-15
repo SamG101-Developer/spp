@@ -117,6 +117,7 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
     sup_scopes.Insert(sup_scopes.begin(), lhs_type_sym->LinkedScope);
     auto scopes_and_syms = sup_scopes
         | genex::views::transform([name=op_nested->Name.get()](auto &&x) { return MakePair(x, x->GetTypeSymbol(AstClone(name), true)); })
+        | genex::to<Vec>()
         | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
         | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
         | genex::to<Vec>();

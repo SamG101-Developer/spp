@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.cache;
-import ankerl.unordered_dense;
+import ankerl;
 import std;
 
 namespace spp::utils {

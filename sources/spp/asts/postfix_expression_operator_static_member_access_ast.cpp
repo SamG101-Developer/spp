@@ -92,9 +92,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
             return;
         }
 
-        auto scopes_and_syms = Vec{lhs_type_sym->LinkedScope}
-            | genex::views::concat(lhs_type_sym->LinkedScope->SupScopes())
+        auto scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope}, lhs_type_sym->LinkedScope->SupScopes()) | genex::to<Vec>())
             | genex::views::transform([name=Name.get()](auto &&x) { return MakePair(x, x->GetVarSymbol(AstCloneShared(name), true)); })
+            | genex::to<Vec>()
             | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
             | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
             | genex::to<Vec>();

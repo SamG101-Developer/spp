@@ -322,8 +322,8 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
     using namespace std::string_literals;
     // Create the module namespace as a list of strings.
     auto mod_ns = Vec<Str>(mod.path.begin(), mod.path.end());
-    if (genex::contains(mod_ns, "src"s)) {
-        const auto src_index = genex::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
+    if (genex::contains(mod_ns, "src"_str)) {
+        const auto src_index = genex::find(mod_ns, "src"_str) - mod_ns.begin() + 1z;
         mod_ns = Vec(mod_ns.begin() + src_index, mod_ns.end());
         mod_ns.Back().erase(mod_ns.Back().length() - 4);
     }

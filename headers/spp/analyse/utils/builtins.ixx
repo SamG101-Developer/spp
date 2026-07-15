@@ -3,7 +3,7 @@ import spp.analyse.utils.cmp_utils;
 import spp.utils.functions;
 import spp.utils.types;
 import std;
-import ankerl.unordered_dense;
+import ankerl;
 
 namespace spp::analyse::utils::builtins {
     struct LoweredFuncImpl {

@@ -53,8 +53,9 @@ spp::compiler::ModuleTree::ModuleTree(
     for (auto &&m : vcs_modules) {
         auto relative_path = std::filesystem::relative(m->path, m_vcs_path);
         auto inner_path = std::filesystem::path();
-        constexpr auto sep = std::filesystem::path::preferred_separator;
-        for (auto const &part : std::filesystem::path(relative_path.display_string() | genex::views::split(sep) | genex::views::drop(1) | genex::to<Vec>() | genex::views::join_with(sep) | genex::to<Str>())) {
+
+        relative_path = relative_path.lexically_relative(*relative_path.begin()); // strip first component.
+        for (auto const &part : relative_path) {
             inner_path /= part;
         }
 

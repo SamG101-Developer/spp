@@ -146,16 +146,16 @@ auto spp::asts::ModulePrototypeAst::Name() const
 
     // Check if "src" is in the file path.
     auto name = Str();
-    if (genex::contains(parts, "src"s)) {
+    if (genex::contains(parts, "src"_str)) {
         name = parts
             | genex::views::drop(genex::position(parts, [](auto const &x) { return x == "src"; }))
-            | genex::views::intersperse("::"s)
+            | genex::views::intersperse("::"_str)
             | genex::views::join
             | genex::to<Str>();
     }
     else {
-        name = Vec<Str>{parts[0], parts[1] + ".spp"_str}
-            | genex::views::intersperse("::"s)
+        name = Vec{parts[0], parts[1] + ".spp"_str}
+            | genex::views::intersperse("::"_str)
             | genex::views::join
             | genex::to<Str>();
     }

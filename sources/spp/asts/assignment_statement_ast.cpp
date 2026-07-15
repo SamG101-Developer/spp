@@ -115,7 +115,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
         | genex::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); });
 
     // Create quick access derefs for the looping.
-    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
+    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms) | genex::to<Vec>()) {
         auto const &[lhs_sym, _] = lhs_sym_and_scope;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.

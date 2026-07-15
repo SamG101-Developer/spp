@@ -80,10 +80,11 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
-import spp.utils.uid;
+import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl.unordered_dense;
+import spp.utils.uid;
+import ankerl;
 import genex;
 
 auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
@@ -325,9 +326,8 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
         }
 
         // If neither parameter list contains a required parameter, throw an error.
-        if (genex::operations::empty(params_new
-            | genex::views::ptr
-            | genex::views::concat(params_old | genex::views::ptr)
+        auto tmp = genex::views::concat(params_new | genex::views::ptr, params_old | genex::views::ptr) | genex::to<Vec>();
+        if (genex::operations::empty(tmp
             | genex::views::cast_dynamic<asts::FunctionParameterRequiredAst*>()
             | genex::to<Vec>())) {
             return old_fn;
@@ -1092,8 +1092,7 @@ auto spp::analyse::utils::func_utils::CreateCallablePrototype(
     auto dummy_return_type = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Out")->Val;
     auto dummy_param_types = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Args")->Val->TypeParts().Back()->GnArgGroup->GetTypeArgs()
         | genex::views::transform([](auto *g) { return MakeUnique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, g->Val); })
-        | genex::views::cast_smart<asts::FunctionParameterAst>()
-        | genex::to<Vec>();
+        | spp::views::cast_unique<asts::FunctionParameterAst>();
 
     // Create a function prototype based off of the parameter and return type.
     // Todo: When might it be a coroutine, not a subroutine?

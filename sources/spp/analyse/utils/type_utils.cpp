@@ -50,6 +50,7 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
+import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
@@ -640,6 +641,10 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
     using asts::generate::common_types_precompiled::FWD_MUT;
     using asts::generate::common_types_precompiled::FWD_REF;
 
+    if (&type == reinterpret_cast<asts::TypeAst const *>(0x3112c5b0)) {
+        auto _ = 123;
+    }
+
     // Generic types do not have forward types, so return nullptr.
     const auto type_sym = sm.CurrentScope->GetTypeSymbol(type.shared_from_this());
     if (type_sym->IsGeneric) { return {nullptr, nullptr}; }
@@ -1016,12 +1021,12 @@ auto spp::analyse::utils::type_utils::RegisterGenericSyms(
     asts::meta::CompilerMetaData *meta)
     -> void {
     // Register the type symbols to the scope.
-    for (auto const &e : external_generic_syms | genex::views::cast_smart<scopes::TypeSymbol>()) {
+    for (auto const &e : external_generic_syms | spp::views::cast_shared<scopes::TypeSymbol>()) {
         scope->AddTypeSymbol(e);
     }
 
     // Register the variable symbols to the scope.
-    for (auto const &e : external_generic_syms | genex::views::cast_smart<scopes::VariableSymbol>()) {
+    for (auto const &e : external_generic_syms | spp::views::cast_shared<scopes::VariableSymbol>()) {
         scope->AddVarSymbol(e);
     }
 
@@ -1031,14 +1036,14 @@ auto spp::analyse::utils::type_utils::RegisterGenericSyms(
         | genex::to<Vec>();
 
     // Register the created generic symbols to the scope.
-    for (auto const &e : generic_syms | genex::views::cast_smart<scopes::TypeSymbol>()) {
+    for (auto const &e : generic_syms | spp::views::cast_shared<scopes::TypeSymbol>()) {
         const auto old = scope->RemTypeSymbol(e->Name);
         if (old) { e->GenericConstraints = asts::AstCloneVecShared(old->GenericConstraints); }
         scope->AddTypeSymbol(e);
     }
 
     // Register the created generic symbols to the scope.
-    for (auto const &e : generic_syms | genex::views::cast_smart<scopes::VariableSymbol>()) {
+    for (auto const &e : generic_syms | spp::views::cast_shared<scopes::VariableSymbol>()) {
         scope->RemVarSymbol(e->Name);
         scope->AddVarSymbol(e);
     }
