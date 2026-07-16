@@ -268,7 +268,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     meta->Save();
     meta->CmpArgs = std::move(arg_map);
     auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope()); // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
-    tm.Reset(tm.CurrentScope->Children[0].get());
+    tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
     meta->Restore();
 }
