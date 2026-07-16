@@ -56,5 +56,7 @@ use std::cast::From
 use std::generator::Gen
 use std::generator::GenOnce
 use std::copy::Copy
+use std::view::View
+use std::future::Fut
 )";
 }
