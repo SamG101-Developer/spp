@@ -378,6 +378,38 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
         }
     }
 
+    // If this is a !compiler_builtin function, swap in the lowered implementation now (stage 6), so that the lowered
+    // (comptime) body is available to any dependent Stage9_CompTimeResolve regardless of definition order. Doing this in
+    // Stage7 made it order-dependent: a comptime call site (eg `[a; 1_uz + 2_uz]` lowering to `intrinsics::add`) could be
+    // resolved before the target prototype's Stage7 had run, leaving no lowered impl to evaluate.
+    if (BuiltinAnnotation) {
+        auto scope_vec = sm->CurrentScope->ParentModule()->Ancestors()
+            | genex::views::transform([](auto const &x) { return x->NameAsString(); })
+            | genex::to<Vec>()
+            | genex::views::reverse
+            | genex::views::drop(1)
+            | genex::views::intersperse(Str("::"))
+            | genex::to<Vec>();
+        auto scope_str = genex::fold_left_first(scope_vec, std::plus<Str>{});
+        scope_str.append("::").append(Name->Val);
+
+        auto lowered_impl = FunctionImplementationLoweredAst::NewEmpty();
+        lowered_impl->SetScopePtr(scope_str);
+        Impl = std::move(lowered_impl);
+    }
+
+    // if (not analyse::utils::builtins::BUILTIN_FUNCS.contains(scope_str)) {
+    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
+    //         .with_args(*no_impl_annotation, "compiler_builtin function '" + scope_str + "' is not registered in BUILTIN_FUNCS")
+    //         .raises_from(sm->CurrentScope);
+    // }
+
+    // if (tok_cmp != nullptr and analyse::utils::builtins::BUILTIN_FUNCS.at(scope_str).cmp_fn == nullptr) {
+    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
+    //         .with_args(*tok_cmp, "compiler_builtin function '" + scope_str + "' missing builtin comptime implementation")
+    //         .raises_from(sm->CurrentScope);
+    // }
+
     // Move out of the function scope, as it is now complete.
     sm->MoveOutOfCurrentScope();
 }
@@ -404,34 +436,8 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
     // Analyse the generic parameter group, and the parameter group.
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
-    // If this is a !compiler_builtin function, ensure a key exists in the "BUILTINS".
-    if (BuiltinAnnotation) {
-        auto scope_vec = sm->CurrentScope->ParentModule()->Ancestors()
-            | genex::views::transform([](auto const &x) { return x->NameAsString(); })
-            | genex::to<Vec>()
-            | genex::views::reverse
-            | genex::views::drop(1)
-            | genex::views::intersperse(Str("::"))
-            | genex::to<Vec>();
-        auto scope_str = genex::fold_left_first(scope_vec, std::plus<Str>{});
-        scope_str.append("::").append(Name->Val);
-
-        auto lowered_impl = FunctionImplementationLoweredAst::NewEmpty();
-        lowered_impl->SetScopePtr(scope_str);
-        Impl = std::move(lowered_impl);
-
-        // if (not analyse::utils::builtins::BUILTIN_FUNCS.contains(scope_str)) {
-        //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
-        //         .with_args(*no_impl_annotation, "compiler_builtin function '" + scope_str + "' is not registered in BUILTIN_FUNCS")
-        //         .raises_from(sm->CurrentScope);
-        // }
-
-        // if (tok_cmp != nullptr and analyse::utils::builtins::BUILTIN_FUNCS.at(scope_str).cmp_fn == nullptr) {
-        //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
-        //         .with_args(*tok_cmp, "compiler_builtin function '" + scope_str + "' missing builtin comptime implementation")
-        //         .raises_from(sm->CurrentScope);
-        // }
-    }
+    // Note: the !compiler_builtin lowered-implementation swap now happens in Stage6_PreAnalyseSemantics, so that the
+    // lowered comptime body is available to dependent Stage9_CompTimeResolve calls regardless of definition order.
 
     // There is no scope exit, as subclasses will call this method, and finish the analysis themselves.
 }
