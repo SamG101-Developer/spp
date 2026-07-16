@@ -106,6 +106,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ToString() const
     -> Str {
     SPP_STRING_START;
+    if (_TransformedAst != nullptr) {
+        SPP_STRING_APPEND(_TransformedAst);
+        SPP_STRING_END;
+    }
     SPP_STRING_APPEND(GnArgGroup);
     SPP_STRING_APPEND(FnArgGroup);
     SPP_STRING_APPEND(Fold);
