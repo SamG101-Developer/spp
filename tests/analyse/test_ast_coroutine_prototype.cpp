@@ -169,9 +169,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     CoroutinePrototypeAst,
     test_auto_unwrap_vector, R"(
     fun f() -> Void {
-        let mut vec = Vec[StrView]()
-        vec.append("hello")
-        vec.append("world")
+        let mut vec = Vec[Str]()
+        vec.append(Str::from("hello"))
+        vec.append(Str::from("world"))
 
         let mut elem1 = vec.index_ref(0_uz)
         let mut elem2 = vec.index_ref(1_uz)

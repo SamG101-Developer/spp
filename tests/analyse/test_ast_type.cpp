@@ -194,8 +194,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let x: TypeC[S32]::InnerC[StrView]::InnerB[Bool]::InnerA[U64]
-        x = (10, "hello", false, 10_u64)
+        let x: TypeC[S32]::InnerC[Str]::InnerB[Bool]::InnerA[U64]
+        x = (10, Str::from("hello"), false, 10_u64)
     }
 )");
 
@@ -205,11 +205,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TypeA { }
     sup TypeA {
         !public
-        type X = StrView
+        type X = Str
     }
 
     fun f(a: TypeA::X) -> TypeA::X {
-        ret "hello world"
+        ret Str::from("hello world")
     }
 )");
 
@@ -219,7 +219,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Base { }
     sup Base {
         !public
-        type X = StrView
+        type X = Str
     }
 
     cls C { }
@@ -227,7 +227,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x: C::X
-        x = "hello"
+        x = Str::from("hello")
     }
 )");
 
@@ -238,7 +238,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls Base1 { }
     sup Base1 {
         !public
-        type X = StrView
+        type X = Str
     }
 
     cls Base2 { }

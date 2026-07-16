@@ -278,7 +278,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericInference_CrossApplication,
     test_valid_cross_application_type_default_references_type_param, R"(
-    cls Container[T, U = Vec[T]] { a: U }
+    cls Container[T, U = Vec[T]] { !public a: U }
 
     fun g() -> Void {
         let mut x = Container[S32]()
@@ -289,7 +289,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericInference_CrossApplication,
     test_valid_cross_application_in_function_inference, R"(
-    fun f[T, U = Vec[T]](a: T) -> U { }
+    fun f[T, U = Vec[T]](a: T) -> U { ret U() }
 
     fun g() -> Void {
         let mut x = f(123)
@@ -300,7 +300,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericInference_CrossApplication,
     test_valid_cross_application_type_and_comp, R"(
-    cls Foo[T, cmp n: USize, U = Arr[T, n + 1]] { a: U }
+    cls Foo[T, cmp n: USize, U = Arr[T, n + 1]] { !public a: U }
 
     fun g() -> Void {
         let mut x = Foo[S32, 3_uz]()

@@ -32,22 +32,22 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_simple_alias, R"(
-    type MyString = StrView
+    type MyString = Str
     type MyBool = Bool
 
     fun f(a: MyString, b: MyBool) -> Void { }
-    fun g() -> Void { f("hello", true) }
+    fun g() -> Void { f(Str::from("hello"), true) }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_local_simple_alias, R"(
     fun f() -> Void {
-        type MyString = StrView
+        type MyString = Str
         type MyBool = Bool
 
         let x: (MyString, MyBool)
-        x = ("hello", true)
+        x = (Str::from("hello"), true)
     }
 )");
 

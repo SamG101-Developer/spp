@@ -93,7 +93,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_ref_iterator_use_ref, R"(
     fun f(mut v: Vec[StrView]) -> Void {
         loop x in v.iter_ref() {
-            let l = v.length()
+            let l = v.len()
         }
     }
 )");

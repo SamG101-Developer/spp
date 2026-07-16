@@ -215,12 +215,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_cmp_statement_override, R"(
     cls A { }
     sup A {
-        !public cmp x: Str = "hello world"
+        !public cmp x: &StrView = "hello world"
     }
 
     cls B { }
     sup B ext A {
-        cmp x: Str = "goodbye world"
+        cmp x: &StrView = "goodbye world"
     }
 )");
 
