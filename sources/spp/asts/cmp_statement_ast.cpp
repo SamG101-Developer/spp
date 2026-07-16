@@ -118,7 +118,6 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
     // Note: we don't block second class borrows here, because &StrView for example works with the string literal. As it
     // otherwise impossible to assign borrows in the cmp context, unless from other cmp borrows, this is safe (cmp
     // coroutines are not a thing)
-    using analyse::errors::SppSecondClassBorrowViolationError;
     using analyse::utils::type_utils::IsTypeBorrowed;
     for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
 
