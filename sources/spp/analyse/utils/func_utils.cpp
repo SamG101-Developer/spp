@@ -948,7 +948,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
         if (genex::contains(type_i_names, *cast_name, genex::meta::deref)) { continue; }
         auto def_type = opt_param->DefaultVal;
         auto def_type_raw = def_type->WithoutGenerics();
-        if (auto def_sym = sm.CurrentScope->GetTypeSymbol(def_type_raw); def_sym != nullptr and meta.CurrentStage > 4) {
+        if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw); def_sym != nullptr and meta.CurrentStage > 4) {
             auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
             if (not type_utils::IsTypeSelf(*def_type)) {
                 temp = temp->WithGenerics(asts::AstClone(def_type->TypeParts().Back()->GnArgGroup));
