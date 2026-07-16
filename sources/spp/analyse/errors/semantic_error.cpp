@@ -434,7 +434,7 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
     AddHeaders(34, "Identifier Unknown Error");
     AddErr(&name, "Unknown " + INLINE_INFO(Str(what)) + " introduced here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     AddFooter(
-        "The " + INLINE_NOTE(Str(what)) + " is not defined in the current scope.",
+        "The " + INLINE_NOTE(Str(what)) + " of " + INLINE_NOTE(name.ToString()) +  " is not defined in the current scope.",
         "Define the identifier or correct its name.");
 }
 
