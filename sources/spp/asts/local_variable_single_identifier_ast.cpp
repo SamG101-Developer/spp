@@ -131,7 +131,10 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
     meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
 
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
-    var_sym->CompTimeValue = std::move(meta->CmpResult);
+    if (var_sym != nullptr) {
+        // Can be nullptr for the materialization into $ symbols.
+        var_sym->CompTimeValue = std::move(meta->CmpResult);
+    }
     meta->Restore();
 }
 
