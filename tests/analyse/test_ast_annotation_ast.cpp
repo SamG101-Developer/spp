@@ -10,9 +10,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst_BuiltinVirtualMethod,
-    test_invalid_usage_on_function, R"(
+    test_invalid_usage_on_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !virtual_method
     fun f() -> Void { }
 )");
@@ -27,9 +28,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst_BuiltinAbstractMethod,
-    test_invalid_usage_on_function, R"(
+    test_invalid_usage_on_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !abstract_method
     fun f() -> Void { }
 )");
@@ -326,7 +328,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 
     !annotation(target=Annotation::function)
-    cmp fun aaa(x: StrView) -> A { }
+    cmp fun aaa(x: &StrView) -> A { }
 
     !aaa
     fun f() -> A { }
@@ -361,7 +363,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
 
     !annotation(target=Annotation::function)
-    cmp fun my_annotation(a: StrView) -> Void { }
+    cmp fun my_annotation(a: &StrView) -> Void { }
 
     !my_annotation("hello world")
     fun f() -> Void { }

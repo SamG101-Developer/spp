@@ -19,7 +19,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_incorrect_type_variant_destructure,
     SppTypeMismatchError, R"(
     fun f() -> Void {
-        let a: StrView or Bool = "hello"
+        let a: Str or Bool = Str::from("hello")
         case a is S32() { }
     }
 )");
@@ -55,7 +55,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_type_variant, R"(
     fun f() -> Void {
-        let a: StrView or Bool = "hello"
+        let a: Str or Bool = Str::from("hello")
         case a is StrView(..) { }
     }
 )");

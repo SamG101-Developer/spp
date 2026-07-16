@@ -35,7 +35,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorStaticMemberAccessAst,
     test_valid_field_on_namespace, R"(
     fun f() -> Void {
-        std::io::print("hello")
+        std::console::print("hello")
     }
 )");
 
@@ -44,7 +44,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_field_on_namespace,
     SppIdentifierUnknownError, R"(
     fun f() -> Void {
-        std::io::ppp(&"hello")
+        std::console::ppp(&"hello")
     }
 )");
 

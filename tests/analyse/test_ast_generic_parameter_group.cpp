@@ -94,12 +94,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstGenericParameterGroup,
     test_invalid_order_var_req_comp,
     SppOrderInvalidError, R"(
-    cls A[..cmp n: StrView, cmp m: S32] {}
+    cls A[cmp ..n: StrView, cmp m: S32] {}
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstGenericParameterGroup,
     test_invalid_order_var_opt_comp,
     SppOrderInvalidError, R"(
-    cls A[..cmp n: StrView, cmp m: StrView = "hello"] {}
+    cls A[cmp ..n: StrView, cmp m: StrView = "hello"] {}
 )");

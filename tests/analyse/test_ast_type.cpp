@@ -61,61 +61,49 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant, R"(
-    fun f(mut a: StrView or Bool) -> Void { a = "hello" }
+    fun f(mut a: Str or Bool) -> Void { a = Str::from("hello") }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_default, R"(
-    fun f(a: StrView or Bool = "hello") -> Void { }
+    fun f(a: Str or Bool = Str::from("hello")) -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_1, R"(
-    fun f(mut a: (StrView,)) -> Void { a = ("hello",) }
+    fun f(mut a: (Str,)) -> Void { a = (Str::from("hello"),) }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_n, R"(
-    fun f(mut a: (StrView, Bool)) -> Void { a = ("hello", true) }
+    fun f(mut a: (Str, Bool)) -> Void { a = (Str::from("hello"), true) }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_default, R"(
-    fun f(a: (StrView, Bool) = ("hello", true)) -> Void { }
+    fun f(a: (Str, Bool) = (Str::from("hello"), true)) -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_array, R"(
-    fun f(mut a: [StrView; 3_uz]) -> Void { a = ["hello", "world", "!"] }
+    fun f(mut a: [Bool; 3_uz]) -> Void { a = [false, false, false] }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_array_default, R"(
-    fun f(a: [StrView; 3_uz] = ["hello", "world", "!"]) -> Void { }
-)");
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeAst,
-    test_valid_type_shorthand_slice, R"(
-    fun f(mut a: [StrView]) -> Void { a = Slice[StrView]::from(["hello", "world", "!"]) }
-)");
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeAst,
-    test_valid_type_shorthand_slice_default, R"(
-    fun f(a: [StrView] = Slice[StrView]::from(["hello", "world", "!"])) -> Void { }
+    fun f(a: [false; 3_uz] = [false, false, false]) -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_function_type_with_function_call_1, R"(
-    fun f(a: FunRef[(StrView, StrView), Bool]) -> Void {
+    fun f(a: FunRef[(&StrView, &StrView), Bool]) -> Void {
         let mut x = a("hello", "world")
         x = false
     }
@@ -136,12 +124,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls MyType { }
     sup MyType {
         !public
-        type X = StrView
+        type X = Str
     }
 
     fun f() -> Void {
         let x: MyType::X
-        x = "hello"
+        x = Str::from("hello")
     }
 )");
 

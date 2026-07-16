@@ -481,9 +481,23 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_postfix_expression_step_keyword, R"(
+    parse_postfix_expression_res_keyword, R"(
     fun my_function() -> Void {
-        generator.step
+        generator.res()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(
+    parse_postfix_expression_index, R"(
+    fun my_function() -> Void {
+        vec[0_uz]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(
+    parse_postfix_expression_slice, R"(
+    fun my_function() -> Void {
+        generator[0_uz to 1_uz]
     }
 )");
 
@@ -907,13 +921,6 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_type_array, R"(
     fun my_function() -> Void {
         let a: [S32; 5]
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_type_slice, R"(
-    fun my_function() -> Void {
-        let a: [S32]
     }
 )");
 

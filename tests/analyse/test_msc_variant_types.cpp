@@ -95,10 +95,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
     test_variant_including_a_borrowed_type_1,
     SppSecondClassBorrowViolationError, R"(
-    fun f(a: &StrView or U64 or Bool) -> StrView {
+    fun f(a: &StrView or U64 or Bool) -> Str {
         ret case a of {
-            is &StrView(..) { a@ }
-            else { "hello world" }
+            is &StrView(..) { Str::from(a) }
+            else { Str::from("hello world") }
         }
     }
 )");
@@ -108,19 +108,19 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_variant_including_a_borrowed_type_2,
     SppSecondClassBorrowViolationError, R"(
     fun f(a: Str or &mut U64 or Bool) -> Str {
-        ret a
+        ret Str::from("hello")
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_and_tuple_combination, R"(
-    fun g(a: (Opt[StrView], U64)) -> StrView {
-        ret "hello world"
+    fun g(a: (Opt[Str], U64)) -> Str {
+        ret Str::from("hello world")
     }
 
     fun f() -> Void {
-        let t = (Some(val="hello world"), 123_u64)
+        let t = (Some(val=Str::from("hello world")), 123_u64)
         let a = g(t)
     }
 )");
@@ -174,8 +174,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_as_array_element, R"(
-    fun f(mut a: [Bool or StrView; 2_uz]) -> Void {
-        a = [true, "hello"]
+    fun f(mut a: [Bool or Str; 2_uz]) -> Void {
+        a = [true, Str::from("hello")]
     }
 )");
 

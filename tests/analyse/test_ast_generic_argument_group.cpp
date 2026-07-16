@@ -157,7 +157,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = g[StrView]()
-        x.push_back(element="hello")
+        x.append(element="hello")
     }
 )");
 

@@ -11,24 +11,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cmp x: S32 = false
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CmpStatementAst,
-    test_invalid_type_convention_mut,
-    SppSecondClassBorrowViolationError, R"(
-    cmp x: &mut S32 = 1
-)");
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CmpStatementAst,
-    test_invalid_type_convention_ref,
-    SppSecondClassBorrowViolationError, R"(
-    cmp x: &S32 = 1
-)");
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CmpStatementAst,
     test_valid_value_literal, R"(
     cmp x: S32 = 1
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CmpStatementAst,
+    test_valid_value_strview_borrow, R"(
+    cmp x: &StrView = "hello"
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(

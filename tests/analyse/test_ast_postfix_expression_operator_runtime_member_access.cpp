@@ -72,18 +72,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_valid_array_index, R"(
-    fun f(p: [StrView; 2_uz]) -> Void {
+    fun f(p: [Bool; 2_uz]) -> Void {
         let mut x = p.0
-        x = "hello world"
+        x = false
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_valid_array_index_type_check, R"(
-    fun f(p: [StrView; 2_uz]) -> Void {
+    fun f(p: [Bool; 2_uz]) -> Void {
         let mut x = p.0
-        x = "hello world"
+        x = false
     }
 )");
 
@@ -137,7 +137,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(p: Point) -> Void {
         let mut x = p.x
-        x = "hello world"
+        x = Str::from("hello world")
     }
 )");
 
@@ -152,7 +152,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f(p: Point) -> Void {
         let mut x = p.x
-        x = 123
+        x = false
     }
 )");
 

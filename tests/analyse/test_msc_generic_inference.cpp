@@ -76,7 +76,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_infer_from_mutable_borrow, R"(
     fun f[T](a: &mut T) -> T { ret T() }
 
-    fun g(x: S32) -> Void {
+    fun g(mut x: S32) -> Void {
         let mut y = f(&mut x)
         y = 123
     }
@@ -110,8 +110,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[T, U = Bool](a: T) -> U { ret U() }
 
     fun g() -> Void {
-        let mut x = f[U=StrView](123)
-        x = "hello"
+        let mut x = f[U=Str](123)
+        x = Str::from("hello")
     }
 )");
 
@@ -267,7 +267,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericInference_Constraint,
     test_valid_infer_generic_from_constraint_functional, R"(
-    fun f[U, F: FunRef[(), U](f: F) -> U { ret U() }
+    fun f[U, F: FunRef[(), U]](f: F) -> U { ret U() }
 
     fun g() -> Void {
         let mut x = f(() 123)

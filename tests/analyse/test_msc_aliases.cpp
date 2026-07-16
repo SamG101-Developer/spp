@@ -96,7 +96,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_simple, R"(
-    sup S32 ext From[S32, std::string::Str] {
+    sup S32 ext From[std::string::Str] {
         !public fun from(that: std::string::Str) -> S32 {
             ret 0
         }
@@ -114,7 +114,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_complex, R"(
     type MyVec[ZZ] = std::vector::Vec[ZZ]
 
-    sup MyVec[S32] ext From[MyVec[S32], std::string::Str] {
+    sup MyVec[S32] ext From[std::string::Str] {
         !public fun from(that: std::string::Str) -> MyVec[S32] {
             ret MyVec[S32]::new()
         }
@@ -134,7 +134,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_number, R"(
-    sup Str ext From[Str, S32] {
+    sup Str ext From[S32] {
         !public fun from(that: S32) -> Str {
             ret Str::from("test")
         }

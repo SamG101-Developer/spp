@@ -219,7 +219,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
-    test_valid_assign_multi, R"("
+    test_valid_assign_multi, R"(
     fun f() -> Void {
         let mut a = 1
         let mut b = 2
@@ -229,7 +229,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
-    test_valid_assign_with_mutable_deref, R"("
+    test_valid_assign_with_mutable_deref, R"(
     fun f(x: &mut S32) -> Void {
         x@ = 123
     }
@@ -237,16 +237,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
-    test_valid_assign_with_mutable_index_deref, R"("
+    test_valid_assign_with_mutable_index_deref, R"(
     fun f(x: &mut Vec[S32]) -> Void {
-        x[mut 0]@ = 123
+        x[mut 0_uz]@ = 123
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AssignmentStatementAst,
     test_invalid_assign_with_immutable_deref,
-    SppInvalidMutationError, R"("
+    SppInvalidMutationError, R"(
     fun f(x: &S32) -> Void {
         x@ = 123
     }
@@ -255,34 +255,34 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AssignmentStatementAst,
     test_invalid_assign_with_immutable_index_deref,
-    SppInvalidMutationError, R"("
+    SppInvalidMutationError, R"(
     fun f(x: &mut Vec[S32]) -> Void {
-        x[0]@ = 123
+        x[0_uz]@ = 123
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
-    test_valid_assign_into_mutable_slice, R"("
-    fun f(x: &mut Vec[S32], v: View[S32]) -> Void {
-        x[mut 0 to 2]@ = v
+    test_valid_assign_into_mutable_slice, R"(
+    fun f(x: &mut Vec[S32], v: &View[S32]) -> Void {
+        x[mut 0_uz to 2_uz]@ = v
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AssignmentStatementAst,
     test_invalid_assign_into_immutable_slice,
-    SppInvalidMutationError, R"("
-    fun f(x: &mut Vec[S32], v: View[S32]) -> Void {
-        x[0 to 2]@ = v
+    SppInvalidMutationError, R"(
+    fun f(x: &mut Vec[S32], v: &View[S32]) -> Void {
+        x[0_uz to 2_uz]@ = v
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AssignmentStatementAst,
     test_invalid_assign_into_mutable_slice_type_mismatch,
-    SppTypeMismatchError, R"("
+    SppTypeMismatchError, R"(
     fun f(x: &mut Vec[S32]) -> Void {
-        x[mut 0 to 2]@ = 123
+        x[mut 0_uz to 2_uz]@ = 123
     }
 )");

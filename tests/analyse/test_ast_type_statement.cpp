@@ -63,9 +63,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_local_variant, R"(
     fun f() -> Void {
-        type SomeType = StrView or Bool
+        type SomeType = Str or Bool
         let x: SomeType
-        x = "hello"
+        x = Str::from("hello")
     }
 )");
 

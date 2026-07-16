@@ -51,7 +51,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let x: MyType[S32]::X
-        x = "hello world"
+        x = Str::from("hello world")
     }
 )");
 
@@ -60,12 +60,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_sup_type_statement, R"(
     cls MyType { }
     sup MyType {
-        type X = StrView
+        type X = Str
     }
 
     fun f() -> Void {
         let x: MyType::X
-        x = "hello world"
+        x = Str::from("hello world")
     }
 )");
 
@@ -74,7 +74,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_sup_type_statement_nested, R"(
     cls MyType1 { }
     sup MyType1 {
-        type Z = StrView
+        type Z = Str
     }
 
     cls MyType2 { }
@@ -89,7 +89,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x: MyType3::X::Y::Z
-        x = "hello world"
+        x = Str::from("hello world")
     }
 )");
 
@@ -155,11 +155,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_sup_type_statement_variant, R"(
     cls MyType { }
     sup MyType {
-        type X = StrView or Bool
+        type X = Str or Bool
     }
 
     fun f() -> Void {
         let x: MyType::X
-        x = "hello world"
+        x = Str::from("hello world")
     }
 )");

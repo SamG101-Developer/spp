@@ -23,9 +23,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_loop_assign_to_iterator,
     SppTypeMismatchError, R"(
     fun f() -> Void {
-        let mut v = Vec[StrView]()
+        let mut v = Vec[Str]()
         loop mut x in v.iter_mut() {
-            x = "hello"
+            x = Str::from("hello")
         }
     }
 )");
@@ -56,9 +56,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopConditionIterableAst,
     test_valid_loop_condition_iterable_move, R"(
     fun f() -> Void {
-        let v = Vec[StrView]()
+        let v = Vec[Str]()
         loop mut x in v.iter_mov() {
-            x = "hello"
+            x = Str::from("hello")
         }
     }
 )");
@@ -87,8 +87,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopConditionIterableAst,
     test_valid_loop_condition_iterable_destructure_tuple, R"(
-    cor gen_pairs() -> Gen[(Str, Str)] {
-        gen ("hello", "world")
+    cor gen_pairs() -> Gen[(Bool, Bool)] {
+        gen (false, false)
     }
 
     fun f() -> Void {

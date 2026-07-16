@@ -3,11 +3,11 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_assignment, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Void {
-        let mut x = "hello world"
+        let mut x = Str::from("hello world")
         x = g()
     }
 )");
@@ -15,7 +15,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_let_statement, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Void {
@@ -26,7 +26,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_return_statement, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Bool {
@@ -37,7 +37,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_gen_expression, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     cor f() -> Gen[Bool] {
@@ -54,21 +54,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [Target] To[Target] {
         !abstract_method
         !public
-        fun to(&self) -> Target {  }
+        fun into(&self) -> Target { }
     }
 
-    sup MyType ext To[StrView] {
-        fun to(&self) -> StrView { ret "" }
+    sup MyType ext To[Str] {
+        fun into(&self) -> Str { ret Str::from("") }
     }
 
     sup MyType ext To[Bool] {
-        fun to(&self) -> Bool { ret false }
+        fun into(&self) -> Bool { ret false }
     }
 
     fun f() -> Void {
         let mut x = MyType()
-        let string: StrView = x.to()
-        let boolean: Bool = x.to()
+        let string: StrView = x.into()
+        let boolean: Bool = x.into()
     }
 )");
 
@@ -80,7 +80,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a: Bool
     }
 
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Void {
@@ -96,7 +96,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a: T
     }
 
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Void {
@@ -113,7 +113,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         a: T
     }
 
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Void {
@@ -124,7 +124,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_function_parameter, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
     fun h(x: Bool) -> Void { }
 
@@ -137,9 +137,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestReturnTypeOverloading,
     test_invalid_return_type_overloading_infer_from_function_parameter,
     SppFunctionCallOverloadAmbiguousError, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
-    fun h(x: StrView) -> Void { }
+    fun h(x: &StrView) -> Void { }
     fun h(x: Bool) -> Void { }
 
     fun f() -> Void {
@@ -151,7 +151,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestReturnTypeOverloading,
     test_invalid_return_type_overloading_no_context,
     SppFunctionCallOverloadAmbiguousError, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Void {
@@ -163,7 +163,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestReturnTypeOverloading,
     test_invalid_return_type_overloading_target_matches_no_overload,
     SppFunctionCallOverloadAmbiguousError, R"(
-    fun g() -> StrView { ret "" }
+    fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
     fun f() -> Void {

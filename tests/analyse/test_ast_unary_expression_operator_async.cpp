@@ -22,7 +22,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_moving_pinned_borrow,
     SppMovingEscapingBorrowedMemoryError, R"(
-    fun f(a: &Str) -> StrView { ret "hello" }
+    fun f(a: &StrView) -> Str { ret Str::from(a) }
     fun g() -> Void {
         let x = Str::from("hello")
         let future = async f(&x)
@@ -34,8 +34,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_moving_future_with_pins_ret,
     SppMovingEscapingBorrowedMemoryError, R"(
-    fun f(a: &Str) -> StrView { ret "hello" }
-    fun g() -> Fut[StrView] {
+    fun f(a: &StrView) -> Str { ret Str::from(a) }
+    fun g() -> Fut[Str] {
         let x = Str::from("hello")
         let future = async f(&x)
         ret future
@@ -46,7 +46,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_postfix_not_a_call,
     SppAsyncTargetNotFunctionCallError, R"(
-    cls A { x: Bool }
+    cls A { !public x: Bool }
     fun g() -> Void {
         let a = A(x=true)
         async a.x
@@ -58,22 +58,22 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_async_method_call, R"(
     cls A { }
     sup A {
-        fun method(&self) -> StrView { ret "hello" }
+        fun method(&self) -> Str { ret Str::from("hello") }
     }
     fun g() -> Void {
         let a = A()
         let mut x = async a.method()
-        x = Fut[StrView]()
+        x = Fut[Str]()
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
     test_valid_async_good_target, R"(
-    fun f() -> StrView { ret "hello" }
+    fun f() -> Str { ret Str::from("hello") }
     fun g() -> Void {
         let mut x = async f()
-        x = Fut[StrView]()
+        x = Fut[Str]()
     }
 )");
 
@@ -82,7 +82,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_async_good_target_with_args, R"(
     fun f(a: &StrView) -> Void { }
     fun g() -> Void {
-        let mut x = async f(&"hello")
+        let mut x = async f("hello")
         x = Fut[Void]()
     }
 )");

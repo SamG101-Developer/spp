@@ -142,7 +142,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     cls B { }
     sup B ext A {
-        !public cmp x: std::string_view::StrView = "hello world"
+        !public cmp x: &std::string_view::StrView = "hello world"
     }
 )");
 
@@ -156,7 +156,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     sup A {
-        !public cmp x: std::string_view::StrView = "hello world"
+        !public cmp x: &std::string_view::StrView = "hello world"
     }
 )");
 
@@ -170,7 +170,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     cls C { }
     sup C {
-        !public cmp x: std::string_view::StrView = "hello world"
+        !public cmp x: &std::string_view::StrView = "hello world"
     }
 
     cls A { }

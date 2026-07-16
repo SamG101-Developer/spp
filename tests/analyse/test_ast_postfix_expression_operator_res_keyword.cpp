@@ -59,13 +59,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_generator_object_mov, R"(
-    cor g() -> Gen[Yield=S32, Send=StrView] {
+    cor g() -> Gen[Yield=S32, Send=Bool] {
         gen 1
     }
 
     fun f(mut c: S32) -> Void {
         let mut a = g()
-        let mut b = a.res("123")
+        let mut b = a.res(false)
         c = case b of {
             is S32(..) { b }
             else { c }
@@ -76,13 +76,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_generator_object_ref, R"(
-    cor g() -> Gen[Yield=&S32, Send=StrView] {
+    cor g() -> Gen[Yield=&S32, Send=Bool] {
         gen &1
     }
 
     fun f(mut c: &S32) -> Void {
         let mut a = g()
-        let mut b = a.res("123")
+        let mut b = a.res(false)
         c = case b of {
             is &S32(..) { b }
             else { c }
@@ -93,13 +93,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_generator_object_mut, R"(
-    cor g() -> Gen[Yield=&mut S32, Send=StrView] {
+    cor g() -> Gen[Yield=&mut S32, Send=Bool] {
         gen &mut 1
     }
 
     fun f(mut c: &mut S32) -> Void {
         let mut a = g()
-        let mut b = a.res("123")
+        let mut b = a.res(false)
         c = case b of {
             is &mut S32(..) { b }
             else { c }
@@ -126,13 +126,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_result_is_yield_type, R"(
-    cor g() -> Gen[Yield=S32, Send=StrView] {
+    cor g() -> Gen[Yield=S32, Send=Bool] {
         gen 1
     }
 
     fun f() -> Void {
         let mut a = g()
-        let b: S32 = a.res("123")
+        let b: S32 = a.res(false)
     }
 )");
 
@@ -140,13 +140,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_invalid_res_result_type_mismatch,
     SppTypeMismatchError, R"(
-    cor g() -> Gen[Yield=S32, Send=StrView] {
+    cor g() -> Gen[Yield=S32, Send=Bool] {
         gen 1
     }
 
     fun f() -> Void {
         let mut a = g()
-        let b: StrView = a.res("123")
+        let b: StrView = a.res(false)
     }
 )");
 

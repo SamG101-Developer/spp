@@ -103,7 +103,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureArrayAst,
     test_valid_nested_tuple, R"(
     fun f() -> Void {
-        let t = (1, "2")
+        let t = (1, Str::from("2"))
         let [(a, mut b), c] = [t, (3, "4")]
         b = "5"
     }

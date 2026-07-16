@@ -32,7 +32,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestForwarding,
     test_valid_forwarding_vec_indexing, R"(
     fun f(v: Vec[S32]) -> Void {
-        let x = v[0]
+        let x = v[0_uz]
     }
 )");
 
@@ -41,7 +41,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestForwarding,
     test_valid_forwarding_vec_slicing, R"(
     fun f(v: Vec[S32]) -> Void {
-        let s = v[0 to 2]
+        let s = v[0_uz to 2_uz]
     }
 )");
 
@@ -88,7 +88,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestForwarding,
     test_valid_forwarding_str_equality, R"(
     fun f(s: Str) -> Void {
-        let mut b = s == "hello"
+        let mut b = s == Str::from("hello")
         b = false
     }
 )");

@@ -30,7 +30,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f(mut v: Vec[StrView]) -> Void {
         loop x in v.iter_mov() {
-            v.push_back("hello")
+            v.append("hello")
         }
     }
 )");
@@ -41,7 +41,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     fun f(mut v: Vec[StrView]) -> Void {
         loop x in v.iter_mut() {
-            v.push_back("hello")
+            v.append("hello")
         }
     }
 )");
@@ -52,7 +52,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     fun f(mut v: Vec[StrView]) -> Void {
         loop x in v.iter_mut() {
-            v.push_back("hello")
+            v.append("hello")
         }
     }
 )");
@@ -63,7 +63,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     fun f(mut v: Vec[StrView]) -> Void {
         loop x in v.iter_ref() {
-            v.push_back("hello")
+            v.append("hello")
         }
     }
 )");
@@ -74,7 +74,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut v: Vec[StrView]) -> Void {
         loop x in v.iter_mut() {
         }
-        v.push_back("hello")
+        v.append("hello")
     }
 )");
 
@@ -83,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_mut_iterator_modify_owned_object_clone, R"(
     fun f(mut v: Vec[Str]) -> Void {
         loop x in v.clone().iter_mut() {
-            v.push_back(Str::from("hello world"))
+            v.append(Str::from("hello world"))
         }
     }
 )");

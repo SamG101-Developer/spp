@@ -68,7 +68,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_postfix_func_call_generic_conflict,
     SppFunctionCallNoValidSignaturesError, R"(
     fun f[T](a: T, b: T) -> Void {
-        f(1, "1")
+        f(1, false)
     }
 )");
 
@@ -176,7 +176,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_multiple, R"(
-    fun f[T, U](a: T, b: U) -> Void {
+    fun f[T, U](a: T, b: &U) -> Void {
         f(1, "1")
     }
 )");
@@ -305,8 +305,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_folding_1, R"(
-    fun f(a: S32) -> StrView {
-        ret "hello world"
+    fun f(a: S32) -> Bool {
+        ret false
     }
 
     fun g() -> Void {
@@ -348,8 +348,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionCallNoValidSignaturesError, R"(
     fun f(a: S32, b: S32) -> Void { }
     fun g() -> Void {
-        let x = (1, 2, 3, "4")
-        let y = (1, 2, 3, "4")
+        let x = (1, 2, 3, false)
+        let y = (1, 2, 3, false)
         f(x, y)..
     }
 )");
@@ -380,7 +380,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_fixed_type, R"(
-    fun g(a: StrView, ..b: Bool) -> Void {
+    fun g(a: &StrView, ..b: Bool) -> Void {
         ret
     }
 
@@ -392,7 +392,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_single_generic_type, R"(
-    fun g[T](a: StrView, ..b: T) -> Void {
+    fun g[T](a: &StrView, ..b: T) -> Void {
         ret
     }
 
@@ -404,7 +404,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_mixed_generic_type, R"(
-    fun g[..Ts](a: StrView, ..b: Ts) -> Void {
+    fun g[..Ts](a: &StrView, ..b: Ts) -> Void {
         ret
     }
 
@@ -416,7 +416,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_given_no_args, R"(
-    fun g(a: StrView, ..b: Bool) -> Void {
+    fun g(a: &StrView, ..b: Bool) -> Void {
         ret
     }
 
@@ -429,7 +429,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_variadic_mixed_arg_types,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun g(a: StrView, ..b: Bool) -> Void {
+    fun g(a: &StrView, ..b: Bool) -> Void {
         ret
     }
 

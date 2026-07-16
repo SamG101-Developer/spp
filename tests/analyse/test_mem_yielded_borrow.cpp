@@ -311,7 +311,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = generator_mut.res()
         let y = generator_mut.res()
         let z = case x of {
-            is &mut Str(..) { x.to_ascii_uppercase() }
+            is &mut Str(..) { x.to_uppercase() }
             else { Str::from("") }
         }
     }
@@ -331,7 +331,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = generator_ref.res()
         let y = generator_ref.res()
         let z = case x of {
-            is &Str(..) { x.to_ascii_uppercase() }
+            is &Str(..) { x.to_uppercase() }
             else { Str::from("") }
         }
     }

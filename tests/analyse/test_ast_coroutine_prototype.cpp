@@ -170,8 +170,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_auto_unwrap_vector, R"(
     fun f() -> Void {
         let mut vec = Vec[StrView]()
-        vec.push_back("hello")
-        vec.push_back("world")
+        vec.append("hello")
+        vec.append("world")
 
         let mut elem1 = vec.index_ref(0_uz)
         let mut elem2 = vec.index_ref(1_uz)
