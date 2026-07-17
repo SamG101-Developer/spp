@@ -111,8 +111,8 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
     gen &a
     gen &b  # symbol "a" is usable but is pinned.
     gen &c  # symbol "b" is usable but is pinned.
-    
-    # At this point, all 3 symbols, "a", "b" and "c" are pinned in the this 
+
+    # At this point, all 3 symbols, "a", "b" and "c" are pinned in the this
     # function. They remain fully initialized, and valid in both this function
     # (the yielder) and the receiver function.
 }
@@ -140,7 +140,7 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {
     
     # Because control is regained, "a" is pinned until the next yield ("b").
     # At this point, only "c" is pinned. It gets unpinned when the generator
-    # for this coroutine is destoryed, but at that point "c" is no longer 
+    # for this coroutine is destroyed, but at that point "c" is no longer 
     # usable anyway.
 }
 
