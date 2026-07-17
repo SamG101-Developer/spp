@@ -360,8 +360,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_object_initializer_argument_unnamed,
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
-        let data: Vec[U8]
-        let a = Str(data)
+        let bytes: Vec[U8]
+        let a = Str(bytes)
     }
 )");
 
@@ -370,8 +370,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_object_initializer_argument_named,
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
-        let data_vec: Vec[U8]
-        let a = Str(data=data_vec)
+        let bytes_vec: Vec[U8]
+        let a = Str(bytes=bytes_vec)
     }
 )");
 

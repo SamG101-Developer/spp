@@ -4,6 +4,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LoopConditionIterableAst,
     test_invalid_loop_condition_iterable_invalid_expression,
     SppInvalidPrimaryExpressionError, R"(
+    use std::iterator::Iterator
     fun f() -> Void {
         loop x in Iterator[Str] { }
     }
@@ -76,7 +77,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopConditionIterableAst,
     test_valid_loop_condition_iterable_over_coroutine, R"(
     cor gen_strings() -> Gen[Str] {
-        gen "hello"
+        gen Str::from("hello")
     }
 
     fun f() -> Void {

@@ -35,9 +35,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_value_comp_identifier_noncopyanle,
     SppMovingComptimeConstantMemoryError, R"(
     cls MyClass {
-        !public x: StrView
+        !public x: Bool
     }
-    cmp x: MyClass = MyClass(x="hello")
+    cmp x: MyClass = MyClass(x=false)
     cmp y: MyClass = x
 )");
 

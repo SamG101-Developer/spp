@@ -54,9 +54,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_variant, R"(
-    type SomeType = StrView or Bool
+    type SomeType = Str or Bool
     fun f(a: SomeType) -> Void { }
-    fun g() -> Void { f("hello") }
+    fun g() -> Void { f(Str::from("hello")) }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -80,8 +80,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun g() -> Void {
-        let x = Vec[StrView]()
-        f(x, "test")
+        let x = Vec[Str]()
+        f(x, Str::from("test"))
     }
 )");
 
@@ -90,7 +90,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_type_statement_local_generics_alias, R"(
     fun f() -> Void {
         type MyVec[T] = Vec[T]
-        let x = MyVec[StrView]()
+        let x = MyVec[Str]()
     }
 )");
 

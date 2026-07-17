@@ -56,7 +56,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_type_variant, R"(
     fun f() -> Void {
         let a: Str or Bool = Str::from("hello")
-        case a is StrView(..) { }
+        case a is Str(..) { }
     }
 )");
 

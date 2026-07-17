@@ -6,7 +6,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let mut x: Str
-        x.data = Vec[U8]()
+        x.bytes = Vec[U8]()
     }
 )");
 

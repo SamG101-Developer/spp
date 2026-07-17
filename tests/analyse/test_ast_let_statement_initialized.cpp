@@ -120,7 +120,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LetStatementInitializedAst,
     test_valid_variant_2_types, R"(
     fun f() -> Void {
-        let x: StrView or S32 = "hello world"
+        let x: Str or S32 = Str::from("hello world")
     }
 )");
 

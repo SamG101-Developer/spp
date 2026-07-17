@@ -17,7 +17,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_loop_with_memory_move_nested,
     SppUninitializedMemoryUseError, R"(
     cls SomeType {
-        a: Str
+        !public a: Str
     }
 
     fun f() -> Void {

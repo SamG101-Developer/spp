@@ -55,7 +55,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_use_whole_after_reinitializing_only_one_partial_move,
     SppPartiallyInitializedMemoryUseError, R"(
     cls Inner { !public str: StrView }
-    cls A { !public a: Inner, !public b: Inner }
+    cls A {
+        !public a: Inner
+        !public b: Inner
+    }
+
     fun f() -> Void {
         let mut x = A()
         let p = x.a

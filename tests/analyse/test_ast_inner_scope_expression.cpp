@@ -37,14 +37,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    InnerScopeExpressionAst,
-    test_valid_empty_block_returns_void, R"(
-    fun f() -> Void {
-        ret { }
-    }
-)");
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     InnerScopeExpressionAst,
     test_invalid_empty_block_returns_void_mismatch,

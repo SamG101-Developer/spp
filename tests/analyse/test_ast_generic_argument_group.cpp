@@ -156,8 +156,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let mut x = g[StrView]()
-        x.append(element="hello")
+        let mut x = g[]()
+        x.append(element=Str::from("hello"))
     }
 )");
 
@@ -169,7 +169,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let mut x = g[StrView]()
-        x = Some(val="hello")
+        let mut x = g[Str]()
+        x = Some(val=Str::from("hello"))
     }
 )");

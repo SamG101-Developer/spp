@@ -55,7 +55,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentComp,
     test_valid_reverse_infer_type_from_comp_arg_verified, R"(
-    cls A[T, cmp n: T] { a: T }
+    cls A[T, cmp n: T] { !public a: T }
 
     fun g() -> Void {
         let mut x = A[n=123_uz](a=0_uz)

@@ -109,7 +109,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClassAttributeAst,
     test_valid_default_value, R"(
     cls A {
-        a: StrView = "Hello"
+        a: Bool = false
     }
 )");
 
