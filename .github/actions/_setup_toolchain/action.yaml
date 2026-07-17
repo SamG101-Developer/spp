@@ -85,7 +85,7 @@ runs:
       uses: MarkusJx/install-boost@v2
       with:
         boost_version: 1.91.0
-        platform_version: "24.04"
+        platform_version: "latest"
         toolset: gcc
 
     - name: Install LLVM 22 dev libraries (prebuilt, apt.llvm.org)

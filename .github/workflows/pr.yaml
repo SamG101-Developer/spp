@@ -66,12 +66,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: gcc, version: "15" }
-          - { os: ubuntu-24.04, compiler: gcc, version: "16" }
-          - { os: ubuntu-24.04, compiler: clang, version: "22" }
-          - { os: macos-14, compiler: clang, version: ""}
-          - { os: windows-2022, compiler: msvc, version: ""}
-          - { os: windows-2022, compiler: clang-cl, version: ""}
+          - { os: ubuntu-latest, compiler: gcc, version: "15" }
+          - { os: ubuntu-latest, compiler: gcc, version: "16" }
+          - { os: ubuntu-latest, compiler: clang, version: "22" }
+          - { os: macos-latest, compiler: clang, version: ""}
+          - { os: windows-latest, compiler: msvc, version: ""}
+          - { os: windows-latest, compiler: clang-cl, version: ""}
     uses: ./.github/workflows/_build_and_test.yaml
     with:
       os: ${{ matrix.os }}

@@ -9,7 +9,7 @@ on:
       os:
         required: false
         type: string
-        default: "ubuntu-24.04"
+        default: "ubuntu-latest"
 
 permissions:
   contents: read
