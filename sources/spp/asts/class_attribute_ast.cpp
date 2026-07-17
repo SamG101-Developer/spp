@@ -116,10 +116,10 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
 
     // Check the type is valid before scopes are attached.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
     sm->CurrentScope->GetVarSymbol(Name)->Type = Type;
 
-    // Ensure that the convention type doesn't have a convention.
+    // Ensure that the field type doesn't have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
@@ -143,7 +143,7 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
     Type->Stage7_AnalyseSemantics(sm, meta);
     if (not IsTypeSelf(*Type)) {
-        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
         RaiseIf<SppSecondClassBorrowViolationError>(
             IsTypeBorrowed(*Type, *sm),
             {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
