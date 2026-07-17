@@ -20,6 +20,15 @@ namespace spp::utils::files {
      */
     SPP_EXP_FUN auto WriteFile(std::filesystem::path const &path, Str const &content) -> void;
 
+    /**
+     * Convert a filesystem path to a string, using the correct member for the
+     * standard library version: display_string() on libstdc++ 17+ (where
+     * string() is deprecated), string() on older releases.
+     * @param path The path to stringify.
+     * @return The path as a string.
+     */
+    SPP_EXP_FUN auto DisplayString(std::filesystem::path const &path) -> Str;
+
     SPP_EXP_CLS enum class LockType { Shared, Exclusive };
 
     SPP_EXP_CLS struct FileLock;

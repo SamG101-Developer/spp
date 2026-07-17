@@ -60,7 +60,7 @@ spp::compiler::ModuleTree::ModuleTree(
         }
 
         // Check if the inner_path matches "src/main.spp" or startswith "ffi/":
-        if (inner_path != std::filesystem::path("src/main.spp") and not inner_path.display_string().starts_with("ffi"s + std::filesystem::path::preferred_separator)) {
+        if (inner_path != std::filesystem::path("src/main.spp") and not spp::utils::files::DisplayString(inner_path).starts_with("ffi"s + std::filesystem::path::preferred_separator)) {
             filtered_vcs_modules.EmplaceBack(std::move(m));
         }
     }

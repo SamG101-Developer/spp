@@ -6,6 +6,7 @@ import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.utils.files;
 import genex;
 
 SPP_MOD_BEGIN
@@ -140,7 +141,7 @@ auto spp::asts::ModulePrototypeAst::Name() const
     auto parts = Vec<Str>();
     for (auto const &entry : std::filesystem::directory_iterator(FilePath)) {
         if (entry.is_directory()) {
-            parts.EmplaceBack(entry.path().filename().display_string());
+            parts.EmplaceBack(spp::utils::files::DisplayString(entry.path().filename()));
         }
     }
 
@@ -166,7 +167,7 @@ auto spp::asts::ModulePrototypeAst::Name() const
 auto spp::asts::ModulePrototypeAst::FileName() const
     -> Unique<IdentifierAst> {
     // Return the filepath as an IdentifierAst.
-    return MakeUnique<IdentifierAst>(PosStart(), FilePath.display_string());
+    return MakeUnique<IdentifierAst>(PosStart(), spp::utils::files::DisplayString(FilePath));
 }
 
 SPP_MOD_END

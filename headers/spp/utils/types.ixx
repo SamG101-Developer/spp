@@ -117,7 +117,7 @@ public:
     Vec(I first, I last, A const &allocator = A()) : _Vec(first, last, allocator) {}
 
     Vec(Vec const &other, A const &allocator = A()) : _Vec(other._Vec, allocator) {}
-    Vec(Vec &&other, A const &allocator = A()) : _Vec(std::move(other._Vec), allocator) {}
+    Vec(Vec &&other, A const &allocator = A()) noexcept : _Vec(std::move(other._Vec), allocator) {}
     ~Vec() = default;
 
     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE

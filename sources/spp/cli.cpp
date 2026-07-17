@@ -107,7 +107,7 @@ auto spp::cli::handle_init()
 
     // Fill in "main.spp" and "spp.toml" with template content.
     utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
-    utils::files::WriteFile(cwd / CONFIG_FILE, create_default_config_for(cwd.filename().display_string()));
+    utils::files::WriteFile(cwd / CONFIG_FILE, create_default_config_for(utils::files::DisplayString(cwd.filename())));
 }
 
 auto spp::cli::handle_vcs()
@@ -137,12 +137,12 @@ auto spp::cli::handle_vcs()
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.display_string()).c_str());
+            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + utils::files::DisplayString(repo_folder)).c_str());
             std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            std::system(("git -C " + repo_folder.display_string() + " pull origin " + repo_branch).c_str());
-            std::system(("git -C " + repo_folder.display_string() + " checkout " + repo_branch).c_str());
+            std::system(("git -C " + utils::files::DisplayString(repo_folder) + " pull origin " + repo_branch).c_str());
+            std::system(("git -C " + utils::files::DisplayString(repo_folder) + " checkout " + repo_branch).c_str());
             std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
         }
 
@@ -306,7 +306,7 @@ auto spp::cli::handle_validate(
     const auto ext = get_system_shared_library_extension();
     for (auto const &ffi_dir : std::filesystem::directory_iterator(cwd / FFI_FOLDER)) {
         if (not std::filesystem::is_directory(ffi_dir)) {
-            std::cerr << "Error: Non-directory found in 'ffi' folder: "s + ffi_dir.path().filename().display_string() + "\n";
+            std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(ffi_dir.path().filename()) + "\n";
             return false;
         }
 
