@@ -67,7 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = MyType()
-        let string: StrView = x.into()
+        let string: Str = x.into()
         let boolean: Bool = x.into()
     }
 )");
@@ -100,7 +100,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Bool { ret false }
 
     fun f() -> Void {
-        let mut x = MyType[T=StrView](a=g())
+        let mut x = MyType[T=Str](a=g())
     }
 )");
 

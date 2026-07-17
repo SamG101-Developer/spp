@@ -26,7 +26,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericInference_Direct,
     test_valid_infer_same_param_consistent, R"(
-    fun f[T](a: T, b: T) -> T { ret (a, b) }
+    fun f[T](a: T, b: T) -> T { ret a }
 
     fun g() -> Void {
         let mut x = f(123, 456)
@@ -240,7 +240,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericInference_MultiNested,
     test_valid_infer_same_param_across_different_nesting_depths, R"(
-    fun f[T](a: T, b: Vec[T]) -> T { }
+    fun f[T](a: T, b: Vec[T]) -> T { ret a }
 
     fun g() -> Void {
         let mut x = f(1, Vec[S32]())
