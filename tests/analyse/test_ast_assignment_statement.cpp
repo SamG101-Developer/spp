@@ -265,7 +265,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
     test_valid_assign_into_mutable_slice, R"(
     fun f(x: &mut Vec[S32], v: &View[S32]) -> Void {
-        x[mut 0_uz to 2_uz]@ = v
+        x[mut 0_uz to 2_uz]@ = v@
     }
 )");
 
@@ -274,7 +274,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_assign_into_immutable_slice,
     SppInvalidMutationError, R"(
     fun f(x: &mut Vec[S32], v: &View[S32]) -> Void {
-        x[0_uz to 2_uz]@ = v
+        x[0_uz to 2_uz]@ = v@
     }
 )");
 

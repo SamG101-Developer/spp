@@ -104,8 +104,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_nested_tuple, R"(
     fun f() -> Void {
         let t = (1, Str::from("2"))
-        let ((a, mut b), c) = (t, (3, "4"))
-        b = "5"
+        let ((a, mut b), mut c) = (t, (3, Str::from("4")))
+        b = Str::from("5")
+        c.0 = Str::from("6")
     }
 )");
 

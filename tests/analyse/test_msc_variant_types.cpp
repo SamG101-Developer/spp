@@ -181,6 +181,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
+    test_variant_as_repeated_array_element, R"(
+    fun f(mut a: [Bool or Str; 2_uz]) -> Void {
+        a = [true; 2_uz]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
     DISABLED_test_sub_variant_as_function_argument, R"(
     fun g(x: Str or U64 or Bool) -> Void { }
 
