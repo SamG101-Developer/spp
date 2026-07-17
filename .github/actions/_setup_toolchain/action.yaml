@@ -79,14 +79,15 @@ runs:
 
     # ---- Project dependencies (Linux) --------------------------------------
     # Boost and LLVM are the awkward two to build, so both come prebuilt.
-    - name: Install Boost 1.91 (prebuilt)
+    - name: Install Boost 1.91 (prebuilt download)
       if: runner.os == 'Linux'
-      id: boost
-      uses: MarkusJx/install-boost@v2
-      with:
-        boost_version: 1.91.0
-        platform_version: "latest"
-        toolset: gcc
+      shell: bash
+      run: |
+        set -euo pipefail
+        url="https://github.com/MarkusJx/prebuilt-boost/releases/download/1.91.0/boost-1.91.0-ubuntu-24.04-gcc-static%2Bshared-x86.tar.gz"
+        curl -fL -o /tmp/boost.tar.gz "$url"
+        tar xf /tmp/boost.tar.gz -C "$HOME"   # extracts to $HOME/boost
+        echo "BOOST_ROOT=$HOME/boost" >> "$GITHUB_ENV"
 
     - name: Install LLVM 22 dev libraries (prebuilt, apt.llvm.org)
       if: runner.os == 'Linux'
@@ -144,4 +145,4 @@ runs:
       if: runner.os == 'Linux'
       shell: bash
       run: |
-        echo "CMAKE_PREFIX_PATH=$HOME/.local:/usr/lib/llvm-22:${{ steps.boost.outputs.BOOST_ROOT }}${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}" >> "$GITHUB_ENV"
+        echo "CMAKE_PREFIX_PATH=$HOME/.local:/usr/lib/llvm-22:${BOOST_ROOT}${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}" >> "$GITHUB_ENV"
