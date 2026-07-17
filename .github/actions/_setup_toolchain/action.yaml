@@ -13,8 +13,13 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Ninja
-      uses: seanmiddleditch/gha-setup-ninja@v6
+    - name: Install CMake & Ninja
+      # Runner images ship an older CMake (3.31.x); pin to satisfy
+      # cmake_minimum_required(VERSION 4.1.2) in CMakeLists.txt.
+      uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: "4.1.2"
+        ninjaVersion: "latest"
 
     - name: Install GCC (Linux)
       if: inputs.compiler == 'gcc'
