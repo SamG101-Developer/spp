@@ -2,8 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.types;
-// import absl;
-// import stringzilla;
 // import llvm;
 import std;
 
