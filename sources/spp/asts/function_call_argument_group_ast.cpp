@@ -123,7 +123,6 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppExpansionOfNonTupleError;
     using analyse::errors::SppIdentifierDuplicateError;
     using analyse::errors::SppOrderInvalidError;
-    using analyse::errors::SppInvalidMutationError;
     using analyse::utils::order_utils::DoOrderArgs;
     using analyse::utils::type_utils::IsTypeTup;
 
@@ -174,22 +173,10 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
         genex::actions::erase(Args, Args.begin() + static_cast<std::ptrdiff_t>(i) + max);
     }
 
-    // Analyse the arguments
+    // Analyse the arguments. The immutability/borrow mutation checks are deferred to Stage8, because the "self"
+    // argument's convention (for method calls) is only applied after overload resolution.
     for (auto const &arg : Args) {
         arg->Stage7_AnalyseSemantics(sm, meta);
-        const auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*arg->Val);
-        if (sym == nullptr) { continue; }
-        if (arg->Conv == nullptr or *arg->Conv == ConventionTag::REF) { continue; }
-
-        // Immutable symbols cannot be mutated.
-        RaiseIf<SppInvalidMutationError>(
-            not sym->IsMutable, {sm->CurrentScope},
-            ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
-
-        // Immutable borrows, even if their symbol is mutable, cannot be mutated.
-        RaiseIf<SppInvalidMutationError>(
-            std::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
-            {sm->CurrentScope}, ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
     }
 }
 
@@ -199,6 +186,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     -> void {
     //
     using analyse::errors::SppMemoryOverlapUsageError;
+    using analyse::errors::SppInvalidMutationError;
     using analyse::utils::mem_utils::ValidateSymbolMemory;
     using analyse::utils::mem_utils::MemRegionOverlap;
 
@@ -286,8 +274,21 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         }
 
         else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
+            const auto is_sym_mutable = sym->IsMutable or (
+                sym->Type->GetConvention() and *sym->Type->GetConvention() == ConventionTag::MUT);
+
+            // Immutable symbols cannot be mutably borrowed. This also catches "&mut self" method calls.
+            RaiseIf<SppInvalidMutationError>(
+                not is_sym_mutable, {sm->CurrentScope},
+                ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
+
+            // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed.
+            RaiseIf<SppInvalidMutationError>(
+                std::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
+                {sm->CurrentScope}, ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
+
             // Generate the list of overlapping borrows for mutable borrows.
-            auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
+            auto overlaps = genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
                 | genex::views::filter([&arg](auto &&x) { return MemRegionOverlap(*x, *arg->Val); })
                 | genex::to<Vec>();
 
