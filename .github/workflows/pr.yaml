@@ -41,8 +41,8 @@ jobs:
             ci
             core
           requireScope: false
-          subjectPattern: '^[a-z]+(-[a-z0-9]+)*$'
-          subjectPatternError: "The description must be kebab-case (lowercase, hyphen-separated)."
+          subjectPattern: '^[a-z][a-z0-9 .-]*$'
+          subjectPatternError: "The description must match the regex."
 
   precommit:
     name: Format & Lint (pre-commit)
