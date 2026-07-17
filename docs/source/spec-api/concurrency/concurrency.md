@@ -140,7 +140,7 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {
     
     # Because control is regained, "a" is pinned until the next yield ("b").
     # At this point, only "c" is pinned. It gets unpinned when the generator
-    # for this coroutine is destroyed, but at that point "c" is no longer 
+    # for this coroutine is destroyed, but at that point "c" is no longer
     # usable anyway.
 }
 
