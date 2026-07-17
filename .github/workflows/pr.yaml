@@ -59,18 +59,29 @@ jobs:
           python-version: "3.14"
       - uses: pre-commit/action@v3.0.1
 
+  # Supported toolchain: must pass, gates ci-success.
   build-test:
     name: Build & Test
+    needs: [precommit]
+    uses: ./.github/workflows/_build_and_test.yaml
+    with:
+      os: ubuntu-latest
+      compiler: gcc
+      version: "16"
+
+  # Aspirational toolchains: run and report red on failure, but do NOT gate
+  # ci-success (it deliberately omits this job from `needs`).
+  build-test-extra:
+    name: Build & Test (non-blocking)
     needs: [precommit]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, compiler: gcc, version: "16" }
           - { os: ubuntu-latest, compiler: clang, version: "22" }
-          - { os: macos-latest, compiler: clang, version: ""}
-          - { os: windows-latest, compiler: msvc, version: ""}
-          - { os: windows-latest, compiler: clang-cl, version: ""}
+          - { os: macos-latest, compiler: clang, version: "" }
+          - { os: windows-latest, compiler: msvc, version: "" }
+          - { os: windows-latest, compiler: clang-cl, version: "" }
     uses: ./.github/workflows/_build_and_test.yaml
     with:
       os: ${{ matrix.os }}
