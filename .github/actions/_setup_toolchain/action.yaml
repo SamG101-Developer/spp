@@ -52,6 +52,16 @@ runs:
         # Point sccache at the same directory the cache step restores (~/.cache/sccache).
         Add-Content -Path $env:GITHUB_ENV -Value "SCCACHE_DIR=$env:USERPROFILE\.cache\sccache"
 
+    - name: Bound compiler-cache size
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          echo "SCCACHE_CACHE_SIZE=500M" >> "$GITHUB_ENV"
+        else
+          echo "CCACHE_MAXSIZE=500M"  >> "$GITHUB_ENV"
+          echo "CCACHE_COMPRESS=true" >> "$GITHUB_ENV"
+        fi
+
     - name: Restore compiler cache
       uses: actions/cache@v4
       with:

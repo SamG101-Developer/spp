@@ -5,8 +5,14 @@ project(spp)
 # Set the C++ standard and other compiler options & flags.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
-set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
+# Local dev builds against a custom GCC at /usr/local/gcc-dev; CI passes
+# -DSPP_USE_DEV_RPATH=OFF so it doesn't bake in a path that isn't on the runner.
+option(SPP_USE_DEV_RPATH "Bake in the local dev toolchain rpath (/usr/local/gcc-dev/lib64)" ON)
+if (SPP_USE_DEV_RPATH)
+    set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+endif ()
 
 # Build options (consumed by CI in the configure-cmake composite action).
 option(SPP_WERROR "Treat compiler warnings as errors" ON)

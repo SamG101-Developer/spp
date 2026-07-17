@@ -3,10 +3,12 @@ name: PR
 on:
   pull_request:
     types: [ opened, synchronize, reopened, edited ]
+  merge_group: {}
   workflow_dispatch: {}
 
 concurrency:
-  group: pr-${{ github.event.pull_request.number }}
+  # One group per PR branch / dispatch ref / merge-queue ref.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 permissions:
