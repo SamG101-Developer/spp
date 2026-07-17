@@ -26,7 +26,7 @@ jobs:
           egress-policy: audit
       - uses: actions/checkout@v7
       - name: Set up toolchain
-        uses: ./.github/actions/setup-toolchain
+        uses: ./.github/actions/_setup_toolchain
         with:
           compiler: gcc
           version: 16
@@ -39,7 +39,7 @@ jobs:
           queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
 
       - name: Configure
-        uses: ./.github/actions/configure-cmake
+        uses: ./.github/actions/_configure_cmake
         with:
           build-type: Debug
 

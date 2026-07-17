@@ -1,0 +1,21 @@
+name: Nightly
+on:
+  schedule:
+    - cron: '0 4 * * *'  # 04:00 UTC daily
+  workflow_dispatch: {}
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  security:
+    name: Security (full scan)
+    uses: ./.github/workflows/_security.yaml
+    with:
+      full-scan: true

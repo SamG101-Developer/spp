@@ -35,14 +35,14 @@ jobs:
           egress-policy: audit
       - uses: actions/checkout@v7
       - name: Set up toolchain
-        uses: ./.github/actions/setup_toolchain
+        uses: ./.github/actions/_setup_toolchain
         with:
           compiler: clang # best for sanitisers
           version: "22"
           cache-key-suffix: san-${{ matrix.config }}
 
       - name: Configure (${{ matrix.config }})
-        uses: ./.github/actions/configure_cmake
+        uses: ./.github/actions/_configure_cmake
         with:
           build-type: Debug
           sanitizer: ${{ matrix.config }}
