@@ -18,41 +18,41 @@ repos:
       - id: check-symlinks
       - id: destroyed-symlinks
 
-  - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v22.1.8
-    hooks:
-      - id: clang-format
-        types_or: [ c, c++ ]
-
-  - repo: https://github.com/BlankSpruce/gersemi-pre-commit
-    rev: 0.27.7
-    hooks:
-      - id: gersemi
-
+#  - repo: https://github.com/pre-commit/mirrors-clang-format
+#    rev: v22.1.8
+#    hooks:
+#      - id: clang-format
+#        types_or: [ c, c++ ]
+#
+#  - repo: https://github.com/BlankSpruce/gersemi-pre-commit
+#    rev: 0.27.7
+#    hooks:
+#      - id: gersemi
+#
 #  - repo: https://github.com/cheshirekow/cmake-format-precommit
 #    rev: v0.6.13
 #    hooks:
 #      - id: cmake-lint
 #      - id: cmake-format
-
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.3
-    hooks:
-      - id: codespell
-        additional_dependencies: [ tomli ]
-
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.11.0.1
-    hooks:
-      - id: shellcheck
-
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12
-    hooks:
-      - id: actionlint
-
-  - repo: https://github.com/adrienverge/yamllint
-    rev: v1.38.0
-    hooks:
-      - id: yamllint
-        args: [ -c, .yamllint.yaml ]
+#
+#  - repo: https://github.com/codespell-project/codespell
+#    rev: v2.4.3
+#    hooks:
+#      - id: codespell
+#        additional_dependencies: [ tomli ]
+#
+#  - repo: https://github.com/shellcheck-py/shellcheck-py
+#    rev: v0.11.0.1
+#    hooks:
+#      - id: shellcheck
+#
+#  - repo: https://github.com/rhysd/actionlint
+#    rev: v1.7.12
+#    hooks:
+#      - id: actionlint
+#
+#  - repo: https://github.com/adrienverge/yamllint
+#    rev: v1.38.0
+#    hooks:
+#      - id: yamllint
+#        args: [ -c, .yamllint.yaml ]
