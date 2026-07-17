@@ -91,6 +91,10 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Handle lhs-folding.
     if (Lhs->To<FoldExpressionAst>()) {
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Rhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Rhs));
+
         // Check the rhs is a tuple.
         const auto rhs_tuple_type = Rhs->InferType(sm, meta);
         RaiseIf<SppMemberAccessNonIndexableError>(
@@ -126,6 +130,10 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Handle rhs-folding.
     else if (Rhs->To<FoldExpressionAst>()) {
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Lhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Lhs));
+
         // Check the lhs is a tuple.
         const auto lhs_tuple_type = Lhs->InferType(sm, meta);
         RaiseIf<SppMemberAccessNonIndexableError>(
@@ -139,7 +147,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
             {sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
 
         auto new_asts = UniqueVec<PostfixExpressionAst>();
-        for (auto i = 0u; i < lhs_num_elems; ++i) {
+        for (auto i = 0U; i < lhs_num_elems; ++i) {
             auto field = MakeUnique<IdentifierAst>(Lhs->PosStart(), std::to_string(i));
             auto new_ast = MakeUnique<PostfixExpressionAst>(
                 AstClone(Lhs),
@@ -160,6 +168,14 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     }
 
     else {
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Lhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Lhs));
+
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Rhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Rhs));
+
         // Standard non-folding binary expression.
         _MappedFunc = ConvertBinExprToFuncCall(*this, sm, meta);
         _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
