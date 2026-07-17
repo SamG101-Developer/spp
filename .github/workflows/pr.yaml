@@ -66,7 +66,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, compiler: gcc, version: "15" }
           - { os: ubuntu-latest, compiler: gcc, version: "16" }
           - { os: ubuntu-latest, compiler: clang, version: "22" }
           - { os: macos-latest, compiler: clang, version: ""}

@@ -51,13 +51,19 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      - name: Test
-        run: ctest --test-dir build --output-on-failure --no-tests=error
+      - name: Test (gtest-parallel)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/google/gtest-parallel.git /tmp/gtest-parallel
+          mkdir -p tests/test_output
+          python3 /tmp/gtest-parallel/gtest-parallel \
+            ./build/tests/spp_tests \
+            --output_dir=tests/test_output
 
       - name: Upload test logs on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}
-          path: build/Testing/Temporary/LastTest.log
+          path: tests/test_output
           if-no-files-found: ignore
