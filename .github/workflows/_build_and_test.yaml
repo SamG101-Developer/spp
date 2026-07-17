@@ -29,7 +29,13 @@ jobs:
   build-test:
     name: ${{ inputs.os }} · ${{ inputs.compiler }}${{ inputs.version && format('-{0}', inputs.version) || '' }}
     runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
     steps:
+      - name: Harden runner
+        if: runner.os == 'Linux'  # harden-runner only supports Ubuntu runners
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v7
       - name: Set up toolchain
         uses: ./.github/actions/_setup_toolchain

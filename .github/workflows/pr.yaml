@@ -3,6 +3,7 @@ name: PR
 on:
   pull_request:
     types: [ opened, synchronize, reopened, edited ]
+  workflow_dispatch: {}
 
 concurrency:
   group: pr-${{ github.event.pull_request.number }}
@@ -15,8 +16,14 @@ permissions:
 jobs:
   title:
     name: PR Title Format
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,7 +45,12 @@ jobs:
   precommit:
     name: Format & Lint (pre-commit)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
@@ -74,4 +86,24 @@ jobs:
   security:
     name: Security
     needs: [precommit]
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     uses: ./.github/workflows/_security.yaml
+
+  # Single required status check for branch protection. Fails if any needed job
+  # failed or was cancelled; passes when they all succeeded or were skipped.
+  ci-success:
+    name: CI Success
+    if: ${{ always() }}
+    needs: [ title, precommit, build-test, sanitizers, security ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify all required jobs passed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "One or more required jobs did not succeed:"
+          echo '${{ toJSON(needs) }}'
+          exit 1

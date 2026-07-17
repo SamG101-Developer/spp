@@ -2,6 +2,7 @@ name: post-merge
 on:
   push:
     branches: [ master ]
+  workflow_dispatch: {}
 
 concurrency:
   group: post-merge
@@ -15,7 +16,12 @@ jobs:
   warm-cache:
     name: Warm cache
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v7
       - name: Set up toolchain
         uses: ./.github/actions/_setup_toolchain

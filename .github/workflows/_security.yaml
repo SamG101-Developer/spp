@@ -18,7 +18,12 @@ jobs:
   codeql:
     name: CodeQL
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v7
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
@@ -31,7 +36,7 @@ jobs:
         with:
           languages: c-cpp
           build-mode: manual
-          queries: security-extended
+          queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
 
       - name: Configure
         uses: ./.github/actions/configure-cmake
@@ -49,11 +54,16 @@ jobs:
   osv:
     name: OSV dependency scan
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v7
       - name: Install OSV-Scanner
         run: |
-          curl -sSL -o osv-scanner z \
+          curl -sSL -o osv-scanner \
             https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
           chmod +x osv-scanner
           sudo mv osv-scanner /usr/local/bin/
