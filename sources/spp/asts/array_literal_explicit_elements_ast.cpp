@@ -11,9 +11,12 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -94,6 +97,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     -> void {
     // Alias the common utils functions and types.
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::type_utils::IsTypeArr;
     using analyse::utils::type_utils::IsTypeBorrowed;
     using analyse::utils::type_utils::TypeEq;
     using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -109,20 +113,22 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
             {sm->CurrentScope}, ERR_ARGS(*elem));
     }
 
-    // Get the 0th element information for comparisons (always exists due to parser
-    // rules). This will be the "correct type" that all elems are compared against.
-    // Array elements cannot be borrowed, so check this too.
+    // Determine the "correct type" that all elements are compared against. If a pre-defined array type has
+    // been given, allowing a variant element type to be respected; otherwise just use the 0th element.
     const auto z_elem = Elems[0].get();
-    const auto z_type = z_elem->InferType(sm, meta);
+    const auto from_target = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
+    const auto z_type = from_target
+        ? meta->AssignmentTargetType->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val
+        : z_elem->InferType(sm, meta);
 
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*z_type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, "array element type"));
 
-    // Check all of the remaining elements have the same type as the 0th element.
-    // This also covers the borrow checking for all other elements as they will
-    // mismatch with the already validated 0th element.
-    for (auto const &c_elem : Elems | genex::views::ptr | genex::views::drop(1)) {
+    // Check all elements have the same type as the "correct type". When the type came from the 0th element,
+    // that element is skipped as it trivially matches itself; when it came from the target, every element
+    // (including the 0th) must be validated.
+    for (auto const &c_elem : Elems | genex::views::ptr | genex::views::drop(from_target ? 0uz : 1uz)) {
         auto c_type = c_elem->InferType(sm, meta);
 
         RaiseIf<SppTypeMismatchError>(
@@ -221,10 +227,17 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> Shared<TypeAst> {
-    // Create a "T" type and "n" size, for the array type.
+    // Alias the common utils functions and types.
+    using analyse::utils::type_utils::IsTypeArr;
+
+    // Create a "T" type and "n" size, for the array type. If a pre-defined array type
+    // has been given (ie the assignment target type), pull the element type from it so a
+    // variant element type is preserved; otherwise use the 0th element's inferred type.
     auto size_tok = MakeUnique<TokenAst>(TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
     auto size_gen = MakeUnique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");
-    auto elem_gen = Elems[0]->InferType(sm, meta);
+    auto elem_gen = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope)
+        ? AstCloneShared(meta->AssignmentTargetType->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val)
+        : Elems[0]->InferType(sm, meta);
 
     // Create an array type with the inferred element type and size.
     auto array_type = generate::common_types::ArrayType(PosStart(), std::move(elem_gen), std::move(size_gen));
