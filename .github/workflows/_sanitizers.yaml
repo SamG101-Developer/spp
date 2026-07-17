@@ -40,7 +40,7 @@ jobs:
         uses: ./.github/actions/configure_cmake
         with:
           build-type: Debug
-          cmake-options: ${{ matrix.config }}
+          sanitizer: ${{ matrix.config }}
 
       - name: Build
         run: cmake --build build --parallel

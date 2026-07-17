@@ -47,7 +47,10 @@ runs:
     - name: Install sccache (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: choco install sccache -y
+      run: |
+        choco install sccache -y
+        # Point sccache at the same directory the cache step restores (~/.cache/sccache).
+        Add-Content -Path $env:GITHUB_ENV -Value "SCCACHE_DIR=$env:USERPROFILE\.cache\sccache"
 
     - name: Restore compiler cache
       uses: actions/cache@v4
