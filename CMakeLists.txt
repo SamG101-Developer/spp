@@ -69,6 +69,7 @@ target_sources(${PROJECT_NAME}_lib PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FI
 target_compile_features(${PROJECT_NAME}_lib PRIVATE cxx_std_26)
 target_compile_definitions(${PROJECT_NAME}_lib PRIVATE ${LLVM_DEFINITIONS_LIST})
 target_include_directories(${PROJECT_NAME}_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+target_include_directories(${PROJECT_NAME}_lib SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}_lib PUBLIC
         unordered_dense::unordered_dense nlohmann_json::nlohmann_json tomlplusplus::tomlplusplus
