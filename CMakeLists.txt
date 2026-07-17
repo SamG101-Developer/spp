@@ -54,3 +54,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 # Unit test support.
 enable_testing()
 add_subdirectory(tests)
+
+# Ensure the test executable is (re)built whenever the main project is built, so tests
+# never run against a stale binary after updating the repo.
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_tests)
