@@ -116,7 +116,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     // Create the initial let statement to materialize the condition being iterated.
     // Translated: "let $_iter = <iterable>".
     auto iterable_let = ( {
-        auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, iterable_name, nullptr);
+        auto mut = std::make_unique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
+        auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), iterable_name, nullptr);
         auto iterable_val = std::move(Iterable);
         MakeUnique<LetStatementInitializedAst>(nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
     });
