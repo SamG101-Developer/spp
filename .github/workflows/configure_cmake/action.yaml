@@ -1,0 +1,27 @@
+name: configure-cmake
+
+inputs:
+  build-type:
+    required: false
+    default: "RelWithDebInfo"
+  sanitizer:
+    required: false
+    default: ""
+  extra-flags:
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Configure"
+      shell: bash
+      run: |
+        cmake -S . -Bbuild -GNinja \
+        -DCMAKE_BUILD_TYPE=${{ inputs.build-type }} \
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+        -DSPP_WERROR=ON \
+        -DSPP_BUILD_TESTS=ON \
+        ${{ inputs.sanitizer != '' && format('-DSPP_SANITIZER={0}', inputs.sanitizer) || '' }} \
+        ${{ inputs.extra-flags }}

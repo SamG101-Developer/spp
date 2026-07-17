@@ -1,0 +1,28 @@
+name: post-merge
+on:
+  push:
+    branches: [ master ]
+
+concurrency:
+  group: post-merge
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # publish-docs: (TODO)
+  warm-cache:
+    name: Warm cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up toolchain
+        uses: ./.github/actions/_setup_toolchain
+        with:
+          compiler: gcc
+          version: "16"
+      - name: Configure
+        uses: ./.github/actions/_configure_cmake
+      - name: Build (populates cache)
+        run: cmake --build build --parallel

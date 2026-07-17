@@ -1,0 +1,58 @@
+name: sanitizers
+
+on:
+  workflow_call:
+    inputs:
+      configs:
+        required: true
+        type: string
+      os:
+        required: false
+        type: string
+        default: "ubuntu-24.04"
+
+permissions:
+  contents: read
+
+jobs:
+  sanitize:
+    name: ${{ matrix.config }}
+    runs-on: ${{ inputs.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJSON(inputs.configs) }}
+    env:
+      ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:detect_leaks=1:strict_string_checks=1"
+      UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+      TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up toolchain
+        uses: ./.github/actions/setup_toolchain
+        with:
+          compiler: clang # best for sanitisers
+          version: "22"
+          cache-key-suffix: san-${{ matrix.config }}
+
+      - name: Configure (${{ matrix.config }})
+        uses: ./.github/actions/configure_cmake
+        with:
+          build-type: Debug
+          cmake-options: ${{ matrix.config }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test under ${{ matrix.config }}
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: Upload sanitizer logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: san-${{ matrix.config }}-logs
+          path: |
+            build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore

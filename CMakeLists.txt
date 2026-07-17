@@ -51,6 +51,25 @@ target_link_libraries(${PROJECT_NAME}_lib PUBLIC
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 
+# ASAN
+
+set(CMAKE_CXX_FLAGS_ASAN
+        "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+        CACHE STRING "Flags for ASan build" FORCE)
+set(CMAKE_C_FLAGS_ASAN
+        "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+        CACHE STRING "Flags for ASan build" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS_ASAN
+        "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined"
+        CACHE STRING "Linker flags for ASan build" FORCE)
+set(CMAKE_SHARED_LINKER_FLAGS_ASAN
+        "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined"
+        CACHE STRING "Shared linker flags for ASan build" FORCE)
+
+mark_as_advanced(
+        CMAKE_CXX_FLAGS_ASAN CMAKE_C_FLAGS_ASAN
+        CMAKE_EXE_LINKER_FLAGS_ASAN CMAKE_SHARED_LINKER_FLAGS_ASAN)
+
 # Unit test support.
 enable_testing()
 add_subdirectory(tests)

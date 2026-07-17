@@ -1,0 +1,70 @@
+name: security
+
+on:
+  workflow_call:
+    inputs:
+      full-scan:
+        description: "Run a full security scan (including dev dependencies)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          compiler: gcc
+          version: 16
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: c-cpp
+          build-mode: manual
+          queries: security-extended
+
+      - name: Configure
+        uses: ./.github/actions/configure-cmake
+        with:
+          build-type: Debug
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:c-cpp"
+
+  osv:
+    name: OSV dependency scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install OSV-Scanner
+        run: |
+          curl -sSL -o osv-scanner z \
+            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/
+
+      - name: Scan dependencies
+        run: |
+          osv-scanner scan --recursive --format sarif --output osv.sarif ./
+        continue-on-error: true
+
+      - name: Upload OSV results
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner

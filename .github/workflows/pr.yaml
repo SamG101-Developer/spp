@@ -1,0 +1,77 @@
+name: PR
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened, edited ]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  title:
+    name: PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            core
+          requireScope: false
+          subjectPattern: '^[a-z]+(-[a-z0-9]+)*$'
+          subjectPatternError: "The description must be kebab-case (lowercase, hyphen-separated)."
+
+  precommit:
+    name: Format & Lint (pre-commit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: pre-commit/action@v3.0.1
+
+  build-test:
+    name: Build & Test
+    needs: [precommit]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, compiler: gcc, version: "15" }
+          - { os: ubuntu-24.04, compiler: gcc, version: "16" }
+          - { os: ubuntu-24.04, compiler: clang, version: "22" }
+          - { os: macos-14, compiler: clang, version: ""}
+          - { os: windows-2022, compiler: msvc, version: ""}
+          - { os: windows-2022, compiler: clang-cl, version: ""}
+    uses: ./.github/workflows/_build_and_test.yaml
+    with:
+      os: ${{ matrix.os }}
+      compiler: ${{ matrix.compiler }}
+      version: ${{ matrix.version }}
+
+  sanitizers:
+    name: Sanitizers
+    needs: [ precommit ]
+    uses: ./.github/workflows/_sanitizers.yaml
+    with:
+      configs: '["address+undefined+leak", "thread"]'
+
+  security:
+    name: Security
+    needs: [precommit]
+    uses: ./.github/workflows/_security.yaml

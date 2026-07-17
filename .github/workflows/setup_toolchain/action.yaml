@@ -1,0 +1,60 @@
+name: setup-toolchain
+
+inputs:
+  compiler:
+    required: true
+  version:
+    required: false
+    default: ""
+  cache-key-suffix:
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Ninja
+      uses: seanmiddleditch/gha-setup-ninja@v6
+
+    - name: Install GCC (Linux)
+      if: inputs.compiler == 'gcc'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y "g++-${{ inputs.version }}" ccache
+        echo "CC=gcc-${{ inputs.version }}"  >> "$GITHUB_ENV"
+        echo "CXX=g++-${{ inputs.version }}" >> "$GITHUB_ENV"
+
+    - name: Install Clang (Linux)
+      if: inputs.compiler == 'clang'
+      shell: bash
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh "${{ inputs.version }}"
+        sudo apt-get install -y ccache
+        echo "CC=clang-${{ inputs.version }}"    >> "$GITHUB_ENV"
+        echo "CXX=clang++-${{ inputs.version }}" >> "$GITHUB_ENV"
+
+    - name: Install ccache (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install ccache ninja
+
+    - name: Set up MSVC / clang-cl (Windows)
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+    - name: Install sccache (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: choco install sccache -y
+
+    - name: Restore compiler cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/sccache
+        key: cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
+        restore-keys: |
+          cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-

@@ -1,0 +1,57 @@
+name: build-and-test
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "Runner image (ubuntu-24.04 | macos-14 | windows-2022)"
+        required: true
+        type: string
+      compiler:
+        description: "Compiler (gcc | clang | msvc | clang-cl)"
+        required: true
+        type: string
+      version:
+        description: "Version of the compiler to use"
+        required: false
+        type: string
+        default: ""
+      build-type:
+        required: false
+        type: string
+        default: "RelWithDebInfo"
+    secrets: { }
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: ${{ inputs.os }} · ${{ inputs.compiler }}${{ inputs.version && format('-{0}', inputs.version) || '' }}
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up toolchain
+        uses: ./.github/actions/_setup_toolchain
+        with:
+          compiler: ${{ inputs.compiler }}
+          version: ${{ inputs.version }}
+
+      - name: Configure
+        uses: ./.github/actions/_configure_cmake
+        with:
+          build-type: ${{ inputs.build-type }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}
+          path: build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
