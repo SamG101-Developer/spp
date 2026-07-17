@@ -105,7 +105,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (1, Str::from("2"))
         let [(a, mut b), c] = [t, (3, Str::from("4"))]
-        b = "5"
+        b = Str::from("5")
     }
 )");
 

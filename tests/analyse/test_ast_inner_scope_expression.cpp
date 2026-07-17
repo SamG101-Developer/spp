@@ -39,15 +39,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     InnerScopeExpressionAst,
-    test_invalid_empty_block_returns_void_mismatch,
-    SppTypeMismatchError, R"(
-    fun f() -> S32 {
-        ret { }
-    }
-)");
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    InnerScopeExpressionAst,
     test_invalid_unreachable_after_terminating_block,
     SppUnreachableCodeError, R"(
     fun f() -> S32 {

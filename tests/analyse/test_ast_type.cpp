@@ -97,7 +97,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_array_default, R"(
-    fun f(a: [false; 3_uz] = [false, false, false]) -> Void { }
+    fun f(a: [Bool; 3_uz] = [false, false, false]) -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(

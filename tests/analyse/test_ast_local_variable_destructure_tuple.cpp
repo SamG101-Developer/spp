@@ -106,7 +106,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t = (1, Str::from("2"))
         let ((a, mut b), mut c) = (t, (3, Str::from("4")))
         b = Str::from("5")
-        c.0 = Str::from("6")
+        c.1 = Str::from("6")
     }
 )");
 
