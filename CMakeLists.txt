@@ -31,7 +31,11 @@ include(FetchContent)
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED) # Boost libraries
-find_package(LLVM 22.0.0 REQUIRED CONFIG) # LLVM libraries
+# Accept any LLVM 22.x.x (LLVM's config rejects a non-exact patch match).
+find_package(LLVM REQUIRED CONFIG) # LLVM libraries
+if (NOT LLVM_VERSION_MAJOR EQUAL 22)
+    message(FATAL_ERROR "LLVM 22 is required, but found ${LLVM_PACKAGE_VERSION}")
+endif ()
 find_package(unordered_dense CONFIG REQUIRED) # unordered_dense library
 find_package(tomlplusplus CONFIG REQUIRED) # tomlplusplus library
 find_package(nlohmann_json CONFIG REQUIRED) # nlohmann_json library
