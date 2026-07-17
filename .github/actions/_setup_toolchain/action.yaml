@@ -25,7 +25,11 @@ runs:
       if: inputs.compiler == 'gcc'
       shell: bash
       run: |
+        # gcc-15/16 aren't in the base noble repos; the toolchain PPA provides
+        # them (and their libstdc++ ships libstdc++.modules.json for `import std`).
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         sudo apt-get update
+        # g++-N does not pull in the gcc-N C driver, so install both explicitly.
         sudo apt-get install -y "gcc-${{ inputs.version }}" "g++-${{ inputs.version }}" ccache
         echo "CC=gcc-${{ inputs.version }}"  >> "$GITHUB_ENV"
         echo "CXX=g++-${{ inputs.version }}" >> "$GITHUB_ENV"
