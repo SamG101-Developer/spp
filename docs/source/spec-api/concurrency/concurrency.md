@@ -117,7 +117,6 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
     # (the yielder) and the receiver function.
 }
 
-
 fun main() -> Void {
     let generator = coroutine(1, 2, 3)
     let a = generator.res()
@@ -137,13 +136,12 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {
     gen &mut a
     gen &mut b  # control of "a" is regained here + pin "a" released
     gen &mut c  # control of "b" is regained here + pin "b" released
-    
+
     # Because control is regained, "a" is pinned until the next yield ("b").
     # At this point, only "c" is pinned. It gets unpinned when the generator
     # for this coroutine is destroyed, but at that point "c" is no longer
     # usable anyway.
 }
-
 
 fun main() -> Void {
     let mut generator = coroutine(1, 2, 3)
@@ -153,18 +151,18 @@ fun main() -> Void {
 }
 ```
 
-For mutable borrows, there is a stricter invalidation policy. Yielding a mutable borrow invalidates the previous
-mutable borrow that was yielded, otherwise there is no guarantee that there isn't an overlap in data being yielded.
-There is an alternative model, to check all yields in the yielder are non-overlapping, and then the receiver will never
-have to invalidate previous yields, but this would prevent the same object being yielded twice from the yielder, which
-is a common use-case. However, because control is regained per yield in the yielder, it is known that the object is
-singly owned in the coroutine, meaning yielded symbols are only pinned until the following yield.
+For mutable borrows, there is a stricter invalidation policy. Yielding a mutable borrow invalidates the previous mutable
+borrow that was yielded, otherwise there is no guarantee that there isn't an overlap in data being yielded. There is an
+alternative model, to check all yields in the yielder are non-overlapping, and then the receiver will never have to
+invalidate previous yields, but this would prevent the same object being yielded twice from the yielder, which is a
+common use-case. However, because control is regained per yield in the yielder, it is known that the object is singly
+owned in the coroutine, meaning yielded symbols are only pinned until the following yield.
 
 ## Passing Data Into a Coroutine
 
-The `.res()` method takes a single argument, whose type matches the `Send` generic parameter of the generator (
-coroutine return type). Because substituting `Void` as a generic parameter causes function parameters of that type to be
-removed from the signature, `.res()` can be used for th default `Send=Void` generic parameter.
+The `.res()` method takes a single argument, whose type matches the `Send` generic parameter of the generator (coroutine
+return type). Because substituting `Void` as a generic parameter causes function parameters of that type to be removed
+from the signature, `.res()` can be used for th default `Send=Void` generic parameter.
 
 Values are received by placing the `gen` expression on the right-hand-side of a variable definition statement. Variables
 are always moved into a coroutine, not borrowed. This means that receiving a second value into the coroutine doesn't
@@ -207,17 +205,17 @@ coroutine.
 The following example shows equivalent code using a loop and coroutine chaining:
 
 ```S++
-cor coroutine() -> Gen[Yield=S32] {
-    gen 1
-    gen 2
-    gen 3
+cor coroutine() -> Gen[Yield = S32] {
+gen 1
+gen 2
+gen 3
 }
 
-cor coroutine_chain() -> Gen[Yield=S32] {
-    gen 0
-    for i in coroutine() {
-        gen i
-    }
+cor coroutine_chain() -> Gen[Yield = S32] {
+gen 0
+for i in coroutine() {
+gen i
+}
 }
 ```
 
@@ -243,15 +241,15 @@ value, cause inconvenience. Therefore, the `GenOnce` type exists to allow for a 
 automatically unwrapped. Automatic unwrapping also bypasses the need for `.res()`. Without and with `GenOnce`:
 
 ```S++
-cor get_value() -> GenOnce[Yield=&S32] {
-    gen 42
+cor get_value() -> GenOnce[Yield = &S32] {
+gen 42
 }
 
 fun main() -> Void {
-    let val: &Str
-    iter t = get_value().res() of {
-        val { val }
-    }
+let val: &Str
+iter t = get_value().res() of {
+val { val }
+}
 }
 ```
 
@@ -269,7 +267,7 @@ In order to make this compatible with the memory model, the pinning is based not
 left of `.res()`), but the entire expression the generator is part of. This means that the following code is valid:
 
 ```S++
-cls MyType {}
+cls MyType { }
 
 sup MyType {
     cor get_value(&mut self) -> GenOnce[Yield=&mut S32] {
