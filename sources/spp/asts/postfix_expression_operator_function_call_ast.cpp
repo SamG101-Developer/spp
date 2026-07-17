@@ -240,8 +240,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     using analyse::errors::SppCompileTimeConstantError;
     using analyse::errors::SppCompileTimeConstantError;
 
+    // When coming from stage7 (also limit this allowance based on meta->CurrentStage for when we expand to cmp generics?)
+    auto revoke = false;
+    if (not _OverloadInfo.has_value()) {
+        revoke = true;
+        Stage7_AnalyseSemantics(sm, meta);
+    }
+
     // Get the function prototype and resolve it.
-    const auto fn_proto = _OverloadInfo->Proto->GetNonGenericImpl();
+    auto const *const fn_proto = _OverloadInfo->Proto->GetNonGenericImpl();
     RaiseIf<SppCompileTimeConstantError>(
         fn_proto->TokCmp == nullptr,
         {sm->CurrentScope}, ERR_ARGS(*this));
@@ -271,6 +278,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
     meta->Restore();
+
+    if (revoke) {
+        _OverloadInfo.reset();
+    }
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
