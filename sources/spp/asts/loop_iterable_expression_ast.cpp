@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.boolean_literal_ast;
@@ -37,6 +38,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.uid;
+import genex;
 
 SPP_MOD_BEGIN
 spp::asts::LoopIterableExpressionAst::LoopIterableExpressionAst(
@@ -101,6 +103,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto exit_stmt = LoopControlFlowStatementAst::Exit(PosStart(), 1);
     auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter_" + uid);
     auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res_" + uid);
+    _IterableName = iterable_name;
 
     // Grab the generator's inner type.
     auto [_, yield_type, _] = ( {
@@ -201,6 +204,18 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
     // Call the memory check on the transformed loop.
     _TransformedLet->Stage8_CheckMemory(sm, meta);
     _TransformedLoop->Stage8_CheckMemory(sm, meta);
+
+    // The desugared iterator ("$_iter") is a hidden temporary whose lifetime ends with the loop. Release any escaping
+    // borrows it holds (e.g. the "&mut v" established by "v.iter_mut()").
+    const auto iter_sym = sm->CurrentScope->GetVarSymbol(_IterableName);
+    for (auto const &ceb : iter_sym->MemInfo->AstContainedEscapingBorrows) {
+        const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
+        if (b == nullptr) { continue; }
+        sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto info) {
+            return *std::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
+        });
+    }
+    iter_sym->MemInfo->AstContainedEscapingBorrows.Clear();
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(

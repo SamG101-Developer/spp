@@ -13,6 +13,7 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts {
+    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct LetStatementInitializedAst;
     SPP_EXP_CLS struct LocalVariableAst;
     SPP_EXP_CLS struct LoopConditionalExpressionAst;
@@ -70,4 +71,10 @@ SPP_EXP_CLS struct spp::asts::LoopIterableExpressionAst final : LoopExpressionAs
 private:
     Unique<LetStatementInitializedAst> _TransformedLet;
     Unique<LoopConditionalExpressionAst> _TransformedLoop;
+
+    /**
+     * The name of the desugared iterator variable ("$_iter_..."). Stored so the memory checker can release any
+     * escaping borrows the iterator holds (e.g. "&mut v" from "v.iter_mut()") once the loop is over.
+     */
+    Shared<IdentifierAst> _IterableName;
 };
