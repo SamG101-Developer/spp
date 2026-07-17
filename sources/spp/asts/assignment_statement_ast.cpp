@@ -1,6 +1,6 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.assignment_statement_ast;
 import spp.analyse.errors.semantic_error;
@@ -76,6 +76,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppInvalidMutationError;
     using analyse::errors::SppTypeMismatchError;
     using analyse::utils::assignment_utils::IsAttr;
+    using analyse::utils::assignment_utils::IsDeref;
     using analyse::utils::assignment_utils::IsIdentifier;
     using analyse::utils::type_utils::TypeEq;
 
@@ -111,12 +112,15 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     }
 
     // For each assignment, get the outermost symbol of the expression.
-    auto lhs_syms = Lhs
-        | genex::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); });
+    auto lhs_syms = Lhs | genex::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); });
 
     // Create quick access derefs for the looping.
     for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms) | genex::to<Vec>()) {
         auto const &[lhs_sym, _] = lhs_sym_and_scope;
+        const auto lhs_type = lhs_expr->InferType(sm, meta);
+        const auto lhs_deref_type = IsDeref(lhs_expr)
+            ? lhs_expr->To<PostfixExpressionAst>()->Lhs->InferType(sm, meta)
+            : nullptr;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
         RaiseIf<SppInvalidMutationError>(
@@ -130,8 +134,13 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
         RaiseIf<SppInvalidMutationError>(
-            IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
+            IsAttr(lhs_expr, sm) and lhs_type->GetConvention() and *lhs_type->GetConvention() == ConventionTag::REF,
             {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
+
+        // Dereference assignment (ie "x@ = y") writes through a borrow, so the borrow being dereferenced must be &mut.
+        RaiseIf<SppInvalidMutationError>(
+            IsDeref(lhs_expr) and lhs_deref_type->GetConvention() and *lhs_deref_type->GetConvention() != ConventionTag::MUT,
+            {sm->CurrentScope}, ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
 
         // Prevent double initializations to immutable uninitialized let statements.
         if (IsIdentifier(lhs_expr)) {
@@ -139,7 +148,6 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
         }
 
         // Ensure the lhs and rhs have the same type.
-        auto lhs_type = lhs_expr->InferType(sm, meta);
         auto rhs_type = rhs_expr->InferType(sm, meta);
         RaiseIf<SppTypeMismatchError>(
             not TypeEq(*lhs_type, *rhs_type, *sm->CurrentScope, *sm->CurrentScope),
@@ -158,9 +166,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     using analyse::utils::mem_utils::ValidateSymbolMemory;
 
     // For each assignment, check the memory status and resolve any (partial-)moves.
-    auto lhs_syms = Lhs
-        | genex::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); })
-        | genex::to<Vec>();
+    auto lhs_syms = Lhs | genex::views::transform([sm](auto const &x) { return sm->CurrentScope->GetVarSymbolOutermost(*x); }) | genex::to<Vec>();
 
     for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
         auto const &[lhs_sym, _] = lhs_sym_and_scope;
@@ -238,7 +244,7 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
+    -> llvm::Value * {
     // Generate code for each assignment in sequence.
     for (auto i = 0uz; i < Lhs.Len(); ++i) {
         // Set the meta information for generating with values.
