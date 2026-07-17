@@ -111,7 +111,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.local
-        key: spp-libs-${{ runner.os }}-v1
+        key: spp-libs-${{ runner.os }}-v2
 
     - name: Clone & install small libraries (Linux, cache miss)
       if: runner.os == 'Linux' && steps.libs-cache.outputs.cache-hit != 'true'
@@ -141,6 +141,7 @@ runs:
         cmake_install https://github.com/marzer/tomlplusplus.git
         cmake_install https://github.com/Neargye/magic_enum.git -DMAGIC_ENUM_OPT_BUILD_TESTS=OFF -DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF
         cmake_install https://github.com/CLIUtils/CLI11.git     -DCLI11_BUILD_TESTS=OFF -DCLI11_BUILD_EXAMPLES=OFF
+        cmake_install https://github.com/SamG101-Developer/googletest.git
         cmake_install https://github.com/SamG101-Developer/ColEx.git
         cmake_install https://github.com/SamG101-Developer/OpEx.git
         cmake_install https://github.com/SamG101-Developer/GenEx.git
