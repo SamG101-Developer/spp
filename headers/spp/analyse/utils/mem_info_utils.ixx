@@ -16,7 +16,6 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct VariableSymbol;
 }
 
-
 namespace spp::analyse::utils::mem_info_utils {
     /**
      * The @c InconsistentCondMemState holds two @c CondMemState pairs, which have conflicting information about the
@@ -28,7 +27,6 @@ namespace spp::analyse::utils::mem_info_utils {
     SPP_EXP_CLS struct MemoryInfo;
     SPP_EXP_CLS struct MemoryInfoSnapshot;
 }
-
 
 /**
  * The MemoryInfo struct is used to track the memory state of a symbol in the scope. It contains information about the
@@ -168,7 +166,6 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
      */
     auto FillFromSnapshot(MemoryInfoSnapshot const &snapshot) -> void;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
     /**
