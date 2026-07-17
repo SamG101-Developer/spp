@@ -43,6 +43,17 @@ jobs:
           compiler: ${{ inputs.compiler }}
           version: ${{ inputs.version }}
 
+      # Restore the CMake build tree so pushes rebuild incrementally (Ninja only
+      # recompiles what changed). The sha-keyed entry never hits exactly on a new
+      # commit; the prefix restore-keys bring back the most recent tree instead.
+      - name: Restore build tree
+        uses: actions/cache/restore@v4
+        with:
+          path: build
+          key: build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ github.sha }}
+          restore-keys: |
+            build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.version }}-
+
       - name: Configure
         uses: ./.github/actions/_configure_cmake
         with:
@@ -67,3 +78,12 @@ jobs:
           name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}
           path: tests/test_output
           if-no-files-found: ignore
+
+      # Save the build tree even when tests (or the build) fail, so a red run
+      # doesn't discard the compiled objects and the next run stays incremental.
+      - name: Save build tree
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build
+          key: build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ github.sha }}

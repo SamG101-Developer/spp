@@ -37,9 +37,17 @@ jobs:
       - name: Set up toolchain
         uses: ./.github/actions/_setup_toolchain
         with:
-          compiler: clang # best for sanitisers
-          version: "22"
+          compiler: gcc
+          version: "16"
           cache-key-suffix: san-${{ matrix.config }}
+
+      - name: Restore build tree
+        uses: actions/cache/restore@v4
+        with:
+          path: build
+          key: build-san-${{ inputs.os }}-${{ matrix.config }}-${{ github.sha }}
+          restore-keys: |
+            build-san-${{ inputs.os }}-${{ matrix.config }}-
 
       - name: Configure (${{ matrix.config }})
         uses: ./.github/actions/_configure_cmake
@@ -61,3 +69,10 @@ jobs:
           path: |
             build/Testing/Temporary/LastTest.log
           if-no-files-found: ignore
+
+      - name: Save build tree
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build
+          key: build-san-${{ inputs.os }}-${{ matrix.config }}-${{ github.sha }}

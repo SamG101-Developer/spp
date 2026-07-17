@@ -28,7 +28,24 @@ jobs:
         with:
           compiler: gcc
           version: "16"
+
+      # Same key as the gcc-16 PR leg, so PRs restore this warm master build tree.
+      - name: Restore build tree
+        uses: actions/cache/restore@v4
+        with:
+          path: build
+          key: build-ubuntu-latest-gcc-16-${{ github.sha }}
+          restore-keys: |
+            build-ubuntu-latest-gcc-16-
+
       - name: Configure
         uses: ./.github/actions/_configure_cmake
       - name: Build (populates cache)
         run: cmake --build build --parallel
+
+      - name: Save build tree
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build
+          key: build-ubuntu-latest-gcc-16-${{ github.sha }}
