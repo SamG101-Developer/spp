@@ -8,6 +8,19 @@ set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
+# Build options (consumed by CI in the configure-cmake composite action).
+option(SPP_WERROR "Treat compiler warnings as errors" ON)
+option(SPP_BUILD_TESTS "Build the unit tests" ON)
+set(SPP_SANITIZER "" CACHE STRING "Sanitizers to enable, e.g. 'address,undefined,leak' or 'thread'")
+
+# Apply sanitizer flags to every target defined below (library, executable, tests).
+# Accepts either '+' or ',' as the separator (CI passes e.g. 'address+undefined+leak').
+if (SPP_SANITIZER)
+    string(REPLACE "+" "," _SPP_SAN_LIST "${SPP_SANITIZER}")
+    add_compile_options(-fsanitize=${_SPP_SAN_LIST} -fno-omit-frame-pointer -fno-optimize-sibling-calls)
+    add_link_options(-fsanitize=${_SPP_SAN_LIST})
+endif ()
+
 include(FetchContent)
 
 # Find dependencies.
@@ -28,15 +41,19 @@ file(GLOB_RECURSE MODULE_FILES CONFIGURE_DEPENDS "headers/*.ixx")
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
 add_library(${PROJECT_NAME}_lib)
 
-# Enable all warnings and treat them as errors. # -Wswitch-enum
+# Enable all warnings (treating them as errors is gated behind SPP_WERROR, applied below). # -Wswitch-enum
 target_compile_options(${PROJECT_NAME}_lib PRIVATE
-        -Wall -Wextra -Werror -fmodules -fvisibility=hidden -fvisibility-inlines-hidden
+        -Wall -Wextra -fmodules -fvisibility=hidden -fvisibility-inlines-hidden
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wsuggest-override
         -Wzero-as-null-pointer-constant -Wimplicit-fallthrough=5 -Wstrict-overflow=2 -Wnon-virtual-dtor
         -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wno-null-dereference -Wodr)
+
+if (SPP_WERROR)
+    target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
+endif ()
 
 target_sources(${PROJECT_NAME}_lib PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES} PRIVATE ${SOURCE_FILES})
 target_compile_features(${PROJECT_NAME}_lib PRIVATE cxx_std_26)
@@ -71,9 +88,11 @@ mark_as_advanced(
         CMAKE_EXE_LINKER_FLAGS_ASAN CMAKE_SHARED_LINKER_FLAGS_ASAN)
 
 # Unit test support.
-enable_testing()
-add_subdirectory(tests)
+if (SPP_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 
-# Ensure the test executable is (re)built whenever the main project is built, so tests
-# never run against a stale binary after updating the repo.
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_tests)
+    # Ensure the test executable is (re)built whenever the main project is built, so tests
+    # never run against a stale binary after updating the repo.
+    add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_tests)
+endif ()
