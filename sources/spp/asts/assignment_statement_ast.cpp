@@ -245,6 +245,10 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value * {
+    // Alias the common utils functions and types.
+    using analyse::utils::assignment_utils::IsDeref;
+    using analyse::utils::assignment_utils::IsIdentifier;
+
     // Generate code for each assignment in sequence.
     for (auto i = 0uz; i < Lhs.Len(); ++i) {
         // Set the meta information for generating with values.
@@ -256,8 +260,26 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
         const auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
         meta->Restore();
 
-        // Generate the LHS location and store the RHS value into it.
-        const auto llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
+        // Determine the LHS store location.
+        auto llvm_lhs = static_cast<llvm::Value*>(nullptr);
+        if (IsDeref(Lhs[i].get())) {
+            // "x@ = v" writes through a borrow: the target is the borrow pointer itself.
+            const auto inner = Lhs[i]->To<PostfixExpressionAst>()->Lhs.get();
+            llvm_lhs = inner->Stage11_CodeGen(sm, meta, ctx);
+        }
+        else if (IsIdentifier(Lhs[i].get())) {
+            // "a = v" targets the variable's allocation directly (loading it would yield the rvalue).
+            const auto var_sym = sm->CurrentScope->GetVarSymbol(AstCloneShared(Lhs[i]->To<IdentifierAst>()));
+            SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
+            llvm_lhs = var_sym->LlvmInfo->Alloca;
+        }
+        else {
+            // "x.y = v" (attribute): the runtime member access already yields the field pointer.
+            llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
+        }
+
+        // Store the RHS value into the resolved LHS location.
+        SPP_ASSERT(llvm_lhs != nullptr and llvm_rhs != nullptr);
         ctx->Builder.CreateStore(llvm_rhs, llvm_lhs);
     }
 
