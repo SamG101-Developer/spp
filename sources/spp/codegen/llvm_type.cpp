@@ -9,6 +9,7 @@ import spp.asts.function_parameter_group_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
@@ -23,6 +24,17 @@ import genex;
 import llvm;
 import std;
 
+static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
+    switch (bit_width) {
+        case 8: { return llvm::APFloatBase::Float8E4M3(); }
+        case 16: { return llvm::APFloatBase::IEEEhalf(); }
+        case 32: { return llvm::APFloatBase::IEEEsingle(); }
+        case 64: { return llvm::APFloatBase::IEEEdouble(); }
+        case 128: { return llvm::APFloatBase::IEEEquad(); }
+        default: std::unreachable();
+    }
+    std::unreachable();
+}
 
 auto spp::codegen::RegisterLlvmTypeInfo(
     asts::ClassPrototypeAst const *cls_proto,
@@ -74,33 +86,34 @@ auto spp::codegen::RegisterLlvmTypeInfo(
         const auto type_part = ancestor_names[2];
         const auto bit_width_ast = scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>();
         if (bit_width_ast == nullptr) { return; }
+        const auto bit_width = std::stoul(bit_width_ast->Val->TokenData);
 
-        const auto bit_width = std::stoul(scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>()->Val->TokenData);
         if (type_part == "sized_integer") {
             cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, static_cast<unsigned int>(bit_width));
             return;
         }
 
         if (type_part.starts_with("sized_floating_point")) {
-            if (bit_width == 8) {
-                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::Float8E4M3());
-            }
-            else if (bit_width == 16) {
-                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEhalf());
-            }
-            else if (bit_width == 32) {
-                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEsingle());
-            }
-            else if (bit_width == 64) {
-                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEdouble());
-            }
-            else if (bit_width == 128) {
-                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEquad());
-            }
+            cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(bit_width));
             return;
         }
     }
 
+    if (ancestor_names == Vec<Str>{"std", "array", "Arr"}) {
+        // Lower S++ Arr" to the llvm "[T * n]" type.
+        const auto gn_arg_group = cls_sym->FqName()->TypeParts().Back()->GnArgGroup.get();
+        const auto length_ast = gn_arg_group->CompAt("n")->Val->To<asts::IntegerLiteralAst>();
+        const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val);
+        if (length_ast != nullptr and elem_sym != nullptr) {
+            if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
+                RegisterLlvmTypeInfo(elem_sym->Type, ctx);
+            }
+            if (const auto elem_llvm_type = GetLlvmType(*elem_sym, ctx); elem_llvm_type != nullptr) {
+                cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, std::stoull(length_ast->Val->TokenData));
+            }
+        }
+        return;
+    }
 
     if (ancestor_names == Vec<Str>{"std", "function", "FunMov"}
         or ancestor_names == Vec<Str>{"std", "function", "FunMut"}
