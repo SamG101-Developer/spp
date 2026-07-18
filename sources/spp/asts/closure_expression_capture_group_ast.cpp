@@ -136,7 +136,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
         const auto cap_val = capture->Val->To<IdentifierAst>();
         const auto cap_ty = capture->InferType(sm, meta);
         const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(cap_ty);
-        const auto cap_llvm_type = codegen::llvm_type(
+        const auto cap_llvm_type = codegen::GetLlvmType(
             *sm->CurrentScope->GetTypeSymbol(cap_ty), ctx);
 
         // Create the alloca for the variable.
