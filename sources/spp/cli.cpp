@@ -137,12 +137,12 @@ auto spp::cli::handle_vcs()
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + utils::files::DisplayString(repo_folder)).c_str());
+            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + utils::files::NativeString(repo_folder)).c_str());
             std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            std::system(("git -C " + utils::files::DisplayString(repo_folder) + " pull origin " + repo_branch).c_str());
-            std::system(("git -C " + utils::files::DisplayString(repo_folder) + " checkout " + repo_branch).c_str());
+            std::system(("git -C " + utils::files::NativeString(repo_folder) + " pull origin " + repo_branch).c_str());
+            std::system(("git -C " + utils::files::NativeString(repo_folder) + " checkout " + repo_branch).c_str());
             std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
         }
 

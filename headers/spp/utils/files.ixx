@@ -21,13 +21,27 @@ namespace spp::utils::files {
     SPP_EXP_FUN auto WriteFile(std::filesystem::path const &path, Str const &content) -> void;
 
     /**
-     * Convert a filesystem path to a string, using the correct member for the
-     * standard library version: display_string() on libstdc++ 17+ (where
-     * string() is deprecated), string() on older releases.
+     * Convert a filesystem path to a string for human presentation, using the
+     * correct member for the standard library version: display_string() on
+     * libstdc++ 17+ (where string() is deprecated), string() on older releases.
+     * The result may be lossily transcoded, so only use it for logs, error
+     * messages and other display output -- never to reopen the path.
      * @param path The path to stringify.
-     * @return The path as a string.
+     * @return The path as a display string.
      */
     SPP_EXP_FUN auto DisplayString(std::filesystem::path const &path) -> Str;
+
+    /**
+     * Convert a filesystem path to its native-encoded string, using the correct
+     * member for the standard library version: native_encoded_string() on
+     * libstdc++ 17+ (where string() is deprecated), string() on older releases.
+     * The result faithfully round-trips the path, so use it when the string is
+     * fed back to the OS/shell, used to reopen the file, or compared against
+     * native path components (e.g. preferred_separator).
+     * @param path The path to stringify.
+     * @return The path as a native-encoded string.
+     */
+    SPP_EXP_FUN auto NativeString(std::filesystem::path const &path) -> Str;
 
     SPP_EXP_CLS enum class LockType { Shared, Exclusive };
 
@@ -36,29 +50,3 @@ namespace spp::utils::files {
 
     SPP_EXP_FUN auto GlobSpp(Str const &path) -> Vec<std::filesystem::path>;
 }
-
-// SPP_EXP_CLS struct spp::utils::files::FileLock {
-// private:
-//     std::filesystem::path m_path;
-//     int m_fd;
-//     bool m_locked;
-//     LockType m_lock_type;
-//
-//     auto open_file() -> void;
-//
-// public:
-//     explicit FileLock(std::filesystem::path const &path);
-//     ~FileLock() noexcept;
-//
-//     FileLock(FileLock const &) = delete;
-//     auto operator=(FileLock const &) -> FileLock& = delete;
-//     FileLock(FileLock &&) noexcept = delete;
-//     auto operator=(FileLock &&) noexcept -> FileLock& = delete;
-//
-//     auto lock(LockType type, bool non_blocking = false) -> void;
-//     auto unlock() noexcept -> void;
-//
-//     SPP_ATTR_NODISCARD auto is_locked() const noexcept -> bool;
-//     SPP_ATTR_NODISCARD auto path() const noexcept -> std::filesystem::path const&;
-//     SPP_ATTR_NODISCARD auto lock_type() const noexcept -> LockType;
-// };

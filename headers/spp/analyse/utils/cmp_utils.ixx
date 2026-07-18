@@ -108,7 +108,7 @@ namespace spp::analyse::utils::cmp_utils {
     };
 
     SPP_EXP_CLS template <typename Ret, typename... Args>
-    struct CmpFnImpl : CmpFn {
+    struct CmpFnImpl final : CmpFn {
         using FnPtr = Ret(*)(Args...);
         FnPtr fn;
 

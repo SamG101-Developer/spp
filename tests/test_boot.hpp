@@ -7,13 +7,13 @@ import spp.analyse.scopes.scope_manager;
 import spp.lex.lexer;
 import spp.parse.errors.parser_error;
 import spp.parse.parser_spp;
+import spp.utils.files;
 import sys;
 import std;
 
-
 inline auto build_temp_project(std::string code, const bool add_main = true) -> void {
     const auto cwd = std::filesystem::current_path();
-    const auto fp = "../../tests/test_outputs";
+    constexpr auto fp = "../../tests/test_outputs";
 
     if (add_main) {
         code = "fun main(args: Vec[Str]) -> Void { }\n" + code;
@@ -26,7 +26,7 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
     // initialization (handle_init + handle_vcs) is serialized across parallel
     // test workers. Use spp.toml as the sentinel: it is written by handle_init,
     // so its absence means initialization has not completed.
-    const auto lock_path = (cwd / fp / ".lock").string();
+    const auto lock_path = spp::utils::files::NativeString(cwd / fp / ".lock");
     const int init_lock_fd = sys::open(lock_path.c_str(), sys::O_RDWR | sys::O_CREAT);
     sys::flock(init_lock_fd, sys::LOCK_EX);
 

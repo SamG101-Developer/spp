@@ -44,7 +44,7 @@ auto spp::compiler::CompilerBoot::Lex(
     -> void {
     // Lexing stage.
     for (auto const &mod : tree) {
-        mod->tokens = lex::Lexer(mod->code, not utils::files::DisplayString(mod->path).contains("/src/std/")).Lex();
+        mod->tokens = lex::Lexer(mod->code, not utils::files::NativeString(mod->path).contains("/src/std/")).Lex();
         mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(mod->tokens, utils::files::DisplayString(mod->path));
         bar.Next();
     }

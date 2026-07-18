@@ -141,7 +141,7 @@ auto spp::asts::ModulePrototypeAst::Name() const
     auto parts = Vec<Str>();
     for (auto const &entry : std::filesystem::directory_iterator(FilePath)) {
         if (entry.is_directory()) {
-            parts.EmplaceBack(spp::utils::files::DisplayString(entry.path().filename()));
+            parts.EmplaceBack(spp::utils::files::NativeString(entry.path().filename()));
         }
     }
 
@@ -167,7 +167,7 @@ auto spp::asts::ModulePrototypeAst::Name() const
 auto spp::asts::ModulePrototypeAst::FileName() const
     -> Unique<IdentifierAst> {
     // Return the filepath as an IdentifierAst.
-    return MakeUnique<IdentifierAst>(PosStart(), spp::utils::files::DisplayString(FilePath));
+    return MakeUnique<IdentifierAst>(PosStart(), spp::utils::files::NativeString(FilePath));
 }
 
 SPP_MOD_END

@@ -14,13 +14,11 @@ namespace spp::asts::mixins {
     SPP_EXP_CLS struct OrderableAst;
 }
 
-
 namespace spp::analyse::utils::order_utils {
     inline constexpr std::array ARG_ORDER_ARR{
         spp::asts::utils::OrderableTag::kPositionalArg,
         spp::asts::utils::OrderableTag::kKeywordArg,
     };
-
 
     inline constexpr std::array PARAM_ORDER_ARR{
         spp::asts::utils::OrderableTag::kSelfParam,
@@ -37,9 +35,9 @@ namespace spp::analyse::utils::order_utils {
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
     SPP_EXP_FUN auto DoOrder(
-        Vec<asts::mixins::OrderableAst*> &&args,
+        Vec<asts::mixins::OrderableAst *> &&args,
         Vec<asts::utils::OrderableTag> order)
-        -> Vec<Pair<Str, asts::Ast*>>;
+        -> Vec<Pair<Str, asts::Ast *>>;
 
     /**
      * The entry point into ordering arguments. This uses the internal order defined for function call arguments:
@@ -48,8 +46,8 @@ namespace spp::analyse::utils::order_utils {
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
     SPP_EXP_FUN auto DoOrderArgs(
-        Vec<asts::mixins::OrderableAst*> &&args)
-        -> Vec<Pair<Str, asts::Ast*>>;
+        Vec<asts::mixins::OrderableAst *> &&args)
+        -> Vec<Pair<Str, asts::Ast *>>;
 
     /**
      * The entry point into ordering parameters. This uses the internal order defined for function parameters:
@@ -58,6 +56,6 @@ namespace spp::analyse::utils::order_utils {
      * @return The list of parameters that are out of order, paired with a string representation of their tag.
      */
     SPP_EXP_FUN auto DoOrderParams(
-        Vec<asts::mixins::OrderableAst*> &&params)
-        -> Vec<Pair<Str, asts::Ast*>>;
+        Vec<asts::mixins::OrderableAst *> &&params)
+        -> Vec<Pair<Str, asts::Ast *>>;
 }

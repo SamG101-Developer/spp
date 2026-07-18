@@ -9,7 +9,6 @@ import ankerl;
 import llvm;
 import std;
 
-
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
     SPP_EXP_CLS struct ExpressionAst;
@@ -41,7 +40,6 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;
 }
 
-
 namespace spp::analyse::utils::func_utils {
     using InferenceSourceMap = ankerl::unordered_dense::map<
         Shared<asts::IdentifierAst>,
@@ -57,7 +55,7 @@ namespace spp::analyse::utils::func_utils {
 
     using InferenceResultCompMap = ankerl::unordered_dense::map<
         Shared<asts::TypeIdentifierAst>,
-        Vec<asts::ExpressionAst*>,
+        Vec<asts::ExpressionAst *>,
         spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
         spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
@@ -69,7 +67,7 @@ namespace spp::analyse::utils::func_utils {
 
     SPP_EXP_CLS using InferenceFinalCompMap = ankerl::unordered_dense::map<
         Shared<asts::TypeIdentifierAst>,
-        asts::ExpressionAst*,
+        asts::ExpressionAst *,
         spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
         spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
@@ -101,7 +99,7 @@ namespace spp::analyse::utils::func_utils {
         asts::ExpressionAst const &lhs,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>>;
+        -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const *, Shared<asts::IdentifierAst>>;
 
     SPP_EXP_FUN auto ConvertMethodToFuncForm(
         asts::TypeAst const &function_owner_type,
@@ -117,7 +115,7 @@ namespace spp::analyse::utils::func_utils {
         scopes::Scope const *target_scope,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>>;
+        -> Vec<std::tuple<scopes::Scope const *, asts::FunctionPrototypeAst *, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>>;
 
     SPP_EXP_FUN auto CheckForConflictingOverload(
         scopes::Scope const &this_scope,
@@ -125,7 +123,7 @@ namespace spp::analyse::utils::func_utils {
         asts::FunctionPrototypeAst const &new_fn,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> asts::FunctionPrototypeAst*;
+        -> asts::FunctionPrototypeAst *;
 
     SPP_EXP_FUN auto CheckForConflictingOverride(
         scopes::Scope const &this_scope,
@@ -134,18 +132,18 @@ namespace spp::analyse::utils::func_utils {
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta,
         scopes::Scope const *exclude_scope = nullptr)
-        -> asts::FunctionPrototypeAst*;
+        -> asts::FunctionPrototypeAst *;
 
     SPP_EXP_FUN auto EnforceNoInvalidFnArgs(
-        Vec<asts::FunctionParameterAst*> const &params,
-        Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
+        Vec<asts::FunctionParameterAst *> const &params,
+        Vec<asts::FunctionCallArgumentKeywordAst *> const &named_args,
         scopes::ScopeManager &sm)
         -> void;
 
     SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType>
     auto EnforceNoInvalidGnArgs(
-        Vec<asts::GenericParameterAst*> const &params,
-        Vec<asts::GenericArgumentAst*> const &named_args,
+        Vec<asts::GenericParameterAst *> const &params,
+        Vec<asts::GenericArgumentAst *> const &named_args,
         scopes::ScopeManager &sm)
         -> void;
 
@@ -189,7 +187,7 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType, typename GenericParamVariadicType>
     auto NameGnArgsImpl(
         asts::GenericArgumentGroupAst &a_group,
-        Vec<asts::GenericParameterAst*> const &params,
+        Vec<asts::GenericParameterAst *> const &params,
         asts::Ast const &owner,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
@@ -220,6 +218,6 @@ namespace spp::analyse::utils::func_utils {
 
     SPP_EXP_FUN auto GetOverloadTypes(
         asts::TypeAst const &overload_set_type,
-        scopes::Scope const& scope)
+        scopes::Scope const &scope)
         -> Vec<Shared<asts::TypeAst>>;
 }

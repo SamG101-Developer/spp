@@ -219,6 +219,7 @@ private:
      * @param sup_scopes The list of super scopes to attach to the type scope. This is passed in as an rvalue reference
      * because it will typically be created on-the-fly by the public method.
      * @param meta The compiler metadata.
+     * @param deferred How to control the constraint deferments (see impl).
      */
     auto AttachSpecificSuperScopesImpl(
         Scope &scope,

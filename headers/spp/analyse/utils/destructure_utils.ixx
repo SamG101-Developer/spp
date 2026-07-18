@@ -10,7 +10,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct LocalVariableAst;
 }
 
-
 namespace spp::analyse::utils::destructure_utils {
     constexpr auto kUnmatchableTag = "_UNMATCHABLE";
 

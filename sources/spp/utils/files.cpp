@@ -15,6 +15,16 @@ auto spp::utils::files::DisplayString(
 #endif
 }
 
+auto spp::utils::files::NativeString(
+    std::filesystem::path const &path)
+    -> Str {
+#if _GLIBCXX_RELEASE >= 17
+    return path.native_encoded_string();
+#else
+    return path.string();
+#endif
+}
+
 auto spp::utils::files::ReadFile(
     std::filesystem::path const &path)
     -> Str {
@@ -40,9 +50,9 @@ auto spp::utils::files::GlobSpp(
     // Use the filesystem iterator to recursively walk the path, finding all ".spp" files.
     auto paths = Vec<std::filesystem::path>();
     for (auto const &entry : std::filesystem::recursive_directory_iterator(path)) {
-        const auto full_name = DisplayString(entry.path());
+        const auto full_name = NativeString(entry.path());
         if (not entry.is_regular_file()) { continue; }
-        if (DisplayString(entry.path().extension()) != ".spp") { continue; }
+        if (NativeString(entry.path().extension()) != ".spp") { continue; }
         paths.EmplaceBack(full_name);
     }
     return paths;

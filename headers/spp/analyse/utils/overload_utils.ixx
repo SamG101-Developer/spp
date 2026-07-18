@@ -31,23 +31,22 @@ namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaData;
 }
 
-
 namespace spp::analyse::utils::overload_utils {
     using OverloadInfo = std::tuple<
-        scopes::Scope const*,
-        asts::FunctionPrototypeAst*,
+        scopes::Scope const *,
+        asts::FunctionPrototypeAst *,
         Unique<asts::GenericArgumentGroupAst>,
         Shared<asts::TypeAst>>;
 
     using PassOverloadInfo = std::tuple<
-        scopes::Scope const*,
-        asts::FunctionPrototypeAst*,
+        scopes::Scope const *,
+        asts::FunctionPrototypeAst *,
         Unique<asts::FunctionCallArgumentGroupAst>,
-        Vec<asts::GenericArgumentAst*>>;
+        Vec<asts::GenericArgumentAst *>>;
 
     using FailOverloadInfo = std::tuple<
-        scopes::Scope const*,
-        asts::FunctionPrototypeAst*,
+        scopes::Scope const *,
+        asts::FunctionPrototypeAst *,
         Str,
         Str>;
 
@@ -99,7 +98,7 @@ namespace spp::analyse::utils::overload_utils {
         asts::GenericArgumentGroupAst &explicit_generic_args,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<asts::FunctionPrototypeAst*, scopes::Scope const*>;
+        -> std::tuple<asts::FunctionPrototypeAst *, scopes::Scope const *>;
 
     SPP_EXP_FUN auto ValidateArgsMatchParams(
         asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,

@@ -7,6 +7,7 @@ AlignConsecutiveDeclarations: false
 AlignOperands: false
 AlignTrailingComments: false
 AlwaysBreakTemplateDeclarations: Yes
+FixNamespaceComments: false
 BraceWrapping:
   AfterCaseLabel: false
   AfterClass: false
