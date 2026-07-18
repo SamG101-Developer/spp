@@ -80,7 +80,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
     const auto uid = spp::utils::Uid(this);
     const auto fut_type = InferType(sm, meta);
     const auto fut_type_sym = sm->CurrentScope->GetTypeSymbol(fut_type);
-    const auto llvm_fut_type = codegen::llvm_type(*fut_type_sym, ctx);
+    const auto llvm_fut_type = codegen::GetLlvmType(*fut_type_sym, ctx);
 
     // Allocate the future onto the stack and set the initial state.
     const auto fut_alloca = ctx->Builder.CreateAlloca(llvm_fut_type, nullptr, "async.fut.alloca" + uid);
