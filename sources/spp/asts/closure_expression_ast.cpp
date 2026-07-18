@@ -157,17 +157,17 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     for (auto const &capture : PcGroup->CaptureGroup->Captures) {
         const auto cap_ty = capture->InferType(sm, meta);
         const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(cap_ty);
-        env_field_types.EmplaceBack(codegen::llvm_type(*cap_ty_sym, ctx));
+        env_field_types.EmplaceBack(codegen::GetLlvmType(*cap_ty_sym, ctx));
     }
     env_ty->setBody(env_field_types.ToStdVector(), false);
 
     // Build a new function that the body of the closure is built into. Needs a variable binding at the top (ie allow
     // "let a = env.a" as the function signature will be "(env: $ClosureX, ...params: Params) -> RetType").
     auto llvm_param_types = PcGroup->ParamGroup->GetAllParams()
-        | genex::views::transform([&](auto const &param) { return codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(param->Type), ctx); })
+        | genex::views::transform([&](auto const &param) { return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(param->Type), ctx); })
         | genex::to<Vec>();
     llvm_param_types.Insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
-    const auto llvm_ret_ty = codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(_RetType), ctx);
+    const auto llvm_ret_ty = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(_RetType), ctx);
     const auto llvm_fn_ty = llvm::FunctionType::get(llvm_ret_ty, llvm_param_types.ToStdVector(), PcGroup->ParamGroup->GetVariadicParams() != nullptr);
     const auto llvm_fn = llvm::Function::Create(llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->Module.get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
@@ -194,7 +194,15 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     meta->Save();
     PcGroup->Stage11_CodeGen(sm, meta, ctx);
     sm->MoveToNextScope();
-    Body->Stage11_CodeGen(sm, meta, ctx);
+    const auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
+
+    // Terminate the closure function with a return of the body's value. If the body already terminated the
+    // block (eg via an explicit "ret"), or the closure returns Void, emit nothing / a void return instead.
+    if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+        if (llvm_ret_ty->isVoidTy() or body_val == nullptr) { ctx->Builder.CreateRetVoid(); }
+        else { ctx->Builder.CreateRet(body_val); }
+    }
+
     meta->Restore();
     sm->CurrentScope = parent_scope;
 
@@ -214,20 +222,21 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 
         const auto field_ptr = ctx->Builder.CreateInBoundsGEP(
             env_ty, env_alloca, {zero, capture_index}, "closure.env.gep." + std::to_string(i));
-        const auto val = capture->Val->Stage11_CodeGen(sm, meta, ctx); // always an identifier, no worry abt double generation.
+
+        // For a borrowed capture (&x / &mut x) the env field is a pointer, so store the address of thec captured
+        // variable; for a by-value (mov) capture, store the value itself.
+        const auto val = capture->Conv != nullptr
+            ? sm->CurrentScope->GetVarSymbol(AstCloneShared(capture->Val->To<IdentifierAst>()))->LlvmInfo->Alloca
+            : capture->Val->Stage11_CodeGen(sm, meta, ctx);
         ctx->Builder.CreateStore(val, field_ptr);
     }
 
-    // Allocate the closure object.
-    const auto closure_ty = llvm::StructType::create(*ctx->Context, "$ClosureObj" + uid);
+    // Build the closure value as its FunXXX type, which lowers to a { fn_ptr, env_ptr } pair (RegisterLlvmTypeInfo).
+    const auto closure_ty = llvm::cast<llvm::StructType>(
+        codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(InferType(sm, meta)), ctx));
     const auto closure_alloca = ctx->Builder.CreateAlloca(closure_ty, nullptr, "closure.obj.alloca." + uid);
-    ctx->Builder.CreateStore(
-        llvm_fn,
-        ctx->Builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0)}));
-
-    ctx->Builder.CreateStore(
-        env_alloca,
-        ctx->Builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 1)}));
+    ctx->Builder.CreateStore(llvm_fn, ctx->Builder.CreateStructGEP(closure_ty, closure_alloca, 0));
+    ctx->Builder.CreateStore(env_alloca, ctx->Builder.CreateStructGEP(closure_ty, closure_alloca, 1));
 
     // Return the generated closure.
     return ctx->Builder.CreateLoad(closure_ty, closure_alloca, "load.closure.obj." + uid);
