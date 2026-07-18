@@ -198,11 +198,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     using utils::type_utils::CreateGenericSupScope;
     using utils::type_utils::RelaxedTypeEq;
     using utils::type_utils::GenericInferenceMap;
-
-    // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
-    const auto scope_name = scope.TySym->FqName();
     if (sup_scopes.IsEmpty()) { return; }
-    if (scope_name->IsCompilerGeneratedType()) { return; }
 
     // Clear the sup scopes list.
     scope.DirectSupScopes.Clear();

@@ -124,8 +124,12 @@ auto spp::analyse::utils::type_utils::TypeEq(
 
     if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
-    // If the stripped types are not equal, check forwarding compatibility before returning false.
+    // If the stripped types are not equal, check function-mock and forwarding compatibility before returning
+    // false. A "$" mock type is a function value: match it structurally against the target function type via
+    // its superimposed overload types ($ types are only ever generated for this purpose).
     if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) {
+        if (lhs_type.IsCompilerGeneratedType()) { return TypeFuncEq(lhs_type, rhs_type, lhs_scope, rhs_scope); }
+        if (rhs_type.IsCompilerGeneratedType()) { return TypeFuncEq(rhs_type, lhs_type, rhs_scope, lhs_scope); }
         return TypeFwdEq(rhs_type, lhs_type, rhs_scope, lhs_scope);
     }
     auto &lhs_generics = lhs_type.TypeParts().Back()->GnArgGroup->Args;
@@ -215,6 +219,26 @@ auto spp::analyse::utils::type_utils::TypeFwdEq(
     return false;
 }
 
+auto spp::analyse::utils::type_utils::TypeFuncEq(
+    asts::TypeAst const &mock_type,
+    asts::TypeAst const &func_type,
+    scopes::Scope const &mock_scope,
+    scopes::Scope const &func_scope)
+    -> bool {
+    // A "$" mock type is generated per function and superimposes a function type for each of its overloads
+    // (and, because super types are transitive, the whole FunMov/FunMut/FunRef hierarchy above each). It
+    // matches the target function type if any of those superimposed function types is equal to the target.
+    const auto mock_sym = mock_scope.GetTypeSymbol(mock_type.WithoutConvention());
+    if (mock_sym == nullptr) { return false; }
+
+    for (auto const &sup_type : mock_sym->LinkedScope->SupTypes()) {
+        if (IsTypeFunc(*sup_type, mock_scope) and TypeEq(*sup_type, func_type, mock_scope, func_scope)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type,
@@ -257,15 +281,6 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
             return true;
         }
     }
-
-    // If the left-hand-side is a "$" (function overload) type, check the composite overload types.
-    // Todo: This doesn't work (or should be in normal TypeEq actually?)
-    // if (lhs_type.IsCompilerGeneratedType()) {
-    //     auto lhs_composite_types = func_utils::GetOverloadTypes(lhs_type, lhs_scope);
-    //     if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return RelaxedTypeEq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope, generic_args); })) {
-    //         return true;
-    //     }
-    // }
 
     // If the stripped types aren't equal, then return false.
     if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) { return false; }

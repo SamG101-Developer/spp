@@ -93,6 +93,24 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &param_scope)
         -> bool;
 
+    /**
+     * Check whether a function "mock" type (a @c $ type generated per function, which superimposes a
+     * @c FunMov/FunMut/FunRef type for each of its overloads) matches a target function type. This is what
+     * allows a plain function or method to be passed wherever a function type is expected. @c $ types are
+     * only ever generated for this purpose.
+     * @param mock_type The @c $ mock type (the function/method reference).
+     * @param func_type The target function type (@c FunMov/FunMut/FunRef) to match against.
+     * @param mock_scope The scope of the mock type.
+     * @param func_scope The scope of the target function type.
+     * @return If any of the mock's superimposed function types is equal to the target function type.
+     */
+    SPP_EXP_FUN auto TypeFuncEq(
+        asts::TypeAst const &mock_type,
+        asts::TypeAst const &func_type,
+        scopes::Scope const &mock_scope,
+        scopes::Scope const &func_scope)
+        -> bool;
+
     SPP_EXP_FUN auto RelaxedTypeEq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type,
