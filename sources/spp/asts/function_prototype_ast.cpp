@@ -672,9 +672,9 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
     codegen::LLvmCtx *ctx) const
     -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
-    const auto llvm_ret_type = codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(ReturnType), ctx);
+    const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ReturnType), ctx);
     const auto llvm_param_types = FnParamGroup->GetNonSelfParams()
-        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(x->Type), ctx); })
+        | genex::views::transform([&](auto const &x) { return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(x->Type), ctx); })
         | genex::to<Vec>();
 
     // Check if any of the types failed to convert.

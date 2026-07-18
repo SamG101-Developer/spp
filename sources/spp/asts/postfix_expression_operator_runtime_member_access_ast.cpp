@@ -215,7 +215,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
     const auto uid = spp::utils::Uid(this);
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
-    const auto llvm_type = codegen::llvm_type(*lhs_type_sym, ctx);
+    const auto llvm_type = codegen::GetLlvmType(*lhs_type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // If the lhs is symbolic, get the address of the outermost part.

@@ -146,7 +146,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // Create the alloca for the variable.
     const auto uid = spp::utils::Uid(this);
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // Always alloca at the top of the function for stack variables.

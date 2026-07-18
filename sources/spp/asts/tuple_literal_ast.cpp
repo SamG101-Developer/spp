@@ -155,7 +155,7 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
     const auto uid = spp::utils::Uid(this);
     const auto tuple_type = InferType(sm, meta);
     const auto tuple_type_sym = sm->CurrentScope->GetTypeSymbol(tuple_type);
-    const auto llvm_type = codegen::llvm_type(*tuple_type_sym, ctx);
+    const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // Create the alloca for the tuple.

@@ -165,7 +165,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
     const auto uid = spp::utils::Uid(this);
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
     // Re-order the arguments to match the fields on the type.
     // Todo: use the type_utils::get_attrs() function here?

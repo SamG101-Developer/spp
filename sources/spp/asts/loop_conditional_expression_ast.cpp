@@ -169,7 +169,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
     if (is_expr) {
         ctx->Builder.SetInsertPoint(loop_cond_bb);
         const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta));
-        phi = ctx->Builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), 2, "loop.phi" + uid);
+        phi = ctx->Builder.CreatePHI(codegen::GetLlvmType(*ret_type_sym, ctx), 2, "loop.phi" + uid);
     }
 
     // Jump to the condition entry block.

@@ -24,7 +24,7 @@ import llvm;
 import std;
 
 
-auto spp::codegen::register_llvm_type_info(
+auto spp::codegen::RegisterLlvmTypeInfo(
     asts::ClassPrototypeAst const *cls_proto,
     LLvmCtx const *ctx)
     -> void {
@@ -109,8 +109,7 @@ auto spp::codegen::register_llvm_type_info(
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
 }
 
-
-auto spp::codegen::llvm_type(
+auto spp::codegen::GetLlvmType(
     analyse::scopes::TypeSymbol const &type_sym,
     LLvmCtx const *ctx)
     -> llvm::Type* {
