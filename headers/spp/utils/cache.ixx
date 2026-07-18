@@ -2,22 +2,20 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.cache;
+import ankerl;
 import std;
-
 
 namespace spp::utils {
     /**
      * The Cache type is a simple key-value store that allows for caching of values based on keys. It provides methods
-     * to set, get, and check for the existence of keys in the cache. This is useful for optimizing performance by
-     * avoiding redundant computations. It is optimized for extreme random access, with no iteration support at all.
+     * to set, get, and check for the existence of keys in the cache. This is useful for optimising performance by
+     * avoiding redundant computations. It is optimised for extreme random access, with no iteration support at all.
      * @tparam K The type of the keys in the cache.
      * @tparam V The type of the values in the cache.
      */
     SPP_EXP_CLS template <typename K, typename V>
     requires std::is_pointer_v<K>
     class Cache {
-        std::unordered_map<K, V> m_cache;
-
     public:
         /**
          * Set a value in the cache for a given key.
@@ -48,5 +46,8 @@ namespace spp::utils {
         auto contains(K key) const noexcept -> bool {
             return m_cache.contains(key);
         }
+
+    private:
+        ankerl::unordered_dense::map<K, V> m_cache;
     };
 }

@@ -23,83 +23,81 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
-
-auto spp::asts::SubroutinePrototypeAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<SubroutinePrototypeAst>(
-        ast_clone_vec(annotations),
-        ast_clone(tok_cmp),
-        ast_clone(tok_fun),
-        ast_clone(name),
-        ast_clone(generic_param_group),
-        ast_clone(param_group),
-        ast_clone(tok_arrow),
-        ast_clone(return_type),
-        ast_clone(impl));
-    ast->orig_name = ast_clone(orig_name);
-    ast->m_annotation_info = m_annotation_info
-        ? std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>(*m_annotation_info)
+auto spp::asts::SubroutinePrototypeAst::Clone() const
+    -> Unique<Ast> {
+    auto ast = MakeUnique<SubroutinePrototypeAst>(
+        AstCloneVec(Annotations), AstClone(TokCmp), AstClone(TokFun), AstClone(Name), AstClone(GnParamGroup),
+        AstClone(FnParamGroup), AstClone(TokArrow), AstClone(ReturnType), AstClone(Impl));
+    ast->_AnnotationInfo = _AnnotationInfo
+        ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
         : nullptr;
-    ast->m_original_impl = ast_clone(m_original_impl);
-    ast->m_ctx = m_ctx;
-    ast->m_scope = m_scope;
-    ast->abstract_annotation = abstract_annotation;
-    ast->virtual_annotation = virtual_annotation;
-    ast->temperature_annotation = temperature_annotation;
-    ast->ffi_annotation = ffi_annotation;
-    ast->builtin_annotation = builtin_annotation;
-    ast->inline_annotation = inline_annotation;
-    ast->visibility = visibility;
-    ast->m_llvm_func = m_llvm_func;
-    for (auto const &a : ast->annotations) {
-        a->set_ast_ctx(ast.get());
-    }
+    ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
+    ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
+    ast->_Ctx = _Ctx;
+    ast->_Scope = _Scope;
+    ast->AbstractAnnotation = AbstractAnnotation;
+    ast->VirtualAnnotation = VirtualAnnotation;
+    ast->TemperatureAnnotation = TemperatureAnnotation;
+    ast->FfiAnnotation = FfiAnnotation;
+    ast->BuiltinAnnotation = BuiltinAnnotation;
+    ast->InlineAnnotation = InlineAnnotation;
+    ast->Visibility = Visibility;
+    ast->_LlvmFunc = _LlvmFunc;
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
     return ast;
 }
 
-
-auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
+auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::type_utils::TypeEq;
+    using generate::common_types_precompiled::VOID;
+    using generate::common_types_precompiled::NEVER;
+
     // Perform default function prototype semantic analysis
-    FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);
-    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
+    FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
 
     // Update the meta information for enclosing function information.
-    meta->save();
-    meta->enclosing_function_flavour = this->tok_fun.get();
-    meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
-    meta->enclosing_function_scope = sm->current_scope;
-    meta->enclosing_function_cmp = tok_cmp.get();
-    impl->stage_7_analyse_semantics(sm, meta);
+    meta->Save();
+    meta->EnclosingFunctionFlavour = this->TokFun.get();
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFunctionScope = sm->CurrentScope;
+    meta->EnclosingFunctionCmp = TokCmp.get();
+    Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Handle the "!" never type.
-    auto tm = ScopeManager(sm->global_scope, sm->current_scope->children[0].get());
-    meta->save();
-    meta->ignore_missing_else_branch_for_inference = true;
-    const auto is_never = not impl->members.empty() and analyse::utils::type_utils::symbolic_eq(
-        *impl->final_member()->to<StatementAst>()->infer_type(&tm, meta), *generate::common_types_precompiled::NEVER,
-        *tm.current_scope, *sm->current_scope);
-    meta->restore();
+    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope->Children[0].get());
+    meta->Save();
+    meta->IgnoreMissingElseBranchForInference = true;
+    const auto is_never = not Impl->Members.IsEmpty() and TypeEq(
+        *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta), *NEVER,
+        *tm.CurrentScope, *sm->CurrentScope);
+    meta->Restore();
 
     // Check there is a return statement at the end (for non-void functions).
-    const auto is_void = analyse::utils::type_utils::symbolic_eq(
-        *return_type, *generate::common_types_precompiled::VOID,
-        *sm->current_scope, *sm->current_scope);
+    const auto is_void = TypeEq(
+        *ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope);
 
-    const auto final_member = impl->final_member();
-    raise_unless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
-        is_void or is_never or ffi_annotation or builtin_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>()),
-        {sm->current_scope}, ERR_ARGS(*final_member, *return_type));
+    const auto final_member = Impl->FinalMember();
+    RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
+        is_void or is_never or FfiAnnotation or BuiltinAnnotation or AbstractAnnotation or (not Impl->Members.IsEmpty() and Impl->Members.Back()->To<RetStatementAst>()),
+        {sm->CurrentScope}, ERR_ARGS(*final_member, *Source.OriginalReturnType, *ReturnType));
 
-    sm->move_out_of_current_scope();
-    meta->restore(true);
-    meta->loop_return_types->clear();
+    sm->MoveOutOfCurrentScope();
+    meta->Restore(true);
+    meta->LoopReturnTypes->clear();
+}
+
+auto spp::asts::SubroutinePrototypeAst::IsCoroutine() const
+    -> bool {
+    return false;
 }
 
 SPP_MOD_END

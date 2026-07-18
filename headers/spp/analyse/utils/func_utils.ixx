@@ -4,7 +4,8 @@ module;
 export module spp.analyse.utils.func_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
-import ankerl.unordered_dense;
+import spp.utils.types;
+import ankerl;
 import llvm;
 import std;
 
@@ -42,27 +43,41 @@ namespace spp::analyse::scopes {
 
 
 namespace spp::analyse::utils::func_utils {
-    using InferenceSourceMap = std::map<
-        std::shared_ptr<asts::IdentifierAst>,
-        std::shared_ptr<asts::TypeAst>,
-        spp::utils::ptr::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
+    using InferenceSourceMap = ankerl::unordered_dense::map<
+        Shared<asts::IdentifierAst>,
+        Shared<asts::TypeAst>,
+        spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
+        spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
-    using InferenceTargetMap = std::map<
-        std::shared_ptr<asts::IdentifierAst>,
-        std::shared_ptr<asts::TypeAst>,
-        spp::utils::ptr::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
+    using InferenceTargetMap = ankerl::unordered_dense::map<
+        Shared<asts::IdentifierAst>,
+        Shared<asts::TypeAst>,
+        spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
+        spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
     using InferenceResultCompMap = ankerl::unordered_dense::map<
-        std::shared_ptr<asts::TypeIdentifierAst>,
-        std::vector<asts::ExpressionAst const*>,
-        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
-        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+        Shared<asts::TypeIdentifierAst>,
+        Vec<asts::ExpressionAst*>,
+        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
     using InferenceResultTypeMap = ankerl::unordered_dense::map<
-        std::shared_ptr<asts::TypeIdentifierAst>,
-        std::vector<std::shared_ptr<const asts::TypeAst>>,
-        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
-        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+        Shared<asts::TypeIdentifierAst>,
+        Vec<Shared<asts::TypeAst>>,
+        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
+
+    SPP_EXP_CLS using InferenceFinalCompMap = ankerl::unordered_dense::map<
+        Shared<asts::TypeIdentifierAst>,
+        asts::ExpressionAst*,
+        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
+
+    SPP_EXP_CLS using InferenceFinalTypeMap = ankerl::unordered_dense::map<
+        Shared<asts::TypeIdentifierAst>,
+        Shared<asts::TypeAst>,
+        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
     /**
      * Get the function owner type, scope and name from an expression AST. This is used to determine information related
@@ -82,29 +97,29 @@ namespace spp::analyse::utils::func_utils {
      *      2. The function scope (the scope generated when the @c FunctionPrototypeAst was analysed).
      *      3. The function name (the identifier that is used to call the function).
      */
-    SPP_EXP_FUN auto get_function_owner_type_and_function_name(
+    SPP_EXP_FUN auto GetFuncOwnerTypeAndFuncName(
         asts::ExpressionAst const &lhs,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<std::shared_ptr<asts::TypeAst>, scopes::Scope const*, std::shared_ptr<asts::IdentifierAst>>;
+        -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>>;
 
-    SPP_EXP_FUN auto convert_method_to_function_form(
+    SPP_EXP_FUN auto ConvertMethodToFuncForm(
         asts::TypeAst const &function_owner_type,
         asts::IdentifierAst const &function_name,
         asts::PostfixExpressionAst const &lhs,
         asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>>;
+        -> Pair<Unique<asts::PostfixExpressionAst>, Unique<asts::PostfixExpressionOperatorFunctionCallAst>>;
 
-    SPP_EXP_FUN auto get_all_function_scopes(
+    SPP_EXP_FUN auto GetAllFunctionScopes(
         asts::IdentifierAst const &target_fn_name,
         scopes::Scope const *target_scope,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>, std::shared_ptr<asts::TypeAst>>>;
+        -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>>;
 
-    SPP_EXP_FUN auto check_for_conflicting_overload(
+    SPP_EXP_FUN auto CheckForConflictingOverload(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn,
@@ -112,7 +127,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> asts::FunctionPrototypeAst*;
 
-    SPP_EXP_FUN auto check_for_conflicting_override(
+    SPP_EXP_FUN auto CheckForConflictingOverride(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn,
@@ -121,49 +136,48 @@ namespace spp::analyse::utils::func_utils {
         scopes::Scope const *exclude_scope = nullptr)
         -> asts::FunctionPrototypeAst*;
 
-    SPP_EXP_FUN auto enforce_no_invalid_fn_args(
-        std::vector<asts::FunctionParameterAst*> const &params,
-        std::vector<asts::FunctionCallArgumentKeywordAst*> const &named_args,
+    SPP_EXP_FUN auto EnforceNoInvalidFnArgs(
+        Vec<asts::FunctionParameterAst*> const &params,
+        Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
         scopes::ScopeManager &sm)
         -> void;
 
     SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType>
-    auto enforce_no_invalid_gn_args(
-        std::vector<asts::GenericParameterAst*> const &params,
-        std::vector<asts::GenericArgumentAst*> const &named_args,
+    auto EnforceNoInvalidGnArgs(
+        Vec<asts::GenericParameterAst*> const &params,
+        Vec<asts::GenericArgumentAst*> const &named_args,
         scopes::ScopeManager &sm)
         -> void;
 
     SPP_EXP_FUN template <typename InferenceResultMap>
-    auto enforce_no_conflicting_inferred_gn_args(
+    auto EnforceNoConflictingInferredGnArgs(
         InferenceResultMap const &inferred,
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP_FUN auto enforce_no_uninferred_gn_args(
-        std::vector<std::shared_ptr<asts::TypeIdentifierAst>> const &p_names,
-        std::vector<std::shared_ptr<asts::TypeIdentifierAst>> const &i_names,
+    SPP_EXP_FUN auto EnforceNoUninferredGnArgs(
+        Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
+        Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
         scopes::Scope const &owner_scope,
-        std::shared_ptr<asts::Ast> const &owner,
+        Shared<asts::Ast> const &owner,
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP_FUN auto enforce_no_generic_constraint_violations(
-        std::vector<std::shared_ptr<asts::TypeIdentifierAst>> const &p_names,
-        std::vector<std::vector<std::shared_ptr<asts::TypeAst>>> const &p_con_groups,
+    SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
+        asts::GenericParameterGroupAst const &p_group,
         asts::GenericArgumentGroupAst const &a_group,
         scopes::Scope const &owner_scope,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
         -> void;
 
-    SPP_EXP_FUN auto name_fn_args(
+    SPP_EXP_FUN auto NameFnArgs(
         asts::FunctionCallArgumentGroupAst &a_group,
         asts::FunctionParameterGroupAst const &p_group,
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP_FUN auto name_gn_args(
+    SPP_EXP_FUN auto NameGnArgs(
         asts::GenericArgumentGroupAst &a_group,
         asts::GenericParameterGroupAst const &p_group,
         asts::Ast const &owner,
@@ -172,67 +186,40 @@ namespace spp::analyse::utils::func_utils {
         bool is_tuple_owner = false)
         -> void;
 
-    SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType>
-    auto name_gn_args_impl(
+    SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType, typename GenericParamVariadicType>
+    auto NameGnArgsImpl(
         asts::GenericArgumentGroupAst &a_group,
-        asts::GenericParameterGroupAst const &p_group,
+        Vec<asts::GenericParameterAst*> const &params,
         asts::Ast const &owner,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
         -> void;
 
-    SPP_EXP_FUN auto infer_gn_args(
-        asts::GenericArgumentGroupAst &a_group,
+    SPP_EXP_FUN auto InferGnArgs(
         asts::GenericParameterGroupAst const &p_group,
-        std::vector<asts::GenericArgumentAst*> const &explicit_args,
+        asts::GenericArgumentGroupAst &a_group,
         InferenceSourceMap infer_source,
         InferenceTargetMap infer_target,
-        std::shared_ptr<asts::Ast> const &owner,
+        Shared<asts::Ast> const &owner,
         scopes::Scope const &owner_scope,
-        std::shared_ptr<asts::IdentifierAst> const &variadic_fn_param_name,
+        Shared<asts::IdentifierAst> const &variadic_fn_param_name,
         bool is_tuple_owner,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
         -> void;
 
-    SPP_EXP_FUN auto infer_gn_args_impl_comp(
-        asts::GenericArgumentGroupAst &a_group,
-        asts::GenericParameterGroupAst const &p_group,
-        std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
-        InferenceSourceMap const &infer_source,
-        InferenceTargetMap const &infer_target,
-        std::shared_ptr<asts::Ast> const &owner,
-        scopes::Scope const &owner_scope,
-        std::shared_ptr<asts::IdentifierAst> const &variadic_fn_param_name,
-        scopes::ScopeManager &sm,
-        asts::meta::CompilerMetaData &meta)
-        -> void;
-
-    SPP_EXP_FUN auto infer_gn_args_impl_type(
-        asts::GenericArgumentGroupAst &a_group,
-        asts::GenericParameterGroupAst const &p_group,
-        std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
-        InferenceSourceMap const &infer_source,
-        InferenceTargetMap const &infer_target,
-        std::shared_ptr<asts::Ast> const &owner,
-        scopes::Scope const &owner_scope,
-        std::shared_ptr<asts::IdentifierAst> const &variadic_fn_param_name,
-        scopes::ScopeManager &sm,
-        asts::meta::CompilerMetaData &meta)
-        -> void;
-
-    SPP_EXP_FUN auto is_target_callable(
+    SPP_EXP_FUN auto IsTargetCallable(
         asts::ExpressionAst &expr,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::shared_ptr<asts::TypeAst>;
+        -> Shared<const asts::TypeAst>;
 
-    SPP_EXP_FUN auto create_callable_prototype(
+    SPP_EXP_FUN auto CreateCallablePrototype(
         asts::TypeAst const &expr_type)
-        -> std::unique_ptr<asts::FunctionPrototypeAst>;
+        -> Unique<asts::FunctionPrototypeAst>;
 
-    SPP_EXP_FUN auto get_overload_types(
+    SPP_EXP_FUN auto GetOverloadTypes(
         asts::TypeAst const &overload_set_type,
         scopes::Scope const& scope)
-        -> std::vector<std::shared_ptr<asts::TypeAst>>;
+        -> Vec<Shared<asts::TypeAst>>;
 }

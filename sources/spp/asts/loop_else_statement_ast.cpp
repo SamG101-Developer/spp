@@ -4,95 +4,91 @@ module;
 module spp.asts.loop_else_statement_ast;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
-
 
 SPP_MOD_BEGIN
 spp::asts::LoopElseStatementAst::LoopElseStatementAst(
-    decltype(tok_else) &&tok_else,
-    decltype(body) &&body) :
-    tok_else(std::move(tok_else)),
-    body(std::move(body)) {
+    decltype(TokElse) &&tok_else,
+    decltype(Body) &&body) :
+    TokElse(std::move(tok_else)),
+    Body(std::move(body)) {
 }
-
 
 spp::asts::LoopElseStatementAst::~LoopElseStatementAst() = default;
 
-
-auto spp::asts::LoopElseStatementAst::pos_start() const
+auto spp::asts::LoopElseStatementAst::PosStart() const
     -> std::size_t {
-    return tok_else->pos_start();
+    // Use the "else" token.
+    return TokElse->PosStart();
 }
 
-
-auto spp::asts::LoopElseStatementAst::pos_end() const
+auto spp::asts::LoopElseStatementAst::PosEnd() const
     -> std::size_t {
-    return tok_else->pos_end();
+    // Use the "else" token.
+    return TokElse->PosEnd();
 }
 
-
-auto spp::asts::LoopElseStatementAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<LoopElseStatementAst>(
-        ast_clone(tok_else),
-        ast_clone(body));
+auto spp::asts::LoopElseStatementAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<LoopElseStatementAst>(
+        AstClone(TokElse), AstClone(Body));
 }
 
-
-spp::asts::LoopElseStatementAst::operator std::string() const {
+auto spp::asts::LoopElseStatementAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_else);
-    SPP_STRING_APPEND(body);
+    SPP_STRING_APPEND(TokElse);
+    SPP_STRING_APPEND(Body);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::LoopElseStatementAst::stage_7_analyse_semantics(
+auto spp::asts::LoopElseStatementAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Create a scope and analyse the body.
-    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
-        "loop-else-stmt", {}, pos_start());
-    sm->create_and_move_into_new_scope(std::move(scope_name), this);
-    body->stage_7_analyse_semantics(sm, meta);
-    sm->move_out_of_current_scope();
+    auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+        "loop-else-stmt", {}, PosStart());
+    sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+    Body->Stage7_AnalyseSemantics(sm, meta);
+    sm->MoveOutOfCurrentScope();
 }
 
-
-auto spp::asts::LoopElseStatementAst::stage_8_check_memory(
+auto spp::asts::LoopElseStatementAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Check the body for memory issues.
-    sm->move_to_next_scope();
-    body->stage_8_check_memory(sm, meta);
-    sm->move_out_of_current_scope();
+    sm->MoveToNextScope();
+    Body->Stage8_CheckMemory(sm, meta);
+    sm->MoveOutOfCurrentScope();
 }
 
-
-auto spp::asts::LoopElseStatementAst::stage_11_code_gen_2(
+auto spp::asts::LoopElseStatementAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for the body.
-    sm->move_to_next_scope();
-    const auto val = body->stage_11_code_gen_2(sm, meta, ctx);
-    sm->move_out_of_current_scope();
+    sm->MoveToNextScope();
+    const auto val = Body->Stage11_CodeGen(sm, meta, ctx);
+    sm->MoveOutOfCurrentScope();
     return val;
 }
 
-
-auto spp::asts::LoopElseStatementAst::infer_type(
+auto spp::asts::LoopElseStatementAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // The type of an else statement is the type of its body.
-    return body->infer_type(sm, meta);
+    return Body->InferType(sm, meta);
 }
 
 SPP_MOD_END

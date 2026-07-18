@@ -3,63 +3,60 @@ module;
 
 module spp.asts.generic_argument_ast;
 
-
 SPP_MOD_BEGIN
-auto spp::asts::GenericArgumentAst::equals_generic_argument_comp_keyword(
-    GenericArgumentCompKeywordAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
-}
-
-
-auto spp::asts::GenericArgumentAst::equals_generic_argument_comp_positional(
-    GenericArgumentCompPositionalAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
-}
-
-
-auto spp::asts::GenericArgumentAst::equals_generic_argument_type_keyword(
-    GenericArgumentTypeKeywordAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
-}
-
-
-auto spp::asts::GenericArgumentAst::equals_generic_argument_type_positional(
-    GenericArgumentTypePositionalAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
-}
-
-
-auto spp::asts::GenericArgumentAst::equals(
-    GenericArgumentAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
-}
-
-
 spp::asts::GenericArgumentAst::GenericArgumentAst(
     const utils::OrderableTag order_tag) :
     OrderableAst(order_tag) {
 }
 
-
 spp::asts::GenericArgumentAst::~GenericArgumentAst() = default;
-
 
 auto spp::asts::GenericArgumentAst::operator<=>(
     GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return equals(other);
+    -> Ordering {
+    return Equals(other);
 }
-
 
 auto spp::asts::GenericArgumentAst::operator==(
     GenericArgumentAst const &other) const
     -> bool {
-    return equals(other) == std::strong_ordering::equal;
+    return Equals(other) == Ordering::equal;
+}
+
+auto spp::asts::GenericArgumentAst::EqualsGenericArgumentCompKeyword(
+    GenericArgumentCompKeywordAst const &) const
+    -> Ordering {
+    return Ordering::less;
+}
+
+auto spp::asts::GenericArgumentAst::EqualsGenericArgumentCompPositional(
+    GenericArgumentCompPositionalAst const &) const
+    -> Ordering {
+    return Ordering::less;
+}
+
+auto spp::asts::GenericArgumentAst::EqualsGenericArgumentTypeKeyword(
+    GenericArgumentTypeKeywordAst const &) const
+    -> Ordering {
+    return Ordering::less;
+}
+
+auto spp::asts::GenericArgumentAst::EqualsGenericArgumentTypePositional(
+    GenericArgumentTypePositionalAst const &) const
+    -> Ordering {
+    return Ordering::less;
+}
+
+auto spp::asts::GenericArgumentAst::Equals(
+    GenericArgumentAst const &) const
+    -> Ordering {
+    return Ordering::less;
+}
+
+auto spp::asts::GenericArgumentAst::ViewName() const
+    -> StrView {
+    // Overridden by the keyword argument ASTs to view the keyword name.
+    return "";
 }
 
 SPP_MOD_END

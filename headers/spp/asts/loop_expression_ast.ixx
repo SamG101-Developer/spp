@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.loop_expression_ast;
 import spp.asts.primary_expression_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -12,8 +13,7 @@ namespace spp::analyse::scopes {
 namespace spp::asts {
     SPP_EXP_CLS struct LoopElseStatementAst;
     SPP_EXP_CLS struct LoopExpressionAst;
-    SPP_EXP_CLS template <typename T>
-    struct InnerScopeExpressionAst;
+    SPP_EXP_CLS struct InnerScopeExpressionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
@@ -21,24 +21,24 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::LoopExpressionAst : PrimaryExpressionAst {
 protected:
-    std::optional<std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
+    std::optional<std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
 
 public:
     /**
      * The @c loop token that indicates the start of a loop expression.
      */
-    std::unique_ptr<TokenAst> tok_loop;
+    Unique<TokenAst> TokLoop;
 
     /**
      * The body of the loop. This is a block of statements that will be executed for each iteration of the loop.
      */
-    std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> body;
+    Unique<InnerScopeExpressionAst> Body;
 
     /**
      * The optional @c else block of the loop. This will be executed if the original condition is immediately false, or
      * the iterable is already exhausted (no loops take place).
      */
-    std::unique_ptr<LoopElseStatementAst> else_block;
+    Unique<LoopElseStatementAst> ElseBlock;
 
     /**
      * Construct the LoopExpressionAst with the arguments matching the members.
@@ -47,11 +47,11 @@ public:
      * @param[in] else_block The optional @c else block of the loop.
      */
     LoopExpressionAst(
-        decltype(tok_loop) &&tok_loop,
-        decltype(body) &&body,
-        decltype(else_block) &&else_block);
+        decltype(TokLoop) &&tok_loop,
+        decltype(Body) &&body,
+        decltype(ElseBlock) &&else_block);
 
     ~LoopExpressionAst() override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };

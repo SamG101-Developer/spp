@@ -1,43 +1,68 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     UnaryExpressionOperatorDerefAst,
     test_invalid_non_borrow_type,
-    SppDereferenceInvalidExpressionNonBorrowedTypeError, R"(
-    fun f() -> std::void::Void {
+    SppDereferenceNonBorrowedTypeError, R"(
+    fun f() -> Void {
         let x = 10
         let y = x@
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     UnaryExpressionOperatorDerefAst,
     test_valid_deref_ref,
     R"(
-    fun f(x: &std::boolean::Bool) -> std::void::Void {
+    fun f(x: &Bool) -> Void {
         let y = x@
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     UnaryExpressionOperatorDerefAst,
     test_valid_deref_mut,
     R"(
-    fun f(mut x: &mut std::boolean::Bool) -> std::void::Void {
+    fun f(mut x: &mut Bool) -> Void {
         let y = x@
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     UnaryExpressionOperatorDerefAst,
     test_invalid_non_copyable,
-    SppInvalidExpressionNonCopyableTypeError, R"(
-    fun f(x: &std::string::Str) -> std::string::Str {
+    SppNonCopyableTypeError, R"(
+    fun f(x: &Str) -> Str {
         let y = x@
         ret y
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    UnaryExpressionOperatorDerefAst,
+    test_invalid_non_copyable_mut_borrow,
+    SppNonCopyableTypeError, R"(
+    fun f(x: &mut Str) -> Str {
+        let y = x@
+        ret y
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    UnaryExpressionOperatorDerefAst,
+    test_valid_move_deref_non_copyable_assignment_target, R"(
+    fun f(x: &mut Str) -> Void {
+        x@ = Str::from("hello")
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    UnaryExpressionOperatorDerefAst,
+    test_valid_deref_user_copyable_type, R"(
+    cls A { }
+    sup A ext Copy { }
+    fun f(x: &A) -> Void {
+        let mut y = x@
+        y = A()
     }
 )");

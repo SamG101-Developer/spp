@@ -32,280 +32,292 @@ import spp.lex.tokens;
 import genex;
 import sys;
 
-
 SPP_MOD_BEGIN
-spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
-    decltype(tok_l) &&tok_l,
-    decltype(args) &&args,
-    decltype(tok_r) &&tok_r) :
-    tok_l(std::move(tok_l)),
-    args(std::move(args)),
-    tok_r(std::move(tok_r)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(", not args.empty() ? args.front()->pos_start() : 0);
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")", not args.empty() ? args.back()->pos_end() : 0);
+auto spp::asts::FunctionCallArgumentGroupAst::NewEmpty()
+    -> Unique<FunctionCallArgumentGroupAst> {
+    // Empty ast.
+    return MakeUnique<FunctionCallArgumentGroupAst>(
+        nullptr, decltype(Args)(), nullptr);
 }
 
+spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
+    decltype(TokL) &&tok_l,
+    decltype(Args) &&args,
+    decltype(TokR) &&tok_r) :
+    TokL(std::move(tok_l)),
+    Args(std::move(args)),
+    TokR(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(", not args.IsEmpty() ? args.Front()->PosStart() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")", not args.IsEmpty() ? args.Back()->PosEnd() : 0);
+}
 
 spp::asts::FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::new_empty()
-    -> std::unique_ptr<FunctionCallArgumentGroupAst> {
-    return std::make_unique<FunctionCallArgumentGroupAst>(
-        nullptr, decltype(args)(), nullptr);
-}
-
-
-auto spp::asts::FunctionCallArgumentGroupAst::pos_start() const
+auto spp::asts::FunctionCallArgumentGroupAst::PosStart() const
     -> std::size_t {
-    return tok_l->pos_start();
+    // Use the "[" token.
+    return TokL->PosStart();
 }
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::pos_end() const
+auto spp::asts::FunctionCallArgumentGroupAst::PosEnd() const
     -> std::size_t {
-    return tok_r->pos_end();
+    // Use the "]" token.
+    return TokR->PosEnd();
 }
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<FunctionCallArgumentGroupAst>(
-        ast_clone(tok_l),
-        ast_clone_vec(args),
-        ast_clone(tok_r));
+auto spp::asts::FunctionCallArgumentGroupAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<FunctionCallArgumentGroupAst>(
+        AstClone(TokL), AstCloneVec(Args), AstClone(TokR));
 }
 
-
-spp::asts::FunctionCallArgumentGroupAst::operator std::string() const {
+auto spp::asts::FunctionCallArgumentGroupAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(args, ", ");
-    SPP_STRING_APPEND(tok_r);
+    SPP_STRING_APPEND(TokL);
+    SPP_STRING_EXTEND(Args, ", ");
+    SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::get_all_args() const
-    -> std::vector<FunctionCallArgumentAst*> {
+auto spp::asts::FunctionCallArgumentGroupAst::GetAllArgs() const
+    -> Vec<FunctionCallArgumentAst*> {
     // Filter by casting.
-    auto out = std::vector<FunctionCallArgumentAst*>();
-    for (auto const &arg : args) {
-        out.emplace_back(arg.get());
+    auto out = Vec<FunctionCallArgumentAst*>();
+    for (auto const &arg : Args) {
+        out.EmplaceBack(arg.get());
     }
     return out;
 }
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const
-    -> std::vector<FunctionCallArgumentKeywordAst*> {
+auto spp::asts::FunctionCallArgumentGroupAst::GetKeywordArgs() const
+    -> Vec<FunctionCallArgumentKeywordAst*> {
     // Filter by casting.
-    auto out = std::vector<FunctionCallArgumentKeywordAst*>();
-    for (auto const &arg : args) {
-        if (auto *kw_arg = arg->to<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
-            out.emplace_back(kw_arg);
+    auto out = Vec<FunctionCallArgumentKeywordAst*>();
+    for (auto const &arg : Args) {
+        if (auto *kw_arg = arg->To<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
+            out.EmplaceBack(kw_arg);
         }
     }
     return out;
 }
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
-    -> std::vector<FunctionCallArgumentPositionalAst*> {
+auto spp::asts::FunctionCallArgumentGroupAst::GetPositionalArgs() const
+    -> Vec<FunctionCallArgumentPositionalAst*> {
     // Filter by casting.
-    auto out = std::vector<FunctionCallArgumentPositionalAst*>();
-    for (auto const &arg : args) {
-        if (auto *pos_arg = arg->to<FunctionCallArgumentPositionalAst>(); pos_arg != nullptr) {
-            out.emplace_back(pos_arg);
+    auto out = Vec<FunctionCallArgumentPositionalAst*>();
+    for (auto const &arg : Args) {
+        if (auto *pos_arg = arg->To<FunctionCallArgumentPositionalAst>(); pos_arg != nullptr) {
+            out.EmplaceBack(pos_arg);
         }
     }
     return out;
 }
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::at(
-    const char *key) const
-    -> FunctionCallArgumentAst const* {
-    // Iterate the comptime arguments to find the matching key.
-    for (const auto *arg : get_keyword_args()) {
-        if (arg->name->val == key) { return arg; }
-    }
-    return nullptr;
-}
-
-
-auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
+auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Check there are no duplicate argument names.
-    const auto arg_names = get_keyword_args()
-        | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::to<std::vector>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<std::vector>();
+    //
+    using analyse::errors::SppExpansionOfNonTupleError;
+    using analyse::errors::SppIdentifierDuplicateError;
+    using analyse::errors::SppOrderInvalidError;
+    using analyse::utils::order_utils::DoOrderArgs;
+    using analyse::utils::type_utils::IsTypeTup;
 
-    raise_if<analyse::errors::SppIdentifierDuplicateError>(
-        not arg_names.empty(), {sm->current_scope},
+    // Check there are no duplicate argument names.
+    const auto arg_names = GetKeywordArgs()
+        | genex::views::transform([](auto const &x) { return x->Name.get(); })
+        | genex::to<Vec>()
+        | genex::views::duplicates({}, genex::meta::deref)
+        | genex::to<Vec>();
+
+    RaiseIf<SppIdentifierDuplicateError>(
+        not arg_names.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(*arg_names[0], *arg_names[1], "keyword function-argument"));
 
     // Check the arguments are in the correct order.
-    const auto unordered_args = analyse::utils::order_utils::order_args(args
+    const auto unordered_args = DoOrderArgs(Args
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::to<std::vector>());
+        | genex::to<Vec>());
 
-    raise_if<analyse::errors::SppOrderInvalidError>(
-        not unordered_args.empty(), {sm->current_scope},
-        ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
+    RaiseIf<SppOrderInvalidError>(
+        not unordered_args.IsEmpty(), {sm->CurrentScope},
+        ERR_ARGS(unordered_args[1].First, *unordered_args[1].Second, unordered_args[0].First, *unordered_args[0].Second));
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
     // Must use "materialize" because the list gets updates from within the loop.
-    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::to<std::vector>()) {
+    for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate | genex::to<Vec>()) {
         // Only check position arguments that have ".." tokens.
-        const auto pos_arg = arg->to<FunctionCallArgumentPositionalAst>();
-        if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }
+        const auto pos_arg = arg->To<FunctionCallArgumentPositionalAst>();
+        if (pos_arg == nullptr or pos_arg->TokUnpack == nullptr) { continue; }
 
         // Check the argument value is a tuple expression.
-        auto arg_type = arg->infer_type(sm, meta);
-        raise_if<analyse::errors::SppExpansionOfNonTupleError>(
-            not analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope),
-            {sm->current_scope}, ERR_ARGS(*arg->val, *arg_type));
+        auto arg_type = arg->InferType(sm, meta);
+        RaiseIf<SppExpansionOfNonTupleError>(
+            not IsTypeTup(*arg_type, *sm->CurrentScope),
+            {sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        const auto max = static_cast<sys::ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
+        const auto max = static_cast<sys::ssize_t>(arg_type->TypeParts().Back()->GnArgGroup->Args.Len());
         for (auto j = max - 1; j > -1z; --j) {
-            auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(j));
-            auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(arg->val),
-                std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-            auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
-            args.insert(args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
+            auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
+            auto new_ast = MakeUnique<PostfixExpressionAst>(
+                AstClone(arg->Val),
+                MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
+            auto new_arg = MakeUnique<FunctionCallArgumentPositionalAst>(AstClone(arg->Conv), nullptr, std::move(new_ast));
+            Args.Insert(Args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
         }
-        genex::actions::erase(args, args.begin() + static_cast<std::ptrdiff_t>(i) + static_cast<std::ptrdiff_t>(max));
+        genex::actions::erase(Args, Args.begin() + static_cast<std::ptrdiff_t>(i) + max);
     }
 
-    // Analyse the arguments
-    for (auto const &arg : args) {
-        arg->stage_7_analyse_semantics(sm, meta);
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
-        if (sym == nullptr) { continue; }
-        if (arg->conv == nullptr or *arg->conv == ConventionTag::REF) { continue; }
-
-        // Immutable symbols cannot be mutated.
-        raise_if<analyse::errors::SppInvalidMutationError>(
-            not sym->is_mutable, {sm->current_scope},
-            ERR_ARGS(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization)));
-
-        // Immutable borrows, even if their symbol is mutable, cannot be mutated.
-        raise_if<analyse::errors::SppInvalidMutationError>(
-            std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionTag::REF,
-            {sm->current_scope}, ERR_ARGS(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed)));
+    // Analyse the arguments. The immutability/borrow mutation checks are deferred to Stage8, because the "self"
+    // argument's convention (for method calls) is only applied after overload resolution.
+    for (auto const &arg : Args) {
+        arg->Stage7_AnalyseSemantics(sm, meta);
     }
 }
 
-
-auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
+auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppMemoryOverlapUsageError;
+    using analyse::errors::SppInvalidMutationError;
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+    using analyse::utils::mem_utils::MemRegionOverlap;
+
     // If the target is a coroutine, or the target is called as "async", then pins are required.
-    const auto is_target_coro = meta->target_call_function_prototype and
-        meta->target_call_function_prototype->to<CoroutinePrototypeAst>() != nullptr;
-    const auto pins_required = meta->target_call_was_function_async or is_target_coro;
+    const auto is_target_coro = meta->TargetCallFunctionPrototype and
+        meta->TargetCallFunctionPrototype->To<CoroutinePrototypeAst>() != nullptr;
+    const auto pins_required = meta->TargetCallWasFunctionAsync or is_target_coro;
 
     // Define the borrow sets to maintain the law of exclusivity.
-    auto borrows_ref = std::vector<Ast const*>();
-    auto borrows_mut = std::vector<Ast const*>();
+    auto borrows_ref = Vec<Ast const*>();
+    auto borrows_mut = Vec<Ast const*>();
 
     // Load pre-existing escaping borrows into the vectors.
-    const auto all_syms = sm->current_scope->all_var_symbols();
+    const auto all_syms = sm->CurrentScope->AllVarSymbols();
     for (auto const &sym : all_syms) {
-        for (auto const &[borrow, is_mut, _] : sym->memory_info->ast_escaping_borrows) {
-            (is_mut ? borrows_mut : borrows_ref).emplace_back(borrow);
+        for (auto const &[borrow, is_mut, _] : sym->MemInfo->AstContainedEscapingBorrows) {
+            (is_mut ? borrows_mut : borrows_ref).EmplaceBack(borrow);
         }
     }
 
-    // Get potential handle to bind escpaing borrows to.
-    const auto handle = meta->assignment_target;
-    const auto handle_sym = handle ? sm->current_scope->get_var_symbol_outermost(*handle).first : nullptr;
+    // Get potential handle to bind escaping borrows to.
+    const auto handle = meta->AssignmentTarget;
+    const auto handle_sym = handle ? sm->CurrentScope->GetVarSymbolOutermost(*handle).First : nullptr;
 
-    for (auto const &arg : args) {
+    for (auto const &arg : Args) {
         // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
         // track borrows to it, as it is a temporary value.
-        arg->stage_8_check_memory(sm, meta);
-        auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
+
+        // When an argument is consumed by value, any escaping borrows established during its evaluation (e.g. from an
+        // inner coroutine call like "self.chars()") are released when the argument is consumed. Clear the assignment
+        // target so that those inner borrows are not incorrectly attributed to the outer handle.
+        const auto saved_assignment_target = meta->AssignmentTarget;
+        if (arg->Conv == nullptr) { meta->AssignmentTarget = nullptr; }
+        arg->Stage8_CheckMemory(sm, meta);
+        meta->AssignmentTarget = saved_assignment_target;
+
+        auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*arg->Val);
         if (sym == nullptr) { continue; }
 
         // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
         // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
         // for moving from borrowed context right here.
-        analyse::utils::mem_utils::validate_symbol_memory(
-            *arg->val, *arg, *sm, true, true, false, false, false, meta);
+        ValidateSymbolMemory(*arg->Val, *arg, *sm, false, false, false, false, false, meta);
 
-        if (arg->conv == nullptr) {
+        if (arg->Conv == nullptr) {
             // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the
             // move or partial move of the argument. Note the "check_pins_linked=False" because function calls can only
             // imply an inner scope, so it is guaranteed that lifetimes aren't being extended.
-            analyse::utils::mem_utils::validate_symbol_memory(
-                *arg->val, *arg, *sm, true, true, true, true, true, meta);
+            ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, true, meta);
 
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
-            if (not sm->current_scope->get_type_symbol(arg->val->infer_type(sm, meta))->is_copyable()) {
-                auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
-                    | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
-                    | genex::to<std::vector>();
+            if (not sm->CurrentScope->GetTypeSymbol(arg->Val->InferType(sm, meta))->IsCopyable()) {
+                auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
+                    | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
+                    | genex::to<Vec>();
 
-                raise_if<analyse::errors::SppMemoryOverlapUsageError>(
-                    not overlaps.empty(), {sm->current_scope},
-                    ERR_ARGS(*overlaps[0], *arg->val));
+                RaiseIf<SppMemoryOverlapUsageError>(
+                    not overlaps.IsEmpty(), {sm->CurrentScope},
+                    ERR_ARGS(*overlaps[0], *arg->Val));
             }
         }
 
-        else if (arg->conv and *arg->conv == ConventionTag::REF) {
+        else if (arg->Conv and *arg->Conv == ConventionTag::REF) {
             // Generate the list of overlapping borrows for immutable borrows.
             auto overlaps = borrows_mut
-                | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
-                | genex::to<std::vector>();
+                | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
+                | genex::to<Vec>();
 
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
-            raise_if<analyse::errors::SppMemoryOverlapUsageError>(
-                not overlaps.empty(), {sm->current_scope},
-                ERR_ARGS(*overlaps[0], *arg->val));
+            RaiseIf<SppMemoryOverlapUsageError>(
+                not overlaps.IsEmpty(), {sm->CurrentScope},
+                ERR_ARGS(*overlaps[0], *arg->Val));
 
             // Save any escaping borrows into the handle's memory info.
             if (handle and pins_required) {
-                handle_sym->memory_info->ast_escaping_borrows.emplace_back(arg->val.get(), false, sm->current_scope);
-                sym->memory_info->ast_pins.emplace_back(arg->val.get());
+                // TODO: Test suite needs to take handle/lack of handle into account
+                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), false, sm->CurrentScope);
+                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
             }
 
             // Add the immutable borrow to the immutable borrow set.
-            borrows_ref.emplace_back(arg->val.get());
+            borrows_ref.EmplaceBack(arg->Val.get());
         }
 
-        else if (arg->conv and *arg->conv == ConventionTag::MUT) {
+        else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
+            const auto is_sym_mutable = sym->IsMutable or (
+                sym->Type->GetConvention() and *sym->Type->GetConvention() == ConventionTag::MUT);
+
+            // Immutable symbols cannot be mutably borrowed. This also catches "&mut self" method calls.
+            RaiseIf<SppInvalidMutationError>(
+                not is_sym_mutable, {sm->CurrentScope},
+                ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
+
+            // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed.
+            RaiseIf<SppInvalidMutationError>(
+                std::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
+                {sm->CurrentScope}, ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
+
             // Generate the list of overlapping borrows for mutable borrows.
-            auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
-                | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
-                | genex::to<std::vector>();
+            auto overlaps = genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
+                | genex::views::filter([&arg](auto &&x) { return MemRegionOverlap(*x, *arg->Val); })
+                | genex::to<Vec>();
 
             // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
-            raise_if<analyse::errors::SppMemoryOverlapUsageError>(
-                not overlaps.empty(), {sm->current_scope},
-                ERR_ARGS(*overlaps[0], *arg->val));
+            RaiseIf<SppMemoryOverlapUsageError>(
+                not overlaps.IsEmpty(), {sm->CurrentScope},
+                ERR_ARGS(*overlaps[0], *arg->Val));
 
             // Save any escaping borrows into the handle's memory info.
             if (handle and pins_required) {
-                handle_sym->memory_info->ast_escaping_borrows.emplace_back(arg->val.get(), true, sm->current_scope);
-                sym->memory_info->ast_pins.emplace_back(arg->val.get());
+                // TODO: Test suite needs to take handle/lack of handle into account
+                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), true, sm->CurrentScope);
+                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
             }
 
             // Add the mutable borrow to the mutable borrow set.
-            borrows_mut.emplace_back(arg->val.get());
+            borrows_mut.EmplaceBack(arg->Val.get());
         }
     }
+}
+
+auto spp::asts::FunctionCallArgumentGroupAst::At(
+    const char *key) const
+    -> FunctionCallArgumentAst const* {
+    // Iterate the comptime arguments to find the matching key.
+    for (const auto *arg : GetKeywordArgs()) {
+        if (arg->Name->Val == key) { return arg; }
+    }
+    return nullptr;
 }
 
 SPP_MOD_END

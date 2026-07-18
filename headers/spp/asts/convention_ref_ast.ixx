@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.convention_ref_ast;
 import spp.asts.convention_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -20,14 +21,14 @@ SPP_EXP_CLS struct spp::asts::ConventionRefAst final : ConventionAst {
      * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
      * being made.
      */
-    std::unique_ptr<TokenAst> tok_borrow;
+    Unique<TokenAst> TokBorrow;
 
     /**
      * Construct the ConventionRefAst with the arguments matching the members.
      * @param tok_borrow The token that represents the @c & borrow marker.
      */
     explicit ConventionRefAst(
-        decltype(tok_borrow) &&tok_borrow);
+        decltype(TokBorrow) &&tok_borrow);
 
     ~ConventionRefAst() override;
 

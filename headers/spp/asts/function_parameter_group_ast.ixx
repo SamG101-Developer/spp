@@ -4,6 +4,7 @@ module;
 export module spp.asts.function_parameter_group_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -21,23 +22,23 @@ namespace spp::asts {
 /**
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.
  */
-SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
     /**
      * The token that represents the left parenthesis @code (@endcode in the function parameter group. This introduces
      * the function parameter group.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The list of parameters in the function parameter group. This can contain both required and optional parameters.
      */
-    std::vector<std::unique_ptr<FunctionParameterAst>> params;
+    Vec<Unique<FunctionParameterAst>> Params;
 
     /**
      * The token that represents the right parenthesis @code )@endcode in the function parameter group. This closes
      * the function parameter group.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the FunctionParameterGroupAst with the arguments matching the members.
@@ -46,29 +47,29 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
      * @param tok_r The token that represents the right parenthesis @code )@endcode in the function parameter group.
      */
     FunctionParameterGroupAst(
-        decltype(tok_l) &&tok_l,
-        decltype(params) &&params,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Params) &&params,
+        decltype(TokR) &&tok_r);
 
     ~FunctionParameterGroupAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto get_all_params() const -> std::vector<FunctionParameterAst*>;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto get_self_param() const -> FunctionParameterSelfAst*;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto get_required_params() const -> std::vector<FunctionParameterRequiredAst*>;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto get_optional_params() const -> std::vector<FunctionParameterOptionalAst*>;
+    SPP_ATTR_NODISCARD auto GetAllParams() const -> Vec<FunctionParameterAst*>;
 
-    auto get_variadic_param() const -> FunctionParameterVariadicAst*;
+    SPP_ATTR_NODISCARD auto GetSelfParam() const -> FunctionParameterSelfAst*;
 
-    auto get_non_self_params() const -> std::vector<FunctionParameterAst*>;
+    SPP_ATTR_NODISCARD auto GetRequiredParams() const -> Vec<FunctionParameterRequiredAst*>;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    SPP_ATTR_NODISCARD auto GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*>;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    SPP_ATTR_NODISCARD auto GetVariadicParams() const -> FunctionParameterVariadicAst*;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    SPP_ATTR_NODISCARD auto GetNonSelfParams() const -> Vec<FunctionParameterAst*>;
 };

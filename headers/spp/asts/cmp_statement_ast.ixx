@@ -7,6 +7,7 @@ import spp.asts.statement_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -24,61 +25,59 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 /**
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
 SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
-private:
-    std::shared_ptr<analyse::scopes::VariableSymbol> m_alias_sym;
-
-    bool m_from_use_statement;
-
-public:
     friend struct UseStatementVariableAst;
+    // Todo: Copy the "_Generated" logic from the "UseStatementAst" and add local insertions into testing?
 
     /**
      * The list of annotations that are applied to this cmp statement. Typically, access modifiers in this context.
      */
-    std::vector<std::unique_ptr<AnnotationAst>> annotations;
+    Vec<Unique<AnnotationAst>> Annotations;
 
     /**
      * The token that represents the @c cmp keyword in the cmp statement. This is used to indicate that a compile time
      * definition is being made.
      */
-    std::unique_ptr<TokenAst> tok_cmp;
+    Unique<TokenAst> TokCmp;
 
     /**
      * The name of the cmp statement. This is the identifier that is used to refer to the compile time definition, and
      * must be unique within the scope.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * The token that represents the colon @c : in the cmp statement definition. This separates the name from the type.
      */
-    std::unique_ptr<TokenAst> tok_colon;
+    Unique<TokenAst> TokColon;
 
     /**
      * The type of the cmp statement. This is the type that the compile time definition will hold, and must be
      * specified. Needs to be specified rather than inferred, because the type must be known at an early stage that
      * needs to be completed before type-inference can be considered.
      */
-    std::shared_ptr<TypeAst> type;
+    Shared<TypeAst> Type;
 
     /**
      * The token that represents the assignment operator @c = in the cmp statement definition. This separates the type
      * from the value.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
     /**
      * The value of the cmp statement. This is the expression that will be evaluated at compile time, and must be
      * constant. It can be any expression that is valid in a compile time context, such as a literal or an object
      * initialization that only uses compile time values.
      */
-    std::unique_ptr<ExpressionAst> value;
+    Unique<ExpressionAst> Value;
+
+    struct {
+        Shared<TypeAst> OriginalType;
+    } Source;
 
     /**
      * Construct the CmpStatementAst with the arguments matching the members.
@@ -91,35 +90,40 @@ public:
      * @param[in] value The value of the cmp statement.
      */
     CmpStatementAst(
-        decltype(annotations) &&annotations,
-        decltype(tok_cmp) &&tok_cmp,
-        decltype(name) &&name,
-        decltype(tok_colon) &&tok_colon,
-        decltype(type) type,
-        decltype(tok_assign) &&tok_assign,
-        decltype(value) &&value);
+        decltype(Annotations) &&annotations,
+        decltype(TokCmp) &&tok_cmp,
+        decltype(Name) &&name,
+        decltype(TokColon) &&tok_colon,
+        decltype(Type) type,
+        decltype(TokAssign) &&tok_assign,
+        decltype(Value) &&value);
 
     ~CmpStatementAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto mark_from_use_statement() -> void;
+    auto MarkFromUseStatement() -> void;
 
-    SPP_ATTR_NODISCARD auto is_from_use_statement() const -> bool;
+    SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;
+
+private:
+    bool _FromUseStatement = false;
+
+    Shared<analyse::scopes::VariableSymbol> _AliasSym;
 };

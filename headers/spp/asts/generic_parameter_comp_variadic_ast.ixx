@@ -3,7 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_comp_ast;
-
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -17,7 +17,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompVariadicAst final : GenericPar
      * The token that represents the @c .. ellipsis in the generic parameter. This indicates that the parameter is
      * variadic, meaning it can accept multiple values.
      */
-    std::unique_ptr<TokenAst> tok_ellipsis;
+    Unique<TokenAst> TokEllipsis;
 
     /**
      * Construct the GenericParameterCompVariadicAst with the arguments matching the members.
@@ -28,11 +28,11 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompVariadicAst final : GenericPar
      * @param tok_ellipsis The token that represents the @c .. ellipsis in the generic parameter.
      */
     GenericParameterCompVariadicAst(
-        decltype(tok_cmp) &&tok_cmp,
-        decltype(tok_ellipsis) &&tok_ellipsis,
-        decltype(name) &&name,
-        decltype(tok_colon) &&tok_colon,
-        decltype(type) &&type);
+        decltype(TokCmp) &&tok_cmp,
+        decltype(TokEllipsis) &&tok_ellipsis,
+        decltype(Name) name,
+        decltype(TokColon) &&tok_colon,
+        decltype(Type) &&type);
 
     ~GenericParameterCompVariadicAst() override;
 

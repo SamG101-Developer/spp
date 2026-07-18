@@ -4,6 +4,7 @@ module;
 export module spp.asts.binary_expression_ast;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -22,24 +23,27 @@ namespace spp::asts {
  * @code 1.add(2)@endcode.
  */
 SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
-private:
-    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
+    SPP_AST_KEY_FUNCTIONS;
 
-public:
     /**
      * The left-hand side expression of the binary expression. This is the first operand.
      */
-    std::unique_ptr<ExpressionAst> lhs;
+    Unique<ExpressionAst> Lhs;
 
     /**
      * The operator token that represents the binary operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<TokenAst> tok_op;
+    Unique<TokenAst> TokOp;
 
     /**
      * The right-hand side expression of the binary expression. This is the second operand.
      */
-    std::unique_ptr<ExpressionAst> rhs;
+    Unique<ExpressionAst> Rhs;
+
+    struct {
+        std::size_t OriginalPosStart;
+        std::size_t OriginalPosEnd;
+    } Source;
 
     /**
      * Construct the BinaryExpressionAst with the arguments matching the members.
@@ -48,13 +52,11 @@ public:
      * @param[in] rhs The right-hand side expression of the binary expression.
      */
     BinaryExpressionAst(
-        decltype(lhs) &&lhs,
-        decltype(tok_op) &&tok_op,
-        decltype(rhs) &&rhs);
+        decltype(Lhs) &&lhs,
+        decltype(TokOp) &&tok_op,
+        decltype(Rhs) &&rhs);
 
     ~BinaryExpressionAst() override;
-
-    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * Ensure the operator exists over the left-hand-side type, compatible with the right-hand-side type. This is done
@@ -62,7 +64,7 @@ public:
      * @param[in] sm The scope manager to use for type checking.
      * @param[in,out] meta Associated metadata.
      */
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Forward the memory checking to the mapped function. This checks the created argument group for the mapped
@@ -70,7 +72,7 @@ public:
      * @param[in] sm The scope manager to use for memory checking.
      * @param[in,out] meta Associated metadata.
      */
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Resolve the binary expression at compile time. This maps to the comptime resolution of the mapped function.
@@ -78,7 +80,7 @@ public:
      * @param meta Associated metadata.
      * @return The result of the compile time resolution.
      */
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Forward the code generation to the mapped function. This just generates a standard function call. Some functions
@@ -88,7 +90,7 @@ public:
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value generated from this AST.
      */
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * Forward the type checking to the mapped function. This just applies standard type inference from a function call.
@@ -96,5 +98,13 @@ public:
      * @param[in,out] meta Associated metadata.
      * @return The inferred type of the binary expression, which is the return type of the mapped function.
      */
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+private:
+    /**
+     * The AST that represents the functional version of this binary expression. For example, @code 1 + 2@endcode
+     * becomes @c 1.add(2). The mapped function itelf has its own internal mapping, in this case that would be
+     * @c std::number::S32::add(1, 2).
+     */
+    Shared<PostfixExpressionAst> _MappedFunc;
 };

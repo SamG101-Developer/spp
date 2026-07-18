@@ -11,54 +11,42 @@ import spp.asts.statement_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
+import spp.asts.type_ast;
 import genex;
 
+auto spp::asts::AstName(
+    Ast *ast)
+    -> Shared<TypeAst> {
+    if (const auto cls = ast->To<ClassPrototypeAst>(); cls != nullptr) {
+        return cls->Name;
+    }
+    if (const auto sup = ast->To<SupPrototypeFunctionsAst>(); sup != nullptr) {
+        return sup->Name;
+    }
+    if (const auto ext = ast->To<SupPrototypeExtensionAst>(); ext != nullptr) {
+        return ext->Name;
+    }
 
-auto spp::asts::ast_name(Ast *ast) -> std::shared_ptr<TypeAst> {
-    if (const auto cls = ast->to<ClassPrototypeAst>(); cls != nullptr) {
-        return cls->name;
-    }
-    if (const auto sup = ast->to<SupPrototypeFunctionsAst>(); sup != nullptr) {
-        return sup->name;
-    }
-    if (const auto ext = ast->to<SupPrototypeExtensionAst>(); ext != nullptr) {
-        return ext->name;
-    }
-
-    throw std::runtime_error("ast_name: Unsupported AST type " + std::string(typeid(*ast).name()));
+    throw std::runtime_error("ast_name: Unsupported AST type " + Str(typeid(*ast).name()));
 }
 
-
-auto spp::asts::ast_body(Ast *ast) -> std::vector<Ast*> {
-    if (const auto cls = ast->to<ClassPrototypeAst>(); cls != nullptr) {
-        return cls->impl->members
-            | genex::views::ptr
-            | genex::views::cast_dynamic<Ast*>()
-            | genex::to<std::vector>();
+auto spp::asts::AstBody(
+    Ast *ast)
+    -> Vec<Ast*> {
+    if (const auto cls = ast->To<ClassPrototypeAst>(); cls != nullptr) {
+        return cls->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
     }
-    if (const auto sup = ast->to<SupPrototypeFunctionsAst>(); sup != nullptr) {
-        return sup->impl->members
-            | genex::views::ptr
-            | genex::views::cast_dynamic<Ast*>()
-            | genex::to<std::vector>();
+    if (const auto sup = ast->To<SupPrototypeFunctionsAst>(); sup != nullptr) {
+        return sup->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
     }
-    if (const auto ext = ast->to<SupPrototypeExtensionAst>(); ext != nullptr) {
-        return ext->impl->members
-            | genex::views::ptr
-            | genex::views::cast_dynamic<Ast*>()
-            | genex::to<std::vector>();
+    if (const auto ext = ast->To<SupPrototypeExtensionAst>(); ext != nullptr) {
+        return ext->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
     }
-    if (const auto fun = ast->to<FunctionPrototypeAst>(); fun != nullptr) {
-        return fun->impl->members
-            | genex::views::ptr
-            | genex::views::cast_dynamic<Ast*>()
-            | genex::to<std::vector>();
+    if (const auto fun = ast->To<FunctionPrototypeAst>(); fun != nullptr) {
+        return fun->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
     }
-    if (const auto mod = ast->to<ModulePrototypeAst>(); mod != nullptr) {
-        return mod->impl->members
-            | genex::views::ptr
-            | genex::views::cast_dynamic<Ast*>()
-            | genex::to<std::vector>();
+    if (const auto mod = ast->To<ModulePrototypeAst>(); mod != nullptr) {
+        return mod->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
     }
 
     // Special case for the top level scope for generic types (sup scopes are constraints).

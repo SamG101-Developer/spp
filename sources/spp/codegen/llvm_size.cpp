@@ -7,6 +7,7 @@ import spp.asts.class_attribute_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -16,148 +17,98 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
-auto spp::codegen::size_of(
+auto spp::codegen::SizeOf(
     analyse::scopes::ScopeManager const &sm,
-    std::shared_ptr<asts::TypeAst> const &type)
+    Shared<asts::TypeAst> const &type)
     -> std::size_t {
+    //
+    using analyse::utils::type_utils::TypeEq;
+    using namespace asts::generate::common_types_precompiled;
+
     // Borrows (mapped to pointers) are pointer-sized.
-    if (type->get_convention() != nullptr) {
+    if (type->GetConvention() != nullptr) {
         return sizeof(void*);
     }
 
     // Void is 0 bytes.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::VOID, *sm.current_scope, *sm.current_scope)) {
-        return 0;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *VOID, *sm.CurrentScope, *sm.CurrentScope)) { return 0; }
 
     // Boolean is 1 byte.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::BOOL, *sm.current_scope, *sm.current_scope)) {
-        return 1;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *BOOL, *sm.CurrentScope, *sm.CurrentScope)) { return 1; }
 
     // 8-bit numbers are 1 byte.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::S8, *sm.current_scope, *sm.current_scope)) {
-        return 1;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::U8, *sm.current_scope, *sm.current_scope)) {
-        return 1;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::F8, *sm.current_scope, *sm.current_scope)) {
-        return 1;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *S8, *sm.CurrentScope, *sm.CurrentScope)) { return 1; }
+    if (TypeEq(*type->WithoutGenerics(), *U8, *sm.CurrentScope, *sm.CurrentScope)) { return 1; }
+    if (TypeEq(*type->WithoutGenerics(), *F8, *sm.CurrentScope, *sm.CurrentScope)) { return 1; }
 
     // 16-bit numbers are 2 bytes.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::S16, *sm.current_scope, *sm.current_scope)) {
-        return 2;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::U16, *sm.current_scope, *sm.current_scope)) {
-        return 2;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::F16, *sm.current_scope, *sm.current_scope)) {
-        return 2;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *S16, *sm.CurrentScope, *sm.CurrentScope)) { return 2; }
+    if (TypeEq(*type->WithoutGenerics(), *U16, *sm.CurrentScope, *sm.CurrentScope)) { return 2; }
+    if (TypeEq(*type->WithoutGenerics(), *F16, *sm.CurrentScope, *sm.CurrentScope)) { return 2; }
 
     // 32-bit numbers are 4 bytes.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::S32, *sm.current_scope, *sm.current_scope)) {
-        return 4;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::U32, *sm.current_scope, *sm.current_scope)) {
-        return 4;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::F32, *sm.current_scope, *sm.current_scope)) {
-        return 4;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *S32, *sm.CurrentScope, *sm.CurrentScope)) { return 4; }
+    if (TypeEq(*type->WithoutGenerics(), *U32, *sm.CurrentScope, *sm.CurrentScope)) { return 4; }
+    if (TypeEq(*type->WithoutGenerics(), *F32, *sm.CurrentScope, *sm.CurrentScope)) { return 4; }
 
     // 64-bit numbers are 8 bytes.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::S64, *sm.current_scope, *sm.current_scope)) {
-        return 8;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::U64, *sm.current_scope, *sm.current_scope)) {
-        return 8;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::F64, *sm.current_scope, *sm.current_scope)) {
-        return 8;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *S64, *sm.CurrentScope, *sm.CurrentScope)) { return 8; }
+    if (TypeEq(*type->WithoutGenerics(), *U64, *sm.CurrentScope, *sm.CurrentScope)) { return 8; }
+    if (TypeEq(*type->WithoutGenerics(), *F64, *sm.CurrentScope, *sm.CurrentScope)) { return 8; }
 
     // 128-bit numbers are 16 bytes.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::S128, *sm.current_scope, *sm.current_scope)) {
-        return 16;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::U128, *sm.current_scope, *sm.current_scope)) {
-        return 16;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::F128, *sm.current_scope, *sm.current_scope)) {
-        return 16;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *S128, *sm.CurrentScope, *sm.CurrentScope)) { return 16; }
+    if (TypeEq(*type->WithoutGenerics(), *U128, *sm.CurrentScope, *sm.CurrentScope)) { return 16; }
+    if (TypeEq(*type->WithoutGenerics(), *F128, *sm.CurrentScope, *sm.CurrentScope)) { return 16; }
 
     // 256-bit numbers are 32 bytes.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::S256, *sm.current_scope, *sm.current_scope)) {
-        return 32;
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::U256, *sm.current_scope, *sm.current_scope)) {
-        return 32;
-    }
+    if (TypeEq(*type->WithoutGenerics(), *S256, *sm.CurrentScope, *sm.CurrentScope)) { return 32; }
+    if (TypeEq(*type->WithoutGenerics(), *U256, *sm.CurrentScope, *sm.CurrentScope)) { return 32; }
 
     // Sizes based on pointer size.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::SSIZE, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(std::size_t);
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::USIZE, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(std::size_t);
-    }
+    if (TypeEq(*type->WithoutGenerics(), *SSIZE, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(std::size_t); }
+    if (TypeEq(*type->WithoutGenerics(), *USIZE, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(std::size_t); }
 
     // Smart pointers (heap wrappers, ignore attributes).
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::SINGLE, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(void*);
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::SHARED, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(void*) + 2 * sizeof(std::size_t);
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::SHADOW, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(void*);
-    }
+    if (TypeEq(*type->WithoutGenerics(), *SINGLE, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(void*); }
+    if (TypeEq(*type->WithoutGenerics(), *SHARED, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(void*) + 2 * sizeof(std::size_t); }
+    if (TypeEq(*type->WithoutGenerics(), *SHADOW, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(void*); }
 
     // Functions are pointer-sized.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::FUN_MOV, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(void*);
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::FUN_MUT, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(void*);
-    }
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::FUN_REF, *sm.current_scope, *sm.current_scope)) {
-        return sizeof(void*);
-    }
+    if (TypeEq(*type->WithoutGenerics(), *FUN_MOV, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(void*); }
+    if (TypeEq(*type->WithoutGenerics(), *FUN_MUT, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(void*); }
+    if (TypeEq(*type->WithoutGenerics(), *FUN_REF, *sm.CurrentScope, *sm.CurrentScope)) { return sizeof(void*); }
 
     // Array (fixed length) size is element size * length.
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::ARR, *sm.current_scope, *sm.current_scope)) {
-        const auto element_type = type->type_parts().back()->generic_arg_group->type_at("T")->val;
-        const auto length = std::stoll(type->type_parts().back()->generic_arg_group->comp_at("n")->val->to<asts::IntegerLiteralAst>()->val->token_data);
-        return size_of(sm, element_type) * static_cast<std::size_t>(length);
+    if (TypeEq(*type->WithoutGenerics(), *ARR, *sm.CurrentScope, *sm.CurrentScope)) {
+        const auto element_type = type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+        const auto length = std::stoll(type->TypeParts().Back()->GnArgGroup->CompAt("n")->Val->To<asts::IntegerLiteralAst>()->Val->TokenData);
+        return SizeOf(sm, element_type) * static_cast<std::size_t>(length);
     }
 
     // Tuple (sum the sizes of its contained types).
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::TUP, *sm.current_scope, *sm.current_scope)) {
-        const auto all_types = type->type_parts().back()->generic_arg_group->get_type_args()
-            | genex::views::transform([&sm](auto &&x) { return size_of(sm, x->val); })
-            | genex::to<std::vector>();
+    if (TypeEq(*type->WithoutGenerics(), *TUP, *sm.CurrentScope, *sm.CurrentScope)) {
+        const auto all_types = type->TypeParts().Back()->GnArgGroup->GetTypeArgs()
+            | genex::views::transform([&sm](auto &&x) { return SizeOf(sm, x->Val); })
+            | genex::to<Vec>();
         const auto total_size = genex::fold_left_first(all_types, std::plus{});
         return total_size;
     }
 
     // Variant size is the maximum of its contained types + a discriminator (usize).
-    if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::VAR, *sm.current_scope, *sm.current_scope)) {
+    if (TypeEq(*type->WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope)) {
         auto min_size = std::numeric_limits<std::size_t>::max();
-        for (auto const &inner_type : type->type_parts().back()->generic_arg_group->get_type_args()) {
-            min_size = std::min(min_size, size_of(sm, inner_type->val));
+        for (auto const &inner_type : type->TypeParts().Back()->GnArgGroup->GetTypeArgs()) {
+            min_size = std::min(min_size, SizeOf(sm, inner_type->Val));
         }
         return min_size + sizeof(std::size_t);
     }
 
     // Otherwise, sum the attributes of the struct/class.
-    const auto all_types = analyse::utils::type_utils::get_all_attrs(*type, &sm)
-        | genex::views::transform([](auto &&x) { return x.second->fq_name(); })
-        | genex::views::transform([&sm](auto &&x) { return size_of(sm, x); })
-        | genex::to<std::vector>();
+    const auto all_types = analyse::utils::type_utils::GetAllAttrs(*type, &sm)
+        | genex::views::transform([](auto &&x) { return x.Second->FqName(); })
+        | genex::views::transform([&sm](auto &&x) { return SizeOf(sm, x); })
+        | genex::to<Vec>();
     const auto total_size = genex::fold_left_first(all_types, std::plus{});
     return total_size;
 }

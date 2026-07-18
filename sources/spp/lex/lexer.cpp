@@ -9,20 +9,20 @@ import magic_enum;
 
 
 SPP_MOD_BEGIN
-spp::lex::Lexer::Lexer(std::string code, const bool add_prelude)
+spp::lex::Lexer::Lexer(Str code, const bool add_prelude)
     : m_code("\n" + std::move(code)) {
     // Add the prelude at the end so it doesn't offset line numbers from the actual code. Due to the order-agnostic
     // definition system, this is fine.
     if (add_prelude) {
-        m_code += "\n" + compiler::PRELUDE;
+        m_code += "\n" + compiler::kPrelude;
     }
 }
 
 
-auto spp::lex::Lexer::lex() const
-    -> std::vector<RawToken> {
+auto spp::lex::Lexer::Lex() const
+    -> Vec<RawToken> {
     // Define tracker variables.
-    auto tokens = std::vector<RawToken>();
+    auto tokens = Vec<RawToken>();
     auto in_char = false;
     auto in_string = false;
     auto in_single_line_comment = false;
@@ -30,12 +30,12 @@ auto spp::lex::Lexer::lex() const
     tokens.reserve(m_code.length() / 2);
 
     // Save keywords.
-    auto keywords = std::unordered_map<RawTokenType, std::string>();
+    auto keywords = std::unordered_map<RawTokenType, Str>();
     for (auto [kw, kw_string] : magic_enum::enum_entries<RawTokenType>()) {
         if (kw_string.starts_with("KW_")) {
             keywords[kw] = kw_string.substr(3)
                 | genex::views::transform([](auto c) { return static_cast<char>(std::tolower(c)); })
-                | genex::to<std::string>();
+                | genex::to<Str>();
         }
     }
 
@@ -52,14 +52,14 @@ auto spp::lex::Lexer::lex() const
 
         // Append any characters in a character literal as a character token (except terminating apostrophe).
         if (in_char and c != '\'') {
-            tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
+            tokens.EmplaceBack(RawTokenType::LX_CHARACTER, Str(1, c));
             ++i;
             continue;
         }
 
         // Append any characters in a string literal as a character token (except terminating quotation mark).
         if (in_string and c != '"') {
-            tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
+            tokens.EmplaceBack(RawTokenType::LX_CHARACTER, Str(1, c));
             ++i;
             continue;
         }
@@ -92,154 +92,154 @@ auto spp::lex::Lexer::lex() const
             continue;
         }
         case '=': {
-            tokens.emplace_back(RawTokenType::TK_EQUALS_TO, "=");
+            tokens.EmplaceBack(RawTokenType::TK_EQUALS_TO, "=");
             ++i;
             continue;
         }
         case '<': {
-            tokens.emplace_back(RawTokenType::TK_LESS_THAN, "<");
+            tokens.EmplaceBack(RawTokenType::TK_LESS_THAN, "<");
             ++i;
             continue;
         }
         case '>': {
-            tokens.emplace_back(RawTokenType::TK_GREATER_THAN, ">");
+            tokens.EmplaceBack(RawTokenType::TK_GREATER_THAN, ">");
             ++i;
             continue;
         }
         case '+': {
-            tokens.emplace_back(RawTokenType::TK_PLUS_SIGN, "+");
+            tokens.EmplaceBack(RawTokenType::TK_PLUS_SIGN, "+");
             ++i;
             continue;
         }
         case '-': {
-            tokens.emplace_back(RawTokenType::TK_HYPHEN, "-");
+            tokens.EmplaceBack(RawTokenType::TK_HYPHEN, "-");
             ++i;
             continue;
         }
         case '*': {
-            tokens.emplace_back(RawTokenType::TK_ASTERISK, "*");
+            tokens.EmplaceBack(RawTokenType::TK_ASTERISK, "*");
             ++i;
             continue;
         }
         case '/': {
-            tokens.emplace_back(RawTokenType::TK_SLASH, "/");
+            tokens.EmplaceBack(RawTokenType::TK_SLASH, "/");
             ++i;
             continue;
         }
         case '%': {
-            tokens.emplace_back(RawTokenType::TK_PERCENT_SIGN, "%");
+            tokens.EmplaceBack(RawTokenType::TK_PERCENT_SIGN, "%");
             ++i;
             continue;
         }
         case '(': {
-            tokens.emplace_back(RawTokenType::TK_LEFT_PARENTHESIS, "(");
+            tokens.EmplaceBack(RawTokenType::TK_LEFT_PARENTHESIS, "(");
             ++i;
             continue;
         }
         case ')': {
-            tokens.emplace_back(RawTokenType::TK_RIGHT_PARENTHESIS, ")");
+            tokens.EmplaceBack(RawTokenType::TK_RIGHT_PARENTHESIS, ")");
             ++i;
             continue;
         }
         case '[': {
-            tokens.emplace_back(RawTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+            tokens.EmplaceBack(RawTokenType::TK_LEFT_SQUARE_BRACKET, "[");
             ++i;
             continue;
         }
         case ']': {
-            tokens.emplace_back(RawTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
+            tokens.EmplaceBack(RawTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
             ++i;
             continue;
         }
         case '{': {
-            tokens.emplace_back(RawTokenType::TK_LEFT_CURLY_BRACE, "{");
+            tokens.EmplaceBack(RawTokenType::TK_LEFT_CURLY_BRACE, "{");
             ++i;
             continue;
         }
         case '}': {
-            tokens.emplace_back(RawTokenType::TK_RIGHT_CURLY_BRACE, "}");
+            tokens.EmplaceBack(RawTokenType::TK_RIGHT_CURLY_BRACE, "}");
             ++i;
             continue;
         }
         case '?': {
-            tokens.emplace_back(RawTokenType::TK_QUESTION_MARK, "?");
+            tokens.EmplaceBack(RawTokenType::TK_QUESTION_MARK, "?");
             ++i;
             continue;
         }
         case ':': {
-            tokens.emplace_back(RawTokenType::TK_COLON, ":");
+            tokens.EmplaceBack(RawTokenType::TK_COLON, ":");
             ++i;
             continue;
         }
         case '&': {
-            tokens.emplace_back(RawTokenType::TK_AMPERSAND, "&");
+            tokens.EmplaceBack(RawTokenType::TK_AMPERSAND, "&");
             ++i;
             continue;
         }
         case '|': {
-            tokens.emplace_back(RawTokenType::TK_VERTICAL_BAR, "|");
+            tokens.EmplaceBack(RawTokenType::TK_VERTICAL_BAR, "|");
             ++i;
             continue;
         }
         case '^': {
-            tokens.emplace_back(RawTokenType::TK_CARET, "^");
+            tokens.EmplaceBack(RawTokenType::TK_CARET, "^");
             ++i;
             continue;
         }
         case '.': {
-            tokens.emplace_back(RawTokenType::TK_PERIOD, ".");
+            tokens.EmplaceBack(RawTokenType::TK_PERIOD, ".");
             ++i;
             continue;
         }
         case ',': {
-            tokens.emplace_back(RawTokenType::TK_COMMA, ",");
+            tokens.EmplaceBack(RawTokenType::TK_COMMA, ",");
             ++i;
             continue;
         }
         case '@': {
-            tokens.emplace_back(RawTokenType::TK_AT_SIGN, "@");
+            tokens.EmplaceBack(RawTokenType::TK_AT_SIGN, "@");
             ++i;
             continue;
         }
         case '_': {
-            tokens.emplace_back(RawTokenType::TK_UNDERSCORE, "_");
+            tokens.EmplaceBack(RawTokenType::TK_UNDERSCORE, "_");
             ++i;
             continue;
         }
         case '\'': {
-            tokens.emplace_back(RawTokenType::TK_APOSTROPHE, "'");
+            tokens.EmplaceBack(RawTokenType::TK_APOSTROPHE, "'");
             in_char = !in_char;
             ++i;
             continue;
         }
         case '"': {
-            tokens.emplace_back(RawTokenType::TK_QUOTATION_MARK, "\"");
+            tokens.EmplaceBack(RawTokenType::TK_QUOTATION_MARK, "\"");
             in_string = !in_string;
             ++i;
             continue;
         }
         case '!': {
-            tokens.emplace_back(RawTokenType::TK_EXCLAMATION_MARK, "!");
+            tokens.EmplaceBack(RawTokenType::TK_EXCLAMATION_MARK, "!");
             ++i;
             continue;
         }
         case ';': {
-            tokens.emplace_back(RawTokenType::TK_SEMICOLON, ";");
+            tokens.EmplaceBack(RawTokenType::TK_SEMICOLON, ";");
             ++i;
             continue;
         }
         case '$': {
-            tokens.emplace_back(RawTokenType::TK_DOLLAR_SIGN, "$");
+            tokens.EmplaceBack(RawTokenType::TK_DOLLAR_SIGN, "$");
             ++i;
             continue;
         }
         case ' ': {
-            tokens.emplace_back(RawTokenType::TK_SPACE, " ");
+            tokens.EmplaceBack(RawTokenType::TK_SPACE, " ");
             ++i;
             continue;
         }
         case '\n': {
-            tokens.emplace_back(RawTokenType::TK_LINE_FEED, "\n");
+            tokens.EmplaceBack(RawTokenType::TK_LINE_FEED, "\n");
             in_single_line_comment = false;
             ++i;
             continue;
@@ -254,13 +254,13 @@ auto spp::lex::Lexer::lex() const
 
         // No symbolic tokens match, so try to match a keyword.
         auto found_kw = false;
-        const auto is_prev_alnum = i > 0 and utils::strings::is_alphanumeric(m_code[i - 1]);
+        const auto is_prev_alnum = i > 0 and utils::strings::IsAlNum(m_code[i - 1]);
         for (auto const &[kw_enum, kw_string] : keywords) {
-            const auto is_next_alnum = i + kw_string.length() < m_code.length() and utils::strings::is_alphanumeric(m_code[i + kw_string.length()]);
-            const auto remaining = std::string_view(m_code).substr(i);
+            const auto is_next_alnum = i + kw_string.length() < m_code.length() and utils::strings::IsAlNum(m_code[i + kw_string.length()]);
+            const auto remaining = StrView(m_code).substr(i);
 
             if (remaining.starts_with(kw_string) and not is_prev_alnum and not is_next_alnum) {
-                tokens.emplace_back(kw_enum, kw_string);
+                tokens.EmplaceBack(kw_enum, kw_string);
                 i += kw_string.length();
                 found_kw = true;
                 break;
@@ -272,25 +272,25 @@ auto spp::lex::Lexer::lex() const
 
         // Try to match individual characters or numbers, otherwise the token is unknown.
         if (('a' <= c and c <= 'z') or ('A' <= c and c <= 'Z')) {
-            tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
+            tokens.EmplaceBack(RawTokenType::LX_CHARACTER, Str(1, c));
             ++i;
             continue;
         }
         else if ('0' <= c and c <= '9') {
-            tokens.emplace_back(RawTokenType::LX_DIGIT, std::string(1, c));
+            tokens.EmplaceBack(RawTokenType::LX_DIGIT, Str(1, c));
             ++i;
             continue;
         }
         else {
-            tokens.emplace_back(RawTokenType::SP_UNKNOWN, std::string(1, c));
+            tokens.EmplaceBack(RawTokenType::SP_UNKNOWN, Str(1, c));
             ++i;
             continue;
         }
     }
 
     // Add a final EOF token.
-    tokens.emplace_back(RawTokenType::SP_EOF, "");
-    tokens.shrink_to_fit();
+    tokens.EmplaceBack(RawTokenType::SP_EOF, "");
+    tokens.ShrinkToFit();
     return tokens;
 }
 

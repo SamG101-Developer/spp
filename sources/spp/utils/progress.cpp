@@ -5,48 +5,50 @@ module spp.utils.progress;
 
 
 SPP_MOD_BEGIN
+
+
 spp::utils::ProgressBar::ProgressBar(
-    std::string label,
+    Str label,
     const std::uint32_t total_steps,
     const bool enabled) :
-    m_label(std::move(label)),
-    m_total_steps(total_steps),
-    m_current_step(0),
-    m_enabled(enabled) {
+    _Label(std::move(label)),
+    _TotalSteps(total_steps),
+    _CurrentSteps(0),
+    _Enabled(enabled) {
 }
 
 
-auto spp::utils::ProgressBar::next() -> void {
-    // Use "\r" to return to the beginning of the line
-    if (not m_enabled) { return; }
-    ++m_current_step;
-    const auto progress = static_cast<float>(m_current_step) / static_cast<float>(m_total_steps);
-    constexpr auto bar_width = 100;
+auto spp::utils::ProgressBar::Next()
+    -> void {
+    if (not _Enabled) { return; }
+    ++_CurrentSteps;
 
-    std::cout << "\r" << m_label << " [";
-    const auto pos = static_cast<int>(bar_width * progress);
-    for (auto i = 0; i < bar_width; ++i) {
-        if (i < pos) {
-            std::cout << "=";
-        }
-        else if (i == pos) {
-            std::cout << ">";
-        }
-        else {
-            std::cout << " ";
-        }
-    }
+    const auto progress = static_cast<float>(_CurrentSteps) / static_cast<float>(_TotalSteps);
+    constexpr auto bar_width = 50;
+    const auto filled = static_cast<int>(bar_width * progress);
 
-    std::cout << "] " << static_cast<int>(progress * 100.0f) << " %";
-    std::cout.flush();
+    // Build the bar into a stack buffer, then write everything in one shot.
+    char bar[bar_width + 1];
+    for (auto i = 0; i < bar_width; ++i)
+        bar[i] = i < filled ? '=' : (i == filled ? '>' : ' ');
+    bar[bar_width] = '\0';
+
+    std::printf("\r%-20s [%s] %3d%%", _Label.c_str(), bar, static_cast<int>(progress * 100.0f));
+    std::fflush(nullptr);
 }
 
 
-auto spp::utils::ProgressBar::finish() -> void {
-    if (not m_enabled) { return; }
-    m_current_step = m_total_steps;
-    next();
-    std::cout << std::endl;
+auto spp::utils::ProgressBar::Finish() const
+    -> void {
+    if (not _Enabled) { return; }
+
+    constexpr auto bar_width = 50;
+    char bar[bar_width + 1];
+    std::fill_n(bar, bar_width, '=');
+    bar[bar_width] = '\0';
+
+    std::printf("\r%-20s [%s] 100%%\n", _Label.c_str(), bar);
+    std::fflush(nullptr);
 }
 
 SPP_MOD_END

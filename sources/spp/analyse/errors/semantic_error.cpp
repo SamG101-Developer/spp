@@ -1,9 +1,19 @@
 module;
 #include <spp/macros.hpp>
 
+#define INLINE_INFO(info) \
+    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_white)
+
+#define INLINE_NOTE(info) \
+    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_cyan)
+
+#define INLINE_HELP(info) \
+    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_red)
+
 module spp.analyse.errors.semantic_error;
 import spp.asts.ast;
 import spp.asts.annotation_ast;
+import spp.asts.binary_expression_ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -11,7 +21,9 @@ import spp.asts.class_prototype_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.expression_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.generic_argument_ast;
@@ -26,1575 +38,1080 @@ import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.object_initializer_argument_ast;
+import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_statement_ast;
+import colex;
 
-
-// TODO: READ ALL ERRORS: CURRENTLY WRITTEN BY AI
-
+/*
+ * Rules for writing error messages.
+ *
+ * How to write context / error lines:
+ * - Names/symbols: declared, defined, introduced.
+ * - Syntax constructs: starts here, begins here, here.
+ * - References/borrows: used here, referenced here,
+ *
+ * How to write note lines:
+ * - Focus on the rule being violated.
+ * - Neutral, not accusatory.
+ * - Example: "Cannot mutate immutable variable" is better
+ *     than "Attempted to mutate immutable variable".
+ *
+ * How to write help lines:
+ * - Describe exactly what to do by token or keyword.
+ */
 
 SPP_MOD_BEGIN
-auto spp::analyse::errors::SemanticError::add_header(
+auto spp::analyse::errors::SemanticError::AddHeaders(
     const std::size_t err_code,
-    std::string &&msg)
+    Str &&msg)
     -> void {
     // Add a header to the error.
-    m_error_info.emplace_back(nullptr, ErrorInformationType::HEADER, std::move(msg), "E" + std::to_string(err_code));
+    ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::HEADER, std::move(msg), "E" + std::to_string(err_code));
 }
 
+static auto UnwrapFunctionCallAst(spp::asts::Ast const *ast) -> spp::asts::Ast const* {
+    if (const auto fn_call = ast->To<spp::asts::PostfixExpressionOperatorFunctionCallAst>()) {
+        if (fn_call->Source.OriginalExpr != fn_call) {
+            return UnwrapFunctionCallAst(fn_call->Source.OriginalExpr);
+        }
+        return fn_call;
+    }
+    if (const auto pf = ast->To<spp::asts::PostfixExpressionAst>()) {
+        return UnwrapFunctionCallAst(pf->Op.get());
+    }
+    return ast;
+}
 
-auto spp::analyse::errors::SemanticError::add_error(
+auto spp::analyse::errors::SemanticError::AddErr(
     asts::Ast const *ast,
-    std::string &&tag)
+    Str &&tag)
     -> void {
     // Add an error information entry for the given AST and tag.
-    m_error_info.emplace_back(ast, ErrorInformationType::ERROR, std::move(tag), "");
+    ErrorInfo.EmplaceBack(UnwrapFunctionCallAst(ast), ErrorInformationType::ERROR, std::move(tag), "");
 }
 
-
-auto spp::analyse::errors::SemanticError::add_context_for_error(
+auto spp::analyse::errors::SemanticError::AddCtxForErr(
     asts::Ast const *ast,
-    std::string &&tag)
+    Str &&tag)
     -> void {
     // Add a context information entry for the given AST and tag.
-    m_error_info.emplace_back(ast, ErrorInformationType::CONTEXT, std::move(tag), "");
+    ErrorInfo.EmplaceBack(UnwrapFunctionCallAst(ast), ErrorInformationType::CONTEXT, std::move(tag), "");
 }
 
-
-auto spp::analyse::errors::SemanticError::add_footer(
-    std::string &&note,
-    std::string &&help)
+auto spp::analyse::errors::SemanticError::AddFooter(
+    Str &&note,
+    Str &&help)
     -> void {
     // Add a footer to the error with the given note and help message.
-    m_error_info.emplace_back(nullptr, ErrorInformationType::FOOTER, std::move(note), std::move(help));
+    ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::FOOTER, std::move(note), std::move(help));
 }
 
-
-auto spp::analyse::errors::SemanticError::clone() const
-    -> std::unique_ptr<SemanticError> {
+auto spp::analyse::errors::SemanticError::Clone() const
+    -> Unique<SemanticError> {
     // Use the copy constructor to clone the error.
-    return std::make_unique<SemanticError>(*this);
+    return MakeUnique<SemanticError>(*this);
 }
 
-
-spp::analyse::errors::SppExpressionTypeInvalidError::SppExpressionTypeInvalidError(
+spp::analyse::errors::SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
     asts::Ast const &expr) {
-    add_header(
-        3, "SPP Expression Type Invalid Error");
-    add_error(
-        &expr,
-        "Expression with invalid type defined here");
-    add_footer(
-        "The type of this expression is invalid in the current context.",
-        "Ensure the expression has a valid type");
+    AddHeaders(1, "Invalid Primary Expression Error");
+    AddErr(&expr, "Primary expression introduced here");
+    AddFooter(
+        "The current context requires a primary expression that is not a type or token ast.",
+        "Change the expression to a different value expression.");
 }
-
 
 spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
     asts::Ast const &lhs,
     asts::TypeAst const &lhs_ty,
     asts::Ast const &rhs,
     asts::TypeAst const &rhs_ty) {
-    add_header(
-        4, "SPP Type Mismatch Error");
-    add_context_for_error(
-        &lhs,
-        "Left-hand side type: " + lhs_ty.to_string());
-    add_error(
-        &rhs,
-        "Right-hand side type: " + rhs_ty.to_string());
-    add_footer(
-        "The types of the left-hand side and right-hand side do not match.",
-        "Ensure both sides have compatible types");
+    AddHeaders(2, "Type Mismatch Error");
+    AddCtxForErr(&lhs, "Expected type " + INLINE_INFO(lhs_ty.ToString()));
+    AddErr(&rhs, "Found type " + INLINE_INFO(rhs_ty.ToString()));
+    AddFooter(
+        "The two types are not symbolically equal.",
+        "Change one of the expression to match the other's type. If using variant types, consider swapping the\n"
+        "expressions, so the broader variant is on the left of the comparison.");
 }
-
 
 spp::analyse::errors::SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
     asts::Ast const &expr,
     asts::Ast const &type,
-    const std::string_view ctx) {
-    add_header(
-        5, "SPP Second-Class Borrow Violation Error");
-    add_context_for_error(
-        &expr,
-        "Expression defined here");
-    add_error(
-        &type,
-        "Conversion to second-class type in " + std::string(ctx) + " context defined here");
-    add_footer(
-        "This expression cannot be used in a " + std::string(ctx) + " context because it is a second-class type.",
-        "Use a first-class type or adjust the context");
+    const StrView ctx) {
+    AddHeaders(3, "Second-Class Borrow Violation Error");
+    AddCtxForErr(&type, "Second-class borrow type declared here");
+    AddErr(&expr, "Expression used here");
+    AddFooter(
+        "Second-class borrow types cannot be used in the " + INLINE_NOTE(Str(ctx)) + " context.",
+        "Use a first-class type ensuring ownership in this context.");
 }
-
 
 spp::analyse::errors::SppCompileTimeConstantError::SppCompileTimeConstantError(
-    asts::ExpressionAst const &expr) {
-    add_header(
-        6, "SPP Compile-Time Constant Error");
-    add_error(
-        &expr,
-        "Expression defined here");
-    add_footer(
+    asts::Ast const &expr) {
+    AddHeaders(4, "SPP Compile-Time Constant Error");
+    AddErr(&expr, "Non compile-time expression defined here");
+    AddFooter(
         "This expression must be a compile-time constant.",
-        "Ensure the expression can be evaluated at compile time");
+        "Ensure the expression can be evaluated at compile time.");
 }
-
 
 spp::analyse::errors::SppInvalidMutationError::SppInvalidMutationError(
     asts::Ast const &sym,
     asts::Ast const &mutator,
-    asts::Ast const &initialization_location) {
-    add_header(
-        7, "SPP Invalid Mutation Error");
-    add_context_for_error(
-        &sym,
-        "Symbol defined here");
-    add_context_for_error(
-        &initialization_location,
-        "Initialized here");
-    add_error(
-        &mutator,
-        "Invalid mutation attempted here");
-    add_footer(
-        "The symbol " + sym.to_string() + " cannot be mutated because it was not declared as mutable.",
-        "Declare the symbol as mutable or remove the mutation");
+    asts::Ast const &initialization_location,
+    StrView extra) {
+    AddHeaders(5, "Invalid Mutation Error");
+    AddCtxForErr(&sym, "Symbol immutably defined here");
+    AddCtxForErr(&initialization_location, "Initialized here");
+    AddErr(&mutator, "Invalid mutation attempted here");
+    AddFooter(
+        "The symbol " + INLINE_NOTE(sym.ToString()) + " cannot be mutated because it's an " + INLINE_INFO(extra) + ".",
+        "Declare the symbol as mutable or remove the mutation.");
 }
-
 
 spp::analyse::errors::SppUninitializedMemoryUseError::SppUninitializedMemoryUseError(
     asts::ExpressionAst const &ast,
     asts::Ast const &init_location,
     asts::Ast const &move_location) {
-    add_header(
-        8, "SPP Uninitialized Memory Use Error");
-    add_context_for_error(
-        &init_location,
-        "Memory was initialized here");
-    add_context_for_error(
-        &move_location,
-        "Memory was moved here");
-    add_error(
-        &ast,
-        "Expression using uninitialized memory");
-    add_footer(
-        "This expression uses memory that may not have been initialized.",
-        "Ensure the memory is properly initialized before use");
+    AddHeaders(6, "Uninitialized Memory Use Error");
+    AddCtxForErr(&init_location, "Memory initialized here");
+    AddCtxForErr(&move_location, "Memory moved/uninitialized here");
+    AddErr(&ast, "Uninitialized memory used here");
+    AddFooter(
+        "This expression uses memory that is not initialized, or has been moved.",
+        "Reinitialize the variable, or use a different variable.");
 }
-
 
 spp::analyse::errors::SppPartiallyInitializedMemoryUseError::SppPartiallyInitializedMemoryUseError(
     asts::ExpressionAst const &ast,
-    asts::Ast const &init_location,
+    asts::Ast const &,
     asts::Ast const &partial_move_location) {
-    add_header(
-        9, "SPP Partially Initialized Memory Use Error");
-    add_context_for_error(
-        &ast,
-        "Expression using partially initialized memory defined here");
-    add_context_for_error(
-        &init_location,
-        "Memory was initialized here");
-    add_error(
-        &partial_move_location,
-        "Part of the memory was moved from here");
-    add_footer(
-        "This expression uses memory that may only be partially initialized.",
-        "Ensure the memory is fully initialized before use");
+    AddHeaders(7, "Partially Initialized Memory Use Error");
+    AddErr(&ast, "Expression using partially initialized memory here");
+    AddFooter(
+        "This expression uses memory that is partially initialized.",
+        "Fully initialize the symbol before using it.");
+    AddCtxForErr(&partial_move_location, "Partial memory move here");
 }
-
 
 spp::analyse::errors::SppMoveFromBorrowedMemoryError::SppMoveFromBorrowedMemoryError(
     asts::ExpressionAst const &ast,
     asts::Ast const &,
     asts::Ast const &borrow_location) {
-    add_header(
-        10, "SPP Move From Borrowed Memory Error");
-    add_context_for_error(
-        &borrow_location,
-        "Memory was borrowed here");
-    add_error(
-        &ast,
-        "Expression attempting to move from borrowed memory");
-    add_footer(
+    AddHeaders(8, "Move From Borrowed Memory Error");
+    AddErr(&ast, "Expression attempting to move from borrowed memory");
+    AddFooter(
         "This expression attempts to move from memory that is currently borrowed.",
-        "Ensure the memory is not borrowed when moving from it");
+        "Ensure the memory is not borrowed when moving from it, or clone it.");
+    AddCtxForErr(&borrow_location, "Memory was borrowed here");
 }
-
-
-spp::analyse::errors::SppMoveFromPinnedMemoryError::SppMoveFromPinnedMemoryError(
-    asts::ExpressionAst const &ast,
-    asts::Ast const &init_location,
-    asts::Ast const &move_location,
-    asts::Ast const &pin_location) {
-    add_header(
-        11, "SPP Move From Pinned Memory Error");
-    add_context_for_error(
-        &ast,
-        "Expression attempting to move from pinned memory");
-    add_context_for_error(
-        &init_location,
-        "Memory was initialized here");
-    add_context_for_error(
-        &pin_location,
-        "Memory was pinned here");
-    add_error(
-        &move_location,
-        "Move attempted here");
-    add_footer(
-        "This expression attempts to move from memory that is currently pinned.",
-        "Ensure the memory is unpinned before moving from it");
-}
-
 
 spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError::SppInconsistentlyInitializedMemoryUseError(
     asts::ExpressionAst const &ast,
     asts::Ast const &branch_1,
     asts::Ast const &branch_2,
-    const std::string_view what) {
-    add_header(
-        13, "SPP Inconsistently Initialized Memory Use Error");
-    add_context_for_error(
-        &ast,
-        "Expression using inconsistently initialized memory defined here");
-    add_context_for_error(
-        &branch_1,
-        "In this branch, the memory is " + std::string(what));
-    add_error(
-        &branch_2,
-        "In this branch, the memory is not " + std::string(what));
-    add_footer(
-        "This expression uses memory that is not consistently " + std::string(what) + " across all branches.",
-        "Ensure the memory is consistently " + std::string(what) + " in all branches before use");
+    const StrView what) {
+    AddHeaders(13, "Inconsistently Initialized Memory Use Error");
+    AddErr(&ast, "Variable may not be " + INLINE_INFO(what));
+    AddFooter(
+        "This expression uses memory that is not consistently " + INLINE_NOTE(what) + " across all branches.",
+        "Ensure the memory is " + INLINE_HELP(what) + " in all branches before use.");
+    AddCtxForErr(&branch_1, "In this branch, the memory is " + INLINE_INFO(what));
+    AddCtxForErr(&branch_2, "In this branch, the memory is not " + INLINE_INFO(what));
 }
 
-
-spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError::SppInconsistentlyPinnedMemoryUseError(
+spp::analyse::errors::SppInconsistentlyEscapingBorrows::SppInconsistentlyEscapingBorrows(
     asts::ExpressionAst const &ast,
     asts::Ast const &branch_1,
     asts::Ast const &branch_2) {
-    add_header(
-        14, "SPP Inconsistently Pinned Memory Use Error");
-    add_context_for_error(
-        &ast,
-        "Expression using inconsistently pinned memory defined here");
-    add_context_for_error(
-        &branch_1,
-        "In this branch, the memory is pinned");
-    add_error(
-        &branch_2,
-        "In this branch, the memory is not pinned");
-    add_footer(
-        "This expression uses memory that is not consistently pinned across all branches.",
-        "Ensure the memory is consistently pinned in all branches before use");
+    AddHeaders(14, "SPP Inconsistently Escaping Borrows");
+    AddCtxForErr(&ast, "Expression using inconsistently escape-borrowed memory defined here");
+    AddCtxForErr(&branch_1, "In this branch, the memory escapingly borrowed");
+    AddErr(&branch_2, "In this branch, the memory is not escapingly borrowed");
+    AddFooter(
+        "This expression uses memory that is not consistently escapingly borrowed across all branches.",
+        "Ensure the memory is consistently escapingly borrowed in all branches before use.");
 }
-
 
 spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexableError(
     asts::ExpressionAst const &lhs,
     asts::TypeAst const &lhs_type,
     asts::Ast const &access_op) {
-    add_header(
-        16, "SPP Member Access Non-Indexable Error");
-    add_context_for_error(
-        &lhs,
-        "Left-hand side expression defined here with type: " + lhs_type.to_string());
-    add_error(
-        &access_op,
-        "Member access operator defined here");
-    add_footer(
-        "The left-hand side expression is not indexable, so member access cannot be performed.",
-        "Ensure the left-hand side is an indexable type (e.g., array, tuple, struct)");
+    AddHeaders(12, "Member Access Non-Indexable Error");
+    AddCtxForErr(&lhs, "Type inferred as " + INLINE_INFO(lhs_type.ToString()));
+    AddErr(&access_op, "Member access operator introduced here");
+    AddFooter(
+        "The expression is not indexable, so member access cannot be performed.",
+        "Ensure the left-hand side is an indexable type (e.g., array or tuple).");
 }
-
 
 spp::analyse::errors::SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBoundsError(
     asts::ExpressionAst const &lhs,
-    asts::TypeAst const &lhs_type,
+    asts::TypeAst const &,
+    std::size_t n,
     asts::Ast const &access_op) {
-    add_header(
-        17, "SPP Member Access Out Of Bounds Error");
-    add_context_for_error(
-        &lhs,
-        "Left-hand side expression defined here with type: " + lhs_type.to_string());
-    add_error(
-        &access_op,
-        "Member access operator defined here");
-    add_footer(
+    AddHeaders(17, "Member Access Out Of Bounds Error");
+    AddCtxForErr(&lhs, "Type has " + INLINE_NOTE(std::to_string(n)) + " elements");
+    AddErr(&access_op, "Member access operator introduced here");
+    AddFooter(
         "The member access is out of bounds for the given type.",
         "Ensure the accessed member exists within the bounds of the type");
 }
 
-
-spp::analyse::errors::SppCaseBranchMultipleDestructuresError::SppCaseBranchMultipleDestructuresError(
-    asts::CasePatternVariantAst const &first_pattern,
-    asts::CasePatternVariantAst const &second_pattern) {
-    add_header(
-        19, "SPP Case Branch Multiple Destructures Error");
-    add_context_for_error(
-        &first_pattern,
-        "First destructure pattern defined here");
-    add_error(
-        &second_pattern,
-        "Second destructure pattern defined here");
-    add_footer(
-        "A case branch cannot contain multiple destructure patterns.",
-        "Combine the patterns into a single destructure or separate them into different branches");
-}
-
-
 spp::analyse::errors::SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastError(
     asts::CaseExpressionBranchAst const &non_last_else_branch,
     asts::CaseExpressionBranchAst const &last_branch) {
-    add_header(
-        20, "SPP Case Branch Else Not Last Error");
-    add_context_for_error(
-        &non_last_else_branch,
-        "Non-last 'else' branch defined here");
-    add_error(
-        &last_branch,
-        "Last branch defined here");
-    add_footer(
-        "The 'else' branch must be the last branch in a case expression.",
-        "Move the 'else' branch to be the last branch");
+    AddHeaders(20, "Case Branch Else Not Last Error");
+    AddCtxForErr(&non_last_else_branch, "Non-last " + INLINE_INFO("else") + " branch defined here");
+    AddErr(&last_branch, "Last branch defined here");
+    AddFooter(
+        "The " + INLINE_NOTE("else") + " branch must be the last branch in a case expression.",
+        "Move the " + INLINE_HELP("else") + " branch to be the last branch");
 }
-
 
 spp::analyse::errors::SppCaseBranchMissingElseError::SppCaseBranchMissingElseError(
     asts::CaseExpressionAst const &case_expr,
     asts::CaseExpressionBranchAst const &last_branch) {
-    add_header(
-        33, "SPP Case Branch Missing Else Error");
-    add_context_for_error(
-        &case_expr,
-        "Case expression defined here");
-    add_error(
-        &last_branch,
-        "Last branch defined here");
-    add_footer(
-        "A case expression must have an 'else' branch to handle all possible cases.",
-        "Add an 'else' branch to the case expression");
+    AddHeaders(33, "Case Branch Missing Else Error");
+    AddCtxForErr(&case_expr, "Case expression introduced here");
+    AddErr(&last_branch, "Last branch introduced here");
+    AddFooter(
+        "A case expression must have an " + INLINE_NOTE("else") + " branch to handle all possible cases.",
+        "Add an " + INLINE_HELP("else") + " branch to the case expression.");
 }
-
 
 spp::analyse::errors::SppIdentifierDuplicateError::SppIdentifierDuplicateError(
     asts::Ast const &first_identifier,
     asts::Ast const &duplicate_identifier,
-    const std::string_view what) {
-    add_header(
-        18, "SPP Identifier Duplicate Error");
-    add_context_for_error(
-        &first_identifier,
-        "First " + std::string(what) + " '" + first_identifier.to_string() + "' defined here");
-    add_error(
-        &duplicate_identifier,
-        "Duplicate " + std::string(what) + " '" + duplicate_identifier.to_string() + "' defined here");
-    add_footer(
-        "This " + std::string(what) + " identifier has already been defined in the current scope.",
+    const StrView what) {
+    AddHeaders(18, "Identifier Duplicate Error");
+    AddCtxForErr(&first_identifier, "First " + INLINE_INFO(Str(what)) + " named " + INLINE_INFO(first_identifier.ToString()) + " defined here");
+    AddErr(&duplicate_identifier, "Duplicate " + INLINE_INFO(Str(what)) + " named " + INLINE_INFO(duplicate_identifier.ToString()) + " defined here");
+    AddFooter(
+        "This " + INLINE_NOTE(Str(what)) + " identifier has already been used.",
         "Rename or remove the duplicate identifier");
 }
-
 
 spp::analyse::errors::SppRecursiveTypeError::SppRecursiveTypeError(
     asts::ClassPrototypeAst const &type,
     asts::TypeAst const &recursion) {
-    add_header(
-        35, "SPP Recursive Type Error");
-    add_context_for_error(
-        &type,
-        "Type defined here");
-    add_error(
-        &recursion,
-        "Recursive reference defined here");
-    add_footer(
-        "This type is recursively defined in a way that is not allowed.",
-        "Modify the type definition to eliminate illegal recursion");
+    AddHeaders(35, "Recursive Type Error");
+    AddCtxForErr(&type, "Type defined here");
+    AddErr(&recursion, "Recursive attribute introduced here");
+    AddFooter(
+        "This type contains an attribute that causes recursion.",
+        "Remove the attribute, change the type, or use smart pointers to prevent the type recursion.");
 }
-
-
-spp::analyse::errors::SppCoroutineInvalidReturnTypeError::SppCoroutineInvalidReturnTypeError(
-    asts::CoroutinePrototypeAst const &proto,
-    asts::TypeAst const &return_type) {
-    add_header(
-        36, "SPP Coroutine Invalid Return Type Error");
-    add_context_for_error(
-        &proto,
-        "Coroutine prototype defined here");
-    add_error(
-        &return_type,
-        "Invalid return type defined here");
-    add_footer(
-        "The return type of a coroutine must be a generator type.",
-        "Change the return type to 'Gen/GenOpt/GenRes/GenOnce'");
-}
-
 
 spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     asts::LiteralAst const &literal,
-    mppp::BigDec const &value,
-    mppp::BigDec const &lower,
-    mppp::BigDec const &upper,
-    const std::string_view what) {
-    add_header(
-        37, "SPP Float Out Of Bounds Error");
-    add_error(
-        &literal,
-        "Float literal defined here with value: " + value.to_string());
-    add_footer(
-        "The value of this float literal is out of bounds for " + std::string(what) + " type.",
-        "Ensure the value is within the range: [" + lower.to_string() + ", " + upper.to_string() + "]");
+    boost::BigDec const &value,
+    boost::BigDec const &lower,
+    boost::BigDec const &upper,
+    const StrView what) {
+    AddHeaders(37, "Float Out Of Bounds Error");
+    AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.str()));
+    AddFooter(
+        "The value of this float is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
+        "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") + INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
 }
-
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
     asts::LiteralAst const &literal,
-    mppp::BigInt const &value,
-    mppp::BigInt const &lower,
-    mppp::BigInt const &upper,
-    const std::string_view what) {
-    add_header(
-        38, "SPP Integer Out Of Bounds Error");
-    add_error(
-        &literal,
-        "Integer literal defined here with value: " + value.to_string());
-    add_footer(
-        "The value of this integer literal is out of bounds for " + std::string(what) + " type.",
-        "Ensure the value is within the range: [" + lower.to_string() + ", " + upper.to_string() + "]");
+    boost::BigInt const &value,
+    boost::BigInt const &lower,
+    boost::BigInt const &upper,
+    const StrView what) {
+    AddHeaders(38, "Integer Out Of Bounds Error");
+    AddErr(&literal, "Integer introduced here with value " + INLINE_INFO(value.str()));
+    AddFooter(
+        "The value of this integer is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
+        "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") + INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
 }
-
 
 spp::analyse::errors::SppOrderInvalidError::SppOrderInvalidError(
-    const std::string_view first_what,
+    const StrView first_what,
     asts::Ast const &first,
-    const std::string_view second_what,
+    const StrView second_what,
     asts::Ast const &second) {
-    add_header(
-        39, "SPP Order Invalid Error");
-    add_context_for_error(
-        &first,
-        "First " + std::string(first_what) + " defined here");
-    add_error(
-        &second,
-        "Second " + std::string(second_what) + " defined here");
-    add_footer(
-        "The order of these two elements is invalid.",
-        "Ensure the order of the elements is correct");
+    AddHeaders(39, "Order Invalid Error");
+    AddCtxForErr(&first, INLINE_INFO(Str(first_what)) + " defined here");
+    AddErr(&second, INLINE_INFO(Str(second_what)) + " defined here");
+    AddFooter(
+        "The order of these two asts is invalid.",
+        "Switch the order of these asts.");
 }
-
 
 spp::analyse::errors::SppExpansionOfNonTupleError::SppExpansionOfNonTupleError(
+    asts::TokenAst const &unpack,
     asts::Ast const &ast,
     asts::TypeAst const &type) {
-    add_header(
-        40, "SPP Expansion Of Non-Tuple Error");
-    add_error(
-        &ast,
-        "Expression defined here with type: " + type.to_string());
-    add_footer(
+    AddHeaders(40, "Expansion Of Non-Tuple Error");
+    AddCtxForErr(&ast, "Expression defined here with type " + INLINE_INFO(type.ToString()));
+    AddErr(&unpack, "Unpack operator defined here");
+    AddFooter(
         "This expression is being expanded, but it is not of tuple type.",
-        "Ensure the expression is of tuple type before expanding");
+        "Ensure the expression is of tuple type before expanding.");
 }
-
 
 spp::analyse::errors::SppMemoryOverlapUsageError::SppMemoryOverlapUsageError(
     asts::Ast const &ast,
     asts::Ast const &overlap_ast) {
-    add_header(
-        41, "SPP Memory Overlap Usage Error");
-    add_context_for_error(
-        &ast,
-        "Expression defined here");
-    add_error(
-        &overlap_ast,
-        "Overlapping memory region defined here");
-    add_footer(
-        "This expression uses memory that overlaps with another memory region in an invalid way.",
-        "Ensure the memory regions do not overlap or are used safely");
+    AddHeaders(41, "Memory Overlap Usage Error");
+    AddCtxForErr(&ast, "Memory region used here");
+    AddErr(&overlap_ast, "Overlapping memory region used here");
+    AddFooter(
+        "This expression uses memory that overlaps with another memory region.",
+        "Ensure the memory regions do not overlap.");
 }
-
 
 spp::analyse::errors::SppMultipleSelfParametersError::SppMultipleSelfParametersError(
     asts::FunctionParameterSelfAst const &first_self,
     asts::FunctionParameterSelfAst const &second_self) {
-    add_header(
-        42, "SPP Multiple Self Parameters Error");
-    add_context_for_error(
-        &first_self,
-        "First 'self' parameter defined here");
-    add_error(
-        &second_self,
-        "Second 'self' parameter defined here");
-    add_footer(
-        "A function cannot have multiple 'self' parameters.",
-        "Remove one of the 'self' parameters");
+    AddHeaders(42, "Multiple Self Parameters Error");
+    AddCtxForErr(&first_self, "First " + INLINE_INFO("self") + " parameter defined here");
+    AddErr(&second_self, "Second " + INLINE_INFO("self") + " parameter defined here");
+    AddFooter(
+        "A function cannot have multiple " + INLINE_NOTE("self") + " parameters.",
+        "Remove the second " + INLINE_HELP("self") + " parameters.");
 }
-
 
 spp::analyse::errors::SppMultipleVariadicParametersError::SppMultipleVariadicParametersError(
     asts::FunctionParameterVariadicAst const &first_variadic,
     asts::FunctionParameterVariadicAst const &second_variadic) {
-    add_header(
-        43, "SPP Multiple Variadic Parameters Error");
-    add_context_for_error(
-        &first_variadic,
-        "First variadic parameter defined here");
-    add_error(
-        &second_variadic,
-        "Second variadic parameter defined here");
-    add_footer(
-        "A function cannot have multiple variadic parameters.",
-        "Remove one of the variadic parameters");
+    AddHeaders(43, "Multiple Variadic Parameters Error");
+    AddCtxForErr(&first_variadic, "First " + INLINE_INFO("variadic") + " parameter defined here");
+    AddErr(&second_variadic, "Second " + INLINE_INFO("variadic") + " parameter defined here");
+    AddFooter(
+        "A function cannot have multiple " + INLINE_NOTE("variadic") + " parameters.",
+        "Remove one of the " + INLINE_HELP("variadic") + " parameters.");
 }
-
-
-spp::analyse::errors::SppSelfParamInFreeFunctionError::SppSelfParamInFreeFunctionError(
-    asts::FunctionPrototypeAst const &function_proto,
-    asts::FunctionParameterSelfAst const &self_param) {
-    add_header(
-        43, "SPP Self Parameter In Free Function Error");
-    add_context_for_error(
-        &function_proto,
-        "Function prototype defined here");
-    add_error(
-        &self_param,
-        "'self' parameter defined here");
-    add_footer(
-        "A free function cannot have a 'self' parameter.",
-        "Remove the 'self' parameter from the function");
-}
-
 
 spp::analyse::errors::SppFunctionPrototypeConflictError::SppFunctionPrototypeConflictError(
     asts::FunctionPrototypeAst const &first_proto,
     asts::FunctionPrototypeAst const &second_proto) {
-    add_header(
-        44, "SPP Function Prototype Conflict Error");
-    add_context_for_error(
-        &first_proto,
-        "First function prototype defined here");
-    add_error(
-        &second_proto,
-        "Conflicting function prototype defined here");
-    add_footer(
+    AddHeaders(44, "Function Prototype Conflict Error");
+    AddCtxForErr(&first_proto, "First function prototype for " + INLINE_INFO(first_proto.Name->ToString()) + " defined here");
+    AddErr(&second_proto, "Conflicting function prototype for " + INLINE_INFO(first_proto.Name->ToString()) + " defined here");
+    AddFooter(
         "These two function prototypes conflict with each other.",
-        "Rename or modify one of the function prototypes to resolve the conflict");
+        "Rename or modify one of the function prototypes' signature.");
 }
-
 
 spp::analyse::errors::SppFunctionSubroutineContainsGenExpressionError::SppFunctionSubroutineContainsGenExpressionError(
     asts::TokenAst const &fun_tag,
     asts::TokenAst const &gen_expr) {
-    add_header(
-        45, "SPP Function Subroutine Contains Generator Expression Error");
-    add_context_for_error(
-        &fun_tag,
-        "Function or subroutine defined here");
-    add_error(
-        &gen_expr,
-        "Generator expression defined here");
-    add_footer(
-        "A function or subroutine cannot contain a generator expression.",
-        "Remove the generator expression or change the function to a coroutine");
+    AddHeaders(45, "Function Subroutine Contains Generator Expression Error");
+    AddCtxForErr(&fun_tag, "Subroutine defined here");
+    AddErr(&gen_expr, "Coroutine value generation introduced here");
+    AddFooter(
+        "A subroutine cannot contain a " + INLINE_NOTE("gen") + " expression.",
+        "Remove the " + INLINE_HELP("gen") + " expression or change the subroutine to a coroutine, by replacing\n"
+        "" + INLINE_HELP("fun") + " with " + INLINE_HELP("cor"));
 }
-
 
 spp::analyse::errors::SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
     asts::Ast const &lhs,
     asts::TypeAst const &lhs_ty,
     asts::Ast const &rhs,
     asts::TypeAst const &rhs_ty) {
-    add_header(
-        46, "SPP Yielded Type Mismatch Error");
-    add_context_for_error(
-        &lhs,
-        "Yielded type: " + lhs_ty.to_string());
-    add_error(
-        &rhs,
-        "Expected type: " + rhs_ty.to_string());
-    add_footer(
+    AddHeaders(46, "Yielded Type Mismatch Error");
+    AddCtxForErr(&lhs, "Yielded type inferred as " + INLINE_INFO(lhs_ty.ToString()));
+    AddErr(&rhs, "Expected type inferred as " + INLINE_INFO(rhs_ty.ToString()));
+    AddFooter(
         "The type of the yielded value does not match the expected type.",
         "Ensure the yielded value matches the expected type");
 }
 
-
 spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
     asts::Ast const &name,
-    const std::string_view what,
-    std::optional<std::string> const &closest) {
-    add_header(
-        34, "SPP Identifier Unknown Error");
-    add_error(
-        &name,
-        "Unknown " + std::string(what) + " '" + name.to_string() + "' defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
-    add_footer(
-        "The " + std::string(what) + " '" + name.to_string() + "' is not defined in the current scope.",
-        "Define the identifier or correct its name");
+    const StrView what,
+    std::optional<Str> const &closest) {
+    AddHeaders(34, "Identifier Unknown Error");
+    AddErr(&name, "Unknown " + INLINE_INFO(Str(what)) + " introduced here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
+    AddFooter(
+        "The " + INLINE_NOTE(Str(what)) + " of " + INLINE_NOTE(name.ToString()) +  " is not defined in the current scope.",
+        "Define the identifier or correct its name.");
 }
 
+spp::analyse::errors::SppSelfIdentifierInvalidContextError::SppSelfIdentifierInvalidContextError(
+    asts::Ast const &self) {
+    AddHeaders(35, "Self Identifier Invalid Context");
+    AddErr(&self, "Invalid " + INLINE_INFO("self") + " identifier introduced here");
+    AddFooter(
+        "The " + INLINE_NOTE("self") + " identifier can only be used in the context of a method.",
+        "Ensure the " + INLINE_HELP("self") + " identifier is used in a valid context, or remove it.");
+}
 
 spp::analyse::errors::SppUnreachableCodeError::SppUnreachableCodeError(
     asts::Ast const &member,
     asts::Ast const &next_member) {
-    add_header(
-        47, "SPP Unreachable Code Error");
-    add_context_for_error(
-        &member,
-        "Code defined here");
-    add_error(
-        &next_member,
-        "Unreachable code defined here");
-    add_footer(
+    AddHeaders(47, "Unreachable Code Error");
+    AddCtxForErr(&member, "Terminating statement introduced here");
+    AddErr(&next_member, "Unreachable code here");
+    AddFooter(
         "This code is unreachable due to preceding control flow statements.",
-        "Remove or modify the unreachable code");
+        "Remove the unreachable code, or the terminating statement.");
 }
 
-
-spp::analyse::errors::SppInvalidTypeAnnotationError::SppInvalidTypeAnnotationError(
+spp::analyse::errors::SppInvalidLocalVariableTypeAnnotationError::SppInvalidLocalVariableTypeAnnotationError(
     asts::TypeAst const &type,
     asts::LocalVariableAst const &var) {
-    add_header(
-        21, "SPP Invalid Type Annotation Error");
-    add_context_for_error(
-        &var,
-        "Variable defined here");
-    add_error(
-        &type,
-        "Invalid type annotation defined here");
-    add_footer(
-        "The type annotation for this variable is invalid.",
-        "Correct or remove the type annotation");
+    AddHeaders(21, "Invalid Local Variable Type Annotation Error");
+    AddCtxForErr(&var, "Variable introduced here");
+    AddErr(&type, "Invalid type annotation introduced here");
+    AddFooter(
+        "Type annotations can only be placed on single identifier local variables.",
+        "Remove this type annotation.");
 }
 
-
-spp::analyse::errors::SppMultipleSkipMultiArgumentsError::SppMultipleSkipMultiArgumentsError(
+spp::analyse::errors::SppMultipleRestPatternsError::SppMultipleRestPatternsError(
     asts::LocalVariableAst const &var,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &first_arg,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &second_arg) {
-    add_header(
-        22, "SPP Multiple Skip Multi-Arguments Error");
-    add_context_for_error(
-        &var,
-        "Variable defined here");
-    add_context_for_error(
-        &first_arg,
-        "First skip multi-argument defined here");
-    add_error(
-        &second_arg,
-        "Second skip multi-argument defined here");
-    add_footer(
-        "A destructure cannot contain multiple skip multi-arguments.",
-        "Remove one of the skip multi-arguments");
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &pattern_1,
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &pattern_2) {
+    AddHeaders(22, "Multiple Rest Patterns Error");
+    AddCtxForErr(&var, "Variable destructure introduced here");
+    AddCtxForErr(&pattern_1, "First rest pattern introduced here");
+    AddErr(&pattern_2, "Second rest pattern introduced here");
+    AddFooter(
+        "A destructure cannot contain multiple rest patterns.",
+        "Remove one of the skip multi-arguments.");
 }
-
 
 spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError::SppVariableArrayDestructureArrayTypeMismatchError(
     asts::LocalVariableDestructureArrayAst const &var,
     asts::ExpressionAst const &val,
     asts::TypeAst const &val_type) {
-    add_header(
-        23, "SPP Variable Array Destructure Array Type Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Array destructure variable defined here");
-    add_error(
-        &val,
-        "Value being destructured defined here with type: " + val_type.to_string());
-    add_footer(
-        "The type of the value being destructured does not match the expected array type.",
-        "Ensure the value is of an array type compatible with the destructure");
+    AddHeaders(23, "Variable Array Destructure Array Type Mismatch Error");
+    AddCtxForErr(&var, "Array destructure introduced here");
+    AddErr(&val, "Type inferred as " + INLINE_INFO(val_type.ToString()));
+    AddFooter(
+        "The type of the value being destructured is not an array.",
+        "Change the target to an array, or change the destructure.");
 }
-
 
 spp::analyse::errors::SppVariableArrayDestructureArraySizeMismatchError::SppVariableArrayDestructureArraySizeMismatchError(
     asts::LocalVariableDestructureArrayAst const &var,
     const std::size_t var_size,
     asts::ExpressionAst const &val,
     const std::size_t val_size) {
-    add_header(
-        24, "SPP Variable Array Destructure Array Size Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Array destructure variable defined here with size: " + std::to_string(var_size));
-    add_error(
-        &val,
-        "Value being destructured defined here with size: " + std::to_string(val_size));
-    add_footer(
-        "The size of the value being destructured does not match the expected array size.",
-        "Ensure the value has the same size as the destructure variable");
+    AddHeaders(24, "Variable Array Destructure Array Size Mismatch Error");
+    AddCtxForErr(&var, "Array destructure introduced with " + INLINE_INFO(std::to_string(var_size)) + " elements");
+    AddErr(&val, "Array has " + INLINE_INFO(std::to_string(val_size)) + " elements");
+    auto extra = var_size < val_size ? ", or add the " + INLINE_HELP("..") + " rest pattern" : "";
+    AddFooter(
+        "The size of the array does not equal the size of the destructure pattern.",
+        "Change the size of the destructure pattern" + extra + ".");
 }
-
 
 spp::analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError::SppVariableTupleDestructureTupleTypeMismatchError(
     asts::LocalVariableDestructureTupleAst const &var,
     asts::ExpressionAst const &val,
     asts::TypeAst const &val_type) {
-    add_header(
-        25, "SPP Variable Tuple Destructure Tuple Type Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Tuple destructure variable defined here");
-    add_error(
-        &val,
-        "Value being destructured defined here with type: " + val_type.to_string());
-    add_footer(
-        "The type of the value being destructured does not match the expected tuple type.",
-        "Ensure the value is of a tuple type compatible with the destructure");
+    AddHeaders(25, "Variable Tuple Destructure Tuple Type Mismatch Error");
+    AddCtxForErr(&var, "Tuple destructure introduced here");
+    AddErr(&val, "Type inferred as " + INLINE_INFO(val_type.ToString()));
+    AddFooter(
+        "The type of the value being destructured is not a tuple.",
+        "Change the target to an tuple, or change the destructure.");
 }
-
 
 spp::analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError::SppVariableTupleDestructureTupleSizeMismatchError(
     asts::LocalVariableDestructureTupleAst const &var,
     const std::size_t var_size,
     asts::ExpressionAst const &val,
     const std::size_t val_size) {
-    add_header(
-        26, "SPP Variable Tuple Destructure Tuple Size Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Tuple destructure variable defined here with size: " + std::to_string(var_size));
-    add_error(
-        &val,
-        "Value being destructured defined here with size: " + std::to_string(val_size));
-    add_footer(
-        "The size of the value being destructured does not match the expected tuple size.",
-        "Ensure the value has the same size as the destructure variable");
+    AddHeaders(26, "Variable Tuple Destructure Tuple Size Mismatch Error");
+    AddCtxForErr(&var, "Tuple destructure introduced with " + INLINE_INFO(std::to_string(var_size)) + " elements");
+    AddErr(&val, "Tuple has " + INLINE_INFO(std::to_string(val_size)) + " elements");
+    auto extra = var_size < val_size ? ", or add the " + INLINE_HELP("..") + " rest pattern" : "";
+    AddFooter(
+        "The size of the tuple does not equal the size of the destructure pattern.",
+        "Change the size of the destructure pattern" + extra + ".");
 }
 
-
-spp::analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError::SppVariableObjectDestructureWithBoundMultiSkipError(
+spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError::SppVariableObjectDestructureWithBoundRestPatternError(
     asts::LocalVariableDestructureObjectAst const &var,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &multi_skip) {
-    add_header(
-        27, "SPP Variable Object Destructure With Bound Multi-Skip Error");
-    add_context_for_error(
-        &var,
-        "Object destructure variable defined here");
-    add_error(
-        &multi_skip,
-        "Bound skip multi-argument defined here");
-    add_footer(
-        "An object destructure cannot contain a bound skip multi-argument.",
-        "Remove the bound skip multi-argument from the destructure");
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &rest_pattern) {
+    AddHeaders(27, "Variable Object Destructure With Bound Rest Pattern Error");
+    AddCtxForErr(&var, "Object destructure introduced here");
+    AddErr(&rest_pattern, "Bound rest pattern introduced here");
+    AddFooter(
+        "An object destructure cannot contain a bound rest pattern.",
+        "Remove the bound rest pattern from the destructure.");
 }
-
 
 spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
     asts::Ast const &expr,
     asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        28, "SPP Expression Not Boolean Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + expr_type.to_string());
-    add_footer(
-        "This expression must be of boolean type to be used in a " + std::string(what) + " context.",
-        "Ensure the expression evaluates to a boolean value");
+    const StrView what) {
+    AddHeaders(28, "Expression Not Boolean Error");
+    AddErr(&expr, "Type inferred as " + INLINE_INFO(expr_type.ToString()));
+    AddFooter(
+        "This expression be boolean to be used in a " + INLINE_NOTE(Str(what)) + " context.",
+        "Change this expression to a boolean type expression.");
 }
-
 
 spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
     asts::Ast const &expr,
     asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        29, "SPP Expression Not Generator Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + expr_type.to_string());
-    add_footer(
-        "This expression must be of generator type to be used in a " + std::string(what) + " context.",
-        "Ensure the expression evaluates to a generator type");
+    const StrView what) {
+    AddHeaders(29, "SPP Expression Not Generator Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(expr_type.ToString()));
+    AddFooter(
+        "This expression must be of generator type to be used in a " + INLINE_NOTE(what) + " context.",
+        "Change the expression/type to a generator or a type that superimposes it.");
 }
-
 
 spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguousGeneratorError(
     asts::Ast const &expr,
     asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        30, "SPP Expression Ambiguous Generator Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + expr_type.to_string());
-    add_footer(
-        "This expression has an ambiguous generator type in a " + std::string(what) + " context.",
-        "Ensure the expression has a clear and unambiguous generator type");
+    const StrView what) {
+    AddHeaders(30, "SPP Expression Ambiguous Generator Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(expr_type.ToString()));
+    AddFooter(
+        "This expression has an ambiguous generator type in a " + INLINE_NOTE(what) + " context.",
+        "Ensure the expression has a clear and unambiguous generator type (only superimpose one).");
 }
-
-
-spp::analyse::errors::SppExpressionNotIndexableError::SppExpressionNotIndexableError(
-    asts::Ast const &expr,
-    asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        38, "SPP Expression Not Indexable Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + expr_type.to_string());
-    add_footer(
-        "This expression must be of an indexable type to be used in a " + std::string(what) + " context.",
-        "Ensure the expression evaluates to an indexable type (e.g., superimposes IndexRef/IndexMut)");
-}
-
 
 spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguousIndexableError(
     asts::Ast const &expr,
     asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        39, "SPP Expression Ambiguous Indexable Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + expr_type.to_string());
-    add_footer(
-        "This expression has an ambiguous indexable type in a " + std::string(what) + " context.",
-        "Ensure the expression has a clear and unambiguous indexable type");
+    const StrView what) {
+    AddHeaders(39, "Expression Ambiguous Indexable Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(expr_type.ToString()));
+    AddFooter(
+        "This expression has an ambiguous indexable type in a " + INLINE_NOTE(what) + " context.",
+        "Ensure the expression has a clear and unambiguous indexable type (only superimpose one).");
 }
-
 
 spp::analyse::errors::SppLoopTooManyControlFlowStatementsError::SppLoopTooManyControlFlowStatementsError(
     asts::TokenAst const &tok_loop,
     asts::LoopControlFlowStatementAst const &stmt,
     const std::size_t num_controls,
     const std::size_t loop_depth) {
-    add_header(
-        48, "SPP Loop Too Many Control Flow Statements Error");
-    add_context_for_error(
-        &tok_loop,
-        "Loop defined here with depth: " + std::to_string(loop_depth));
-    add_error(
-        &stmt,
-        "Control flow statement defined here (" + std::to_string(num_controls) + " total)");
-    add_footer(
-        "This loop contains too many control flow statements (break/continue) for its depth.",
+    AddHeaders(48, "Loop Too Many Control Flow Statements Error");
+    AddCtxForErr(&tok_loop, "Loop introduced here with at a depth of " + INLINE_INFO(std::to_string(loop_depth)) + " loops");
+    AddErr(&stmt, "Control flow statement defined here with " + INLINE_INFO(std::to_string(num_controls)) + " control flow statements");
+    AddFooter(
+        "This loop contains too many control flow statements (exit/skip) for its depth.",
         "Reduce the number of control flow statements or increase the loop depth");
 }
-
 
 spp::analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError::SppObjectInitializerMultipleAutofillArgumentsError(
     asts::ObjectInitializerArgumentAst const &arg1,
     asts::ObjectInitializerArgumentAst const &arg2) {
-    add_header(
-        49, "SPP Object Initializer Multiple Autofill Arguments Error");
-    add_context_for_error(
-        &arg1,
-        "First autofill argument defined here");
-    add_error(
-        &arg2,
-        "Second autofill argument defined here");
-    add_footer(
+    AddHeaders(49, "Object Initializer Multiple Autofill Arguments Error");
+    AddCtxForErr(&arg1, "First autofill argument introduced here");
+    AddErr(&arg2, "Second autofill argument introduced here");
+    AddFooter(
         "An object initializer cannot contain multiple autofill arguments.",
-        "Remove one of the autofill arguments");
+        "Remove one of the autofill arguments.");
 }
-
 
 spp::analyse::errors::SppObjectInitializerInvalidArgumentError::SppObjectInitializerInvalidArgumentError(
     asts::ObjectInitializerArgumentAst const &arg) {
-    add_header(
-        50, "SPP Object Initializer Invalid Argument Error");
-    add_error(
-        &arg,
-        "Non-identifier shorthand argument defined here");
-    add_footer(
+    AddHeaders(50, "Object Initializer Invalid Argument Error");
+    AddErr(&arg, "Non-identifier shorthand argument defined here");
+    AddFooter(
         "This argument in the object initializer is invalid.",
-        "Ensure the shorthand argument is an identifier");
+        "Shorthand arguments to object initializers must be variables whose identifier name matches a target\n"
+        "attribute. Otherwise, use the keyword format " + INLINE_HELP("attr=value") + ".");
 }
-
 
 spp::analyse::errors::SppObjectInitializerGenericWithArgsError::SppObjectInitializerGenericWithArgsError(
     asts::TypeAst const &type,
     asts::ObjectInitializerArgumentAst const &arg) {
-    add_header(
-        51, "SPP Object Initializer Generic With Arguments Error");
-    add_context_for_error(
-        &type,
-        "Generic type initialized here");
-    add_error(
-        &arg,
-        "Argument provided here");
-    add_footer(
+    AddHeaders(51, "Object Initializer Generic With Arguments Error");
+    AddCtxForErr(&type, "Generic type initialized here");
+    AddErr(&arg, "Argument introduced here");
+    AddFooter(
         "A generic type cannot be initialized with arguments.",
-        "Remove the arguments from the object initializer");
+        "Remove the arguments from the object initializer.");
 }
-
 
 spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(
     asts::Ast const &target,
-    const std::string_view target_what,
+    const StrView target_what,
     asts::Ast const &source,
-    const std::string_view source_what) {
-    add_header(
-        50, "SPP Argument Name Invalid Error");
-    add_context_for_error(
-        &target,
-        std::string(target_what) + " defined here");
-    add_error(
-        &source,
-        std::string(source_what) + " defined here");
-    add_footer(
-        "The name of this argument is invalid in the current context.",
-        "Ensure the argument name is correct and valid");
+    const StrView source_what) {
+    AddHeaders(50, "Argument Name Invalid Error");
+    AddCtxForErr(&target, INLINE_INFO(target_what) + " introduced here");
+    AddErr(&source, INLINE_INFO(source_what) + " introduced here");
+    AddFooter(
+        "The name of the " + INLINE_NOTE(source_what) + " is invalid in the current context.",
+        "Change the " + INLINE_HELP(source_what) + " to a name that is a " + INLINE_HELP(target_what) + ".");
 }
-
 
 spp::analyse::errors::SppArgumentMissingError::SppArgumentMissingError(
     asts::Ast const &target,
-    const std::string_view target_what,
+    const StrView target_what,
     asts::Ast const &source,
-    const std::string_view source_what) {
-    add_header(
-        51, "SPP Argument Missing Error");
-    add_context_for_error(
-        &target,
-        std::string(target_what) + " defined here");
-    add_error(
-        &source,
-        std::string(source_what) + " defined here");
-    add_footer(
+    const StrView source_what) {
+    AddHeaders(51, "Argument Missing Error");
+    AddCtxForErr(&target, "Missing " + INLINE_INFO(Str(target_what)) + " defined here");
+    AddErr(&source, "Existing " + INLINE_INFO(Str(source_what)) + " defined here");
+    AddFooter(
         "A required argument is missing in the current context.",
-        "Provide the missing argument");
+        "Provide the missing argument.");
 }
-
 
 spp::analyse::errors::SppEarlyReturnRequiresTryTypeError::SppEarlyReturnRequiresTryTypeError(
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
-    add_header(
-        52, "SPP Early Return Requires Try Type Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + type.to_string());
-    add_footer(
+    AddHeaders(52, "Early Return Requires Try Type Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(type.ToString()));
+    AddFooter(
         "This expression is used in an early return context, but its type is not a try type.",
-        "Change the expression to have a try type or adjust the context");
+        "Change the expression to have a try type.");
 }
-
 
 spp::analyse::errors::SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(
     asts::FunctionPrototypeAst const &proto,
     asts::PostfixExpressionOperatorFunctionCallAst const &call) {
-    add_header(
+    // TODO: This will be changing with the abstract types ticket.
+    AddHeaders(
         53, "SPP Function Call Abstract Function Error");
-    add_context_for_error(
+    AddCtxForErr(
         &proto,
         "Abstract function prototype defined here");
-    add_error(
+    AddErr(
         &call,
         "Function call defined here");
-    add_footer(
+    AddFooter(
         "This function call attempts to call an abstract function, which is not allowed.",
         "Ensure the function being called is not abstract");
 }
 
-
-spp::analyse::errors::SppFunctionCallNotImplFunctionError::SppFunctionCallNotImplFunctionError(
-    asts::FunctionPrototypeAst const &proto,
-    asts::PostfixExpressionOperatorFunctionCallAst const &call) {
-    add_header(
-        54, "SPP Function Call Not Implemented Function Error");
-    add_context_for_error(
-        &proto,
-        "Not implemented function prototype defined here");
-    add_error(
-        &call,
-        "Function call defined here");
-    add_footer(
-        "This function call attempts to call a function that is not implemented.",
-        "Ensure the function being called has an implementation");
-}
-
-
 spp::analyse::errors::SppFunctionCallTooManyArgumentsError::SppFunctionCallTooManyArgumentsError(
     asts::FunctionPrototypeAst const &proto,
     asts::PostfixExpressionOperatorFunctionCallAst const &call) {
-    add_header(
-        55, "SPP Function Call Too Many Arguments Error");
-    add_context_for_error(
-        &proto,
-        "Function prototype defined here");
-    add_error(
-        &call,
-        "Function call defined here");
-    add_footer(
+    AddHeaders(55, "SPP Function Call Too Many Arguments Error");
+    AddCtxForErr(&proto, "Function prototype defined here with " + INLINE_INFO(std::to_string(proto.FnParamGroup->Params.Len())) + " parameter(s)");
+    AddErr(&call, "Function call introduced here with " + INLINE_INFO(std::to_string(call.FnArgGroup->Args.Len())) + " argument(s)");
+    AddFooter(
         "This function call provides more arguments than the function prototype allows.",
-        "Reduce the number of arguments in the function call to match the prototype");
+        "Reduce the number of arguments in the function call to match the prototype.");
 }
-
-
-spp::analyse::errors::SppFunctionFoldTupleElementTypeMismatchError::SppFunctionFoldTupleElementTypeMismatchError(
-    asts::TypeAst const &type,
-    asts::ExpressionAst const &expr) {
-    add_header(
-        56, "SPP Function Fold Tuple Element Type Mismatch Error");
-    add_context_for_error(
-        &type,
-        "Expected type: " + type.to_string());
-    add_error(
-        &expr,
-        "Tuple element with mismatched type defined here");
-    add_footer(
-        "The type of this tuple element does not match the expected type in the fold operation.",
-        "Ensure all tuple elements have matching types");
-}
-
-
-spp::analyse::errors::SppFunctionFoldTupleLengthMismatchError::SppFunctionFoldTupleLengthMismatchError(
-    asts::ExpressionAst const &first_tup,
-    const std::size_t first_length,
-    asts::ExpressionAst const &second_tup,
-    const std::size_t second_length) {
-    add_header(
-        57, "SPP Function Fold Tuple Length Mismatch Error");
-    add_context_for_error(
-        &first_tup,
-        "First tuple defined here with length: " + std::to_string(first_length));
-    add_error(
-        &second_tup,
-        "Second tuple defined here with length: " + std::to_string(second_length));
-    add_footer(
-        "The lengths of these tuples do not match in the fold operation.",
-        "Ensure all tuples have the same length");
-}
-
 
 spp::analyse::errors::SppFunctionCallNoValidSignaturesError::SppFunctionCallNoValidSignaturesError(
     asts::PostfixExpressionOperatorFunctionCallAst const &call,
-    const std::string_view sigs,
-    const std::string_view attempted) {
-    add_header(
-        58, "SPP Function Call No Valid Signatures Error");
-    add_error(
-        &call,
-        "Function call defined here");
-    add_footer(
-        "No valid signatures match this function call.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: (" + std::string(attempted) + ")",
-        "Adjust the arguments to match one of the available signatures");
+    const StrView sigs,
+    const StrView attempted) {
+    AddHeaders(58, "Function Call No Valid Signatures Error");
+    AddErr(&call, "Function call defined here");
+    AddFooter(
+        "No valid signatures match this function call.\n\nAvailable signatures: " + INLINE_NOTE(sigs) + "\n\nAttempted " + INLINE_NOTE(attempted),
+        "Adjust the arguments to match one of the available signatures. See candidates in more detail below.");
 }
-
 
 spp::analyse::errors::SppFunctionCallOverloadAmbiguousError::SppFunctionCallOverloadAmbiguousError(
     asts::PostfixExpressionOperatorFunctionCallAst const &call,
-    const std::string_view sigs,
-    const std::string_view attempted) {
-    add_header(
-        59, "SPP Function Call Overload Ambiguous Error");
-    add_error(
-        &call,
-        "Function call defined here");
-    add_footer(
-        "The function call is ambiguous between multiple overloads.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: (" + std::string(attempted) + ")",
-        "Specify types or adjust arguments to resolve the ambiguity");
+    const StrView sigs,
+    const StrView attempted) {
+    AddHeaders(59, "Function Call Overload Ambiguous Error");
+    AddErr(&call, "Function call introduced here");
+    AddFooter(
+        "The function call is ambiguous between multiple overloads.\n\nAvailable signatures: " + INLINE_NOTE(sigs) + "\n\nAttempted: " + INLINE_NOTE(attempted),
+        "Specify types or adjust arguments to resolve the ambiguity.");
 }
-
 
 spp::analyse::errors::SppMemberAccessStaticOperatorExpectedError::SppMemberAccessStaticOperatorExpectedError(
     asts::Ast const &lhs,
-    asts::TokenAst const &access) {
-    add_header(
-        60, "SPP Member Access Static Operator Expected Error");
-    add_context_for_error(
-        &lhs,
-        "Left-hand side defined here");
-    add_error(
-        &access,
-        "Member access operator defined here");
-    add_footer(
-        "A static operator is expected for this member access.",
-        "Use a static member or adjust the access accordingly");
+    asts::TokenAst const &access,
+    StrView what) {
+    AddHeaders(60, "Member Access Static Operator Expected Error");
+    AddCtxForErr(&lhs, "" + INLINE_INFO(what) + " identifier introduced here");
+    AddErr(&access, "Runtime member access operator " + INLINE_INFO(".") + " introduced here");
+    AddFooter(
+        "A static operator is required for " + INLINE_NOTE(what) + " member access.",
+        "Use the " + INLINE_HELP("::") + " operator, or change the type to a value.");
 }
-
 
 spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError::SppMemberAccessRuntimeOperatorExpectedError(
     asts::Ast const &lhs,
     asts::TokenAst const &access) {
-    add_header(
-        61, "SPP Member Access Runtime Operator Expected Error");
-    add_context_for_error(
-        &lhs,
-        "Left-hand side defined here");
-    add_error(
-        &access,
-        "Member access operator defined here");
-    add_footer(
-        "A runtime operator is expected for this member access.",
-        "Use a runtime member or adjust the access accordingly");
+    AddHeaders(61, "Member Access Runtime Operator Expected Error");
+    AddCtxForErr(&lhs, "" + INLINE_INFO("variable") + " identifier introduced here");
+    AddErr(&access, "Static member access operator " + INLINE_INFO("::") + " introduced here");
+    AddFooter(
+        "A runtime operator is required for " + INLINE_NOTE("variable") + " member access.",
+        "Use the " + INLINE_HELP(".") + " operator, or change the variable to a namespace.");
 }
-
 
 spp::analyse::errors::SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsageError(
     asts::Ast const &gen_name,
     asts::TypeAst const &gen_val,
-    const std::string_view what) {
-    add_header(
-        62, "SPP Generic Type Invalid Usage Error");
-    add_context_for_error(
-        &gen_name,
-        "Generic name defined here");
-    add_error(
-        &gen_val,
-        "Generic value used in " + std::string(what) + " context");
-    add_footer(
-        "This generic type is used invalidly in the " + std::string(what) + " context.",
-        "Correct the usage of the generic type");
+    const StrView what) {
+    AddHeaders(62, "Generic Type Invalid Usage Error");
+    AddCtxForErr(&gen_name, "Generic type defined here");
+    AddErr(&gen_val, "Generic value used in " + INLINE_INFO(what) + " context");
+    AddFooter(
+        "This generic type is used invalidly in the " + INLINE_NOTE(what) + " context.",
+        "Correct the usage of the generic type.");
 }
-
 
 spp::analyse::errors::SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessError(
     asts::Ast const &found_field_1,
     asts::Ast const &found_field_2,
     asts::Ast const &field_access) {
-    add_header(
-        63, "SPP Ambiguous Member Access Error");
-    add_context_for_error(
-        &found_field_1,
-        "First matching field defined here");
-    add_context_for_error(
-        &found_field_2,
-        "Second matching field defined here");
-    add_error(
-        &field_access,
-        "Ambiguous member access defined here");
-    add_footer(
-        "The member access is ambiguous due to multiple matching fields.",
-        "Qualify the access to resolve the ambiguity");
+    AddHeaders(63, "Ambiguous Member Access Error");
+    AddCtxForErr(&found_field_1, "First matching field defined here");
+    AddCtxForErr(&found_field_2, "Second matching field defined here");
+    AddErr(&field_access, "Ambiguous member access defined here");
+    AddFooter(
+        "The member access is ambiguous due to multiple matching fields of equal subclass depth.",
+        "Not supported at the moment.");
 }
 
-
-spp::analyse::errors::SppCoroutineContainsRetExprExpressionError::SppCoroutineContainsRetExprExpressionError(
+spp::analyse::errors::SppCoroutineContainsReturnStatementError::SppCoroutineContainsReturnStatementError(
     asts::TokenAst const &fun_tag,
     asts::TokenAst const &ret_stmt) {
-    add_header(
-        64, "SPP Function Coroutine Contains RetExpr Expression Error");
-    add_context_for_error(
-        &fun_tag,
-        "Coroutine defined here");
-    add_error(
-        &ret_stmt,
-        "Return expression defined here");
-    add_footer(
-        "A coroutine cannot contain a return expression.",
-        "Use yield expressions instead or change to a subroutine");
+    AddHeaders(64, "Function Coroutine Contains Return Statement Error");
+    AddCtxForErr(&fun_tag, "Coroutine introduced here");
+    AddErr(&ret_stmt, "Return expression introduced here");
+    AddFooter(
+        "A coroutine cannot contain a return statement.",
+        "Use " + INLINE_HELP("gen") + " expressions instead or change the function to a subroutine.");
 }
-
 
 spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError::SppFunctionSubroutineMissingReturnStatementError(
     asts::Ast const &final_member,
+    asts::Ast const &return_type_definition,
     asts::TypeAst const &return_type) {
-    add_header(
-        65, "SPP Function Subroutine Missing Return Statement Error");
-    add_error(
-        &final_member,
-        "Final member defined here");
-    add_footer(
-        "This subroutine is missing a return statement for return type: " + return_type.to_string(),
-        "Add a return statement at the end of the subroutine");
+    AddHeaders(65, "Function Subroutine Missing Return Statement Error");
+    AddCtxForErr(&return_type_definition, "Return type introduced as " + INLINE_INFO(return_type.ToString()));
+    AddErr(&final_member, "Final member here");
+    AddFooter(
+        "This subroutine is missing a return statement for " + INLINE_NOTE(return_type.ToString()) + ".",
+        "Add a return statement with an expression at the end of the subroutine.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionCyclicExtensionError::SppSuperimpositionCyclicExtensionError(
     asts::TypeAst const &first_extension,
     asts::TypeAst const &second_extension) {
-    add_header(
-        66, "SPP Superimposition Cyclic Extension Error");
-    add_context_for_error(
-        &first_extension,
-        "First extension defined here");
-    add_error(
-        &second_extension,
-        "Second extension causing cycle defined here");
-    add_footer(
+    AddHeaders(66, "Superimposition Cyclic Extension Error");
+    AddCtxForErr(&first_extension, "First extension introduced here");
+    AddErr(&second_extension, "Second extension causing cycle introduced here");
+    AddFooter(
         "This superimposition extension creates a cyclic dependency.",
-        "Break the cycle by adjusting the extensions");
+        "Break the cycle by adjusting the extensions.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionDoubleExtensionError::SppSuperimpositionDoubleExtensionError(
     asts::TypeAst const &first_extension,
     asts::TypeAst const &second_extension) {
-    add_header(
-        66, "SPP Superimposition Double Extension Error");
-    add_context_for_error(
-        &first_extension,
-        "First extension defined here");
-    add_error(
-        &second_extension,
-        "Second extension defined here");
-    add_footer(
+    AddHeaders(66, "Superimposition Double Extension Error");
+    AddCtxForErr(&first_extension, "First extension introduced here");
+    AddErr(&second_extension, "Second extension causing duplication introduced here");
+    AddFooter(
         "A type cannot superimpose the same type more than once.",
-        "Remove one of the extensions / merge the blocks");
+        "Remove one of the extensions or merge the blocks.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
     asts::TypeAst const &first_extension,
     asts::TypeAst const &second_extension) {
-    add_header(
-        67, "SPP Superimposition Self Extension Error");
-    add_context_for_error(
-        &first_extension,
-        "Extension defined here");
-    add_error(
-        &second_extension,
-        "Self-extension defined here");
-    add_footer(
+    AddHeaders(67, "Superimposition Self Extension Error");
+    AddCtxForErr(&first_extension, "Extension introduced here");
+    AddErr(&second_extension, "Equal typed super type extended here");
+    AddFooter(
         "A type cannot extend itself in superimposition.",
-        "Remove the self-extension");
+        "Remove the self-extension or use a normal " + INLINE_HELP("sup") + " block.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionExtensionMethodInvalidError::SppSuperimpositionExtensionMethodInvalidError(
     asts::IdentifierAst const &new_method,
     asts::TypeAst const &super_class) {
-    add_header(
-        68, "SPP Superimposition Extension Method Invalid Error");
-    add_context_for_error(
-        &super_class,
-        "Super class defined here");
-    add_error(
-        &new_method,
-        "Invalid extension method defined here");
-    add_footer(
-        "This method is invalid in the superimposition extension.",
-        "Remove or correct the invalid method");
+    AddHeaders(68, "Superimposition Extension Method Invalid Error");
+    AddCtxForErr(&super_class, "Super class extended here");
+    AddErr(&new_method, "Invalid extension method defined here");
+    AddFooter(
+        "This method does not exist on the super class.",
+        "Remove or correct the invalid method.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError::SppSuperimpositionExtensionNonVirtualMethodOverriddenError(
     asts::IdentifierAst const &new_method,
     asts::IdentifierAst const &base_method,
     asts::TypeAst const &super_class) {
-    add_header(
-        69, "SPP Superimposition Extension Non-Virtual Method Overridden Error");
-    add_context_for_error(
-        &base_method,
-        "Base non-virtual method defined here");
-    add_context_for_error(
-        &super_class,
-        "Super class defined here");
-    add_error(
-        &new_method,
-        "Override of non-virtual method defined here");
-    add_footer(
+    AddHeaders(69, "Superimposition Extension Non-Virtual Method Overridden Error");
+    AddCtxForErr(&base_method, "Base non-virtual method of " + INLINE_INFO(super_class.ToString()) + " defined here");
+    AddCtxForErr(&super_class, "Super class extended here");
+    AddErr(&new_method, "Override of non-virtual method defined here");
+    AddFooter(
         "Non-virtual methods cannot be overridden in superimposition extensions.",
-        "Make the base method virtual or remove the override");
+        "Make the base method virtual or remove the override.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionOptionalGenericParameterError::SppSuperimpositionOptionalGenericParameterError(
     asts::GenericParameterAst const &param) {
-    add_header(
-        70, "SPP Superimposition Optional Generic Parameter Error");
-    add_error(
-        &param,
-        "Optional generic parameter defined here");
-    add_footer(
+    AddHeaders(70, "Superimposition Optional Generic Parameter Error");
+    AddErr(&param, "Optional generic parameter defined here");
+    AddFooter(
         "Optional generic parameters are not allowed in superimposition.",
-        "Make the parameter required or remove it");
+        "Make the parameter required or remove it.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError::SppSuperimpositionUnconstrainedGenericParameterError(
     asts::GenericParameterAst const &param) {
-    add_header(
-        71, "SPP Superimposition Unconstrained Generic Parameter Error");
-    add_error(
-        &param,
-        "Unconstrained generic parameter defined here");
-    add_footer(
+    AddHeaders(71, "Superimposition Unconstrained Generic Parameter Error");
+    AddErr(&param, "Unconstrained generic parameter defined here");
+    AddFooter(
         "Generic parameters must be constrained in superimposition.",
-        "Add constraints to the generic parameter");
+        "Ensure the generic is being used by the type or supertype, otherwise remove it.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError::SppSuperimpositionExtensionTypeStatementInvalidError(
     asts::TypeStatementAst const &stmt,
     asts::TypeAst const &super_class) {
-    add_header(
-        72, "SPP Superimposition Extension Type Statement Invalid Error");
-    add_context_for_error(
-        &super_class,
-        "Super class defined here");
-    add_error(
-        &stmt,
-        "Invalid type statement defined here");
-    add_footer(
+    AddHeaders(72, "Superimposition Extension Type Statement Invalid Error");
+    AddCtxForErr(&super_class, "Super class defined here");
+    AddErr(&stmt, "Invalid type statement defined here");
+    AddFooter(
         "This type statement is invalid in the superimposition extension.",
-        "Remove or correct the type statement");
+        "Remove or correct the type statement.");
 }
-
 
 spp::analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError::SppSuperimpositionExtensionCmpStatementInvalidError(
     asts::CmpStatementAst const &stmt,
     asts::TypeAst const &super_class) {
-    add_header(
-        73, "SPP Superimposition Extension Cmp Statement Invalid Error");
-    add_context_for_error(
-        &super_class,
-        "Super class defined here");
-    add_error(
-        &stmt,
-        "Invalid cmp statement defined here");
-    add_footer(
+    AddHeaders(73, "Superimposition Extension Cmp Statement Invalid Error");
+    AddCtxForErr(&super_class, "Super class defined here");
+    AddErr(&stmt, "Invalid cmp statement defined here");
+    AddFooter(
         "This cmp statement is invalid in the superimposition extension.",
-        "Remove or correct the cmp statement");
+        "Remove or correct the cmp statement.");
 }
-
 
 spp::analyse::errors::SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunctionCallError(
     asts::TokenAst const &async_op,
     asts::Ast const &rhs) {
-    add_header(
-        74, "SPP Async Target Not Function Call Error");
-    add_context_for_error(
-        &async_op,
-        "Async operator defined here");
-    add_error(
-        &rhs,
-        "Target expression defined here");
-    add_footer(
+    AddHeaders(74, "Async Target Not Function Call Error");
+    AddCtxForErr(&async_op, "Async operator defined here");
+    AddErr(&rhs, "Target expression defined here");
+    AddFooter(
         "The target of an async operation must be a function call.",
-        "Ensure the target is a valid function call");
+        "Change the target to a function call operation, or remove " + INLINE_HELP("async") + ".");
 }
 
-
-spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError::SppDereferenceInvalidExpressionNonBorrowedTypeError(
+spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
     asts::TokenAst const &tok_deref,
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
-    add_header(
-        75, "SPP Dereference Invalid Expression Non-Borrowed Type Error");
-    add_context_for_error(
-        &tok_deref,
-        "Dereference operator defined here");
-    add_error(
-        &expr,
-        "Expression with non-borrowed type: " + type.to_string() + " defined here");
-    add_footer(
+    AddHeaders(75, "Dereference Non-Borrowed Type Error");
+    AddCtxForErr(&tok_deref, "Dereference operator introduced here");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(type.ToString()) + " defined here");
+    AddFooter(
         "Cannot dereference an expression of a non-borrowed type.",
-        "Ensure the expression has a borrowable type (e.g., a reference)");
+        "Ensure the expression has a borrowable type (e.g., a reference).");
 }
 
-
-spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError::SppInvalidExpressionNonCopyableTypeError(
+spp::analyse::errors::SppNonCopyableTypeError::SppNonCopyableTypeError(
+    asts::Ast const &ctx,
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
-    add_header(
-        76, "SPP Dereference Invalid Expression Non-Copyable Type Error");
-    add_error(
-        &expr,
-        "Expression with non-copyable type: " + type.to_string() + " defined here");
-    add_footer(
-        "Cannot dereference an expression of a non-copyable type.",
-        "Ensure the expression has a copyable type");
+    AddHeaders(76, "Invalid Expression Non-Copyable Type Error");
+    AddCtxForErr(&ctx, "Ast requires a copyable type");
+    AddErr(&expr, "Non-copyable underlying type " + INLINE_INFO(type.ToString()));
+    AddFooter(
+        "Cannot use a non-copyable type here.",
+        "Change the expression or superimpose " + INLINE_HELP("Copy") + " over the type.");
 }
-
 
 spp::analyse::errors::SppGenericParameterInferredConflictInferredError::SppGenericParameterInferredConflictInferredError(
     asts::Ast const &param,
     asts::Ast const &first_infer,
     asts::Ast const &second_infer) {
-    add_header(
-        77, "SPP Generic Parameter Inferred Conflict Inferred Error");
-    add_context_for_error(
-        &param,
-        "Generic parameter defined here");
-    add_context_for_error(
-        &first_infer,
-        "First inference defined here: " + first_infer.to_string());
-    add_error(
-        &second_infer,
-        "Conflicting inference defined here: " + second_infer.to_string());
-    add_footer(
+    AddHeaders(77, "Generic Parameter Inferred Conflict Inferred Error");
+    AddCtxForErr(&param, "Generic parameter defined here");
+    AddCtxForErr(&first_infer, "Generic inferred as " + INLINE_INFO(first_infer.ToString()));
+    AddErr(&second_infer, "Generic inferred as " + INLINE_INFO(second_infer.ToString()));
+    AddFooter(
         "There is a conflict between inferred types for this generic parameter.",
-        "Resolve the inference conflict");
+        "Resolve the inference conflict.");
 }
-
 
 spp::analyse::errors::SppGenericParameterNotInferredError::SppGenericParameterNotInferredError(
     asts::Ast const &param,
     asts::Ast const &ctx) {
-    add_header(
-        79, "SPP Generic Parameter Not Inferred Error");
-    add_context_for_error(
-        &ctx,
-        "Context defined here");
-    add_error(
-        &param,
-        "Generic parameter not inferred here");
-    add_footer(
+    AddHeaders(79, "Generic Parameter Not Inferred Error");
+    AddCtxForErr(&ctx, "Context parameter introduced here");
+    AddErr(&param, "Generic parameter not inferred here");
+    AddFooter(
         "The type for this generic parameter could not be inferred.",
-        "Provide an explicit type argument");
+        "Provide an explicit type argument for the generic parameter.");
 }
-
 
 spp::analyse::errors::SppGenericArgumentTooManyError::SppGenericArgumentTooManyError(
     asts::Ast const &param,
     asts::Ast const &owner,
     asts::GenericArgumentAst const &arg) {
-    add_header(
-        80, "SPP Generic Argument Too Many Error");
-    add_context_for_error(
-        &param,
-        "Parameter defined here");
-    add_context_for_error(
-        &owner,
-        "Owner defined here");
-    add_error(
-        &arg,
-        "Extra generic argument defined here");
-    add_footer(
+    AddHeaders(80, "Generic Argument Too Many Error");
+    AddCtxForErr(&param, "Generic parameter defined here");
+    AddCtxForErr(&owner, "Owner defined here");
+    AddErr(&arg, "Extra generic argument defined here");
+    AddFooter(
         "Too many generic arguments provided for this context.",
-        "Remove the extra generic argument");
+        "Remove the extra generic argument.");
 }
 
-
-spp::analyse::errors::SppMissingMainFunctionError::SppMissingMainFunctionError(
-    asts::ModulePrototypeAst const &mod) {
-    add_header(
-        81, "SPP Missing Main Function Error");
-    add_error(
-        &mod,
-        "Module defined here");
-    add_footer(
+spp::analyse::errors::SppMissingMainFunctionError::SppMissingMainFunctionError() {
+    AddHeaders(81, "Missing Main Function Error");
+    AddFooter(
         "The module is missing a 'main' function, which is required as the entry point of the program.",
         "Define a 'main' function in the module");
 }
 
-
 spp::analyse::errors::SppInvalidVoidValueError::SppInvalidVoidValueError(
     asts::ExpressionAst const &expr,
-    const std::string_view what) {
-    add_header(
-        82, "SPP Invalid Void Value Error");
-    add_error(
-        &expr,
-        "Expression defined here");
-    add_footer(
-        "This expression evaluates to 'Void' and cannot be used in a " + std::string(what) + " context.",
-        "Ensure the expression has a valid non-void type");
+    const StrView what) {
+    AddHeaders(82, "Invalid Void Value Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO("Void"));
+    AddFooter(
+        "Void expressions cannot be used in " + INLINE_NOTE(what) + " contexts.",
+        "Ensure the expression has a valid non-void type, or move it out of the " + INLINE_HELP(what) + " context.");
 }
-
 
 spp::analyse::errors::SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
     asts::Ast const &extension_ast,
     asts::Ast const &lhs_init_definition,
     asts::Ast const &rhs_borrow_definition) {
-    add_header(
-        83, "SPP Borrow Lifetime Increase Error");
-    add_context_for_error(
-        &lhs_init_definition,
-        "Left-hand side initialization defined here");
-    add_context_for_error(
-        &rhs_borrow_definition,
-        "Right-hand side borrow defined here");
-    add_error(
-        &extension_ast,
-        "Borrow lifetime extension defined here");
-    add_footer(
+    AddHeaders(83, "Borrow Lifetime Increase Error");
+    AddCtxForErr(&lhs_init_definition, "Left-hand side initialized here");
+    AddCtxForErr(&rhs_borrow_definition, "Right-hand side borrow here");
+    AddErr(&extension_ast, "Borrow lifetime extension defined here");
+    AddFooter(
         "The borrow lifetime of the right-hand side exceeds that of the left-hand side.",
-        "Ensure the borrow lifetime does not exceed the initialization lifetime");
+        "Ensure the borrow lifetime does not exceed the initialization lifetime.");
 }
-
 
 spp::analyse::errors::SppInvalidComptimeOperationError::SppInvalidComptimeOperationError(
     asts::Ast const &ast) {
-    add_header(
-        84, "SPP Invalid Comptime Operation Error");
-    add_error(
-        &ast,
-        "Ast defined here");
-    add_footer(
-        "This expression cannot be evaluatable at compile-time for.",
-        "Modify the expression to be computable at compile-time");
+    AddHeaders(84, "Invalid Comptime Operation Error");
+    AddErr(&ast, "Expression introduced here");
+    AddFooter(
+        "This expression cannot be evaluated at compile-time.",
+        "Modify the expression/target to be compile-time compatible.");
 }
-
 
 spp::analyse::errors::SppInternalCompilerError::SppInternalCompilerError(
     asts::Ast const &ast,
-    const std::string_view message) {
-    add_header(
-        99, "SPP Internal Compiler Error");
-    add_error(
-        &ast,
-        "Ast defined here");
-    add_footer(
-        "An internal compiler error has occurred: " + std::string(message),
+    const StrView message) {
+    AddHeaders(1000, "Internal Compiler Error");
+    AddErr(&ast, "Ast defined here");
+    AddFooter(
+        "An internal compiler error has occurred: " + INLINE_NOTE(message),
         "Please report this issue to the SPP development team with the relevant code context");
 }
-
 
 spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
     asts::Ast const &constraint,
     asts::Ast const &concrete_type) {
-    add_header(
-        85, "SPP Generic Constraint Error");
-    add_context_for_error(
-        &constraint,
-        "Generic constraint required here: " + constraint.to_string());
-    add_error(
-        &concrete_type,
-        "Concrete type defined here: " + concrete_type.to_string());
-    add_footer(
+    AddHeaders(85, "Generic Constraint Error");
+    AddCtxForErr(&constraint, "Generic constraint introduced here as " + INLINE_INFO(constraint.ToString()));
+    AddErr(&concrete_type, "Concrete type provided here as " + INLINE_INFO(concrete_type.ToString()));
+    AddFooter(
         "The concrete type does not satisfy the generic constraint.",
-        "Ensure the concrete type meets all requirements of the generic constraint");
+        "Ensure the concrete type meets all requirements of the generic constraint.");
 }
-
 
 spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTargetNotAnAnnotationError(
     asts::AnnotationAst const &call_site,
     asts::FunctionPrototypeAst const &target_definition) {
-    add_header(
-        86, "SPP Annotation Target Not An Annotation Error");
-    add_context_for_error(
-        &target_definition,
-        "Function defined here is missing '!annotation' tag");
-    add_error(
-        &call_site,
-        "Calling annotation candidate '" + call_site.to_string() + "' here.");
-    add_footer(
+    AddHeaders(86, "Annotation Target Not An Annotation Error");
+    AddCtxForErr(&target_definition, "Function defined here is missing " + INLINE_INFO("!annotation") + " tag");
+    AddErr(&call_site, "Calling annotation candidate " + INLINE_INFO(call_site.ToString()) + " here.");
+    AddFooter(
         "This annotation cannot be applied because the target is not an annotation.",
-        "Ensure the target function is defined with the '!annotation' tag");
+        "Ensure the target function is defined with the '!annotation' tag.");
 }
-
 
 spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError(
     asts::AnnotationAst const &annotation_marker,
     asts::Ast const &non_function_ast) {
-    add_header(
-        87, "SPP Annotation Not A Cmp Function Error");
-    add_context_for_error(
-        &non_function_ast,
-        "Non-cmp-function or non-function defined here");
-    add_error(
-        &annotation_marker,
-        "Annotation marker '" + annotation_marker.to_string() + "' defined here");
-    add_footer(
+    AddHeaders(87, "Annotation Not A Cmp Function Error");
+    AddCtxForErr(&non_function_ast, "Non-cmp-function defined here");
+    AddErr(&annotation_marker, "Annotation marker applied here");
+    AddFooter(
         "This annotation cannot be applied because the target is not a cmp function.",
-        "Ensure the annotation is applied to a cmp function");
+        "Ensure the annotation is applied to a cmp function.");
 }
-
 
 spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalidAstError(
     asts::Ast const &invalid_ast,
     asts::Ast const &annotation_call,
-    asts::AnnotationAst const &annotation_definition) {
-    add_header(
-        88, "SPP Called Annotation Applied To Invalid Ast Error");
-    add_context_for_error(
-        &annotation_definition,
-        "Annotation & possible targets defined here");
-    add_error(
-        &annotation_call,
-        "Annotation call defined here");
-    add_context_for_error(
-        &invalid_ast,
-        "Invalid target of annotation defined here");
-    add_footer(
-        "This annotation cannot be applied to the target AST node.",
-        "Ensure the annotation is applied to a valid target as defined in the annotation's definition");
+    asts::Ast const &annotation_definition) {
+    AddHeaders(88, "Called Annotation Applied To Invalid Ast Error");
+    AddCtxForErr(&annotation_definition, "Annotation & possible targets defined here");
+    AddCtxForErr(&annotation_call, "Annotation applied here");
+    AddErr(&invalid_ast, "Invalid target of annotation used here");
+    AddFooter(
+        "Annotation targets must be satisfied by the AST they are applied to.",
+        "Remove the annotation, or add the AST's type to the annotation's targets.");
 }
 
+spp::analyse::errors::SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldExpressionError(
+    asts::Ast const &expr,
+    asts::Ast const &tup_type,
+    const std::size_t tup_num_elems) {
+    AddHeaders(89, "Invalid Binary Fold Expression Error");
+    AddCtxForErr(&expr, "Fold operand expression inferred as: " + INLINE_INFO(tup_type.ToString()));
+    AddErr(&expr, "Fold expression has " + INLINE_INFO(std::to_string(tup_num_elems)) + " element(s)");
+    AddFooter(
+        "Binary fold expressions must operate on tuples of 2+ elements.",
+        "Ensure the fold expression is applied to a tuple with 2 or more elements.");
+}
+
+spp::analyse::errors::SppAccessViolationError::SppAccessViolationError(
+    asts::Ast const &access_site,
+    asts::Ast const &symbol_definition,
+    const StrView visibility,
+    const StrView what) {
+    AddHeaders(90, "Access Violation Error");
+    AddCtxForErr(&symbol_definition, INLINE_INFO(what) + " defined here with '" + INLINE_INFO(visibility) + "' visibility");
+    AddErr(&access_site, "Illegal access to " + INLINE_INFO(what) + " here");
+    AddFooter(
+        "The symbol '" + INLINE_NOTE(symbol_definition.ToString()) + "' has '" + INLINE_NOTE(visibility) + "' visibility and cannot be accessed from this context.",
+        "Move the access inside the appropriate type/module scope, or increase the symbol's visibility.");
+}
+
+spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError::SppFunctionOverloadVisibilityMismatchError(
+    asts::AnnotationAst const &first_annotation,
+    asts::FunctionPrototypeAst const &conflicting_overload) {
+    AddHeaders(91, "Function Overload Visibility Mismatch Error");
+    AddCtxForErr(&first_annotation, "First visibility annotation defined here as " + INLINE_INFO(first_annotation.Name->ToString()));
+    AddCtxForErr(conflicting_overload.Visibility.Second, "Second visibility annotation defined here as " + INLINE_INFO(conflicting_overload.Visibility.Second->Name->ToString()));
+    AddErr(&conflicting_overload, "Conflicting overload with second visibility defined here");
+    AddFooter(
+        "All overloads of a function must have the same visibility annotation.",
+        "Ensure every overload of this function uses the same visibility modifier.");
+}
+
+spp::analyse::errors::SppMovingEscapingBorrowedMemoryError::SppMovingEscapingBorrowedMemoryError(
+    asts::Ast const &container,
+    asts::Ast const &where_moved) {
+    AddHeaders(92, "Moving Escaping Borrow Memory Error");
+    AddCtxForErr(&container, "Escaping borrow contained by this symbol");
+    AddErr(&where_moved, "Attempted to move underlying value here");
+    AddFooter(
+        "Non-copyable values that are borrowed with an escaping context cannot be moved from.",
+        "Remove the move operation, make the type copyable, or restructure your borrows");
+}
+
+spp::analyse::errors::SppMovingComptimeConstantMemoryError::SppMovingComptimeConstantMemoryError(
+    asts::Ast const &ast,
+    asts::Ast const &move_location) {
+    AddHeaders(93, "Moving Compile-Time Constant Memory Error");
+    AddCtxForErr(&ast, "Compile-time constant defined here");
+    AddErr(&move_location, "Attempted to move compile-time constant here");
+    AddFooter(
+        "Compile-time constants cannot be moved from.",
+        "Remove the move operation or ensure the value is not a compile-time constant.");
+}
 
 SPP_MOD_END

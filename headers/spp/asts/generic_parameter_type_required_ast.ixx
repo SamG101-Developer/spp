@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_type_required_ast;
 import spp.asts.generic_parameter_type_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -20,8 +21,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeRequiredAst final : GenericPar
      * for uniformity with the other parameter variants.
      */
     GenericParameterTypeRequiredAst(
-        decltype(name) &&name,
-        decltype(constraints) &&constraints);
+        decltype(Name) name,
+        decltype(Constraints) &&constraints);
 
     ~GenericParameterTypeRequiredAst() override;
 

@@ -15,84 +15,78 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericParameterCompOptionalAst::GenericParameterCompOptionalAst(
-    decltype(tok_cmp) &&tok_cmp,
-    decltype(name) &&name,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type,
-    decltype(tok_assign) &&tok_assign,
-    decltype(default_val) &&default_val) :
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::OPTIONAL_PARAM),
-    tok_assign(std::move(tok_assign)),
-    default_val(std::move(default_val)) {
+    decltype(TokCmp) &&tok_cmp,
+    decltype(Name) &&name,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) &&type,
+    decltype(TokAssign) &&tok_assign,
+    decltype(DefaultVal) &&default_val) :
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::kOptionalParam),
+    TokAssign(std::move(tok_assign)),
+    DefaultVal(std::move(default_val)) {
 }
-
 
 spp::asts::GenericParameterCompOptionalAst::~GenericParameterCompOptionalAst() = default;
 
-
-auto spp::asts::GenericParameterCompOptionalAst::pos_start() const
+auto spp::asts::GenericParameterCompOptionalAst::PosStart() const
     -> std::size_t {
-    return tok_cmp->pos_start();
+    // Use the "cmp" token.
+    return TokCmp->PosStart();
 }
 
-
-auto spp::asts::GenericParameterCompOptionalAst::pos_end() const
+auto spp::asts::GenericParameterCompOptionalAst::PosEnd() const
     -> std::size_t {
-    return default_val->pos_end();
+    // Use the default val.
+    return DefaultVal->PosEnd();
 }
 
-
-auto spp::asts::GenericParameterCompOptionalAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericParameterCompOptionalAst>(
-        ast_clone(tok_cmp),
-        ast_clone(name),
-        ast_clone(tok_colon),
-        ast_clone(type),
-        ast_clone(tok_assign),
-        ast_clone(default_val));
+auto spp::asts::GenericParameterCompOptionalAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericParameterCompOptionalAst>(
+        AstClone(TokCmp), AstClone(Name), AstClone(TokColon), AstClone(Type), AstClone(TokAssign),
+        AstClone(DefaultVal));
 }
 
-
-spp::asts::GenericParameterCompOptionalAst::operator std::string() const {
+auto spp::asts::GenericParameterCompOptionalAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_cmp).append(" ");
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_colon).append(" ");
-    SPP_STRING_APPEND(type).append(" ");
-    SPP_STRING_APPEND(tok_assign).append(" ");
-    SPP_STRING_APPEND(default_val);
+    SPP_STRING_APPEND(TokCmp).append(" ");
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(TokColon).append(" ");
+    SPP_STRING_APPEND(Type).append(" ");
+    SPP_STRING_APPEND(TokAssign).append(" ");
+    SPP_STRING_APPEND(DefaultVal);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::GenericParameterCompOptionalAst::stage_7_analyse_semantics(
+auto spp::asts::GenericParameterCompOptionalAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Analyse the default value.
-    GenericParameterCompAst::stage_7_analyse_semantics(sm, meta);
-    default_val->stage_7_analyse_semantics(sm, meta);
+    using analyse::errors::SppTypeMismatchError;
+    using analyse::utils::type_utils::TypeEq;
+    GenericParameterCompAst::Stage7_AnalyseSemantics(sm, meta);
+    DefaultVal->Stage7_AnalyseSemantics(sm, meta);
 
     // Make sure the default expression is of the correct type.
-    const auto default_type = default_val->infer_type(sm, meta);
-    raise_if<analyse::errors::SppTypeMismatchError>(
-        not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope),
-        {sm->current_scope}, ERR_ARGS(*name, *type, *default_val, *default_type));
+    const auto default_type = DefaultVal->InferType(sm, meta);
+    RaiseIf<SppTypeMismatchError>(
+        not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
 }
 
-
-auto spp::asts::GenericParameterCompOptionalAst::stage_8_check_memory(
+auto spp::asts::GenericParameterCompOptionalAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Check the default value for memory issues.
-    default_val->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *default_val, *default_val, *sm, true, true, true, true, true, meta);
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+    DefaultVal->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, true, meta);
 }
 
 SPP_MOD_END

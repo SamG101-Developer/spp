@@ -9,87 +9,91 @@ import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
 
-
 SPP_MOD_BEGIN
-auto spp::asts::mixins::CompilerStages::stage_1_pre_process(
+spp::asts::mixins::CompilerStages::CompilerStages() = default;
+
+spp::asts::mixins::CompilerStages::~CompilerStages() = default;
+
+auto spp::asts::mixins::CompilerStages::Stage1_PreProcess(
     Ast *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_2_gen_top_level_scopes(
+auto spp::asts::mixins::CompilerStages::Stage2_GenTopLvlScopes(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_3_gen_top_level_aliases(
+auto spp::asts::mixins::CompilerStages::Stage3_GenTopLvlAliases(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_4_qualify_types(
+auto spp::asts::mixins::CompilerStages::Stage4_QualifyTypes(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_5_load_super_scopes(
+auto spp::asts::mixins::CompilerStages::Stage5_LoadSupScopes(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_6_pre_analyse_semantics(
+auto spp::asts::mixins::CompilerStages::Stage6_PreAnalyseSemantics(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_7_analyse_semantics(
+auto spp::asts::mixins::CompilerStages::Stage7_AnalyseSemantics(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_8_check_memory(
+auto spp::asts::mixins::CompilerStages::Stage8_CheckMemory(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_9_comptime_resolution(
+auto spp::asts::mixins::CompilerStages::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
-    raise<analyse::errors::SppInvalidComptimeOperationError>(
-        {sm->current_scope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
-    std::unreachable();
+    // Default behaviour: this AST does not support comptime resolution, so throw an error.
+    using analyse::errors::SppInvalidComptimeOperationError;
+    Raise<SppInvalidComptimeOperationError>(
+        {sm->CurrentScope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_10_code_gen_1(
+auto spp::asts::mixins::CompilerStages::Stage10_PreCodeGen(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
+    // Default behaviour: no llvm generation => nullptr value returned,
     return nullptr;
 }
 
-
-auto spp::asts::mixins::CompilerStages::stage_11_code_gen_2(
+auto spp::asts::mixins::CompilerStages::Stage11_CodeGen(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
+    // Default behaviour: no llvm generation => nullptr value returned,
     return nullptr;
 }
 

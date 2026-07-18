@@ -4,113 +4,119 @@ module;
 module spp.asts.meta.compiler_meta_data;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
-import ankerl.unordered_dense;
-
+import spp.asts.type_ast;
+import ankerl;
 
 SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
-    current_stage = 0;
-    return_type_overload_resolver_type = nullptr;
-    assignment_target = nullptr;
-    assignment_target_type = nullptr;
-    ignore_missing_else_branch_for_inference = false;
-    case_condition = nullptr;
-    cls_sym = nullptr;
-    enclosing_function_scope = nullptr;
-    enclosing_function_flavour = nullptr;
-    enclosing_function_ret_type = {};
-    enclosing_function_cmp = nullptr;
-    current_lambda_outer_scope = nullptr;
-    target_call_function_prototype = nullptr;
-    target_call_was_function_async = false;
-    prevent_auto_generator_resume = false;
-    let_stmt_explicit_type = nullptr;
-    let_stmt_value = nullptr;
-    let_stmt_from_uninitialized = false;
-    loop_double_check_active = false;
-    current_loop_depth = 0;
-    current_loop_ast = nullptr;
-    loop_return_types = std::make_unique<std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>>>();
-    object_init_type = nullptr;
-    infer_source = {};
-    infer_target = {};
-    postfix_expression_lhs = nullptr;
-    unary_expression_rhs = nullptr;
-    skip_type_analysis_generic_checks = false;
-    type_analysis_type_scope = nullptr;
-    ignore_cmp_generic = nullptr;
-    allow_move_deref = false;
-    end_bb = nullptr;
-    llvm_ctx = nullptr;
-    llvm_assignment_target = nullptr;
-    llvm_assignment_target_type = nullptr;
-    llvm_phi = nullptr;
-    cmp_result = nullptr;
+    CurrentStage = 0;
+    ReturnTypeOverloadResolverType = nullptr;
+    AssignmentTarget = nullptr;
+    AssignmentTargetType = nullptr;
+    IgnoreMissingElseBranchForInference = false;
+    CaseCondition = nullptr;
+    ClsSym = nullptr;
+    EnclosingFunctionScope = nullptr;
+    EnclosingFunctionFlavour = nullptr;
+    EnclosingFunctionRetType = {};
+    EnclosingFunctionSourceRetType = {};
+    EnclosingFunctionCmp = nullptr;
+    OverriddenScopeForClosure = nullptr;
+    CurrentLambdaOuterScope = nullptr;
+    TargetCallFunctionPrototype = nullptr;
+    TargetCallWasFunctionAsync = false;
+    PreventAutoGeneratorResume = false;
+    LetStatementExplicitType = nullptr;
+    LetStatementValue = nullptr;
+    LetStatementFromUninitialized = false;
+    LoopDoubleCheckActive = false;
+    LoopCurrentDepth = 0;
+    LoopCurrentAst = nullptr;
+    LoopReturnTypes = MakeShared<ankerl::unordered_dense::map<std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
+    ObjectInitType = nullptr;
+    InferSource = {};
+    InferTarget = {};
+    PostfixExpressionLhs = nullptr;
+    UnaryExpressionRhs = nullptr;
+    SkipTypeAnalysisGenericChecks = false;
+    TypeAnalysisTypeScope = nullptr;
+    IgnoreCmpGeneric = nullptr;
+    AllowMoveDeref = false;
+    LlvmEndBB = nullptr;
+    LlvmCtx = nullptr;
+    LlvmAssignmentTarget = nullptr;
+    LlvmAssignmentTargetType = nullptr;
+    LlvmPhi = nullptr;
+    CmpResult = nullptr;
+    IgnoreAccessModifierViolations = false;
 }
 
-
-auto spp::asts::meta::CompilerMetaData::save() -> void {
-    m_history.emplace(
-        current_stage, return_type_overload_resolver_type, assignment_target,
-        assignment_target_type, ignore_missing_else_branch_for_inference, case_condition, cls_sym,
-        enclosing_function_scope, enclosing_function_flavour, enclosing_function_ret_type, enclosing_function_cmp,
-        current_lambda_outer_scope, target_call_function_prototype, target_call_was_function_async,
-        prevent_auto_generator_resume, let_stmt_explicit_type, let_stmt_value, let_stmt_from_uninitialized,
-        loop_double_check_active, current_loop_depth, current_loop_ast, loop_return_types, object_init_type,
-        infer_source, infer_target, postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
-        type_analysis_type_scope, ignore_cmp_generic, allow_move_deref, end_bb, llvm_ctx,
-        llvm_assignment_target, llvm_assignment_target_type, llvm_phi, std::move(cmp_args), nullptr);
+auto spp::asts::meta::CompilerMetaData::Save() -> void {
+    _History.emplace(
+        CurrentStage, ReturnTypeOverloadResolverType, AssignmentTarget,
+        AssignmentTargetType, IgnoreMissingElseBranchForInference, CaseCondition, ClsSym,
+        OverriddenScopeForClosure, EnclosingFunctionScope, EnclosingFunctionFlavour, EnclosingFunctionRetType,
+        EnclosingFunctionSourceRetType, EnclosingFunctionCmp, CurrentLambdaOuterScope, TargetCallFunctionPrototype,
+        TargetCallWasFunctionAsync, PreventAutoGeneratorResume, LetStatementExplicitType, LetStatementValue,
+        LetStatementFromUninitialized, LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst, LoopReturnTypes,
+        ObjectInitType, InferSource, InferTarget, PostfixExpressionLhs, UnaryExpressionRhs,
+        SkipTypeAnalysisGenericChecks, TypeAnalysisTypeScope, IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx,
+        LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, std::move(CmpArgs), nullptr,
+        IgnoreAccessModifierViolations);
 }
 
-
-auto spp::asts::meta::CompilerMetaData::restore(const bool heavy) -> void {
-    auto state = std::move(m_history.top()); // *DO NOT* click "convert to structured bindings" (CLion) -- LAG
-    m_history.pop();
-    current_stage = state.current_stage;
-    return_type_overload_resolver_type = state.return_type_overload_resolver_type;
-    assignment_target = state.assignment_target;
-    assignment_target_type = state.assignment_target_type;
-    ignore_missing_else_branch_for_inference = state.ignore_missing_else_branch_for_inference;
-    case_condition = state.case_condition;
-    cls_sym = state.cls_sym;
+auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
+    auto state = std::move(_History.top()); // *DO NOT* click "convert to structured bindings" (CLion) -- LAG
+    _History.pop();
+    CurrentStage = state.CurrentStage;
+    ReturnTypeOverloadResolverType = state.ReturnTypeOverloadResolverType;
+    AssignmentTarget = state.AssignmentTarget;
+    AssignmentTargetType = state.AssignmentTargetType;
+    IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
+    CaseCondition = state.CaseCondition;
+    ClsSym = state.ClsSym;
     if (heavy) {
-        enclosing_function_scope = state.enclosing_function_scope;
-        enclosing_function_flavour = state.enclosing_function_flavour;
-        enclosing_function_ret_type = state.enclosing_function_ret_type;
-        enclosing_function_cmp = state.enclosing_function_cmp;
+        EnclosingFunctionScope = state.EnclosingFunctionScope;
+        EnclosingFunctionFlavour = state.EnclosingFunctionFlavour;
+        EnclosingFunctionRetType = state.EnclosingFunctionRetType;
+        EnclosingFunctionSourceRetType = state.EnclosingFunctionSourceRetType;
+        EnclosingFunctionCmp = state.EnclosingFunctionCmp;
     }
-    current_lambda_outer_scope = state.current_lambda_outer_scope;
-    target_call_function_prototype = state.target_call_function_prototype;
-    target_call_was_function_async = state.target_call_was_function_async;
-    prevent_auto_generator_resume = state.prevent_auto_generator_resume;
-    let_stmt_explicit_type = state.let_stmt_explicit_type;
-    let_stmt_value = state.let_stmt_value;
-    let_stmt_from_uninitialized = state.let_stmt_from_uninitialized;
-    loop_double_check_active = state.loop_double_check_active;
-    current_loop_depth = state.current_loop_depth;
-    current_loop_ast = state.current_loop_ast;
-    loop_return_types = state.loop_return_types;
-    object_init_type = state.object_init_type;
-    infer_source = state.infer_source;
-    infer_target = state.infer_target;
-    postfix_expression_lhs = state.postfix_expression_lhs;
-    unary_expression_rhs = state.unary_expression_rhs;
-    skip_type_analysis_generic_checks = state.skip_type_analysis_generic_checks;
-    type_analysis_type_scope = state.type_analysis_type_scope;
-    ignore_cmp_generic = state.ignore_cmp_generic;
-    allow_move_deref = state.allow_move_deref;
-    end_bb = state.end_bb;
-    llvm_ctx = state.llvm_ctx;
-    llvm_assignment_target = state.llvm_assignment_target;
-    llvm_assignment_target_type = state.llvm_assignment_target_type;
-    llvm_phi = state.llvm_phi;
-    cmp_args = std::move(state.cmp_args);
+    OverriddenScopeForClosure = state.OverriddenScopeForClosure;
+    CurrentLambdaOuterScope = state.CurrentLambdaOuterScope;
+    TargetCallFunctionPrototype = state.TargetCallFunctionPrototype;
+    TargetCallWasFunctionAsync = state.TargetCallWasFunctionAsync;
+    PreventAutoGeneratorResume = state.PreventAutoGeneratorResume;
+    LetStatementExplicitType = state.LetStatementExplicitType;
+    LetStatementValue = state.LetStatementValue;
+    LetStatementFromUninitialized = state.LetStatementFromUninitialized;
+    LoopDoubleCheckActive = state.LoopDoubleCheckActive;
+    LoopCurrentDepth = state.LoopCurrentDepth;
+    LoopCurrentAst = state.LoopCurrentAst;
+    LoopReturnTypes = state.LoopReturnTypes;
+    ObjectInitType = state.ObjectInitType;
+    InferSource = state.InferSource;
+    InferTarget = state.InferTarget;
+    PostfixExpressionLhs = state.PostfixExpressionLhs;
+    UnaryExpressionRhs = state.UnaryExpressionRhs;
+    SkipTypeAnalysisGenericChecks = state.SkipTypeAnalysisGenericChecks;
+    TypeAnalysisTypeScope = state.TypeAnalysisTypeScope;
+    IgnoreCmpGeneric = state.IgnoreCmpGeneric;
+    AllowMoveDeref = state.AllowMoveDeref;
+    LlvmEndBB = state.LlvmEndBB;
+    LlvmCtx = state.LlvmCtx;
+    LlvmAssignmentTarget = state.LlvmAssignmentTarget;
+    LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
+    LlvmPhi = state.LlvmPhi;
+    CmpArgs = std::move(state.CmpArgs);
+    // CmpResult = std::move(state.CmpResult);
+    IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
 }
 
-
-auto spp::asts::meta::CompilerMetaData::depth() const
+auto spp::asts::meta::CompilerMetaData::Depth() const
     -> std::size_t {
-    return m_history.size();
+    // Get the number of history items.
+    return _History.size();
 }
 
 SPP_MOD_END

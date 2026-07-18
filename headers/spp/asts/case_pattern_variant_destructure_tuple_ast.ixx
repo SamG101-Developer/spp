@@ -4,6 +4,7 @@ module;
 export module spp.asts.case_pattern_variant_destructure_tuple_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -17,18 +18,18 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : Case
     /**
      * The @code (@endcode token that indicates the start of a tuple destructuring pattern.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The elements of the tuple destructuring pattern. This is a list of patterns that will be destructured from the
      * tuple. Each element can be a single identifier, a nested destructuring pattern, or a literal.
      */
-    std::vector<std::unique_ptr<CasePatternVariantAst>> elems;
+    UniqueVec<CasePatternVariantAst> Elems;
 
     /**
      * The @code )@endcode token that indicates the end of an tuple destructuring pattern.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the CasePatternVariantDestructureTupleAst with the arguments matching the members.
@@ -37,21 +38,21 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : Case
      * @param[in] tok_r The @code )@endcode token that indicates the end of a tuple destructuring pattern.
      */
     CasePatternVariantDestructureTupleAst(
-        decltype(tok_l) &&tok_l,
-        decltype(elems) &&elems,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Elems) &&elems,
+        decltype(TokR) &&tok_r);
 
     ~CasePatternVariantDestructureTupleAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

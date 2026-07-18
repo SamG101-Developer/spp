@@ -4,12 +4,9 @@ module;
 export module spp.asts.loop_conditional_expression_ast;
 import spp.asts.loop_expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct LoopConditionalExpressionAst;
@@ -21,7 +18,7 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
     /**
      * The condition of the loop. This will be an expression that evaluates to a boolean.
      */
-    std::unique_ptr<ExpressionAst> cond;
+    Unique<ExpressionAst> Cond;
 
     /**
      * Construct the LoopExpressionAst with the arguments matching the members.
@@ -31,22 +28,22 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
      * @param[in] else_block The optional @c else block of the loop.
      */
     LoopConditionalExpressionAst(
-        decltype(tok_loop) &&tok_loop,
-        decltype(cond) &&cond,
-        decltype(body) &&body,
-        decltype(else_block) &&else_block);
+        decltype(TokLoop) &&tok_loop,
+        decltype(Cond) &&cond,
+        decltype(Body) &&body,
+        decltype(ElseBlock) &&else_block);
 
     ~LoopConditionalExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto terminates() const -> bool override;
+    SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 };

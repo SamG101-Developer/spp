@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_call_argument_group_ast;
 import spp.asts.ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -18,26 +19,28 @@ namespace spp::asts {
  * The FunctionCallArgumentGroupAst represents a group of function call arguments. It is used to group multiple
  * positional or keyword arguments together in a function call.
  */
-SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
      * The token that represents the left parenthesis @code (@endcode in the function call argument group. This
      * introduces the function call argument group.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The list of arguments in the function call argument group. This can contain both positional and keyword
      * arguments.
      */
-    std::vector<std::unique_ptr<FunctionCallArgumentAst>> args;
+    Vec<Unique<FunctionCallArgumentAst>> Args;
 
     /**
      * The token that represents the right parenthesis @code )@endcode in the function call argument group. This closes
      * the function call argument group.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
+
+    static auto NewEmpty() -> Unique<FunctionCallArgumentGroupAst>;
 
     /**
      * Construct the FunctionCallArgumentGroupAst with the arguments matching the members.
@@ -46,23 +49,21 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
      * @param tok_r The token that represents the right parenthesis @code )@endcode in the function call argument group.
      */
     FunctionCallArgumentGroupAst(
-        decltype(tok_l) &&tok_l,
-        decltype(args) &&args,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Args) &&args,
+        decltype(TokR) &&tok_r);
 
     ~FunctionCallArgumentGroupAst() override;
 
-    static auto new_empty() -> std::unique_ptr<FunctionCallArgumentGroupAst>;
+    SPP_ATTR_NODISCARD auto GetAllArgs() const -> Vec<FunctionCallArgumentAst*>;
 
-    SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<FunctionCallArgumentAst*>;
+    SPP_ATTR_NODISCARD auto GetKeywordArgs() const -> Vec<FunctionCallArgumentKeywordAst*>;
 
-    SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*>;
+    SPP_ATTR_NODISCARD auto GetPositionalArgs() const -> Vec<FunctionCallArgumentPositionalAst*>;
 
-    SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*>;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto at(const char *key) const -> FunctionCallArgumentAst const*;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto At(const char *key) const -> FunctionCallArgumentAst const*;
 };

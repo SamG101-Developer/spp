@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_parameter_optional_ast;
 import spp.asts.function_parameter_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -20,12 +21,12 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParam
     /**
      * The token that separates the parameter name from the default value.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
     /**
      * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
      */
-    std::unique_ptr<ExpressionAst> default_val;
+    Unique<ExpressionAst> DefaultVal;
 
     /**
      * Construct the FunctionParameterOptionalAst with the arguments matching the members.
@@ -36,17 +37,17 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParam
      * @param default_val The default value for the parameter.
      */
     FunctionParameterOptionalAst(
-        decltype(var) &&var,
-        decltype(tok_colon) &&tok_colon,
-        decltype(type) type,
-        decltype(tok_assign) &&tok_assign,
-        decltype(default_val) &&default_val);
+        decltype(Var) &&var,
+        decltype(TokColon) &&tok_colon,
+        decltype(Type) type,
+        decltype(TokAssign) &&tok_assign,
+        decltype(DefaultVal) &&default_val);
 
     ~FunctionParameterOptionalAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

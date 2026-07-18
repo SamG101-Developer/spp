@@ -3,80 +3,80 @@ module;
 
 module spp.asts.generic_argument_type_positional_ast;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
-    decltype(val) val) :
-    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
+    decltype(Val) val) :
+    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::kPositionalArg) {
 }
-
 
 spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;
 
-
-auto spp::asts::GenericArgumentTypePositionalAst::equals(
-    GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_generic_argument_type_positional(*this);
-}
-
-
-auto spp::asts::GenericArgumentTypePositionalAst::equals_generic_argument_type_positional(
+auto spp::asts::GenericArgumentTypePositionalAst::EqualsGenericArgumentTypePositional(
     GenericArgumentTypePositionalAst const &other) const
-    -> std::strong_ordering {
-    if (*val == *other.val) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    -> Ordering {
+    // Equality is based on the value of the argument.
+    return *Val == *other.Val ? Ordering::equal : Ordering::less;
 }
 
+auto spp::asts::GenericArgumentTypePositionalAst::Equals(
+    GenericArgumentAst const &other) const
+    -> Ordering {
+    // Reverse hook (double dispatch).
+    return other.EqualsGenericArgumentTypePositional(*this);
+}
 
-auto spp::asts::GenericArgumentTypePositionalAst::pos_start() const
+auto spp::asts::GenericArgumentTypePositionalAst::PosStart() const
     -> std::size_t {
-    return val->pos_start();
+    // Use the val.
+    return Source.OriginalValPosStart;
 }
 
-
-auto spp::asts::GenericArgumentTypePositionalAst::pos_end() const
+auto spp::asts::GenericArgumentTypePositionalAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the val.
+    return Source.OriginalValPosEnd;
 }
 
-
-auto spp::asts::GenericArgumentTypePositionalAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericArgumentTypePositionalAst>(
-        ast_clone(val));
+auto spp::asts::GenericArgumentTypePositionalAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericArgumentTypePositionalAst>(
+        AstCloneShared(Val));
 }
 
-
-spp::asts::GenericArgumentTypePositionalAst::operator std::string() const {
+auto spp::asts::GenericArgumentTypePositionalAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::GenericArgumentTypePositionalAst::stage_7_analyse_semantics(
+auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
+    if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
+    Val->Stage7_AnalyseSemantics(sm, meta);
+
     // Analyse the name and value of the generic type argument.
-    val->stage_7_analyse_semantics(sm, meta);
-    const auto tmp1 = sm->current_scope->get_type_symbol(val);
-    const auto tmp2 = tmp1->fq_name();
-    auto tmp3 = ast_clone(val->get_convention());
-    const auto tmp4 = tmp2->with_convention(std::move(tmp3));
-    val = tmp4;
+    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val);
+    const auto tmp2 = tmp1->FqName();
+    auto tmp3 = AstClone(Val->GetConvention());
+    const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
+    Val = tmp4;
 }
 
 SPP_MOD_END

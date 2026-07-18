@@ -5,50 +5,47 @@ module spp.asts.function_call_argument_positional_ast;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
-    decltype(conv) &&conv,
-    decltype(tok_unpack) &&tok_unpack,
-    decltype(val) &&val) :
-    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::POSITIONAL_ARG),
-    tok_unpack(std::move(tok_unpack)) {
+    decltype(Conv) &&conv,
+    decltype(TokUnpack) &&tok_unpack,
+    decltype(Val) &&val) :
+    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::kPositionalArg),
+    TokUnpack(std::move(tok_unpack)) {
 }
-
 
 spp::asts::FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst() = default;
 
-
-auto spp::asts::FunctionCallArgumentPositionalAst::pos_start() const
+auto spp::asts::FunctionCallArgumentPositionalAst::PosStart() const
     -> std::size_t {
-    return tok_unpack ? tok_unpack->pos_start() : val->pos_start();
+    // Use the ".." token or the value.
+    return TokUnpack ? TokUnpack->PosStart() : Val->PosStart();
 }
 
-
-auto spp::asts::FunctionCallArgumentPositionalAst::pos_end() const
+auto spp::asts::FunctionCallArgumentPositionalAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the value.
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::FunctionCallArgumentPositionalAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<FunctionCallArgumentPositionalAst>(
-        ast_clone(conv),
-        ast_clone(tok_unpack),
-        ast_clone(val));
+auto spp::asts::FunctionCallArgumentPositionalAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<FunctionCallArgumentPositionalAst>(
+        AstClone(Conv), AstClone(TokUnpack), AstClone(Val));
 }
 
-
-spp::asts::FunctionCallArgumentPositionalAst::operator std::string() const {
+auto spp::asts::FunctionCallArgumentPositionalAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_unpack);
-    SPP_STRING_APPEND(conv);
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(TokUnpack);
+    SPP_STRING_APPEND(Conv);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 

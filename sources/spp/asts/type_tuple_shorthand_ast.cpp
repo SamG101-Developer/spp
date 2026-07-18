@@ -6,58 +6,53 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
-import genex;
-
 
 SPP_MOD_BEGIN
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
-    decltype(tok_l) &&tok_l,
-    decltype(element_types) &&element_types,
-    decltype(tok_r) &&tok_r) :
-    TempTypeAst(),
-    tok_l(std::move(tok_l)),
-    element_types(std::move(element_types)),
-    tok_r(std::move(tok_r)) {
+    decltype(TokL) &&tok_l,
+    decltype(ElemTypes) &&element_types,
+    decltype(TokR) &&tok_r) :
+    TokL(std::move(tok_l)),
+    ElemTypes(std::move(element_types)),
+    TokR(std::move(tok_r)) {
 }
-
 
 spp::asts::TypeTupleShorthandAst::~TypeTupleShorthandAst() = default;
 
-
-auto spp::asts::TypeTupleShorthandAst::pos_start() const
+auto spp::asts::TypeTupleShorthandAst::PosStart() const
     -> std::size_t {
-    return tok_l->pos_start();
+    // Use the "(" token.
+    return TokL->PosStart();
 }
 
-
-auto spp::asts::TypeTupleShorthandAst::pos_end() const
+auto spp::asts::TypeTupleShorthandAst::PosEnd() const
     -> std::size_t {
-    return tok_r->pos_end();
+    // Use the ")" token.
+    return TokR->PosEnd();
 }
 
-
-auto spp::asts::TypeTupleShorthandAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeTupleShorthandAst>(
-        ast_clone(tok_l),
-        ast_clone_vec_shared(element_types),
-        ast_clone(tok_r));
+auto spp::asts::TypeTupleShorthandAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<TypeTupleShorthandAst>(
+        AstClone(TokL), AstCloneVecShared(ElemTypes), AstClone(TokR));
 }
 
-
-spp::asts::TypeTupleShorthandAst::operator std::string() const {
+auto spp::asts::TypeTupleShorthandAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(element_types, ", ");
-    SPP_STRING_APPEND(tok_r);
+    SPP_STRING_APPEND(TokL);
+    SPP_STRING_EXTEND(ElemTypes, ", ");
+    SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::TypeTupleShorthandAst::convert()
-    -> std::unique_ptr<TypeAst> {
-    const auto type = generate::common_types::tuple_type(pos_start(), std::move(element_types));
-    return ast_clone(type);
+auto spp::asts::TypeTupleShorthandAst::Convert()
+    -> Unique<TypeAst> {
+    using generate::common_types::TupleType;
+    const auto type = TupleType(
+        PosStart(), std::move(ElemTypes));
+    return AstClone(type);
 }
 
 SPP_MOD_END

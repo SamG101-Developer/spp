@@ -12,65 +12,64 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
-
 SPP_MOD_BEGIN
-spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
-    std::unique_ptr<TokenAst> tok_ellipsis,
-    std::unique_ptr<ExpressionAst> &&val) :
-    ObjectInitializerArgumentAst(ast_clone(val->to<IdentifierAst>()), std::move(val)),
-    tok_ellipsis(std::move(tok_ellipsis)) {
-}
-
-
-auto spp::asts::ObjectInitializerArgumentShorthandAst::create_autofill(
-    std::unique_ptr<ExpressionAst> &&val)
-    -> std::unique_ptr<ObjectInitializerArgumentShorthandAst> {
-    return std::make_unique<ObjectInitializerArgumentShorthandAst>(
-        TokenAst::new_empty(lex::SppTokenType::TK_DOUBLE_DOT, ".."),
+auto spp::asts::ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(
+    Unique<ExpressionAst> &&val)
+    -> Unique<ObjectInitializerArgumentShorthandAst> {
+    // Wrap the constructor with some fixed arguments.
+    return MakeUnique<ObjectInitializerArgumentShorthandAst>(
+        TokenAst::NewEmpty(lex::SppTokenType::TK_DOUBLE_DOT, ".."),
         std::move(val));
 }
 
+spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
+    decltype(TokEllipsis) &&tok_ellipsis,
+    decltype(Val) &&val) :
+    ObjectInitializerArgumentAst(AstCloneShared(val->To<IdentifierAst>()), std::move(val)),
+    TokEllipsis(std::move(tok_ellipsis)) {
+}
 
 spp::asts::ObjectInitializerArgumentShorthandAst::~ObjectInitializerArgumentShorthandAst() = default;
 
-
-auto spp::asts::ObjectInitializerArgumentShorthandAst::pos_start() const
+auto spp::asts::ObjectInitializerArgumentShorthandAst::PosStart() const
     -> std::size_t {
-    return tok_ellipsis ? tok_ellipsis->pos_start() : val->pos_start();
+    // Use the ".." token or value.
+    return TokEllipsis != nullptr ? TokEllipsis->PosStart() : Val->PosStart();
 }
 
-
-auto spp::asts::ObjectInitializerArgumentShorthandAst::pos_end() const
+auto spp::asts::ObjectInitializerArgumentShorthandAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the value.
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::ObjectInitializerArgumentShorthandAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ObjectInitializerArgumentShorthandAst>(
-        ast_clone(tok_ellipsis),
-        ast_clone(val));
+auto spp::asts::ObjectInitializerArgumentShorthandAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ObjectInitializerArgumentShorthandAst>(
+        AstClone(TokEllipsis), AstClone(Val));
 }
 
-
-spp::asts::ObjectInitializerArgumentShorthandAst::operator std::string() const {
+auto spp::asts::ObjectInitializerArgumentShorthandAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_ellipsis);
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(TokEllipsis);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics(
+auto spp::asts::ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppObjectInitializerInvalidArgumentError;
+
     // The parser allows Type(123) as a postfix function call over a type, which is invalid as type initialization.
-    raise_if<analyse::errors::SppObjectInitializerInvalidArgumentError>(
-        val->to<IdentifierAst>() == nullptr,
-        {sm->current_scope}, ERR_ARGS(*this));
-    ObjectInitializerArgumentAst::stage_7_analyse_semantics(sm, meta);
+    RaiseIf<SppObjectInitializerInvalidArgumentError>(
+        Val->To<IdentifierAst>() == nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*this));
+    ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(sm, meta);
 }
 
 SPP_MOD_END

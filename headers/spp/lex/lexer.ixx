@@ -3,6 +3,7 @@ module;
 
 export module spp.lex.lexer;
 import spp.lex.tokens;
+import spp.utils.types;
 import std;
 
 
@@ -16,9 +17,9 @@ namespace spp::lex {
  * and produces a vector of @c RawToken objects as output.
  */
 SPP_EXP_CLS class spp::lex::Lexer {
-    std::string m_code;
+    Str m_code;
 
 public:
-    explicit Lexer(std::string code, bool add_prelude = false);
-    SPP_ATTR_NODISCARD auto lex() const -> std::vector<RawToken>;
+    explicit Lexer(Str code, bool add_prelude = false);
+    SPP_ATTR_NODISCARD auto Lex() const -> Vec<RawToken>;
 };

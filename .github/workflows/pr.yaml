@@ -1,0 +1,121 @@
+name: PR
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened, edited ]
+  merge_group: {}
+  workflow_dispatch: {}
+
+concurrency:
+  # One group per PR branch / dispatch ref / merge-queue ref.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  title:
+    name: PR Title Format
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            core
+          requireScope: false
+          subjectPattern: '^[a-z][a-z0-9 .-]*$'
+          subjectPatternError: "The description must match the regex."
+
+  precommit:
+    name: Format & Lint (pre-commit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: pre-commit/action@v3.0.1
+
+  # Supported toolchain: must pass, gates ci-success.
+  build-test:
+    name: Build & Test
+    needs: [precommit]
+    uses: ./.github/workflows/_build_and_test.yaml
+    with:
+      os: ubuntu-latest
+      compiler: gcc
+      version: "16"
+
+  # Aspirational toolchains: run and report red on failure, but do NOT gate
+  # ci-success (it deliberately omits this job from `needs`).
+  build-test-extra:
+    name: Build & Test (non-blocking)
+    needs: [precommit]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, compiler: clang, version: "22" }
+          - { os: macos-latest, compiler: clang, version: "" }
+          - { os: windows-latest, compiler: msvc, version: "" }
+          - { os: windows-latest, compiler: clang-cl, version: "" }
+    uses: ./.github/workflows/_build_and_test.yaml
+    with:
+      os: ${{ matrix.os }}
+      compiler: ${{ matrix.compiler }}
+      version: ${{ matrix.version }}
+
+  sanitizers:
+    name: Sanitizers
+    needs: [ precommit ]
+    uses: ./.github/workflows/_sanitizers.yaml
+    with:
+      configs: '["address+undefined+leak", "thread"]'
+
+  security:
+    name: Security
+    needs: [precommit]
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/_security.yaml
+
+  # Single required status check for branch protection. Fails if any needed job
+  # failed or was cancelled; passes when they all succeeded or were skipped.
+  ci-success:
+    name: CI Success
+    if: ${{ always() }}
+    needs: [ title, precommit, build-test, sanitizers, security ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify all required jobs passed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "One or more required jobs did not succeed:"
+          echo '${{ toJSON(needs) }}'
+          exit 1

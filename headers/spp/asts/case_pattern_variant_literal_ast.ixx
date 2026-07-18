@@ -4,6 +4,7 @@ module;
 export module spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -19,26 +20,26 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVa
      * The literal value of the case pattern variant. This can be a string, integer, float, boolean, but not a tuple or
      * array; special destructure syntax exists for those literals.
      */
-    std::unique_ptr<LiteralAst> literal;
+    Unique<LiteralAst> Literal;
 
     /**
      * Construct the CasePatternVariantLiteralAst with the arguments matching the members.
      * @param literal The literal value of the case pattern variant.
      */
     explicit CasePatternVariantLiteralAst(
-        decltype(literal) &&literal);
+        decltype(Literal) &&literal);
 
     ~CasePatternVariantLiteralAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

@@ -3,25 +3,23 @@ module;
 
 module spp.asts.statement_ast;
 import spp.asts.generate.common_types;
-
+import spp.asts.type_ast;
 
 SPP_MOD_BEGIN
 spp::asts::StatementAst::StatementAst() = default;
 
-
 spp::asts::StatementAst::~StatementAst() = default;
 
-
-auto spp::asts::StatementAst::infer_type(
+auto spp::asts::StatementAst::InferType(
     ScopeManager *,
     CompilerMetaData *)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // All statements are inferred as the Void type.
-    return generate::common_types::void_type(pos_start());
+    using generate::common_types::VoidType;
+    return VoidType(PosStart());
 }
 
-
-auto spp::asts::StatementAst::terminates() const
+auto spp::asts::StatementAst::Terminates() const
     -> bool {
     // By default, statements do not terminate control flow.
     return false;

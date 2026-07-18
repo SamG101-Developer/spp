@@ -1,110 +1,140 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     IsExpressionAst,
     test_invalid_incorrect_type_destructure,
     SppTypeMismatchError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let a: Point = Point(x=1, y=2)
-        case a is std::string::Str(..) { }
+        case a is Str(..) { }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     IsExpressionAst,
     test_invalid_incorrect_type_variant_destructure,
     SppTypeMismatchError, R"(
-    fun f() -> std::void::Void {
-        let a: std::string_view::StrView or std::boolean::Bool = "hello"
-        case a is std::number::S32() { }
+    fun f() -> Void {
+        let a: Str or Bool = Str::from("hello")
+        case a is S32() { }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     IsExpressionAst,
     test_invalid_incorrect_generic_destructure,
     SppTypeMismatchError, R"(
     cls Point[T] {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
-    fun f() -> std::void::Void {
-        let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
-        case a is Point[std::string::Str](x, y) { }
+    fun f() -> Void {
+        let a: Point[S32] = Point[S32](x=1, y=2)
+        case a is Point[Str](x, y) { }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_is_expression_correct_type, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: S32
+        !public y: S32
     }
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let a: Point = Point(x=1, y=2)
         case a is Point(x, y) { }
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_type_variant, R"(
-    fun f() -> std::void::Void {
-        let a: std::string_view::StrView or std::boolean::Bool = "hello"
-        case a is std::string_view::StrView(..) { }
+    fun f() -> Void {
+        let a: Str or Bool = Str::from("hello")
+        case a is Str(..) { }
     }
 )");
-
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    IsExpressionAst,
-    test_valid_type_variant_with_inference, R"(
-    cls Point[T] {
-        x: T
-        y: T
-    }
-    fun f() -> std::void::Void {
-        let a: std::option::Opt[std::string_view::StrView] = std::option::Some(val="hello world")
-        case a is std::option::Some(mut val) { val = "bye" }
-    }
-)");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_type_generic, R"(
     cls Point[T] {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
-    fun f() -> std::void::Void {
-        let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
-        case a is Point[std::number::S32](x, y) { }
+    fun f() -> Void {
+        let a: Point[S32] = Point[S32](x=1, y=2)
+        case a is Point[S32](x, y) { }
     }
 )");
 
-
-/*
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
-    test_valid_type_generic_with_inference, R"(
-    cls Point[T] {
-        x: T
-        y: T
+    test_valid_is_expression_infers_boolean, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
     }
-    fun f() -> std::void::Void {
-        let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
-        case a is Point(x, y) { }
+    fun f() -> Void {
+        let a: Point = Point(x=1, y=2)
+        let b: Bool = a is Point(x, y)
     }
 )");
-*/
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    IsExpressionAst,
+    test_valid_destructure_bindings_usable, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+    fun f() -> Void {
+        let a: Point = Point(x=1, y=2)
+        case a is Point(x, y) {
+            let s = x
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    IsExpressionAst,
+    test_valid_flow_typing_narrows_lhs, R"(
+    fun f() -> Void {
+        let a: StrView or Bool = false
+        case a is Bool(..) {
+            let b: Bool = a
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    IsExpressionAst,
+    test_valid_is_expression_with_guard, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+    fun f() -> Void {
+        let a: Point = Point(x=1, y=2)
+        case a is Point(x, y) and x == 1 { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    IsExpressionAst,
+    test_invalid_unknown_type_in_pattern,
+    SppIdentifierUnknownError, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+    fun f() -> Void {
+        let a: Point = Point(x=1, y=2)
+        case a is Unknown(x, y) { }
+    }
+)");

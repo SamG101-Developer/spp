@@ -9,66 +9,60 @@ SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeIterator::ScopeIterator(
     Scope *root) {
     if (root != nullptr) {
-        m_stack.emplace_back(root, 0);
+        _Stack.EmplaceBack(root, 0);
     }
 }
 
-
 auto spp::analyse::scopes::ScopeIterator::operator*()
     -> reference {
-    return m_stack.back().node;
+    return _Stack.Back().Node;
 }
-
 
 auto spp::analyse::scopes::ScopeIterator::operator*() const
     -> const_reference {
-    return m_stack.back().node;
+    return _Stack.Back().Node;
 }
-
 
 auto spp::analyse::scopes::ScopeIterator::operator->()
     -> pointer {
-    return &m_stack.back().node;
+    return &_Stack.Back().Node;
 }
-
 
 auto spp::analyse::scopes::ScopeIterator::operator->() const
     -> const_pointer {
-    return &m_stack.back().node;
+    return &_Stack.Back().Node;
 }
-
 
 auto spp::analyse::scopes::ScopeIterator::operator++()
     -> ScopeIterator& {
     // Nothing in the stack means that no more iteration can be done.
-    if (m_stack.empty()) { return *this; }
+    if (_Stack.IsEmpty()) { return *this; }
 
     // Descend into unseen children of this node.
-    auto [node, idx] = m_stack.back();
-    if (idx < node->children.size()) {
-        m_stack.back().seen += 1;
-        m_stack.emplace_back(node->children[idx].get(), 0);
+    auto [node, idx] = _Stack.Back();
+    if (idx < node->Children.Len()) {
+        _Stack.Back().Seen += 1;
+        _Stack.EmplaceBack(node->Children[idx].get(), 0);
         return *this;
     }
 
     // Otherwise, pop the stack to move up a level.
-    m_stack.pop_back();
+    _Stack.PopBack();
 
     // Walk upwards until a parent with unseen children is found.
-    while (not m_stack.empty()) {
-        auto &top = m_stack.back();
-        if (top.seen < top.node->children.size()) {
-            top.seen += 1;
-            m_stack.emplace_back(top.node->children[top.seen - 1].get(), 0);
+    while (not _Stack.IsEmpty()) {
+        auto &top = _Stack.Back();
+        if (top.Seen < top.Node->Children.Len()) {
+            top.Seen += 1;
+            _Stack.EmplaceBack(top.Node->Children[top.Seen - 1].get(), 0);
             return *this;
         }
-        m_stack.pop_back();
+        _Stack.PopBack();
     }
 
     // At this point, the stack is empty, meaning the iteration is complete.
     return *this;
 }
-
 
 auto spp::analyse::scopes::ScopeIterator::operator++(int)
     -> ScopeIterator {
@@ -77,13 +71,11 @@ auto spp::analyse::scopes::ScopeIterator::operator++(int)
     return tmp;
 }
 
-
 auto spp::analyse::scopes::ScopeIterator::operator==(
     ScopeIterator const &other) const
     -> bool {
-    return m_stack.empty() and other.m_stack.empty();
+    return _Stack.IsEmpty() and other._Stack.IsEmpty();
 }
-
 
 auto spp::analyse::scopes::ScopeIterator::operator!=(
     ScopeIterator const &other) const

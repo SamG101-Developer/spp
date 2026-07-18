@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -16,196 +17,183 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.strings;
+import ankerl;
+import boost;
 import llvm;
-import mppp;
-
 
 SPP_MOD_BEGIN
-const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
-    {"f8", {spp::utils::strings::expand_scientific_notation("-5.7344e+4"), spp::utils::strings::expand_scientific_notation("5.7344e+4")}},
-    {"f16", {spp::utils::strings::expand_scientific_notation("-6.55e+4"), spp::utils::strings::expand_scientific_notation("6.55e+4")}},
-    {"f32", {spp::utils::strings::expand_scientific_notation("-3.4028235e+38"), spp::utils::strings::expand_scientific_notation("3.4028235e+38")}},
-    {"f64", {spp::utils::strings::expand_scientific_notation("-1.7976931348623157e+308"), spp::utils::strings::expand_scientific_notation("1.7976931348623157e+308")}},
-    {"f128", {spp::utils::strings::expand_scientific_notation("-1.189731495357231765e+4932"), spp::utils::strings::expand_scientific_notation("1.189731495357231765e+4932")}}, // check this
+static const auto kFloatBounds = ankerl::unordered_dense::map<spp::Str, spp::Pair<boost::BigDec, boost::BigDec>>{
+    {"f8", {boost::BigDec("-5.7344e+4"), boost::BigDec("5.7344e+4")}},
+    {"f16", {boost::BigDec("-6.55e+4"), boost::BigDec("6.55e+4")}},
+    {"f32", {boost::BigDec("-3.4028235e+38"), boost::BigDec("3.4028235e+38")}},
+    {"f64", {boost::BigDec("-1.7976931348623157e+308"), boost::BigDec("1.7976931348623157e+308")}},
+    {"f128", {boost::BigDec("-1.189731495357231765e+4932"), boost::BigDec("1.189731495357231765e+4932")}},
 };
 
-
-spp::asts::FloatLiteralAst::FloatLiteralAst(
-    decltype(tok_sign) &&tok_sign,
-    decltype(int_val) &&int_val,
-    decltype(tok_dot) &&tok_dot,
-    decltype(frac_val) &&frac_val,
-    std::string &&type) :
-    tok_sign(std::move(tok_sign)),
-    int_val(std::move(int_val)),
-    tok_dot(std::move(tok_dot)),
-    frac_val(std::move(frac_val)),
-    type(std::move(type)) {
-}
-
-
-spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
-
-
-auto spp::asts::FloatLiteralAst::from_single_token(
-    decltype(tok_sign) &&tok_sign,
-    std::unique_ptr<TokenAst> &&token,
-    std::string &&type)
-    -> std::unique_ptr<FloatLiteralAst> {
+auto spp::asts::FloatLiteralAst::FromSingleTok(
+    decltype(TokSign) &&tok_sign,
+    Unique<TokenAst> &&token,
+    Str &&type)
+    -> Unique<FloatLiteralAst> {
     // Split the token data into integer and fractional parts.
-    auto int_part = token->token_data.substr(0, token->token_data.find('.'));
-    auto frac_part = token->token_data.substr(token->token_data.find('.') + 1);
-    return std::make_unique<FloatLiteralAst>(
+    auto int_part = token->TokenData.substr(0, token->TokenData.find('.'));
+    auto frac_part = token->TokenData.substr(token->TokenData.find('.') + 1);
+    return MakeUnique<FloatLiteralAst>(
         std::move(tok_sign),
-        std::make_unique<TokenAst>(token->pos_start(), lex::SppTokenType::LX_NUMBER, std::move(int_part)),
-        std::make_unique<TokenAst>(token->pos_start() + int_part.size(), lex::SppTokenType::TK_DOT, "."),
-        std::make_unique<TokenAst>(token->pos_start() + int_part.size() + 1, lex::SppTokenType::LX_NUMBER, std::move(frac_part)),
+        MakeUnique<TokenAst>(token->PosStart(), lex::SppTokenType::LX_NUMBER, std::move(int_part)),
+        MakeUnique<TokenAst>(token->PosStart() + int_part.length(), lex::SppTokenType::TK_DOT, "."),
+        MakeUnique<TokenAst>(token->PosStart() + int_part.length() + 1, lex::SppTokenType::LX_NUMBER, std::move(frac_part)),
         std::move(type));
 }
 
-
-auto spp::asts::FloatLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_float_literal(*this);
+spp::asts::FloatLiteralAst::FloatLiteralAst(
+    decltype(TokSign) &&tok_sign,
+    decltype(IntVal) &&int_val,
+    decltype(TokDot) &&tok_dot,
+    decltype(FracVal) &&frac_val,
+    Str &&type) :
+    TokSign(std::move(tok_sign)),
+    IntVal(std::move(int_val)),
+    TokDot(std::move(tok_dot)),
+    FracVal(std::move(frac_val)),
+    Type(std::move(type)) {
 }
 
+spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
-auto spp::asts::FloatLiteralAst::equals_float_literal(
+auto spp::asts::FloatLiteralAst::EqualsFloatLiteral(
     FloatLiteralAst const &other) const
-    -> std::strong_ordering {
+    -> Ordering {
+    // Equality based on the sign, integer part, fractional part, and type postfix.
     if (
-        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
-        and int_val->token_data == other.int_val->token_data
-        and frac_val->token_data == other.frac_val->token_data
-        and type == other.type) {
-        return std::strong_ordering::equal;
+        ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
+        and IntVal->TokenData == other.IntVal->TokenData
+        and FracVal->TokenData == other.FracVal->TokenData
+        and Type == other.Type) {
+        return Ordering::equal;
     }
-    return std::strong_ordering::less;
+    return Ordering::less;
 }
 
-
-template <typename T> requires std::floating_point<T>
-auto spp::asts::FloatLiteralAst::cpp_value() const -> T {
-    const auto raw_str = int_val->to_string() + "." + frac_val->to_string();
-    const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
-    return static_cast<T>(std::stold(signed_str));
+auto spp::asts::FloatLiteralAst::Equals(
+    ExpressionAst const &other) const
+    -> Ordering {
+    // Reverse hook (double dispatch).
+    return other.EqualsFloatLiteral(*this);
 }
 
-
-auto spp::asts::FloatLiteralAst::pos_start() const
+auto spp::asts::FloatLiteralAst::PosStart() const
     -> std::size_t {
-    return tok_sign ? tok_sign->pos_start() : int_val->pos_start();
+    // Use the sign token or the integer part.
+    return TokSign ? TokSign->PosStart() : IntVal->PosStart();
 }
 
-
-auto spp::asts::FloatLiteralAst::pos_end() const
+auto spp::asts::FloatLiteralAst::PosEnd() const
     -> std::size_t {
-    return frac_val->pos_end();
+    // Use the fractional part.
+    return FracVal->PosEnd();
 }
 
-
-auto spp::asts::FloatLiteralAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<FloatLiteralAst>(
-        ast_clone(tok_sign),
-        ast_clone(int_val),
-        ast_clone(tok_dot),
-        ast_clone(frac_val),
-        type.c_str());
+auto spp::asts::FloatLiteralAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<FloatLiteralAst>(
+        AstClone(TokSign), AstClone(IntVal), AstClone(TokDot), AstClone(FracVal), Type.c_str());
 }
 
-
-spp::asts::FloatLiteralAst::operator std::string() const {
+auto spp::asts::FloatLiteralAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_sign);
-    SPP_STRING_APPEND(int_val);
-    SPP_STRING_APPEND(tok_dot);
-    SPP_STRING_APPEND(frac_val);
-    raw_string.append("_").append(type);
+    SPP_STRING_APPEND(TokSign);
+    SPP_STRING_APPEND(IntVal);
+    SPP_STRING_APPEND(TokDot);
+    SPP_STRING_APPEND(FracVal);
+    raw_string.append("_").append(Type);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
+auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
+    //
+    using spp::utils::strings::NormalizeFloatString;
+    using analyse::errors::SppFloatOutOfBoundsError;
+
     // Get the lower and upper bounds as big floats.
-    type = type.empty() ? "f32" : type;
-    auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
-    auto mapped_val = spp::utils::strings::normalize_float_string(int_val->token_data, frac_val->token_data);
-    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
-        mapped_val = mapped_val.neg();
+    Type = Type.empty() ? "f32" : Type;
+    auto const &[lower, upper] = kFloatBounds.at(Type);
+    auto mapped_val = NormalizeFloatString(IntVal->TokenData, FracVal->TokenData);
+    if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
+        mapped_val = boost::negate_integer(mapped_val, std::true_type());
     }
 
     // Check if the value is within the bounds.
-    raise_if<analyse::errors::SppFloatOutOfBoundsError>(
-        mapped_val < lower or mapped_val > upper,
-        {sm->current_scope}, ERR_ARGS(*this, mapped_val, lower, upper, "float"));
+    RaiseIf<SppFloatOutOfBoundsError>(
+        mapped_val.compare(lower) < 0 or mapped_val.compare(upper) > 0,
+        {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, Type));
 }
 
-
-auto spp::asts::FloatLiteralAst::stage_9_comptime_resolution(
+auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
     ScopeManager *,
     CompilerMetaData *meta)
     -> void {
     // Clone and return the float literal as is for compile-time resolution.
-    meta->cmp_result = ast_clone(this);
+    meta->CmpResult = AstClone(this);
 }
 
-
-auto spp::asts::FloatLiteralAst::stage_11_code_gen_2(
+auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the type of the float literal.
-    const auto type_ast = infer_type(sm, meta);
-    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    const auto type_ast = InferType(sm, meta);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Create the LLVM constant float value.
-    const auto &semantics = llvm_type->getFltSemantics();
-    const auto val = int_val->token_data + "." + frac_val->token_data;
+    auto const &semantics = llvm_type->getFltSemantics();
+    const auto val = IntVal->TokenData + "." + FracVal->TokenData;
     const auto ap_float = llvm::APFloat(semantics, val);
-    return llvm::ConstantFP::get(*ctx->context, ap_float);
+    return llvm::ConstantFP::get(*ctx->Context, ap_float);
 }
 
-
-auto spp::asts::FloatLiteralAst::infer_type(
+auto spp::asts::FloatLiteralAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *)
-    -> std::shared_ptr<TypeAst> {
-    // Todo: Use the IntergerLiteralAst implementation (it's better).
+    -> Shared<TypeAst> {
+    //
+    using analyse::errors::SppInternalCompilerError;
+    using namespace generate::common_types;
+
     // Map the type string literal to the correct SPP type.
-    if (type.empty()) {
-        return generate::common_types::f32(pos_start());
-    }
-    if (type == "f8") {
-        return generate::common_types::f8(pos_start());
-    }
-    if (type == "f16") {
-        return generate::common_types::f16(pos_start());
-    }
-    if (type == "f32") {
-        return generate::common_types::f32(pos_start());
-    }
-    if (type == "f64") {
-        return generate::common_types::f64(pos_start());
-    }
-    if (type == "f128") {
-        return generate::common_types::f128(pos_start());
+    auto spp_type = Shared<TypeAst>(nullptr);
+    const auto p = PosStart();
+    if (Type.empty()) { spp_type = F32(p); }
+    else if (Type == "f8") { spp_type = F8(p); }
+    else if (Type == "f16") { spp_type = F16(p); }
+    else if (Type == "f32") { spp_type = F32(p); }
+    else if (Type == "f64") { spp_type = F64(p); }
+    else if (Type == "f128") { spp_type = F128(p); }
+    else {
+        Raise<SppInternalCompilerError>(
+            {sm->CurrentScope},
+            ERR_ARGS(*this, "invalid float literal type"));
     }
 
-    // This should never happen, due to parsing rules.
-    raise<analyse::errors::SppInternalCompilerError>(
-        {sm->current_scope},
-        ERR_ARGS(*this, "invalid float literal type"));
+    const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type);
+    return sym->FqName();
 }
 
+template <typename T> requires std::floating_point<T>
+auto spp::asts::FloatLiteralAst::CppVal() const -> T {
+    const auto raw_str = IntVal->ToString() + "." + FracVal->ToString();
+    const auto signed_str = TokSign != nullptr ? "-" + raw_str : raw_str;
+    return static_cast<T>(std::stold(signed_str));
+}
 
-template auto spp::asts::FloatLiteralAst::cpp_value<std::float16_t>() const -> std::float16_t;
-template auto spp::asts::FloatLiteralAst::cpp_value<std::float32_t>() const -> std::float32_t;
-template auto spp::asts::FloatLiteralAst::cpp_value<std::float64_t>() const -> std::float64_t;
+template auto spp::asts::FloatLiteralAst::CppVal<std::float16_t>() const -> std::float16_t;
+template auto spp::asts::FloatLiteralAst::CppVal<std::float32_t>() const -> std::float32_t;
+template auto spp::asts::FloatLiteralAst::CppVal<std::float64_t>() const -> std::float64_t;
 SPP_MOD_END

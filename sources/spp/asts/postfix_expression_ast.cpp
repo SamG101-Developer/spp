@@ -7,6 +7,9 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.type_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
@@ -17,146 +20,160 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionAst::PostfixExpressionAst(
-    decltype(lhs) &&lhs,
-    decltype(op) &&op) :
-    lhs(std::move(lhs)),
-    op(std::move(op)) {
+    decltype(Lhs) &&lhs,
+    decltype(Op) &&op) :
+    Lhs(std::move(lhs)),
+    Op(std::move(op)) {
+    //
+    Source.CachedInference = nullptr;
 }
-
 
 spp::asts::PostfixExpressionAst::~PostfixExpressionAst() = default;
 
-
-auto spp::asts::PostfixExpressionAst::pos_start() const
+auto spp::asts::PostfixExpressionAst::PosStart() const
     -> std::size_t {
-    return lhs->pos_start();
+    // Use the lhs.
+    return Lhs->PosStart();
 }
 
-
-auto spp::asts::PostfixExpressionAst::pos_end() const
+auto spp::asts::PostfixExpressionAst::PosEnd() const
     -> std::size_t {
-    return op->pos_end();
+    // Use the operator.
+    return Op->PosEnd();
 }
 
-
-auto spp::asts::PostfixExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<PostfixExpressionAst>(
-        ast_clone(lhs),
-        ast_clone(op));
+auto spp::asts::PostfixExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<PostfixExpressionAst>(
+        AstClone(Lhs), AstClone(Op));
 }
 
-
-spp::asts::PostfixExpressionAst::operator std::string() const {
+auto spp::asts::PostfixExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(lhs);
-    SPP_STRING_APPEND(op);
+    SPP_STRING_APPEND(Lhs);
+    SPP_STRING_APPEND(Op);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Analyse the lhs.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(lhs.get());
+    //
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::expr_utils::PrimaryExpressionOptions;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
 
     // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
     // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
-    meta->save();
-    meta->return_type_overload_resolver_type = nullptr;
-    meta->prevent_auto_generator_resume = false;
-    if (lhs->to<TypeAst>() != nullptr) {
-        const auto temp_lhs = std::shared_ptr<TypeAst>(lhs.release()->to<TypeAst>());
-        temp_lhs->stage_7_analyse_semantics(sm, meta);
-        lhs = ast_clone(temp_lhs);
+    meta->Save();
+    meta->ReturnTypeOverloadResolverType = nullptr;
+    meta->PreventAutoGeneratorResume = false;
+    if (Lhs->To<TypeAst>() != nullptr) {
+        auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
+        temp_lhs->Stage7_AnalyseSemantics(sm, meta);
+        temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
+        temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs)->FqName();
+        Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
-        lhs->stage_7_analyse_semantics(sm, meta);
+        Lhs->Stage7_AnalyseSemantics(sm, meta);
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
+            {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
     }
-    meta->restore();
+    meta->Restore();
 
     // Re-attach the meta info, as it is targeting the lhs.
-    meta->save();
-    meta->postfix_expression_lhs = lhs.get();
-    op->stage_7_analyse_semantics(sm, meta);
-    meta->restore();
+    meta->Save();
+    meta->PostfixExpressionLhs = Lhs.get();
+    Op->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 }
 
-
-auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
+auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+
     // Memory analysis used the transformed AST to not repeat lhs as self.
-    if (const auto func = op->to<PostfixExpressionOperatorFunctionCallAst>(); func != nullptr and func->transformed_ast != nullptr) {
-        func->transformed_ast->stage_8_check_memory(sm, meta);
+    const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
+    if (func != nullptr and func->GetTransformedAst() != nullptr) {
+        func->GetTransformedAst()->Stage8_CheckMemory(sm, meta);
         return;
     }
 
     // Check the memory of the lhs.
-    lhs->stage_8_check_memory(sm, meta);
-    meta->save();
-    meta->postfix_expression_lhs = lhs.get();
-    if (lhs->to<IdentifierAst>() != nullptr) {
-        analyse::utils::mem_utils::validate_symbol_memory(
-            *meta->postfix_expression_lhs, *op, *sm, true, false, false, false, false, meta);
+    Lhs->Stage8_CheckMemory(sm, meta);
+    meta->Save();
+    meta->PostfixExpressionLhs = Lhs.get();
+    if (Lhs->To<IdentifierAst>() != nullptr) {
+        ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, true, false, false, false, false, meta);
     }
-    op->stage_8_check_memory(sm, meta);
-    meta->restore();
+    Op->Stage8_CheckMemory(sm, meta);
+    meta->Restore();
 }
 
-
-auto spp::asts::PostfixExpressionAst::stage_9_comptime_resolution(
+auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward into the operator AST.
-    meta->save();
-    meta->postfix_expression_lhs = lhs.get();
-    op->stage_9_comptime_resolution(sm, meta);
-    meta->restore();
+    meta->Save();
+    meta->PostfixExpressionLhs = Lhs.get();
+    Op->Stage9_CompTimeResolve(sm, meta);
+    meta->Restore();
 }
 
-
-auto spp::asts::PostfixExpressionAst::stage_11_code_gen_2(
+auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // Memory analysis used the transformed AST to not repeat lhs as self.
+    const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
+    if (func != nullptr and func->GetTransformedAst() != nullptr) {
+        const auto ret_val = func->GetTransformedAst()->Stage11_CodeGen(sm, meta, ctx);
+        return ret_val;
+    }
+
     // Forward into the operator AST.
-    meta->save();
-    meta->postfix_expression_lhs = lhs.get();
-    const auto ret_val = op->stage_11_code_gen_2(sm, meta, ctx);
-    meta->restore();
+    meta->Save();
+    meta->PostfixExpressionLhs = Lhs.get();
+    const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
+    meta->Restore();
     return ret_val;
 }
 
-
-auto spp::asts::PostfixExpressionAst::infer_type(
+auto spp::asts::PostfixExpressionAst::InferType(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
+    // Check cache.
+    // if (Source.CachedInference != nullptr) { return Source.CachedInference; }
+
     // Forward into the operator AST.
-    meta->save();
-    meta->postfix_expression_lhs = lhs.get();
-    auto ret_type = op->infer_type(sm, meta);
-    meta->restore();
-    return ret_type;
+    meta->Save();
+    meta->PostfixExpressionLhs = Lhs.get();
+    auto x = Op->InferType(sm, meta);
+    meta->Restore();
+    return x;
 }
 
-
-auto spp::asts::PostfixExpressionAst::expr_parts() const
-    -> std::vector<Ast*> {
+auto spp::asts::PostfixExpressionAst::ExprParts() const
+    -> Vec<Ast*> {
     // Recursively search the lhs, and add the rhs if it exists.
-    auto lhs_parts = lhs->expr_parts();
-    auto rhs_parts = op->expr_parts();
-    if (not rhs_parts.empty()) {
-        lhs_parts.append_range(std::move(rhs_parts));
+    auto lhs_parts = Lhs->ExprParts();
+    auto rhs_parts = Op->ExprParts();
+    if (not rhs_parts.IsEmpty()) {
+        lhs_parts.AppendRange(std::move(rhs_parts));
     }
     return lhs_parts;
 }

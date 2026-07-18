@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.bin_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_prototype_ast;
@@ -21,178 +22,201 @@ import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
-    decltype(lhs) &&lhs,
-    decltype(tok_op) &&tok_op,
-    decltype(rhs) &&rhs) :
-    m_mapped_func(nullptr),
-    lhs(std::move(lhs)),
-    tok_op(std::move(tok_op)),
-    rhs(std::move(rhs)) {
+    decltype(Lhs) &&lhs,
+    decltype(TokOp) &&tok_op,
+    decltype(Rhs) &&rhs) :
+    Lhs(std::move(lhs)),
+    TokOp(std::move(tok_op)),
+    Rhs(std::move(rhs)),
+    _MappedFunc(nullptr) {
+    Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
+    Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
-
 
 spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 
-
-auto spp::asts::BinaryExpressionAst::pos_start() const
+auto spp::asts::BinaryExpressionAst::PosStart() const
     -> std::size_t {
-    return lhs != nullptr ? lhs->pos_start() : m_mapped_func->pos_start();
+    // Use the left hand side operand.
+    return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
-
-auto spp::asts::BinaryExpressionAst::pos_end() const
+auto spp::asts::BinaryExpressionAst::PosEnd() const
     -> std::size_t {
-    return rhs ? rhs->pos_end() : m_mapped_func->pos_end();
+    // Use the right hand side operand.
+    return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
-
-auto spp::asts::BinaryExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<BinaryExpressionAst>(
-        ast_clone(lhs),
-        ast_clone(tok_op),
-        ast_clone(rhs));
-    ast->m_mapped_func = m_mapped_func;
+auto spp::asts::BinaryExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto ast = MakeUnique<BinaryExpressionAst>(
+        AstClone(Lhs), AstClone(TokOp), AstClone(Rhs));
+    ast->_MappedFunc = _MappedFunc;
+    ast->Source = Source;
     return ast;
 }
 
-
-spp::asts::BinaryExpressionAst::operator std::string() const {
+auto spp::asts::BinaryExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    if (lhs != nullptr) {
+    if (Lhs != nullptr) {
         raw_string.append("(");
-        SPP_STRING_APPEND(lhs).append(" ");
-        SPP_STRING_APPEND(tok_op).append(" ");
-        SPP_STRING_APPEND(rhs).append(")");
+        SPP_STRING_APPEND(Lhs).append(" ");
+        SPP_STRING_APPEND(TokOp).append(" ");
+        SPP_STRING_APPEND(Rhs).append(")");
     }
     else {
-        SPP_STRING_APPEND(m_mapped_func);
+        SPP_STRING_APPEND(_MappedFunc);
     }
     SPP_STRING_END;
 }
 
-
-auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    if (m_mapped_func) { return; }
+    // Alias the common utils functions and types.
+    using analyse::utils::bin_utils::ConvertBinExprToFuncCall;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::type_utils::IsTypeTup;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::errors::SppMemberAccessNonIndexableError;
+    using analyse::errors::SppInvalidBinaryFoldExpressionError;
 
-    // Ensure TypeAst's aren't used for expression for binary operands.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(lhs.get());
-    SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
+    // Todo: this guard shouldn't be needed.
+    if (_MappedFunc) { return; }
 
     // Handle lhs-folding.
-    if (lhs->to<FoldExpressionAst>()) {
+    if (Lhs->To<FoldExpressionAst>()) {
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Rhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Rhs));
+
         // Check the rhs is a tuple.
-        const auto rhs_tuple_type = rhs->infer_type(sm, meta);
-        raise_if<analyse::errors::SppMemberAccessNonIndexableError>(
-            not analyse::utils::type_utils::is_type_tuple(*rhs_tuple_type, *sm->current_scope),
-            {sm->current_scope}, ERR_ARGS(*rhs, *rhs_tuple_type, *lhs));
+        const auto rhs_tuple_type = Rhs->InferType(sm, meta);
+        RaiseIf<SppMemberAccessNonIndexableError>(
+            not IsTypeTup(*rhs_tuple_type, *sm->CurrentScope),
+            {sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_tuple_type, *Lhs));
 
         // Get the parts of the tuple.
-        const auto rhs_num_elems = rhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
-        auto new_asts = std::vector<std::unique_ptr<PostfixExpressionAst>>();
+        const auto rhs_num_elems = rhs_tuple_type->TypeParts()[0]->GnArgGroup->Args.Len();
+        RaiseIf<SppInvalidBinaryFoldExpressionError>(
+            rhs_num_elems < 2,
+            {sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_tuple_type, rhs_num_elems));
+
+        auto new_asts = UniqueVec<PostfixExpressionAst>();
         for (auto i = 0u; i < rhs_num_elems; ++i) {
-            auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
-            auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(rhs),
-                std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-            new_ast->stage_7_analyse_semantics(sm, meta);
-            new_asts.emplace_back(std::move(new_ast));
+            auto field = MakeUnique<IdentifierAst>(Rhs->PosStart(), std::to_string(i));
+            auto new_ast = MakeUnique<PostfixExpressionAst>(
+                AstClone(Rhs),
+                MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
+            new_ast->Stage7_AnalyseSemantics(sm, meta);
+            new_asts.EmplaceBack(std::move(new_ast));
         }
 
         // Convert "t = (0, 1, 2, 3)", ".. + t" into "(((t.0 + t.1) + t.2) + t.3)".
-        lhs = std::move(new_asts[0]);
-        rhs = std::move(new_asts[1]);
+        Lhs = std::move(new_asts[0]);
+        Rhs = std::move(new_asts[1]);
         for (auto &&new_ast : new_asts | genex::views::move | genex::views::drop(2)) {
-            lhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
-            rhs = std::move(new_ast);
+            Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
+            Rhs = std::move(new_ast);
         }
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, sm, meta);
-        m_mapped_func->stage_7_analyse_semantics(sm, meta);
+        _MappedFunc = ConvertBinExprToFuncCall(*this, sm, meta);
+        _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
     }
 
     // Handle rhs-folding.
-    else if (rhs->to<FoldExpressionAst>()) {
+    else if (Rhs->To<FoldExpressionAst>()) {
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Lhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Lhs));
+
         // Check the lhs is a tuple.
-        const auto lhs_tuple_type = lhs->infer_type(sm, meta);
-        raise_if<analyse::errors::SppMemberAccessNonIndexableError>(
-            not analyse::utils::type_utils::is_type_tuple(*lhs_tuple_type, *sm->current_scope),
-            {sm->current_scope}, ERR_ARGS(*lhs, *lhs_tuple_type, *rhs));
+        const auto lhs_tuple_type = Lhs->InferType(sm, meta);
+        RaiseIf<SppMemberAccessNonIndexableError>(
+            not IsTypeTup(*lhs_tuple_type, *sm->CurrentScope),
+            {sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
 
         // Get the parts of the tuple.
-        const auto lhs_num_elems = lhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
-        auto new_asts = std::vector<std::unique_ptr<PostfixExpressionAst>>();
-        for (auto i = 0u; i < lhs_num_elems; ++i) {
-            auto field = std::make_unique<IdentifierAst>(lhs->pos_start(), std::to_string(i));
-            auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(lhs),
-                std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-            new_ast->stage_7_analyse_semantics(sm, meta);
-            new_asts.emplace_back(std::move(new_ast));
+        const auto lhs_num_elems = lhs_tuple_type->TypeParts()[0]->GnArgGroup->Args.Len();
+        RaiseIf<SppInvalidBinaryFoldExpressionError>(
+            lhs_num_elems < 2,
+            {sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
+
+        auto new_asts = UniqueVec<PostfixExpressionAst>();
+        for (auto i = 0U; i < lhs_num_elems; ++i) {
+            auto field = MakeUnique<IdentifierAst>(Lhs->PosStart(), std::to_string(i));
+            auto new_ast = MakeUnique<PostfixExpressionAst>(
+                AstClone(Lhs),
+                MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
+            new_ast->Stage7_AnalyseSemantics(sm, meta);
+            new_asts.EmplaceBack(std::move(new_ast));
         }
 
         // Convert "t = (0, 1, 2, 3)", "t + .." into "(t.0 + (t.1 + (t.2 + t.3)))".
-        lhs = std::move(new_asts[new_asts.size() - 2]);
-        rhs = std::move(new_asts[new_asts.size() - 1]);
+        Lhs = std::move(new_asts[new_asts.Len() - 2]);
+        Rhs = std::move(new_asts[new_asts.Len() - 1]);
         for (auto &&new_ast : new_asts | genex::views::move_reverse | genex::views::drop(2)) {
-            rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
-            lhs = std::move(new_ast);
+            Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
+            Lhs = std::move(new_ast);
         }
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, sm, meta);
-        m_mapped_func->stage_7_analyse_semantics(sm, meta);
+        _MappedFunc = ConvertBinExprToFuncCall(*this, sm, meta);
+        _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
     }
 
     else {
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Lhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Lhs));
+
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+            not IsPrimaryExprTypeValid(*Rhs, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Rhs));
+
         // Standard non-folding binary expression.
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, sm, meta);
-        m_mapped_func->stage_7_analyse_semantics(sm, meta);
+        _MappedFunc = ConvertBinExprToFuncCall(*this, sm, meta);
+        _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
     }
 }
 
-
-auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
+auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
-    m_mapped_func->stage_8_check_memory(sm, meta);
+    _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::BinaryExpressionAst::stage_9_comptime_resolution(
+auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward the compile-time resolution to the mapped function.
-    m_mapped_func->stage_9_comptime_resolution(sm, meta);
+    _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
-
-auto spp::asts::BinaryExpressionAst::stage_11_code_gen_2(
+auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward the code generation to the mapped function.
-    return m_mapped_func->stage_11_code_gen_2(sm, meta, ctx);
+    return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
 }
 
-
-auto spp::asts::BinaryExpressionAst::infer_type(
+auto spp::asts::BinaryExpressionAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // Infer the type from the function mapping of the binary expression.
-    if (m_mapped_func == nullptr) {
-        // Todo: Needed?
-        stage_7_analyse_semantics(sm, meta);
-    }
-    return m_mapped_func->infer_type(sm, meta);
+    // if (_MappedFunc == nullptr) {
+    //     // Todo: Needed?
+    //     Stage7_AnalyseSemantics(sm, meta);
+    // }
+    return _MappedFunc->InferType(sm, meta);
 }
 
 SPP_MOD_END

@@ -5,7 +5,7 @@ export module spp.asts.convention_ast;
 import spp.asts.ast;
 
 namespace spp::asts {
-    SPP_EXP_ENUM enum class ConventionTag { MOV, MUT, REF };
+    SPP_EXP_CLS enum class ConventionTag { MOV, MUT, REF };
     SPP_EXP_CLS struct ConventionAst;
 }
 
@@ -18,9 +18,9 @@ namespace spp::asts {
  * The MOV is defined as a tag because when convention is not present, but needs to be compared, it is the equivalent,
  * semantically, of being a "move" convention.
  */
-SPP_EXP_CLS struct spp::asts::ConventionAst : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ConventionAst : Ast {
 private:
-    ConventionTag tag;
+    ConventionTag _Tag;
 
 public:
     explicit ConventionAst(ConventionTag tag);

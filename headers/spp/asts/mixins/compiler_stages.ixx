@@ -36,17 +36,16 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
     using ScopeManager = spp::analyse::scopes::ScopeManager;
     using CompilerMetaData = spp::asts::meta::CompilerMetaData;
 
-public:
-    CompilerStages() = default;
+    CompilerStages();
 
-    virtual ~CompilerStages() = default;
+    virtual ~CompilerStages();
 
     /**
      * The preprocessor stage performs AST mutation and transformation before any analysis or scope generate is done.
      * This is key for the function architecture (transforming methods into callable types) etc.
      * @param[in, out] ctx The context AST for this AST.
      */
-    virtual auto stage_1_pre_process(Ast *ctx) -> void;
+    virtual auto Stage1_PreProcess(Ast *ctx) -> void;
 
     /**
      * Top level scopes must be generated first, and represent the scopes for modules, classes, functions and
@@ -54,7 +53,7 @@ public:
      * here, as there is no guarantee their corresponding "old types" have been generated yet.
      * @param[in, out] sm The scope manager to hold generated scopes.
      */
-    virtual auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void;
+    virtual auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void;
 
     /**
      * Aliases at the module and superimposition level are generated here. At this stage, all the classes will have been
@@ -63,7 +62,7 @@ public:
      * @param[in, out] sm The scope manager to hold generated aliases.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto stage_3_gen_top_level_aliases(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * Qualify types that have been written as non-fully-qualified in all ASTs that are not in the bodies of top level
@@ -71,7 +70,7 @@ public:
      * @param[in, out] sm The scope manager to identify types in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * Attach superimposition scopes to the respective target types. This must be done in its own stage as it relies on
@@ -79,7 +78,7 @@ public:
      * @param[in, out] sm The scope manager to find target type scopes in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * There are some checks that have to happen after the superscopes have all been attached but must happen before
@@ -88,7 +87,7 @@ public:
      * @param[in, out] sm The scope manager to do pre-analysis in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * General analysis of all ASTs, except memory-oriented checks. All identifier checks, type checking, function
@@ -96,7 +95,7 @@ public:
      * @param[in, out] sm The scope manager to do analysis in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * All memory oriented checks, such as ownership checking and law of exclusivity enforcement happen in this stage.
@@ -106,7 +105,7 @@ public:
      * @param[in, out] sm The scope manager to get symbol's memory information from.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * Resolve any comptime values that haven't got literals assigned to them. This allows for somptime functions to be
@@ -115,7 +114,7 @@ public:
      * @param sm The scope manager to use for resolution.
      * @param meta Associated metadata.
      */
-    virtual auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * Generate some LLVM IR code from the ASTs. This is IR that is needed for the rest of the program to be generated.
@@ -125,7 +124,7 @@ public:
      * @param[in, out] ctx The LLVM context to generate code into.
      * @return The LLVM value generated from this AST.
      */
-    virtual auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+    virtual auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 
     /**
      * Finish the LLVM IR generation for the remaining (majority) of the ASTs. This will then all get linked together
@@ -135,5 +134,5 @@ public:
      * @param[in, out] ctx The LLVM context to generate code into.
      * @returns The LLVM value generated from this AST.
      */
-    virtual auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+    virtual auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 };

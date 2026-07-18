@@ -3,6 +3,7 @@ module;
 
 export module spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -16,9 +17,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct CoroutinePrototypeAst;
 }
 
-
 namespace spp::codegen {
-    SPP_EXP_ENUM enum class CoroutineState {
+    SPP_EXP_CLS enum class CoroutineState {
         READY, // Impossible in user code
         VARIABLE,
         EXHAUSTED,
@@ -26,7 +26,7 @@ namespace spp::codegen {
         EXCEPTION, // On GenRes
     };
 
-    SPP_EXP_ENUM enum class GenEnvField {
+    SPP_EXP_CLS enum class GenEnvField {
         RES_FN = 0,
         STATE = 1,
         LOCATION = 2,
@@ -40,8 +40,7 @@ namespace spp::codegen {
         asts::CoroutinePrototypeAst *coro,
         LLvmCtx *ctx,
         analyse::scopes::Scope const &scope)
-        -> std::pair<llvm::StructType*, llvm::StructType*>;
-
+        -> Pair<llvm::StructType*, llvm::StructType*>;
 
     /**
      * When a coroutine is called, the generate is immediately returned, whilst the <i>resuming</i> of the coroutine is
@@ -57,7 +56,6 @@ namespace spp::codegen {
         LLvmCtx *ctx,
         analyse::scopes::Scope const &scope)
         -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*>;
-
 
     /**
      * When a coroutine is resumed, this function is called to actually run the body of the coroutine. This works by

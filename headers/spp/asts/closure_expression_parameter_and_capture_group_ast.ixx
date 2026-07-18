@@ -4,6 +4,7 @@ module;
 export module spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -17,27 +18,27 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : Ast {
     /**
      * The @c | token that indicates the start of the closure parameter and capture group.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The parameters of the closure. This is a list of parameters that will be passed to the closure when it is called.
      */
-    std::unique_ptr<ClosureExpressionParameterGroupAst> param_group;
+    Unique<ClosureExpressionParameterGroupAst> ParamGroup;
 
     /**
      * The captured variables from the outer scope. These are variables that are captured by the closure and can be used
      * within its body.
      */
-    std::unique_ptr<ClosureExpressionCaptureGroupAst> capture_group;
+    Unique<ClosureExpressionCaptureGroupAst> CaptureGroup;
 
     /**
      * The @c | token that indicates the end of the closure parameter and capture group.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the ClosureExpressionParameterAndCaptureGroupAst with the arguments matching the members.
@@ -47,18 +48,18 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final
      * @param tok_r The @c | token that indicates the end of the closure parameter and capture group.
      */
     ClosureExpressionParameterAndCaptureGroupAst(
-        decltype(tok_l) &&tok_l,
-        decltype(param_group) &&param_group,
-        decltype(capture_group) &&capture_group,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(ParamGroup) &&param_group,
+        decltype(CaptureGroup) &&capture_group,
+        decltype(TokR) &&tok_r);
 
     ~ClosureExpressionParameterAndCaptureGroupAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

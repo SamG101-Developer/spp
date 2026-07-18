@@ -14,5 +14,5 @@ namespace spp::codegen {
  * cloned functions.
  */
 SPP_EXP_CLS struct spp::codegen::LlvmFuncWrapper {
-    llvm::Function *target;
+    llvm::Function *Target;
 };

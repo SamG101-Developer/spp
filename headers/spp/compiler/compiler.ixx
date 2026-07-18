@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.compiler;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -15,7 +16,7 @@ namespace spp::compiler {
 }
 
 
-inline constexpr auto COMPILER_STAGE_NAMES = std::array{
+inline constexpr auto kCompilerStageNames = std::array{
     "Lexing......................... ",
     "Parsing........................ ",
     "Pre-processing................. ",
@@ -40,15 +41,15 @@ public:
 private:
     std::filesystem::path m_path;
 
-    std::unique_ptr<ModuleTree> m_modules;
+    Unique<ModuleTree> m_modules;
 
     Mode m_mode = Mode::DEV;
 
     BuildType m_build_type = BuildType::EXE;
 
-    std::unique_ptr<CompilerBoot> m_boot;
+    Unique<CompilerBoot> m_boot;
 
-    std::unique_ptr<analyse::scopes::ScopeManager> m_scope_manager;
+    Unique<analyse::scopes::ScopeManager> m_scope_manager;
 
     bool m_for_unit_tests = false;
 
@@ -57,11 +58,11 @@ public:
 
     explicit Compiler(Mode mode, BuildType build_type);
 
-    static auto for_unit_tests(Mode mode, std::string &&main_code) -> std::unique_ptr<Compiler>;
+    static auto ForUnitTests(Mode mode, Str &&main_code) -> Unique<Compiler>;
 
     ~Compiler();
 
-    auto compile() -> void;
+    auto Compile() -> void;
 
-    static auto cleanup() -> void;
+    static auto Cleanup() -> void;
 };

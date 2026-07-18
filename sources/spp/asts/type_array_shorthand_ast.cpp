@@ -7,63 +7,58 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(
-    decltype(tok_l) &&tok_l,
-    decltype(element_type) &&element_type,
-    decltype(tok_semicolon) &&tok_semicolon,
-    decltype(size) &&size,
-    decltype(tok_r) &&tok_r) :
-    tok_l(std::move(tok_l)),
-    element_type(std::move(element_type)),
-    tok_semicolon(std::move(tok_semicolon)),
-    size(std::move(size)),
-    tok_r(std::move(tok_r)) {
+    decltype(TokL) &&tok_l,
+    decltype(ElemType) &&element_type,
+    decltype(TokSemiColon) &&tok_semicolon,
+    decltype(Size) &&size,
+    decltype(TokR) &&tok_r) :
+    TokL(std::move(tok_l)),
+    ElemType(std::move(element_type)),
+    TokSemiColon(std::move(tok_semicolon)),
+    Size(std::move(size)),
+    TokR(std::move(tok_r)) {
 }
-
 
 spp::asts::TypeArrayShorthandAst::~TypeArrayShorthandAst() = default;
 
-
-auto spp::asts::TypeArrayShorthandAst::pos_start() const
+auto spp::asts::TypeArrayShorthandAst::PosStart() const
     -> std::size_t {
-    return tok_l->pos_start();
+    // Use the "[" token.
+    return TokL->PosStart();
 }
 
-
-auto spp::asts::TypeArrayShorthandAst::pos_end() const
+auto spp::asts::TypeArrayShorthandAst::PosEnd() const
     -> std::size_t {
-    return tok_r->pos_end();
+    // Use the "]" token.
+    return TokR->PosEnd();
 }
 
-
-auto spp::asts::TypeArrayShorthandAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeArrayShorthandAst>(
-        ast_clone(tok_l),
-        ast_clone(element_type),
-        ast_clone(tok_semicolon),
-        ast_clone(size),
-        ast_clone(tok_r));
+auto spp::asts::TypeArrayShorthandAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<TypeArrayShorthandAst>(
+        AstClone(TokL), AstCloneShared(ElemType), AstClone(TokSemiColon), AstClone(Size), AstClone(TokR));
 }
 
-
-spp::asts::TypeArrayShorthandAst::operator std::string() const {
+auto spp::asts::TypeArrayShorthandAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_APPEND(element_type);
-    SPP_STRING_APPEND(tok_semicolon);
-    SPP_STRING_APPEND(size);
-    SPP_STRING_APPEND(tok_r);
+    SPP_STRING_APPEND(TokL);
+    SPP_STRING_APPEND(ElemType);
+    SPP_STRING_APPEND(TokSemiColon);
+    SPP_STRING_APPEND(Size);
+    SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::TypeArrayShorthandAst::convert()
-    -> std::unique_ptr<TypeAst> {
-    const auto type = generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));
-    return ast_clone(type);
+auto spp::asts::TypeArrayShorthandAst::Convert()
+    -> Unique<TypeAst> {
+    // Convert to the compiler-known array type.
+    using generate::common_types::ArrayType;
+    const auto type = ArrayType(PosStart(), std::move(ElemType), std::move(Size));
+    return AstClone(type);
 }
 
 SPP_MOD_END

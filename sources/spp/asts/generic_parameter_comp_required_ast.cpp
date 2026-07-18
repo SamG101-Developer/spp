@@ -8,48 +8,43 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericParameterCompRequiredAst::GenericParameterCompRequiredAst(
-    decltype(tok_cmp) &&tok_cmp,
-    decltype(name) &&name,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type) :
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::REQUIRED_PARAM) {
+    decltype(TokCmp) &&tok_cmp,
+    decltype(Name) name,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) type) :
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::kRequiredParam) {
 }
-
 
 spp::asts::GenericParameterCompRequiredAst::~GenericParameterCompRequiredAst() = default;
 
-
-auto spp::asts::GenericParameterCompRequiredAst::pos_start() const
+auto spp::asts::GenericParameterCompRequiredAst::PosStart() const
     -> std::size_t {
-    return tok_cmp->pos_start();
+    // Use the "cmp" token.
+    return TokCmp->PosStart();
 }
 
-
-auto spp::asts::GenericParameterCompRequiredAst::pos_end() const
+auto spp::asts::GenericParameterCompRequiredAst::PosEnd() const
     -> std::size_t {
-    return type->pos_end();
+    // Use the type.
+    return Source.OriginalType->PosEnd();
 }
 
-
-auto spp::asts::GenericParameterCompRequiredAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericParameterCompRequiredAst>(
-        ast_clone(tok_cmp),
-        ast_clone(name),
-        ast_clone(tok_colon),
-        ast_clone(type));
+auto spp::asts::GenericParameterCompRequiredAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericParameterCompRequiredAst>(
+        AstClone(TokCmp), AstCloneShared(Name), AstClone(TokColon), AstCloneShared(Type));
 }
 
-
-spp::asts::GenericParameterCompRequiredAst::operator std::string() const {
+auto spp::asts::GenericParameterCompRequiredAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_cmp).append(" ");
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_colon).append(" ");
-    SPP_STRING_APPEND(type);
+    SPP_STRING_APPEND(TokCmp).append(" ");
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(TokColon).append(" ");
+    SPP_STRING_APPEND(Type);
     SPP_STRING_END;
 }
 

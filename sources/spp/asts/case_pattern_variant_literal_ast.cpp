@@ -21,95 +21,92 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantLiteralAst::CasePatternVariantLiteralAst(
-    decltype(literal) &&literal) :
+    decltype(Literal) &&literal) :
     CasePatternVariantAst(),
-    literal(std::move(literal)) {
+    Literal(std::move(literal)) {
 }
-
 
 spp::asts::CasePatternVariantLiteralAst::~CasePatternVariantLiteralAst() = default;
 
-
-auto spp::asts::CasePatternVariantLiteralAst::pos_start() const
+auto spp::asts::CasePatternVariantLiteralAst::PosStart() const
     -> std::size_t {
-    return literal->pos_start();
+    // Use the literal.
+    return Literal->PosStart();
 }
 
-
-auto spp::asts::CasePatternVariantLiteralAst::pos_end() const
+auto spp::asts::CasePatternVariantLiteralAst::PosEnd() const
     -> std::size_t {
-    return literal->pos_end();
+    // Use the literal.
+    return Literal->PosEnd();
 }
 
-
-auto spp::asts::CasePatternVariantLiteralAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantLiteralAst>(
-        ast_clone(literal));
+auto spp::asts::CasePatternVariantLiteralAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<CasePatternVariantLiteralAst>(
+        AstClone(Literal));
 }
 
-
-spp::asts::CasePatternVariantLiteralAst::operator std::string() const {
+auto spp::asts::CasePatternVariantLiteralAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(literal);
+    SPP_STRING_APPEND(Literal);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::CasePatternVariantLiteralAst::convert_to_variable(
-    CompilerMetaData *)
-    -> std::unique_ptr<LocalVariableAst> {
-    // Create the local variable literal binding AST.
-    const auto uid = spp::utils::generate_uid(this);
-    auto var_name = std::make_unique<IdentifierAst>(pos_start(), uid);
-    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
-    var->mark_from_case_pattern();
-    return var;
-}
-
-
-auto spp::asts::CasePatternVariantLiteralAst::stage_7_analyse_semantics(
+auto spp::asts::CasePatternVariantLiteralAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward analysis into the literal.
-    literal->stage_7_analyse_semantics(sm, meta);
+    Literal->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantLiteralAst::stage_8_check_memory(
+auto spp::asts::CasePatternVariantLiteralAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the literal.
-    literal->stage_8_check_memory(sm, meta);
+    Literal->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantLiteralAst::stage_9_comptime_resolution(
+auto spp::asts::CasePatternVariantLiteralAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Transform the pattern into comptime values; all need to be true.
-    auto comptime_tranforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_comptime(
+    using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
+    auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
         {this}, sm, meta);
 
     // Return the single result (only one literal will be here).
-    meta->cmp_result = std::move(comptime_tranforms[0]);
+    meta->CmpResult = std::move(comptime_transforms[0]);
 }
 
-
-auto spp::asts::CasePatternVariantLiteralAst::stage_11_code_gen_2(
+auto spp::asts::CasePatternVariantLiteralAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
+    //
+    using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
+    const auto llvm_master_transform = CreateAndAnalysePatternEqFuncsLlvm(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
+}
+
+auto spp::asts::CasePatternVariantLiteralAst::ConvToVar(
+    CompilerMetaData *)
+    -> Unique<LocalVariableAst> {
+    // Create the local variable literal binding AST.
+    const auto uid = spp::utils::Uid(this);
+    auto var_name = MakeShared<IdentifierAst>(PosStart(), uid);
+    auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
+        nullptr, std::move(var_name), nullptr);
+    var->MarkFromCasePattern();
+    return var;
 }
 
 SPP_MOD_END

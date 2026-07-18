@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -14,21 +15,23 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
+    SPP_AST_KEY_FUNCTIONS;
+
     /**
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * The @c = token that separates the attribute name from the value in the destructure binding.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
     /**
      * The value of the attribute. This can be a further destructure or a literal.
      */
-    std::unique_ptr<CasePatternVariantAst> val;
+    Unique<CasePatternVariantAst> Val;
 
     /**
      * Construct the CasePatternVariantDestructureAttributeBindingAst with the arguments matching the members.
@@ -37,13 +40,11 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst f
      * @param val The value of the attribute.
      */
     CasePatternVariantDestructureAttributeBindingAst(
-        decltype(name) &&name,
-        decltype(tok_assign) &&tok_assign,
-        decltype(val) &&val);
+        decltype(Name) &&name,
+        decltype(TokAssign) &&tok_assign,
+        decltype(Val) &&val);
 
     ~CasePatternVariantDestructureAttributeBindingAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
-
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

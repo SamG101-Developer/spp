@@ -4,73 +4,57 @@ module;
 export module spp.asts.identifier_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
+SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, EnableLocalSharedFromThis<IdentifierAst> {
+    SPP_GCC_VTABLE_FIX
 
-SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
-private:
-    std::size_t m_pos;
+    Str Val;
 
-public:
-    std::string val;
-
-    explicit IdentifierAst(
-        std::size_t pos,
-        decltype(val) val);
-
-    auto _spp_key_function() const -> void override;
-
-    IdentifierAst(IdentifierAst const &) = default;
-
+    static auto FromType(TypeAst const &val) -> Unique<IdentifierAst>;
+    explicit IdentifierAst(std::size_t pos, decltype(Val) val);
+    static auto MappedFromTok(TokenAst const &tok, decltype(Val) val) -> Unique<IdentifierAst>;
     ~IdentifierAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering override;
+    auto operator<=>(IdentifierAst const &that) const -> Ordering;
+    auto operator==(IdentifierAst const &that) const -> bool;
+    auto operator==(ExpressionAst const &that) const -> bool;
+    auto operator+(IdentifierAst const &that) const -> IdentifierAst;
+    auto operator+(Str const &that) const -> IdentifierAst;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsIdentifier(IdentifierAst const &) const -> Ordering override;
+
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_ALWAYS_INLINE auto operator<=>(IdentifierAst const &that) const -> std::strong_ordering {
-        return val <=> that.val;
-    }
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    SPP_ATTR_ALWAYS_INLINE auto operator==(IdentifierAst const &that) const -> bool {
-        return equals(that) == std::strong_ordering::equal;
-    }
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    SPP_ATTR_ALWAYS_INLINE auto operator==(ExpressionAst const &that) const -> bool {
-        return equals(that) == std::strong_ordering::equal;
-    }
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto operator+(IdentifierAst const &that) const -> IdentifierAst;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    auto operator+(std::string const &that) const -> IdentifierAst;
+    auto ToFuncIdentifier() const -> Unique<IdentifierAst>;
 
-    static auto from_type(TypeAst const &val) -> std::unique_ptr<IdentifierAst>;
+    auto AnkerlHash() const -> std::size_t override;
 
-    auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
+    SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<Ast*> override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    SPP_ATTR_NODISCARD auto ToView() const noexcept -> StrView;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
-
-    auto ankerl_hash() const -> std::size_t override;
-
-    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast *> override;
+private:
+    std::size_t _Pos;
+    std::size_t _ForTok = 0;
 };
 
-
-SPP_MOD_BEGIN
-auto spp::asts::IdentifierAst::_spp_key_function() const -> void {}
-SPP_MOD_END
-
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

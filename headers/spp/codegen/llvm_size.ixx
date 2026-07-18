@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_size;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -14,8 +15,8 @@ namespace spp::asts {
 
 
 namespace spp::codegen {
-    SPP_EXP_FUN auto size_of(
+    SPP_EXP_FUN auto SizeOf(
         analyse::scopes::ScopeManager const &sm,
-        std::shared_ptr<asts::TypeAst> const &type)
+        Shared<asts::TypeAst> const &type)
         -> std::size_t;
 }

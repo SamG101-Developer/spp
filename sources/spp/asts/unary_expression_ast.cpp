@@ -6,102 +6,100 @@ module spp.asts.unary_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.expr_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.unary_expression_operator_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::UnaryExpressionAst::UnaryExpressionAst(
-    decltype(op) &&tok_op,
-    decltype(expr) &&expr) :
-    op(std::move(tok_op)),
-    expr(std::move(expr)) {
+    decltype(Op) &&tok_op,
+    decltype(Expr) &&expr) :
+    Op(std::move(tok_op)),
+    Expr(std::move(expr)) {
 }
-
 
 spp::asts::UnaryExpressionAst::~UnaryExpressionAst() = default;
 
-
-auto spp::asts::UnaryExpressionAst::pos_start() const
+auto spp::asts::UnaryExpressionAst::PosStart() const
     -> std::size_t {
-    return op->pos_start();
+    // Use the operator.
+    return Op->PosStart();
 }
 
-
-auto spp::asts::UnaryExpressionAst::pos_end() const
+auto spp::asts::UnaryExpressionAst::PosEnd() const
     -> std::size_t {
-    return expr->pos_end();
+    // Use the expression.
+    return Expr->PosEnd();
 }
 
-
-auto spp::asts::UnaryExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<UnaryExpressionAst>(
-        ast_clone(op),
-        ast_clone(expr));
+auto spp::asts::UnaryExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<UnaryExpressionAst>(
+        AstClone(Op), AstClone(Expr));
 }
 
-
-spp::asts::UnaryExpressionAst::operator std::string() const {
+auto spp::asts::UnaryExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(op);
-    SPP_STRING_APPEND(expr);
+    SPP_STRING_APPEND(Op);
+    SPP_STRING_APPEND(Expr);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Analyse the semantics of the right-hand-side.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    //
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Analyse the operator and right-hand-side expression.
-    expr->stage_7_analyse_semantics(sm, meta);
+    Expr->Stage7_AnalyseSemantics(sm, meta);
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Expr, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Expr));
 
-    meta->save();
-    meta->unary_expression_rhs = expr.get();
-    op->stage_7_analyse_semantics(sm, meta);
-    meta->restore();
+    meta->Save();
+    meta->UnaryExpressionRhs = Expr.get();
+    Op->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 }
 
-
-auto spp::asts::UnaryExpressionAst::stage_8_check_memory(
+auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Check the memory of the right-hand-side.
-    expr->stage_8_check_memory(sm, meta);
+    Expr->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::UnaryExpressionAst::stage_11_code_gen_2(
+auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the right-hand-side expression.
-    meta->save();
-    meta->unary_expression_rhs = expr.get();
-    const auto lhs_val = op->stage_11_code_gen_2(sm, meta, ctx);
-    meta->restore();
+    meta->Save();
+    meta->UnaryExpressionRhs = Expr.get();
+    const auto lhs_val = Op->Stage11_CodeGen(sm, meta, ctx);
+    meta->Restore();
     return lhs_val;
 }
 
-
-auto spp::asts::UnaryExpressionAst::infer_type(
+auto spp::asts::UnaryExpressionAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // Infer the type of the right-hand-side expression, adjusted by the operator.
-    meta->save();
-    meta->unary_expression_rhs = expr.get();
-    auto type = op->infer_type(sm, meta);
-    meta->restore();
+    meta->Save();
+    meta->UnaryExpressionRhs = Expr.get();
+    auto type = Op->InferType(sm, meta);
+    meta->Restore();
 
     return type;
 }

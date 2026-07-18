@@ -6,6 +6,7 @@ module spp.asts.loop_control_flow_statement_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
@@ -17,131 +18,135 @@ import spp.asts.generate.common_types;
 import spp.lex.tokens;
 import genex;
 
-
 SPP_MOD_BEGIN
-spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
-    decltype(tok_seq_exit) &&tok_seq_exit,
-    decltype(tok_skip) &&tok_skip,
-    decltype(expr) &&expr) :
-    StatementAst(),
-    tok_seq_exit(std::move(tok_seq_exit)),
-    tok_skip(std::move(tok_skip)),
-    expr(std::move(expr)) {
+auto spp::asts::LoopControlFlowStatementAst::Skip(
+    const std::size_t pos)
+    -> Unique<LoopControlFlowStatementAst> {
+    // No exit statements, one skip statement.
+    auto exits = Vec<Unique<TokenAst>>();
+    auto skip = MakeUnique<TokenAst>(pos, lex::SppTokenType::KW_SKIP, "skip");
+    return MakeUnique<LoopControlFlowStatementAst>(std::move(exits), std::move(skip), nullptr);
 }
 
+auto spp::asts::LoopControlFlowStatementAst::Exit(
+    const std::size_t pos,
+    const std::size_t depth)
+    -> Unique<LoopControlFlowStatementAst> {
+    // One exit statement, no skip statements.
+    auto skip = nullptr;
+    auto exits = Vec<Unique<TokenAst>>();
+    for (auto i = 0uz; i < depth; ++i) {
+        exits.EmplaceBack(MakeUnique<TokenAst>(pos, lex::SppTokenType::KW_EXIT, "exit"));
+    }
+    return MakeUnique<LoopControlFlowStatementAst>(std::move(exits), skip, nullptr);
+}
+
+spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
+    decltype(TokSeqExit) &&tok_seq_exit,
+    decltype(TokSkip) &&tok_skip,
+    decltype(Expr) &&expr) :
+    TokSeqExit(std::move(tok_seq_exit)),
+    TokSkip(std::move(tok_skip)),
+    Expr(std::move(expr)) {
+}
 
 spp::asts::LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
 
-
-auto spp::asts::LoopControlFlowStatementAst::Skip(
-    std::size_t pos)
-    -> std::unique_ptr<LoopControlFlowStatementAst> {
-    // No exit statements, one skip statement.
-    auto exits = std::vector<std::unique_ptr<TokenAst>>();
-    auto skip = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_SKIP, "skip");
-    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), std::move(skip), nullptr);
-}
-
-
-auto spp::asts::LoopControlFlowStatementAst::Exit(
-    std::size_t pos)
-    -> std::unique_ptr<LoopControlFlowStatementAst> {
-    // One exit statement, no skip statements.
-    auto exits = std::vector<std::unique_ptr<TokenAst>>();
-    exits.emplace_back(std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_EXIT, "exit"));
-    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), nullptr, nullptr);
-}
-
-
-auto spp::asts::LoopControlFlowStatementAst::pos_start() const
+auto spp::asts::LoopControlFlowStatementAst::PosStart() const
     -> std::size_t {
-    return tok_seq_exit.empty() ? tok_skip->pos_start() : tok_seq_exit.front()->pos_start();
+    // Use the first "exit" or "skip".
+    return TokSeqExit.IsEmpty() ? TokSkip->PosStart() : TokSeqExit.Front()->PosStart();
 }
 
-
-auto spp::asts::LoopControlFlowStatementAst::pos_end() const
+auto spp::asts::LoopControlFlowStatementAst::PosEnd() const
     -> std::size_t {
-    return expr ? expr->pos_end() : tok_skip ? tok_skip->pos_end() : tok_seq_exit.back()->pos_end();
+    // Use expression or "skip" or last "exit".
+    return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.Back()->PosEnd();
 }
 
-
-auto spp::asts::LoopControlFlowStatementAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<LoopControlFlowStatementAst>(
-        ast_clone_vec(tok_seq_exit),
-        ast_clone(tok_skip),
-        ast_clone(expr));
+auto spp::asts::LoopControlFlowStatementAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<LoopControlFlowStatementAst>(
+        AstCloneVec(TokSeqExit), AstClone(TokSkip), AstClone(Expr));
 }
 
-
-spp::asts::LoopControlFlowStatementAst::operator std::string() const {
+auto spp::asts::LoopControlFlowStatementAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(tok_seq_exit, " ").append(" ");
-    SPP_STRING_APPEND(tok_skip).append(" ");
-    SPP_STRING_APPEND(expr);
+    SPP_STRING_EXTEND(TokSeqExit, " ").append(" ");
+    SPP_STRING_APPEND(TokSkip).append(" ");
+    SPP_STRING_APPEND(Expr);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
+auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Get the number of control flow statements, and the loop's nesting level.
-    const auto has_skip = tok_skip != nullptr;
-    const auto num_controls = tok_seq_exit.size() + (has_skip ? 1 : 0);
-    const auto nested_loop_depth = meta->current_loop_depth;
+    //
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::errors::SppLoopTooManyControlFlowStatementsError;
+    using analyse::errors::SppTypeMismatchError;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::type_utils::TypeEq;
+    using generate::common_types::VoidType;
 
-    // Analyse the expression if it is present.
-    if (expr != nullptr) {
-        SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
-    }
+    // Get the number of control flow statements, and the loop's nesting level.
+    const auto has_skip = TokSkip != nullptr;
+    const auto num_controls = TokSeqExit.Len() + (has_skip ? 1 : 0);
+    const auto nested_loop_depth = meta->LoopCurrentDepth;
 
     // Check the depth of the loop is greater than or equal to the number of control statements.
-    raise_if<analyse::errors::SppLoopTooManyControlFlowStatementsError>(
-        num_controls > nested_loop_depth, {sm->current_scope},
-        ERR_ARGS(*meta->current_loop_ast->tok_loop, *this, num_controls, nested_loop_depth));
+    RaiseIf<SppLoopTooManyControlFlowStatementsError>(
+        num_controls > nested_loop_depth, {sm->CurrentScope},
+        ERR_ARGS(*meta->LoopCurrentAst->TokLoop, *this, num_controls, nested_loop_depth));
 
     // Save and compare the loop's "exiting" type against other nested loop's exit statement types.
     if (not has_skip) {
-        auto expr_type = generate::common_types::void_type(pos_start());
-        if (expr != nullptr) {
-            expr->stage_7_analyse_semantics(sm, meta);
-            expr_type = expr->infer_type(sm, meta);
+        auto expr_type = VoidType(PosStart());
+
+        // Analyse the expression if it is present.
+        if (Expr != nullptr) {
+            Expr->Stage7_AnalyseSemantics(sm, meta);
+            RaiseIf<SppInvalidPrimaryExpressionError>(
+                Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
+                {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+
+            expr_type = Expr->InferType(sm, meta);
         }
 
         // Insert or check the depth's corresponding exit type.
         const auto depth = nested_loop_depth - num_controls;
-        if (meta->loop_return_types->contains(depth)) {
+        if (meta->LoopReturnTypes->contains(depth)) {
             // If the type is already set, check it matches the current expression's type.
-            auto [that_expr, that_expr_type, that_scope] = meta->loop_return_types->at(depth);
-            raise_if<analyse::errors::SppTypeMismatchError>(
-                not analyse::utils::type_utils::symbolic_eq(*expr_type, *that_expr_type, *sm->current_scope, *that_scope),
-                {sm->current_scope, that_scope}, ERR_ARGS(*expr, *expr_type, *that_expr, *that_expr_type));
+            auto [that_expr, that_expr_type, that_scope] = meta->LoopReturnTypes->at(depth);
+            RaiseIf<SppTypeMismatchError>(
+                not TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
+                {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
         }
         else {
-            auto stored_expr = expr ? expr.get() : nullptr;
-            (*meta->loop_return_types)[depth] = std::make_tuple(stored_expr, expr_type, sm->current_scope);
+            auto stored_expr = Expr ? Expr.get() : nullptr;
+            (*meta->LoopReturnTypes)[depth] = std::make_tuple(stored_expr, expr_type, sm->CurrentScope);
         }
     }
 }
 
-
-auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
+auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+    if (Expr == nullptr) { return; }
+
     // Check the memory state of the expression if it is present. Expression is being moved into outer context, so
     // strict memory checks.
-    if (expr != nullptr) {
-        expr->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(
-            *expr, *tok_seq_exit.back(), *sm, true, true, true, true, true, meta);
-    }
+    Expr->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*Expr, *TokSeqExit.Back(), *sm, true, true, true, true, true, meta);
 }
 
-
-auto spp::asts::LoopControlFlowStatementAst::stage_11_code_gen_2(
+auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -153,21 +158,16 @@ auto spp::asts::LoopControlFlowStatementAst::stage_11_code_gen_2(
     // TODO
 
     // If there is an attached expression, code generate it.
-    return expr ? expr->stage_11_code_gen_2(sm, meta, ctx) : nullptr;
+    return Expr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
 }
 
-
-auto spp::asts::LoopControlFlowStatementAst::infer_type(
+auto spp::asts::LoopControlFlowStatementAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
-    // If there is an attached expression, return its type.
-    if (expr != nullptr) {
-        return expr->infer_type(sm, meta);
-    }
-
-    // Otherwise, return the void type.
-    return generate::common_types::void_type(pos_start());
+    -> Shared<TypeAst> {
+    // If there is an attached expression, return its type, otherwise Void.
+    using generate::common_types::VoidType;
+    return Expr != nullptr ? Expr->InferType(sm, meta) : VoidType(PosStart());
 }
 
 SPP_MOD_END

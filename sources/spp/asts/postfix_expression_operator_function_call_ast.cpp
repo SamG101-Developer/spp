@@ -1,5 +1,4 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
@@ -28,6 +27,7 @@ import spp.asts.function_prototype_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
@@ -51,373 +51,440 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
-import opex.cast;
-
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
-    decltype(generic_arg_group) &&generic_arg_group,
-    decltype(arg_group) &&arg_group,
-    decltype(fold) &&fold) :
-    PostfixExpressionOperatorAst(),
-    m_overload_info(std::nullopt),
-    m_is_async(nullptr),
-    m_closure_dummy_arg(nullptr),
-    m_is_coro_and_auto_resume(false),
-    closure_dummy_proto(nullptr),
-    generic_arg_group(std::move(generic_arg_group)),
-    arg_group(std::move(arg_group)),
-    fold(std::move(fold)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->arg_group);
+    decltype(GnArgGroup) &&generic_arg_group,
+    decltype(FnArgGroup) &&arg_group,
+    decltype(Fold) &&fold) :
+    GnArgGroup(std::move(generic_arg_group)),
+    FnArgGroup(std::move(arg_group)),
+    Fold(std::move(fold)),
+    _OverloadInfo(std::nullopt),
+    _ClosureDummyArg(nullptr),
+    _ClosureDummyProto(nullptr),
+    _IsAsync(nullptr),
+    _IsCoroAndAutoResume(false) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnArgGroup);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
+    Source.OriginalExpr = this;
 }
-
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::~PostfixExpressionOperatorFunctionCallAst() = default;
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::pos_start() const
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::PosStart() const
     -> std::size_t {
-    return generic_arg_group->pos_start();
+    // Use the generic argument group.
+    return not GnArgGroup->Args.IsEmpty() ? GnArgGroup->PosStart() : FnArgGroup->PosStart();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::pos_end() const
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::PosEnd() const
     -> std::size_t {
-    return fold ? fold->pos_end() : arg_group->pos_end();
+    // Use the fold or function argument group.
+    return Fold ? Fold->PosEnd() : FnArgGroup->PosEnd();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(
-        ast_clone(generic_arg_group),
-        ast_clone(arg_group),
-        ast_clone(fold));
-    ast->closure_dummy_proto = ast_clone(closure_dummy_proto);
-    ast->transformed_ast = ast_clone(transformed_ast);
-    ast->m_overload_info = m_overload_info;
-    ast->m_is_async = m_is_async;
-    ast->m_folded_asts = ast_clone_vec(m_folded_asts);
-    ast->m_closure_dummy_arg_group = ast_clone(m_closure_dummy_arg_group);
-    ast->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
-    ast->m_is_coro_and_auto_resume = m_is_coro_and_auto_resume;
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto ast = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+        AstClone(GnArgGroup), AstClone(FnArgGroup), AstClone(Fold));
+    if (Source.OriginalExpr != this) {
+        ast->Source.OriginalExpr = Source.OriginalExpr;
+    }
+    ast->_ClosureDummyProto = AstClone(_ClosureDummyProto);
+    ast->_TransformedAst = AstClone(_TransformedAst);
+    ast->_OverloadInfo = _OverloadInfo;
+    ast->_IsAsync = _IsAsync;
+    ast->_FoldedAsts = AstCloneVec(_FoldedAsts);
+    ast->_ClosureDummyArgGroup = AstClone(_ClosureDummyArgGroup);
+    ast->_ClosureDummyArg = AstClone(_ClosureDummyArg);
+    ast->_IsCoroAndAutoResume = _IsCoroAndAutoResume;
     return ast;
 }
 
-
-spp::asts::PostfixExpressionOperatorFunctionCallAst::operator std::string() const {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(generic_arg_group);
-    SPP_STRING_APPEND(arg_group);
-    SPP_STRING_APPEND(fold);
+    if (_TransformedAst != nullptr) {
+        SPP_STRING_APPEND(_TransformedAst);
+        SPP_STRING_END;
+    }
+    SPP_STRING_APPEND(GnArgGroup);
+    SPP_STRING_APPEND(FnArgGroup);
+    SPP_STRING_APPEND(Fold);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::handle_function_folding(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>> {
-    // Populate the list of arguments to fold.
-    auto folded_args = std::vector<FunctionCallArgumentAst*>{};
-    auto folded_arg_types = std::vector<TypeAst*>{};
-    auto folded_tup_lens = std::vector<std::size_t>{};
-    auto fold_indexes = std::vector<std::size_t>{};
-    for (auto [i, arg] : arg_group->get_all_args() | genex::views::enumerate) {
-        auto arg_type = arg->infer_type(sm, meta);
-        if (analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope)) {
-            fold_indexes.emplace_back(i);
-            folded_args.emplace_back(arg);
-            folded_arg_types.emplace_back(arg_type.get());
-            folded_tup_lens.emplace_back(arg_type->type_parts().back()->generic_arg_group->args.size());
-        }
-    }
-
-    // Build the unrolled AST transformations.
-    const auto smallest_tuple = genex::min_element(folded_tup_lens);
-    auto transformed_asts = std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>>{};
-    for (auto i = 0uz; i < smallest_tuple; ++i) {
-        auto new_arg_group = ast_clone(arg_group);
-        for (const auto fold_index : fold_indexes) {
-            // Create the postfix access into the tuple.
-            auto id = std::make_unique<IdentifierAst>(0, std::to_string(fold_index));
-            auto ma = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
-            auto pf = std::make_unique<PostfixExpressionAst>(std::move(new_arg_group->args[fold_index]->val), std::move(ma));
-            new_arg_group->args[fold_index]->val = std::move(pf);
-        }
-
-        auto transformed_ast = ast_clone(this);
-        transformed_ast->arg_group = std::move(new_arg_group);
-        transformed_ast->fold = nullptr;
-        transformed_asts.emplace_back(std::move(transformed_ast));
-    }
-
-    // Return the transformed asts.
-    return transformed_asts;
-}
-
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semantics(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppInvalidComptimeOperationError;
+    using analyse::utils::func_utils::IsTargetCallable;
+    using analyse::utils::overload_utils::DetermineOverload;
+    using analyse::utils::type_utils::TypeEq;
+    using generate::common_types_precompiled::FUN_REF;
+    using generate::common_types_precompiled::FUN_MUT;
+    using generate::common_types_precompiled::GEN_ONCE;
+
     // Prevent double analysis.
     // Todo: See why this might be happening anyway, and remove this check preferably.
-    if (m_overload_info.has_value()) { return; }
+    if (_OverloadInfo.has_value()) { return; }
 
     // Analyse the generic arguments and the function call arguments before determining the overload.
-    meta->save();
-    meta->return_type_overload_resolver_type = nullptr;
-    generic_arg_group->stage_7_analyse_semantics(sm, meta);
-    arg_group->stage_7_analyse_semantics(sm, meta);
-    meta->restore();
+    meta->Save();
+    meta->ReturnTypeOverloadResolverType = nullptr;
+    GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    FnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 
     // If we are function folding, create transformed asts.
-    if (fold != nullptr) {
-        m_folded_asts = handle_function_folding(sm, meta);
-        for (auto const &ast : m_folded_asts) { ast->stage_7_analyse_semantics(sm, meta); }
+    if (Fold != nullptr) {
+        _FoldedAsts = _HandleFunctionFolding(sm, meta);
+        for (auto const &ast : _FoldedAsts) { ast->Stage7_AnalyseSemantics(sm, meta); }
         return;
     }
 
     // Resolve the overload for this function call.
-    auto [overload, is_closure] = analyse::utils::overload_utils::determine_overload(*this, sm, meta);
+    auto [overload, is_closure] = DetermineOverload(*this, sm, meta);
 
     // Special case for closures; apply the convention the closure name to ensure is it movable/mutable etc.
-    // Todo: move this from overload selection to semantic_analysis?
     if (is_closure) {
-        const auto lhs_type = analyse::utils::func_utils::is_target_callable(*meta->postfix_expression_lhs, *sm, meta);
-        auto dummy_self_arg = std::make_unique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, ast_clone(meta->postfix_expression_lhs));
-        if (analyse::utils::type_utils::symbolic_eq(*lhs_type->without_generics(), *generate::common_types_precompiled::FUN_MUT, *sm->current_scope, *sm->current_scope)) {
-            dummy_self_arg->conv = std::make_unique<ConventionMutAst>(nullptr, nullptr);
+        const auto lhs_type = IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
+        auto dummy_self_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
+            nullptr, nullptr, AstClone(meta->PostfixExpressionLhs));
+
+        if (TypeEq(*lhs_type->WithoutGenerics(), *FUN_MUT, *sm->CurrentScope, *sm->CurrentScope)) {
+            dummy_self_arg->Conv = MakeUnique<ConventionMutAst>(nullptr, nullptr);
+            dummy_self_arg->Conv->To<ConventionMutAst>()->TokBorrow->PatchPos(meta->PostfixExpressionLhs->PosStart());
         }
-        else if (analyse::utils::type_utils::symbolic_eq(*lhs_type->without_generics(), *generate::common_types_precompiled::FUN_REF, *sm->current_scope, *sm->current_scope)) {
-            dummy_self_arg->conv = std::make_unique<ConventionRefAst>(nullptr);
+        else if (TypeEq(*lhs_type->WithoutGenerics(), *FUN_REF, *sm->CurrentScope, *sm->CurrentScope)) {
+            dummy_self_arg->Conv = MakeUnique<ConventionRefAst>(nullptr);
+            dummy_self_arg->Conv->To<ConventionRefAst>()->TokBorrow->PatchPos(meta->PostfixExpressionLhs->PosStart());
         }
-        m_closure_dummy_arg = std::move(dummy_self_arg);
+        _ClosureDummyArg = std::move(dummy_self_arg);
     }
 
     // Set the overload to the only pass overload.
-    m_overload_info = std::make_tuple(
-        std::get<0>(overload),
-        std::get<1>(overload),
-        std::move(std::get<3>(overload)));
-    if (const auto self_param = std::get<1>(*m_overload_info)->param_group->get_self_param()) {
-        arg_group->args[0]->conv = ast_clone(self_param->conv);
+    _OverloadInfo = _OInfo{
+        .OverloadScope = std::get<0>(overload),
+        .Proto = std::get<1>(overload),
+        .GnArgs = std::move(std::get<3>(overload))
+    };
+    if (const auto self_param = _OverloadInfo->Proto->FnParamGroup->GetSelfParam()) {
+        FnArgGroup->Args[0]->Conv = AstClone(self_param->Conv);
     }
-    arg_group->args = std::move(std::get<2>(std::move(overload))->args); // This doesn't move "overload", just allows ".1" to be moved off of it
+    FnArgGroup->Args = std::move(std::get<2>(overload)->Args);
 
     // Check that if we are in a cmp context, that the overload is also cmp.
-    raise_if<analyse::errors::SppInvalidComptimeOperationError>(
-        meta->enclosing_function_cmp != nullptr and std::get<1>(*m_overload_info)->tok_cmp == nullptr,
-        {sm->current_scope}, ERR_ARGS(*this));
+    RaiseIf<SppInvalidComptimeOperationError>(
+        meta->EnclosingFunctionCmp != nullptr and _OverloadInfo->Proto->TokCmp == nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*this));
 
     // Special case for GenOnce called as a coroutine => auto move into the "Yield" type.
-    if (std::get<1>(*m_overload_info)->tok_fun->token_type == lex::SppTokenType::KW_COR and not meta->prevent_auto_generator_resume) {
-        m_is_coro_and_auto_resume = analyse::utils::type_utils::symbolic_eq(
-            *generate::common_types_precompiled::GEN_ONCE, *std::get<1>(*m_overload_info)->return_type->without_generics(),
-            *sm->current_scope, *std::get<0>(*m_overload_info));
+    if (_OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_COR and not meta->PreventAutoGeneratorResume) {
+        // This needs to be any type that EXTENDS GenOnce, not just GenOnce itself.
+        auto [_, _, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
+            *_OverloadInfo->Proto->ReturnType, *sm->CurrentScope, *meta->PostfixExpressionLhs, "GenOnce collapse");
+        _IsCoroAndAutoResume = is_once;
     }
-    meta->prevent_auto_generator_resume = false;
+    meta->PreventAutoGeneratorResume = false;
 
     // Copy some properties into the transform (clone arg group for the self arg convention).
-    if (transformed_ast) {
-        const auto transformed_op = transformed_ast->op->to<PostfixExpressionOperatorFunctionCallAst>();
-        transformed_op->arg_group = ast_clone(arg_group);
-        transformed_op->m_overload_info = m_overload_info;
-        transformed_op->m_is_async = m_is_async;
-        transformed_op->m_folded_asts = ast_clone_vec(m_folded_asts);
-        transformed_op->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
+    if (_TransformedAst) {
+        const auto transformed_op = _TransformedAst->Op->To<PostfixExpressionOperatorFunctionCallAst>();
+        transformed_op->FnArgGroup = AstClone(FnArgGroup);
+        transformed_op->_OverloadInfo = _OverloadInfo;
+        transformed_op->_IsAsync = _IsAsync;
+        transformed_op->_FoldedAsts = AstCloneVec(_FoldedAsts);
+        transformed_op->_ClosureDummyArg = AstClone(_ClosureDummyArg);
     }
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // If a fold is taking place, analyse the folded transformations.
-    if (fold != nullptr) {
-        for (auto const &ast : m_folded_asts) { ast->stage_8_check_memory(sm, meta); }
+    if (Fold != nullptr) {
+        for (auto const &ast : _FoldedAsts) { ast->Stage8_CheckMemory(sm, meta); }
         return;
     }
 
     // If a closure is being called, apply memory rules to the symbolic target.
-    if (m_closure_dummy_arg != nullptr) {
-        auto closure_args = std::vector<std::unique_ptr<FunctionCallArgumentAst>>();
-        closure_args.emplace_back(std::move(m_closure_dummy_arg));
-        m_closure_dummy_arg_group = std::make_unique<FunctionCallArgumentGroupAst>(nullptr, std::move(closure_args), nullptr);
-        m_closure_dummy_arg_group->stage_7_analyse_semantics(sm, meta);
-        m_closure_dummy_arg_group->stage_8_check_memory(sm, meta);
+    if (_ClosureDummyArg != nullptr) {
+        auto closure_args = Vec<Unique<FunctionCallArgumentAst>>();
+        closure_args.EmplaceBack(std::move(_ClosureDummyArg));
+        _ClosureDummyArgGroup = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(closure_args), nullptr);
+        _ClosureDummyArgGroup->Stage7_AnalyseSemantics(sm, meta);
+        _ClosureDummyArgGroup->Stage8_CheckMemory(sm, meta);
     }
 
     // Check the argument group, now the old borrows hae been invalidated.
-    generic_arg_group->stage_8_check_memory(sm, meta);
+    GnArgGroup->Stage8_CheckMemory(sm, meta);
 
-    meta->save();
-    meta->target_call_function_prototype = std::get<1>(*m_overload_info);
-    meta->target_call_was_function_async = m_is_async;
-    arg_group->stage_8_check_memory(sm, meta);
-    meta->restore();
+    meta->Save();
+    meta->TargetCallFunctionPrototype = _OverloadInfo->Proto;
+    meta->TargetCallWasFunctionAsync = _IsAsync;
+    FnArgGroup->Stage8_CheckMemory(sm, meta);
+    meta->Restore();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resolution(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Todo: For now, don't allow folding in comptime.
-    raise_if<analyse::errors::SppCompileTimeConstantError>(
-        fold != nullptr,
-        {sm->current_scope}, ERR_ARGS(*fold));
+    //
+    using analyse::errors::SppCompileTimeConstantError;
+    using analyse::errors::SppCompileTimeConstantError;
+
+    // When coming from stage7 (also limit this allowance based on meta->CurrentStage for when we expand to cmp generics?)
+    auto revoke = false;
+    if (not _OverloadInfo.has_value()) {
+        revoke = true;
+        Stage7_AnalyseSemantics(sm, meta);
+    }
 
     // Get the function prototype and resolve it.
-    const auto fn_proto = std::get<1>(*m_overload_info)->non_generic_impl();
+    auto const *const fn_proto = _OverloadInfo->Proto->GetNonGenericImpl();
+    RaiseIf<SppCompileTimeConstantError>(
+        fn_proto->TokCmp == nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*this));
 
-    // Create the argument map for the function to use.
-    auto args = std::vector<std::pair<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>>>();
+    // Todo: For now, don't allow folding in comptime.
+    RaiseIf<SppCompileTimeConstantError>(
+        Fold != nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*Fold));
 
-    const auto check_self = self_comptime != nullptr;
-    if (check_self and not arg_group->get_keyword_args().empty() and arg_group->get_keyword_args().front()->name->val == "self") { // todo: use: .at("self") != nullptr
-        self_comptime->stage_9_comptime_resolution(sm, meta);
-        args.emplace_back(std::make_unique<IdentifierAst>(0, "self"), std::move(meta->cmp_result));
+    // Create the argument map for the function to use. Positional arguments (including the implicit "self"
+    // injected for method-call syntax) are matched to parameters by position; keyword arguments by name.
+    const auto fn_params = fn_proto->FnParamGroup->GetAllParams();
+    auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
+    for (auto const &[i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
+        const auto kw_arg = arg->To<FunctionCallArgumentKeywordAst>();
+        auto name = kw_arg != nullptr ? kw_arg->Name : fn_params[i]->ExtractName();
+        arg->Stage9_CompTimeResolve(sm, meta);
+        args.EmplaceBack(std::move(name), std::move(meta->CmpResult));
     }
-
-    for (auto const &arg : arg_group->get_keyword_args()) {
-        if (check_self and arg->name->val == "self") { continue; }
-        arg->stage_9_comptime_resolution(sm, meta);
-        args.emplace_back(arg->name, std::move(meta->cmp_result));
-    }
-    auto arg_map = decltype(meta->cmp_args)();
-    for (auto &&[name, val] : args) {
-        arg_map[name] = std::move(val);
-    }
+    auto arg_map = decltype(meta->CmpArgs)();
+    for (auto &&[name, val] : args) { arg_map[name] = std::move(val); }
 
     // Resolve the function with the arguments.
-    meta->save();
-    meta->cmp_args = std::move(arg_map);
-    auto tm = ScopeManager(sm->global_scope, fn_proto->get_ast_scope()); // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
-    tm.reset(tm.current_scope->children[0].get());
-    fn_proto->impl->stage_9_comptime_resolution(&tm, meta);
-    meta->restore();
+    meta->Save();
+    meta->CmpArgs = std::move(arg_map);
+    auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope()); // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
+    tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
+    fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
+    meta->Restore();
+
+    if (revoke) {
+        _OverloadInfo.reset();
+    }
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_11_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // For folding, generate the code for the folded transformations and combine into single block.
-    if (fold != nullptr) {
-        const auto merge = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
-        merge->members = m_folded_asts
+    if (Fold != nullptr) {
+        const auto merge = InnerScopeExpressionAst::NewEmpty();
+        merge->Members = _FoldedAsts
             | genex::views::transform([&meta](auto &&ast) {
-                auto clone_lhs = ast_clone(meta->postfix_expression_lhs);
-                auto pf = std::make_unique<PostfixExpressionAst>(std::move(clone_lhs), std::move(ast));
-                return std::unique_ptr<StatementAst>(pf.release());
+                auto clone_lhs = AstClone(meta->PostfixExpressionLhs);
+                auto pf = MakeUnique<PostfixExpressionAst>(std::move(clone_lhs), std::move(ast));
+                return Unique<StatementAst>(pf.release());
             })
-            | genex::to<std::vector>();
-        return merge->stage_11_code_gen_2(sm, meta, ctx);
+            | genex::to<Vec>();
+        return merge->Stage11_CodeGen(sm, meta, ctx);
     }
 
     // For generically converted function prototypes, generate their llvm func once.
     // Todo: Is this even needed?
-    if (std::get<1>(*m_overload_info)->get_llvm_func() == nullptr) {
-        auto tm = ScopeManager(sm->global_scope, const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
-        tm.reset(tm.current_scope);
-        std::get<1>(*m_overload_info)->stage_10_code_gen_1(&tm, meta, ctx);
+    if (_OverloadInfo->Proto->GetLlvmFunc() == nullptr) {
+        auto tm = ScopeManager(sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
+        tm.Reset(tm.CurrentScope);
+        _OverloadInfo->Proto->Stage10_PreCodeGen(&tm, meta, ctx);
     }
 
-    // SPP_ASSERT(not ctx->builder.GetInsertBlock()->getTerminator());
-    const auto uid = spp::utils::generate_uid(this);
+    // SPP_ASSERT(not ctx->Builder.GetInsertBlock()->getTerminator());
+    const auto uid = spp::utils::Uid(this);
     auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
 
-    if (not arg_group->get_keyword_args().empty() and arg_group->get_keyword_args()[0]->name->val == "self") {
+    if (not FnArgGroup->GetKeywordArgs().IsEmpty() and FnArgGroup->GetKeywordArgs()[0]->Name->Val == "self") {
         // Get the type of the left-hand-side expression.
-        const auto lhs_type = meta->postfix_expression_lhs->to<PostfixExpressionAst>()->lhs->infer_type(sm, meta);
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+        const auto lhs_type = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs->InferType(sm, meta);
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
         const auto llvm_type = codegen::llvm_type(*lhs_type_sym, ctx);
         SPP_ASSERT(llvm_type != nullptr);
 
         // If the lhs is non-symbolic, we need to materialize it, and use as the self argument.
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(
-            *meta->postfix_expression_lhs->to<PostfixExpressionAst>()->lhs);
+        const auto temp_lhs = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs.get();
+        const auto [var_sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*temp_lhs);
         auto base_ptr = static_cast<llvm::Value*>(nullptr);
-        if (sym != nullptr) {
+        if (var_sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
-            const auto lhs_alloca = sym->llvm_info->alloca;
+            const auto lhs_alloca = var_sym->LlvmInfo->Alloca;
             SPP_ASSERT(lhs_alloca != nullptr);
-            base_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr" + uid);
+            base_ptr = ctx->Builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr" + uid);
         }
-        else {
+
+        // This check prevents materializing static access, like "Vec::Vec::push" as it makes no sense to do so.
+        else if (sm->CurrentScope->GetTypeSymbol(AstClone(temp_lhs->To<TypeAst>())) == nullptr) {
             // Materialize the lhs expression into a temporary.
-            const auto lhs_val = meta->postfix_expression_lhs->stage_11_code_gen_2(sm, meta, ctx);
-            const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs" + uid);
-            ctx->builder.CreateStore(lhs_val, temp);
+            const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+            const auto temp = ctx->Builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs" + uid);
+            ctx->Builder.CreateStore(lhs_val, temp);
             base_ptr = temp;
         }
 
         // Use the proper pointer to the self arg (sometimes for semantic analysis dummy vars are used).
-        llvm_self_arg = ctx->builder.CreateLoad(llvm_type, base_ptr, "load.member_access.self_arg" + uid);
+        llvm_self_arg = ctx->Builder.CreateLoad(llvm_type, base_ptr, "load.member_access.self_arg" + uid);
     }
 
     // Get the llvm function target, and generate the argument values.
-    const auto llvm_func = std::get<1>(*m_overload_info)->get_llvm_func()->target;
+    const auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
     SPP_ASSERT(llvm_func != nullptr);
-    auto llvm_func_args = arg_group->args
-        | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_11_code_gen_2(sm, meta, ctx); })
-        | genex::to<std::vector>();
+    auto llvm_func_args = FnArgGroup->Args
+        | genex::views::transform([sm, meta, ctx](auto const &x) { return x->Stage11_CodeGen(sm, meta, ctx); })
+        | genex::to<Vec>();
     if (llvm_self_arg != nullptr) { llvm_func_args[0] = llvm_self_arg; }
 
     // Create the call instruction.
-    const auto llvm_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call" + uid);
+    const auto llvm_call = ctx->Builder.CreateCall(
+        llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
     return llvm_call;
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
+    //
+    using generate::common_types::SelfType;
+    using generate::common_types::TupleType;
+    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+
     // For function folding, collect a tuple of all return types.
-    if (not m_folded_asts.empty()) {
-        auto folded_return_types = m_folded_asts
-            | genex::views::transform([sm, meta](auto const &ast) { return ast->infer_type(sm, meta); })
-            | genex::to<std::vector>();
-        auto tuple_type = generate::common_types::tuple_type(0, std::move(folded_return_types));
+    if (not _FoldedAsts.IsEmpty()) {
+        auto folded_return_types = _FoldedAsts
+            | genex::views::transform([sm, meta](auto const &ast) { return ast->InferType(sm, meta); })
+            | genex::to<Vec>();
+        auto tuple_type = TupleType(0, std::move(folded_return_types));
         return tuple_type;
     }
 
     // Get the function return type from the overload.
-    auto ret_type = std::get<1>(*m_overload_info)->return_type;
+    auto ret_type = _OverloadInfo->Proto->ReturnType;
 
     // If there is a scope present (non-closure), then fully qualify the return type.
-    if (std::get<0>(*m_overload_info) != nullptr) {
-        ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
+    if (_OverloadInfo->OverloadScope != nullptr and not ret_type->IsSelfType()) {
+        ret_type = _OverloadInfo->OverloadScope->GetTypeSymbol(ret_type)->FqName();
     }
 
     // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
-    if (m_is_coro_and_auto_resume and not meta->prevent_auto_generator_resume) {
-        auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
-            *ret_type, *sm->current_scope, *meta->postfix_expression_lhs, "function call");
+    if (_IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume) {
+        auto [_, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
+            *ret_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "function call");
         ret_type = yield_type;
+    }
+
+    const auto pf = meta->PostfixExpressionLhs->To<PostfixExpressionAst>();
+    const auto is_runtime = pf ? pf->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr : false;
+    const auto is_static = pf ? pf->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr and pf->Lhs->To<TypeAst>() : false;
+
+    if (ret_type->IsSelfType()) {
+        ret_type = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs->InferType(sm, meta)->WithConvention(nullptr);
+    }
+    else if (pf and (is_runtime or is_static)) {
+        // Perform a "Self=FQType" substitution to handle "Self" being part of the generics of the return type.
+        // Todo: use Resolve method (which scope??)
+        const auto inferred = is_runtime
+            ? pf->Lhs->InferType(sm, meta)
+            : AstClone(pf->Lhs->To<TypeAst>());
+
+        auto generic = MakeUnique<GenericArgumentTypeKeywordAst>(
+            SelfType(0), nullptr,
+            inferred->WithConvention(nullptr));
+
+        const auto generic_group = GenericArgumentGroupAst::NewEmpty();
+        generic_group->Args.PushBack(std::move(generic));
+        ret_type = ret_type->SubstituteGenerics(generic_group->GetAllArgs());
     }
 
     // Return the type.
     return ret_type;
 }
 
-
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::mark_as_async(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::MarkAsAsync(
     Ast *async_token)
     -> void {
-    m_is_async = async_token;
+    _IsAsync = async_token;
 }
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::target() const
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Target() const
     -> FunctionPrototypeAst* {
-    return m_overload_info.has_value() ? std::get<1>(*m_overload_info) : nullptr;
+    return _OverloadInfo.has_value() ? _OverloadInfo->Proto : nullptr;
 }
 
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::SetClosureDummyProto(
+    Unique<FunctionPrototypeAst> &&proto) -> void {
+    _ClosureDummyProto = std::move(proto);
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::SetTransformedAst(
+    Unique<PostfixExpressionAst> &&ast)
+    -> void {
+    _TransformedAst = std::move(ast);
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::GetTransformedAst() const
+    -> PostfixExpressionAst* {
+    return _TransformedAst.get();
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_HandleFunctionFolding(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> {
+    // Populate the list of arguments to fold.
+    auto folded_args = Vec<FunctionCallArgumentAst*>{};
+    auto folded_arg_types = Vec<TypeAst*>{};
+    auto folded_tup_lens = Vec<std::size_t>{};
+    auto fold_indexes = Vec<std::size_t>{};
+    for (auto [i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
+        auto arg_type = arg->InferType(sm, meta);
+        if (analyse::utils::type_utils::IsTypeTup(*arg_type, *sm->CurrentScope)) {
+            fold_indexes.EmplaceBack(i);
+            folded_args.EmplaceBack(arg);
+            folded_arg_types.EmplaceBack(arg_type.get());
+            folded_tup_lens.EmplaceBack(arg_type->TypeParts().Back()->GnArgGroup->Args.Len());
+        }
+    }
+
+    // Build the unrolled AST transformations.
+    const auto smallest_tuple = genex::min_element(folded_tup_lens);
+    auto transformed_asts = Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>{};
+    for (auto i = 0uz; i < smallest_tuple; ++i) {
+        auto new_arg_group = AstClone(FnArgGroup);
+        for (const auto fold_index : fold_indexes) {
+            // Create the postfix access into the tuple.
+            auto id = MakeUnique<IdentifierAst>(new_arg_group->Args[fold_index]->Val->PosEnd(), std::to_string(i));
+            auto ma = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
+            auto pf = MakeUnique<PostfixExpressionAst>(std::move(new_arg_group->Args[fold_index]->Val), std::move(ma));
+            new_arg_group->Args[fold_index]->Val = std::move(pf);
+        }
+
+        auto transformed_ast = AstClone(this);
+        transformed_ast->FnArgGroup = std::move(new_arg_group);
+        transformed_ast->Fold = nullptr;
+        transformed_asts.EmplaceBack(std::move(transformed_ast));
+    }
+
+    // Return the transformed asts.
+    return transformed_asts;
+}
 
 SPP_MOD_END

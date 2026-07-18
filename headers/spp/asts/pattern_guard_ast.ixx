@@ -4,6 +4,7 @@ module;
 export module spp.asts.pattern_guard_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -14,18 +15,18 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::PatternGuardAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
     /**
      * The @c and keyword token. This is used to indicate that the pattern guard is being introduced, following a
      * pattern.
      */
-    std::unique_ptr<TokenAst> tok_and;
+    Unique<TokenAst> TokAnd;
 
     /**
      * The expression that is used as the guard for the pattern. This expression is evaluated to determine if the
      * pattern matches, and must be a boolean expression.
      */
-    std::unique_ptr<ExpressionAst> expr;
+    Unique<ExpressionAst> Expr;
 
     /**
      * Constructor for the @c PatternGuardAst.
@@ -33,18 +34,18 @@ SPP_EXP_CLS struct spp::asts::PatternGuardAst final : virtual Ast {
      * @param expression The expression that is used as the guard for the pattern.
      */
     PatternGuardAst(
-        decltype(tok_and) &&tok_and,
-        decltype(expr) &&expression);
+        decltype(TokAnd) &&tok_and,
+        decltype(Expr) &&expression);
 
     ~PatternGuardAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

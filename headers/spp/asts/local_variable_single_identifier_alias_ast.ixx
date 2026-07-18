@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -12,17 +13,17 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast {
     /**
      * The @c as token that indicates the alias for the local variable. This separates the identifier from the alias.
      */
-    std::unique_ptr<TokenAst> tok_as;
+    Unique<TokenAst> TokAs;
 
     /**
      * The identifier that is used as the alias for the local variable. This will be the name on the symbol that is
      * introduced.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * Construct the LocalVariableSingleIdentifierAliasAst with the arguments matching the members.
@@ -30,8 +31,8 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virt
      * @param name The identifier that is used as the alias for the local variable.
      */
     LocalVariableSingleIdentifierAliasAst(
-        decltype(tok_as) &&tok_as,
-        decltype(name) &&name);
+        decltype(TokAs) &&tok_as,
+        decltype(Name) &&name);
 
     ~LocalVariableSingleIdentifierAliasAst() override;
 

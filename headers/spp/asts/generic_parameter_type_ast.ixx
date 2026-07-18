@@ -4,6 +4,7 @@ module;
 export module spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.utils.orderable;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -15,23 +16,15 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-public:
-    std::vector<analyse::scopes::Scope *> m_dummy_scopes;
+    SPP_GCC_VTABLE_FIX
 
-private:
-    std::unique_ptr<Ast> m_dummy_ast;
-
-public:
     /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
      * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the
      * generic type parameter and @c Copy is the constraint.
      */
-    std::unique_ptr<GenericParameterTypeInlineConstraintsAst> constraints;
-
-    auto _spp_key_function() const -> void override;
+    Unique<GenericParameterTypeInlineConstraintsAst> Constraints;
 
     /**
      * Construct the GenericParameterTypeAst with the arguments matching the members.
@@ -40,20 +33,24 @@ public:
      * @param order_tag The order tag for the generic parameter.
      */
     GenericParameterTypeAst(
-        decltype(name) name,
-        decltype(constraints) &&constraints,
+        decltype(Name) name,
+        decltype(Constraints) &&constraints,
         utils::OrderableTag order_tag);
 
     ~GenericParameterTypeAst() override;
 
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    SPP_ATTR_NODISCARD auto GetDummyScopes() const -> std::span<analyse::scopes::Scope* const>;
+
+private:
+    Unique<Ast> _DummyAst;
+
+    Vec<analyse::scopes::Scope*> _DummyScopes;
 };
 
-
-SPP_MOD_BEGIN
-auto spp::asts::GenericParameterTypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeAst)

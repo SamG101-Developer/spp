@@ -16,176 +16,171 @@ import spp.asts.type_ast;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 
-
 SPP_MOD_BEGIN
 spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
-    decltype(tok_mut) &&tok_mut,
-    decltype(name) name,
-    decltype(alias) &&alias) :
-    tok_mut(std::move(tok_mut)),
-    name(std::move(name)),
-    alias(std::move(alias)) {
+    decltype(TokMut) &&tok_mut,
+    decltype(Name) name,
+    decltype(Alias) &&alias) :
+    TokMut(std::move(tok_mut)),
+    Name(std::move(name)),
+    Alias(std::move(alias)) {
 }
-
 
 spp::asts::LocalVariableSingleIdentifierAst::~LocalVariableSingleIdentifierAst() = default;
 
-
-auto spp::asts::LocalVariableSingleIdentifierAst::pos_start() const
+auto spp::asts::LocalVariableSingleIdentifierAst::PosStart() const
     -> std::size_t {
-    return tok_mut ? tok_mut->pos_start() : name->pos_start();
+    // Use the "mut" token or name.
+    return TokMut ? TokMut->PosStart() : Name->PosStart();
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAst::pos_end() const
+auto spp::asts::LocalVariableSingleIdentifierAst::PosEnd() const
     -> std::size_t {
-    return alias ? alias->pos_end() : name->pos_end();
+    // Use the alias or name.
+    return Alias ? Alias->PosEnd() : Name->PosEnd();
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto l = std::make_unique<LocalVariableSingleIdentifierAst>(
-        ast_clone(tok_mut),
-        ast_clone(name),
-        ast_clone(alias));
-    l->conv = ast_clone(conv);
-    l->m_from_case_pattern = m_from_case_pattern;
+auto spp::asts::LocalVariableSingleIdentifierAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto l = MakeUnique<LocalVariableSingleIdentifierAst>(
+        AstClone(TokMut), AstCloneShared(Name), AstClone(Alias));
+    l->Conv = AstClone(Conv);
+    l->_FromCasePattern = _FromCasePattern;
     return l;
 }
 
-
-spp::asts::LocalVariableSingleIdentifierAst::operator std::string() const {
+auto spp::asts::LocalVariableSingleIdentifierAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_mut).append(tok_mut ? " " : "");
-    SPP_STRING_APPEND(name).append(alias ? " " : "");
-    SPP_STRING_APPEND(alias);
+    SPP_STRING_APPEND(TokMut).append(TokMut ? " " : "");
+    SPP_STRING_APPEND(Name).append(Alias ? " " : "");
+    SPP_STRING_APPEND(Alias);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return name;
-}
-
-
-auto spp::asts::LocalVariableSingleIdentifierAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return {name};
-}
-
-
-auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
+auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Get the value and its type from the "meta" information.
-    const auto val = meta->let_stmt_from_uninitialized ? nullptr : meta->let_stmt_value;
-    const auto val_type = meta->let_stmt_value != nullptr ? meta->let_stmt_value->infer_type(sm, meta) : nullptr;
+    const auto val = meta->LetStatementFromUninitialized ? nullptr : meta->LetStatementValue;
+    const auto val_type = meta->LetStatementValue != nullptr ? meta->LetStatementValue->InferType(sm, meta) : nullptr;
 
     // Create a variable symbol for this identifier and value.
-    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
-        alias != nullptr ? alias->name : name,
-        meta->let_stmt_explicit_type != nullptr ? meta->let_stmt_explicit_type : val_type,
-        sm->current_scope, tok_mut != nullptr or (conv and *conv == ConventionTag::MUT));
+    auto sym = MakeShared<analyse::scopes::VariableSymbol>(
+        Alias != nullptr ? Alias->Name : Name,
+        meta->LetStatementExplicitType != nullptr ? meta->LetStatementExplicitType : val_type,
+        sm->CurrentScope, TokMut != nullptr or (Conv and *Conv == ConventionTag::MUT));
 
     // Update the type if there is a convention present.
-    if (conv != nullptr) {
-        sym->type = sym->type->with_convention(ast_clone(conv));
+    if (Conv != nullptr) {
+        sym->Type = sym->Type->WithConvention(AstClone(Conv));
     }
 
     // Set the initialization AST (for errors).
-    sym->memory_info->ast_initialization = {name.get(), sm->current_scope};
-    sym->memory_info->ast_initialization_origin = {name.get(), sm->current_scope};
+    sym->MemInfo->AstInitialization = {Name.get(), sm->CurrentScope};
+    sym->MemInfo->AstInitializationOrigin = {Name.get(), sm->CurrentScope};
 
     // Increment the initialization counter for initialized statements.
     if (val != nullptr) {
-        sym->memory_info->initialization_counter = 1;
+        sym->MemInfo->InitializationCounter = 1;
 
         // Set borrow asts based on the value's type's convention.
-        if (const auto conv = val_type->get_convention(); conv != nullptr) {
-            sym->memory_info->ast_borrowed = {val, sm->current_scope};
+        if (const auto conv = val_type->GetConvention(); conv != nullptr) {
+            sym->MemInfo->AstBorrowed = {val, sm->CurrentScope};
         }
     }
 
     else {
         // Mark an uninitialized variable as "moved"
-        sym->memory_info->ast_moved = {this, sm->current_scope};
+        sym->MemInfo->AstMoved = {this, sm->CurrentScope};
     }
 
     // Add the symbol to the current scope.
-    sm->current_scope->add_var_symbol(std::move(sym));
+    sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
+auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // No value => nothing to check.
-    if (meta->let_stmt_from_uninitialized) { return; }
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+    if (meta->LetStatementFromUninitialized) { return; }
 
     // Check the value's memory.
-    meta->let_stmt_value->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *meta->let_stmt_value, *this, *sm, true, true, true, true, true, meta);
+    meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
-    const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
-    sym->memory_info->initialized_by(*name, sm->current_scope);
-    if (conv != nullptr) {
-        sym->memory_info->ast_borrowed = {conv.get(), sm->current_scope};
+    const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    sym->MemInfo->InitializedBy(*Name, sm->CurrentScope);
+    if (Conv != nullptr) {
+        sym->MemInfo->AstBorrowed = {Conv.get(), sm->CurrentScope};
     }
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAst::stage_9_comptime_resolution(
+auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Assign the generated value into the variable symbol.
-    meta->save();
-    meta->assignment_target = alias != nullptr ? alias->name : name;
-    meta->let_stmt_value->stage_9_comptime_resolution(sm, meta);
+    meta->Save();
+    meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
+    meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
 
-    const auto var_sym =sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
-    var_sym->comptime_value = std::move(meta->cmp_result);
-    meta->restore();
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    if (var_sym != nullptr) {
+        // Can be nullptr for the materialization into $ symbols.
+        var_sym->CompTimeValue = std::move(meta->CmpResult);
+    }
+    meta->Restore();
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
+auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the alloca for the variable.
-    const auto uid = spp::utils::generate_uid(this);
-    const auto type_sym = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type);
+    const auto uid = spp::utils::Uid(this);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // Always alloca at the top of the function for stack variables.
-    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto func = ctx->Builder.GetInsertBlock()->getParent();
     const auto entry = &func->getEntryBlock();
     auto temp_builder = llvm::IRBuilder(entry, entry->begin());
 
     const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
-    const auto var_sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
-    var_sym->llvm_info->alloca = alloca;
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    var_sym->LlvmInfo->Alloca = alloca;
 
     // Generate the initializer expression.
-    if (not meta->let_stmt_from_uninitialized) {
-        meta->save();
-        meta->assignment_target = alias != nullptr ? alias->name : name;
-        const auto llvm_val = meta->let_stmt_value->stage_11_code_gen_2(sm, meta, ctx);
-        ctx->builder.CreateStore(llvm_val, alloca);
-        meta->restore();
+    if (not meta->LetStatementFromUninitialized) {
+        meta->Save();
+        meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
+        const auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
+        ctx->Builder.CreateStore(llvm_val, alloca);
+        meta->Restore();
     }
 
     // Alloca already added; return nullptr.
     return nullptr;
+}
+
+auto spp::asts::LocalVariableSingleIdentifierAst::ExtractNames() const
+    -> Vec<Shared<IdentifierAst>> {
+    // Return the single name as a vector that can get appended to from nesting.
+    return {Name};
+}
+
+auto spp::asts::LocalVariableSingleIdentifierAst::ExtractName() const
+    -> Shared<IdentifierAst> {
+    // Return the single name (identifier) for matching capability.
+    return Name;
 }
 
 SPP_MOD_END

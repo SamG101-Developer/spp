@@ -7,46 +7,43 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
-
 SPP_MOD_BEGIN
 spp::asts::ConventionMutAst::ConventionMutAst(
-    decltype(tok_borrow) &&tok_borrow,
-    decltype(tok_mut) &&tok_mut) :
+    decltype(TokBorrow) &&tok_borrow,
+    decltype(TokMut) &&tok_mut) :
     ConventionAst(ConventionTag::MUT),
-    tok_borrow(std::move(tok_borrow)),
-    tok_mut(std::move(tok_mut)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_borrow, lex::SppTokenType::TK_BORROW, "&");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_mut, lex::SppTokenType::KW_MUT, "mut");
+    TokBorrow(std::move(tok_borrow)),
+    TokMut(std::move(tok_mut)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokBorrow, lex::SppTokenType::TK_BORROW, "&");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokMut, lex::SppTokenType::KW_MUT, "mut");
 }
-
 
 spp::asts::ConventionMutAst::~ConventionMutAst() = default;
 
-
-auto spp::asts::ConventionMutAst::pos_start() const
+auto spp::asts::ConventionMutAst::PosStart() const
     -> std::size_t {
-    return tok_borrow->pos_start();
+    // Use the "&" token.
+    return TokBorrow->PosStart();
 }
 
-
-auto spp::asts::ConventionMutAst::pos_end() const
+auto spp::asts::ConventionMutAst::PosEnd() const
     -> std::size_t {
-    return tok_mut->pos_end();
+    // Use the "mut" token.
+    return TokMut->PosEnd();
 }
 
-
-auto spp::asts::ConventionMutAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ConventionMutAst>(
-        ast_clone(tok_borrow),
-        ast_clone(tok_mut));
+auto spp::asts::ConventionMutAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ConventionMutAst>(
+        AstClone(TokBorrow), AstClone(TokMut));
 }
 
-
-spp::asts::ConventionMutAst::operator std::string() const {
+auto spp::asts::ConventionMutAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_borrow);
-    SPP_STRING_APPEND(tok_mut).append(" ");
+    SPP_STRING_APPEND(TokBorrow);
+    SPP_STRING_APPEND(TokMut).append(" ");
     SPP_STRING_END;
 }
 

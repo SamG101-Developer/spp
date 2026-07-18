@@ -1,315 +1,286 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_on_non_callable,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         5()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_too_many_args,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         f(5)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_arg_name,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f(a: std::number::S32) -> std::void::Void {
+    fun f(a: S32) -> Void {
         f(a=1, b=2)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_name_missing,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f(a: std::number::S32, b: std::number::S32) -> std::void::Void {
+    fun f(a: S32, b: S32) -> Void {
         f(1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_name_missing_with_generic_type,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: std::number::S32, b: T) -> std::void::Void {
+    fun f[T](a: S32, b: T) -> Void {
         f(1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_arg_type_mismatch,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f(a: std::number::S32) -> std::void::Void {
+    fun f(a: S32) -> Void {
         f("a")
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_missing_explicit_generic,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: std::number::S32) -> std::void::Void {
+    fun f[T](a: S32) -> Void {
         f(1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_generic_conflict,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: T, b: T) -> std::void::Void {
-        f(1, "1")
+    fun f[T](a: T, b: T) -> Void {
+        f(1, false)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_unnecessary_explicit_generic_1,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: T) -> std::void::Void {
-        f[std::number::S32](1)
+    fun f[T](a: T) -> Void {
+        f[S32](1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_unnecessary_explicit_generic_2,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: T) -> std::void::Void {
-        f[std::string::Str](1)
+    fun f[T](a: T) -> Void {
+        f[Str](1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_extra_generic,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: T) -> std::void::Void {
-        f[std::boolean::Bool, std::boolean::Bool](1)
+    fun f[T](a: T) -> Void {
+        f[Bool, Bool](1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_generic_named,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: T) -> std::void::Void {
-        f[T=std::boolean::Bool, U=std::boolean::Bool](1)
+    fun f[T](a: T) -> Void {
+        f[T=Bool, U=Bool](1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_generic_explicit_and_inferred,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T, U](a: T) -> std::void::Void {
-        f[std::boolean::Bool](123)
+    fun f[T, U](a: T) -> Void {
+        f[Bool](123)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_ambiguous_1,
     SppFunctionCallOverloadAmbiguousError, R"(
-    fun f(a: std::number::S32) -> std::void::Void { }
-    fun f[T](a: T) -> std::void::Void { }
+    fun f(a: S32) -> Void { }
+    fun f[T](a: T) -> Void { }
 
-    fun g() -> std::void::Void {
+    fun g() -> Void {
         f(1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_ambiguous_2,
     SppFunctionCallOverloadAmbiguousError, R"(
-    fun f[T](a: T, b: std::number::S32) -> std::void::Void { }
-    fun f[T](a: std::number::S32, b: T) -> std::void::Void { }
+    fun f[T](a: T, b: S32) -> Void { }
+    fun f[T](a: S32, b: T) -> Void { }
 
-    fun g() -> std::void::Void {
+    fun g() -> Void {
         f(1, 2)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_no_params, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         f()
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_single_param, R"(
-    fun f(a: std::number::S32) -> std::void::Void {
+    fun f(a: S32) -> Void {
         f(1)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_multiple_params, R"(
-    fun f(a: std::number::S32, b: std::number::S32) -> std::void::Void {
+    fun f(a: S32, b: S32) -> Void {
         f(1, 2)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic, R"(
-    fun f[T](a: T) -> std::void::Void {
+    fun f[T](a: T) -> Void {
         f(1)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_multiple, R"(
-    fun f[T, U](a: T, b: U) -> std::void::Void {
+    fun f[T, U](a: T, b: &U) -> Void {
         f(1, "1")
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_multiple_same_type, R"(
-    fun f[T](a: T, b: T) -> std::void::Void {
+    fun f[T](a: T, b: T) -> Void {
         f(1, 2)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_explicit, R"(
-    fun f[T, U]() -> std::void::Void {
-        f[std::number::S32, std::string::Str]()
+    fun f[T, U]() -> Void {
+        f[S32, Str]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_explicit_and_inferred, R"(
-    fun f[T, U](a: T) -> std::void::Void {
-        f[U=std::boolean::Bool](123)
+    fun f[T, U](a: T) -> Void {
+        f[U=Bool](123)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_coroutine_correct_pins, R"(
-    cor c(a: &std::number::S32) -> std::generator::Gen[std::number::S32] { }
+    cor c(a: &S32) -> Gen[S32] { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let x = 123
         c(&x)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_async_correct_pins, R"(
-    fun a(b: &std::number::S32) -> std::void::Void { }
+    fun a(b: &S32) -> Void { }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let x = 123
         async a(&x)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_call_with_member_access, R"(
     cls TestClass { }
     cls NewClass {
-        t: TestClass
-        u: TestClass
+        !public t: TestClass
+        !public u: TestClass
     }
 
     sup TestClass {
-        fun f(self) -> std::void::Void { }
+        !public fun f(self) -> Void { }
     }
 
-    fun g(n: NewClass) -> std::void::Void {
+    fun g(n: NewClass) -> Void {
         n.t.f()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_call_with_member_access_2, R"(
     cls TestClass { }
     cls NewClass {
-        t: TestClass
-        u: TestClass
+        !public t: TestClass
+        !public u: TestClass
     }
 
     sup TestClass {
-        fun f(self, t: TestClass) -> std::void::Void { }
+        !public fun f(self, t: TestClass) -> Void { }
     }
 
-    fun g(n: NewClass) -> std::void::Void {
+    fun g(n: NewClass) -> Void {
         n.t.f(n.u)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_call_with_member_access_3, R"(
     cls TestClass { }
     cls NewClass {
-        t: TestClass
-        u: TestClass
-        v: TestClass
+        !public t: TestClass
+        !public u: TestClass
+        !public v: TestClass
     }
 
     sup TestClass {
-        fun f(self, t: TestClass) -> TestClass { ret t }
+        !public fun f(self, t: TestClass) -> TestClass { ret t }
     }
 
-    fun g(n: NewClass) -> std::void::Void {
+    fun g(n: NewClass) -> Void {
         n.t.f(n.u).f(n.v)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -317,46 +288,44 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TestClass { }
     sup TestClass {
         !virtual_method
-        fun f(self) -> std::void::Void { }
+        !public
+        fun f(self) -> Void { }
     }
 
     cls TestClass2 { }
     sup TestClass2 ext TestClass {
-        fun f(self) -> std::void::Void { }
+        fun f(self) -> Void { }
     }
 
-    fun g() -> std::void::Void {
+    fun g() -> Void {
         TestClass2().f()
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_folding_1, R"(
-    fun f(a: std::number::S32) -> std::string_view::StrView {
-        ret "hello world"
+    fun f(a: S32) -> Bool {
+        ret false
     }
 
-    fun g() -> std::void::Void {
+    fun g() -> Void {
         let x = (1, 2, 3, 4)
         let mut y = f(x)..
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_folding_2, R"(
-    fun f(a: std::number::S32, b: std::number::S32) -> std::void::Void { }
+    fun f(a: S32, b: S32) -> Void { }
 
-    fun g() -> std::void::Void {
+    fun g() -> Void {
         let x = (1, 2, 3, 4)
         let y = (1, 2, 3, 4)
         let mut z = f(x, y)..
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -364,115 +333,232 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TestClass[T] { }
 
     sup [T] TestClass[T] {
-        fun f(self, a: T) -> std::void::Void { }
+        !public fun f(self, a: T) -> Void { }
     }
 
-    fun g() -> std::void::Void {
-        let x = TestClass[std::void::Void]()
+    fun g() -> Void {
+        let x = TestClass[Void]()
         x.f()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_2,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f(a: std::number::S32, b: std::number::S32) -> std::void::Void { }
-    fun g() -> std::void::Void {
-        let x = (1, 2, 3, "4")
-        let y = (1, 2, 3, "4")
+    fun f(a: S32, b: S32) -> Void { }
+    fun g() -> Void {
+        let x = (1, 2, 3, false)
+        let y = (1, 2, 3, false)
         f(x, y)..
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_moving_objects,
     SppUninitializedMemoryUseError, R"(
-    fun f(a: std::number::S32, b: std::string::Str) -> std::void::Void { }
-    fun g() -> std::void::Void {
+    fun f(a: S32, b: Str) -> Void { }
+    fun g() -> Void {
         let x = (1, 2, 3)
-        let y = std::string::Str::from("hello world")
+        let y = Str::from("hello world")
         f(x, y)..
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_copying_objects, R"(
-    fun f(a: std::number::S32, b: std::number::USize) -> std::void::Void { }
-    fun g() -> std::void::Void {
+    fun f(a: S32, b: USize) -> Void { }
+    fun g() -> Void {
         let x = (1, 2, 3)
         let y = 0_uz
         f(x, y)..
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_fixed_type, R"(
-    fun g(a: std::string_view::StrView, ..b: std::boolean::Bool) -> std::void::Void {
+    fun g(a: &StrView, ..b: Bool) -> Void {
         ret
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g("hello", true, false, true, false)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_single_generic_type, R"(
-    fun g[T](a: std::string_view::StrView, ..b: T) -> std::void::Void {
+    fun g[T](a: &StrView, ..b: T) -> Void {
         ret
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g("hello", 1, 2, 3, 4)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_mixed_generic_type, R"(
-    fun g[..Ts](a: std::string_view::StrView, ..b: Ts) -> std::void::Void {
+    fun g[..Ts](a: &StrView, ..b: Ts) -> Void {
         ret
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g("hello", 1, true, "world")
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_given_no_args, R"(
-    fun g(a: std::string_view::StrView, ..b: std::boolean::Bool) -> std::void::Void {
+    fun g(a: &StrView, ..b: Bool) -> Void {
         ret
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g("hello")
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_variadic_mixed_arg_types,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun g(a: std::string_view::StrView, ..b: std::boolean::Bool) -> std::void::Void {
+    fun g(a: &StrView, ..b: Bool) -> Void {
         ret
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g("hello", 1, true, "world")
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_keyword_args, R"(
+    fun f(a: S32, b: S32) -> Void { }
+
+    fun g() -> Void {
+        f(a=1, b=2)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_keyword_args_out_of_order, R"(
+    fun f(a: S32, b: S32) -> Void { }
+
+    fun g() -> Void {
+        f(b=2, a=1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_mixed_positional_and_keyword, R"(
+    fun f(a: S32, b: S32) -> Void { }
+
+    fun g() -> Void {
+        f(1, b=2)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_optional_param_omitted, R"(
+    fun f(a: S32, b: S32 = 5) -> Void { }
+
+    fun g() -> Void {
+        f(1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_optional_param_positional, R"(
+    fun f(a: S32, b: S32 = 5) -> Void { }
+
+    fun g() -> Void {
+        f(1, 2)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_optional_param_by_name, R"(
+    fun f(a: S32, b: S32 = 5) -> Void { }
+
+    fun g() -> Void {
+        f(1, b=2)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_ref_self_method, R"(
+    cls TestClass { }
+    sup TestClass {
+        !public fun f(&self) -> Void { }
+    }
+
+    fun g(a: TestClass) -> Void {
+        a.f()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_mut_self_method, R"(
+    cls TestClass {
+        !public x: Bool
+    }
+    sup TestClass {
+        !public fun f(&mut self) -> Void { self.x = true }
+    }
+
+    fun g(mut a: TestClass) -> Void {
+        a.f()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_invalid_postfix_func_call_mut_self_method_on_immutable,
+    SppInvalidMutationError, R"(
+    cls TestClass {
+        !public x: Bool
+    }
+    sup TestClass {
+        !public fun f(&mut self) -> Void { self.x = true }
+    }
+
+    fun g(a: TestClass) -> Void {
+        a.f()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_genonce_auto_resume, R"(
+    cor c() -> GenOnce[S32] { }
+
+    fun f() -> Void {
+        let x: S32 = c()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_invalid_postfix_func_call_non_cmp_in_cmp_context,
+    SppInvalidComptimeOperationError, R"(
+    fun g() -> Void { }
+
+    cmp fun f() -> Void {
+        g()
     }
 )");

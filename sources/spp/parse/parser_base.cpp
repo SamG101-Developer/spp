@@ -9,12 +9,12 @@ import spp.utils.error_formatter;
 
 
 SPP_MOD_BEGIN
-spp::parse::ParserBase::ParserBase(std::vector<lex::RawToken> tokens, std::shared_ptr<utils::errors::ErrorFormatter> const &error_formatter) :
-    m_tokens(std::move(tokens)),
-    m_tokens_len(m_tokens.size()),
-    m_error_builder(std::make_unique<errors::SyntacticErrorBuilder<errors::SppSyntaxError>>()),
-    m_error_formatter(error_formatter ? error_formatter : std::make_shared<utils::errors::ErrorFormatter>(m_tokens, "<temp>")) {
-    m_error_builder->with_error_formatter(m_error_formatter.get());
+spp::parse::ParserBase::ParserBase(Vec<lex::RawToken> tokens, Shared<utils::errors::ErrorFormatter> const &error_formatter) :
+    _Tokens(std::move(tokens)),
+    _TokensLen(_Tokens.Len()),
+    _ErrorBuilder(MakeUnique<errors::SyntacticErrorBuilder<errors::SppSyntaxError>>()),
+    _ErrorFormatter(error_formatter ? error_formatter : MakeShared<utils::errors::ErrorFormatter>(_Tokens, "<temp>")) {
+    _ErrorBuilder->WithErrorFormatter(_ErrorFormatter.get());
 }
 
 

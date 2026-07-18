@@ -4,6 +4,7 @@ module;
 export module spp.asts.closure_expression_capture_group_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -14,18 +15,20 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureGroupAst final : Ast {
     /**
      * The @c caps token that indicates the start of the closure capture group. This is used to indicate that the
      * closure has moved on from parameter definitions and is now capturing variables from the outer scope.
      */
-    std::unique_ptr<TokenAst> tok_caps;
+    Unique<TokenAst> TokCaps;
 
     /**
      * The captured variables from the outer scope. These are variables that are captured by the closure and can be used
      * within its body.
      */
-    std::vector<std::unique_ptr<ClosureExpressionCaptureAst>> captures;
+    Vec<Unique<ClosureExpressionCaptureAst>> Captures;
+
+    static auto NewEmpty() -> Unique<ClosureExpressionCaptureGroupAst>;
 
     /**
      * Construct the ClosureExpressionCaptureGroupAst with the arguments matching the members.
@@ -33,18 +36,16 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual A
      * @param[in] captures The captured variables from the outer scope.
      */
     explicit ClosureExpressionCaptureGroupAst(
-        decltype(tok_caps) &&tok_caps,
-        decltype(captures) &&captures);
+        decltype(TokCaps) &&tok_caps,
+        decltype(Captures) &&captures);
 
     ~ClosureExpressionCaptureGroupAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto new_empty() -> std::unique_ptr<ClosureExpressionCaptureGroupAst>;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

@@ -4,6 +4,7 @@ module;
 export module spp.asts.assignment_statement_ast;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -31,26 +32,20 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * The list of left-hand side expressions in the assignment statement. These are the variables or properties that
      * are being assigned a value.
      */
-    std::vector<std::unique_ptr<ExpressionAst>> lhs;
+    UniqueVec<ExpressionAst> Lhs;
 
     /**
      * The @c = token that represents the assignment operator. This indicates to the parser that an assignment statement
      * has been defined.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
     /**
      * The list of right-hand side expressions in the assignment statement. These are the values or expressions that
      * are being assigned to the left-hand side variables or properties.
      */
-    std::vector<std::unique_ptr<ExpressionAst>> rhs;
+    UniqueVec<ExpressionAst> Rhs;
 
-private:
-    static auto is_identifier(Ast const *x) -> bool;
-
-    static auto is_attr(Ast const *x, analyse::scopes::ScopeManager const *sm) -> bool;
-
-public:
     /**
      * Construct the AssignmentStatementAst with the arguments matching the members.
      * @param[in] lhs The list of left-hand side expressions in the assignment statement.
@@ -58,9 +53,9 @@ public:
      * @param[in] rhs The list of right-hand side expressions in the assignment statement.
      */
     AssignmentStatementAst(
-        decltype(lhs) &&lhs,
-        decltype(tok_assign) &&tok_assign,
-        decltype(rhs) &&rhs);
+        decltype(Lhs) &&lhs,
+        decltype(TokAssign) &&tok_assign,
+        decltype(Rhs) &&rhs);
 
     ~AssignmentStatementAst() override;
 
@@ -90,7 +85,7 @@ public:
      * symbolic.
      * @throw spp::analyse::errors::SppInvalidMutationError if any of the left-hand-side expressions are not mutable.
      */
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * The memory checks for assignment statements fall under the following categories:
@@ -113,8 +108,8 @@ public:
      * @param[in] sm The scope manager to find the symbols of the left-hand-side and right-hand-side expressions in.
      * @param[in,out] meta Associated metadata.
      */
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-#
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
     /**
      * Resolve the assignment statement at compile time. This is only possible if all the right-hand-side expressions
      * are compile time resolvable themselves. The symbol table is updated with the new compile time values for the
@@ -123,7 +118,7 @@ public:
      * @param meta Associated metadata.
      * @return The result of the compile time resolution.
      */
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Create the LLVM IR code to perform the assignment operation. This involves generating the code for both the
@@ -134,5 +129,5 @@ public:
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the assignment operation.
      */
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

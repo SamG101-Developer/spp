@@ -4,13 +4,12 @@ module;
 export module spp.utils.functions;
 import std;
 
-
 namespace spp::utils::functions {
     SPP_EXP_CLS template <typename... Ts>
-    struct overload : Ts... {
+    struct Overload : Ts... {
         using Ts::operator()...;
     };
 
     SPP_EXP_CLS template <typename... Ts>
-    overload(Ts...) -> overload<Ts...>;
+    Overload(Ts...) -> Overload<Ts...>;
 }

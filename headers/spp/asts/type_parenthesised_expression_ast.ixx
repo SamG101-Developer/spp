@@ -4,6 +4,7 @@ module;
 export module spp.asts.type_parenthesised_expression_ast;
 import spp.asts.ast;
 import spp.asts.mixins.temp_type_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -13,21 +14,21 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : virtual Ast, mixins::TempTypeAst {
+SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins::TempTypeAst {
     /**
      * The left parenthesis token that represents the start of the parenthesised expression.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The type expression that is enclosed within the parentheses.
      */
-    std::shared_ptr<TypeAst> expr;
+    Shared<TypeAst> Expr;
 
     /**
      * The right parenthesis token that represents the end of the parenthesised expression.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the TypeParenthesisedExpressionAst with the arguments matching the members.
@@ -36,13 +37,13 @@ SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : virtual Ast
      * @param tok_r The right parenthesis token.
      */
     TypeParenthesisedExpressionAst(
-        decltype(tok_l) &&tok_l,
-        decltype(expr) &&expr,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Expr) expr,
+        decltype(TokR) &&tok_r);
 
     ~TypeParenthesisedExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert() -> std::unique_ptr<TypeAst> override;
+    auto Convert() -> Unique<TypeAst> override;
 };

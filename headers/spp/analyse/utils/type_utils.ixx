@@ -4,7 +4,8 @@ module;
 export module spp.analyse.utils.type_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
-import ankerl.unordered_dense;
+import spp.utils.types;
+import ankerl;
 import std;
 
 namespace spp::asts {
@@ -31,16 +32,22 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct VariableSymbol;
 }
 
-
 namespace spp::analyse::utils::type_utils {
     SPP_EXP_CLS using GenericInferenceMap = ankerl::unordered_dense::map<
-        std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*,
-        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
-        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+        Shared<asts::TypeIdentifierAst>, asts::ExpressionAst*,
+        spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
-    SPP_EXP_FUN auto convention_eq(
+    SPP_EXP_FUN auto ConventionEq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type)
+        -> bool;
+
+    SPP_EXP_FUN auto ConstraintEq(
+        Vec<Shared<asts::TypeAst>> const &constraints,
+        asts::TypeAst const &type,
+        scopes::Scope const &constraint_scope,
+        scopes::Scope const &type_scope)
         -> bool;
 
     /**
@@ -64,7 +71,7 @@ namespace spp::analyse::utils::type_utils {
      * @return If the two types are symbolically equal, meaning they are the same type, or one is a variant of the
      * other.
      */
-    SPP_EXP_FUN auto symbolic_eq(
+    SPP_EXP_FUN auto TypeEq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type,
         scopes::Scope const &lhs_scope,
@@ -72,23 +79,31 @@ namespace spp::analyse::utils::type_utils {
         bool check_variant = true)
         -> bool;
 
-    SPP_EXP_FUN auto symbolic_eq(
+    SPP_EXP_FUN auto TypeEq(
         asts::ExpressionAst const &lhs_expr,
         asts::ExpressionAst const &rhs_expr,
         scopes::Scope const &lhs_scope,
         scopes::Scope const &rhs_scope)
         -> bool;
 
-    SPP_EXP_FUN auto relaxed_symbolic_eq(
+    SPP_EXP_FUN auto TypeFwdEq(
+        asts::TypeAst const &arg_type,
+        asts::TypeAst const &param_type,
+        scopes::Scope const &arg_scope,
+        scopes::Scope const &param_scope)
+        -> bool;
+
+    SPP_EXP_FUN auto RelaxedTypeEq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type,
         scopes::Scope const &lhs_scope,
         scopes::Scope const &rhs_scope,
         GenericInferenceMap &generic_args,
-        bool check_variant = false)
+        bool check_variant = false,
+        bool check_constraints = true)
         -> bool;
 
-    SPP_EXP_FUN auto relaxed_symbolic_eq(
+    SPP_EXP_FUN auto RelaxedTypeEq(
         asts::ExpressionAst const &lhs_expr,
         asts::ExpressionAst const &rhs_expr,
         scopes::Scope const &lhs_scope,
@@ -96,207 +111,228 @@ namespace spp::analyse::utils::type_utils {
         GenericInferenceMap &generic_args)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_comptime_indexable(
+    SPP_EXP_FUN auto IsTypeCompTimeIndexable(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_array(
+    SPP_EXP_FUN auto IsTypeRuntimeIndexable(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_tuple(
+    SPP_EXP_FUN auto IsTypeSelf(
+        asts::TypeAst const &type)
+        -> bool;
+
+    SPP_EXP_FUN auto IsTypeArr(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_variant(
+    SPP_EXP_FUN auto IsTypeTup(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_boolean(
+    SPP_EXP_FUN auto IsTypeVariant(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_void(
+    SPP_EXP_FUN auto IsTypeBool(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_never(
+    SPP_EXP_FUN auto IsTypeVoid(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_generator(
+    SPP_EXP_FUN auto IsTypeNever(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_runtime_indexable(
+    SPP_EXP_FUN auto IsTypeGen(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_try(
+    SPP_EXP_FUN auto IsTypeTry(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_function(
+    SPP_EXP_FUN auto IsTypeFunc(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_recursive(
+    SPP_EXP_FUN auto IsTypeRecursive(
         asts::ClassPrototypeAst const &type,
         scopes::ScopeManager const &sm)
-        -> std::shared_ptr<asts::TypeAst>;
+        -> Shared<asts::TypeAst>;
 
-    SPP_EXP_FUN auto is_type_borrowed(
+    SPP_EXP_FUN auto IsTypeBorrowed(
         asts::TypeAst const &type,
         scopes::ScopeManager const &sm,
         bool deep = true)
         -> bool;
 
-    SPP_EXP_FUN auto is_type_copyable(
+    SPP_EXP_FUN auto IsTypeCopyable(
         asts::TypeAst const &type,
         scopes::ScopeManager const &sm)
         -> bool;
 
-
-    SPP_EXP_FUN auto get_attr_types(
+    SPP_EXP_FUN auto GetAttrTypes(
         const asts::ClassPrototypeAst *cls_proto,
         const scopes::Scope *cls_scope,
-        std::vector<std::pair<std::shared_ptr<scopes::TypeSymbol>, asts::ClassAttributeAst*>> &attr_symbols)
+        Vec<Pair<Shared<scopes::TypeSymbol>, asts::ClassAttributeAst*>> &attr_symbols)
         -> void;
 
-    SPP_EXP_FUN auto is_index_within_type_bound(
+    SPP_EXP_FUN auto IsIndexWithinBound(
         std::size_t index,
         asts::TypeAst const &type,
         scopes::Scope const &scope)
-        -> bool;
+        -> Pair<bool, std::size_t>;
 
-    SPP_EXP_FUN auto get_nth_type_of_indexable_type(
+    SPP_EXP_FUN auto GetNthTypeOfIndexableType(
         std::size_t index,
         asts::TypeAst const &type,
         scopes::Scope const &scope)
-        -> std::shared_ptr<asts::TypeAst>;
+        -> Shared<asts::TypeAst>;
 
-    SPP_EXP_FUN auto get_generator_and_yield_type(
+    SPP_EXP_FUN auto GetFunctionalType(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> Shared<const asts::TypeAst>;
+
+    SPP_EXP_FUN auto GetGenAndYieldTypes(
         asts::TypeAst const &type,
         scopes::Scope const &scope,
         asts::ExpressionAst const &expr,
-        std::string_view what)
-        -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool>;
+        StrView what)
+        -> std::tuple<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool>;
 
-    SPP_EXP_FUN auto get_try_type(
+    SPP_EXP_FUN auto GetTryType(
         asts::TypeAst const &type,
         asts::ExpressionAst const &expr,
         scopes::ScopeManager const &sm)
-        -> std::shared_ptr<const asts::TypeAst>;
+        -> Shared<const asts::TypeAst>;
 
-    SPP_EXP_FUN auto get_fwd_types(
+    SPP_EXP_FUN auto GetFwdTypes(
         asts::TypeAst const &type,
         scopes::ScopeManager const &sm)
-        -> std::pair<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<const asts::TypeAst>>;
+        -> Pair<Shared<const asts::TypeAst>, Shared<const asts::TypeAst>>;
 
-    SPP_EXP_FUN auto validate_inconsistent_types(
-        std::vector<asts::CaseExpressionBranchAst*> const &branches,
+    SPP_EXP_FUN auto ValidateInconsistentTypes(
+        Vec<asts::CaseExpressionBranchAst*> const &branches,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+        -> std::tuple<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>>;
 
-    SPP_EXP_FUN auto get_all_attrs(
+    SPP_EXP_FUN auto GetAllAttrs(
         asts::TypeAst const &type,
         scopes::ScopeManager const *sm)
-        -> std::vector<std::pair<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<scopes::TypeSymbol>>>;
+        -> Vec<Pair<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>>>;
 
-    SPP_EXP_FUN auto create_generic_cls_scope(
+    SPP_EXP_FUN auto CreateGenericClsScope(
         asts::TypeIdentifierAst &type_part,
         scopes::TypeSymbol const &old_cls_sym,
-        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
+        SharedVec<scopes::Symbol> const &external_generic_syms,
         bool is_tuple,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> scopes::Scope*;
 
-    SPP_EXP_FUN auto create_generic_fun_scope(
+    SPP_EXP_FUN auto CreateGenericFunScope(
         scopes::Scope const &old_fun_scope,
         asts::GenericArgumentGroupAst const &generic_args,
-        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
+        SharedVec<scopes::Symbol> const &external_generic_syms,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> scopes::Scope*;
 
-    SPP_EXP_FUN auto create_generic_sup_scope(
+    SPP_EXP_FUN auto CreateGenericSupScope(
         scopes::Scope &old_sup_scope,
         scopes::Scope &new_cls_scope,
         asts::GenericArgumentGroupAst const &generic_args,
-        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
+        SharedVec<scopes::Symbol> const &external_generic_syms,
         scopes::ScopeManager const *sm,
         asts::meta::CompilerMetaData *meta)
         -> std::tuple<scopes::Scope*, scopes::Scope*>;
 
-    SPP_EXP_FUN auto create_generic_sym(
+    SPP_EXP_FUN auto CreateGenericSym(
         asts::GenericArgumentAst const &generic,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta,
         scopes::ScopeManager *tm = nullptr)
-        -> std::shared_ptr<scopes::Symbol>;
+        -> Shared<scopes::Symbol>;
 
-    SPP_EXP_FUN auto register_generic_syms(
-        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
-        std::vector<std::unique_ptr<asts::GenericArgumentAst>> const &generic_args,
+    SPP_EXP_FUN auto RegisterGenericSyms(
+        SharedVec<scopes::Symbol> const &external_generic_syms,
+        UniqueVec<asts::GenericArgumentAst> const &generic_args,
         scopes::Scope *scope,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN auto get_type_sym_or_error(
+    SPP_EXP_FUN auto GetTypeSymOrError(
         scopes::Scope const &scope,
         asts::TypeIdentifierAst const &type_part,
         scopes::ScopeManager const &sm,
         asts::meta::CompilerMetaData *meta)
         -> scopes::TypeSymbol*;
 
-    SPP_EXP_FUN auto get_ns_scope_or_error(
+    SPP_EXP_FUN auto GetNsScopeOrError(
         scopes::Scope const &scope,
         asts::IdentifierAst const &ns,
         scopes::ScopeManager const &sm)
         -> scopes::Scope*;
 
-    SPP_EXP_FUN auto enforce_generic_constraints(
-        std::vector<std::shared_ptr<asts::TypeAst>> const &constraints,
+    /**
+     * Check that @p concrete_type (and its supertypes) satisfy every constraint in @p constraints. Returns the first
+     * unsatisfied constraint, or @c nullptr if they are all satisfied. This is a non-throwing check so that hot callers
+     * (eg @c ConstraintEq via @c TypeEq) can branch on the result without paying for exception machinery; callers that
+     * want an error should raise @c SppGenericConstraintError from the returned constraint.
+     */
+    SPP_EXP_FUN auto EnforceGenericConstraintsOneArg(
+        SharedVec<asts::TypeAst> const &constraints,
         asts::TypeAst const &concrete_type,
-        scopes::Scope const &generic_scope,
+        scopes::Scope const &constraints_owner_scope,
         scopes::Scope const &concrete_scope)
-        -> void;
+        -> asts::TypeAst const*;
 
-    SPP_EXP_FUN auto deduplicate_variant_inner_types(
+    SPP_EXP_FUN auto DedupVariableInnerTypes(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
-        -> std::vector<std::shared_ptr<asts::TypeAst>>;
+        -> SharedVec<asts::TypeAst>;
 
-    SPP_EXP_FUN auto substitute_sup_scope_name(
-        std::string const &old_sup_scope_name,
+    SPP_EXP_FUN auto SubstituteSupScopeName(
+        Str const &old_sup_scope_name,
         asts::GenericArgumentGroupAst const &generic_args)
-        -> std::string;
+        -> Str;
 
-    SPP_EXP_FUN auto recursive_alias_search(
+    SPP_EXP_FUN auto RecursiveAliasSearch(
         asts::TypeStatementAst const &alias_stmt,
         bool from_use_stmt,
         scopes::Scope *tracking_scope,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*>;
+        -> std::tuple<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*>;
 
-    SPP_EXP_FUN auto get_field_index_in_type(
+    SPP_EXP_FUN auto GetFieldIndexInType(
         asts::TypeAst const &type_sym,
         asts::IdentifierAst const &field_name,
         scopes::ScopeManager *sm)
         -> std::size_t;
+
+    SPP_EXP_FUN auto ResolveAndSubstituteSelfType(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope,
+        scopes::ScopeManager &sm,
+        asts::meta::CompilerMetaData &meta)
+        -> Shared<asts::TypeAst>;
 }

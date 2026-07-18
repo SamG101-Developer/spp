@@ -2,9 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
+import spp.analyse.utils.func_utils; // Todo: refactor typedefs
+import spp.analyse.utils.type_utils; // Todo: refactor typedefs
 import spp.asts.ast;
 import spp.utils.ptr;
-import ankerl.unordered_dense;
+import spp.utils.types;
+import ankerl;
 import std;
 
 namespace spp::asts {
@@ -22,23 +25,40 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The token that represents the left bracket @code [@endcode in the generic argument group. This introduces the
      * generic argument group.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The list of arguments in the generic argument group. This can contain both positional and keyword arguments.
      */
-    std::vector<std::unique_ptr<GenericArgumentAst>> args;
+    Vec<Unique<GenericArgumentAst>> Args;
 
     /**
      * The token that represents the right parenthesis @code ]@endcode in the generic call argument group. This closes
      * the generic argument group.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
+
+    static auto NewEmpty()
+        -> Unique<GenericArgumentGroupAst>;
+
+    static auto FromParams(
+        GenericParameterGroupAst const &generic_params)
+        -> Unique<GenericArgumentGroupAst>;
+
+    static auto FromMap(
+        analyse::utils::type_utils::GenericInferenceMap const &map)
+        -> Unique<GenericArgumentGroupAst>;
+
+    static auto FromMap(
+        analyse::utils::func_utils::InferenceFinalTypeMap const &map)
+        -> Unique<GenericArgumentGroupAst>;
 
     /**
      * Construct the GenericArgumentGroupAst with the arguments matching the members.
@@ -47,62 +67,46 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
      * @param tok_r The token that represents the right parenthesis @code ]@endcode in the generic call argument group.
      */
     GenericArgumentGroupAst(
-        decltype(tok_l) &&tok_l,
-        decltype(args) &&args,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Args) &&args,
+        decltype(TokR) &&tok_r);
 
     ~GenericArgumentGroupAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto new_empty()
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
-    static auto from_params(
-        GenericParameterGroupAst const &generic_params)
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
-    static auto from_map(
-        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, utils::ptr::ptr_hash<std::shared_ptr<TypeIdentifierAst>>, utils::ptr::ptr_eq<std::shared_ptr<TypeIdentifierAst>>> &&map)
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
-    static auto from_map(
-        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
-    auto operator+=(
-        const GenericArgumentGroupAst &other)
-        -> GenericArgumentGroupAst&;
-
-    auto operator+(
-        const GenericArgumentGroupAst &other) const
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
     auto operator==(GenericArgumentGroupAst const &other) const -> bool;
 
-    auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
+    auto operator+=(const GenericArgumentGroupAst &other) -> GenericArgumentGroupAst&;
 
-    auto comp_at(const char *key) const -> GenericArgumentCompAst const*;
+    auto operator+(const GenericArgumentGroupAst &other) const -> Unique<GenericArgumentGroupAst>;
 
-    auto merge_generics(decltype(args) &&other_args) -> void;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    SPP_ATTR_NODISCARD auto get_type_args() const -> std::vector<GenericArgumentTypeAst*>;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    SPP_ATTR_NODISCARD auto get_comp_args() const -> std::vector<GenericArgumentCompAst*>;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
+    auto TypeAt(const char *key) const -> GenericArgumentTypeAst const*;
 
-    SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
+    auto CompAt(const char *key) const -> GenericArgumentCompAst const*;
 
-    SPP_ATTR_NODISCARD auto get_type_keyword_args() const -> std::vector<GenericArgumentTypeKeywordAst*>;
+    auto MergeGenerics(decltype(Args) &&other_args) -> void;
 
-    SPP_ATTR_NODISCARD auto get_comp_keyword_args() const -> std::vector<GenericArgumentCompKeywordAst*>;
+    SPP_ATTR_NODISCARD auto GetTypeArgs() const -> Vec<GenericArgumentTypeAst*>;
 
-    SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<GenericArgumentAst*>;
+    SPP_ATTR_NODISCARD auto GetCompArgs() const -> Vec<GenericArgumentCompAst*>;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    SPP_ATTR_NODISCARD auto GetKeywordArgs() const -> Vec<GenericArgumentAst*>;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    SPP_ATTR_NODISCARD auto GetPositionalArgs() const -> Vec<GenericArgumentAst*>;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    SPP_ATTR_NODISCARD auto GetTypeKeywordArgs() const -> Vec<GenericArgumentTypeKeywordAst*>;
+
+    SPP_ATTR_NODISCARD auto GetCompKeywordArgs() const -> Vec<GenericArgumentCompKeywordAst*>;
+
+    SPP_ATTR_NODISCARD auto GetAllArgs() const -> Vec<GenericArgumentAst*>;
 };
+
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentGroupAst)

@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMscDefinitionConflicts,
     test_invalid_definition_type_stmt_vs_type_stmt,
@@ -8,7 +7,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     type A = S32
     type A = S64
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMscDefinitionConflicts,
@@ -18,7 +16,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMscDefinitionConflicts,
     test_invalid_definition_cls_stmt_vs_type_stmt,
@@ -26,7 +23,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
     type A = S32
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMscDefinitionConflicts,
@@ -36,11 +32,34 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMscDefinitionConflicts,
     test_invalid_definition_cmp_stmt_vs_cmp_stmt,
     SppIdentifierDuplicateError, R"(
     cmp a: S32 = 1_s32
     cmp a: S32 = 2_s32
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestMscDefinitionConflicts,
+    test_invalid_definition_cmp_stmt_vs_fun_stmt,
+    SppIdentifierDuplicateError, R"(
+    cmp a: S32 = 1_s32
+    fun a() -> Void { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestMscDefinitionConflicts,
+    test_invalid_definition_fun_stmt_vs_cmp_stmt,
+    SppIdentifierDuplicateError, R"(
+    fun a() -> Void { }
+    cmp a: S32 = 1_s32
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestMscDefinitionConflicts,
+    test_invalid_definition_fun_stmt_vs_fun_stmt_identical_signature,
+    SppFunctionPrototypeConflictError, R"(
+    fun a() -> Void { }
+    fun a() -> Void { }
 )");

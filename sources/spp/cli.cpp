@@ -17,26 +17,21 @@ import spp.lex.tokens;
 import spp.utils.files;
 import cli11;
 import genex;
-import tomlplusplus;
+import tomlpp;
 
+inline constexpr spp::Str OUT_FOLDER = "out";
+inline constexpr spp::Str SRC_FOLDER = "src";
+inline constexpr spp::Str VCS_FOLDER = "vcs";
+inline constexpr spp::Str FFI_FOLDER = "ffi";
+inline constexpr spp::Str MAIN_FILE = "main.spp";
+inline constexpr spp::Str CONFIG_FILE = "spp.toml";
 
-inline constexpr std::string OUT_FOLDER = "out";
-inline constexpr std::string SRC_FOLDER = "src";
-inline constexpr std::string VCS_FOLDER = "vcs";
-inline constexpr std::string FFI_FOLDER = "ffi";
-inline constexpr std::string MAIN_FILE = "main.spp";
-inline constexpr std::string CONFIG_FILE = "spp.toml";
-
-inline const std::string MAIN_FILE_CONTENTS = R"(
-    use std::string::Str
-    use std::vector::Vec
-    use std::void::Void
-
+inline const spp::Str MAIN_FILE_CONTENTS = R"(
     fun main(args: Vec[Str]) -> Void {
         std::io::println("Hello world!")
     })";
 
-inline const auto CONFIG_FILE_CONTENTS = R"(
+inline const spp::Str CONFIG_FILE_CONTENTS = R"(
     [project]
     name = "$"
     version = "0.1.0"
@@ -45,7 +40,6 @@ inline const auto CONFIG_FILE_CONTENTS = R"(
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
-
 auto spp::cli::run_cli(
     const std::int32_t argc,
     char **argv)
@@ -53,7 +47,7 @@ auto spp::cli::run_cli(
     // Create the CLI object and require that a subcommand is provided.
     auto app = CLI::App("SPP build tool", "spp");
     app.require_subcommand(1);
-    auto mode = std::string();
+    auto mode = Str();
 
     app.add_subcommand("init", "Initialize the new project")
        ->callback(handle_init);
@@ -93,7 +87,6 @@ auto spp::cli::run_cli(
     return 0;
 }
 
-
 auto spp::cli::handle_init()
     -> void {
     // Check if the current directory is empty or not.
@@ -113,10 +106,9 @@ auto spp::cli::handle_init()
     std::filesystem::create_directory(cwd / SRC_FOLDER / cwd.filename());
 
     // Fill in "main.spp" and "spp.toml" with template content.
-    utils::files::write_file(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
-    utils::files::write_file(cwd / CONFIG_FILE, create_default_config_for(cwd.filename().string()));
+    utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
+    utils::files::WriteFile(cwd / CONFIG_FILE, create_default_config_for(utils::files::DisplayString(cwd.filename())));
 }
-
 
 auto spp::cli::handle_vcs()
     -> void {
@@ -138,26 +130,26 @@ auto spp::cli::handle_vcs()
     // Iterate over the vcs section and clone/update the repositories.
     auto vcs = toml["vcs"].as_table();
     for (auto [key, info] : *vcs) {
-        auto repo_name = std::string(key);
-        auto repo_url = (*info.as_table())["git"].value<std::string>().value();
-        auto repo_branch = (*info.as_table())["branch"].value<std::string>().value_or("master");
+        auto repo_name = Str(key);
+        auto repo_url = (*info.as_table())["git"].value<Str>().value();
+        auto repo_branch = (*info.as_table())["branch"].value<Str>().value_or("master");
         auto repo_folder = cwd / VCS_FOLDER / repo_name;
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string()).c_str());
+            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + utils::files::DisplayString(repo_folder)).c_str());
             std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            std::system(("git -C " + repo_folder.string() + " pull origin " + repo_branch).c_str());
-            std::system(("git -C " + repo_folder.string() + " checkout " + repo_branch).c_str());
+            std::system(("git -C " + utils::files::DisplayString(repo_folder) + " pull origin " + repo_branch).c_str());
+            std::system(("git -C " + utils::files::DisplayString(repo_folder) + " checkout " + repo_branch).c_str());
             std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
         }
 
         // Copy all DLLs from the VCS's FFI folder into this project's FFI folder.
         auto ffi_repo_folder = repo_folder / FFI_FOLDER;
         if (std::filesystem::exists(ffi_repo_folder)) {
-            for (const auto &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
+            for (auto const &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
                 std::filesystem::copy(
                     entry.path(), cwd / FFI_FOLDER / entry.path().filename(),
                     std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
@@ -169,9 +161,8 @@ auto spp::cli::handle_vcs()
     std::filesystem::current_path(cwd);
 }
 
-
 auto spp::cli::handle_build(
-    std::string const &mode,
+    Str const &mode,
     const bool skip_vcs)
     -> void {
     // Validate the project structure first.
@@ -187,7 +178,7 @@ auto spp::cli::handle_build(
     // Revalidate (after including the VCS folders).
     SPP_VALIDATE_STRUCTURE(false);
     const auto build_type =
-        toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<std::string>();
+        toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<Str>();
 
     // Validate the mode is "dev" or "rel".
     if (mode != "dev" and mode != "rel") {
@@ -199,12 +190,11 @@ auto spp::cli::handle_build(
     auto c = compiler::Compiler(
         mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
         build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
-    c.compile();
+    c.Compile();
 }
 
-
 auto spp::cli::handle_run(
-    std::string const &mode)
+    Str const &mode)
     -> void {
     // Build the project first (skip VCS).
     handle_build(mode, true);
@@ -213,9 +203,8 @@ auto spp::cli::handle_run(
     // TODO
 }
 
-
 auto spp::cli::handle_clean(
-    std::string const &mode)
+    Str const &mode)
     -> void {
     // Validate the project structure first.
     SPP_VALIDATE_STRUCTURE(false);
@@ -230,7 +219,6 @@ auto spp::cli::handle_clean(
     }
 }
 
-
 auto spp::cli::handle_test()
     -> void {
     // Validate the project structure first.
@@ -238,7 +226,6 @@ auto spp::cli::handle_test()
 
     // TODO
 }
-
 
 auto spp::cli::handle_validate(
     const bool is_exe)
@@ -294,15 +281,15 @@ auto spp::cli::handle_validate(
     }
 
     // Check the version follows "major.minor.patch" format.
-    const auto version = project->at("version").value<std::string>().value_or("");
-    const auto version_parts = version | genex::views::split('.') | genex::to<std::vector>();
-    if (version_parts.size() != 3) {
+    const auto version = project->at("version").value<Str>().value_or("");
+    const auto version_parts = version | genex::views::split('.') | genex::to<Vec>();
+    if (version_parts.Len() != 3) {
         std::cerr << "Error: Invalid version format in spp.toml. Version must follow 'major.minor.patch' format.\n";
         return false;
     }
 
     // Check the build type is either "exe" or "lib".
-    const auto build_type = project->at("build").value<std::string>().value_or("");
+    const auto build_type = project->at("build").value<Str>().value_or("");
     if (build_type != "exe" and build_type != "lib") {
         std::cerr << "Error: Invalid build type in spp.toml. Build type must be 'exe' or 'lib'.\n";
         return false;
@@ -319,7 +306,7 @@ auto spp::cli::handle_validate(
     const auto ext = get_system_shared_library_extension();
     for (auto const &ffi_dir : std::filesystem::directory_iterator(cwd / FFI_FOLDER)) {
         if (not std::filesystem::is_directory(ffi_dir)) {
-            std::cerr << "Error: Non-directory found in 'ffi' folder: "s + ffi_dir.path().filename().string() + "\n";
+            std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(ffi_dir.path().filename()) + "\n";
             return false;
         }
 
@@ -340,17 +327,15 @@ auto spp::cli::handle_validate(
     return true;
 }
 
-
 auto spp::cli::handle_version()
     -> void {
     // Print the version information.
     std::cout << "SPP version " << SPP_VERSION << "\n";
 }
 
-
 auto spp::cli::create_default_config_for(
-    std::string const &project_name)
-    -> std::string {
+    Str const &project_name)
+    -> Str {
     // Inject the project name into the config template.
     auto contents = format_default_file_contents(CONFIG_FILE_CONTENTS);
     const auto pos = contents.find('$');
@@ -358,9 +343,8 @@ auto spp::cli::create_default_config_for(
     return contents;
 }
 
-
 auto spp::cli::get_system_shared_library_extension()
-    -> std::string {
+    -> Str {
     // Return the appropriate shared library extension for the current OS.
 #if defined(_WIN32) || defined(_WIN64)
     return "dll";
@@ -371,10 +355,9 @@ auto spp::cli::get_system_shared_library_extension()
 #endif
 }
 
-
 auto spp::cli::unit_test(
-    std::string const &mode,
-    std::string &&main_code)
+    Str const &mode,
+    Str &&main_code)
     -> void {
     // Validate the project structure first.
     SPP_VALIDATE_STRUCTURE(false);
@@ -386,20 +369,20 @@ auto spp::cli::unit_test(
 
     // Compile the code.
     const auto m = mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL;
-    const auto c = compiler::Compiler::for_unit_tests(m, std::move(main_code));
-    c->compile();
+    const auto c = compiler::Compiler::ForUnitTests(m, std::move(main_code));
+    c->Compile();
 }
 
-
 auto spp::cli::format_default_file_contents(
-    const std::string_view contents)
-    -> std::string {
-    // Remove the first newline, and replace "    " with "".
-    auto out = std::string();
-    for (const auto&line: contents | genex::views::split('\n')) {
-        if (line.size() <= 0) { continue; }
-        auto formatted = line | genex::to<std::string>();
-        formatted.replace(formatted.find("    "), 4, "");
-    }
-    return out;
+    const StrView contents)
+    -> Str {
+    return Str(contents);
+    // // Remove the first newline, and replace "    " with "".
+    // auto out = Str();
+    // for (const auto&line: contents | genex::views::split('\n')) {
+    //     if (line.Len() <= 0) { continue; }
+    //     auto formatted = line | genex::to<Str>();
+    //     formatted.replace(formatted.find("    "), 4, "");
+    // }
+    // return out;
 }

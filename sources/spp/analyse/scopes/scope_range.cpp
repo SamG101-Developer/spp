@@ -8,13 +8,13 @@ import spp.analyse.scopes.scope;
 SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeRange::ScopeRange(
     Scope *root) :
-    m_root(root) {
+    _Root(root) {
 }
 
 
 auto spp::analyse::scopes::ScopeRange::begin() const
     -> ScopeIterator {
-    return ScopeIterator(m_root);
+    return ScopeIterator(_Root);
 }
 
 

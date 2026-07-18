@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_argument_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -20,7 +21,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : Object
      * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
      * argument from the expression that is being passed as the argument's value.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
     /**
      * Construct the ObjectInitializerArgumentKeywordAst with the arguments matching the members.
@@ -29,9 +30,9 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : Object
      * @param val The expression that is being passed as the argument to the object initializer.
      */
     ObjectInitializerArgumentKeywordAst(
-        decltype(name) name,
-        decltype(tok_assign) &&tok_assign,
-        decltype(val) &&val);
+        decltype(Name) name,
+        decltype(TokAssign) &&tok_assign,
+        decltype(Val) &&val);
 
     ~ObjectInitializerArgumentKeywordAst() override;
 

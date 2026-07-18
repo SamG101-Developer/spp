@@ -7,42 +7,39 @@ import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(
-    decltype(conv) &&conv,
-    decltype(val) &&val) :
+    decltype(Conv) &&conv,
+    decltype(Val) &&val) :
     FunctionCallArgumentPositionalAst(std::move(conv), nullptr, std::move(val)) {
 }
 
-
 spp::asts::ClosureExpressionCaptureAst::~ClosureExpressionCaptureAst() = default;
 
-
-auto spp::asts::ClosureExpressionCaptureAst::pos_start() const
+auto spp::asts::ClosureExpressionCaptureAst::PosStart() const
     -> std::size_t {
-    return conv ? conv->pos_start() : val->pos_start();
+    // Use the convention or the value.
+    return Conv ? Conv->PosStart() : Val->PosStart();
 }
 
-
-auto spp::asts::ClosureExpressionCaptureAst::pos_end() const
+auto spp::asts::ClosureExpressionCaptureAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the value
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::ClosureExpressionCaptureAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ClosureExpressionCaptureAst>(
-        ast_clone(conv),
-        ast_clone(val));
+auto spp::asts::ClosureExpressionCaptureAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ClosureExpressionCaptureAst>(
+        AstClone(Conv), AstClone(Val));
 }
 
-
-spp::asts::ClosureExpressionCaptureAst::operator std::string() const {
+auto spp::asts::ClosureExpressionCaptureAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(conv);
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(Conv);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 

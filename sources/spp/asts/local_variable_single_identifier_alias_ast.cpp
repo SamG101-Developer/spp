@@ -7,44 +7,41 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
-
 SPP_MOD_BEGIN
 spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierAliasAst(
-    decltype(tok_as) &&tok_as,
-    decltype(name) &&name) :
-    tok_as(std::move(tok_as)),
-    name(std::move(name)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_as, lex::SppTokenType::KW_AS, "as");
+    decltype(TokAs) &&tok_as,
+    decltype(Name) &&name) :
+    TokAs(std::move(tok_as)),
+    Name(std::move(name)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAs, lex::SppTokenType::KW_AS, "as");
 }
-
 
 spp::asts::LocalVariableSingleIdentifierAliasAst::~LocalVariableSingleIdentifierAliasAst() = default;
 
-
-auto spp::asts::LocalVariableSingleIdentifierAliasAst::pos_start() const
+auto spp::asts::LocalVariableSingleIdentifierAliasAst::PosStart() const
     -> std::size_t {
-    return tok_as->pos_start();
+    // Use the "as" token.
+    return TokAs->PosStart();
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAliasAst::pos_end() const
+auto spp::asts::LocalVariableSingleIdentifierAliasAst::PosEnd() const
     -> std::size_t {
-    return name->pos_end();
+    // Use the alias name.
+    return Name->PosEnd();
 }
 
-
-auto spp::asts::LocalVariableSingleIdentifierAliasAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<LocalVariableSingleIdentifierAliasAst>(
-        ast_clone(tok_as),
-        ast_clone(name));
+auto spp::asts::LocalVariableSingleIdentifierAliasAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<LocalVariableSingleIdentifierAliasAst>(
+        AstClone(TokAs), AstCloneShared(Name));
 }
 
-
-spp::asts::LocalVariableSingleIdentifierAliasAst::operator std::string() const {
+auto spp::asts::LocalVariableSingleIdentifierAliasAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_as).append_range(" ");
-    SPP_STRING_APPEND(name);
+    SPP_STRING_APPEND(TokAs).append_range(" ");
+    SPP_STRING_APPEND(Name);
     SPP_STRING_END;
 }
 

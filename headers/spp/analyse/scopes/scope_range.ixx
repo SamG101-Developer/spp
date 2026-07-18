@@ -20,7 +20,7 @@ SPP_EXP_CLS class spp::analyse::scopes::ScopeRange {
      * The root scope to begin iterating from. This is typically the current scope of the manager when the iteration is
      * created.
      */
-    Scope *m_root;
+    Scope *_Root;
 
 public:
     /**

@@ -4,6 +4,7 @@ module;
 export module spp.asts.type_array_shorthand_ast;
 import spp.asts.ast;
 import spp.asts.mixins.temp_type_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -14,31 +15,31 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins::TempTypeAst {
+SPP_EXP_CLS struct spp::asts::TypeArrayShorthandAst final : Ast, mixins::TempTypeAst {
     /**
      * The left square bracket token that represents the start of the array type.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The type of the elements in the array.
      */
-    std::shared_ptr<TypeAst> element_type;
+    Shared<TypeAst> ElemType;
 
     /**
      * The @code ;@endcode token that separates the element type from the size in the array type declaration.
      */
-    std::unique_ptr<TokenAst> tok_semicolon;
+    Unique<TokenAst> TokSemiColon;
 
     /**
      * The size of the array, which can be a literal or an expression.
      */
-    std::unique_ptr<ExpressionAst> size;
+    Unique<ExpressionAst> Size;
 
     /**
      * The right square bracket token that represents the end of the array type.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the TypeArrayAst with the arguments matching the members.
@@ -49,15 +50,15 @@ SPP_EXP_CLS struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins:
      * @param tok_r The right square bracket token.
      */
     TypeArrayShorthandAst(
-        decltype(tok_l) &&tok_l,
-        decltype(element_type) &&element_type,
-        decltype(tok_semicolon) &&tok_semicolon,
-        decltype(size) &&size,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(ElemType) &&element_type,
+        decltype(TokSemiColon) &&tok_semicolon,
+        decltype(Size) &&size,
+        decltype(TokR) &&tok_r);
 
     ~TypeArrayShorthandAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert() -> std::unique_ptr<TypeAst> override;
+    auto Convert() -> Unique<TypeAst> override;
 };

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.local_variable_ast;
 import spp.asts.ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -10,21 +11,17 @@ namespace spp::asts {
     SPP_EXP_CLS struct LocalVariableAst;
 }
 
-
-SPP_EXP_CLS struct spp::asts::LocalVariableAst : virtual Ast {
-protected:
-    bool m_from_case_pattern;
-
-public:
+SPP_EXP_CLS struct spp::asts::LocalVariableAst : Ast {
     LocalVariableAst();
 
     ~LocalVariableAst() override;
 
-    SPP_ATTR_NODISCARD virtual auto extract_names() const
-        -> std::vector<std::shared_ptr<IdentifierAst>>;
+    SPP_ATTR_NODISCARD virtual auto ExtractName() const -> Shared<IdentifierAst>;
 
-    SPP_ATTR_NODISCARD virtual auto extract_name() const
-        -> std::shared_ptr<IdentifierAst>;
+    SPP_ATTR_NODISCARD virtual auto ExtractNames() const -> Vec<Shared<IdentifierAst>>;
 
-    auto mark_from_case_pattern() -> void;
+    auto MarkFromCasePattern() -> void;
+
+protected:
+    bool _FromCasePattern;
 };

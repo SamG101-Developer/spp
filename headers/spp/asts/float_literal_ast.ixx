@@ -4,6 +4,7 @@ module;
 export module spp.asts.float_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -20,36 +21,42 @@ namespace spp::asts {
  * @c _f64. No postfix defaults the type to @c std::BigDec.
  */
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The optional sign of the float literal. This can be either a plus or minus sign.
      */
-    std::unique_ptr<TokenAst> tok_sign;
+    Unique<TokenAst> TokSign;
 
     /**
      * The integer part of the float literal. This is the part before the decimal point. It is required (.1 is not a
      * valid float literal).
      */
-    std::unique_ptr<TokenAst> int_val;
+    Unique<TokenAst> IntVal;
 
     /**
      * The token that represents the decimal point in the float literal. This separates the integer part from the
      * fractional part.
      */
-    std::unique_ptr<TokenAst> tok_dot;
+    Unique<TokenAst> TokDot;
 
     /**
      * The fractional part of the float literal. This is the part after the decimal point. It is required (1. is not a
      * valid float literal).
      */
-    std::unique_ptr<TokenAst> frac_val;
+    Unique<TokenAst> FracVal;
 
     /**
      * The optional type annotation of the float literal. This is used to specify the type of the float if the default
      * @c std::BigDec is not desired. This can be @c _f32 or @c _f64, for example.
      */
-    std::string type;
+    Str Type;
 
-    auto _spp_key_function() const -> void override;
+    static auto FromSingleTok(
+        decltype(TokSign) &&tok_sign,
+        Unique<TokenAst> &&token,
+        Str &&type)
+        -> Unique<FloatLiteralAst>;
 
     /**
      * Construct the FloatLiteralAst with the arguments matching the members.
@@ -60,39 +67,31 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
      * @param[in] type The optional type annotation of the float literal.
      */
     FloatLiteralAst(
-        decltype(tok_sign) &&tok_sign,
-        decltype(int_val) &&int_val,
-        decltype(tok_dot) &&tok_dot,
-        decltype(frac_val) &&frac_val,
-        std::string &&type);
+        decltype(TokSign) &&tok_sign,
+        decltype(IntVal) &&int_val,
+        decltype(TokDot) &&tok_dot,
+        decltype(FracVal) &&frac_val,
+        Str &&type);
 
     ~FloatLiteralAst() override;
 
-    static auto from_single_token(
-        decltype(tok_sign) &&tok_sign,
-        std::unique_ptr<TokenAst> &&token,
-        std::string &&type)
-        -> std::unique_ptr<FloatLiteralAst>;
+    SPP_ATTR_NODISCARD auto EqualsFloatLiteral(FloatLiteralAst const &) const -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    SPP_ATTR_NODISCARD auto equals_float_literal(FloatLiteralAst const &) const -> std::strong_ordering override;
-
-    template <typename T> requires std::floating_point<T>
-    auto cpp_value() const -> T;
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+    template <typename T> requires std::floating_point<T>
+    auto CppVal() const -> T;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::FloatLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

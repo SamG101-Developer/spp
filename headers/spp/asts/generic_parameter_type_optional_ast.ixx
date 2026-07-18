@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.generic_parameter_type_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -16,12 +17,12 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericPar
     /**
      * The token that separates the parameter name from the default value.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
     /**
      * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
      */
-    std::shared_ptr<TypeAst> default_val;
+    Shared<TypeAst> DefaultVal;
 
     /**
      * Construct the GenericParameterTypeOptionalAst with the arguments matching the members.
@@ -31,16 +32,16 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericPar
      * @param default_val The default value for the parameter.
      */
     GenericParameterTypeOptionalAst(
-        decltype(name) &&name,
-        decltype(constraints) &&constraints,
-        decltype(tok_assign) &&tok_assign,
-        decltype(default_val) &&default_val);
+        decltype(Name) &&name,
+        decltype(Constraints) &&constraints,
+        decltype(TokAssign) &&tok_assign,
+        decltype(DefaultVal) &&default_val);
 
     ~GenericParameterTypeOptionalAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

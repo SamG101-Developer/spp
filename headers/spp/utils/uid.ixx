@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.uid;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -9,9 +10,7 @@ namespace spp::asts {
 }
 
 namespace spp::utils {
-    SPP_EXP_FUN auto generate_uid(asts::Ast const *)
-        -> std::string;
+    SPP_EXP_FUN auto Uid(asts::Ast const *) -> Str;
 
-    SPP_EXP_FUN auto generate_uid()
-        -> std::string;
+    SPP_EXP_FUN auto Uid() -> Str;
 }

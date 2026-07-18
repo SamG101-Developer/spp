@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -13,31 +14,26 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixExpressionOperatorAst {
-private:
-    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
-
-public:
     /**
      * The @code [@endcode token that indicates the start of the index expression.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The optional @c mut token that indicates that the index operation is mutable.
      */
-    std::unique_ptr<TokenAst> tok_mut;
+    Unique<TokenAst> TokMut;
 
     /**
      * The expression used to index into the lhs expression.
      */
-    std::unique_ptr<ExpressionAst> expr;
+    Unique<ExpressionAst> Expr;
 
     /**
      * The @code ]@endcode token that indicates the end of the index expression.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the PostfixExpressionOperatorIndexAst with the arguments matching the members.
@@ -47,10 +43,10 @@ public:
      * @param[in] tok_r The @code ]@endcode token that indicates the end of the index expression.
      */
     PostfixExpressionOperatorIndexAst(
-        std::unique_ptr<TokenAst> tok_l,
-        std::unique_ptr<TokenAst> tok_mut,
-        std::unique_ptr<ExpressionAst> expr,
-        std::unique_ptr<TokenAst> tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(TokMut) &&tok_mut,
+        decltype(Expr) &&expr,
+        decltype(TokR) &&tok_r);
 
     /**
      * Default destructor.
@@ -66,9 +62,9 @@ public:
      * @param[in,out] sm The scope manager to use for analysis.
      * @param[in,out] meta Associated metadata.
      */
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For
@@ -78,5 +74,8 @@ public:
      * @param[in,out] meta Associated metadata.
      * @return
      */
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+private:
+    Shared<PostfixExpressionAst> _MappedFunc;
 };

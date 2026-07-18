@@ -28,5 +28,5 @@ public:
      * Get the order tag of this orderable AST. This is used as a simple wrapping accessor for the order tag.
      * @return The order tag of this AST.
      */
-    SPP_ATTR_NODISCARD auto get_order_tag() const -> utils::OrderableTag;
+    SPP_ATTR_NODISCARD auto GetOrderTag() const -> utils::OrderableTag;
 };

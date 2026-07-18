@@ -2,75 +2,108 @@ cmake_minimum_required(VERSION 4.1.2)
 set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 project(spp)
 
-# Set the C++ standard and other compiler options.
+# Set the C++ standard and other compiler options & flags.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
-set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-set(ANKERL_ENABLE_MODULES ON CACHE BOOL "Enable unordered_dense C++ modules" FORCE)
-set(TOMLPLUSPLUS_BUILD_MODULES ON CACHE BOOL "Enable tomlplusplus C++ modules" FORCE)
+
+# Local dev builds against a custom GCC at /usr/local/gcc-dev; CI passes
+# -DSPP_USE_DEV_RPATH=OFF so it doesn't bake in a path that isn't on the runner.
+option(SPP_USE_DEV_RPATH "Bake in the local dev toolchain rpath (/usr/local/gcc-dev/lib64)" ON)
+if (SPP_USE_DEV_RPATH)
+    set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+endif ()
+
+# Build options (consumed by CI in the configure-cmake composite action).
+option(SPP_WERROR "Treat compiler warnings as errors" ON)
+option(SPP_BUILD_TESTS "Build the unit tests" ON)
+set(SPP_SANITIZER "" CACHE STRING "Sanitizers to enable, e.g. 'address,undefined,leak' or 'thread'")
+
+# Apply sanitizer flags to every target defined below (library, executable, tests).
+# Accepts either '+' or ',' as the separator (CI passes e.g. 'address+undefined+leak').
+if (SPP_SANITIZER)
+    string(REPLACE "+" "," _SPP_SAN_LIST "${SPP_SANITIZER}")
+    add_compile_options(-fsanitize=${_SPP_SAN_LIST} -fno-omit-frame-pointer -fno-optimize-sibling-calls)
+    add_link_options(-fsanitize=${_SPP_SAN_LIST})
+endif ()
+
+include(FetchContent)
 
 # Find dependencies.
-find_package(ColEx REQUIRED) # colored console output
-find_package(OpEx REQUIRED) # custom operators
-find_package(GenEx REQUIRED) # iterator utilities
-
-add_subdirectory(/home/sam/unordered_dense unordered_dense_build) # high-performance hash maps and sets
-add_subdirectory(/home/sam/tomlplusplus tomlplusplus_build) # toml parsing
-add_subdirectory(/home/sam/json json_build) # json parsing
-
-find_package(absl REQUIRED) # hashing and string utilities
-find_package(magic_enum REQUIRED) # enum reflection
-find_package(Boost 1.89.0 REQUIRED) # preprocessor metaprogramming utilities
-find_package(mp++ REQUIRED) # multi-precision numbers and floating point
-find_package(Glob) # file globbing
-find_package(CLI11 1.9.4 REQUIRED) # command line parsing
-find_package(LLVM 22.0.0 REQUIRED CONFIG) # LLVM libraries
-
+find_package(Boost 1.91.0 REQUIRED) # Boost libraries
+# Accept any LLVM 22.x.x (LLVM's config rejects a non-exact patch match).
+find_package(LLVM REQUIRED CONFIG) # LLVM libraries
+if (NOT LLVM_VERSION_MAJOR EQUAL 22)
+    message(FATAL_ERROR "LLVM 22 is required, but found ${LLVM_PACKAGE_VERSION}")
+endif ()
+find_package(unordered_dense CONFIG REQUIRED) # unordered_dense library
+find_package(tomlplusplus CONFIG REQUIRED) # tomlplusplus library
+find_package(nlohmann_json CONFIG REQUIRED) # nlohmann_json library
+find_package(magic_enum CONFIG REQUIRED) # magic_enum library
+find_package(CLI11 CONFIG REQUIRED) # CLI11 library
+find_package(GenEx CONFIG REQUIRED) # GenEx library
+find_package(ColEx CONFIG REQUIRED) # ColEx library
+find_package(OpEx CONFIG REQUIRED) # OpEx library
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 
 # Collect all source files and create the library.
 file(GLOB_RECURSE MODULE_FILES CONFIGURE_DEPENDS "headers/*.ixx")
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
-add_library(spp_lib)
+add_library(${PROJECT_NAME}_lib)
 
-# Enable all warnings and treat them as errors.
-target_compile_options(spp_lib PRIVATE
-        -Wall -Wextra -Werror -fmodules -fvisibility=hidden -fvisibility-inlines-hidden
+# Enable all warnings (treating them as errors is gated behind SPP_WERROR, applied below). # -Wswitch-enum
+target_compile_options(${PROJECT_NAME}_lib PRIVATE
+        -Wall -Wextra -fmodules -fvisibility=hidden -fvisibility-inlines-hidden
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
-        -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
-        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wodr)
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(spp_lib PRIVATE
-            -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions -fno-inline-functions-called-once
-            -fno-optimize-sibling-calls)
-    target_link_options(spp_lib PRIVATE -pg)
+        -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
+        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wsuggest-override
+        -Wzero-as-null-pointer-constant -Wimplicit-fallthrough=5 -Wstrict-overflow=2 -Wnon-virtual-dtor
+        -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wno-null-dereference -Wodr)
+
+if (SPP_WERROR)
+    target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
 endif ()
 
-target_compile_features(CLI11::CLI11_Module INTERFACE cxx_std_26)
-target_compile_features(spp_lib
-        PRIVATE cxx_std_26)
-target_link_libraries(spp_lib PUBLIC
-        nlohmann_json::nlohmann_json
-        tomlplusplus::tomlplusplus tomlplusplus_modules
-        unordered_dense::unordered_dense unordered_dense::unordered_dense_module
-        magic_enum::magic_enum mp++::mp++ absl::hash absl::strings
-        Boost::boost CLI11::CLI11_Module
-        ColEx::ColEx OpEx::OpEx GenEx::GenEx
-        Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
-target_sources(spp_lib
-        PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
-        PRIVATE ${SOURCE_FILES})
-target_include_directories(spp_lib PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/headers)
-target_compile_definitions(spp_lib PRIVATE
-        ${LLVM_DEFINITIONS_LIST})
+target_sources(${PROJECT_NAME}_lib PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES} PRIVATE ${SOURCE_FILES})
+target_compile_features(${PROJECT_NAME}_lib PRIVATE cxx_std_26)
+target_compile_definitions(${PROJECT_NAME}_lib PRIVATE ${LLVM_DEFINITIONS_LIST})
+target_include_directories(${PROJECT_NAME}_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+target_include_directories(${PROJECT_NAME}_lib SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
 
-add_executable(spp main.cpp)
-target_link_libraries(spp PRIVATE spp_lib)
+target_link_libraries(${PROJECT_NAME}_lib PUBLIC
+        unordered_dense::unordered_dense nlohmann_json::nlohmann_json tomlplusplus::tomlplusplus
+        magic_enum::magic_enum Boost::boost CLI11::CLI11 ColEx::ColEx OpEx::OpEx GenEx::GenEx
+        LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
+
+add_executable(${PROJECT_NAME} main.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
+
+# ASAN
+
+set(CMAKE_CXX_FLAGS_ASAN
+        "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+        CACHE STRING "Flags for ASan build" FORCE)
+set(CMAKE_C_FLAGS_ASAN
+        "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+        CACHE STRING "Flags for ASan build" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS_ASAN
+        "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined"
+        CACHE STRING "Linker flags for ASan build" FORCE)
+set(CMAKE_SHARED_LINKER_FLAGS_ASAN
+        "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined"
+        CACHE STRING "Shared linker flags for ASan build" FORCE)
+
+mark_as_advanced(
+        CMAKE_CXX_FLAGS_ASAN CMAKE_C_FLAGS_ASAN
+        CMAKE_EXE_LINKER_FLAGS_ASAN CMAKE_SHARED_LINKER_FLAGS_ASAN)
 
 # Unit test support.
-enable_testing()
-add_subdirectory(tests)
+if (SPP_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+
+    # Ensure the test executable is (re)built whenever the main project is built, so tests
+    # never run against a stale binary after updating the repo.
+    add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_tests)
+endif ()

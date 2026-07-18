@@ -2,22 +2,21 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.progress;
+import spp.utils.types;
 import std;
-
 
 namespace spp::utils {
     SPP_EXP_CLS class ProgressBar;
 }
 
-
 SPP_EXP_CLS class spp::utils::ProgressBar {
-    std::string m_label;
-    std::uint32_t m_total_steps;
-    std::uint32_t m_current_step;
-    bool m_enabled;
+    Str _Label;
+    std::uint32_t _TotalSteps;
+    std::uint32_t _CurrentSteps;
+    bool _Enabled;
 
 public:
-    explicit ProgressBar(std::string label, std::uint32_t total_steps, bool enabled = true);
-    auto next() -> void;
-    auto finish() -> void;
+    explicit ProgressBar(Str label, std::uint32_t total_steps, bool enabled = true);
+    auto Next() -> void;
+    auto Finish() const -> void;
 };

@@ -4,6 +4,7 @@ module;
 export module spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -16,20 +17,20 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
-private:
-    std::shared_ptr<TypeAst> m_ret_type;
-
-public:
     /**
      * The @c ret token that starts this statement.
      */
-    std::unique_ptr<TokenAst> tok_ret;
+    Unique<TokenAst> TokRet;
 
     /**
      * The optional value that is being returned from the function. This is the expression that will be evaluated and
      * returned.
      */
-    std::unique_ptr<ExpressionAst> expr;
+    Unique<ExpressionAst> Expr;
+
+    struct {
+        Shared<TypeAst> _OriginalRetType;
+    } Source;
 
     /**
      * Construct the RetStatementAst with the arguments matching the members.
@@ -37,22 +38,23 @@ public:
      * @param val The optional value that is being returned from the function.
      */
     RetStatementAst(
-        decltype(tok_ret) &&tok_ret,
-        decltype(expr) &&val);
+        decltype(TokRet) &&tok_ret,
+        decltype(Expr) &&val);
 
     ~RetStatementAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
-    SPP_ATTR_NODISCARD auto terminates() const -> bool override;
+private:
+    Shared<TypeAst> _RetType;
 };

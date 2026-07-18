@@ -6,175 +6,124 @@ import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.utils.files;
 import genex;
-
 
 SPP_MOD_BEGIN
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(
-    decltype(impl) &&impl) :
-    impl(std::move(impl)) {
+    decltype(Impl) &&impl) :
+    Impl(std::move(impl)) {
 }
-
 
 spp::asts::ModulePrototypeAst::~ModulePrototypeAst() = default;
 
-
-auto spp::asts::ModulePrototypeAst::pos_start() const
+auto spp::asts::ModulePrototypeAst::PosStart() const
     -> std::size_t {
-    return impl->pos_start();
+    // Use the impl.
+    return Impl->PosStart();
 }
 
-
-auto spp::asts::ModulePrototypeAst::pos_end() const
+auto spp::asts::ModulePrototypeAst::PosEnd() const
     -> std::size_t {
-    return impl->pos_end();
+    // Use the impl.
+    return Impl->PosEnd();
 }
 
-
-auto spp::asts::ModulePrototypeAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ModulePrototypeAst>(ast_clone(impl));
+auto spp::asts::ModulePrototypeAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ModulePrototypeAst>(AstClone(Impl));
 }
 
-
-spp::asts::ModulePrototypeAst::operator std::string() const {
+auto spp::asts::ModulePrototypeAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(impl);
+    SPP_STRING_APPEND(Impl);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::ModulePrototypeAst::name() const
-    -> std::unique_ptr<IdentifierAst> {
-    using namespace std::string_literals;
-    // Split the file path intro parts.
-    auto parts = std::vector<std::string>();
-    for (auto const &entry : std::filesystem::directory_iterator(file_path)) {
-        if (entry.is_directory()) {
-            parts.emplace_back(entry.path().filename().string());
-        }
-    }
-
-    // Check if "src" is in the file path.
-    auto name = std::string();
-    if (genex::contains(parts, "src"s)) {
-        name = parts
-            | genex::views::drop(genex::position(parts, [](auto &&x) { return x == "src"; }))
-            | genex::views::intersperse("::"s)
-            | genex::views::join
-            | genex::to<std::string>();
-    }
-    else {
-        name = std::vector{parts[0], parts[1] + ".spp"}
-            | genex::views::intersperse("::"s)
-            | genex::views::join
-            | genex::to<std::string>();
-    }
-
-    return std::make_unique<IdentifierAst>(pos_start(), std::move(name));
-}
-
-
-auto spp::asts::ModulePrototypeAst::file_name() const
-    -> std::unique_ptr<IdentifierAst> {
-    using namespace std::string_literals;
-    // Return the filepath as an IdentifierAst.
-    return std::make_unique<IdentifierAst>(pos_start(), file_path.string());
-}
-
-
-auto spp::asts::ModulePrototypeAst::stage_1_pre_process(
+auto spp::asts::ModulePrototypeAst::Stage1_PreProcess(
     Ast *ctx)
     -> void {
     // Shift to implementation.
-    Ast::stage_1_pre_process(ctx);
-    impl->stage_1_pre_process(this);
+    Ast::Stage1_PreProcess(ctx);
+    Impl->Stage1_PreProcess(this);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_2_gen_top_level_scopes(
+auto spp::asts::ModulePrototypeAst::Stage2_GenTopLvlScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_2_gen_top_level_scopes(sm, meta);
+    Impl->Stage2_GenTopLvlScopes(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_3_gen_top_level_aliases(
+auto spp::asts::ModulePrototypeAst::Stage3_GenTopLvlAliases(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_3_gen_top_level_aliases(sm, meta);
+    Impl->Stage3_GenTopLvlAliases(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_4_qualify_types(
+auto spp::asts::ModulePrototypeAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_4_qualify_types(sm, meta);
+    Impl->Stage4_QualifyTypes(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_5_load_super_scopes(
+auto spp::asts::ModulePrototypeAst::Stage5_LoadSupScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_5_load_super_scopes(sm, meta);
+    Impl->Stage5_LoadSupScopes(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_6_pre_analyse_semantics(
+auto spp::asts::ModulePrototypeAst::Stage6_PreAnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_6_pre_analyse_semantics(sm, meta);
+    Impl->Stage6_PreAnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_7_analyse_semantics(
+auto spp::asts::ModulePrototypeAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_7_analyse_semantics(sm, meta);
+    Impl->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_8_check_memory(
+auto spp::asts::ModulePrototypeAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_8_check_memory(sm, meta);
+    Impl->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_9_comptime_resolution(
+auto spp::asts::ModulePrototypeAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to implementation.
-    impl->stage_9_comptime_resolution(sm, meta);
+    Impl->Stage9_CompTimeResolve(sm, meta);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_10_code_gen_1(
+auto spp::asts::ModulePrototypeAst::Stage10_PreCodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Shift to implementation.
-    return impl->stage_10_code_gen_1(sm, meta, ctx);
+    return Impl->Stage10_PreCodeGen(sm, meta, ctx);
 }
 
-
-auto spp::asts::ModulePrototypeAst::stage_11_code_gen_2(
+auto spp::asts::ModulePrototypeAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -182,7 +131,43 @@ auto spp::asts::ModulePrototypeAst::stage_11_code_gen_2(
     // Add the entry building block for module level code.
 
     // Shift to implementation.
-    return impl->stage_11_code_gen_2(sm, meta, ctx);
+    return Impl->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto spp::asts::ModulePrototypeAst::Name() const
+    -> Unique<IdentifierAst> {
+    using namespace std::literals;
+    // Split the file path intro parts.
+    auto parts = Vec<Str>();
+    for (auto const &entry : std::filesystem::directory_iterator(FilePath)) {
+        if (entry.is_directory()) {
+            parts.EmplaceBack(spp::utils::files::DisplayString(entry.path().filename()));
+        }
+    }
+
+    // Check if "src" is in the file path.
+    auto name = Str();
+    if (genex::contains(parts, "src"_str)) {
+        name = parts
+            | genex::views::drop(genex::position(parts, [](auto const &x) { return x == "src"; }))
+            | genex::views::intersperse("::"_str)
+            | genex::views::join
+            | genex::to<Str>();
+    }
+    else {
+        name = Vec{parts[0], parts[1] + ".spp"_str}
+            | genex::views::intersperse("::"_str)
+            | genex::views::join
+            | genex::to<Str>();
+    }
+
+    return MakeUnique<IdentifierAst>(PosStart(), std::move(name));
+}
+
+auto spp::asts::ModulePrototypeAst::FileName() const
+    -> Unique<IdentifierAst> {
+    // Return the filepath as an IdentifierAst.
+    return MakeUnique<IdentifierAst>(PosStart(), spp::utils::files::DisplayString(FilePath));
 }
 
 SPP_MOD_END

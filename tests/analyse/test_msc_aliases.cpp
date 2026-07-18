@@ -1,161 +1,151 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_simple, R"(
     cls A {
-        b: Bool
+        !public b: Bool
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let a = A(b=true)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
     cls A {
-        b: MyVec[Bool]
+        !public b: MyVec[Bool]
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let a = A(b=MyVec[Bool]::from([true, false, true]))
-        let b = A(b=std::vector::Vec[Bool]::from([false, false]))
+        let b = A(b=Vec[Bool]::from([false, false]))
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_number, R"(
     cls A {
-        b: S32
+        !public b: S32
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let a = A(b=123)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
     test_valid_simple, R"(
     sup Bool {
-        fun test(&self) -> Bool {
+        !public fun test(&self) -> Bool {
             ret self@
         }
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let b = true
         let mut c = b.test()
         c = false
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
     sup [XX] MyVec[XX] {
-        fun test(&self) -> USize {
-            ret self.length()
+        !public fun test(&self) -> USize {
+            ret self.len()
         }
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let v = MyVec[S32]::from([1, 2, 3, 4, 5])
         let mut len = v.test()
         len = 0_uz
 
-        let v = std::vector::Vec[Bool]::from([true, false])
+        let v = Vec[Bool]::from([true, false])
         let mut len = v.test()
         len = 0_uz
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
     test_valid_number, R"(
     sup S32 {
-        fun test(&self) -> S32 {
+        !public fun test(&self) -> S32 {
             ret self@ + 1
         }
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let n = 42
         let mut m = n.test()
         m = 0
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_simple, R"(
-    sup S32 ext From[S32, std::string::Str] {
-        fun from(that: std::string::Str) -> S32 {
+    sup S32 ext From[Str] {
+        !public fun from(that: Str) -> Self {
             ret 0
         }
     }
 
-    fun f() -> std::void::Void {
-        let s = std::string::Str::from("123")
+    fun f() -> Void {
+        let s = Str::from("123")
         let mut n = S32::from(s)
         n = 0
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    sup MyVec[S32] ext From[MyVec[S32], std::string::Str] {
-        fun from(that: std::string::Str) -> MyVec[S32] {
+    sup MyVec[S32] ext From[Str] {
+        !public fun from(that: Str) -> Self {
             ret MyVec[S32]::new()
         }
     }
 
-    fun f() -> std::void::Void {
-        let s = std::string::Str::from("1,2,3")
+    fun f() -> Void {
+        let s = Str::from("1,2,3")
         let mut v = MyVec[S32]::from(s)
-        v = std::vector::Vec[S32]::new()
+        v = Vec[S32]::new()
 
-        let s = std::string::Str::from("1,2,3")
-        let mut v = std::vector::Vec[S32]::from(s)
+        let s = Str::from("1,2,3")
+        let mut v = Vec[S32]::from(s)
         v = MyVec[S32]::new()
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_number, R"(
-    sup Str ext From[Str, S32] {
-        fun from(that: S32) -> Str {
+    sup Str ext From[S32] {
+        !public fun from(that: S32) -> Self {
             ret Str::from("test")
         }
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let n = 42
         let mut s = Str::from(n)
         s = Str::from("changed")
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionReturnTypeAlias,
@@ -165,22 +155,20 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionReturnTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
     fun f() -> MyVec[Bool] {
         ret case true {
             MyVec[Bool]::from([true, false])
         }
         else {
-            std::vector::Vec[Bool]::from([false, true])
+            Vec[Bool]::from([false, true])
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionReturnTypeAlias,
@@ -190,84 +178,77 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionParameterTypeAlias,
     test_valid_alias_simple, R"(
-    fun g(b: Bool) -> std::void::Void {
+    fun g(b: Bool) -> Void {
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g(true)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionParameterTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    fun g(v: MyVec[Bool]) -> std::void::Void {
+    fun g(v: MyVec[Bool]) -> Void {
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g(MyVec[Bool]::from([true, false, true]))
-        g(std::vector::Vec[Bool]::from([false, true]))
+        g(Vec[Bool]::from([false, true]))
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestFunctionParameterTypeAlias,
     test_valid_alias_number, R"(
-    fun g(n: S32) -> std::void::Void {
+    fun g(n: S32) -> Void {
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g(123)
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterCompTypeAlias,
     test_valid_alias_simple, R"(
-    fun g[cmp b: Bool]() -> std::void::Void {
+    fun g[cmp b: Bool]() -> Void {
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g[true]()
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterCompTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    fun g[cmp v: MyVec[Bool]]() -> std::void::Void {
+    fun g[cmp v: MyVec[Bool]]() -> Void {
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g[MyVec[Bool]()]()
-        g[std::vector::Vec[Bool]()]()
+        g[Vec[Bool]()]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterCompTypeAlias,
     test_valid_alias_number, R"(
-    fun g[cmp n: S32]() -> std::void::Void {
+    fun g[cmp n: S32]() -> Void {
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         g[123]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterTypeOptionalDefaultTypeAlias,
@@ -276,31 +257,29 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret T()
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut b = g()
         b = false
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterTypeOptionalDefaultTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
     fun g[T=MyVec[Bool]]() -> T {
         ret T()
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut v1 = g()
         v1 = MyVec[Bool]::new()
 
         let mut v2 = g()
-        v2 = std::vector::Vec[Bool]::new()
+        v2 = Vec[Bool]::new()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericParameterTypeOptionalDefaultTypeAlias,
@@ -309,12 +288,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret T()
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut n = g()
         n = 0
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentTypeTypeAlias,
@@ -323,31 +301,29 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret T()
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut b = g[Bool]()
         b = false
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentTypeTypeAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
     fun g[T]() -> T {
         ret T()
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut v1 = g[MyVec[Bool]]()
         v1 = MyVec[Bool]::new()
 
         let mut v2 = g[MyVec[Bool]]()
-        v2 = std::vector::Vec[Bool]::new()
+        v2 = Vec[Bool]::new()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentTypeTypeAlias,
@@ -356,251 +332,407 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret T()
     }
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut n = g[S32]()
         n = 0
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
-    fun f(s: Str, t: Str) -> std::void::Void {
+    fun f(s: Str, t: Str) -> Void {
         case s is Str(mut data) {
-            data = std::vector::Vec[std::number::U8]::new()
+            data = Vec[std::number::U8]::new()
         }
-        case t is std::string::Str(mut data) {
-            data = std::vector::Vec[std::number::U8]::new()
+        case t is Str(mut data) {
+            data = Vec[std::number::U8]::new()
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    fun f(v: MyVec[U8], v2: MyVec[U8]) -> std::void::Void {
+    fun f(v: MyVec[U8], v2: MyVec[U8]) -> Void {
         case v is MyVec[U8](mut buf) {
             buf = Slice[U8]()
         }
-        case v2 is std::vector::Vec[U8](mut buf) {
+        case v2 is Vec[U8](mut buf) {
             buf = Slice[U8]()
         }
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_number, R"(
-    fun f(n: S32) -> std::void::Void {
+    fun f(n: S32) -> Void {
         case n is S32() { }
         case n is std::number::S32() { }
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
-    fun f(s: Str) -> std::void::Void {
+    fun f(s: Str) -> Void {
         let Str(mut data) = s
-        data = std::vector::Vec[std::number::U8]::new()
+        data = Vec[std::number::U8]::new()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    fun f(v: MyVec[U8]) -> std::void::Void {
+    fun f(v: MyVec[U8]) -> Void {
         let MyVec[U8](mut buf) = v
         buf = Slice[U8]()
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_number, R"(
-    fun f(n: S32) -> std::void::Void {
+    fun f(n: S32) -> Void {
         let S32() = n
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementTypeAlias,
     test_valid_simple, R"(
     type Tool = Bool
 
-    fun f(mut t: Tool) -> std::void::Void {
+    fun f(mut t: Tool) -> Void {
         t = false
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementTypeAlias,
     test_valid_complex, R"(
-    type Vec[ZZ] = std::vector::Vec[ZZ]
-    type Tool = std::boolean::Bool
-    type BoolVec = Vec[Tool]
+    type VVec[ZZ] = Vec[ZZ]
+    type Tool = Bool
+    type BoolVec = VVec[Tool]
 
-    fun f(mut v: BoolVec) -> std::void::Void {
-        v = std::vector::Vec[std::boolean::Bool]::new()
+    fun f(mut v: BoolVec) -> Void {
+        v = VVec[Bool]::new()
+        v = Vec[Bool]::new()
+        v = std::vector::Vec[Bool]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementTypeAlias,
     test_valid_number, R"(
     type Tool = S32
 
-    fun f(mut n: Tool) -> std::void::Void {
+    fun f(mut n: Tool) -> Void {
         n = 0
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCmpStatementTypeAlias,
     test_valid_simple, R"(
     cmp value: Bool = true
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut x = value
         x = false
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCmpStatementTypeAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
     cmp value: MyVec[Bool] = Vec[Bool]()
 
-    fun f() -> std::void::Void {
-        let mut l = value.length()
+    fun f() -> Void {
+        let mut l = value.len()
         l = 0_uz
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCmpStatementTypeAlias,
     test_valid_number, R"(
     cmp value: S32 = 123
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut n = value
         n = 0
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementUninitializedTypeAlias,
     test_valid_simple, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut b: Bool
         b = true
         b = false
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementUninitializedTypeAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut v: MyVec[Bool]
         v = MyVec[Bool]::from([true, false])
-        v = std::vector::Vec[Bool]::from([false, true])
+        v = Vec[Bool]::from([false, true])
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementUninitializedTypeAlias,
     test_valid_number, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut n: S32
         n = 123
         n = 0
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementInitializedTypeAlias,
     test_valid_simple, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut b: Bool = true
         b = false
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementInitializedTypeAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut v: MyVec[Bool] = MyVec[Bool]::from([true, false])
-        v = std::vector::Vec[Bool]::from([false, true])
+        v = Vec[Bool]::from([false, true])
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLetStatementInitializedTypeAlias,
     test_valid_number, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let mut n: S32 = 123
         n = 0
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestObjectInitializerTypeAlias,
     test_valid_simple, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let b: Bool = Bool()
-        let c: std::boolean::Bool = b
+        let c: Bool = b
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestObjectInitializerTypeAlias,
     test_valid_complex, R"(
-    type MyVec[ZZ] = std::vector::Vec[ZZ]
+    type MyVec[ZZ] = Vec[ZZ]
 
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let v1: MyVec[Bool] = MyVec[Bool]::new()
-        let v2: std::vector::Vec[Bool] = v1
+        let v2: Vec[Bool] = v1
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestObjectInitializerTypeAlias,
     test_valid_number, R"(
-    fun f() -> std::void::Void {
+    fun f() -> Void {
         let n: S32 = S32()
         let m: std::number::S32 = n
+    }
+)");
+
+// --- Type-shorthand positions: an alias must work inside tuple/array/variant/function types. ---
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTupleTypeAlias,
+    test_valid_simple, R"(
+    fun f(mut t: (Bool, Bool)) -> Void {
+        t = (true, false)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTupleTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = Vec[ZZ]
+
+    fun f(mut t: (MyVec[Bool], Bool)) -> Void {
+        t = (MyVec[Bool]::new(), false)
+        t = (Vec[Bool]::new(), true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTupleTypeAlias,
+    test_valid_number, R"(
+    fun f(mut t: (S32, S32)) -> Void {
+        t = (1, 2)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestArrayTypeAlias,
+    test_valid_simple, R"(
+    fun f(mut a: [Bool; 2_uz]) -> Void {
+        a = [true, false]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestArrayTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = Vec[ZZ]
+
+    fun f(mut a: [MyVec[Bool]; 2_uz]) -> Void {
+        a = [MyVec[Bool]::new(), Vec[Bool]::new()]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestArrayTypeAlias,
+    test_valid_number, R"(
+    fun f(mut a: [S32; 3_uz]) -> Void {
+        a = [1, 2, 3]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypeAlias,
+    test_valid_simple, R"(
+    fun f(mut x: Bool or S32) -> Void {
+        x = true
+        x = 123
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = Vec[ZZ]
+
+    fun f(mut x: MyVec[Bool] or Bool) -> Void {
+        x = MyVec[Bool]::new()
+        x = Vec[Bool]::new()
+        x = true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypeAlias,
+    test_valid_number, R"(
+    fun f(mut x: S32 or Bool) -> Void {
+        x = 123
+        x = false
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFunctionTypeAlias,
+    test_valid_simple, R"(
+    fun f(g: FunRef[(Bool,), Bool]) -> Void {
+        let mut r = g(true)
+        r = false
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFunctionTypeAlias,
+    test_valid_complex, R"(
+    type MyVec[ZZ] = Vec[ZZ]
+
+    fun f(g: FunRef[(MyVec[Bool],), Bool]) -> Void {
+        let mut r = g(Vec[Bool]::new())
+        r = false
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFunctionTypeAlias,
+    test_valid_number, R"(
+    fun f(g: FunRef[(S32,), S32]) -> Void {
+        let mut r = g(1)
+        r = 0
+    }
+)");
+
+// --- Generic constraint position: an alias must work as a `[T: Alias]` constraint. ---
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericConstraintTypeAlias,
+    test_valid_simple, R"(
+    fun g[T: Copy](t: T) -> Void { }
+
+    fun f() -> Void {
+        g(true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericConstraintTypeAlias,
+    test_valid_complex, R"(
+    cls Base { }
+    type BaseAlias = Base
+
+    cls Derived { }
+    sup Derived ext Base { }
+
+    fun g[T: BaseAlias](t: T) -> Void { }
+
+    fun f() -> Void {
+        let d = Derived()
+        g(d)
+    }
+)");
+
+// --- Nested type access through an alias: `Alias::Inner` must resolve like `Underlying::Inner`. ---
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNestedTypeAccessAlias,
+    test_valid_simple, R"(
+    cls Holder { }
+    sup Holder {
+        !public type Inner = Bool
+    }
+
+    type HolderAlias = Holder
+
+    fun f(mut x: HolderAlias::Inner) -> Void {
+        x = true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNestedTypeAccessAlias,
+    test_valid_complex, R"(
+    cls Holder[T] { }
+    sup [T] Holder[T] {
+        !public type Inner = T
+    }
+
+    type HolderAlias[T] = Holder[T]
+
+    fun f(mut x: HolderAlias[Bool]::Inner) -> Void {
+        x = true
     }
 )");

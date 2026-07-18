@@ -6,48 +6,42 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
-    decltype(val) val,
+    decltype(Val) val,
     const utils::OrderableTag order_tag) :
     GenericArgumentAst(order_tag),
-    val(std::move(val)) {
+    Val(std::move(val)) {
+    Source.OriginalValPosStart = Val ? Val->PosStart() : 0;
+    Source.OriginalValPosEnd = Val ? Val->PosEnd() : 0;
 }
-
 
 spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;
 
-
-auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
+auto spp::asts::GenericArgumentTypeAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // If the generic arg is generic itself, from type aliasing, do nothing.
-    // if (meta->alias_qualifier_scope != nullptr) {
-    //     const auto sym = meta->alias_qualifier_scope->get_type_symbol(val, true);
-    //     if (sym and sym->is_generic) { return; }
-    // }
-
-    // Qualify the type value without generics, then re-add the generics.
-    val->stage_4_qualify_types(sm, meta);
-
-    // The value could be a generic from another scope, so only modify if it exists.
-    const auto raw = val->without_generics();
-    const auto sym = sm->current_scope->get_type_symbol(raw);
-    if (sym and sym->alias_stmt != nullptr) {
-        auto temp = sym->fq_name()->with_convention(ast_clone(val->get_convention()));
-        val = std::move(temp);
+    Val->Stage4_QualifyTypes(sm, meta);
+    const auto sym = sm->CurrentScope->GetTypeSymbol(Val, true);
+    if (sym and not sym->AliasStmt) {
+        const auto fq = sym ? sym->FqName() : nullptr;
+        Val = fq ? fq : Val;
+        return;
     }
-    else if (sym != nullptr) {
-        auto temp = sym->fq_name()->with_convention(ast_clone(val->get_convention()));
-        temp = temp->with_generics(std::move(val->type_parts().back()->generic_arg_group));
-        val = std::move(temp);
+
+    const auto sym2 = sm->CurrentScope->GetTypeSymbol(Val->WithoutGenerics(), true);
+    if (sym2 && !sym2->AliasStmt) {
+        const auto fq = sym2->FqName();
+        Val = fq->WithGenerics(std::move(Val->TypeParts().Back()->GnArgGroup))->WithConvention(AstClone(Val->GetConvention()));
     }
 }
 

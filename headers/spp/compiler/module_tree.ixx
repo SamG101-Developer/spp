@@ -4,7 +4,7 @@ module;
 export module spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.utils.error_formatter;
-
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -16,24 +16,22 @@ namespace spp::compiler {
     SPP_EXP_CLS struct ModuleTree;
 }
 
-
 SPP_EXP_CLS struct spp::compiler::Module {
     std::filesystem::path path = "";
-    std::string code;
-    std::vector<lex::RawToken> tokens = {};
-    std::unique_ptr<asts::ModulePrototypeAst> module_ast;
-    std::shared_ptr<utils::errors::ErrorFormatter> error_formatter;
+    Str code;
+    Vec<lex::RawToken> tokens = {};
+    Unique<asts::ModulePrototypeAst> module_ast;
+    Shared<utils::errors::ErrorFormatter> error_formatter;
 
     Module(
         std::filesystem::path path,
-        std::string code,
-        std::vector<lex::RawToken> tokens,
-        std::unique_ptr<asts::ModulePrototypeAst> module_ast,
-        std::shared_ptr<utils::errors::ErrorFormatter> error_formatter);
+        Str code,
+        Vec<lex::RawToken> tokens,
+        Unique<asts::ModulePrototypeAst> module_ast,
+        Shared<utils::errors::ErrorFormatter> error_formatter);
 
-    static auto from_path(std::filesystem::path const &path);
+    static auto FromPath(std::filesystem::path const &path);
 };
-
 
 SPP_EXP_CLS struct spp::compiler::ModuleTree {
 private:
@@ -41,24 +39,23 @@ private:
     std::filesystem::path m_src_path;
     std::filesystem::path m_vcs_path;
     std::filesystem::path m_ffi_path;
-    std::vector<std::unique_ptr<Module>> m_modules;
+    Vec<Unique<Module>> m_modules;
     int m_lock_fd = -1;
 
-private:
-    auto lock() -> void;
+    auto Lock() -> void;
 
-    auto unlock() const -> void;
+    auto Unlock() const -> void;
 
 public:
     explicit ModuleTree(std::filesystem::path path);
 
-    static auto for_unit_tests(std::filesystem::path path, std::string &&main_code) -> std::unique_ptr<ModuleTree>;
+    static auto ForUnitTests(std::filesystem::path path, Str &&main_code) -> Unique<ModuleTree>;
 
-    auto begin() -> std::vector<std::unique_ptr<Module>>::iterator;
+    auto begin() -> Vec<Unique<Module>>::iterator;
 
-    auto end() -> std::vector<std::unique_ptr<Module>>::iterator;
+    auto end() -> Vec<Unique<Module>>::iterator;
 
-    auto get_modules() -> std::vector<Module*>;
+    auto GetModules() -> Vec<Module*>;
 
-    auto root_path() const -> std::filesystem::path;
+    auto RootPath() const -> std::filesystem::path;
 };

@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
@@ -15,64 +16,62 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
-    decltype(conv) &&conv,
-    decltype(var) &&var) :
-    FunctionParameterAst(std::move(var), nullptr, nullptr, utils::OrderableTag::SELF_PARAM),
-    conv(std::move(conv)) {
-    type = generate::common_types::self_type(pos_start());
+    decltype(Conv) &&conv,
+    decltype(Var) &&var) :
+    FunctionParameterAst(std::move(var), nullptr, nullptr, utils::OrderableTag::kSelfParam),
+    Conv(std::move(conv)) {
+    // Set the type to "Self" -> will resolve later in scope.
+    using generate::common_types::SelfType;
+    Type = SelfType(PosStart());
 }
-
 
 spp::asts::FunctionParameterSelfAst::~FunctionParameterSelfAst() = default;
 
-
-auto spp::asts::FunctionParameterSelfAst::pos_start() const
+auto spp::asts::FunctionParameterSelfAst::PosStart() const
     -> std::size_t {
-    return conv != nullptr ? conv->pos_start() : var->pos_start();
+    // Use the convention or the variable.
+    return Conv != nullptr ? Conv->PosStart() : Var->PosStart();
 }
 
-
-auto spp::asts::FunctionParameterSelfAst::pos_end() const
+auto spp::asts::FunctionParameterSelfAst::PosEnd() const
     -> std::size_t {
-    return var->pos_end();
+    // Use the token after convention (self keyword); it is mapped into local-var which calculates size differently.
+    return PosStart() + 2;
 }
 
-
-auto spp::asts::FunctionParameterSelfAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto p = std::make_unique<FunctionParameterSelfAst>(
-        ast_clone(conv),
-        ast_clone(var));
-    p->type = ast_clone(type);
+auto spp::asts::FunctionParameterSelfAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto p = MakeUnique<FunctionParameterSelfAst>(
+        AstClone(Conv), AstClone(Var));
+    p->Type = AstCloneShared(Type);
     return p;
 }
 
-
-spp::asts::FunctionParameterSelfAst::operator std::string() const {
+auto spp::asts::FunctionParameterSelfAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(conv);
-    SPP_STRING_APPEND(var);
+    SPP_STRING_APPEND(Conv);
+    SPP_STRING_APPEND(Var);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
+auto spp::asts::FunctionParameterSelfAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
-    FunctionParameterAst::stage_7_analyse_semantics(sm, meta);
+    FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);
 
     // Special mutability rules for the "self" parameter.
-    const auto sym = sm->current_scope->get_var_symbol(var->extract_name());
-    sym->is_mutable = var->to<LocalVariableSingleIdentifierAst>()->tok_mut != nullptr
-        or (conv and *conv == ConventionTag::MUT);
+    const auto sym = sm->CurrentScope->GetVarSymbol(Var->ExtractName());
+    sym->IsMutable = Var->To<LocalVariableSingleIdentifierAst>()->TokMut != nullptr
+        or (Conv and *Conv == ConventionTag::MUT);
 
     // Apply the convention from the attribute.
-    sym->type = type->with_convention(ast_clone(conv));
+    sym->Type = Type->WithConvention(AstClone(Conv));
 }
 
 SPP_MOD_END

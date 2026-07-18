@@ -18,88 +18,85 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.uid;
 
-
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterAst::FunctionParameterAst(
-    decltype(var) &&var,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) type,
+    decltype(Var) &&var,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) type,
     const utils::OrderableTag order_tag) :
     OrderableAst(order_tag),
-    var(std::move(var)),
-    tok_colon(std::move(tok_colon)),
-    type(std::move(type)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":", var ? var->pos_end() : 0);
-    if (this->var == nullptr) {
-        const auto uid = spp::utils::generate_uid(this);
-        auto var_name = std::make_unique<IdentifierAst>(0, uid);
-        this->var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
+    Var(std::move(var)),
+    TokColon(std::move(tok_colon)),
+    Type(std::move(type)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":", var ? var->PosEnd() : 0);
+    if (this->Var == nullptr) {
+        const auto uid = spp::utils::Uid(this);
+        const auto pos = this->Type ? this->Type->PosStart() : 0uz;
+        auto var_name = MakeShared<IdentifierAst>(pos, uid);
+        this->Var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
     }
+    Source.OriginalType = AstClone(Type);
 }
-
 
 spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;
 
-
-auto spp::asts::FunctionParameterAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return var->extract_names();
-}
-
-
-auto spp::asts::FunctionParameterAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return var->extract_name();
-}
-
-
-auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
+auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Analyse the type.
-    type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name()->with_convention(ast_clone(type->get_convention()));
+    Type->Stage7_AnalyseSemantics(sm, meta);
+    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
     // Create the variable for the parameter (use temp copies and put them back).
-    const auto ast = std::make_unique<LetStatementUninitializedAst>(nullptr, std::move(var), nullptr, type);
-    ast->stage_7_analyse_semantics(sm, meta);
-    var = std::move(ast->var);
+    const auto ast = MakeUnique<LetStatementUninitializedAst>(nullptr, std::move(Var), nullptr, Type);
+    ast->Stage7_AnalyseSemantics(sm, meta);
+    Var = std::move(ast->Var);
 
     // Mark the symbol as initialized.
-    const auto conv = type->get_convention();
-    for (auto const &name : extract_names()) {
-        const auto sym = sm->current_scope->get_var_symbol(name);
-        sym->memory_info->initialized_by(*this, sm->current_scope);
-        sym->memory_info->ast_borrowed = {conv, sm->current_scope};
+    const auto conv = Type->GetConvention();
+    for (auto const &name : ExtractNames()) {
+        const auto sym = sm->CurrentScope->GetVarSymbol(name);
+        sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
+        sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
     }
 }
 
-
-auto spp::asts::FunctionParameterAst::stage_8_check_memory(
+auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
     // Check the memory of each name.
-    for (auto const &name : extract_names()) {
-        const auto sym = sm->current_scope->get_var_symbol(name);
-        sym->memory_info->initialized_by(*this, sm->current_scope);
+    for (auto const &name : ExtractNames()) {
+        const auto sym = sm->CurrentScope->GetVarSymbol(name);
+        sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     }
 }
 
-
-auto spp::asts::FunctionParameterAst::stage_11_code_gen_2(
+auto spp::asts::FunctionParameterAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the local variable so that the symbol table receives the alloca.
-    meta->save();
-    meta->let_stmt_explicit_type = type;
-    meta->let_stmt_from_uninitialized = true; // Its not uninitialized but as the value is external we need this behaviour
-    var->stage_11_code_gen_2(sm, meta, ctx);
-    meta->restore();
+    meta->Save();
+    meta->LetStatementExplicitType = Type;
+    meta->LetStatementFromUninitialized = true; // It's not uninitialized but as the value is external we need this behaviour
+    Var->Stage11_CodeGen(sm, meta, ctx);
+    meta->Restore();
     return nullptr;
+}
+
+auto spp::asts::FunctionParameterAst::ExtractNames() const
+    -> Vec<Shared<IdentifierAst>> {
+    // Forward to the variable declaration.
+    return Var->ExtractNames();
+}
+
+auto spp::asts::FunctionParameterAst::ExtractName() const
+    -> Shared<IdentifierAst> {
+    // Forward to the variable declaration.
+    return Var->ExtractName();
 }
 
 SPP_MOD_END

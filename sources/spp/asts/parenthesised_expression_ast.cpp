@@ -6,103 +6,102 @@ module spp.asts.parenthesised_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
-    decltype(tok_open_paren) &&tok_open_paren,
-    decltype(expr) &&expr,
-    decltype(tok_close_paren) &&tok_close_paren) :
-    PrimaryExpressionAst(),
-    tok_open_paren(std::move(tok_open_paren)),
-    expr(std::move(expr)),
-    tok_close_paren(std::move(tok_close_paren)) {
+    decltype(TokL) &&tok_open_paren,
+    decltype(Expr) &&expr,
+    decltype(TokR) &&tok_close_paren) :
+    TokL(std::move(tok_open_paren)),
+    Expr(std::move(expr)),
+    TokR(std::move(tok_close_paren)) {
 }
-
 
 spp::asts::ParenthesisedExpressionAst::~ParenthesisedExpressionAst() = default;
 
-
-auto spp::asts::ParenthesisedExpressionAst::pos_start() const
+auto spp::asts::ParenthesisedExpressionAst::PosStart() const
     -> std::size_t {
-    return tok_open_paren->pos_start();
+    // Use the "(" token.
+    return TokL->PosStart();
 }
 
-
-auto spp::asts::ParenthesisedExpressionAst::pos_end() const
+auto spp::asts::ParenthesisedExpressionAst::PosEnd() const
     -> std::size_t {
-    return tok_close_paren->pos_end();
+    // Use the ")" token.
+    return TokR->PosEnd();
 }
 
-
-auto spp::asts::ParenthesisedExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ParenthesisedExpressionAst>(
-        ast_clone(tok_open_paren),
-        ast_clone(expr),
-        ast_clone(tok_close_paren));
+auto spp::asts::ParenthesisedExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ParenthesisedExpressionAst>(
+        AstClone(TokL), AstClone(Expr), AstClone(TokR));
 }
 
-
-spp::asts::ParenthesisedExpressionAst::operator std::string() const {
+auto spp::asts::ParenthesisedExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_open_paren);
-    SPP_STRING_APPEND(expr);
-    SPP_STRING_APPEND(tok_close_paren);
+    SPP_STRING_APPEND(TokL);
+    SPP_STRING_APPEND(Expr);
+    SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::ParenthesisedExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+
     // Forward analysis into the expression.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
-    expr->stage_7_analyse_semantics(sm, meta);
+    Expr->Stage7_AnalyseSemantics(sm, meta);
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Expr, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
 }
 
-
-auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
+auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+
     // Check the memory of the expression.
-    expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *this, *sm, true, true, true, false, false, meta);
+    Expr->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*Expr, *this, *sm, true, true, true, false, false, meta);
 }
 
-
-auto spp::asts::ParenthesisedExpressionAst::stage_9_comptime_resolution(
+auto spp::asts::ParenthesisedExpressionAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward comptime resolution into the expression.
-    expr->stage_9_comptime_resolution(sm, meta);
+    Expr->Stage9_CompTimeResolve(sm, meta);
 }
 
-
-auto spp::asts::ParenthesisedExpressionAst::stage_11_code_gen_2(
+auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the inner expression.
-    return expr->stage_11_code_gen_2(sm, meta, ctx);
+    return Expr->Stage11_CodeGen(sm, meta, ctx);
 }
 
-
-auto spp::asts::ParenthesisedExpressionAst::infer_type(
+auto spp::asts::ParenthesisedExpressionAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // Get the inner expression's type.
-    return expr->infer_type(sm, meta);
+    return Expr->InferType(sm, meta);
 }
 
 SPP_MOD_END

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.cli;
+import spp.utils.types;
 import cli11;
 import std;
 
@@ -20,16 +21,16 @@ namespace spp::cli {
         -> void;
 
     SPP_EXP_FUN auto handle_build(
-        std::string const &mode,
+        Str const &mode,
         bool skip_vcs = false)
         -> void;
 
     SPP_EXP_FUN auto handle_run(
-        std::string const &mode)
+        Str const &mode)
         -> void;
 
     SPP_EXP_FUN auto handle_clean(
-        std::string const &mode)
+        Str const &mode)
         -> void;
 
     SPP_EXP_FUN auto handle_test()
@@ -43,18 +44,18 @@ namespace spp::cli {
         -> void;
 
     SPP_EXP_FUN auto create_default_config_for(
-        std::string const &project_name)
-        -> std::string;
+        Str const &project_name)
+        -> Str;
 
     SPP_EXP_FUN auto get_system_shared_library_extension()
-        -> std::string;
+        -> Str;
 
     SPP_EXP_FUN auto unit_test(
-        std::string const &mode,
-        std::string &&main_code)
+        Str const &mode,
+        Str &&main_code)
         -> void;
 
     auto format_default_file_contents(
-        std::string_view contents)
-        -> std::string;
+        StrView contents)
+        -> Str;
 }

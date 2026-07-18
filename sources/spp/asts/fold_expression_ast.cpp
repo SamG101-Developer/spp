@@ -3,51 +3,51 @@ module;
 
 module spp.asts.fold_expression_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::FoldExpressionAst::FoldExpressionAst(
-    decltype(tok_ellipsis) &&tok_ellipsis) :
-    tok_ellipsis(std::move(tok_ellipsis)) {
+    decltype(TokEllipsis) &&tok_ellipsis) :
+    TokEllipsis(std::move(tok_ellipsis)) {
 }
-
 
 spp::asts::FoldExpressionAst::~FoldExpressionAst() = default;
 
-
-auto spp::asts::FoldExpressionAst::pos_start() const
+auto spp::asts::FoldExpressionAst::PosStart() const
     -> std::size_t {
-    return tok_ellipsis->pos_start();
+    // Use the ".." token.
+    return TokEllipsis->PosStart();
 }
 
-
-auto spp::asts::FoldExpressionAst::pos_end() const
+auto spp::asts::FoldExpressionAst::PosEnd() const
     -> std::size_t {
-    return tok_ellipsis->pos_end();
+    // Use the ".." token.
+    return TokEllipsis->PosEnd();
 }
 
-
-auto spp::asts::FoldExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<FoldExpressionAst>(
-        ast_clone(tok_ellipsis));
+auto spp::asts::FoldExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<FoldExpressionAst>(
+        AstClone(TokEllipsis));
 }
 
-
-spp::asts::FoldExpressionAst::operator std::string() const {
+auto spp::asts::FoldExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_ellipsis);
+    SPP_STRING_APPEND(TokEllipsis);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::FoldExpressionAst::infer_type(
+auto spp::asts::FoldExpressionAst::InferType(
     ScopeManager *,
     CompilerMetaData *)
-    -> std::shared_ptr<TypeAst> {
-    return generate::common_types::void_type(pos_start());
+    -> Shared<TypeAst> {
+    // Fold expressions are always "Void".
+    using generate::common_types::VoidType;
+    return VoidType(PosStart());
 }
 
 SPP_MOD_END

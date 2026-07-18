@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.type_inferrable_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -26,5 +27,7 @@ SPP_EXP_CLS struct spp::asts::mixins::TypeInferrableAst {
 
     virtual ~TypeInferrableAst();
 
-    virtual auto infer_type(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> = 0;
+    virtual auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst> = 0;
+
+    virtual auto InferTypeForDisplay(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst>;
 };

@@ -2,16 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.generic_parameter_ast;
-
+import spp.asts.type_ast;
 
 SPP_MOD_BEGIN
 spp::asts::GenericParameterAst::GenericParameterAst(
-    decltype(name) name,
+    decltype(Name) name,
     const utils::OrderableTag order_tag) :
     OrderableAst(order_tag),
-    name(std::move(name)) {
+    Name(std::move(name)) {
 }
-
 
 spp::asts::GenericParameterAst::~GenericParameterAst() = default;
 SPP_MOD_END

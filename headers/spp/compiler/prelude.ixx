@@ -2,11 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.prelude;
+import spp.utils.types;
 import std;
 
 namespace spp::compiler {
-    SPP_EXP_CMP const std::string PRELUDE = R"(
+    SPP_EXP_CMP const Str kPrelude = R"(
+use std::annotations::annotation
 use std::annotations::public
+use std::annotations::package
 use std::annotations::protected
 use std::annotations::private
 use std::annotations::virtual_method
@@ -44,7 +47,6 @@ use std::result::Pass
 use std::result::Fail
 use std::array::Arr
 use std::vector::Vec
-use std::slice::Slice
 use std::tuple::Tup
 use std::single::Single
 use std::function::FunRef
@@ -54,5 +56,7 @@ use std::cast::From
 use std::generator::Gen
 use std::generator::GenOnce
 use std::copy::Copy
+use std::view::View
+use std::future::Fut
 )";
 }

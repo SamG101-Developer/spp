@@ -4,6 +4,7 @@ module;
 export module spp.asts.module_prototype_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -23,52 +24,52 @@ namespace spp::asts {
  * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of
  * the module.
  */
-SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
     /**
      * The file path of the module prototype. This is interacted with by the compiler to resolve module imports. Not got
      * from parsing children AST nodes.
      */
-    std::filesystem::path file_path = "";
+    std::filesystem::path FilePath = "";
 
     /**
      * The module implementation AST that this prototype represents.
      */
-    std::unique_ptr<ModuleImplementationAst> impl;
+    Unique<ModuleImplementationAst> Impl;
 
     /**
      * Construct the ModulePrototypeAst with the given implementation.
      * @param[in] impl The module implementation AST that this prototype represents.
      */
     explicit ModulePrototypeAst(
-        decltype(impl) &&impl);
+        decltype(Impl) &&impl);
 
     ~ModulePrototypeAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto name() const -> std::unique_ptr<IdentifierAst>;
+    auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    SPP_ATTR_NODISCARD auto file_name() const -> std::unique_ptr<IdentifierAst>;
+    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_3_gen_top_level_aliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    SPP_ATTR_NODISCARD auto Name() const -> Unique<IdentifierAst>;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    SPP_ATTR_NODISCARD auto FileName() const -> Unique<IdentifierAst>;
 };

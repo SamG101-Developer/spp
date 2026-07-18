@@ -1,0 +1,30 @@
+# yamllint configuration — see https://yamllint.readthedocs.io
+# Referenced by the yamllint pre-commit hook (`-c .yamllint.yaml`).
+---
+extends: default
+
+rules:
+  # GitHub Actions files start with `name:`/`on:`, not a `---` document marker.
+  document-start: disable
+
+  # `on:` (and `yes`/`no`/`off`) are valid keys in workflow files; only lint values.
+  truthy:
+    check-keys: false
+
+  # This repo uses one space inside flow collections, e.g. `[ a, b ]` and `{ k: v }`.
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Long compiler-flag / dependency lines are common; warn rather than fail.
+  line-length:
+    max: 120
+    level: warning
+    allow-non-breakable-words: true
+
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable

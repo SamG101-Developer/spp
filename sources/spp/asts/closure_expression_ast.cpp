@@ -20,126 +20,130 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.asts.type_identifier_ast;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(
-    decltype(tok) &&tok,
-    decltype(pc_group) &&pc_group,
-    decltype(body) &&body) :
-    PrimaryExpressionAst(),
-    tok(std::move(tok)),
-    pc_group(std::move(pc_group)),
-    body(std::move(body)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok, lex::SppTokenType::KW_FUN, "fun");
+    decltype(Tok) &&tok,
+    decltype(PcGroup) &&pc_group,
+    decltype(Body) &&body) :
+    Tok(std::move(tok)),
+    PcGroup(std::move(pc_group)),
+    Body(std::move(body)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Tok, lex::SppTokenType::KW_FUN, "fun");
+    Source._OriginalRetType = nullptr;
+    _RetType = nullptr;
 }
-
 
 spp::asts::ClosureExpressionAst::~ClosureExpressionAst() = default;
 
-
-auto spp::asts::ClosureExpressionAst::pos_start() const
+auto spp::asts::ClosureExpressionAst::PosStart() const
     -> std::size_t {
-    return tok ? tok->pos_start() : pc_group->pos_start();
+    // Use the "cor" token if present, otherwise the pc group.
+    return Tok ? Tok->PosStart() : PcGroup->PosStart();
 }
 
-
-auto spp::asts::ClosureExpressionAst::pos_end() const
+auto spp::asts::ClosureExpressionAst::PosEnd() const
     -> std::size_t {
-    return body->pos_end();
+    // Use the body.
+    return Body->PosEnd();
 }
 
-
-auto spp::asts::ClosureExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto c = std::make_unique<ClosureExpressionAst>(
-        ast_clone(tok),
-        ast_clone(pc_group),
-        ast_clone(body));
-    c->m_ret_type = m_ret_type;
+auto spp::asts::ClosureExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto c = MakeUnique<ClosureExpressionAst>(
+        AstClone(Tok), AstClone(PcGroup), AstClone(Body));
+    c->_RetType = _RetType;
     return c;
 }
 
-
-spp::asts::ClosureExpressionAst::operator std::string() const {
+auto spp::asts::ClosureExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok).append(" ");
-    SPP_STRING_APPEND(pc_group).append(" ");
-    SPP_STRING_APPEND(body);
+    SPP_STRING_APPEND(Tok).append(" ");
+    SPP_STRING_APPEND(PcGroup).append(" ");
+    SPP_STRING_APPEND(Body);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Save the current scope for later resetting.
-    const auto parent_scope = sm->current_scope;
-    pc_group->stage_7_analyse_semantics(sm, meta);
+    const auto parent_scope = sm->CurrentScope;
+    meta->Save();
+    meta->OverriddenScopeForClosure = parent_scope;
+    PcGroup->Stage7_AnalyseSemantics(sm, meta);
 
-    const auto inherited_type_generics = sm->current_scope->all_type_symbols()
-        | genex::views::filter([](auto const &sym) { return sym->is_generic; })
-        | genex::to<std::vector>();
+    const auto inherited_type_generics = sm->CurrentScope->AllTypeSymbols()
+        | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+        | genex::to<Vec>();
 
-    const auto inherited_comp_generics = sm->current_scope->all_var_symbols()
-        | genex::views::filter([](auto const &sym) { return sym->is_generic; })
-        | genex::to<std::vector>();
+    const auto inherited_comp_generics = sm->CurrentScope->AllVarSymbols()
+        | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+        | genex::to<Vec>();
 
     // Update the meta args with the closure information for body analysis.
     // The closure-wide save/restore allows for the "ret" to match the closure's inferred return type.
-    meta->save();
-    meta->enclosing_function_scope = sm->current_scope; // this will be the closure-outer scope
-    sm->current_scope->parent = sm->current_scope->parent_module();
+    meta->Save();
+    meta->EnclosingFunctionScope = sm->CurrentScope; // this will be the closure-outer scope
+    sm->CurrentScope->Parent = sm->CurrentScope->ParentModule();
 
-    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
-        "closure-inner", {}, pos_start());
-    sm->create_and_move_into_new_scope(std::move(scope_name), this);
-    meta->enclosing_function_flavour = tok.get();
-    meta->enclosing_function_ret_type = {};
+    auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+        "closure-inner", {}, PosStart());
+    sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+    meta->EnclosingFunctionFlavour = Tok.get();
+    meta->EnclosingFunctionRetType = {};
+    meta->EnclosingFunctionSourceRetType = {};
 
     // Add the inherited generics into the closure-inner scope.
-    for (const auto &type_generic_sym : inherited_type_generics) {
-        sm->current_scope->add_type_symbol(type_generic_sym);
+    for (auto const &type_generic_sym : inherited_type_generics) {
+        sm->CurrentScope->AddTypeSymbol(type_generic_sym);
     }
-    for (const auto &comp_generic_sym : inherited_comp_generics) {
-        sm->current_scope->add_var_symbol(comp_generic_sym);
+    for (auto const &comp_generic_sym : inherited_comp_generics) {
+        sm->CurrentScope->AddVarSymbol(comp_generic_sym);
     }
 
     // Analyse the body of the closure.
-    body->stage_7_analyse_semantics(sm, meta);
-    m_ret_type = not meta->enclosing_function_ret_type.empty() ? meta->enclosing_function_ret_type[0] : body->infer_type(sm, meta);
-    meta->restore(true);
+    Body->Stage7_AnalyseSemantics(sm, meta);
+    _RetType = not meta->EnclosingFunctionRetType.IsEmpty() ? meta->EnclosingFunctionRetType[0] : Body->InferType(sm, meta);
+    Source._OriginalRetType = _RetType;
+    meta->Restore(true);
+    meta->Restore();
 
     // Set the scope back.
-    sm->current_scope = parent_scope;
+    sm->CurrentScope = parent_scope;
 }
 
-
-auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
+auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Save the current scope for later resetting.
-    const auto parent_scope = sm->current_scope;
-    meta->save();
-    pc_group->stage_8_check_memory(sm, meta);
+    const auto parent_scope = sm->CurrentScope;
+    meta->Save();
+    PcGroup->Stage8_CheckMemory(sm, meta);
+
+    // Prevent the body inheriting external assignments.
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
 
     // Check the memory of the body of the closure.
-    sm->move_to_next_scope();
-    body->stage_8_check_memory(sm, meta);
+    sm->MoveToNextScope();
+    Body->Stage8_CheckMemory(sm, meta);
 
     // Set the scope back.
-    meta->restore();
-    sm->current_scope = parent_scope;
+    meta->Restore();
+    sm->CurrentScope = parent_scope;
 }
 
-
-auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
+auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -147,135 +151,142 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
     // Strategy: build an "environment" struct for the closure. Attributes are captures. The safety is already
     // guaranteed by semantic analysis.
     // Todo: Add LLVM attributes to pointer types for optimizations (unique, nonnull, etc).
-    const auto uid = spp::utils::generate_uid(this);
-    const auto env_ty = llvm::StructType::create(*ctx->context, "$ClosureEnv" + uid);
-    auto env_field_types = std::vector<llvm::Type*>{};
-    for (const auto &capture : pc_group->capture_group->captures) {
-        const auto cap_ty = capture->infer_type(sm, meta);
-        const auto cap_ty_sym = sm->current_scope->get_type_symbol(cap_ty);
-        env_field_types.emplace_back(codegen::llvm_type(*cap_ty_sym, ctx));
+    const auto uid = spp::utils::Uid(this);
+    const auto env_ty = llvm::StructType::create(*ctx->Context, "$ClosureEnv" + uid);
+    auto env_field_types = Vec<llvm::Type*>{};
+    for (auto const &capture : PcGroup->CaptureGroup->Captures) {
+        const auto cap_ty = capture->InferType(sm, meta);
+        const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(cap_ty);
+        env_field_types.EmplaceBack(codegen::llvm_type(*cap_ty_sym, ctx));
     }
-    env_ty->setBody(env_field_types, false);
+    env_ty->setBody(env_field_types.ToStdVector(), false);
 
     // Build a new function that the body of the closure is built into. Needs a variable binding at the top (ie allow
     // "let a = env.a" as the function signature will be "(env: $ClosureX, ...params: Params) -> RetType").
-    auto llvm_param_types = pc_group->param_group->get_all_params()
-        | genex::views::transform([&](auto const &param) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(param->type), ctx); })
-        | genex::to<std::vector>();
-    llvm_param_types.insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->context, 0));
-    const auto llvm_ret_ty = codegen::llvm_type(*sm->current_scope->get_type_symbol(m_ret_type), ctx);
-    const auto llvm_fn_ty = llvm::FunctionType::get(llvm_ret_ty, llvm_param_types, pc_group->param_group->get_variadic_param() != nullptr);
-    const auto llvm_fn = llvm::Function::Create(llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->llvm_module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_fn);
+    auto llvm_param_types = PcGroup->ParamGroup->GetAllParams()
+        | genex::views::transform([&](auto const &param) { return codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(param->Type), ctx); })
+        | genex::to<Vec>();
+    llvm_param_types.Insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
+    const auto llvm_ret_ty = codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(_RetType), ctx);
+    const auto llvm_fn_ty = llvm::FunctionType::get(llvm_ret_ty, llvm_param_types.ToStdVector(), PcGroup->ParamGroup->GetVariadicParams() != nullptr);
+    const auto llvm_fn = llvm::Function::Create(llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->Module.get());
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
 
-    const auto saved_bb = ctx->builder.GetInsertBlock();
-    const auto saved_fn_scope = meta->enclosing_function_scope;
-    const auto saved_ret_ty = meta->enclosing_function_ret_type;
-    const auto saved_flavour = meta->enclosing_function_flavour;
-    const auto saved_current_closure_type = ctx->current_closure_type;
+    const auto saved_bb = ctx->Builder.GetInsertBlock();
+    const auto saved_fn_scope = meta->EnclosingFunctionScope;
+    const auto saved_ret_ty = meta->EnclosingFunctionRetType;
+    const auto saved_src_ret_ty = meta->EnclosingFunctionSourceRetType;
+    const auto saved_flavour = meta->EnclosingFunctionFlavour;
+    const auto saved_current_closure_type = ctx->CurrentClosureType;
 
-    ctx->builder.SetInsertPoint(entry_bb);
-    sm->current_scope->ast = this;
-    m_llvm_func = std::make_shared<codegen::LlvmFuncWrapper>(llvm_fn);
-    meta->enclosing_function_scope = sm->current_scope;
-    meta->enclosing_function_ret_type = {m_ret_type};
-    meta->enclosing_function_flavour = tok.get();
-    ctx->current_closure_type = env_ty;
-    ctx->current_closure_scope = sm->current_scope;
+    ctx->Builder.SetInsertPoint(entry_bb);
+    sm->CurrentScope->AstNode = this;
+    _LlvmFunc = MakeShared<codegen::LlvmFuncWrapper>(llvm_fn);
+    meta->EnclosingFunctionScope = sm->CurrentScope;
+    meta->EnclosingFunctionRetType = {_RetType};
+    meta->EnclosingFunctionSourceRetType = {Source._OriginalRetType};
+    meta->EnclosingFunctionFlavour = Tok.get();
+    ctx->CurrentClosureType = env_ty;
+    ctx->CurrentClosureScope = sm->CurrentScope;
 
     // For now, just skip scopes and return a nullptr.
-    const auto parent_scope = sm->current_scope;
-    pc_group->stage_11_code_gen_2(sm, meta, ctx);
-    sm->move_to_next_scope();
-    body->stage_11_code_gen_2(sm, meta, ctx);
-    sm->current_scope = parent_scope;
+    const auto parent_scope = sm->CurrentScope;
+    meta->Save();
+    PcGroup->Stage11_CodeGen(sm, meta, ctx);
+    sm->MoveToNextScope();
+    Body->Stage11_CodeGen(sm, meta, ctx);
+    meta->Restore();
+    sm->CurrentScope = parent_scope;
 
     // Restore the previous context.
-    ctx->builder.SetInsertPoint(saved_bb);
-    meta->enclosing_function_scope = saved_fn_scope;
-    meta->enclosing_function_ret_type = saved_ret_ty;
-    meta->enclosing_function_flavour = saved_flavour;
-    ctx->current_closure_type = saved_current_closure_type;
+    ctx->Builder.SetInsertPoint(saved_bb);
+    meta->EnclosingFunctionScope = saved_fn_scope;
+    meta->EnclosingFunctionRetType = saved_ret_ty;
+    meta->EnclosingFunctionSourceRetType = saved_src_ret_ty;
+    meta->EnclosingFunctionFlavour = saved_flavour;
+    ctx->CurrentClosureType = saved_current_closure_type;
 
     // Allocate the closure environment.
-    const auto env_alloca = ctx->builder.CreateAlloca(env_ty, nullptr, "closure.env.alloca." + uid);
-    for (const auto &[i, capture] : pc_group->capture_group->captures | genex::views::ptr | genex::views::enumerate) {
-        const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);
-        const auto capture_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i);
+    const auto env_alloca = ctx->Builder.CreateAlloca(env_ty, nullptr, "closure.env.alloca." + uid);
+    for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
+        const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
+        const auto capture_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
 
-        const auto field_ptr = ctx->builder.CreateInBoundsGEP(
+        const auto field_ptr = ctx->Builder.CreateInBoundsGEP(
             env_ty, env_alloca, {zero, capture_index}, "closure.env.gep." + std::to_string(i));
-        const auto val = capture->val->stage_11_code_gen_2(sm, meta, ctx); // always an identifier, no worry abt double generation.
-        ctx->builder.CreateStore(val, field_ptr);
+        const auto val = capture->Val->Stage11_CodeGen(sm, meta, ctx); // always an identifier, no worry abt double generation.
+        ctx->Builder.CreateStore(val, field_ptr);
     }
 
     // Allocate the closure object.
-    const auto closure_ty = llvm::StructType::create(*ctx->context, "$ClosureObj" + uid);
-    const auto closure_alloca = ctx->builder.CreateAlloca(closure_ty, nullptr, "closure.obj.alloca." + uid);
-    ctx->builder.CreateStore(
+    const auto closure_ty = llvm::StructType::create(*ctx->Context, "$ClosureObj" + uid);
+    const auto closure_alloca = ctx->Builder.CreateAlloca(closure_ty, nullptr, "closure.obj.alloca." + uid);
+    ctx->Builder.CreateStore(
         llvm_fn,
-        ctx->builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0)}));
+        ctx->Builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0)}));
 
-    ctx->builder.CreateStore(
+    ctx->Builder.CreateStore(
         env_alloca,
-        ctx->builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 1)}));
+        ctx->Builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 1)}));
 
     // Return the generated closure.
-    return ctx->builder.CreateLoad(closure_ty, closure_alloca, "load.closure.obj." + uid);
+    return ctx->Builder.CreateLoad(closure_ty, closure_alloca, "load.closure.obj." + uid);
 }
 
-
-auto spp::asts::ClosureExpressionAst::infer_type(
+auto spp::asts::ClosureExpressionAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // Create the type as a nullptr, so it can be analysed later.
-    std::shared_ptr<TypeAst> ty = nullptr;
+    using generate::common_types::FunRefType;
+    using generate::common_types::FunMutType;
+    using generate::common_types::FunMovType;
+    using generate::common_types::TupleType;
+    Shared<TypeAst> ty = nullptr;
 
-    auto is_ref_cap = [](auto const &cap) { return cap->conv and *cap->conv == ConventionTag::REF; };
-    auto is_mut_cap = [](auto const &cap) { return cap->conv and *cap->conv == ConventionTag::MUT; };
+    auto is_ref_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::REF; };
+    auto is_mut_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::MUT; };
 
     // If there are no captures, return a FunRef type with the parameters and return type.
-    if (pc_group->capture_group->captures.empty()) {
-        auto param_types = pc_group->param_group->params
-            | genex::views::transform([](auto const &x) { return x->type; })
-            | genex::to<std::vector>();
-        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+    if (PcGroup->CaptureGroup->Captures.IsEmpty()) {
+        auto param_types = PcGroup->ParamGroup->Params
+            | genex::views::transform([](auto const &x) { return x->Type; })
+            | genex::to<Vec>();
+        ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
     }
 
-    else if (genex::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv == nullptr; })) {
+    else if (genex::any_of(PcGroup->CaptureGroup->Captures, [](auto const &x) { return x->Conv == nullptr; })) {
         // If there are captures, but no borrowed captures, return a FunMov type with the parameters and return type.
-        auto param_types = pc_group->param_group->params
-            | genex::views::transform([](auto const &x) { return x->type; })
-            | genex::to<std::vector>();
-        ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+        auto param_types = PcGroup->ParamGroup->Params
+            | genex::views::transform([](auto const &x) { return x->Type; })
+            | genex::to<Vec>();
+        ty = FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
     }
 
-    else if (genex::any_of(pc_group->capture_group->captures, is_mut_cap)) {
+    else if (genex::any_of(PcGroup->CaptureGroup->Captures, is_mut_cap)) {
         // If there are mutably borrowed captures, return a FunMut type with the parameters and return type.
-        auto param_types = pc_group->param_group->params
-            | genex::views::transform([](auto const &x) { return x->type; })
-            | genex::to<std::vector>();
-        ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+        auto param_types = PcGroup->ParamGroup->Params
+            | genex::views::transform([](auto const &x) { return x->Type; })
+            | genex::to<Vec>();
+        ty = FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
     }
 
-    else if (genex::any_of(pc_group->capture_group->captures, is_ref_cap)) {
+    else if (genex::any_of(PcGroup->CaptureGroup->Captures, is_ref_cap)) {
         // If there are immutable borrowed captures, return a FunRef type with the parameters and return type.
-        auto param_types = pc_group->param_group->params
-            | genex::views::transform([](auto const &x) { return x->type; })
-            | genex::to<std::vector>();
-        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+        auto param_types = PcGroup->ParamGroup->Params
+            | genex::views::transform([](auto const &x) { return x->Type; })
+            | genex::to<Vec>();
+        ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
     }
 
     // Analyse the type and return it.
-    ty->stage_7_analyse_semantics(sm, meta);
+    ty->Stage7_AnalyseSemantics(sm, meta);
     return ty;
 }
 
-
-auto spp::asts::ClosureExpressionAst::get_llvm_func() const
-    -> std::shared_ptr<codegen::LlvmFuncWrapper> {
-    return m_llvm_func;
+auto spp::asts::ClosureExpressionAst::GetLlvmFunc() const
+    -> Shared<codegen::LlvmFuncWrapper> {
+    return _LlvmFunc;
 }
 
 SPP_MOD_END

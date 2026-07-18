@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.case_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
@@ -24,85 +25,93 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantExpressionAst::CasePatternVariantExpressionAst(
-    decltype(expr) &&expr) :
-    expr(std::move(expr)) {
+    decltype(Expr) &&expr) :
+    Expr(std::move(expr)) {
 }
-
 
 spp::asts::CasePatternVariantExpressionAst::~CasePatternVariantExpressionAst() = default;
 
-
-auto spp::asts::CasePatternVariantExpressionAst::pos_start() const
+auto spp::asts::CasePatternVariantExpressionAst::PosStart() const
     -> std::size_t {
-    return expr->pos_start();
+    // Use the expression.
+    return Expr->PosStart();
 }
 
-
-auto spp::asts::CasePatternVariantExpressionAst::pos_end() const
+auto spp::asts::CasePatternVariantExpressionAst::PosEnd() const
     -> std::size_t {
-    return expr->pos_end();
+    // Use the expression.
+    return Expr->PosEnd();
 }
 
-
-auto spp::asts::CasePatternVariantExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantExpressionAst>(ast_clone(expr));
+auto spp::asts::CasePatternVariantExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<CasePatternVariantExpressionAst>(AstClone(Expr));
 }
 
-
-spp::asts::CasePatternVariantExpressionAst::operator std::string() const {
+auto spp::asts::CasePatternVariantExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(expr);
+    SPP_STRING_APPEND(Expr);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::CasePatternVariantExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Forward analysis into the expression.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
-    expr->stage_7_analyse_semantics(sm, meta);
+    //
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
-    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy_core(
+    // Forward analysis into the expression.
+    Expr->Stage7_AnalyseSemantics(sm, meta);
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Expr, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Expr));
+
+    CreateAndAnalysePatternEqFuncsDummyCore(
         {this}, sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantExpressionAst::stage_8_check_memory(
+auto spp::asts::CasePatternVariantExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+
     // Check the memory of the expression. todo: maybe do this via generated == function?
-    expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *expr, *sm, true, true, true, true, true, meta);
+    Expr->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*Expr, *Expr, *sm, true, true, true, true, true, meta);
 }
 
-
-auto spp::asts::CasePatternVariantExpressionAst::stage_9_comptime_resolution(
+auto spp::asts::CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Transform the pattern into comptime values; all need to be true.
-    auto comptime_tranforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_comptime(
+    using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
+    auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
         {this}, sm, meta);
 
     // Return the single result (only one expression will be here).
-    meta->cmp_result = std::move(comptime_tranforms[0]);
+    meta->CmpResult = std::move(comptime_transforms[0]);
 }
 
-
-auto spp::asts::CasePatternVariantExpressionAst::stage_11_code_gen_2(
+auto spp::asts::CasePatternVariantExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
+    //
+    using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
+
+    //
+    const auto llvm_master_transform = CreateAndAnalysePatternEqFuncsLlvm(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
 }

@@ -1,0 +1,36 @@
+name: configure-cmake
+
+inputs:
+  build-type:
+    required: false
+    default: "RelWithDebInfo"
+  sanitizer:
+    required: false
+    default: ""
+  extra-flags:
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Configure"
+      shell: bash
+      run: |
+        # Windows installs sccache; every other runner installs ccache.
+        if [ "$RUNNER_OS" = "Windows" ]; then LAUNCHER=sccache; else LAUNCHER=ccache; fi
+
+        # Ubuntu injects -D_FORTIFY_SOURCE=3, which triggers a GCC 16 ICE.
+        FORTIFY_OFF="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
+
+        cmake -S . -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build-type }} \
+          -DCMAKE_C_FLAGS="$FORTIFY_OFF" \
+          -DCMAKE_CXX_FLAGS="$FORTIFY_OFF" \
+          -DCMAKE_C_COMPILER_LAUNCHER="$LAUNCHER" \
+          -DCMAKE_CXX_COMPILER_LAUNCHER="$LAUNCHER" \
+          -DSPP_WERROR=ON \
+          -DSPP_BUILD_TESTS=ON \
+          -DSPP_USE_DEV_RPATH=OFF \
+          ${{ inputs.sanitizer != '' && format('-DSPP_SANITIZER={0}', inputs.sanitizer) || '' }} \
+          ${{ inputs.extra-flags }}

@@ -5,56 +5,52 @@ module spp.asts.function_call_argument_keyword_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
-    decltype(name) name,
-    decltype(tok_assign) &&tok_assign,
-    decltype(conv) &&conv,
-    decltype(val) &&val) :
-    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::KEYWORD_ARG),
-    name(std::move(name)),
-    tok_assign(std::move(tok_assign)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
+    decltype(Name) name,
+    decltype(TokAssign) &&tok_assign,
+    decltype(Conv) &&conv,
+    decltype(Val) &&val) :
+    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::kKeywordArg),
+    Name(std::move(name)),
+    TokAssign(std::move(tok_assign)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
 }
-
 
 spp::asts::FunctionCallArgumentKeywordAst::~FunctionCallArgumentKeywordAst() = default;
 
-
-auto spp::asts::FunctionCallArgumentKeywordAst::pos_start() const
+auto spp::asts::FunctionCallArgumentKeywordAst::PosStart() const
     -> std::size_t {
-    return name->pos_start();
+    // Use the name.
+    return Name->PosStart();
 }
 
-
-auto spp::asts::FunctionCallArgumentKeywordAst::pos_end() const
+auto spp::asts::FunctionCallArgumentKeywordAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the val.
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::FunctionCallArgumentKeywordAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<FunctionCallArgumentKeywordAst>(
-        ast_clone(name),
-        ast_clone(tok_assign),
-        ast_clone(conv),
-        ast_clone(val));
+auto spp::asts::FunctionCallArgumentKeywordAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<FunctionCallArgumentKeywordAst>(
+        AstCloneShared(Name), AstClone(TokAssign), AstClone(Conv), AstClone(Val));
 }
 
-
-spp::asts::FunctionCallArgumentKeywordAst::operator std::string() const {
+auto spp::asts::FunctionCallArgumentKeywordAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_assign);
-    SPP_STRING_APPEND(conv);
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(TokAssign);
+    SPP_STRING_APPEND(Conv);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 

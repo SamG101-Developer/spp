@@ -3,7 +3,6 @@ module;
 
 module spp.asts.primary_expression_ast;
 
-
 SPP_MOD_BEGIN
 spp::asts::PrimaryExpressionAst::PrimaryExpressionAst() = default;
 spp::asts::PrimaryExpressionAst::~PrimaryExpressionAst() = default;

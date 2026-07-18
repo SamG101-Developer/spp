@@ -5,6 +5,7 @@ export module spp.asts.generic_argument_ast;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.orderable;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -63,15 +64,16 @@ namespace spp::asts::detail {
  * and @c GenericArgumentTypeAst, which represent the two types of generic arguments in the language. These in turn are
  * inherited for the positional and keyword variants.
  */
-SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
-    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
-
+SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
     explicit GenericArgumentAst(utils::OrderableTag order_tag);
     ~GenericArgumentAst() override;
-    auto operator<=>(GenericArgumentAst const &other) const -> std::strong_ordering;
+    auto operator<=>(GenericArgumentAst const &other) const -> Ordering;
     auto operator==(GenericArgumentAst const &other) const -> bool;
+
+    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompKeyword(GenericArgumentCompKeywordAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompPositional(GenericArgumentCompPositionalAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypeKeyword(GenericArgumentTypeKeywordAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypePositional(GenericArgumentTypePositionalAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto Equals(GenericArgumentAst const &other) const -> Ordering = 0;
+    SPP_ATTR_NODISCARD virtual auto ViewName() const -> StrView;
 };

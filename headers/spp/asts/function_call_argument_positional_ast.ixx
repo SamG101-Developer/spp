@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_call_argument_positional_ast;
 import spp.asts.function_call_argument_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -19,7 +20,7 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallAr
      * The token that represents the @c .. unpacking operator. This is used to indicate that the argument is a tuple
      * being unpacked into the resulting arguments.
      */
-    std::unique_ptr<TokenAst> tok_unpack;
+    Unique<TokenAst> TokUnpack;
 
     /**
      * Construct the FunctionCallArgumentPositionalAst with the arguments matching the members.
@@ -28,9 +29,9 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallAr
      * @param tok_unpack The token that represents the @c .. unpacking operator.
      */
     FunctionCallArgumentPositionalAst(
-        decltype(conv) &&conv,
-        decltype(tok_unpack) &&tok_unpack,
-        decltype(val) &&val);
+        decltype(Conv) &&conv,
+        decltype(TokUnpack) &&tok_unpack,
+        decltype(Val) &&val);
 
     ~FunctionCallArgumentPositionalAst() override;
 

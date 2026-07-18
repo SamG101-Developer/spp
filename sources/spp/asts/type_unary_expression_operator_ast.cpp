@@ -3,36 +3,31 @@ module;
 
 module spp.asts.type_unary_expression_operator_ast;
 
-
 SPP_MOD_BEGIN
+spp::asts::TypeUnaryExpressionOperatorAst::~TypeUnaryExpressionOperatorAst() = default;
+
 auto spp::asts::TypeUnaryExpressionOperatorAst::operator<=>(
     TypeUnaryExpressionOperatorAst const &that) const
-    -> std::strong_ordering {
-    return equals(that);
+    -> Ordering {
+    return Equals(that);
 }
-
 
 auto spp::asts::TypeUnaryExpressionOperatorAst::operator==(
     TypeUnaryExpressionOperatorAst const &that) const
     -> bool {
-    return equals(that) == std::strong_ordering::equal;
+    return Equals(that) == Ordering::equal;
 }
 
-
-spp::asts::TypeUnaryExpressionOperatorAst::~TypeUnaryExpressionOperatorAst() = default;
-
-
-auto spp::asts::TypeUnaryExpressionOperatorAst::equals_op_borrow(
+auto spp::asts::TypeUnaryExpressionOperatorAst::EqualsOpBorrow(
     TypeUnaryExpressionOperatorBorrowAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::TypeUnaryExpressionOperatorAst::equals_op_namespace(
+auto spp::asts::TypeUnaryExpressionOperatorAst::EqualsOpNamespace(
     TypeUnaryExpressionOperatorNamespaceAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
 SPP_MOD_END

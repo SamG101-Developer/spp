@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.temp_type_ast;
-
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -15,7 +15,7 @@ namespace spp::asts::mixins {
 
 
 SPP_EXP_CLS struct spp::asts::mixins::TempTypeAst {
-    TempTypeAst() = default;
+    TempTypeAst();
 
     virtual ~TempTypeAst();
 
@@ -24,5 +24,5 @@ SPP_EXP_CLS struct spp::asts::mixins::TempTypeAst {
      * @code [Type, 3_uz]@endcode to @code std::array::Arr[T=Type, n=3_uz]@endcode.
      * @return
      */
-    virtual auto convert() -> std::unique_ptr<TypeAst> = 0;
+    virtual auto Convert() -> Unique<TypeAst> = 0;
 };

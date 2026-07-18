@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.bin_utils;
+import spp.analyse.utils.expr_utils;
 import spp.asts.case_expression_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.identifier_ast;
@@ -20,126 +21,119 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::IsExpressionAst::IsExpressionAst(
-    decltype(lhs) &&lhs,
-    decltype(tok_op) &&tok_op,
-    decltype(rhs) &&rhs) :
-    m_mapped_func(nullptr),
-    lhs(std::move(lhs)),
-    tok_op(std::move(tok_op)),
-    rhs(std::move(rhs)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_op, lex::SppTokenType::KW_IS, "is");
+    decltype(Lhs) &&lhs,
+    decltype(TokOp) &&tok_op,
+    decltype(Rhs) &&rhs) :
+    Lhs(std::move(lhs)),
+    TokOp(std::move(tok_op)),
+    Rhs(std::move(rhs)),
+    _MappedFunc(nullptr) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokOp, lex::SppTokenType::KW_IS, "is");
+    Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
+    Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
-
 
 spp::asts::IsExpressionAst::~IsExpressionAst() = default;
 
-
-auto spp::asts::IsExpressionAst::pos_start() const
+auto spp::asts::IsExpressionAst::PosStart() const
     -> std::size_t {
-    return lhs->pos_start();
+    // Use the lhs, or the mapped function.
+    return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
-
-auto spp::asts::IsExpressionAst::pos_end() const
+auto spp::asts::IsExpressionAst::PosEnd() const
     -> std::size_t {
-    return rhs ? rhs->pos_end() : m_mapped_func->pos_end();
+    // Use the rhs, or the mapped function.
+    return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
-
-auto spp::asts::IsExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<IsExpressionAst>(
-        ast_clone(lhs),
-        ast_clone(tok_op),
-        ast_clone(rhs));
-    ast->m_mapped_func = m_mapped_func;
+auto spp::asts::IsExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto ast = MakeUnique<IsExpressionAst>(
+        AstClone(Lhs), AstClone(TokOp), AstClone(Rhs));
+    ast->_MappedFunc = _MappedFunc;
     return ast;
 }
 
-
-spp::asts::IsExpressionAst::operator std::string() const {
+auto spp::asts::IsExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    if (m_mapped_func) {
-        SPP_STRING_APPEND(m_mapped_func);
+    if (_MappedFunc) {
+        SPP_STRING_APPEND(_MappedFunc);
         SPP_STRING_END;
     }
-    SPP_STRING_APPEND(lhs);
-    SPP_STRING_APPEND(tok_op);
-    SPP_STRING_APPEND(rhs);
+    SPP_STRING_APPEND(Lhs);
+    SPP_STRING_APPEND(TokOp);
+    SPP_STRING_APPEND(Rhs);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::IsExpressionAst::mapped_func() const
-    -> std::shared_ptr<CaseExpressionAst> {
-    return m_mapped_func;
-}
-
-
-auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Ensure TypeAst's aren't used for expression for binary operands.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(lhs.get());
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(rhs.get());
-    m_lhs_as_id = ast_clone(lhs->to<IdentifierAst>());
+    //
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::bin_utils::ConvertIsExprToFuncCall;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+
+    _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
 
     // Convert to a "case" destructure and analyse it.
-    const auto n = sm->current_scope->children.size();
-    m_mapped_func = analyse::utils::bin_utils::convert_is_expr_to_function_call(*this, sm, meta);
-    m_mapped_func->stage_7_analyse_semantics(sm, meta);
+    const auto n = sm->CurrentScope->Children.Len();
+    _MappedFunc = ConvertIsExprToFuncCall(*this, sm, meta);
+    _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 
     // Add the destructure symbols to the current scope.
     // This includes the lhs symbol if it's been flow typed.
-    if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
-        const auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-        for (auto &&x : destructure_syms) {
-            sm->current_scope->add_var_symbol(x);
-        }
+    if (not sm->CurrentScope->NameAsString().starts_with("<inner-scope#")) {
+        const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->AllVarSymbols(true, true);
+        for (auto const &x : destructure_syms) { sm->CurrentScope->AddVarSymbol(x); }
     }
 }
 
-
-auto spp::asts::IsExpressionAst::stage_8_check_memory(
+auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
-    m_mapped_func->stage_8_check_memory(sm, meta);
+    _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::IsExpressionAst::stage_11_code_gen_2(
+auto spp::asts::IsExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
     // into the flow typed symbol.
-    if (m_lhs_as_id) {
-        const auto flow_typed_lhs_sym = sm->current_scope->get_var_symbol(m_lhs_as_id, true);
+    if (_LhsAsId) {
+        const auto flow_typed_lhs_sym = sm->CurrentScope->GetVarSymbol(_LhsAsId, true);
         if (flow_typed_lhs_sym != nullptr) {
-            auto original_sym = sm->current_scope->parent->get_var_symbol(m_lhs_as_id);
+            auto original_sym = sm->CurrentScope->Parent->GetVarSymbol(_LhsAsId);
             original_sym = original_sym ? original_sym : flow_typed_lhs_sym;
-            flow_typed_lhs_sym->llvm_info->alloca = original_sym->llvm_info->alloca;
+            flow_typed_lhs_sym->LlvmInfo->Alloca = original_sym->LlvmInfo->Alloca;
         }
     }
 
     // Forward the code generation to the mapped function.
-    return m_mapped_func->stage_11_code_gen_2(sm, meta, ctx);
+    return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
 }
 
-
-auto spp::asts::IsExpressionAst::infer_type(
+auto spp::asts::IsExpressionAst::InferType(
     ScopeManager *,
     CompilerMetaData *)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // Always return a boolean type (successful or failed match).
-    return generate::common_types::boolean_type(m_mapped_func->pos_start());
+    return generate::common_types::BooleanType(_MappedFunc->PosStart());
+}
+
+auto spp::asts::IsExpressionAst::GetMappedFunc() const
+    -> Shared<CaseExpressionAst> {
+    return _MappedFunc;
 }
 
 SPP_MOD_END

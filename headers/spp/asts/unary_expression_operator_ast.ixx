@@ -12,7 +12,7 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
     UnaryExpressionOperatorAst();
 
     ~UnaryExpressionOperatorAst() override;

@@ -2,55 +2,55 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.analyse.utils.destructure_utils;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(
-    decltype(tok_underscore) &&tok_underscore) :
-    tok_underscore(std::move(tok_underscore)) {
+    decltype(TokUnderscore) &&tok_underscore) :
+    TokUnderscore(std::move(tok_underscore)) {
 }
-
 
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::~LocalVariableDestructureSkipSingleArgumentAst() = default;
 
-
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::pos_start() const
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::PosStart() const
     -> std::size_t {
-    return tok_underscore->pos_start();
+    // Use the "_" token.
+    return TokUnderscore->PosStart();
 }
 
-
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::pos_end() const
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::PosEnd() const
     -> std::size_t {
-    return tok_underscore->pos_end();
+    // Use the "_" token.
+    return TokUnderscore->PosEnd();
 }
 
-
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<LocalVariableDestructureSkipSingleArgumentAst>(ast_clone(tok_underscore));
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<LocalVariableDestructureSkipSingleArgumentAst>(
+        AstClone(TokUnderscore));
 }
 
-
-spp::asts::LocalVariableDestructureSkipSingleArgumentAst::operator std::string() const {
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_underscore);
+    SPP_STRING_APPEND(TokUnderscore);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractNames() const
+    -> Vec<Shared<IdentifierAst>> {
+    // There are no names for this "_" single skip.
+    return {};
 }
 
-
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return {};
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractName() const
+    -> Shared<IdentifierAst> {
+    // There is no single name for this "_" single skip.
+    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
 }
 
 SPP_MOD_END

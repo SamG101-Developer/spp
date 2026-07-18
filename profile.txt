@@ -1,0 +1,21 @@
+FLAMEGRAPH
+----------
+perf record -g -F 99 ./cmake-build-debug-wsl-dev/spp
+perf script > perf.txt
+cat perf.txt | ../FlameGraph/stackcollapse-perf.pl > collapsed.txt
+cat collapsed.txt | ../FlameGraph/flamegraph.pl > flamegraph1.html
+
+ONE_LINE
+--------
+perf record -g -F 99 -o /tmp/perf.data ./cmake-build-debug-wsl-dev/spp && \
+  perf script -i /tmp/perf.data | ../FlameGraph/stackcollapse-perf.pl | ../FlameGraph/flamegraph.pl > flamegraph1.html && \
+  rm /tmp/perf.data
+
+TREE
+----
+perf record -g -F 99 ./cmake-build-debug-wsl-dev/spp
+perf script | c++filt | gprof2dot -f perf --strip --wrap --node-thres=1 --edge-thres=1 | dot -Tsvg -Gsplines=ortho -Grankdir=LR -Gconcentrate=true -o graph.svg
+
+TEST
+----
+cd tests/test_outputs && ../gtest-parallel/gtest-parallel ../../cmake-build-release-wsl-dev/tests/spp_tests --output_dir=../

@@ -4,89 +4,78 @@ module;
 module spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
-
 
 SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorNamespaceAst(
-    decltype(ns) ns,
-    decltype(tok_sep) &&tok_sep) :
+    decltype(Ns) ns,
+    decltype(TokSep) &&tok_sep) :
     TypeUnaryExpressionOperatorAst(),
-    ns(std::move(ns)),
-    tok_sep(std::move(tok_sep)) {
+    Ns(std::move(ns)),
+    TokSep(std::move(tok_sep)) {
 }
-
 
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;
 
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
-    TypeUnaryExpressionOperatorAst const &other) const
-    -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_op_namespace(*this);
-}
-
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals_op_namespace(
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::EqualsOpNamespace(
     TypeUnaryExpressionOperatorNamespaceAst const &other) const
-    -> std::strong_ordering {
-    // Check if the namespace identifiers are the same.
-    if (*ns == *other.ns) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    -> Ordering {
+    // Equality based on the namespace.
+    return *Ns == *other.Ns ? Ordering::equal : Ordering::less;
 }
 
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::Equals(
+    TypeUnaryExpressionOperatorAst const &other) const
+    -> Ordering {
+    // Reverse hook (double dispatch).
+    return other.EqualsOpNamespace(*this);
+}
 
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::pos_start() const
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::PosStart() const
     -> std::size_t {
-    return ns->pos_start();
+    // Use the namespace.
+    return Ns->PosStart();
 }
 
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::pos_end() const
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::PosEnd() const
     -> std::size_t {
-    return ns->pos_end();
+    // Use the namespace.
+    return Ns->PosEnd();
 }
 
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(
-        ast_clone(ns),
-        ast_clone(tok_sep));
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<TypeUnaryExpressionOperatorNamespaceAst>(
+        AstCloneShared(Ns), AstClone(TokSep));
 }
 
-
-spp::asts::TypeUnaryExpressionOperatorNamespaceAst::operator std::string() const {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(ns);
+    SPP_STRING_APPEND(Ns);
     raw_string.append("::");
     SPP_STRING_END;
 }
 
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts() const
-    -> std::vector<std::shared_ptr<const IdentifierAst>> {
-    return {ns};
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts() const
+    -> Vec<Shared<const IdentifierAst>> {
+    return {Ns};
 }
 
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts()
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return {ns};
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts()
+    -> Vec<Shared<IdentifierAst>> {
+    return {Ns};
 }
 
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::type_parts() const
-    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts() const
+    -> Vec<Shared<const TypeIdentifierAst>> {
     return {};
 }
 
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::type_parts()
-    -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts()
+    -> Vec<Shared<TypeIdentifierAst>> {
     return {};
 }
 

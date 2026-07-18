@@ -4,43 +4,44 @@ module;
 export module spp.asts.sup_implementation_ast;
 import spp.asts.inner_scope_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct SupImplementationAst;
-    SPP_EXP_CLS struct SupMemberAst;
+    SPP_EXP_CLS struct Ast;
 }
 
 
-SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<SupMemberAst>> {
+SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<Ast>> {
+    static auto NewEmpty() -> Unique<SupImplementationAst>;
+
     using InnerScopeAst::InnerScopeAst;
 
     ~SupImplementationAst() override;
 
-    static auto new_empty() -> std::unique_ptr<SupImplementationAst>;
+    SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-    auto clone() const -> std::unique_ptr<Ast> override;
+    auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+    auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_3_gen_top_level_aliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

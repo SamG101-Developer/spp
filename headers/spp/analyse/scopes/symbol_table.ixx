@@ -3,9 +3,9 @@ module;
 
 export module spp.analyse.scopes.symbol_table;
 import spp.utils.ptr;
-import ankerl.unordered_dense;
+import spp.utils.types;
+import ankerl;
 import std;
-
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS template <typename I, typename S>
@@ -15,6 +15,15 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct NamespaceSymbol;
     SPP_EXP_CLS struct TypeSymbol;
     SPP_EXP_CLS struct VariableSymbol;
+
+    struct TransparentStringHash {
+        using is_transparent = void;
+        using is_avalanching = void;
+
+        auto operator()(const StrView sv) const noexcept -> std::uint64_t {
+            return ankerl::unordered_dense::hash<StrView>{}(sv);
+        }
+    };
 }
 
 namespace spp::asts {
@@ -22,11 +31,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
-
 SPP_EXP_CLS template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    ankerl::unordered_dense::map<std::shared_ptr<I>, std::shared_ptr<S>, utils::ptr::ptr_hash<std::shared_ptr<I>>, utils::ptr::ptr_eq<std::shared_ptr<I>>> m_table;
+    ankerl::unordered_dense::map<Str, Shared<S>, TransparentStringHash, std::equal_to<>> _Table;
 
 public:
     IndividualSymbolTable();
@@ -47,18 +55,19 @@ public:
     auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
     SPP_ATTR_HOT
-    auto add(std::shared_ptr<I> const &sym_name, std::shared_ptr<S> const &sym) -> void;
+    auto Add(Shared<I> const &sym_name, Shared<S> const &sym) -> void;
 
-    auto rem(std::shared_ptr<I> const &sym_name) -> void;
+    auto Rem(Shared<I> const &sym_name) -> Shared<S>;
 
-    SPP_ATTR_HOT
-    auto get(std::shared_ptr<I> const &sym_name) const -> std::shared_ptr<S>;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT
+    auto Get(Shared<I> const &sym_name) const -> Shared<S>;
 
-    auto has(std::shared_ptr<I> const &sym_name) const -> bool;
+    SPP_ATTR_NODISCARD
+    auto Has(Shared<I> const &sym_name) const -> bool;
 
-    auto all() const -> std::vector<std::shared_ptr<S>>;
+    SPP_ATTR_NODISCARD
+    auto All() const -> Vec<Shared<S>>;
 };
-
 
 SPP_EXP_CLS class spp::analyse::scopes::SymbolTable {
 public:
@@ -79,7 +88,7 @@ public:
      */
     auto operator=(SymbolTable const &that) -> SymbolTable&;
 
-    IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> ns_tbl;
-    IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> type_tbl;
-    IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> var_tbl;
+    IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> NsTbl;
+    IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> TypeTbl;
+    IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> VarTbl;
 };

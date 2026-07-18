@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.visibility;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -12,12 +13,12 @@ namespace spp::asts {
 
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct VisibilityAst;
-    SPP_EXP_CLS using VisibilityPair = std::pair<utils::Visibility, AnnotationAst*>;
+    SPP_EXP_CLS using VisibilityPair = Pair<utils::Visibility, AnnotationAst*>;
 }
 
 
 SPP_EXP_CLS struct spp::asts::mixins::VisibilityAst {
-    VisibilityPair visibility;
+    VisibilityPair Visibility;
 
     VisibilityAst();
 

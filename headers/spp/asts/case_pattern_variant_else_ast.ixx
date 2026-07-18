@@ -4,6 +4,7 @@ module;
 export module spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -14,31 +15,30 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
-private:
-    bool m_for_iter_loop_exit = false;
-
-public:
     /**
      * The @c else keyword that indicates this is an else branch of the case pattern variant.
      */
-    std::unique_ptr<TokenAst> tok_else;
+    Unique<TokenAst> TokElse;
 
     /**
      * Construct the CasePatternVariantElseAst with the arguments matching the members.
      * @param tok_else The @c else keyword that indicates this is an else branch of the case pattern variant.
      */
     explicit CasePatternVariantElseAst(
-        decltype(tok_else) &&tok_else);
+        decltype(TokElse) &&tok_else);
 
     ~CasePatternVariantElseAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto mark_for_iter_loop_exit() -> void;
+    auto MarkForIterLoopExit() -> void;
 
-    SPP_ATTR_NODISCARD auto marked_for_iter_loop_exit() const -> bool;
+    SPP_ATTR_NODISCARD auto MarkedForIterLoopExit() const -> bool;
+
+private:
+    bool _ForIterLoopExit = false;
 };

@@ -26,88 +26,83 @@ import spp.codegen.llvm_coros;
 import spp.lex.tokens;
 import spp.utils.uid;
 
-
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
-    decltype(tok_dot) &&tok_dot,
-    decltype(tok_res) &&tok_res,
-    decltype(arg_group) &&arg_group) :
-    tok_dot(std::move(tok_dot)),
-    tok_res(std::move(tok_res)),
-    arg_group(std::move(arg_group)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_dot, lex::SppTokenType::TK_DOT, ".");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_res, lex::SppTokenType::KW_RES, "res");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->arg_group);
+    decltype(TokDot) &&tok_dot,
+    decltype(TokRes) &&tok_res,
+    decltype(FnArgGroup) &&arg_group) :
+    TokDot(std::move(tok_dot)),
+    TokRes(std::move(tok_res)),
+    FnArgGroup(std::move(arg_group)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokDot, lex::SppTokenType::TK_DOT, ".");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokRes, lex::SppTokenType::KW_RES, "res");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
 }
-
 
 spp::asts::PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKeywordResAst() = default;
 
-
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::pos_start() const
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosStart() const
     -> std::size_t {
-    return tok_dot->pos_start();
+    // Use the "." token.
+    return TokDot->PosStart();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::pos_end() const
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosEnd() const
     -> std::size_t {
-    return arg_group ? arg_group->pos_end() : tok_res->pos_end();
+    // Use the argument group if it exists, otherwise use the "res" token.
+    return FnArgGroup ? FnArgGroup->PosEnd() : TokRes->PosEnd();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<PostfixExpressionOperatorKeywordResAst>(
-        ast_clone(tok_dot),
-        ast_clone(tok_res),
-        ast_clone(arg_group));
-    ast->m_mapped_func = m_mapped_func;
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto ast = MakeUnique<PostfixExpressionOperatorKeywordResAst>(
+        AstClone(TokDot), AstClone(TokRes), AstClone(FnArgGroup));
+    ast->_MappedFunc = _MappedFunc;
     return ast;
 }
 
-
-spp::asts::PostfixExpressionOperatorKeywordResAst::operator std::string() const {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_dot);
-    SPP_STRING_APPEND(tok_res);
-    SPP_STRING_APPEND(arg_group);
+    SPP_STRING_APPEND(TokDot);
+    SPP_STRING_APPEND(TokRes);
+    SPP_STRING_APPEND(FnArgGroup);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantics(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Already analysed => return early.
-    if (m_mapped_func != nullptr) { return; }
+    using analyse::utils::type_utils::GetGenAndYieldTypes;
+    if (_MappedFunc != nullptr) { return; }
 
     // Check the left-hand-side is a generator type (for specific errors).
-    const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-    analyse::utils::type_utils::get_generator_and_yield_type(
-        *lhs_type, *sm->current_scope, *meta->postfix_expression_lhs, "resume expression");
+    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+    GetGenAndYieldTypes(
+        *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
 
     // Check the argument (send value) is valid, by passing it into the ".send" function call.
-    auto send = std::make_unique<IdentifierAst>(pos_start(), "send");
-    auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(send));
-    auto member_access = std::make_unique<PostfixExpressionAst>(ast_clone(meta->postfix_expression_lhs), std::move(field));
-    auto func_call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
-    m_mapped_func = std::make_unique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
-    m_mapped_func->stage_7_analyse_semantics(sm, meta);
+    auto send = MakeUnique<IdentifierAst>(PosStart(), "send");
+    auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(send));
+    auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
+    auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(FnArgGroup), nullptr);
+    func_call->Source.OriginalExpr = this;
+    _MappedFunc = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+    _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_8_check_memory(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward the memory check to the mapped function, which will check the arguments, and the function call.
-    m_mapped_func->stage_8_check_memory(sm, meta);
+    _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_11_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -115,25 +110,25 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_11_code_gen_2(
     // TODO
     // The llvm generator environment is the lhs of this postfix expression. (both Gen and Generated are the env, but
     // separate types for analysis). the "resuming" on Generated types simply shiftf the state inside the environment.
-    const auto uid = spp::utils::generate_uid(this);
-    const auto llvm_gen_env = meta->postfix_expression_lhs->stage_11_code_gen_2(sm, meta, ctx);
+    const auto uid = spp::utils::Uid(this);
+    const auto llvm_gen_env = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
     const auto llvm_gen_env_type = llvm_gen_env->getType();
 
     // Get the resume function pointer (field 0) from the generator environment.
-    const auto resume_slot = ctx->builder.CreateStructGEP(llvm_gen_env_type, llvm_gen_env, 0, "gen.resume.fn.slot" + uid);
-    const auto llvm_resume_func_ptr = ctx->builder.CreateLoad(
-        llvm::PointerType::get(*ctx->context, 0), resume_slot, "gen.resume.fn.ptr" + uid);
+    const auto resume_slot = ctx->Builder.CreateStructGEP(llvm_gen_env_type, llvm_gen_env, 0, "gen.resume.fn.slot" + uid);
+    const auto llvm_resume_func_ptr = ctx->Builder.CreateLoad(
+        llvm::PointerType::get(*ctx->Context, 0), resume_slot, "gen.resume.fn.ptr" + uid);
 
     // Convert the send value, if it exists, to the correct LLVM type.
-    const auto llvm_send_value = arg_group != nullptr and not arg_group->args.empty()
-                                     ? arg_group->args[0]->stage_11_code_gen_2(sm, meta, ctx)
-                                     : llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->context));
+    const auto llvm_send_value = FnArgGroup != nullptr and not FnArgGroup->Args.IsEmpty()
+        ? FnArgGroup->Args[0]->Stage11_CodeGen(sm, meta, ctx)
+        : llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->Context));
 
     // Call the resume function with the generator environment and send value.
-    ctx->builder.CreateCall(
+    ctx->Builder.CreateCall(
         llvm::FunctionType::get(
-            llvm::Type::getVoidTy(*ctx->context),
-            {llvm::PointerType::get(*ctx->context, 0), llvm_send_value->getType()},
+            llvm::Type::getVoidTy(*ctx->Context),
+            {llvm::PointerType::get(*ctx->Context, 0), llvm_send_value->getType()},
             false),
         llvm_resume_func_ptr,
         {llvm_gen_env, llvm_send_value});
@@ -142,15 +137,15 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_11_code_gen_2(
     return llvm_gen_env;
 }
 
-
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::infer_type(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // Get the generator type.
-    const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-    auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *lhs_type, *sm->current_scope, *meta->postfix_expression_lhs, "resume expression");
+    using analyse::utils::type_utils::GetGenAndYieldTypes;
+    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+    auto [_, yield_type, _] = GetGenAndYieldTypes(
+        *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
     return yield_type;
 }
 

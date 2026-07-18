@@ -4,6 +4,7 @@ module;
 export module spp.asts.object_initializer_argument_ast;
 import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -18,19 +19,19 @@ namespace spp::asts {
  * The ObjectInitializerArgumentAst is the base class representing an argument in a object initialization. It is
  * inherited into the "shorthand" and "keyword" variants.
  */
-SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeInferrableAst {
     /**
      * The name of the argument. This is the identifier that is used to refer to the argument in the function call. For
      * shorthand args, this is autofilled by cloning the value, and casting it to an IdentifierAst. Otherwise, it is
      * passed explicitly from the keyword arg parser.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * The expression that is being passed as the argument to the object initialization. Both positional and keyword
      * arguments have a value.
      */
-    std::unique_ptr<ExpressionAst> val;
+    Unique<ExpressionAst> Val;
 
     /**
      * Construct the ObjectInitializerArgumentAst with the arguments matching the members.
@@ -38,16 +39,16 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : virtual Ast, mixins
      * @param[in] val The expression that is being passed as the argument to the object initialization.
      */
     explicit ObjectInitializerArgumentAst(
-        decltype(name) name,
-        decltype(val) &&val);
+        decltype(Name) name,
+        decltype(Val) &&val);
 
     ~ObjectInitializerArgumentAst() override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
