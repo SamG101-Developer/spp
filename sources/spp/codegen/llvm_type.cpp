@@ -60,7 +60,6 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     const auto ancestor_names = scope->Ancestors()
         | genex::views::drop_last(1)
         | genex::views::transform([](auto *x) { return x->NameAsString(); })
-        | genex::to<Vec>()
         | genex::views::reverse
         | genex::to<Vec>();
 
