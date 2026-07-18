@@ -129,10 +129,10 @@ auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
     for (auto const &cls_proto : cls_members) {
         // If this is not a base generic (Vec::Vec)
         if (cls_proto->GetRegisteredGenericSubstitutions().IsEmpty()) {
-            codegen::register_llvm_type_info(cls_proto, ctx);
+            codegen::RegisterLlvmTypeInfo(cls_proto, ctx);
 
             // All aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = codegen::llvm_type(*cls_proto->GetAstScope()->TySym, ctx);
+            const auto llvm_type = codegen::GetLlvmType(*cls_proto->GetAstScope()->TySym, ctx);
             for (auto const &alias_sym : cls_proto->GetAstScope()->TySym->AliasedBySyms) {
                 alias_sym->LlvmInfo->LlvmType = llvm_type;
             }
@@ -141,10 +141,10 @@ auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
         // All concrete generic implementations (not Vec::Vec[T]).
         // Todo: don't generate when one of the generics is "comp->identifier" or "type->generic"
         for (auto const &generic_sub : cls_proto->GetRegisteredGenericSubstitutions()) {
-            codegen::register_llvm_type_info(generic_sub.Second, ctx);
+            codegen::RegisterLlvmTypeInfo(generic_sub.Second, ctx);
 
             // All generic aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = codegen::llvm_type(*generic_sub.Second->GetAstScope()->TySym, ctx);
+            const auto llvm_type = codegen::GetLlvmType(*generic_sub.Second->GetAstScope()->TySym, ctx);
             for (auto const &alias_sym : generic_sub.Second->GetAstScope()->TySym->AliasedBySyms) {
                 alias_sym->LlvmInfo->LlvmType = llvm_type;
             }
