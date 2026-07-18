@@ -31,7 +31,7 @@ jobs:
 
       # Same key as the gcc-16 PR leg, so PRs restore this warm master build tree.
       - name: Restore build tree
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: build
           key: build-ubuntu-latest-gcc-16-${{ github.sha }}
@@ -45,7 +45,7 @@ jobs:
 
       - name: Save build tree
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: build
           key: build-ubuntu-latest-gcc-16-${{ github.sha }}

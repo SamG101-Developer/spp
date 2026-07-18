@@ -47,7 +47,7 @@ jobs:
       # recompiles what changed). The sha-keyed entry never hits exactly on a new
       # commit; the prefix restore-keys bring back the most recent tree instead.
       - name: Restore build tree
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: build
           key: build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ github.sha }}
@@ -83,7 +83,7 @@ jobs:
       # doesn't discard the compiled objects and the next run stays incremental.
       - name: Save build tree
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: build
           key: build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ github.sha }}
