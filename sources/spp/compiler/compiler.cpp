@@ -27,7 +27,8 @@ spp::compiler::Compiler::Compiler(
 
 auto spp::compiler::Compiler::ForUnitTests(
     const Mode mode,
-    Str &&main_code) -> Unique<Compiler> {
+    Str &&main_code)
+    -> Unique<Compiler> {
     auto c = MakeUnique<Compiler>();
     c->m_modules = ModuleTree::ForUnitTests(std::filesystem::current_path(), std::move(main_code));
     c->m_mode = mode;
