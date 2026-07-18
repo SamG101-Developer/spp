@@ -63,4 +63,21 @@ namespace spp::utils::strings {
      * @return The stripped string (no underscores).
      */
     SPP_EXP_FUN auto NormaliseAnyString(StrView s1) -> Str;
+
+    /**
+     * Decode a single-quote char literal token (including its surrounding quotes, eg @code 'a'@endcode) into its
+     * Unicode code point. Handles escape sequences (eg @code \n@endcode) and multi-byte UTF-8 scalar values.
+     * @param token_data The raw char literal token data, including the surrounding single quotes.
+     * @return The Unicode code point of the character.
+     */
+    SPP_EXP_FUN auto DecodeCharLiteral(StrView token_data) -> std::uint32_t;
+
+    /**
+     * Decode a double-quote string literal token (including its surrounding quotes, eg @code "ab"@endcode) into its
+     * raw byte contents, processing escape sequences (eg @code \n@endcode). Multi-byte UTF-8 bytes pass through
+     * unchanged.
+     * @param token_data The raw string literal token data, including the surrounding double quotes.
+     * @return The decoded byte contents of the string, with escape sequences resolved.
+     */
+    SPP_EXP_FUN auto DecodeStringLiteral(StrView token_data) -> Str;
 }

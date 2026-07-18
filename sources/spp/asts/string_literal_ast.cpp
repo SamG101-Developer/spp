@@ -12,6 +12,8 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
+import spp.utils.strings;
 import llvm;
 
 SPP_MOD_BEGIN
@@ -79,8 +81,9 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Create a global string for the string literal.
-    const auto bytes = Val->TokenData;
+    // Decode the token (which includes its surrounding double quotes) into the raw bytes, resolving escape
+    // sequences, then emit a global string for it.
+    const auto bytes = spp::utils::strings::DecodeStringLiteral(Val->TokenData);
     const auto str_alloc = ctx->Builder.CreateGlobalString(
         bytes, "string_literal", 0, ctx->Module.get(), false);
     return str_alloc;
