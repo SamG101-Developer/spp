@@ -14,7 +14,9 @@ import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -23,6 +25,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -320,31 +323,60 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
     return _ClsSym.get();
 }
 
+static auto ApplyStructLayout(
+    llvm::StructType *struct_type,
+    spp::Vec<llvm::Type*> const &field_types,
+    const spp::codegen::StructLayout layout,
+    spp::codegen::LLvmCtx const *ctx)
+    -> void {
+    switch (layout) {
+        case spp::codegen::StructLayout::C: {
+            // Keep declaration order, with natural alignment padding.
+            struct_type->setBody(field_types.ToStdVector(), false);
+            break;
+        }
+        case spp::codegen::StructLayout::Packed: {
+            // Keep declaration order, but remove all inter-field padding.
+            struct_type->setBody(field_types.ToStdVector(), true);
+            break;
+        }
+        case spp::codegen::StructLayout::Spp: {
+            auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
+            struct_type->setBody(sorted_types.ToStdVector(), false);
+            break;
+        }
+        default: {
+            std::unreachable();
+        }
+    }
+}
+
 auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
-    ScopeManager *sm,
+    ScopeManager const *sm,
     analyse::scopes::TypeSymbol const *type_sym,
     codegen::LLvmCtx *ctx) const
     -> void {
     // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
 
-    // Non-struct types are compiler known special types, or $ types - no generation needed.
-    if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
+    // Non-struct types are compiler known special types, so don't have any field generation.
+    const auto lt = codegen::GetLlvmType(*type_sym, ctx);
+    if (lt == nullptr or not llvm::isa<llvm::StructType>(lt)) {
         return;
     }
 
     auto types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), sm)
-        | genex::views::transform([&](auto const &pair) { return codegen::llvm_type(*pair.Second, ctx); })
+        | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*pair.Second, ctx); })
         | genex::to<Vec>();
 
     // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
     if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
-        const auto struct_type = llvm::dyn_cast<llvm::StructType>(codegen::llvm_type(*type_sym, ctx));
-        struct_type->setBody(types.ToStdVector());
+        const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
+        ApplyStructLayout(struct_type, types, codegen::StructLayout::Spp, ctx);
     }
 
     // Pass this layout to aliases too.
     for (auto const &alias : type_sym->AliasedBySyms) {
-        alias->LlvmInfo->LlvmType = codegen::llvm_type(*type_sym, ctx);
+        alias->LlvmInfo->LlvmType = lt;
     }
 }
 
