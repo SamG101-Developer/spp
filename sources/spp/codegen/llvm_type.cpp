@@ -30,11 +30,14 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     -> void {
     // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
 
-    // $ types are 0-size types in LLVM.
+    // $ types are function "mock" types (a $-type generated per function that superimposes n FunXXXs over itself). A
+    // function used as a value is one of these mocks, so it lowers to the same { fn_ptr, env_ptr } pair as the function
+    // type it extends, making it interchangeable with closures.
     if (cls_proto->Name->IsCompilerGeneratedType()) {
-        const auto zero_size_struct = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_proto->GetClsSym()));
-        zero_size_struct->setBody({}, true);
-        cls_proto->GetClsSym()->LlvmInfo->LlvmType = zero_size_struct;
+        const auto mock_sym = cls_proto->GetClsSym();
+        const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+        mock_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+        return;
     }
 
     // Get the class symbol from the current scope.
