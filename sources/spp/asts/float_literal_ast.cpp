@@ -147,15 +147,22 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    using spp::utils::strings::NormalizeFloatString;
+
     // Get the type of the float literal.
     const auto type_ast = InferType(sm, meta);
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-    // Create the LLVM constant float value.
+    // Normalise the literal exactly as Stage7 does, then apply the optional sign.
     auto const &semantics = llvm_type->getFltSemantics();
-    const auto val = IntVal->TokenData + "." + FracVal->TokenData;
-    const auto ap_float = llvm::APFloat(semantics, val);
+    auto mapped_val = NormalizeFloatString(IntVal->TokenData, FracVal->TokenData);
+    if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
+        mapped_val = boost::negate_integer(mapped_val, std::true_type());
+    }
+
+    // Create the LLVM constant float value from the normalised value string.
+    const auto ap_float = llvm::APFloat(semantics, mapped_val.str());
     return llvm::ConstantFP::get(*ctx->Context, ap_float);
 }
 

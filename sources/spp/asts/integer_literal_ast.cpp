@@ -137,14 +137,24 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    using spp::utils::strings::NormaliseIntegerString;
+
     // Get the type of the integer literal.
     const auto type_ast = InferType(sm, meta);
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
-
-    // Create the LLVM constant integer value.
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     const auto bit_width = llvm_type->getIntegerBitWidth();
-    const auto ap_int = llvm::APInt(bit_width, Val->TokenData, 10);
+
+    // Normalise the literal exactly as Stage7 does, then apply the optional sign.
+    auto data = Val->TokenData;
+    data |= genex::actions::replace('o', '0');
+    auto mapped_val = NormaliseIntegerString(data);
+    if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
+        mapped_val.backend().negate();
+    }
+
+    // Create the LLVM constant integer value from the normalised decimal string (APInt handles the sign).
+    const auto ap_int = llvm::APInt(bit_width, mapped_val.str(), 10);
     return llvm::ConstantInt::get(*ctx->Context, ap_int);
 }
 
