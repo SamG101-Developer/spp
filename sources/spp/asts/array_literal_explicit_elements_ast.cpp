@@ -1,6 +1,6 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.array_literal_explicit_elements_ast;
 import spp.analyse.errors.semantic_error;
@@ -96,13 +96,13 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::errors::SppSecondClassBorrowViolationError;
+    using analyse::errors::SppTypeMismatchError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeArr;
     using analyse::utils::type_utils::IsTypeBorrowed;
     using analyse::utils::type_utils::TypeEq;
-    using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::errors::SppSecondClassBorrowViolationError;
-    using analyse::errors::SppTypeMismatchError;
 
     // Analyse the element inside the array. Also enforce beforehand that the element
     // is an acceptable primary expression, ie not a TypeAst or a TokenAst.
@@ -116,7 +116,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     // Determine the "correct type" that all elements are compared against. If a pre-defined array type has
     // been given, allowing a variant element type to be respected; otherwise just use the 0th element.
     const auto z_elem = Elems[0].get();
-    const auto from_target = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
+    const auto from_target = meta->AssignmentTargetType != nullptr and
+        IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
+
     const auto z_type = from_target
         ? meta->AssignmentTargetType->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val
         : z_elem->InferType(sm, meta);
@@ -206,8 +208,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
             ctx->Builder.CreateStore(vals[i], elem_ptr);
         }
 
-        // Return the array allocation.
-        return arr_alloc;
+        // Return the array by value.
+        return ctx->Builder.CreateLoad(arr_ty, arr_alloc, "array.explicit.result" + uid);
     }
 
     // Constant array creation.

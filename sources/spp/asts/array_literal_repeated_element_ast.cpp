@@ -1,6 +1,6 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.array_literal_repeated_element_ast;
 import spp.analyse.errors.semantic_error;
@@ -196,8 +196,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
             ctx->Builder.CreateStore(vals[i], elem_ptr);
         }
 
-        // Return the array allocation.
-        return arr_alloc;
+        // Return the array by value.
+        return ctx->Builder.CreateLoad(arr_ty, arr_alloc, "array.repeated.result" + uid);
     }
 
     // Constant array creation.
