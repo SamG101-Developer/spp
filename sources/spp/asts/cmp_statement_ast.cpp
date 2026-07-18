@@ -217,7 +217,7 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
 
     // Create the global variable for the constant.
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     const auto llvm_global_var = new llvm::GlobalVariable(
         *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
         codegen::mangle::mangle_cmp_name(*sm->CurrentScope, *this));
