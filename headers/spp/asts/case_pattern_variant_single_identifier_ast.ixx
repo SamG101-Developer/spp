@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.case_pattern_variant_single_identifier_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
 import std;
@@ -63,6 +64,8 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
     auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

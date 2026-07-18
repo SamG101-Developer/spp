@@ -216,9 +216,11 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
 
     auto phi = static_cast<llvm::PHINode*>(nullptr);
     if (is_expr) {
-        ctx->Builder.SetInsertPoint(case_entry_bb);
+        // The phi merges the value yielded by each branch, so it belongs in the end block (where every
+        // branch body branches to), not the entry block.
+        ctx->Builder.SetInsertPoint(case_end_bb);
         const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta));
-        phi = ctx->Builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), Branches.Len() as U32, "case.phi" + uid);
+        phi = ctx->Builder.CreatePHI(codegen::GetLlvmType(*ret_type_sym, ctx), Branches.Len() as U32, "case.phi" + uid);
     }
 
     // Set "case" information to the meta struct for branches and patterns to use.
@@ -231,6 +233,13 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     ctx->Builder.SetInsertPoint(case_entry_bb);
     for (auto const &branch : Branches) {
         branch->Stage11_CodeGen(sm, meta, ctx);
+    }
+
+    // After the last branch, the insert point is the fall-through block reached when no pattern matched; it
+    // needs a terminator.
+    if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+        if (is_expr) { ctx->Builder.CreateUnreachable(); }
+        else { ctx->Builder.CreateBr(case_end_bb); }
     }
 
     meta->Restore();
