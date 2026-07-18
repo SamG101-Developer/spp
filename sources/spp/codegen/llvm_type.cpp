@@ -102,6 +102,18 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     }
 
 
+    if (ancestor_names == Vec<Str>{"std", "function", "FunMov"}
+        or ancestor_names == Vec<Str>{"std", "function", "FunMut"}
+        or ancestor_names == Vec<Str>{"std", "function", "FunRef"}) {
+        // Lower the function types to a { fn_ptr, env_ptr } pair (a "fat pointer": the function code plus a
+        // pointer to its captured environment; the env pointer is null for capture-less functions). All three
+        // share this layout, so plain functions and closures are interchangeable. A structurally-uniqued
+        // literal struct is used so every function-type instantiation maps to the same llvm type.
+        const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+        cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+        return;
+    }
+
     // If the type already exists in LLVM, skip.
     if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->Context, mangle::mangle_type_name(*cls_sym)); llvm_type != nullptr) {
         cls_sym->LlvmInfo->LlvmType = llvm_type;
