@@ -293,6 +293,7 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
     const auto outer_sup_ctx = _Ctx->GetAstCtx()->To<SupPrototypeFunctionsAst>();
     const auto outer_ext_ctx = _Ctx->GetAstCtx()->To<SupPrototypeExtensionAst>();
 
+    // Todo: Maybe do this in stage7, with stage9 evaluation? needs cmp args.
     // Evaluate the context that this annotation can be applied to.
     meta->Save();
     const auto annotation_scope_name = INJECT_CODE("std::annotations", parse_expression);
@@ -304,7 +305,7 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
     const auto allowed_ctx = result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
     meta->Restore();
 
-    auto target = annotation_info->Definition->FnArgGroup->At("target");
+    const auto target = annotation_info->Definition->FnArgGroup->At("target");
 
     // Error for incompatible asts when classes are not valid targets.
     RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
