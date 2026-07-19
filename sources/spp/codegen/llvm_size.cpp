@@ -95,13 +95,15 @@ auto spp::codegen::SizeOf(
         return total_size;
     }
 
-    // Variant size is the maximum of its contained types + a discriminator (usize).
+    // Variant size is the maximum of its contained types (the payload has to hold the largest one) plus a
+    // discriminator. This ignores the alignment padding the real layout applies, so it is a lower bound; callers with
+    // an LLVM context should measure the lowered type with the data layout instead.
     if (TypeEq(*type->WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope)) {
-        auto min_size = std::numeric_limits<std::size_t>::max();
+        auto max_size = 0uz;
         for (auto const &inner_type : type->TypeParts().Back()->GnArgGroup->GetTypeArgs()) {
-            min_size = std::min(min_size, SizeOf(sm, inner_type->Val));
+            max_size = std::max(max_size, SizeOf(sm, inner_type->Val));
         }
-        return min_size + sizeof(std::size_t);
+        return max_size + sizeof(std::size_t);
     }
 
     // Otherwise, sum the attributes of the struct/class.
