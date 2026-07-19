@@ -1,7 +1,10 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_identifier_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -126,13 +129,19 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    //
+    // Todo: Add higher order generic checks into the unit tests (self and generic type).
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
     using analyse::utils::func_utils::InferGnArgs;
     using analyse::utils::func_utils::NameGnArgs;
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
+    using analyse::errors::SemanticError;
+    using analyse::errors::SppHigherOrderGenericsNotSupportedError;
+
     if (_HasAnalysed) { return; }
+    RaiseIf<SppHigherOrderGenericsNotSupportedError>(
+        Name == "Self" and (GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty()),
+        {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
     if (Name == "Self" and meta->CurrentStage < 9) { return; }
 
     // Determine the scope and get the type symbol.
@@ -166,6 +175,11 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
             nullptr, is_tuple, *sm, *meta);
         GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     }
+    else {
+        RaiseIf<SppHigherOrderGenericsNotSupportedError>(
+            GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
+            {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
+    }
 
     // For variant types, collapse any duplicate generic arguments.
     // if (TypeEq(*without_generics(), *generate::common_types_precompiled::VAR, *scope, *sm->CurrentScope, false)) {
@@ -184,9 +198,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
     }
 
-    // Enforce generic constraints from the pre-analysis stage (CurrentStage >= 8) onwards, not just the main
-    // analysis stage. Sup scopes are fully loaded by the end of stage 5, so constraints can be reliably checked here,
-    // and some need to be done before stage 7 for order agnostic behaviour.
+    // Enforce generic constraints from the pre-analysis stage (CurrentStage >= 8) onwards, not just the main analysis
+    // stage. Sup scopes are fully loaded by the end of stage 5, so constraints can be reliably checked here, and some
+    // need to be done before stage 7 for order agnostic behaviour.
     if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 8) {
         EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
     }

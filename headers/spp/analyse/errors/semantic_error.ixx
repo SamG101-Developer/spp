@@ -129,6 +129,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
     SPP_EXP_CLS struct SppMovingEscapingBorrowedMemoryError;
     SPP_EXP_CLS struct SppMovingComptimeConstantMemoryError;
+    SPP_EXP_CLS struct SppHigherOrderGenericsNotSupportedError;
 }
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
@@ -497,4 +498,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMovingEscapingBorrowedMemoryError fi
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMovingComptimeConstantMemoryError final : SemanticError {
     explicit SppMovingComptimeConstantMemoryError(asts::Ast const &ast, asts::Ast const &move_location);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppHigherOrderGenericsNotSupportedError final : SemanticError {
+    explicit SppHigherOrderGenericsNotSupportedError(asts::Ast const &ast, asts::Ast const &generic_arg_group);
 };

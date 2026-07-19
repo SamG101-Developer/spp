@@ -434,7 +434,7 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
     AddHeaders(34, "Identifier Unknown Error");
     AddErr(&name, "Unknown " + INLINE_INFO(Str(what)) + " introduced here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     AddFooter(
-        "The " + INLINE_NOTE(Str(what)) + " of " + INLINE_NOTE(name.ToString()) +  " is not defined in the current scope.",
+        "The " + INLINE_NOTE(Str(what)) + " of " + INLINE_NOTE(name.ToString()) + " is not defined in the current scope.",
         "Define the identifier or correct its name.");
 }
 
@@ -1112,6 +1112,17 @@ spp::analyse::errors::SppMovingComptimeConstantMemoryError::SppMovingComptimeCon
     AddFooter(
         "Compile-time constants cannot be moved from.",
         "Remove the move operation or ensure the value is not a compile-time constant.");
+}
+
+spp::analyse::errors::SppHigherOrderGenericsNotSupportedError::SppHigherOrderGenericsNotSupportedError(
+    asts::Ast const &ast,
+    asts::Ast const &generic_arg_group) {
+    AddHeaders(94, "Higher-Order Generics Not Supported Error");
+    AddCtxForErr(&ast, "Generic type used here");
+    AddErr(&generic_arg_group, "Generic argument group defined here");
+    AddFooter(
+        "Higher-order generics are not yet supported.",
+        "Remove the generic argument group from the generic type.");
 }
 
 SPP_MOD_END
