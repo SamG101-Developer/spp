@@ -28,21 +28,21 @@ import std;
     const auto bit_width_ast =                                                                                   \
         scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>(); \
     if (bit_width_ast == nullptr) { return; }                                                                    \
-    const auto w = std::stoi(bit_width_ast->Val->TokenData);
+    const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));
 
-constexpr spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
-constexpr spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
-constexpr spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
-constexpr spp::Vec<spp::Str> kSizedIntegerSignedParts = {"std", "num", "sized_integer", "SizedIntegerSigned"};
-constexpr spp::Vec<spp::Str> kSizedIntegerUnsignedParts = {"std", "num", "sized_integer", "SizedIntegerUnsigned"};
-constexpr spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
-constexpr spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
-constexpr spp::Vec<spp::Str> kFunRefParts = {"std", "function", "FunRef"};
-constexpr spp::Vec<spp::Str> kFunMutParts = {"std", "function", "FunMut"};
-constexpr spp::Vec<spp::Str> kFunMovParts = {"std", "function", "FunMov"};
-constexpr spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
-constexpr spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
-constexpr spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
+const spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
+const spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
+const spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
+const spp::Vec<spp::Str> kSizedIntegerSignedParts = {"std", "num", "sized_integer", "SizedIntegerSigned"};
+const spp::Vec<spp::Str> kSizedIntegerUnsignedParts = {"std", "num", "sized_integer", "SizedIntegerUnsigned"};
+const spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
+const spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
+const spp::Vec<spp::Str> kFunRefParts = {"std", "function", "FunRef"};
+const spp::Vec<spp::Str> kFunMutParts = {"std", "function", "FunMut"};
+const spp::Vec<spp::Str> kFunMovParts = {"std", "function", "FunMov"};
+const spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
+const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
+const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
 
 static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
     switch (bit_width) {
