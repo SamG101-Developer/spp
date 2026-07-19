@@ -16,17 +16,16 @@ namespace spp::asts {
     SPP_EXP_CLS struct CoroutinePrototypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
     /**
      * The generator environment that this coroutine yields into, using the GenExpressionAst nodes. This is only set for
      * coroutine prototypes.
      */
-    llvm::Value *LlvmGenEnv;
+    llvm::Value *LlvmCoroGenEnv;
 
-    llvm::Value *LlvmCoroYieldSlot;
+    llvm::StructType *LlvmCoroGenEnvType;
 
-    llvm::StructType *LlvmCoroEnvType;
+    llvm::Function *LlvmCoroResumeFunc;
 
     using FunctionPrototypeAst::FunctionPrototypeAst;
 
@@ -39,7 +38,4 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto IsCoroutine() const -> bool override;
-
-private:
-    llvm::Function *_LlvmResumeFunc;
 };

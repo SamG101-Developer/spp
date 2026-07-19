@@ -24,6 +24,26 @@ import genex;
 import llvm;
 import std;
 
+#define EXTRACT_INT_SIZE                                                                                         \
+    const auto bit_width_ast =                                                                                   \
+        scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>(); \
+    if (bit_width_ast == nullptr) { return; }                                                                    \
+    const auto w = std::stoi(bit_width_ast->Val->TokenData);
+
+constexpr spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
+constexpr spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
+constexpr spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
+constexpr spp::Vec<spp::Str> kSizedIntegerSignedParts = {"std", "num", "sized_integer", "SizedIntegerSigned"};
+constexpr spp::Vec<spp::Str> kSizedIntegerUnsignedParts = {"std", "num", "sized_integer", "SizedIntegerUnsigned"};
+constexpr spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
+constexpr spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
+constexpr spp::Vec<spp::Str> kFunRefParts = {"std", "function", "FunRef"};
+constexpr spp::Vec<spp::Str> kFunMutParts = {"std", "function", "FunMut"};
+constexpr spp::Vec<spp::Str> kFunMovParts = {"std", "function", "FunMov"};
+constexpr spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
+constexpr spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
+constexpr spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
+
 static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
     switch (bit_width) {
         case 8: { return llvm::APFloatBase::Float8E4M3(); }
@@ -57,49 +77,53 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     const auto cls_sym = scope->TySym;
 
     // For compiler known types, specialize the llvm type symbols.
-    const auto ancestor_names = scope->Ancestors()
+    const auto parts = scope->Ancestors()
         | genex::views::drop_last(1)
         | genex::views::transform([](auto *x) { return x->NameAsString(); })
         | genex::views::reverse
         | genex::to<Vec>();
 
-    if (ancestor_names == Vec<Str>{"std", "void", "Void"}) {
-        // Lower S++ "Void" to the llvm "void" type.
+    // Lower S++ "Void" to the llvm "void" type.
+    if (parts == kVoidParts) {
         cls_sym->LlvmInfo->LlvmType = llvm::Type::getVoidTy(*ctx->Context);
         return;
     }
 
-    if (ancestor_names == Vec<Str>{"std", "boolean", "Bool"}) {
-        // Lower S++ "Bool" to the llvm "i1" type.
+    // Lower S++ "Bool" to the llvm "i1" type.
+    if (parts == kBoolParts) {
         cls_sym->LlvmInfo->LlvmType = llvm::Type::getInt1Ty(*ctx->Context);
         return;
     }
 
-    if (ancestor_names == Vec<Str>{"std", "string_view", "StrView"}) {
-        // Lower S++ "StrView" to the llvm "i8*" type.
+    // Lower S++ "StrView" to the llvm "i8*" type.
+    if (parts == kStrViewParts) {
         cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
         return;
     }
 
-    if (ancestor_names[0] == "std" and ancestor_names[1] == "num" and ancestor_names[2].starts_with("sized") and ancestor_names[3].starts_with("Sized")) {
-        const auto type_part = ancestor_names[2];
-        const auto bit_width_ast = scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>();
-        if (bit_width_ast == nullptr) { return; }
-        const auto bit_width = std::stoul(bit_width_ast->Val->TokenData);
-
-        if (type_part == "sized_integer") {
-            cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, static_cast<unsigned int>(bit_width));
-            return;
-        }
-
-        if (type_part.starts_with("sized_floating_point")) {
-            cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(bit_width));
-            return;
-        }
+    // Lower S++ "S[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type.
+    if (parts == kSizedIntegerSignedParts) {
+        EXTRACT_INT_SIZE;
+        cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
+        return;
     }
 
-    if (ancestor_names == Vec<Str>{"std", "array", "Arr"}) {
-        // Lower S++ Arr" to the llvm "[T * n]" type.
+    // Lower S++ "U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type.
+    if (parts == kSizedIntegerUnsignedParts) {
+        EXTRACT_INT_SIZE;
+        cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
+        return;
+    }
+
+    // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
+    if (parts == kSizedFloatParts) {
+        EXTRACT_INT_SIZE;
+        cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(w));
+        return;
+    }
+
+    // Lower S++ Arr" to the llvm "[T * n]" type.
+    if (parts == kArrParts) {
         const auto gn_arg_group = cls_sym->FqName()->TypeParts().Back()->GnArgGroup.get();
         const auto length_ast = gn_arg_group->CompAt("n")->Val->To<asts::IntegerLiteralAst>();
         const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val);
@@ -114,13 +138,18 @@ auto spp::codegen::RegisterLlvmTypeInfo(
         return;
     }
 
-    if (ancestor_names == Vec<Str>{"std", "function", "FunMov"}
-        or ancestor_names == Vec<Str>{"std", "function", "FunMut"}
-        or ancestor_names == Vec<Str>{"std", "function", "FunRef"}) {
-        // Lower the function types to a { fn_ptr, env_ptr } pair (a "fat pointer": the function code plus a
-        // pointer to its captured environment; the env pointer is null for capture-less functions). All three
-        // share this layout, so plain functions and closures are interchangeable. A structurally-uniqued
-        // literal struct is used so every function-type instantiation maps to the same llvm type.
+    // Lower the function types to a { fn_ptr, env_ptr } pair (a "fat pointer": the function code plus a pointer to its
+    // captured environment; the env pointer is null for capture-less functions). All three share this layout, so plain
+    // functions and closures are interchangeable.
+    if (parts == kFunMovParts or parts == kFunMutParts or parts == kFunRefParts) {
+        const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+        cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+        return;
+    }
+
+    // Lower the generator types to a { resume_fn_ptr, env_ptr } pair (a "fat pointer": the coroutine resume function
+    // plus a pointer to its frame/environment, which lives on the caller's stack - no heap allocation).
+    if (parts == kGenParts or parts == kGenOnceParts or parts == kGeneratedParts) {
         const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
         cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
         return;

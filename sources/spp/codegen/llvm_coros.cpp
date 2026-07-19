@@ -24,188 +24,108 @@ import opex.cast;
 import genex;
 import std;
 
-
-auto spp::codegen::create_coro_env_type(
-    asts::CoroutinePrototypeAst *coro,
-    LLvmCtx *ctx,
+auto spp::codegen::CollectCoroFrameVars(
     analyse::scopes::Scope const &scope)
-    -> Pair<llvm::StructType*, llvm::StructType*> {
-    //
-    using analyse::utils::type_utils::TypeEq;
+    -> Vec<Shared<analyse::scopes::VariableSymbol>> {
+    // Collect the coroutine scope's own variables first.
+    auto out = Vec<Shared<analyse::scopes::VariableSymbol>>();
+    for (auto const &sym : scope.AllVarSymbols(true)) {
+        if (sym->IsGeneric or sym->Type == nullptr) { continue; }
+        out.EmplaceBack(sym);
+    }
 
-    // Get the type being yielded.
+    // Get all the child scopes' variables too. Closure scopes are auto avoided because of how they are parent-linked to
+    // the module scope.
+    for (auto const &child : scope.Children) {
+        if (child->NameAsString().starts_with("<closure-outer")) { continue; } // Todo: Likely remove
+        for (auto &&sym : CollectCoroFrameVars(*child)) { out.EmplaceBack(std::move(sym)); }
+    }
+    return out;
+}
+
+auto spp::codegen::CreateCoroEnvType(
+    asts::CoroutinePrototypeAst *coro,
+    LLvmCtx const *ctx,
+    analyse::scopes::Scope const &scope)
+    -> llvm::StructType* {
+    //
+    using analyse::utils::type_utils::IsTypeVoid;
+
+    // Get the type being yielded and the type being sent back in.
     const auto [generator_type, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
         *coro->ReturnType, scope, *coro->ReturnType, "coroutine prototype");
     const auto send_type = generator_type->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
 
-    // Store the resume function.
-    const auto llvm_resume_func_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
-
-    // Define the fields for the coro environment: coro state, current yield location.
+    // Fixed header fields: state (i8), location (i32), the send slot and the yield slot.
     const auto llvm_state_type = llvm::Type::getInt8Ty(*ctx->Context);
     const auto llvm_location_type = llvm::Type::getInt32Ty(*ctx->Context);
-
-    // Next, a tuple of the arguments being bound to this generator.
-    auto arg_struct_fields = Vec<llvm::Type*>();
-    for (auto const &param_name : coro->FnParamGroup->Params
-         | genex::views::transform([](auto &&x) { return x->ExtractNames(); })
-         | genex::views::join
-         | genex::to<Vec>()) {
-        const auto param_sym = scope.GetVarSymbol(param_name);
-        const auto param_type_sym = scope.GetTypeSymbol(param_sym->Type);
-        arg_struct_fields.EmplaceBack(GetLlvmType(*param_type_sym, ctx));
-    }
-    const auto llvm_arg_struct_type = llvm::StructType::create(
-        *ctx->Context, arg_struct_fields.ToStdVector(), "gen.args");
-
-    // Yield slot.
     const auto llvm_yield_type = GetLlvmType(*scope.GetTypeSymbol(yield_type), ctx);
 
-    // For Send != Void, the send slot is also required (dummy otherwise for order).
-    const auto llvm_send_type = not TypeEq(*send_type, *asts::generate::common_types_precompiled::VOID, scope, scope)
+    // For Send != Void, the send slot carries the resumed value (dummy i8 otherwise, to keep field order stable).
+    const auto llvm_send_type = not IsTypeVoid(*send_type, scope)
         ? GetLlvmType(*scope.GetTypeSymbol(send_type), ctx)
-        : llvm::Type::getInt8Ty(*ctx->Context); // Dummy
+        : llvm::Type::getInt8Ty(*ctx->Context);
 
-    // Create the struct type and return it.
-    const auto fields = Vec<llvm::Type*>{
-        llvm_resume_func_ptr_type,
-        llvm_state_type,
-        llvm_location_type,
-        llvm_arg_struct_type,
-        llvm_yield_type,
-        llvm_send_type,
-    };
+    // Non-generically substituted guard.
+    // Todo: Do we need this?
+    if (llvm_yield_type == nullptr or llvm_send_type == nullptr) { return nullptr; }
 
-    if (llvm_yield_type == nullptr or llvm_send_type == nullptr) {
-        return {nullptr, nullptr};
+    // Header fields, in GenEnvField order.
+    auto fields = Vec<llvm::Type*>{llvm_state_type, llvm_location_type, llvm_send_type, llvm_yield_type};
+
+    // One field per frame variable (parameters and body locals), starting at GenEnvField::FRAME_START.
+    for (auto const &var_sym : CollectCoroFrameVars(scope)) {
+        fields.EmplaceBack(GetLlvmType(*scope.GetTypeSymbol(var_sym->Type), ctx));
     }
 
-    const auto coro_env_type = llvm::StructType::create(*ctx->Context, fields.ToStdVector(), "gen.env");
-    coro->LlvmCoroEnvType = coro_env_type;
-    return MakePair(coro_env_type, llvm_arg_struct_type);
+    const auto coro_env_type = llvm::StructType::create(
+        *ctx->Context, fields.ToStdVector(), "gen.env" + spp::utils::Uid(coro));
+    coro->LlvmCoroGenEnvType = coro_env_type;
+    return coro_env_type;
 }
 
-
-auto spp::codegen::create_coro_gen_ctor(
+auto spp::codegen::CreateCoroResFunc(
     asts::CoroutinePrototypeAst *coro,
     LLvmCtx *ctx,
     analyse::scopes::Scope const &scope)
-    -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*> {
-    const auto uid = spp::utils::Uid(coro);
-    const auto [coro_env_type, coro_env_args_type] = create_coro_env_type(coro, ctx, scope);
-    if (coro_env_type == nullptr or coro_env_args_type == nullptr) {
-        return {nullptr, nullptr, nullptr};
-    }
-
-    SPP_ASSERT(coro_env_type != nullptr);
-
-    // Create the gen ctor function - accept, fill, and return the generator environment.
-    const auto llvm_func_name = coro->GetLlvmFunc()->Target->getName().str() + ".gen.ctor" + uid;
-    const auto llvm_func_type = llvm::FunctionType::get(
-        coro_env_type, {}, false);
-    const auto llvm_func = llvm::Function::Create(
-        llvm_func_type, llvm::Function::InternalLinkage, llvm_func_name, ctx->Module.get());
-
-    // Entry block to construct the generator environment into.
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, llvm_func);
-    ctx->Builder.SetInsertPoint(entry_bb);
-
-    const auto coro_env_ptr = ctx->Builder.CreateAlloca(
-        coro_env_type, nullptr, "coro.env" + uid);
-
-    // Set the state to 0 (READY).
-    ctx->Builder.CreateStore(
-        llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), static_cast<std::uint8_t>(CoroutineState::READY)),
-        ctx->Builder.CreateStructGEP(coro_env_type, coro_env_ptr, 0, "coro.env.state" + uid));
-
-    // Set the location to 0 (start).
-    ctx->Builder.CreateStore(
-        llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0),
-        ctx->Builder.CreateStructGEP(coro_env_type, coro_env_ptr, 1, "coro.env.loc" + uid));
-
-    // Load all the arguments into the args struct.
-    const auto load_coro_env = ctx->Builder.CreateLoad(coro_env_type, coro_env_ptr, "coro.env.load" + uid);
-    for (auto const &[i, param_name] : coro->FnParamGroup->Params
-         | genex::views::transform([](auto &&x) { return x->ExtractNames(); })
-         | genex::views::join
-         | genex::views::enumerate
-         | genex::to<Vec>()) {
-        // Get the alloca from the parameter variable.
-        const auto puid = spp::utils::Uid(param_name.get());
-        const auto param_sym = scope.GetVarSymbol(param_name);
-        const auto param_alloca = param_sym->LlvmInfo->Alloca;
-
-        // Load the argument value.
-        const auto param_type_sym = scope.GetTypeSymbol(param_sym->Type);
-        const auto param_llvm_type = GetLlvmType(*param_type_sym, ctx);
-        const auto param_val = ctx->Builder.CreateLoad(param_llvm_type, param_alloca, "coro.arg.load" + uid + puid);
-
-        // Insert into the args struct.
-        const auto gep_arg = ctx->Builder.CreateStructGEP(
-            coro_env_args_type, load_coro_env, static_cast<std::uint32_t>(i), "coro.arg.gep" + uid + puid);
-        ctx->Builder.CreateStore(param_val, gep_arg);
-    }
-
-    // Return the created coroutine environment.
-    ctx->Builder.CreateRet(load_coro_env);
-    return std::make_tuple(llvm_func, coro_env_ptr, coro_env_args_type);
-}
-
-
-auto spp::codegen::create_coro_res_func(
-    asts::CoroutinePrototypeAst const *coro,
-    llvm::Type *llvm_arg_struct_type,
-    LLvmCtx *ctx,
-    analyse::scopes::Scope const &scope)
     -> llvm::Function* {
-    // Get the "send" type for the resume signature.
-    const auto uid = spp::utils::Uid(coro);
-    const auto [generator_type, _, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
-        *coro->ReturnType, scope, *coro->ReturnType, "coroutine prototype");
-    const auto send_type = generator_type->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
-    const auto llvm_send_type = GetLlvmType(*scope.GetTypeSymbol(send_type), ctx);
+    // Get the env object from the coroutine prototype being called.
+    const auto uid = "." + spp::utils::Uid(coro);
+    const auto env_type = coro->LlvmCoroGenEnvType;
+    SPP_ASSERT(env_type != nullptr);
 
-    // Create the resume function.
-    const auto llvm_func_name = coro->GetLlvmFunc()->Target->getName().str() + ".coro.resume" + uid;
+    // The resume function signature is "(env*, send) -> void". The send type matches the env's send slot.
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    const auto llvm_send_type = env_type->getElementType(std::to_underlying(GenEnvField::SEND_SLOT));
     const auto llvm_func_type = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(*ctx->Context),
-        {llvm::PointerType::get(*ctx->Context, 0), llvm_send_type}, false);
+        llvm::Type::getVoidTy(*ctx->Context), {ptr_ty, llvm_send_type}, false);
+    const auto llvm_func_name = coro->GetLlvmFunc()->Target->getName().str() + ".coro.resume" + uid;
     const auto llvm_func = llvm::Function::Create(
         llvm_func_type, llvm::Function::InternalLinkage, llvm_func_name, ctx->Module.get());
-
-    // Entry block to construct the coroutine body into.
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, llvm_func);
-    ctx->Builder.SetInsertPoint(entry_bb);
-
-    // Build the argument bindings from the genenv to local variables.
-    const auto llvm_coro_env_ptr = llvm_func->getArg(0);
-    const auto llvm_coro_env_type = llvm::PointerType::get(*ctx->Context, 0);
-    const auto load_coro_env = ctx->Builder.CreateLoad(llvm_coro_env_type, llvm_coro_env_ptr, "coro.env.load" + uid);
-    for (auto const &[i, param_name] : coro->FnParamGroup->Params
-         | genex::views::transform([](auto &&x) { return x->ExtractNames(); })
-         | genex::views::join
-         | genex::views::enumerate) {
-        // Get the alloca from the parameter variable.
-        const auto param_sym = scope.GetVarSymbol(param_name);
-        const auto param_type = scope.GetTypeSymbol(param_sym->Type);
-        param_sym->LlvmInfo->Alloca = ctx->Builder.CreateAlloca(
-            GetLlvmType(*param_type, ctx), nullptr, "coro.arg.alloca" + uid);
-
-        // Load the argument value from the gen env args struct.
-        const auto gep_args = ctx->Builder.CreateStructGEP(llvm_arg_struct_type, load_coro_env, 2, "coro.args.gep" + uid);
-        const auto gep_arg = ctx->Builder.CreateStructGEP(llvm_arg_struct_type, gep_args, static_cast<std::uint32_t>(i), "coro.arg.gep" + uid);
-        const auto arg_val = ctx->Builder.CreateLoad(GetLlvmType(*scope.GetTypeSymbol(param_sym->Type), ctx), gep_arg, "coro.arg.load" + uid);
-
-        // Store into the local alloca.
-        ctx->Builder.CreateStore(arg_val, param_sym->LlvmInfo->Alloca);
-    }
-
-    // The switch header block will be injected from outside of this function.
     llvm_func->addFnAttr(llvm::Attribute::NoUnwind);
     llvm_func->addFnAttr(llvm::Attribute::NoInline);
+    coro->LlvmCoroResumeFunc = llvm_func;
+
+    // Entry block; bind the env pointer so "gen" expressions can reach the frame.
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, llvm_func);
+    ctx->Builder.SetInsertPoint(entry_bb);
+    const auto env_ptr = llvm_func->getArg(0);
+    coro->LlvmCoroGenEnv = env_ptr;
+
+    // Store the sent-in value into the send slot, so the "gen" that yielded control can read it on resume.
+    ctx->Builder.CreateStore(
+        llvm_func->getArg(1),
+        ctx->Builder.CreateStructGEP(env_type, env_ptr, std::to_underlying(GenEnvField::SEND_SLOT), "coro.send.slot" + uid));
+
+    // Point every frame variable's storage at its env field, so reads/writes persist across resumes (the frame lives
+    // on the caller's stack). LocalVariableSingleIdentifierAst skips creating a fresh alloca when one is pre-set.
+    for (auto const &[i, var_sym] : CollectCoroFrameVars(scope) | genex::views::enumerate) {
+        const auto field = std::to_underlying(GenEnvField::FRAME_START) + static_cast<unsigned>(i);
+        var_sym->LlvmInfo->Alloca = ctx->Builder.CreateStructGEP(env_type, env_ptr, field, "coro.frame.gep" + uid);
+    }
+
     return llvm_func;
 }
-
 
 auto spp::codegen::create_async_spawn_func(
     LLvmCtx *ctx,

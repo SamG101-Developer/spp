@@ -149,14 +149,18 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
-    // Always alloca at the top of the function for stack variables.
-    const auto func = ctx->Builder.GetInsertBlock()->getParent();
-    const auto entry = &func->getEntryBlock();
-    auto temp_builder = llvm::IRBuilder(entry, entry->begin());
-
-    const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
+    // The storage for this variable. Normally a fresh alloca at the top of the function, but inside a coroutine the
+    // resume prologue has already pointed the symbol at its env field (its frame lives on the caller's stack). Reuse
+    // that pre-set alloca storage instead of allocating a fresh non-persisting slot.
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
-    var_sym->LlvmInfo->Alloca = alloca;
+    auto alloca = var_sym->LlvmInfo->Alloca;
+    if (alloca == nullptr) {
+        const auto func = ctx->Builder.GetInsertBlock()->getParent();
+        const auto entry = &func->getEntryBlock();
+        auto temp_builder = llvm::IRBuilder(entry, entry->begin());
+        alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
+        var_sym->LlvmInfo->Alloca = alloca;
+    }
 
     // Generate the initializer expression.
     if (not meta->LetStatementFromUninitialized) {

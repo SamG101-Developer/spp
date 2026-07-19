@@ -70,10 +70,6 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    if (this == reinterpret_cast<ClosureExpressionParameterAndCaptureGroupAst*>(0x3b3ed10)) {
-        auto _ = 123;
-    }
-
     // Analyse the arguments against the outer scope's symbols (temp move asts).
     auto caps = CaptureGroup->Captures
         | genex::views::move
@@ -84,6 +80,8 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
     cap_group->Stage7_AnalyseSemantics(sm, meta);
 
     // New scope for parameters.
+    // Todo: The closure scope is parented at the module to prevent locals leakage. But doe this pull in module
+    //  constants still? Potentially need to route in the topmost global scope?
     auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
         "closure-outer", {}, PosStart());
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);

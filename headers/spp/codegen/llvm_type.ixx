@@ -14,7 +14,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionPrototypeAst;
 }
 
-
 namespace spp::codegen {
     SPP_EXP_FUN auto RegisterLlvmTypeInfo(
         asts::ClassPrototypeAst const *cls_proto,
