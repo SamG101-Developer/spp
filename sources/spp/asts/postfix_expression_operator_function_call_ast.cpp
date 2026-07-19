@@ -363,7 +363,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
             ctx->Builder.restoreIP(saved_ip);
         }
         const auto env_type = coro->LlvmCoroGenEnvType;
-        SPP_ASSERT(env_type != nullptr and coro->LlvmResumeFunc != nullptr);
+        SPP_ASSERT(env_type != nullptr and coro->LlvmCoroResumeFunc != nullptr);
 
         // Allocate the env (frame) on the caller's stack, at the top of the caller's function.
         const auto caller_entry = &ctx->Builder.GetInsertBlock()->getParent()->getEntryBlock();
@@ -382,12 +382,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         // (so the order agrees with the env-type and resume-prologue collection).
         const auto frame_vars = codegen::CollectCoroFrameVars(*coro_scope);
         const auto params = coro->FnParamGroup->GetAllParams();
-        for (auto const &[i, arg] : FnArgGroup->Args | genex::views::enumerate) {
+        for (const auto [i, arg] : FnArgGroup->Args | genex::views::ptr | genex::views::enumerate) {
             const auto param_sym = coro_scope->GetVarSymbol(params[i]->ExtractName());
             auto field = std::to_underlying(codegen::GenEnvField::FRAME_START);
             for (auto const &[fi, fv] : frame_vars | genex::views::enumerate) {
                 if (fv.get() == param_sym.get()) {
-                    field += fi;
+                    field += static_cast<std::uint8_t>(fi);
                     break;
                 }
             }
