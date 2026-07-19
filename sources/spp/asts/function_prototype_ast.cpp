@@ -539,6 +539,14 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     else if (not is_extern) {
         // Generate the function implementation.
         Impl->Stage11_CodeGen(sm, meta, ctx);
+
+        // The body is an expression scope, so it never emits its own terminator. Return with void if there is no return
+        // statement, otherwise we have already returned to emit an "unreachable" instruction.
+        if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+            GetLlvmFunc()->Target->getReturnType()->isVoidTy()
+                ? static_cast<llvm::Instruction*>(ctx->Builder.CreateRetVoid())
+                : static_cast<llvm::Instruction*>(ctx->Builder.CreateUnreachable());
+        }
     }
     else {
         // Skip the scope, linker will provide implementation for ffi.

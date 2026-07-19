@@ -196,11 +196,11 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     sm->MoveToNextScope();
     const auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
 
-    // Terminate the closure function with a return of the body's value. If the body already terminated the
-    // block (eg via an explicit "ret"), or the closure returns Void, emit nothing / a void return instead.
+    // Terminate the closure function with a return of the body's value (closures return their body implicitly).
     if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
-        if (llvm_ret_ty->isVoidTy() or body_val == nullptr) { ctx->Builder.CreateRetVoid(); }
-        else { ctx->Builder.CreateRet(body_val); }
+        if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
+        else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
+        else { ctx->Builder.CreateUnreachable(); }
     }
 
     meta->Restore();
