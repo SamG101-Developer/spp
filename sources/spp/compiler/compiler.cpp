@@ -67,8 +67,8 @@ auto spp::compiler::Compiler::Compile() -> void {
     m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
     m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
     m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
     Cleanup();
 }
 
