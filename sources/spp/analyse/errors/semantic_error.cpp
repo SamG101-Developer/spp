@@ -623,15 +623,13 @@ spp::analyse::errors::SppObjectInitializerInvalidArgumentError::SppObjectInitial
         "attribute. Otherwise, use the keyword format " + INLINE_HELP("attr=value") + ".");
 }
 
-spp::analyse::errors::SppObjectInitializerGenericWithArgsError::SppObjectInitializerGenericWithArgsError(
-    asts::TypeAst const &type,
-    asts::ObjectInitializerArgumentAst const &arg) {
-    AddHeaders(51, "Object Initializer Generic With Arguments Error");
-    AddCtxForErr(&type, "Generic type initialized here");
-    AddErr(&arg, "Argument introduced here");
+spp::analyse::errors::SppObjectInitializerVariantError::SppObjectInitializerVariantError(
+    asts::TypeAst const &type) {
+    AddHeaders(51, "Object Initializer Variant Error");
+    AddCtxForErr(&type, "Variant initialized here");
     AddFooter(
-        "A generic type cannot be initialized with arguments.",
-        "Remove the arguments from the object initializer.");
+        "A variant type cannot be initialized with arguments.",
+        "Use the layout: " + INLINE_HELP("let x: VariantType = InnerType()") + ".");
 }
 
 spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(

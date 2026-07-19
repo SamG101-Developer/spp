@@ -86,7 +86,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppLoopTooManyControlFlowStatementsError;
     SPP_EXP_CLS struct SppObjectInitializerMultipleAutofillArgumentsError;
     SPP_EXP_CLS struct SppObjectInitializerInvalidArgumentError;
-    SPP_EXP_CLS struct SppObjectInitializerGenericWithArgsError;
+    SPP_EXP_CLS struct SppObjectInitializerVariantError;
     SPP_EXP_CLS struct SppArgumentNameInvalidError;
     SPP_EXP_CLS struct SppArgumentMissingError;
     SPP_EXP_CLS struct SppEarlyReturnRequiresTryTypeError;
@@ -327,8 +327,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerInvalidArgumentErro
     explicit SppObjectInitializerInvalidArgumentError(asts::ObjectInitializerArgumentAst const &arg);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerGenericWithArgsError final : SemanticError {
-    explicit SppObjectInitializerGenericWithArgsError(asts::TypeAst const &type, asts::ObjectInitializerArgumentAst const &arg);
+SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerVariantError final : SemanticError {
+    explicit SppObjectInitializerVariantError(asts::TypeAst const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppArgumentNameInvalidError final : SemanticError {

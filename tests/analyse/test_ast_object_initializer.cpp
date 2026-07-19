@@ -3,7 +3,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstObjectInitializerAst,
     test_generic_type_invalid_usage,
-    SppObjectInitializerGenericWithArgsError, R"(
+    SppObjectInitializerInvalidArgumentError, R"(
     fun f[T]() -> Void {
         let foo = T(a=1)
     }

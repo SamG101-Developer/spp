@@ -71,8 +71,9 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::errors::SppSecondClassBorrowViolationError;
-    using analyse::errors::SppObjectInitializerGenericWithArgsError;
+    using analyse::errors::SppObjectInitializerVariantError;
     using analyse::utils::type_utils::IsTypeBorrowed;
+    using analyse::utils::type_utils::IsTypeVariant;
 
     // Get the base class symbol (no generics) and check it exists.
     meta->Save();
@@ -84,19 +85,12 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
-
     const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics());
 
-    // Generic types cannot have any attributes set.
-    // TODO: future with constraints will allow some.
-    RaiseIf<SppObjectInitializerGenericWithArgsError>(
-        base_cls_sym->IsGeneric and not ArgGroup->Args.IsEmpty(),
-        {sm->CurrentScope}, ERR_ARGS(*Type, *ArgGroup->Args[0]));
-
-    // Generic types being initialized uses pure default initialization, so there is no inference to be done.
-    if (base_cls_sym->IsGeneric) {
-        return;
-    }
+    // If the type is a variant type, prevent instantiation.
+    RaiseIf<SppObjectInitializerVariantError>(
+        IsTypeVariant(*base_cls_sym->FqName(), *sm->CurrentScope),
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
 
     // Prepare the object initializer arguments.
     meta->Save();
@@ -109,15 +103,13 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
         | genex::views::transform([sm, meta](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
         | genex::to<Vec>();
 
-    auto generic_infer_target = base_cls_sym->Type->Impl->Members
+    auto generic_infer_target = not base_cls_sym->IsGeneric
+        ? base_cls_sym->Type->Impl->Members
         | genex::views::ptr
         | genex::views::cast_dynamic<ClassAttributeAst*>()
         | genex::views::transform([&](auto const &x) { return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type)->FqName()); })
-        | genex::to<Vec>();
-
-    // Analyse the type and object argument group. TODO: might still need this
-    // auto tm = ScopeManager(sm->GlobalScope, base_cls_sym->scope);
-    // base_cls_sym->Type->impl->Stage7_AnalyseSemantics(&tm, meta);
+        | genex::to<Vec>()
+        : spp::Vec<Pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
 
     meta->Save();
     meta->InferSource = {generic_infer_source.begin(), generic_infer_source.end()};
