@@ -104,7 +104,6 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     // Analyse the desugared loop. The inner "gen" populates the enclosing coroutine's return type (for closures) and
     // type-checks the sub-generator's "Yield" against the enclosing coroutine's "Yield".
     _MappedLoop->Stage7_AnalyseSemantics(sm, meta);
-    _GenType = meta->EnclosingFunctionRetType.Back();
 }
 
 auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
@@ -122,15 +121,6 @@ auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
     -> llvm::Value* {
     // Generate the desugared loop, already built and analysed in Stage7 (its scope aligns with the walk here).
     return _MappedLoop->Stage11_CodeGen(sm, meta, ctx);
-}
-
-auto spp::asts::GenWithExpressionAst::InferType(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> Shared<TypeAst> {
-    // Get the "Send" generic type parameter from the generator type.
-    auto send_type = _GenType->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
-    return send_type;
 }
 
 SPP_MOD_END

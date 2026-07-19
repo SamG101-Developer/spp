@@ -740,7 +740,7 @@ auto spp::parse::ParserSpp::parse_primary_expression()
     PARSE_ALTERNATE(
         p1, asts::PrimaryExpressionAst, parse_closure_expression, parse_parenthesised_expression, parse_literal,
         parse_object_initializer, parse_case_of_expression, parse_case_expression, parse_loop_expression,
-        parse_gen_unroll_expression, parse_gen_expression, parse_type_expression, parse_identifier,
+        parse_gen_expression, parse_type_expression, parse_identifier,
         parse_self_identifier, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); },
         parse_fold_expression);
     return FORWARD_AST(p1);
@@ -1091,7 +1091,7 @@ auto spp::parse::ParserSpp::parse_statement()
     PARSE_ALTERNATE(
         p1, asts::StatementAst, parse_use_statement, parse_use_var_statement, parse_type_statement, parse_let_statement,
         parse_ret_statement, parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement,
-        parse_assignment_statement, parse_expression);
+        parse_assignment_statement, parse_gen_unroll_expression, parse_expression);
     return FORWARD_AST(p1);
 }
 

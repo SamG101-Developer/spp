@@ -53,10 +53,6 @@ SPP_EXP_CLS struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst 
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
-
 private:
-    Shared<TypeAst> _GenType;
-
     Unique<ExpressionAst> _MappedLoop;
 };
