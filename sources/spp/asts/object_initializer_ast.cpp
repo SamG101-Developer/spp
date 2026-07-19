@@ -21,6 +21,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 import llvm;
@@ -182,7 +183,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
         // Set each field value in the aggregate.
         SPP_ASSERT(llvm_type != nullptr);
 
-        const auto aggregate = ctx->Builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate" + uid);
+        const auto aggregate = codegen::llvm_entry_alloca(llvm_type, "obj_init.aggregate" + uid, ctx);
         for (auto i = 0uz; i < sorted_args.Len(); ++i) {
             auto const &arg = sorted_args[i];
             const auto attr_ptr = ctx->Builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->Name->Val);

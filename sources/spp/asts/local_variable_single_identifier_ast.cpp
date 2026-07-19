@@ -13,6 +13,7 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_ast;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 
@@ -155,10 +156,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
     auto alloca = var_sym->LlvmInfo->Alloca;
     if (alloca == nullptr) {
-        const auto func = ctx->Builder.GetInsertBlock()->getParent();
-        const auto entry = &func->getEntryBlock();
-        auto temp_builder = llvm::IRBuilder(entry, entry->begin());
-        alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
+        alloca = codegen::llvm_entry_alloca(llvm_type, "local.alloca" + uid, ctx);
         var_sym->LlvmInfo->Alloca = alloca;
     }
 

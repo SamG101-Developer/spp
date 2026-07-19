@@ -30,6 +30,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 import genex;
@@ -230,7 +231,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
     else {
         // Materialize the lhs expression into a temporary.
         const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
-        const auto temp = ctx->Builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs" + uid);
+        const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
         ctx->Builder.CreateStore(lhs_val, temp);
         base_ptr = temp;
     }

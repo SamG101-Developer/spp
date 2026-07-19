@@ -48,6 +48,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -366,9 +367,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         SPP_ASSERT(env_type != nullptr and coro->LlvmCoroResumeFunc != nullptr);
 
         // Allocate the env (frame) on the caller's stack, at the top of the caller's function.
-        const auto caller_entry = &ctx->Builder.GetInsertBlock()->getParent()->getEntryBlock();
-        auto entry_builder = llvm::IRBuilder(caller_entry, caller_entry->begin());
-        const auto env_ptr = entry_builder.CreateAlloca(env_type, nullptr, "coro.env" + coro_uid);
+        const auto env_ptr = codegen::llvm_entry_alloca(env_type, "coro.env" + coro_uid, ctx);
 
         // Initialise the header: READY, location 0 (start).
         ctx->Builder.CreateStore(
@@ -446,7 +445,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         else if (sm->CurrentScope->GetTypeSymbol(AstClone(temp_lhs->To<TypeAst>())) == nullptr) {
             // Materialize the lhs expression into a temporary.
             const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
-            const auto temp = ctx->Builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs" + uid);
+            const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
             ctx->Builder.CreateStore(lhs_val, temp);
             base_ptr = temp;
         }

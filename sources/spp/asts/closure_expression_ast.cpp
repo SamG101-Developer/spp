@@ -21,6 +21,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_identifier_ast;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -215,7 +216,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     ctx->CurrentClosureType = saved_current_closure_type;
 
     // Allocate the closure environment.
-    const auto env_alloca = ctx->Builder.CreateAlloca(env_ty, nullptr, "closure.env.alloca." + uid);
+    const auto env_alloca = codegen::llvm_entry_alloca(env_ty, "closure.env.alloca." + uid, ctx);
     for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
         const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
         const auto capture_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
@@ -234,7 +235,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     // Build the closure value as its FunXXX type, which lowers to a { fn_ptr, env_ptr } pair (RegisterLlvmTypeInfo).
     const auto closure_ty = llvm::cast<llvm::StructType>(
         codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(InferType(sm, meta)), ctx));
-    const auto closure_alloca = ctx->Builder.CreateAlloca(closure_ty, nullptr, "closure.obj.alloca." + uid);
+    const auto closure_alloca = codegen::llvm_entry_alloca(closure_ty, "closure.obj.alloca." + uid, ctx);
     ctx->Builder.CreateStore(llvm_fn, ctx->Builder.CreateStructGEP(closure_ty, closure_alloca, 0));
     ctx->Builder.CreateStore(env_alloca, ctx->Builder.CreateStructGEP(closure_ty, closure_alloca, 1));
 

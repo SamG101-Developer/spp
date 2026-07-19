@@ -20,6 +20,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
@@ -192,11 +193,11 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
         }
 
         // Create the array type and allocation.
-        const auto uid = Uid(this);
+        const auto uid = "." + Uid(this);
         const auto elem_ty = vals[0]->getType();
         const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.Len());
         SPP_ASSERT(arr_ty != nullptr);
-        const auto arr_alloc = ctx->Builder.CreateAlloca(arr_ty, nullptr, "array.explicit.alloca" + uid);
+        const auto arr_alloc = codegen::llvm_entry_alloca(arr_ty, "array.explicit.alloca" + uid, ctx);
 
         // Store the elements in the array allocation.
         for (auto i = 0uz; i < vals.Len(); ++i) {

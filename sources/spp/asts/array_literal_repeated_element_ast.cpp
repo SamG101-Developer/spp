@@ -19,6 +19,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.lex.tokens;
 import spp.utils.uid;
 import llvm;
@@ -180,11 +181,11 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
         }
 
         // Create the array type.
-        const auto uid = spp::utils::Uid(this);
+        const auto uid = "." + spp::utils::Uid(this);
         const auto elem_ty = vals[0]->getType();
         const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.Len());
         SPP_ASSERT(arr_ty != nullptr);
-        const auto arr_alloc = ctx->Builder.CreateAlloca(arr_ty, nullptr, "array.repeated.alloca" + uid);
+        const auto arr_alloc = codegen::llvm_entry_alloca(arr_ty, "array.repeated.alloca" + uid, ctx);
 
         // Store the elements in the array allocation.
         for (auto i = 0uz; i < vals.Len(); ++i) {

@@ -20,6 +20,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -140,8 +141,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
             *sm->CurrentScope->GetTypeSymbol(cap_ty), ctx);
 
         // Create the alloca for the variable.
-        const auto alloca = ctx->Builder.CreateAlloca(
-            cap_llvm_type, nullptr, "capture.alloca." + uid);
+        const auto alloca = codegen::llvm_entry_alloca(cap_llvm_type, "capture.alloca." + uid, ctx);
 
         const auto gep = ctx->Builder.CreateInBoundsGEP(
             ctx->CurrentClosureType,
