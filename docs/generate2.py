@@ -7,6 +7,16 @@ from pathlib import Path
 # Header extensions that Doxygen is pointed at: the .hpp and .ixx files.
 HEADER_SUFFIXES = (".ixx", ".hpp")
 
+# The Sphinx builders this script exposes. The requested builder is looked up here rather than used directly, so the
+# string that reaches the command line is always one of these literals and never the raw CLI argument.
+SPHINX_BUILDERS = {
+    "html": "html",
+    "latex": "latex",
+    "man": "man",
+    "text": "text",
+    "xml": "xml",
+}
+
 
 class DocumentGenerator:
     root: Path
@@ -91,12 +101,18 @@ class DocumentGenerator:
 
         self._write_toctree(self.api_dir / "index.rst", "s++ Compiler API", "=", ["spp"], maxdepth=2)
 
-    def run_sphinx(self, builder: str, strict: bool) -> None:
-        command = [sys.executable, "-m", "sphinx", "-b", builder, str(self.source_dir), str(self.build_dir / builder)]
+    def run_sphinx(self, builder: str, strict: bool) -> Path:
+        if builder not in SPHINX_BUILDERS:
+            raise RuntimeError(f"unknown builder {builder!r} (expected one of {', '.join(sorted(SPHINX_BUILDERS))})")
+        name = SPHINX_BUILDERS[builder]
+
+        out_dir = self.build_dir / name
+        command = [sys.executable, "-m", "sphinx", "-b", name, str(self.source_dir), str(out_dir)]
         if strict:
             # -W promotes warnings to errors; --keep-going reports all of them rather than dying on the first.
             command += ["-W", "--keep-going"]
         subprocess.run(command, check=True, cwd=self.docs_dir)
+        return out_dir
 
     def generate(self, skip_doxygen: bool = False, strict: bool = False, builder: str = "html") -> None:
         # Wipe the generated tree so pages for deleted headers do not linger. The spec tree is entirely hand-written and
@@ -113,16 +129,16 @@ class DocumentGenerator:
             self.run_doxygen()
 
         self.generate_compiler_api()
-        self.run_sphinx(builder, strict)
+        out_dir = self.run_sphinx(builder, strict)
 
-        print(f"documentation written to {self.build_dir / builder}")
+        print(f"documentation written to {out_dir}")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--skip-doxygen", action="store_true", help="reuse the existing doxygen XML")
     parser.add_argument("--strict", action="store_true", help="treat Sphinx warnings as errors")
-    parser.add_argument("--builder", default="html", choices=["html", "latex", "man", "text", "xml"], help="Sphinx builder to run (default: html)")
+    parser.add_argument("--builder", default="html", choices=sorted(SPHINX_BUILDERS), help="Sphinx builder to run (default: html)")
     args = parser.parse_args()
 
     try:
