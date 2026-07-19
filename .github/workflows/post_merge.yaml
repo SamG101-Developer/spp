@@ -8,11 +8,30 @@ concurrency:
   group: post-merge
   cancel-in-progress: false
 
-permissions:
-  contents: read
-
 jobs:
-  # publish-docs: (TODO)
+  docs:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_docs.yaml
+    with:
+      upload-pages-artifact: true
+
+  publish-docs:
+    name: Publish docs
+    needs: [docs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write     # deploy the built site
+      id-token: write  # the Pages deployment is authenticated with an OIDC token
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+
   warm-cache:
     name: Warm cache
     runs-on: ubuntu-latest

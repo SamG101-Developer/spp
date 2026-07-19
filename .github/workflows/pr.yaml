@@ -101,6 +101,14 @@ jobs:
     with:
       configs: '["address+undefined+leak", "thread"]'
 
+  # Builds the site without publishing it.
+  docs:
+    name: Docs
+    needs: [ precommit ]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_docs.yaml
+
   security:
     name: Security
     needs: [ precommit ]
