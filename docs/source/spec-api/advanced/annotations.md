@@ -53,4 +53,3 @@ There are also some combined targets available:
 cmp all: S32 = Self::function | Self::method | Self::ext_method | Self::class | Self::new_type | Self::constant
 cmp mod: S32 = Self::function | Self::method | Self::class | Self::new_type | Self::constant
 ```
-

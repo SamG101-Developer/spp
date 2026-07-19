@@ -205,8 +205,8 @@ Borrows can be taken at two places:
 
 - Function call sites: When a value is passed as an argument to a function, it can be borrowed immutably with the `&`
   operator, or mutably with the `&mut` operator. This allows the function to read from or modify the value without
-  taking ownership of it. The borrow is valid for the duration of the function call, and the value can be used after
-  the function call has finished executing.
+  taking ownership of it. The borrow is valid for the duration of the function call, and the value can be used after the
+  function call has finished executing.
 
 
 - Generator yield points: When a value is yielded from a generator, it can be borrowed immutably with the `&` operator,
@@ -248,6 +248,7 @@ to a single borrow. For example:
 
 ```s++
 fun other_func(x: &Str) -> Void { }
+
 fun func(x: &Str) -> Void {
     other_func(&x) # this is valid, as the type of x coalesces to a single borrow, and the borrow is still valid after the function call
 }
@@ -277,8 +278,8 @@ describes whether it can be rebound or not:
 
 Destructuring a borrow is typically not allowed, because it requires moving a field off of a borrow. This is not allowed
 under the memory model, becauuse it attempts to induce a partial move on a borrowed object. However, in `case`
-statements, pattern destructuring allows for attribute borrowing, because the symbols become available in an inner
-scope (guaranteed), so the safety is scope-enforced. For example:
+statements, pattern destructuring allows for attribute borrowing, because the symbols become available in an inner scope
+(guaranteed), so the safety is scope-enforced. For example:
 
 ```s++
 cls Point {
@@ -323,7 +324,7 @@ cor my_coro(s: &Str) -> Gen[S32] {
 fun my_func() -> Void {
     let s = Str::from("hello world")
     let g = my_coro(&s)
-    
+
     std::io::println("${g.res()}")
 }
 ```
