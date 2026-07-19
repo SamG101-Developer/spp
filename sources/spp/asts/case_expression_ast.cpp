@@ -215,11 +215,13 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     ctx->Builder.CreateBr(case_entry_bb);
 
     auto phi = static_cast<llvm::PHINode*>(nullptr);
+    auto ret_type = Shared<TypeAst>(nullptr);
     if (is_expr) {
         // The phi merges the value yielded by each branch, so it belongs in the end block (where every
         // branch body branches to), not the entry block.
         ctx->Builder.SetInsertPoint(case_end_bb);
-        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta));
+        ret_type = InferType(sm, meta);
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type);
         phi = ctx->Builder.CreatePHI(codegen::GetLlvmType(*ret_type_sym, ctx), Branches.Len() as U32, "case.phi" + uid);
     }
 
@@ -228,6 +230,9 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     meta->CaseCondition = Cond.get();
     meta->LlvmEndBB = case_end_bb;
     meta->LlvmPhi = phi;
+
+    // Branches need the yielded type, not just the phi's llvm type, so they can wrap a member value into a variant.
+    meta->AssignmentTargetType = ret_type;
 
     // Generate each branch (no return value because phi is modified by the branch).
     ctx->Builder.SetInsertPoint(case_entry_bb);
