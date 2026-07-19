@@ -57,8 +57,14 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      - name: Test under ${{ matrix.config }}
-        run: ctest --test-dir build --output-on-failure --no-tests=error
+      - name: Test under ${{ matrix.config }} (gtest-parallel)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/google/gtest-parallel.git /tmp/gtest-parallel
+          mkdir -p tests/test_output
+          python3 /tmp/gtest-parallel/gtest-parallel \
+            ./build/tests/spp_tests \
+            --output_dir=tests/test_output
 
       - name: Upload sanitizer logs on failure
         if: failure()
