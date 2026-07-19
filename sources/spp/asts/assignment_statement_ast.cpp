@@ -134,7 +134,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
         RaiseIf<SppInvalidMutationError>(
-            IsAttr(lhs_expr, sm) and lhs_type->GetConvention() and *lhs_type->GetConvention() == ConventionTag::REF,
+            IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
             {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
 
         // Dereference assignment (ie "x@ = y") writes through a borrow, so the borrow being dereferenced must be &mut.
