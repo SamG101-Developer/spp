@@ -21,3 +21,12 @@ code, pre, .highlight {
     padding: 1em;
     margin: 1em 0;
 }
+
+/*
+Namespace headings carry no body of their own: flatten_namespaces.py lifts their contents out to sit alongside them,
+left aligned, rather than indented inside. Collapse the empty content block so it leaves no gap behind.
+*/
+dl.cpp > dd:empty {
+    margin: 0;
+    padding: 0;
+}

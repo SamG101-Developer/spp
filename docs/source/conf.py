@@ -6,6 +6,7 @@ from pygments.token import Keyword, Name, String, Number, Operator, Punctuation,
 from sphinx.application import Sphinx
 
 sys.path.insert(0, os.path.abspath("_static/style"))
+sys.path.insert(0, os.path.abspath("_ext"))
 
 project = 's++'
 copyright = '2025, Sam Gardner'
@@ -18,6 +19,7 @@ exclude_patterns = []
 extensions = [
     "breathe",
     "myst_parser",
+    "flatten_namespaces",
 ]
 
 source_suffix = {
@@ -37,7 +39,10 @@ breathe_projects = {
 
 breathe_default_project = "s++"
 
-# -- Options for HTML output -------------------------------------------------
+suppress_warnings = [
+    "duplicate_declaration.cpp",
+]
+
 html_theme = "furo"
 html_theme_options = {
     "dark_css_variables": {
