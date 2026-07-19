@@ -13,7 +13,7 @@ env:
   # Ubuntu ships doxygen 1.9.x, which predates C++20 module support and silently drops every declaration in the .ixx
   # module interface units the compiler is written in. Pin a modern release instead.
   DOXYGEN_VERSION: "1.17.0"
-  DOXYGEN_SHA256: "fa4c3dd78785abc11ccc992bc9c01e7a8c3120fe14b8a8dfd7cefa7014530814"
+  DOXYGEN_SHA256: "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
 
 jobs:
   docs:
