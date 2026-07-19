@@ -52,7 +52,7 @@ runs:
 
     - name: Set up MSVC / clang-cl (Windows)
       if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@v1
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
     - name: Install sccache (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -72,7 +72,7 @@ runs:
         fi
 
     - name: Restore compiler cache
-      uses: actions/cache@v4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: |
           ~/.ccache
@@ -108,7 +108,7 @@ runs:
     - name: Cache small libraries (Linux)
       if: runner.os == 'Linux'
       id: libs-cache
-      uses: actions/cache@v4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.local
         key: spp-libs-${{ runner.os }}-v4

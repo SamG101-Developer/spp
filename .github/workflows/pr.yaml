@@ -3,17 +3,13 @@ name: PR
 on:
   pull_request:
     types: [ opened, synchronize, reopened, edited ]
-  merge_group: {}
-  workflow_dispatch: {}
+  merge_group: { }
+  workflow_dispatch: { }
 
 concurrency:
   # One group per PR branch / dispatch ref / merge-queue ref.
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
-
-permissions:
-  contents: read
-  pull-requests: write
 
 jobs:
   title:
@@ -21,12 +17,14 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      pull-requests: read  # read the PR title to validate its format
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
-      - uses: amannn/action-semantic-pull-request@v6
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -48,21 +46,25 @@ jobs:
     name: Format & Lint (pre-commit)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.14"
-      - uses: pre-commit/action@v3.0.1
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
 
   # Supported toolchain: must pass, gates ci-success.
   build-test:
     name: Build & Test
-    needs: [precommit]
+    needs: [ precommit ]
+    permissions:
+      contents: read
     uses: ./.github/workflows/_build_and_test.yaml
     with:
       os: ubuntu-latest
@@ -73,7 +75,9 @@ jobs:
   # ci-success (it deliberately omits this job from `needs`).
   build-test-extra:
     name: Build & Test (non-blocking)
-    needs: [precommit]
+    needs: [ precommit ]
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -91,13 +95,15 @@ jobs:
   sanitizers:
     name: Sanitizers
     needs: [ precommit ]
+    permissions:
+      contents: read
     uses: ./.github/workflows/_sanitizers.yaml
     with:
       configs: '["address+undefined+leak", "thread"]'
 
   security:
     name: Security
-    needs: [precommit]
+    needs: [ precommit ]
     permissions:
       contents: read
       security-events: write
@@ -109,9 +115,10 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ title, precommit, build-test, sanitizers, security ]
+    needs: [ title, precommit, build-test, sanitizers, security, docs ]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions: {}
     steps:
       - name: Verify all required jobs passed
         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}

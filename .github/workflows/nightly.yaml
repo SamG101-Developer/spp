@@ -8,14 +8,13 @@ concurrency:
   group: nightly
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  security-events: write
-  actions: read
-
 jobs:
   security:
     name: Security (full scan)
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     uses: ./.github/workflows/_security.yaml
     with:
       full-scan: true

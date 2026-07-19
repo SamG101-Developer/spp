@@ -17,21 +17,22 @@ jobs:
     name: Warm cache
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Set up toolchain
         uses: ./.github/actions/_setup_toolchain
         with:
           compiler: gcc
           version: "16"
 
-      # Same key as the gcc-16 PR leg, so PRs restore this warm master build tree.
       - name: Restore build tree
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
           key: build-ubuntu-latest-gcc-16-${{ github.sha }}
@@ -45,7 +46,7 @@ jobs:
 
       - name: Save build tree
         if: always()
-        uses: actions/cache/save@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
           key: build-ubuntu-latest-gcc-16-${{ github.sha }}

@@ -11,14 +11,13 @@ on:
         type: string
         default: "ubuntu-latest"
 
-permissions:
-  contents: read
-
 jobs:
   sanitize:
     name: ${{ matrix.config }}
     runs-on: ${{ inputs.os }}
     timeout-minutes: 60
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -30,10 +29,10 @@ jobs:
 
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Set up toolchain
         uses: ./.github/actions/_setup_toolchain
         with:
@@ -42,7 +41,7 @@ jobs:
           cache-key-suffix: san-${{ matrix.config }}
 
       - name: Restore build tree
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
           key: build-san-${{ inputs.os }}-${{ matrix.config }}-${{ github.sha }}
@@ -63,16 +62,15 @@ jobs:
 
       - name: Upload sanitizer logs on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: san-${{ matrix.config }}-logs
-          path: |
-            build/Testing/Temporary/LastTest.log
+          path: tests/test_output
           if-no-files-found: ignore
 
       - name: Save build tree
         if: always()
-        uses: actions/cache/save@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
           key: build-san-${{ inputs.os }}-${{ matrix.config }}-${{ github.sha }}
