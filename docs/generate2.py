@@ -122,7 +122,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--skip-doxygen", action="store_true", help="reuse the existing doxygen XML")
     parser.add_argument("--strict", action="store_true", help="treat Sphinx warnings as errors")
-    parser.add_argument("--builder", default="html", help="Sphinx builder to run (default: html)")
+    parser.add_argument("--builder", default="html", choices=["html", "latex", "man", "text", "xml"], help="Sphinx builder to run (default: html)")
     args = parser.parse_args()
 
     try:
