@@ -17,7 +17,7 @@ jobs:
       upload-pages-artifact: true
 
   publish-docs:
-    name: Publish docs
+    name: Publish Docs
     needs: [docs]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -33,24 +33,24 @@ jobs:
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
   warm-cache:
-    name: Warm cache
+    name: Warm Cache
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: read
     steps:
-      - name: Harden runner
+      - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - name: Set up toolchain
+      - name: Set Up Toolchain
         uses: ./.github/actions/_setup_toolchain
         with:
           compiler: gcc
           version: "16"
 
-      - name: Restore build tree
+      - name: Restore Build Tree
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
@@ -63,7 +63,7 @@ jobs:
       - name: Build (populates cache)
         run: cmake --build build --parallel
 
-      - name: Save build tree
+      - name: Save Build Tree
         if: always()
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:

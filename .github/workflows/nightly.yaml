@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   security:
-    name: Security (full scan)
+    name: Security (Full Scan)
     permissions:
       contents: read
       security-events: write

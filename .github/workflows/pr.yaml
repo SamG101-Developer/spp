@@ -20,7 +20,7 @@ jobs:
     permissions:
       pull-requests: read  # read the PR title to validate its format
     steps:
-      - name: Harden runner
+      - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
@@ -43,13 +43,13 @@ jobs:
           subjectPatternError: "The description must match the regex."
 
   precommit:
-    name: Format & Lint (pre-commit)
+    name: Format & Lint (Pre-Commit)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - name: Harden runner
+      - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit

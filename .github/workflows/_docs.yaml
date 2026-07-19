@@ -10,8 +10,6 @@ on:
         default: false
 
 env:
-  # Ubuntu ships doxygen 1.9.x, which predates C++20 module support and silently drops every declaration in the .ixx
-  # module interface units the compiler is written in. Pin a modern release instead.
   DOXYGEN_VERSION: "1.17.0"
   DOXYGEN_SHA256: "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
 
@@ -23,20 +21,19 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Harden runner
+      - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
         with:
           python-version: "3.14"
           enable-cache: true
           cache-dependency-glob: uv.lock
 
-      - name: Install doxygen
+      - name: Install Doxygen
         run: |
           set -euo pipefail
           # Unpacked outside the workspace so the checkout stays clean.
@@ -46,10 +43,10 @@ jobs:
           tar xzf "${RUNNER_TEMP}/doxygen.tar.gz" -C "${RUNNER_TEMP}"
           echo "${RUNNER_TEMP}/doxygen-${DOXYGEN_VERSION}/bin" >> "$GITHUB_PATH"
 
-      - name: Install python dependencies
+      - name: Install Python Dependencies (UV)
         run: uv sync --locked
 
-      - name: Check versions
+      - name: Check Versions
         run: |
           doxygen --version
           uv run sphinx-build --version
@@ -57,14 +54,14 @@ jobs:
       - name: Build documentation
         run: uv run python docs/generate2.py
 
-      - name: Upload HTML artifact
+      - name: Upload HTML Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: docs-html
           path: docs/build/html
           retention-days: 7
 
-      - name: Upload Pages artifact
+      - name: Upload Pages Artifact
         if: inputs.upload-pages-artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
