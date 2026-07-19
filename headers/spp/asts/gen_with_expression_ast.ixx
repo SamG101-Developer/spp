@@ -14,7 +14,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
     /**
      * The token that represents a generation point. This is the @c gen keyword in the source code, which indicates that
@@ -58,4 +57,6 @@ SPP_EXP_CLS struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst 
 
 private:
     Shared<TypeAst> _GenType;
+
+    Unique<ExpressionAst> _MappedLoop;
 };

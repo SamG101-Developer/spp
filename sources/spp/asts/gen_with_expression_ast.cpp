@@ -28,6 +28,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.uid;
 
 SPP_MOD_BEGIN
 spp::asts::GenWithExpressionAst::GenWithExpressionAst(
@@ -65,6 +66,10 @@ auto spp::asts::GenWithExpressionAst::Clone() const
 auto spp::asts::GenWithExpressionAst::ToString() const
     -> Str {
     SPP_STRING_START;
+    if (_MappedLoop != nullptr) {
+        SPP_STRING_APPEND(_MappedLoop);
+        SPP_STRING_END;
+    }
     SPP_STRING_APPEND(TokGen).append(" ");
     SPP_STRING_APPEND(TokWith).append(" ");
     SPP_STRING_APPEND(Expr);
@@ -75,78 +80,39 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Todo: Just map this to a loop and individual "gen" inside?
     //
-    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-    using analyse::utils::type_utils::GetGenAndYieldTypes;
-    using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
-    using analyse::utils::type_utils::TypeEq;
     using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
-    using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::errors::SppTypeMismatchError;
-    using generate::common_types::VoidType;
 
-    // Check the enclosing function is a coroutine and not a subroutine.
+    // Check the enclosing function is a coroutine and not a subroutine (kept explicit so the error points at this
+    // "gen with", rather than at the synthetic inner "gen").
     const auto function_flavour = meta->EnclosingFunctionFlavour;
     RaiseIf<SppFunctionSubroutineContainsGenExpressionError>(
         function_flavour->TokenType != lex::SppTokenType::KW_COR,
         {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokGen));
 
-    // Analyse the expression (guaranteed to exist), and determine the type of the expression.
-    auto expr_type = VoidType(PosStart());
-    meta->Save();
+    // Desugar "gen with <Expr>" into "loop _tmp in <Expr> { gen _tmp }". This keeps all "gen" analysis uniform.
+    const auto uid = spp::utils::Uid(this);
+    auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(
+        nullptr, MakeShared<IdentifierAst>(PosStart(), "$gen_with_" + uid), nullptr);
+    auto gen_value = MakeUnique<IdentifierAst>(PosStart(), "$gen_with_" + uid);
+    auto gen_expression = MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
+    auto loop_body = InnerScopeExpressionAst::NewEmpty();
+    loop_body->Members.EmplaceBack(std::move(gen_expression));
+    _MappedLoop = MakeUnique<LoopIterableExpressionAst>(
+        nullptr, std::move(temp_var), nullptr, std::move(Expr), std::move(loop_body), nullptr);
 
-    // Todo: See GenExpressionAst - do we want to extract "yield" type here too?
-    meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
-    meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
-    meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
-    meta->PreventAutoGeneratorResume = true;
-    SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType[0]; }
-
-    // Analyse the expression.
-    Expr->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr));
-
-    expr_type = Expr->InferType(sm, meta);
-    meta->Restore();
-
-    // Functions provide the return type, closures require inference; handle the inference.
-    if (meta->EnclosingFunctionRetType.IsEmpty()) {
-        _GenType = generate::common_types::GenType(Expr->PosStart(), expr_type);
-        _GenType->Stage7_AnalyseSemantics(sm, meta);
-        meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
-        meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);
-        meta->EnclosingFunctionScope = sm->CurrentScope;
-    }
-    else {
-        _GenType = meta->EnclosingFunctionRetType[0];
-    }
-
-    // Determine the "yield" type of the enclosing function and expression.
-    auto [_, yield_type1, _] = GetGenAndYieldTypes(
-        *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
-    auto [_, yield_type2, _] = GetGenAndYieldTypes(
-        *expr_type, *sm->CurrentScope, *expr_type, "coroutine");
-
-    RaiseIf<SppTypeMismatchError>(
-        not TypeEq(*yield_type1, *yield_type2, *meta->EnclosingFunctionScope, *sm->CurrentScope),
-        {meta->EnclosingFunctionScope, sm->CurrentScope},
-        ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *yield_type1, *Expr, *yield_type2));
+    // Analyse the desugared loop. The inner "gen" populates the enclosing coroutine's return type (for closures) and
+    // type-checks the sub-generator's "Yield" against the enclosing coroutine's "Yield".
+    _MappedLoop->Stage7_AnalyseSemantics(sm, meta);
+    _GenType = meta->EnclosingFunctionRetType.Back();
 }
 
 auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Check the expression for memory issues.
-    using analyse::utils::mem_utils::ValidateSymbolMemory;
-
-    // Ensure the argument isn't moved or partially moved (for all conventions)
-    // Todo: Investigate pin checks here.
-    Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *TokGen, *sm, true, true, false, false, false, meta);
+    // Forward the memory check to the desugared loop (which checks the sub-generator expression and the inner "gen").
+    _MappedLoop->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
@@ -154,29 +120,8 @@ auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Build the iterable for the loop; the iterable is just the expression, mapped into a different AST.
-    auto temp_var_name = MakeShared<IdentifierAst>(0uz, "_coro_temp");
-    auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(temp_var_name), nullptr);
-
-    // Build the "gen" expression for the individual yielding.
-    auto gen_value = MakeUnique<IdentifierAst>(0uz, "_coro_temp");
-    auto gen_expression = MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
-    auto loop_body = MakeUnique<decltype(LoopIterableExpressionAst::Body)::element_type>(
-        nullptr, Vec<Unique<StatementAst>>(), nullptr);
-    loop_body->Members.EmplaceBack(Unique<StatementAst>(gen_expression.release()));
-
-    // Build the loop expression with the iterable condition.
-    const auto loop_expr = MakeUnique<LoopIterableExpressionAst>(
-        nullptr, std::move(temp_var), nullptr, std::move(Expr), std::move(loop_body), nullptr);
-
-    // Analyse it to transform into the correct form (conditional loop).
-    const auto current_scope = sm->CurrentScope;
-    auto iter_copy = sm->CurrentIterator();
-    loop_expr->Stage7_AnalyseSemantics(sm, meta);
-    sm->Reset(current_scope, iter_copy);
-
-    // Reset the scope to before the loop and then generate it.
-    return loop_expr->Stage11_CodeGen(sm, meta, ctx);
+    // Generate the desugared loop, already built and analysed in Stage7 (its scope aligns with the walk here).
+    return _MappedLoop->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto spp::asts::GenWithExpressionAst::InferType(
