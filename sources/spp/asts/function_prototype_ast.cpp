@@ -83,6 +83,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
     Source.OriginalImpl = AstClone(this->Impl);
     Source.OriginalReturnType = AstClone(this->ReturnType);
+    Source.OriginalName = this->Name;
     _NonGenericImpl = this;
     _LlvmFunc = MakeShared<Shared<codegen::LlvmFuncWrapper>>(nullptr);
 }
@@ -180,8 +181,7 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
 
     // Convert the "fun" function to a "sup" superimposition of a "Fun[Mov|Mut|Ref]" type over a mock type.
     auto mock_class_name = TypeIdentifierAst::FromIdentifier(*Name->ToFuncIdentifier());
-    auto function_type = _DeduceMockClassType();
-    auto function_call = MakeUnique<IdentifierAst>(Name->PosStart(), "call");
+    auto [function_type, function_call_name] = _DeduceMockClassType();
 
     // If this is the first overload being converted, then the class needs to be made for the mock type.
     const auto needs_generation = genex::operations::empty(AstBody(ctx)
@@ -211,6 +211,8 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
     // Superimpose the function type over the mock class.
     auto sup_ext_impl_members = Vec<Unique<Ast>>();
     auto clone = AstClone(this);
+    clone->Name = MakeShared<IdentifierAst>(Name->PosStart(), function_call_name);
+
     for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.get()); }
     sup_ext_impl_members.EmplaceBack(std::move(clone));
     auto mock_sup_ext_impl = MakeUnique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
@@ -640,7 +642,7 @@ auto spp::asts::FunctionPrototypeAst::GetAnnotationInfo() const
 }
 
 auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
-    -> Shared<TypeAst> {
+    -> Pair<Shared<TypeAst>, Str> {
     //
     using generate::common_types::FunMovType;
     using generate::common_types::FunMutType;
@@ -654,22 +656,22 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 
     // Module level functions, and static methods, are always FunRef.
     if (_Ctx->To<ModulePrototypeAst>() == nullptr or FnParamGroup->GetSelfParam() == nullptr) {
-        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref"));
     }
 
     // Class methods with "self" are the FunMov type.
     if (FnParamGroup->GetSelfParam()->Conv == nullptr) {
-        return FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mov"));
     }
 
     // Class methods with "&mut self" are the FunMut type.
     if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::MUT) {
-        return FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mut"));
     }
 
     // Class methods with "&self" are the FunRef type.
     if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::REF) {
-        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref"));
     }
 
     std::unreachable();
