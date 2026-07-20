@@ -47,6 +47,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     LlvmAssignmentTarget = nullptr;
     LlvmAssignmentTargetType = nullptr;
     LlvmPhi = nullptr;
+    LlvmLoopStack = {};
     CmpResult = nullptr;
     IgnoreAccessModifierViolations = false;
 }
@@ -61,7 +62,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
         LetStatementFromUninitialized, LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst, LoopReturnTypes,
         ObjectInitType, InferSource, InferTarget, PostfixExpressionLhs, UnaryExpressionRhs,
         SkipTypeAnalysisGenericChecks, TypeAnalysisTypeScope, IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx,
-        LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, std::move(CmpArgs), nullptr,
+        LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, LlvmLoopStack, std::move(CmpArgs), nullptr,
         IgnoreAccessModifierViolations);
 }
 
@@ -108,6 +109,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     LlvmAssignmentTarget = state.LlvmAssignmentTarget;
     LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
     LlvmPhi = state.LlvmPhi;
+    LlvmLoopStack = std::move(state.LlvmLoopStack);
     CmpArgs = std::move(state.CmpArgs);
     // CmpResult = std::move(state.CmpResult);
     IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;

@@ -37,30 +37,6 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
     Unique<ExpressionAst> Expr;
 
     /**
-     * Factory to create a single "skip" control flow statement. Used when generating boolean conditional loops from an
-     * iterable loop.
-     * @param pos Token position for the statement.
-     * @return The generated "skip" statement.
-     */
-    static auto Skip(
-        std::size_t pos)
-        -> Unique<LoopControlFlowStatementAst>;
-
-    /**
-     * Factory to create a single "exit" control flow statement. Used when generating boolean conditional loops from an
-     * iterable loop, and when desugaring "break" statements in boolean conditional loops. The number of @c exit tokens
-     * is determined by the @c depth argument, which indicates how many loops should be exited by the statement. No
-     * expression will be bound to this "exit" statement.
-     * @param pos Token position for the statement.
-     * @param depth The number of @c exit tokens to generate, which indicates how many loops should be exited.
-     * @return The generated "exit" statement with the specified number of @c exit tokens.
-     */
-    static auto Exit(
-        std::size_t pos,
-        std::size_t depth)
-        -> Unique<LoopControlFlowStatementAst>;
-
-    /**
      * Construct the LoopControlFlowStatementAst with the arguments matching the members.
      * @param tok_seq_exit The list of @c exit tokens that indicate the loop should be exited.
      * @param tok_skip The optional @c skip token that indicates the loop should be skipped.

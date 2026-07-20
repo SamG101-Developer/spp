@@ -23,6 +23,7 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts::meta {
+    SPP_EXP_CLS struct LlvmLoopInfo;
     SPP_EXP_CLS struct CompilerMetaDataState;
     SPP_EXP_CLS struct CompilerMetaData;
 }
@@ -30,6 +31,17 @@ namespace spp::asts::meta {
 namespace spp::codegen {
     SPP_EXP_CLS struct LLvmCtx;
 }
+
+/**
+ * The llvm blocks belonging to a single enclosing loop, tracked so that @c exit and @c skip statements can branch to
+ * the correct loop. The stack of these is ordered outermost-first, so the innermost loop is the back element.
+ */
+SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
+    llvm::BasicBlock *CondBB;
+    llvm::BasicBlock *EndBB;
+    llvm::PHINode *Phi;
+    llvm::Value *EnteredFlag;
+};
 
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     double CurrentStage;
@@ -70,6 +82,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     llvm::Value *LlvmAssignmentTarget;
     llvm::Value *LlvmAssignmentTargetType;
     llvm::PHINode *LlvmPhi;
+    Vec<LlvmLoopInfo> LlvmLoopStack;
     ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs;
     Unique<ExpressionAst> CmpResult;
     bool IgnoreAccessModifierViolations;

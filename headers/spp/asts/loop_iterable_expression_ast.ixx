@@ -68,8 +68,26 @@ SPP_EXP_CLS struct spp::asts::LoopIterableExpressionAst final : LoopExpressionAs
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
+    /**
+     * The type of an iterable loop is the type of the boolean loop it is desugared into. The base implementation
+     * cannot be used, because the @c else block and every @c exit statement belong to the transformed loop, not to
+     * this node.
+     * @param[in] sm The scope manager to use for type inference.
+     * @param[in] meta Metadata to pass to the transformed loop.
+     * @return The type yielded by the transformed loop.
+     */
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
 private:
     Unique<LetStatementInitializedAst> _TransformedLet;
+
+    /**
+     * The @code let mut $_ok_... = true@endcode statement holding the transformed loop's continuation flag. Exhausting
+     * the generator clears the flag rather than exiting the loop, so the loop leaves through its condition and the
+     * @c else block runs.
+     */
+    Unique<LetStatementInitializedAst> _TransformedFlagLet;
+
     Unique<LoopConditionalExpressionAst> _TransformedLoop;
 
     /**
