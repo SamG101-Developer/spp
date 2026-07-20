@@ -11,14 +11,18 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.class_attribute_ast;
+import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_argument_shorthand_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
@@ -85,7 +89,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
     const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
     const auto all_attr_names = all_attrs
-        | genex::views::transform([](auto const &x) { return x.First; })
+        | genex::views::tuple_nth<0>
         | genex::to<Vec>();
 
     // Check there is at most 1 autofill argument.
@@ -112,7 +116,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     // Check there are no invalidly named arguments.
     auto arg_names = GetNonAutoFillArgs()
         | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::views::filter([](auto const * x) { return x != nullptr; }) // Filter bad unnamed args checked after.
+        | genex::views::filter([](auto const *x) { return x != nullptr; }) // Filter bad unnamed args checked after.
         | genex::to<Vec>();
 
     const auto invalid_args = arg_names
@@ -131,12 +135,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
             SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
-                    | genex::views::filter([kw_arg](auto const &x) { return *x.First == *kw_arg->Name; })
+                    | genex::views::filter([kw_arg](auto const &x) { return *std::get<0>(x) == *kw_arg->Name; })
                     | genex::to<Vec>();
                 if (attrs.Len() > 1) { continue; }
 
                 // Use the type off the single matching attribute.
-                const auto attr_type_sym = attrs[0].Second;
+                const auto attr_type_sym = std::get<1>(attrs[0]);
                 const auto attr_type = attr_type_sym->IsGeneric ? nullptr : attr_type_sym->FqName();
                 meta->ReturnTypeOverloadResolverType = std::move(attr_type);
             }
@@ -154,9 +158,17 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     //
     using analyse::utils::type_utils::TypeEq;
     using analyse::utils::type_utils::GetAllAttrs;
+    using analyse::utils::type_utils::GetAllAttrAsts;
+    using analyse::utils::type_utils::IsTypeVariant;
     using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
+    using analyse::errors::SemanticError;
     using analyse::errors::SppAmbiguousMemberAccessError;
+    using analyse::errors::SppGeneratedCodeError;
+    using analyse::errors::SppObjectInitializerVariantError;
     using analyse::errors::SppTypeMismatchError;
+
+    // Remove any compiler generated args for re-analysis (generically).
+    Args |= genex::actions::remove_if([](auto const &x) { return x->IsCompilerGenerated; });
 
     // Get the attributes on the type and supertypes.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType);
@@ -165,14 +177,14 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     // Type check the non-autofill arguments against the class attributes.
     for (auto const &arg : GetNonAutoFillArgs()) {
         auto matching_attrs = all_attrs
-            | genex::views::filter([&arg](auto const &x) { return *x.First == *arg->Name; })
+            | genex::views::filter([&arg](auto const &x) { return *std::get<0>(x) == *arg->Name; })
             | genex::to<Vec>();
 
         RaiseIf<SppAmbiguousMemberAccessError>(
             matching_attrs.Len() > 1, {sm->CurrentScope},
-            ERR_ARGS(*matching_attrs[0].First, *matching_attrs[1].First, *this));
+            ERR_ARGS(*std::get<0>(matching_attrs[0]), *std::get<0>(matching_attrs[1]), *this));
 
-        auto [attr, attr_type_sym] = matching_attrs[0];
+        auto [attr, attr_type_sym, _] = matching_attrs[0];
 
         // Enforce visibility on the field being initialized.
         {
@@ -194,11 +206,66 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     }
 
     // Type check the default argument (if it exists).
-    if (const auto af_arg = GetAutoFillArg(); af_arg != nullptr) {
+    const auto af_arg = GetAutoFillArg();
+    if (af_arg != nullptr) {
         const auto af_arg_type = af_arg->Val->InferType(sm, meta);
         RaiseIf<SppTypeMismatchError>( // Todo: pass a "meta->SourceObjectInitType" or just pass a "meta->ObjectInit"
             not TypeEq(*af_arg_type, *meta->ObjectInitType, *sm->CurrentScope, *sm->CurrentScope),
             {sm->CurrentScope}, ERR_ARGS(*meta->ObjectInitType, *meta->ObjectInitType, *af_arg, *af_arg_type));
+    }
+
+    // Generate an argument for every attribute the user didn't pass.
+    const auto all_attr_asts = GetAllAttrAsts(*meta->ObjectInitType, sm);
+    const auto given_names = GetNonAutoFillArgs()
+        | genex::views::transform([](auto const &x) { return x->Name; })
+        | genex::to<Vec>();
+
+    for (auto i = 0uz; i < all_attrs.Len(); ++i) {
+        auto const &[attr_name, attr_type_sym, attr_parent_scope] = all_attrs[i];
+
+        // Todo: this will fail when multiple bases classes have same attr name
+        // Todo: maybe we just block this? there's currently no way to refer to individual base class's fields.
+        if (genex::any_of(given_names, [&attr_name](auto const &x) { return *x == *attr_name; })) { continue; }
+
+        const auto attr_ast = all_attr_asts[i];
+        auto val = Unique<ExpressionAst>();
+        auto val_scope = static_cast<analyse::scopes::Scope*>(nullptr);
+
+        if (af_arg != nullptr) {
+            // Get the attribute from the autofill argument => "..other" becomes "attr=other.attr".
+            auto member = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, attr_name);
+            val = MakeUnique<PostfixExpressionAst>(AstClone(af_arg->Val), std::move(member));
+            val_scope = sm->CurrentScope;
+        }
+        else if (attr_ast->DefaultVal != nullptr) {
+            // If the attribute provides a default value, use it there. This then loads to codegen later.
+            val = AstClone(attr_ast->DefaultVal);
+            val_scope = cls_sym->LinkedScope;
+        }
+        else {
+            // Otherwise default initialize the attribute with an empty object initializer over its type.
+            auto obj_init = MakeUnique<ObjectInitializerAst>(attr_type_sym->FqName(), nullptr);
+            obj_init->Source.OriginalType = attr_ast->Source.OriginalType;
+            val = std::move(obj_init);
+            val_scope = attr_parent_scope; // Whilst this seems like it should be current scope, the type is FQ and we need error reporting
+        }
+
+        // Todo: Might need "tm" here? Otherwise switch program-wide "tm" to this pattern.
+        // Todo: Actually, make a method on the scope manager: "TempIn(scope, closure)".
+        const auto outer_scope = sm->CurrentScope;
+        sm->CurrentScope = val_scope;
+        WRAP_ERROR(val->Stage7_AnalyseSemantics(sm, meta), outer_scope);
+        sm->CurrentScope = outer_scope;
+
+        // Add the compiler generated argument.
+        auto arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(val));
+        arg->IsCompilerGenerated = true;
+        Args.EmplaceBack(std::move(arg));
+    }
+
+    // The autofill argument has been expanded into one argument per attribute, so it isn't needed any more.
+    if (af_arg != nullptr) {
+        Args |= genex::actions::remove_if([af_arg](auto const &x) { return x.get() == af_arg; });
     }
 }
 

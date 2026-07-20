@@ -34,8 +34,10 @@ auto spp::asts::ObjectInitializerArgumentKeywordAst::PosEnd() const
 auto spp::asts::ObjectInitializerArgumentKeywordAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
-    return MakeUnique<ObjectInitializerArgumentKeywordAst>(
+    auto ast = MakeUnique<ObjectInitializerArgumentKeywordAst>(
         AstCloneShared(Name), AstClone(TokAssign), AstClone(Val));
+    ast->IsCompilerGenerated = IsCompilerGenerated;
+    return ast;
 }
 
 auto spp::asts::ObjectInitializerArgumentKeywordAst::ToString() const

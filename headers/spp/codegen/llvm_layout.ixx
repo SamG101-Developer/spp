@@ -3,6 +3,7 @@ module;
 
 export module spp.codegen.llvm_layout;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_sym_info;
 import spp.utils.types;
 import ankerl;
 import llvm;
@@ -27,4 +28,17 @@ namespace spp::codegen {
         Vec<llvm::Type*> const &field_types,
         spp::codegen::LLvmCtx const *ctx)
         -> Pair<Vec<llvm::Type*>, ankerl::unordered_dense::map<std::size_t, std::size_t>>;
+
+    /**
+     * Translate an attribute's declaration index (its position in @c GetAllAttrs) into the physical field index of the
+     * generated llvm struct. The S++ layout re-orders fields to minimize padding, so the two differ; layouts that keep
+     * declaration order leave @c FieldIndexMap empty, which is treated as the identity mapping.
+     * @param sym_info The llvm information belonging to the type symbol owning the field.
+     * @param decl_index The declaration index of the attribute.
+     * @return The index to use when indexing into the llvm struct.
+     */
+    SPP_EXP_FUN auto GetPhysicalFieldIndex(
+        LlvmTypeSymInfo const &sym_info,
+        std::size_t decl_index)
+        -> std::uint32_t;
 }

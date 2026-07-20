@@ -254,7 +254,20 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto GetAllAttrs(
         asts::TypeAst const &type,
         scopes::ScopeManager const *sm)
-        -> Vec<Pair<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>>>;
+        -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>;
+
+    /**
+     * Get the class attribute ASTs of a type and all of its super types, in the same order as @c GetAllAttrs, so the
+     * two line up index for index. This gives access to per-attribute information that isn't carried on the variable
+     * symbols, such as an attribute's default value.
+     * @param type The type whose attribute ASTs are being collected.
+     * @param sm The scope manager, used to resolve the type.
+     * @return The attribute ASTs of the type and its super types.
+     */
+    SPP_EXP_FUN auto GetAllAttrAsts(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const *sm)
+        -> Vec<asts::ClassAttributeAst*>;
 
     SPP_EXP_FUN auto CreateGenericClsScope(
         asts::TypeIdentifierAst &type_part,

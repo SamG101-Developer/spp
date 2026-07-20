@@ -108,7 +108,7 @@ auto spp::codegen::SizeOf(
 
     // Otherwise, sum the attributes of the struct/class.
     const auto all_types = analyse::utils::type_utils::GetAllAttrs(*type, &sm)
-        | genex::views::transform([](auto &&x) { return x.Second->FqName(); })
+        | genex::views::transform([](auto &&x) { return std::get<1>(x)->FqName(); })
         | genex::views::transform([&sm](auto &&x) { return SizeOf(sm, x); })
         | genex::to<Vec>();
     const auto total_size = genex::fold_left_first(all_types, std::plus{});

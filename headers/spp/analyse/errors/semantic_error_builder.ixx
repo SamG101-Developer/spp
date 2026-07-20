@@ -122,6 +122,9 @@ private:
                 return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(tag) + "\n"s +
                     (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(msg) + "\n"s;
             }
+            case SemanticError::ErrorInformationType::WRAPPED: {
+                return std::move(tag);
+            }
             default:
                 std::unreachable();
         }

@@ -752,7 +752,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
 auto spp::analyse::utils::type_utils::GetAllAttrs(
     asts::TypeAst const &type,
     scopes::ScopeManager const *sm)
-    -> Vec<Pair<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>>> {
+    -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>> {
     // Get the symbol of the class type.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(type.shared_from_this());
 
@@ -765,15 +765,41 @@ auto spp::analyse::utils::type_utils::GetAllAttrs(
         | genex::views::transform([](auto &&sup_scope) { return MakePair(sup_scope, sup_scope->AllVarSymbols(true)); })
         | genex::to<Vec>();
 
-    auto extended_syms = Vec<Pair<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>>>{};
+    auto extended_syms = Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>{};
     for (auto const &[sup_scope, syms] : all_syms) {
         for (auto const &sym : syms) {
+            if (sym->IsGeneric) { continue; }
             const auto sym_type = sup_scope->GetTypeSymbol(sym->Type);
-            extended_syms.EmplaceBack(sym->Name, sym_type);
+            extended_syms.EmplaceBack(sym->Name, sym_type, sup_scope);
         }
     }
 
     return extended_syms;
+}
+
+auto spp::analyse::utils::type_utils::GetAllAttrAsts(
+    asts::TypeAst const &type,
+    scopes::ScopeManager const *sm)
+    -> Vec<asts::ClassAttributeAst*> {
+    // Get the symbol of the class type.
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(type.shared_from_this());
+
+    // Walk the class and its super types in the same order as "GetAllAttrs", so the results line up index for index.
+    auto all_scopes = Vec{cls_sym->LinkedScope};
+    all_scopes.AppendRange(cls_sym->LinkedScope->SupScopes());
+
+    auto attr_asts = Vec<asts::ClassAttributeAst*>{};
+    for (auto const &sup_scope : all_scopes) {
+        const auto cls_proto = sup_scope->AstNode->To<asts::ClassPrototypeAst>();
+        if (cls_proto == nullptr) { continue; }
+        for (auto const &member : cls_proto->Impl->Members) {
+            if (const auto attr = member->To<asts::ClassAttributeAst>(); attr != nullptr) {
+                attr_asts.EmplaceBack(attr);
+            }
+        }
+    }
+
+    return attr_asts;
 }
 
 auto spp::analyse::utils::type_utils::CreateGenericClsScope(
@@ -1294,7 +1320,7 @@ auto spp::analyse::utils::type_utils::GetFieldIndexInType(
 
     // Find the field index.
     for (auto index = 0uz; index < all_attrs.Len(); ++index) {
-        if (*all_attrs[index].First == field_name) {
+        if (*std::get<0>(all_attrs[index]) == field_name) {
             return index;
         }
     }

@@ -27,6 +27,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import genex;
@@ -327,22 +328,28 @@ static auto ApplyStructLayout(
     llvm::StructType *struct_type,
     spp::Vec<llvm::Type*> const &field_types,
     const spp::codegen::StructLayout layout,
+    spp::codegen::LlvmTypeSymInfo *sym_info,
     spp::codegen::LLvmCtx const *ctx)
     -> void {
     switch (layout) {
         case spp::codegen::StructLayout::C: {
             // Keep declaration order, with natural alignment padding.
             struct_type->setBody(field_types.ToStdVector(), false);
+            sym_info->FieldIndexMap.clear();
             break;
         }
         case spp::codegen::StructLayout::Packed: {
             // Keep declaration order, but remove all inter-field padding.
             struct_type->setBody(field_types.ToStdVector(), true);
+            sym_info->FieldIndexMap.clear();
             break;
         }
         case spp::codegen::StructLayout::Spp: {
+            // Re-order the fields to minimize padding, and record where each declared attribute ended up, so that
+            // codegen can map a declaration index to its physical field index.
             auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
             struct_type->setBody(sorted_types.ToStdVector(), false);
+            sym_info->FieldIndexMap = std::move(index_map);
             break;
         }
         default: {
@@ -365,18 +372,19 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
     }
 
     auto types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), sm)
-        | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*pair.Second, ctx); })
+        | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*std::get<1>(pair), ctx); })
         | genex::to<Vec>();
 
     // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
     if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
         const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
-        ApplyStructLayout(struct_type, types, codegen::StructLayout::Spp, ctx);
+        ApplyStructLayout(struct_type, types, codegen::StructLayout::Spp, type_sym->LlvmInfo.get(), ctx);
     }
 
-    // Pass this layout to aliases too.
+    // Pass this layout to aliases too (the field re-ordering as well as the type itself).
     for (auto const &alias : type_sym->AliasedBySyms) {
         alias->LlvmInfo->LlvmType = lt;
+        alias->LlvmInfo->FieldIndexMap = type_sym->LlvmInfo->FieldIndexMap;
     }
 }
 

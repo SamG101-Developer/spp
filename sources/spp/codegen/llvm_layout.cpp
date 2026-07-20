@@ -31,3 +31,13 @@ auto spp::codegen::SortMembersForSppLayout(
 
     return MakePair(std::move(sorted_types), std::move(index_map));
 }
+
+auto spp::codegen::GetPhysicalFieldIndex(
+    LlvmTypeSymInfo const &sym_info,
+    const std::size_t decl_index)
+    -> std::uint32_t {
+    // An empty map means the layout preserved the declaration order (the C and packed layouts).
+    const auto it = sym_info.FieldIndexMap.find(decl_index);
+    const auto index = it != sym_info.FieldIndexMap.end() ? it->second : decl_index;
+    return static_cast<std::uint32_t>(index);
+}

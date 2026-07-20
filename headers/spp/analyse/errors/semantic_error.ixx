@@ -130,6 +130,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppMovingEscapingBorrowedMemoryError;
     SPP_EXP_CLS struct SppMovingComptimeConstantMemoryError;
     SPP_EXP_CLS struct SppHigherOrderGenericsNotSupportedError;
+    SPP_EXP_CLS struct SppGeneratedCodeError;
 }
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
@@ -138,7 +139,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
     ~SemanticError() override = default;
 
     enum class ErrorInformationType {
-        HEADER, ERROR, CONTEXT, FOOTER
+        HEADER, ERROR, CONTEXT, FOOTER,
+        WRAPPED
     };
 
     Vec<std::tuple<asts::Ast const*, ErrorInformationType, Str, Str>> ErrorInfo;
@@ -150,6 +152,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
     auto AddCtxForErr(asts::Ast const *ast, Str &&tag) -> void;
 
     auto AddFooter(Str &&note, Str &&help) -> void;
+
+    auto AddWrapped(Str &&msg) -> void;
 
     SPP_ATTR_NODISCARD
     auto Clone() const -> Unique<SemanticError>;
@@ -502,4 +506,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMovingComptimeConstantMemoryError fi
 
 SPP_EXP_CLS struct spp::analyse::errors::SppHigherOrderGenericsNotSupportedError final : SemanticError {
     explicit SppHigherOrderGenericsNotSupportedError(asts::Ast const &ast, asts::Ast const &generic_arg_group);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppGeneratedCodeError final : SemanticError {
+    explicit SppGeneratedCodeError(asts::Ast const &ast, Str &&wrapped_error);
 };

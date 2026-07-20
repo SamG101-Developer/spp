@@ -14,7 +14,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 /**
  * The ObjectInitializerArgumentAst is the base class representing an argument in a object initialization. It is
  * inherited into the "shorthand" and "keyword" variants.
@@ -32,6 +31,8 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
      * arguments have a value.
      */
     Unique<ExpressionAst> Val;
+
+    bool IsCompilerGenerated = false;
 
     /**
      * Construct the ObjectInitializerArgumentAst with the arguments matching the members.

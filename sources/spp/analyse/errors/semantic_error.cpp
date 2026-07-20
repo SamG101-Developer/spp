@@ -109,6 +109,13 @@ auto spp::analyse::errors::SemanticError::AddFooter(
     ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::FOOTER, std::move(note), std::move(help));
 }
 
+auto spp::analyse::errors::SemanticError::AddWrapped(
+    Str &&msg)
+    -> void {
+    // Add a wrapped error information entry.
+    ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::WRAPPED, std::move(msg), "");
+}
+
 auto spp::analyse::errors::SemanticError::Clone() const
     -> Unique<SemanticError> {
     // Use the copy constructor to clone the error.
@@ -628,7 +635,7 @@ spp::analyse::errors::SppObjectInitializerVariantError::SppObjectInitializerVari
     AddHeaders(51, "Object Initializer Variant Error");
     AddCtxForErr(&type, "Variant initialized here");
     AddFooter(
-        "A variant type cannot be initialized with arguments.",
+        "A variant type cannot be initialized.",
         "Use the layout: " + INLINE_HELP("let x: VariantType = InnerType()") + ".");
 }
 
@@ -1121,6 +1128,17 @@ spp::analyse::errors::SppHigherOrderGenericsNotSupportedError::SppHigherOrderGen
     AddFooter(
         "Higher-order generics are not yet supported.",
         "Remove the generic argument group from the generic type.");
+}
+
+spp::analyse::errors::SppGeneratedCodeError::SppGeneratedCodeError(
+    asts::Ast const &ast,
+    Str &&wrapped_error) {
+    AddHeaders(95, "Generated Code Error");
+    AddWrapped(std::move(wrapped_error));
+    AddErr(&ast, "Generated code expanded from here");
+    AddFooter(
+        "An error occurred in generated code.",
+        "Refer to the wrapped error.");
 }
 
 SPP_MOD_END
