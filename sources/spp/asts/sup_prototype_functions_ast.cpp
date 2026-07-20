@@ -153,8 +153,13 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
-    // Analyse the type being superimposed over.
+    // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
+    // methods are declared.
+    meta->Save();
+    meta->AllowAbstractType = true;
     Name->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
+
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Name, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalName, "superimposition type"));
@@ -210,8 +215,12 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
+
+    meta->Save();
+    meta->AllowAbstractType = true;
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 
     // Re-map "Self" to the true type.
     if (not Name->IsCompilerGeneratedType()) {

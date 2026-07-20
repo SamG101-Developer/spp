@@ -50,6 +50,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     LlvmLoopStack = {};
     CmpResult = nullptr;
     IgnoreAccessModifierViolations = false;
+    AllowAbstractType = false;
 }
 
 auto spp::asts::meta::CompilerMetaData::Save() -> void {
@@ -63,7 +64,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
         ObjectInitType, InferSource, InferTarget, PostfixExpressionLhs, UnaryExpressionRhs,
         SkipTypeAnalysisGenericChecks, TypeAnalysisTypeScope, IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx,
         LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, LlvmLoopStack, std::move(CmpArgs), nullptr,
-        IgnoreAccessModifierViolations);
+        IgnoreAccessModifierViolations, AllowAbstractType);
 }
 
 auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
@@ -113,6 +114,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     CmpArgs = std::move(state.CmpArgs);
     // CmpResult = std::move(state.CmpResult);
     IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
+    AllowAbstractType = state.AllowAbstractType;
 }
 
 auto spp::asts::meta::CompilerMetaData::Depth() const

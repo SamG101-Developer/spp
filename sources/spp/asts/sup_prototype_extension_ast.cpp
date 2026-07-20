@@ -177,8 +177,13 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
-    // Analyse the type being superimposed over.
+    // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
+    // methods are declared, and where a derived type implements them.
+    meta->Save();
+    meta->AllowAbstractType = true;
     Name->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
+
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Name, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
@@ -242,8 +247,11 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
     // Re-analyse the superclass type so its generic-argument constraints are enforced at this pre-analysis
     // stage. If they are done in stage 7, then we get misleading errors because when something else correctly fails, a
     // missing constraint enforcement spews some inference error. Note to self: trust this comment.
+    meta->Save();
+    meta->AllowAbstractType = true;
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 
     // Get the symbols.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
@@ -346,6 +354,10 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
 
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
+    // Both the superimposition target and the superclass are allowed to be abstract, as neither names a value.
+    meta->Save();
+    meta->AllowAbstractType = true;
+
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
@@ -360,6 +372,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
         EnforceGenericConstraintsAllArgs(
             *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
     }
+
+    meta->Restore();
 
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();

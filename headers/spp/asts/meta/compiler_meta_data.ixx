@@ -86,6 +86,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs;
     Unique<ExpressionAst> CmpResult;
     bool IgnoreAccessModifierViolations;
+    bool AllowAbstractType;
 };
 
 /**

@@ -78,7 +78,13 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
             constraint->GetConvention() != nullptr,
             {sm->CurrentScope}, ERR_ARGS(*this, *this, "generic type constraint"));
 
+        // A constraint names a type without ever producing a value of it, so an abstract type is allowed here. This is
+        // the whole point of an abstract type: "[T: Add]" accepts every addable type, but never "Add" itself.
+        meta->Save();
+        meta->AllowAbstractType = true;
         constraint->Stage7_AnalyseSemantics(sm, meta);
+        meta->Restore();
+
         auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics());
         fq_constraints.EmplaceBack(
             constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->TypeParts().Back()->GnArgGroup)));
