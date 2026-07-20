@@ -10,7 +10,6 @@ import spp.codegen.llvm_sym_info;
 import spp.utils.types;
 import std;
 
-
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct ClassPrototypeAst;
@@ -29,7 +28,6 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct VariableSymbol;
 }
 
-
 /**
  * The base Symbol type for all symb variations to inherit from. This provides a common interface for all symbols, and
  * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
@@ -45,7 +43,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
      */
     virtual ~Symbol();
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
@@ -67,7 +64,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
         NamespaceSymbol const &that) const
         -> bool;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
@@ -114,7 +110,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     SPP_ATTR_NODISCARD auto FqName() const
         -> Shared<asts::ExpressionAst>;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
@@ -178,8 +173,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         -> Shared<asts::TypeAst>;
 };
 
-
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::NamespaceSymbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::VariableSymbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::TypeSymbol)
