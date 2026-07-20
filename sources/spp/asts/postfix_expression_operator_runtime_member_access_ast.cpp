@@ -31,6 +31,8 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_layout;
+import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 import genex;
@@ -153,7 +155,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         if (scopes_and_syms.Len() < 1) { return; }
 
         auto min_depth = genex::min_element(scopes_and_syms
-            | genex::views::transform([](auto const &x) { return std::get<0>(x); })
+            | genex::views::tuple_nth<0>
             | genex::to<Vec>());
 
         auto closest = scopes_and_syms
@@ -212,35 +214,48 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    //
+    using analyse::utils::type_utils::GetFieldIndexInType;
+
     // Get the type of the left-hand-side expression.
-    const auto uid = spp::utils::Uid(this);
+    const auto uid = "." + spp::utils::Uid(this);
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
-    const auto llvm_type = codegen::GetLlvmType(*lhs_type_sym, ctx);
+
+    // Index through the object's own type, never the borrow's pointer type, so a borrowed lhs (such as a "&Self"
+    // parameter) indexes the same struct that an owned one does.
+    const auto is_borrow = lhs_type_sym->Convention != nullptr;
+    const auto llvm_type = lhs_type_sym->LlvmInfo->LlvmType;
     SPP_ASSERT(llvm_type != nullptr);
 
     // If the lhs is symbolic, get the address of the outermost part.
     const auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs);
     auto base_ptr = static_cast<llvm::Value*>(nullptr);
     if (sym != nullptr) {
-        // Get the alloca for the lhs symbol (the base pointer).
-        const auto lhs_alloca = sym->LlvmInfo->Alloca;
-        SPP_ASSERT(lhs_alloca != nullptr);
-        base_ptr = ctx->Builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr" + uid);
+        // The symbol's alloca is already the address of the object (the base pointer). Load borrows to get value.
+        SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
+        base_ptr = is_borrow
+            ? ctx->Builder.CreateLoad(llvm::PointerType::get(*ctx->Context, 0), sym->LlvmInfo->Alloca, "load.member_access.base_ptr" + uid)
+            : sym->LlvmInfo->Alloca;
+    }
+    else if (is_borrow) {
+        // A borrowed expression already evaluates to the address of the object.
+        base_ptr = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
     }
     else {
-        // Materialize the lhs expression into a temporary.
+        // Materialize the lhs expression into a temporary, to have an address to index through.
         const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
         const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
         ctx->Builder.CreateStore(lhs_val, temp);
         base_ptr = temp;
     }
 
-    const auto field_index = analyse::utils::type_utils::GetFieldIndexInType(
+    // The physical field order isn't the declaration order, because the S++ layout re-orders the fields to minimize
+    // padding, so the declaration index has to be resolved through the type's field index map.
+    const auto decl_index = GetFieldIndexInType(
         *lhs_type, *Name, sm);
-    const auto llvm_field_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), field_index);
-    const auto llvm_field_ptr = ctx->Builder.CreateGEP(llvm_type, base_ptr, llvm_field_index, "member_access.field_ptr" + uid);
-    return llvm_field_ptr;
+    const auto field_index = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, decl_index);
+    return ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
