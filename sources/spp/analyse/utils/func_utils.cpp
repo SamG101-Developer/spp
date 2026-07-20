@@ -297,8 +297,8 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
 
     // Get the methods that belong to this type, or any of its supertypes.
     auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>();
-    auto existing_fns = existing | genex::views::tuple_nth<1>();
+    auto existing_scopes = existing | genex::views::tuple_nth<0>;
+    auto existing_fns = existing | genex::views::tuple_nth<1>;
 
     // Check for an overload conflict with all functions of the same name.
     for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
