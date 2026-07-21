@@ -127,7 +127,7 @@ spp::analyse::errors::SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpress
     AddHeaders(1, "Invalid Primary Expression Error");
     AddErr(&expr, "Primary expression introduced here");
     AddFooter(
-        "The current context requires a primary expression that is not a type or token ast.",
+        "The current context requires a primary expression that is not a (non-zero) type or token ast.",
         "Change the expression to a different value expression.");
 }
 
