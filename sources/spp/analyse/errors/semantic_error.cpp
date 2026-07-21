@@ -639,6 +639,18 @@ spp::analyse::errors::SppObjectInitializerVariantError::SppObjectInitializerVari
         "Use the layout: " + INLINE_HELP("let x: VariantType = InnerType()") + ".");
 }
 
+spp::analyse::errors::SppAbstractTypeUseError::SppAbstractTypeUseError(
+    asts::TypeAst const &type,
+    asts::FunctionPrototypeAst const &unimplemented) {
+    AddHeaders(96, "Abstract Type Use Error");
+    AddCtxForErr(&unimplemented, "Abstract method defined here");
+    AddErr(&type, "Abstract type used here");
+    AddFooter(
+        "A type is abstract if it contains 1 or more non-overridden abstract methods. Abstract\n"
+        "types have very restricted usages",
+        "Implement the absent abstract method.");
+}
+
 spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(
     asts::Ast const &target,
     const StrView target_what,
