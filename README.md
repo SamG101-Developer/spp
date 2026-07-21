@@ -1,4 +1,4 @@
-# Spp Compiler
+# Spp compiler
 
 [![Tests](https://img.shields.io/badge/Tests-1565-green?logo=pytest&logoColor=ffffff)]()
 [![Tests Passing](https://img.shields.io/badge/Test%20Passing-91.31%25%20(1429/1565)-cactus?logo=pytest&logoColor=ffffff)]()
@@ -19,9 +19,9 @@
 - [**S++ Standard Library**](https://github.com/SamG101-Developer/SPP-STL)
 - [**S++ C Functions**](https://github.com/SamG101-Developer/sppc)
 
-## Licence Notice (Pre-Release)
+## Licence notice (pre-release)
 
-The S++ Compiler is currently in development and hasn't reached its first official release.
+The S++ Compiler is in development and hasn't reached its first official release.
 
 - The [**S++ Compiler License**](LICENSE.md), and the [**Commercial License**](LICENSE_COMMERCIAL.md), will apply
   starting with the first official release.

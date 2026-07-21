@@ -34,7 +34,7 @@ repos:
     hooks:
       - id: codespell
         additional_dependencies: [ tomli ]
-        exclude: '^(\.vale/|_ideas/)'
+        exclude: ^.vale
         args:
           - --ignore-words-list=CreateOr,olt
 
@@ -43,7 +43,6 @@ repos:
     hooks:
       - id: vale
         language_version: "1.25.7"
-        exclude: '^(_ideas/|tests/gtest-parallel)'
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
