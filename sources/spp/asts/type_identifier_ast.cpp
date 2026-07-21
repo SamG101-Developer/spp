@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.class_prototype_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_comp_positional_ast;
@@ -135,7 +136,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     using analyse::utils::func_utils::NameGnArgs;
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
+    using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
     using analyse::errors::SemanticError;
+    using analyse::errors::SppAbstractTypeUseError;
     using analyse::errors::SppHigherOrderGenericsNotSupportedError;
 
     if (_HasAnalysed) { return; }
@@ -203,6 +206,22 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // need to be done before stage 7 for order agnostic behaviour.
     if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 8) {
         EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
+    }
+
+    // Reject abstract types everywhere except the few positions that name a type without ever producing a value of it.
+    // The generic substitution above may have created the scope this resolves to, so the symbol is re-fetched rather
+    // than re-using the base "type_sym" from before it existed.
+    if (not meta->AllowAbstractType and meta->CurrentStage >= 8 and not type_sym->IsGeneric) {
+        const auto resolved_sym = scope->GetTypeSymbol(AstClone(this));
+        if (resolved_sym != nullptr and resolved_sym->LinkedScope != nullptr) {
+            const auto unimplemented = GetUnimplementedAbstractMethods(*resolved_sym->LinkedScope);
+
+            // Stack "if" first, not "RaiseIf", because we need scope access from it.
+            if (not unimplemented.IsEmpty()) {
+                Raise<SppAbstractTypeUseError>(
+                    {sm->CurrentScope, unimplemented[0]->GetAstScope()}, ERR_ARGS(*this, *unimplemented[0]));
+            }
+        }
     }
 
     _HasAnalysed = true;

@@ -258,6 +258,19 @@ namespace spp::analyse::utils::type_utils {
         -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>;
 
     /**
+     * Collect the methods that are visible on a type but left unimplemented, that is, the methods declared with the
+     * @c !abstract_method annotation that no superimposition on the type provides a same-signature implementation for.
+     * A type with any such method is abstract: it cannot be instantiated, because calling one of them would have no
+     * body to dispatch to. Abstractness propagates, so a type that superimposes an abstract type and implements only
+     * some of its abstract methods is itself abstract, and reports the ones that are still outstanding.
+     * @param type_scope The scope of the type whose methods are being collected.
+     * @return The abstract methods that the type never implements, empty if the type is concrete.
+     */
+    SPP_EXP_FUN auto GetUnimplementedAbstractMethods(
+        scopes::Scope const &type_scope)
+        -> Vec<asts::FunctionPrototypeAst const*>;
+
+    /**
      * Get the class attribute ASTs of a type and all of its super types, in the same order as @c GetAllAttrs, so the
      * two line up index for index. This gives access to per-attribute information that isn't carried on the variable
      * symbols, such as an attribute's default value.

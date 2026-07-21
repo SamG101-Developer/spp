@@ -37,7 +37,9 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -656,7 +658,7 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
     using asts::generate::common_types_precompiled::FWD_MUT;
     using asts::generate::common_types_precompiled::FWD_REF;
 
-    if (&type == reinterpret_cast<asts::TypeAst const *>(0x3112c5b0)) {
+    if (&type == reinterpret_cast<asts::TypeAst const*>(0x3112c5b0)) {
         auto _ = 123;
     }
 
@@ -777,6 +779,69 @@ auto spp::analyse::utils::type_utils::GetAllAttrs(
     return extended_syms;
 }
 
+static auto SupMemberAsMethod(
+    spp::asts::Ast const *member)
+    -> spp::asts::FunctionPrototypeAst const* {
+    if (const auto fn = member->To<spp::asts::FunctionPrototypeAst>(); fn != nullptr) { return fn; }
+    if (const auto ext = member->To<spp::asts::SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
+        const auto final_member = ext->Impl->FinalMember();
+        return final_member != nullptr ? final_member->To<spp::asts::FunctionPrototypeAst>() : nullptr;
+    }
+    return nullptr;
+}
+
+auto spp::analyse::utils::type_utils::GetUnimplementedAbstractMethods(
+    scopes::Scope const &type_scope)
+    -> Vec<asts::FunctionPrototypeAst const*> {
+    // Skip on functional types because of the awkward difference with the base method having "args: Args" tuple of
+    // args, and implementations having their own individual args.
+    // Todo: Autopack and check?
+    if (type_scope.TySym != nullptr) {
+        if (type_scope.TySym->Name->IsCompilerGeneratedType()) { return {}; }
+        if (const auto fq_name = type_scope.TySym->FqName(); fq_name != nullptr and IsTypeFunc(*fq_name, type_scope)) { return {}; }
+    }
+
+    // Gather every method visible on the type, from the type's own scope and from all of its super scopes, each tagged
+    // with the scope that resolves the types in its signature.
+    auto all_scopes = Vec<scopes::Scope const*>{&type_scope};
+    all_scopes.AppendRange(type_scope.SupScopes());
+
+    auto methods = Vec<Pair<scopes::Scope const*, asts::FunctionPrototypeAst const*>>();
+    for (auto const *scope : all_scopes) {
+        if (scope->AstNode == nullptr) { continue; }
+
+        const auto impl = scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr
+            ? asts::AstBody(scope->AstNode)
+            : Vec<asts::Ast*>{};
+        if (impl.IsEmpty()) { continue; }
+
+        for (const auto member : impl) {
+            const auto fn = SupMemberAsMethod(member);
+            if (fn == nullptr) { continue; }
+
+            const auto method_scope = genex::find_if(
+                scope->Children, [member](auto const &child) { return child->AstNode == member; });
+            if (method_scope == scope->Children.end()) { continue; }
+
+            methods.EmplaceBack(method_scope->get(), fn);
+        }
+    }
+
+    // A method stays abstract only while nothing anywhere on the type implements its signature.
+    auto unimplemented = Vec<asts::FunctionPrototypeAst const*>();
+    for (auto const &[abs_scope, abs_fn] : methods) {
+        if (abs_fn->AbstractAnnotation == nullptr) { continue; }
+        const auto is_implemented = genex::any_of(methods, [&](auto const &other) {
+            return other.Second->AbstractAnnotation == nullptr
+                and func_utils::SameSignature(*other.Second, *other.First, *abs_fn, *abs_scope);
+        });
+
+        if (not is_implemented) { unimplemented.EmplaceBack(abs_fn); }
+    }
+
+    return unimplemented;
+}
+
 auto spp::analyse::utils::type_utils::GetAllAttrAsts(
     asts::TypeAst const &type,
     scopes::ScopeManager const *sm)
@@ -884,7 +949,10 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
     for (auto const &scoped_sym : new_cls_scope_ptr->AllVarSymbols(true)) {
         scoped_sym->Type = scoped_sym->Type->SubstituteGenerics(substitution_generics);
         if (meta->CurrentStage > 5) {
+            meta->Save();
+            meta->AllowAbstractType = true;
             scoped_sym->Type->Stage7_AnalyseSemantics(&tm, meta);
+            meta->Restore();
         }
     }
 
@@ -990,7 +1058,10 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
     auto super_cls_scope = static_cast<scopes::Scope*>(nullptr);
     if (const auto ext_ast = old_sup_scope.AstNode->To<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
         const auto new_fq_super_type = ext_ast->SuperClass->SubstituteGenerics(generic_args.GetAllArgs());
+        meta->Save();
+        meta->AllowAbstractType = true;
         new_fq_super_type->Stage7_AnalyseSemantics(&tm, meta);
+        meta->Restore();
         super_cls_scope = new_cls_scope.GetTypeSymbol(new_fq_super_type)->LinkedScope;
     }
 
@@ -1349,6 +1420,9 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
 
     //
     auto t = type.SubstituteGenerics(gg->GetAllArgs());
+    meta.Save();
+    meta.AllowAbstractType = true;
     t->Stage7_AnalyseSemantics(&sm, &meta);
+    meta.Restore();
     return t;
 }

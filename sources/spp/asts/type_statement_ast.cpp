@@ -229,8 +229,12 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     if (_Generated) {
         sm->MoveToNextScope();
         SPP_ASSERT(sm->CurrentScope == _Scope);
+
+        meta->Save();
+        meta->AllowAbstractType = true;
         OldType->ResetCache();
         OldType->Stage7_AnalyseSemantics(sm, meta);
+        meta->Restore();
 
         const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType);
         if (cls_sym->Type) {

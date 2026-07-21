@@ -125,6 +125,13 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> asts::FunctionPrototypeAst *;
 
+    SPP_EXP_FUN auto SameSignature(
+        asts::FunctionPrototypeAst const &fn_a,
+        scopes::Scope const &scope_a,
+        asts::FunctionPrototypeAst const &fn_b,
+        scopes::Scope const &scope_b)
+        -> bool;
+
     SPP_EXP_FUN auto CheckForConflictingOverride(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,

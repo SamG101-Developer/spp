@@ -336,18 +336,16 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
     return nullptr;
 }
 
-auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
-    scopes::Scope const &this_scope,
-    scopes::Scope const *target_scope,
-    asts::FunctionPrototypeAst const &new_fn,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta,
-    scopes::Scope const *exclude_scope)
-    -> asts::FunctionPrototypeAst* {
+auto spp::analyse::utils::func_utils::SameSignature(
+    asts::FunctionPrototypeAst const &fn_a,
+    scopes::Scope const &scope_a,
+    asts::FunctionPrototypeAst const &fn_b,
+    scopes::Scope const &scope_b)
+    -> bool {
     //
     using type_utils::TypeEq;
 
-    // Helper function to get the type of the convention AST applied to the "self" parameter.
+    // Helper function to check whether a "self" parameter is present.
     auto hs = [](asts::FunctionPrototypeAst const *f) {
         return f->FnParamGroup->GetSelfParam() != nullptr;
     };
@@ -357,11 +355,6 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
         return hs(f) ? f->FnParamGroup->GetSelfParam()->Conv.get() : nullptr;
     };
 
-    // Get the existing functions that belong to this type, or any of its supertypes.
-    auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>();
-    auto existing_fns = existing | genex::views::tuple_nth<1>();
-
     auto param_names_eq = [](auto const &a, auto const &b) {
         if (a.Len() != b.Len()) { return false; }
         for (auto const &[x, y] : genex::views::zip(a, b)) {
@@ -370,51 +363,68 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
         return true;
     };
 
+    // The names must match. Note that the "cmp" state does NOT have to match.
+    if (*fn_a.Name != *fn_b.Name) { return false; }
+
+    // Get the two parameter lists and create copies.
+    auto params_a = fn_a.FnParamGroup->GetNonSelfParams();
+    auto params_b = fn_b.FnParamGroup->GetNonSelfParams();
+
+    // Get a list of conditions to check for conflicting functions.
+    if (params_a.Len() != params_b.Len()) { return false; }
+
+    // All parameters must have the same names.
+    if (genex::any_of(
+        genex::views::zip(params_a, params_b) | genex::to<Vec>(),
+        [&](auto pq) { return not param_names_eq(std::get<0>(pq)->ExtractNames(), std::get<1>(pq)->ExtractNames()); })) {
+        return false;
+    }
+
+    // All parameters must have the same types.
+    if (genex::any_of(
+        genex::views::zip(params_a, params_b) | genex::to<Vec>(),
+        [&](auto pq) { return not TypeEq(*std::get<0>(pq)->Type, *std::get<1>(pq)->Type, scope_a, scope_b, false); })) {
+        return false;
+    }
+
+    // The function type (subroutine vs coroutine) must match.
+    if (fn_a.TokFun->TokenType != fn_b.TokFun->TokenType) {
+        return false;
+    }
+
+    // The return types must be symbolically equal.
+    if (not TypeEq(*fn_a.ReturnType, *fn_b.ReturnType, scope_a, scope_b)) {
+        return false;
+    }
+
+    // Check the self parameters' conventions.
+    return not(hs(&fn_a) != hs(&fn_b) or (sc(&fn_a) and *sc(&fn_a) != sc(&fn_b)) or (not sc(&fn_a) and sc(&fn_b)));
+}
+
+auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
+    scopes::Scope const &this_scope,
+    scopes::Scope const *target_scope,
+    asts::FunctionPrototypeAst const &new_fn,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta,
+    scopes::Scope const *exclude_scope)
+    -> asts::FunctionPrototypeAst* {
+    // Get the existing functions that belong to this type, or any of its supertypes.
+    // Look the methods up by the name the function was written with. "Name" has been rewritten to the call method
+    // of the function's type ("call_ref" and friends), but the mock class that holds the method is still named after
+    // the source name, which is what "GetAllFunctionScopes" maps to a "$Func" class to search for.
+    auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
+    auto existing_scopes = existing | genex::views::tuple_nth<0>();
+    auto existing_fns = existing | genex::views::tuple_nth<1>();
+
     // Check for an overload conflict with all functions of the same name.
-    // Note that the "cmp" state does NOT have to match.
     for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
         // Ignore if the method is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_scope == exclude_scope) { continue; }
 
-        // Get the two parameter lists and create copies.
-        auto params_new = new_fn.FnParamGroup->GetNonSelfParams();
-        auto params_old = old_fn->FnParamGroup->GetNonSelfParams();
-
-        // Get a list of conditions to check for conflicting functions.
-        if (params_new.Len() != params_old.Len()) { continue; }
-
-        // All parameters must have the same names.
-        if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::to<Vec>(),
-            [&](auto pq) { return not param_names_eq(std::get<0>(pq)->ExtractNames(), std::get<1>(pq)->ExtractNames()); })) {
-            continue;
-        }
-
-        // All parameters must have the same types.
-        if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::to<Vec>(),
-            [&](auto pq) { return not TypeEq(*std::get<0>(pq)->Type, *std::get<1>(pq)->Type, this_scope, *old_scope, false); })) {
-            continue;
-        }
-
-        // The function type (subroutine vs coroutine) must match.
-        if (new_fn.TokFun->TokenType != old_fn->TokFun->TokenType) {
-            continue;
-        }
-
-        // The return types must be symbolically equal.
-        if (not TypeEq(*new_fn.ReturnType, *old_fn->ReturnType, this_scope, *old_scope)) {
-            continue;
-        }
-
-        // Check the self parameters' conventions.
-        if (hs(&new_fn) != hs(old_fn) or (sc(&new_fn) and *sc(&new_fn) != sc(old_fn)) or (not sc(&new_fn) and sc(old_fn))) {
-            continue;
-        }
-
-        // The functions must have identical signatures at this point, so return the old function.
-        return old_fn;
+        // The functions must have identical signatures to conflict, so return the old function.
+        if (SameSignature(new_fn, this_scope, *old_fn, *old_scope)) { return old_fn; }
     }
 
     return nullptr;
@@ -559,7 +569,10 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
             }
 
             const auto sub = p_con->SubstituteGenerics(all_args);
+            meta.Save();
+            meta.AllowAbstractType = true;
             sub->Stage7_AnalyseSemantics(&sm, &meta);
+            meta.Restore();
             con_group_cloned.push_back(sub);
         }
         p_con_groups_cloned.push_back(std::move(con_group_cloned));
