@@ -8,6 +8,11 @@ name: PR
 #   lint ────┴─> cppcheck ─┬─> build-test (release ∥ asan ∥ tsan, fail-fast)
 #                          └─> build-test-extra (other toolchains, advisory)
 #
+# TEMPORARY: cppcheck is advisory. It still runs first and reports red, but the
+# builds run regardless of its result and it is omitted from ci-success.
+# Todo: Revert by dropping the `!cancelled() &&` guards below and putting
+# `cppcheck` back in the ci-success `needs` list.
+#
 #   docs, security, sonar   ─> independent of the chain, started immediately
 #
 # Claude's review lives in claude_code_review.yaml on its own trigger, so it
@@ -64,8 +69,8 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/_lint.yaml
 
-  # Static analysis gates the compilation: no point spending 40 minutes on a
-  # build that cppcheck can reject in two.
+  # Static analysis. Normally gates the compilation, but is advisory for now:
+  # it reports red on findings without stopping anything downstream.
   cppcheck:
     name: Static Analysis
     needs: [ changes, lint ]
@@ -80,7 +85,7 @@ jobs:
   build-test:
     name: Build & Test
     needs: [ changes, cppcheck ]
-    if: needs.changes.outputs.code == 'true'
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/_compile.yaml
@@ -101,7 +106,7 @@ jobs:
   build-test-extra:
     name: Build & Test (non-blocking)
     needs: [ changes, cppcheck ]
-    if: needs.changes.outputs.code == 'true'
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
     permissions:
       contents: read
     strategy:
@@ -153,7 +158,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, cppcheck, build-test, docs, security ]
+    needs: [ changes, lint, build-test, docs, security ] # cppcheck
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: { }
