@@ -1,3 +1,7 @@
 .idea
 .gitignore
 *.spp
+
+docs/build/
+docs/source/compiler-api/
+__pycache__/
