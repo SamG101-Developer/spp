@@ -33,8 +33,7 @@ auto spp::asts::GenericArgumentTypeAst::Stage4_QualifyTypes(
     Val->Stage4_QualifyTypes(sm, meta);
     const auto sym = sm->CurrentScope->GetTypeSymbol(Val, true);
     if (sym and not sym->AliasStmt) {
-        const auto fq = sym ? sym->FqName() : nullptr;
-        Val = fq ? fq : Val;
+        Val = sym->FqName();
         return;
     }
 

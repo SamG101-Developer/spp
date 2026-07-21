@@ -1,5 +1,4 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
@@ -35,7 +34,6 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
-import opex.cast;
 
 SPP_MOD_BEGIN
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -222,7 +220,8 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
         ctx->Builder.SetInsertPoint(case_end_bb);
         ret_type = InferType(sm, meta);
         const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type);
-        phi = ctx->Builder.CreatePHI(codegen::GetLlvmType(*ret_type_sym, ctx), Branches.Len() as U32, "case.phi" + uid);
+        phi = ctx->Builder.CreatePHI(
+            codegen::GetLlvmType(*ret_type_sym, ctx), static_cast<unsigned>(Branches.Len()), "case.phi" + uid);
     }
 
     // Set "case" information to the meta struct for branches and patterns to use.

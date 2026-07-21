@@ -1,6 +1,5 @@
 module;
 #include <spp/analyse/macros.hpp>
-#include <opex/macros.hpp>
 
 module spp.analyse.utils.overload_utils;
 import spp.analyse.errors.semantic_error;
@@ -39,7 +38,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import genex;
-import opex.cast;
+import sys;
 
 // The variadic arg is the different exception types that need to get "caught".
 #define SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(error_type, message)          \
@@ -435,7 +434,7 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
     // Check any params are void, pop them (indexes because of unique pointers).
     for (auto &&i : genex::views::iota(0uz, fn_proto.FnParamGroup->Params.Len())) {
         if (type_utils::IsTypeVoid(*fn_proto.FnParamGroup->Params[i]->Type, *fn_scope)) {
-            genex::actions::erase(fn_proto.FnParamGroup->Params, fn_proto.FnParamGroup->Params.begin() + (i as SSize));
+            genex::actions::erase(fn_proto.FnParamGroup->Params, fn_proto.FnParamGroup->Params.begin() + static_cast<sys::ssize_t>(i));
         }
     }
 

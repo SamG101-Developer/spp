@@ -20,7 +20,6 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 import llvm;
-import opex.cast;
 import genex;
 import std;
 

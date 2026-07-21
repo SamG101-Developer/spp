@@ -23,7 +23,6 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
 import genex;
-import opex.ops;
 
 #define cmp_abs 0 <_cmp_abs_>
 #define cmp_smax <_cmp_smax_>

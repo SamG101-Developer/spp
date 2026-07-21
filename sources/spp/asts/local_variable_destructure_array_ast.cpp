@@ -1,5 +1,4 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
@@ -29,7 +28,6 @@ import spp.asts.type_identifier_ast;
 import spp.lex.tokens;
 import spp.utils.algorithms;
 import genex;
-import opex.cast;
 
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
@@ -112,7 +110,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = Unique<ArrayLiteralExplicitElementsAst>(nullptr);
     if (not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr) {
-        const auto m = genex::position(Elems | genex::views::ptr, [&multi_arg_skips](auto const &x) { return x == multi_arg_skips[0]; }) as USize;
+        const auto m = static_cast<std::size_t>(genex::position(Elems | genex::views::ptr, [&multi_arg_skips](auto const &x) { return x == multi_arg_skips[0]; }));
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::to<Vec>()
             | genex::views::transform([val](const auto i) -> Unique<ExpressionAst> {
@@ -128,7 +126,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.IsEmpty()
-        ? genex::position(Elems | genex::views::ptr, [&](auto const &x) { return x == multi_arg_skips[0]; }) as USize
+        ? static_cast<std::size_t>(genex::position(Elems | genex::views::ptr, [&](auto const &x) { return x == multi_arg_skips[0]; }))
         : Elems.Len() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<Vec>();
     indexes.AppendRange(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<Vec>());

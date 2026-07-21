@@ -1,6 +1,5 @@
 module;
 #include <spp/analyse/macros.hpp>
-#include <opex/macros.hpp>
 
 module spp.analyse.utils.mem_utils;
 import spp.analyse.errors.semantic_error_builder;
@@ -31,7 +30,6 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import ankerl;
 import genex;
-import opex.cast;
 
 auto spp::analyse::utils::mem_utils::MemRegionOverlap(
     asts::Ast const &ast_1,
@@ -227,9 +225,9 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     const auto non_terminating_branch = genex::find_if(
         branches, [](auto const &x) { return not x->Body->Terminates(); });
     const auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
-    const auto first_branch_index = non_terminating_branch != branches.end() ? genex::iterators::distance(branches.begin(), non_terminating_branch) as SSize : -1;
+    const auto first_branch_index = non_terminating_branch != branches.end() ? genex::iterators::distance(branches.begin(), non_terminating_branch) : -1;
     const auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
-        return first_branch_index != -1 ? branch_mem_info.At(first_branch_index as USize).Second : branch_mem_info.Back().Second;
+        return first_branch_index != -1 ? branch_mem_info.At(static_cast<std::size_t>(first_branch_index)).Second : branch_mem_info.Back().Second;
     };
 
     const auto has_else_branch = not branches.IsEmpty() ? branches.Back()->Patterns[0]->To<asts::CasePatternVariantElseAst>() : nullptr;
