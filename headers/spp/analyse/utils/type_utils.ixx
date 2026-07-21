@@ -15,6 +15,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct GenericParameterAst;
