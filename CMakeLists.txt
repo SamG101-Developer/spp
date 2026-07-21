@@ -58,7 +58,7 @@ target_compile_options(${PROJECT_NAME}_lib PRIVATE
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wsuggest-override
-        -Wzero-as-null-pointer-constant -Wimplicit-fallthrough=5 -Wstrict-overflow=2 -Wnon-virtual-dtor
+        -Wzero-as-null-pointer-constant -Wimplicit-fallthrough=5 -Wstrict-overflow=2 -Wnon-virtual-dtor -Wunused
         -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wno-null-dereference -Wodr)
 
 if (SPP_WERROR)
