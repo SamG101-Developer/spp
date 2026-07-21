@@ -3,7 +3,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     GenWithExpressionAst,
     test_invalid_convention_mismatch_ref_vs_mut,
-    SppTypeMismatchError, R"(
+    SppYieldedTypeMismatchError, R"(
     cor foo() -> Gen[&S32] {
         gen &1
     }
@@ -16,7 +16,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     GenWithExpressionAst,
     test_invalid_convention_mismatch_mut_vs_mov,
-    SppTypeMismatchError, R"(
+    SppYieldedTypeMismatchError, R"(
     cor foo() -> Gen[&mut S32] {
         gen &mut 1
     }
@@ -29,7 +29,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     GenWithExpressionAst,
     test_invalid_convention_mismatch_mov_vs_ref,
-    SppTypeMismatchError, R"(
+    SppYieldedTypeMismatchError, R"(
     cor foo() -> Gen[S32] {
         gen 1
     }
@@ -42,7 +42,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     GenWithExpressionAst,
     test_invalid_convention_mismatch_mov_vs_mut,
-    SppTypeMismatchError, R"(
+    SppYieldedTypeMismatchError, R"(
     cor foo() -> Gen[S32] {
         gen 1
     }
@@ -120,7 +120,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     GenWithExpressionAst,
     test_invalid_type_mismatch,
-    SppTypeMismatchError, R"(
+    SppYieldedTypeMismatchError, R"(
     cor foo() -> Gen[S32] {
         gen 1
     }

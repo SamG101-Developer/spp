@@ -873,17 +873,18 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted type.
     const auto old_cls_scope = old_cls_sym.LinkedScope ? : old_cls_sym.ScopeDefinedIn;
+    const auto name_clone = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(asts::AstCloneShared(&type_part));
     auto new_cls_scope = MakeUnique<scopes::Scope>(
-        scopes::ScopeTypeIdentifierName(type_part.shared_from_this()),
+        scopes::ScopeTypeIdentifierName(name_clone),
         old_cls_scope->Parent, old_cls_scope->AstNode);
 
     // Note there is no LLVM type propagation: handled separately before stage 10.
     const auto new_cls_sym = MakeShared<scopes::TypeSymbol>(
-        dynamic_shared_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
-        new_cls_scope->AstNode->To<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->CurrentScope,
+        name_clone, new_cls_scope->AstNode->To<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->CurrentScope,
         old_cls_scope->Parent, old_cls_sym.IsGeneric, old_cls_sym.IsDirectlyCopyable, old_cls_sym.Visibility);
     const auto new_cls_scope_ptr = new_cls_scope.get();
 
+    // Note: These closure captures must be copies.
     new_cls_sym->IsCopyable = [old_cls_sym] { return old_cls_sym.IsCopyable(); };
     const auto raw_new_cls_sym = new_cls_sym.get();
     new_cls_sym->IsZeroType = [old_cls_sym, raw_new_cls_sym] { return raw_new_cls_sym->IsDirectlyZeroType or old_cls_sym.IsZeroType(); };

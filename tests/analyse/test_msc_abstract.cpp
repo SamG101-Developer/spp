@@ -303,10 +303,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAbstract,
-    test_abstract_type_as_generic_argument,
-    SppAbstractTypeUseError, R"(
+    test_abstract_type_as_generic_argument_no_usage, R"(
     cls A { }
     cls B[T] { }
 
