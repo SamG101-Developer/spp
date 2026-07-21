@@ -393,7 +393,7 @@ auto spp::analyse::utils::func_utils::SameSignature(
     }
 
     // The return types must be symbolically equal.
-    if (not TypeEq(*fn_a.ReturnType, *fn_b.ReturnType, scope_a, scope_b)) {
+    if (not TypeEq(*fn_a.ReturnType, *fn_b.ReturnType, scope_a, scope_b, false)) {
         return false;
     }
 
