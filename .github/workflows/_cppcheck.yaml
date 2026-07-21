@@ -104,7 +104,7 @@ jobs:
             --template='{file}:{line}:{column}: {severity}: {message} [{id}]' \
             --template-location='{file}:{line}:{column}: note: {info}' \
             --output-file=cppcheck-report.txt \
-            -j $(nproc)
+            -j $(nproc) \
             -I headers \
             headers sources main.cpp
           status=$?
