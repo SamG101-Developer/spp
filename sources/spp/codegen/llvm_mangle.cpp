@@ -66,8 +66,5 @@ auto spp::codegen::mangle::mangle_fun_name(
         | genex::to<Str>();
 
     // Append the module name and function name.
-    const auto fun_name = fun_proto.Source.OriginalName != nullptr
-        ? fun_proto.Source.OriginalName->Val
-        : fun_proto.Name->Val;
-    return mod_name + "#" + fun_name + "#" + fun_sig;
+    return mod_name + "#" + fun_proto.Name->Val + "#" + fun_sig;
 }

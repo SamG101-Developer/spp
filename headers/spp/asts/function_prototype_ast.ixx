@@ -136,7 +136,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     struct {
         Shared<TypeAst> OriginalReturnType;
         Unique<FunctionImplementationAst> OriginalImpl;
-        Shared<IdentifierAst> OriginalName;
     } Source;
 
     /**

@@ -36,7 +36,6 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
         : nullptr;
     ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
     ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
-    ast->Source.OriginalName = Source.OriginalName;
     ast->_Ctx = _Ctx;
     ast->_Scope = _Scope;
     ast->AbstractAnnotation = AbstractAnnotation;

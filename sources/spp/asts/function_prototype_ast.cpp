@@ -83,7 +83,6 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
     Source.OriginalImpl = AstClone(this->Impl);
     Source.OriginalReturnType = AstClone(this->ReturnType);
-    Source.OriginalName = this->Name;
     _NonGenericImpl = this;
     _LlvmFunc = MakeShared<Shared<codegen::LlvmFuncWrapper>>(nullptr);
 }
@@ -211,7 +210,7 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
     // Superimpose the function type over the mock class.
     auto sup_ext_impl_members = Vec<Unique<Ast>>();
     auto clone = AstClone(this);
-    clone->Name = MakeShared<IdentifierAst>(Name->PosStart(), function_call_name);
+    // clone->Name = MakeShared<IdentifierAst>(Name->PosStart(), function_call_name);
 
     for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.get()); }
     sup_ext_impl_members.EmplaceBack(std::move(clone));
@@ -371,6 +370,7 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     if (const auto self_param = FnParamGroup->GetSelfParam()) {
         const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
         const auto self_conv = self_param->Conv.get();
+
         self_sym->Type = ResolveAndSubstituteSelfType(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(AstClone(self_conv));
 
         for (auto const &param : FnParamGroup->GetAllParams()) {
