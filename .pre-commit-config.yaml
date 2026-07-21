@@ -1,5 +1,6 @@
 minimum_pre_commit_version: "3.5.0"
 default_stages: [ pre-commit ]
+exclude: '^\.(vale|github)/'
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -17,12 +18,6 @@ repos:
       - id: check-json
       - id: check-symlinks
       - id: destroyed-symlinks
-
-#  - repo: https://github.com/pre-commit/mirrors-clang-format
-#    rev: v22.1.8
-#    hooks:
-#      - id: clang-format
-#        types_or: [ c, c++ ]
 
   - repo: https://github.com/BlankSpruce/gersemi-pre-commit
     rev: 0.27.7
