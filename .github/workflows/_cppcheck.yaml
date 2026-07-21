@@ -97,13 +97,14 @@ jobs:
             --enable=all \
             --inline-suppr \
             --suppressions-list=.cppcheck-suppressions \
+            --check-level=exhaustive \
             --std="$STD" \
             --language=c++ \
             --error-exitcode=1 \
-            --jobs="$(nproc)" \
             --template='{file}:{line}:{column}: {severity}: {message} [{id}]' \
             --template-location='{file}:{line}:{column}: note: {info}' \
             --output-file=cppcheck-report.txt \
+            -j $(nproc)
             -I headers \
             headers sources main.cpp
           status=$?
