@@ -1,0 +1,31 @@
+name: checkout
+description: "Harden the runner, check the repository out and restore source mtimes so cached build trees stay usable."
+
+inputs:
+  fetch-depth:
+    description: "History depth to fetch. Restoring mtimes needs the full history, so this defaults to 0."
+    required: false
+    default: "0"
+  restore-mtimes:
+    description: "Rewrite tracked files' mtimes from commit history. Turn off for jobs that never build."
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # Harden all checkout operations.
+    - name: Harden runner
+      if: runner.os == 'Linux'
+      uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+
+    - name: Restore source mtimes
+      if: inputs.restore-mtimes == 'true' && inputs.fetch-depth == '0'
+      shell: bash
+      run: python3 "$GITHUB_ACTION_PATH/restore_mtimes.py"

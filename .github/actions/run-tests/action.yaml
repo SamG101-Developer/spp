@@ -1,0 +1,49 @@
+name: run-tests
+description: "Run the gtest suite through gtest-parallel and collect per-test logs."
+
+inputs:
+  output-dir:
+    description: "Directory to write per-test logs into."
+    required: false
+    default: "tests/test_output"
+  workers:
+    description: "Parallel workers; empty lets gtest-parallel pick (one per core)."
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Cache gtest-parallel
+      id: gtp-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ${{ runner.temp }}/gtest-parallel
+        key: gtest-parallel-${{ runner.os }}-v1
+
+    - name: Fetch gtest-parallel
+      if: steps.gtp-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: git clone --depth 1 https://github.com/google/gtest-parallel.git "${RUNNER_TEMP}/gtest-parallel"
+
+    - name: Run tests
+      shell: bash
+      env:
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        WORKERS: ${{ inputs.workers }}
+      run: |
+        set -euo pipefail
+
+        # Ninja is single-config, so the binary sits directly under build/tests.
+        binary="build/tests/spp_tests"
+        [ "$RUNNER_OS" = "Windows" ] && binary="build/tests/spp_tests.exe"
+        if ! [ -x "$binary" ]; then
+          echo "::error::test binary not found at $binary"
+          exit 1
+        fi
+
+        mkdir -p "$OUTPUT_DIR"
+        python3 "${RUNNER_TEMP}/gtest-parallel/gtest-parallel" \
+          "./$binary" \
+          --output_dir="$OUTPUT_DIR" \
+          ${WORKERS:+--workers="$WORKERS"}

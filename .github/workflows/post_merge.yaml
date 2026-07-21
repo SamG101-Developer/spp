@@ -1,15 +1,40 @@
 name: post-merge
+
+# Two jobs of work: publish the site, and rebuild master so its build-tree
+# caches are fresh. The second part is important as GitHub only lets a PR
+# branch read caches from its own branch and from the base branch, so a
+# warm master is what lets a brand-new PR compile incrementally.
+
 on:
   push:
     branches: [ master ]
-  workflow_dispatch: {}
+  workflow_dispatch: { }
 
 concurrency:
   group: post-merge
   cancel-in-progress: false
 
 jobs:
+  changes:
+    name: Detect Code Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: ./.github/actions/checkout
+        with:
+          restore-mtimes: "false"
+      - id: filter
+        uses: ./.github/actions/detect-changes
+        with:
+          base: ${{ github.event.before }}
+          head: ${{ github.sha }}
+
   docs:
+    name: Docs
     permissions:
       contents: read
     uses: ./.github/workflows/_docs.yaml
@@ -18,7 +43,7 @@ jobs:
 
   publish-docs:
     name: Publish Docs
-    needs: [docs]
+    needs: [ docs ]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -32,40 +57,32 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
-  warm-cache:
-    name: Warm Cache
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+  # Doubles as the master health check and as the cache warmer. Same variants as the
+  # PR pipeline, so every key a PR looks for exists on the base branch.
+  build-test:
+    name: Build & Test
+    needs: [ changes ]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
-        with:
-          egress-policy: audit
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - name: Set Up Toolchain
-        uses: ./.github/actions/_setup_toolchain
-        with:
-          compiler: gcc
-          version: "16"
+    uses: ./.github/workflows/_compile.yaml
+    with:
+      os: ubuntu-latest
+      compiler: gcc
+      version: "16"
+      fail-fast: false
+      variants: >-
+        [
+          {"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""},
+          {"name": "asan", "build-type": "Debug", "sanitizer": "address+undefined+leak"},
+          {"name": "tsan", "build-type": "Debug", "sanitizer": "thread"}
+        ]
 
-      - name: Restore Build Tree
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: build
-          key: build-ubuntu-latest-gcc-16-${{ github.sha }}
-          restore-keys: |
-            build-ubuntu-latest-gcc-16-
-
-      - name: Configure
-        uses: ./.github/actions/_configure_cmake
-      - name: Build (populates cache)
-        run: cmake --build build --parallel
-
-      - name: Save Build Tree
-        if: always()
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: build
-          key: build-ubuntu-latest-gcc-16-${{ github.sha }}
+  sonar:
+    name: Sonar
+    needs: [ changes, build-test ]
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_sonar.yaml
+    secrets: inherit

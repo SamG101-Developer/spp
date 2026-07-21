@@ -1,0 +1,122 @@
+name: compile
+
+# Builds one or more configurations of the project and runs the test suite against
+# each. This replaces the old `_build_and_test.yaml` + `_sanitizers.yaml` pair, which
+# were the same twenty steps with different CMake flags: a sanitizer build is just a
+# variant, so it is expressed as one.
+
+on:
+  workflow_call:
+    inputs:
+      variants:
+        description: >-
+          JSON array of build variants. Each entry is
+          {"name": "...", "build-type": "...", "sanitizer": "..."}; `sanitizer` may be "".
+        required: true
+        type: string
+      os:
+        description: "Runner image (ubuntu-latest | macos-latest | windows-latest)."
+        required: false
+        type: string
+        default: "ubuntu-latest"
+      compiler:
+        description: "Compiler (gcc | clang | msvc | clang-cl)."
+        required: false
+        type: string
+        default: "gcc"
+      version:
+        description: "Major version of the compiler; empty means the runner default."
+        required: false
+        type: string
+        default: "16"
+      fail-fast:
+        description: "Cancel the sibling variants as soon as one fails."
+        required: false
+        type: boolean
+        default: true
+      run-tests:
+        description: "Run the test suite after a successful build."
+        required: false
+        type: boolean
+        default: true
+      cache-build-tree:
+        description: >-
+          Restore and save the Ninja build tree. This is what makes CI incremental; turn it off
+          for a variant whose tree is not worth its share of the 10 GB repository cache budget.
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  compile:
+    name: ${{ inputs.compiler }}${{ inputs.version && format('-{0}', inputs.version) || '' }} · ${{ matrix.variant.name }}
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        variant: ${{ fromJSON(inputs.variants) }}
+
+    env:
+      # Inert for a non-sanitiser variant, so they are set unconditionally.
+      ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:detect_leaks=1:strict_string_checks=1"
+      UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+      TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
+      CACHE_KEY: build-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
+
+    steps:
+      # fetch-depth 0 so mtimes can be reconstructed from history; without that the
+      # restored build tree below looks stale and every run is a full rebuild.
+      - uses: ./.github/actions/checkout
+
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          compiler: ${{ inputs.compiler }}
+          version: ${{ inputs.version }}
+          cache-key-suffix: ${{ matrix.variant.name }}
+
+      # Falls back to the newest tree for this variant on this branch, then on the
+      # base branch (post-merge warms master, so a fresh PR starts warm too).
+      - name: Restore build tree
+        if: inputs.cache-build-tree
+        id: tree
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: build
+          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
+          restore-keys: |
+            ${{ env.CACHE_KEY }}-
+
+      - name: Configure
+        uses: ./.github/actions/configure-cmake
+        with:
+          build-type: ${{ matrix.variant.build-type }}
+          sanitizer: ${{ matrix.variant.sanitizer }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test (gtest-parallel)
+        if: inputs.run-tests
+        uses: ./.github/actions/run-tests
+
+      - name: Upload test logs on failure
+        if: failure() && inputs.run-tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
+          path: tests/test_output
+          if-no-files-found: ignore
+
+      # Saved even on failure: a half-finished tree still spares the next run every
+      # object that did compile.
+      - name: Save build tree
+        if: always() && inputs.cache-build-tree
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: build
+          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
