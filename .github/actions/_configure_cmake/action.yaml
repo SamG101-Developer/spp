@@ -1,13 +1,17 @@
 name: configure-cmake
+description: "Run the CMake configure step for the project into the `build` directory."
 
 inputs:
   build-type:
+    description: "CMAKE_BUILD_TYPE to configure with."
     required: false
     default: "RelWithDebInfo"
   sanitizer:
+    description: "Sanitizer set to enable, e.g. `address+undefined+leak`; empty means none."
     required: false
     default: ""
   extra-flags:
+    description: "Additional flags appended verbatim to the CMake configure command."
     required: false
     default: ""
 

@@ -13,15 +13,15 @@
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=SamG101-Developer_spp&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=SamG101-Developer_spp)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=SamG101-Developer_spp&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=SamG101-Developer_spp)
 
-## Repos:
+## Repositories:
 
 - [**S++ Compiler**](https://github.com/SamG101-Developer/spp)
 - [**S++ Standard Library**](https://github.com/SamG101-Developer/SPP-STL)
 - [**S++ C Functions**](https://github.com/SamG101-Developer/sppc)
 
-## License Notice (Pre-Release)
+## Licence Notice (Pre-Release)
 
-The S++ Compiler is currently in development and has not reached its first official release.
+The S++ Compiler is currently in development and hasn't reached its first official release.
 
 - The [**S++ Compiler License**](LICENSE.md), and the [**Commercial License**](LICENSE_COMMERCIAL.md), will apply
   starting with the first official release.

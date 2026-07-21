@@ -1,6 +1,6 @@
-# Compiled Safety
+# Compiled safety
 
-## Compiler Features
+## Compiler features
 
 - Stack canaries
 - Address space layout randomization
@@ -16,13 +16,13 @@
 - Indirect branch tracking
 - Digital signatures
     - Sign binaries
-    - Sign packages on github
+    - Sign packages on GitHub
 - Control flow integrity
     - Forward and backward edge protection
     - Backward edge uses shadow stacks
 - Pointer authentication
     - Signing pointers cryptographically
-- Memory tagging (MTE)
+- Memory tagging, or MTE
     - Assigns tags to memory allocations/pointers
     - Checks for matching tags
 - Compile time bounds checks
@@ -31,5 +31,5 @@
 - Const propagation
     - Write all `cmp` data to `.rodata`
 - Data flow integrity
-    - Variables can only be written from specific sites
+    - Only specific sites can write to a variable
 - FFI Safety

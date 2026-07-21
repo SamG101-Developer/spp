@@ -2,45 +2,43 @@
 
 ## Iterators
 
-S++ uses coroutines for iteration. This allows universal iterator classes, rather than a new iterator type per a
-container. Furthermore, all iteration adaptors, like `Filter`, `Transform`, `Take` etc, don't need their own types; they
-are just implemented as coroutines on the `Iterator` type. This allows the STL to be heavily simplified, as there is no
-need for a whole set of iterator types.
+S++ uses coroutines for iteration, which gives universal iterator classes rather than a new iterator type per container.
+Iteration adaptors such as `Filter`, `Transform` and `Take` need no types of their own either: each one is a coroutine
+on the `Iterator` type. This heavily simplifies the STL, which needs no set of iterator types at all.
 
-There is a `BidirectionalIterator` type, which contains methods that allow for reverse iteration. The key method is the
-`rev` adaptor, allowing the coroutine to be flipped, and the iterated forwards again, yielding values in reverse. The
-`BidirectionalIterator` superimposes the `Iterator` type, making all other adaptor methods available.
+The `BidirectionalIterator` type contains methods for reverse iteration. The key method is the `rev` adaptor, which
+flips the coroutine and then iterates forwards again, yielding values in reverse. `BidirectionalIterator` superimposes
+the `Iterator` type, which makes all other adaptor methods available.
 
-## Accessing Iterators
+## Accessing iterators
 
-To access the `Iterator` type, the following types may be superimposed over a class:
+To reach the `Iterator` type, a class can superimpose any of these types:
 
 - `IterRef[I]`
 - `IterMut[I]`
 - `IterMov[I]`
 
-The `IterRef` type allows iteration by reference, yielding references to the values in the container. It contains the
-method `iter_ref`, which is a coroutine that yields values into `Iterator[&T]`, which in turn superimposes `GenOpt[&T]`.
-This method borrows the container immutably.
+The `IterRef` type gives iteration by reference, yielding references to the values in the container. It contains the
+method `iter_ref`, a coroutine that yields values into `Iterator[&T]`, which in turn superimposes `GenOpt[&T]`. This
+method borrows the container immutably.
 
-The `IterMut` type allows iteration by mutable reference, yielding mutable references to the values in the container. It
-contains the method `iter_mut`, which is a coroutine that yields values into `Iterator[&mut T]`, which in turn
-superimposes `GenOpt[&mut T]`. This method borrows the container mutably.
+The `IterMut` type gives iteration by mutable reference, yielding mutable references to the values in the container. It
+contains the method `iter_mut`, a coroutine that yields values into `Iterator[&mut T]`, which in turn superimposes
+`GenOpt[&mut T]`. This method borrows the container mutably.
 
-The `IterMov` type allows iteration by value, yielding values moved out of the container. It contains the method
-`iter_mov`, which is a coroutine that yields values into `Iterator[T]`, which in turn superimposes `GenOpt[T]`. This
-method takes ownership of the container (consumes it).
+The `IterMov` type gives iteration by value, yielding values moved out of the container. It contains the method
+`iter_mov`, a coroutine that yields values into `Iterator[T]`, which in turn superimposes `GenOpt[T]`. This method takes
+ownership of the container and consumes it.
 
-## Sized Iterators
+## Sized iterators
 
-To optimize iteration for types like `Vec`, which have a known size, there is the `SizedIterator` type. This type
-provides a `size_hint` method, that returns a number of elements in the collection. This allows for iteration
-optimizations.
+The `SizedIterator` type optimizes iteration for types like `Vec`, which have a known size. It provides a `size_hint`
+method that returns the number of elements in the collection, which enables iteration optimizations.
 
 ## Example
 
-This is the iteration code for the `Vec` type, which provides all six iterator methods: by value, by mutable
-reference, and by immutable reference, both forwards and backwards.
+This is the iteration code for the `Vec` type, which provides all six iterator methods: by value, by mutable reference,
+and by immutable reference, both forwards and backwards.
 
 ```s++
 sup [T, A] Vec[T, A] {
@@ -70,7 +68,6 @@ sup [T, A] Vec[T, A] {
 }
 
 
-
 sup [T, A] Vec[T, A] ext SizedIterator[T] {
     fun size_hint(&self) -> USize {
         ret self.len
@@ -78,9 +75,9 @@ sup [T, A] Vec[T, A] ext SizedIterator[T] {
 }
 ```
 
-## How Iteration is Transformed
+## How the compiler transforms iteration
 
-For iterators (types that superimpose a `Gen` variant), the iteration variant of `loop` is used with a simple `loop-in`
+For iterators, meaning types that superimpose a `Gen` variant, the iteration variant of `loop` uses a plain `loop-in`
 syntax:
 
 ```s++
@@ -103,8 +100,8 @@ for (auto __it = __begin; __it != __end; ++__it) {
 }
 ```
 
-In S++, the transformation is fully internal to the compiler, because coroutines are used to do external iteration. Per
-iteration, LLVM IR is injected, with the same semantics as the following S++:
+In S++, the transformation stays fully internal to the compiler, because coroutines drive external iteration. Each
+iteration injects LLVM IR with the same semantics as the following S++:
 
 ```s++
 loop it in generator {
@@ -115,7 +112,7 @@ loop it in generator {
 }
 ```
 
-This will use the same number of instructions as C++ comparing iterators per iteration, but the iterator itself is a
-coroutine state machine. The generator internals are managed in raw LLVM IR, so the `!!` exhaustion check will hook into
-the IR state tracker. Instead of checking whether two pointers are equal, the state of the coroutine is checked to see
-if it is exhausted (a flag will be set).
+This uses the same number of instructions as the C++ iterator comparison per iteration, but the iterator itself is a
+coroutine state machine. Raw LLVM IR manages the generator internals, so the `!!` exhaustion check hooks into the IR
+state tracker. Rather than comparing two pointers, the check reads the state of the coroutine to see whether a flag
+marks it exhausted.

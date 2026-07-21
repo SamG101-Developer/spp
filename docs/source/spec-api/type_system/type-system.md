@@ -1,55 +1,46 @@
-# Type System
+# Type system
 
-S++ uses a static, strong type system. At any point in the program, the type of every variable is known, and no implicit
-casting can occur. S++ uses a range of features within its type system to maximize expressiveness and flexibility, whilst
-still only providing one way to achieve each task. The following is a brief overview of each of the features that forms
-the S++ type system:
+S++ uses a static, strong type system. At any point in the program, the compiler knows every variable's type, and no
+implicit casting occurs. The type system draws on a range of features to maximize expressiveness and flexibility, while
+still providing one way to achieve each task. A brief overview of the features that form the S++ type system:
 
-- **First-class types**: All types in S++ are first-class. This means that their behaviour is consistent in all forms,
-  including typically primitive types like booleans, numbers, void, arrays, tuples and functions. LLVM optimizes them
-  down to the specially known types, but for all purposes within S++, all types behave the same.
+- **First-class types**: All types in S++ are first-class, so they behave consistently in all forms, including the types
+  that other languages treat as primitive: booleans, numbers, void, arrays, tuples and functions. LLVM optimizes them
+  down to its own known types, but within S++ every type behaves the same.
 
+- **Type inference**: S++ has powerful type inference. The compiler can fully infer any expression, which makes type
+  hints on `let` statements redundant unless the code uses variant types. Type hints remain necessary in three places:
+  function parameters and return types, which form the function signature; uninitialized `let` statements, where
+  nothing else gives the type; and class attributes.
 
-- **Type inference**: S++ has incredibly powerful type inference; any expression can be fully type inferred, such that
-  type hints on `let` statements are completely useless, unless variant types are being used. Type hints are only
-  required for function parameters / return type (for form function signatures), uninitialized `let` statements (what
-  type will the value be?) and class attributes.
+- **Variant types**: S++ uses variants as first-class union types, with no syntactic wrapping. For example, the STL
+  defines the optional type as `type Opt[T] = Some[T] or None`. Type checking matches variant types to their inner
+  types, when the inner type sits on the right-hand side.
 
+- **Flow typing**: Pattern destructuring of variant types gives flow typing. For example, destructuring a variable of
+  type `Opt[T]` as the `Some[T]` variant flow types the variable to `Some[T]` within the scope of that pattern, and the
+  destructure exposes the inner variable directly.
 
-- **Variant types**: S++ uses variants as first-class union types, using no syntactic wrapping. For example, the STL
-  defined the optional type as `type Opt[T] = Some[T] or None`. Type checking will match variant types to their inner
-  types (when the inner type is on the right-hand-side).
+- **Generic types**: Functions, classes, type aliases and superimpositions all accept required, optional and variadic
+  generic types. The compiler monomorphizes generics at compile time, and infers generics for function calls and object
+  initialisations.
 
+- **Custom types**: A class definition lists the fields of the type, and the uniform default initialisation syntax
+  instantiates it. A class has a name, and optionally generics and fields.
 
-- **Flow typing**: Pattern destructuring of variant types allows for flow typing. For example, if a variable of type
-  `Opt[T]` is destructured as the `Some[T]` variant, then within the scope of that pattern, the variable will be flow
-  typed to `Some[T]`, with the inner variable directly accessible via the destructure.
+- **Superimposition**: The `sup` block implements behaviour on a type, whether that means attaching functions, aliases
+  and constants, or extending an existing type. It comes in two variants: `sup MyType { ... }` and
+  `sup MyType ext OtherType`. The superimposition section describes them in more detail.
 
+- **Type forwarding**: Lets one type stand in for another without inheritance, in the same way as Rust's `Deref` family
+  of types. `Str` can act as `StrView`, for example, and use its methods, while the value never takes the `StrView`
+  format.
 
-- **Generic types**: Required, optional and variadic generic types are supported for function, classes, type-aliases and
-  superimpositions. Generics are monomorphized at compile time. Generic inference for function calls and object
-  initializations are also supported.
+## "Non-primitive" types
 
-
-- **Custom types**: Classes can be defined, listing the fields of the type. The type is instantiated using the uniform
-  default initialization syntax. Classes have a name, optionally generics, and optionally fields.
-
-
-- **Superimposition**: To implement behaviour on a type, whether this is attaching functions/aliases/constant, or
-  extending another existing type, the `sup` block is used. There are 2 variants: `sup MyType { ... }` and
-  `sup MyType ext OtherType`. The superimposition section describes these in more detail.
-
-
-- **Type Forwarding**: Allow for a type to be interpreted as another type without using inheritance, in the same way
-  that Rust's "Deref" family of types work. This allows `Str` to be interpreted as `StrView` for example, using the
-  method without ever actually being stored in the `StrView` format.
-
-## "Non-Primitive" Types
-
-The typically primitive types in programming languages are declared as classes with standard method, which the compiler
-substitutes raw llvm in for, directed by the `!compiler_builtin` annotation. This allows for the types to be used in a
-consistent way with all other types, whilst still being optimized down to the raw llvm types. The following types are
-the "non-primitive" types in S++:
+S++ declares the types that other languages treat as primitive as classes with ordinary methods, and the compiler
+substitutes raw LLVM for those methods under the direction of the `!compiler_builtin` annotation. The types then behave
+consistently with every other type, and still optimize down to the raw LLVM types. S++ has these "non-primitive" types:
 
 - `std::boolean::Bool` - standard boolean type, with values `true` and `false`.
 - `std::number::U8` - unsigned 8-bit integer type
@@ -71,5 +62,5 @@ the "non-primitive" types in S++:
 - `std::number::S256` - signed 256-bit integer type
 - `std::number::USize` - unsigned integer type with the same number of bits as the target platform's pointer size
 - `std::number::SSize` - signed integer type with the same number of bits as the target platform's pointer size
-- `std::array::Arr[T, n, A]` - fixed-size array type, where `T` is the element type and `N` is the number of elements
+- `std::array::Arr[T, n, A]` - fixed-size array type, where `T` is the element type and `n` is the number of elements
 - `std::tuple::Tup[..Ts]` - tuple type, where `Ts` is a variadic list of element types

@@ -7,5 +7,5 @@ Introduction
    introduction
    installation
    hello-world
-   project-struture
+   project-structure
    tooling

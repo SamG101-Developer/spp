@@ -1,12 +1,16 @@
 name: setup-toolchain
+description: "Install the full build toolchain for the current runner: compiler, CMake, Ninja, compiler cache and the project's dependencies."
 
 inputs:
   compiler:
+    description: "Compiler family to install: gcc, clang, msvc or clang-cl."
     required: true
   version:
+    description: "Major version of the compiler; empty means the runner default."
     required: false
     default: ""
   cache-key-suffix:
+    description: "Extra text folded into the compiler-cache key, to keep variants (e.g. sanitizer builds) from sharing a cache."
     required: false
     default: ""
 

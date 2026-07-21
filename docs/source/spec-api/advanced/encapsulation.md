@@ -1,54 +1,46 @@
 # Encapsulation
 
-S++ follows fairly traditional encapsulation techniques, using access modifiers, but defined with annotations rather
-than new keyword. should the behaviour or parameterization of these access modifiers change in the future, then the
-function definitions for the annotations can change, rather than having to update the entire keyword system.
+S++ follows traditional encapsulation techniques, using access modifiers defined with annotations rather than with new
+keywords. Should the behaviour or parameterization of these access modifiers change in the future, the function
+definitions for the annotations can change, instead of the whole keyword system.
 
-There are two different areas where access modifiers can be used.
+Access modifiers apply in two different areas.
 
 - The **module** scope: classes, functions, type aliases, cmp definitions.
 - The **class/superimposition** scopes: methods and attributes.
 
-## Module Scopes
+## Module scopes
 
-- **Private**: A private module member can only be accessed from the same module as the member is defined in. Any module
-  member marked as `!private` in the module `std/string.spp`, can be accessed from any code within `std/string.spp`, but
-  not from any other module. As modules are tied to the filesystem, it means that only code within the same file can
-  access private members.
+- **Private**: Only the module that defines a private module member can access it. Any code within `std/string.spp` can
+  reach a member marked `!private` in that module, and no other module can. Modules tie to the file system, so only
+  code within the same file can access private members.
 
+- **Protected**: The defining module and any child modules can access a protected module member. Child modules live in
+  a folder sharing the name of the target module. The **[child modules](../modules/modules.md#child-modules)** section
+  covers child module definitions. In short, any code inside `std/string/impl.spp` can access protected members of
+  `std/string.spp`.
 
-- **Protected**: A protected module member can be accessed from the same module as the member is defined in, and any
-  child modules. Child modules are within a folder sharing the same name as the target module. See the section on
-  **[child modules](../modules/modules.md#child-modules)** for more information on child module definitions. In short,
-  any code defined inside `std/string/impl.spp` can access protected members of `std/string.spp`.
+- **Package**: A package module member is public within the package and invisible outside it. It works like Rust's
+  `pub(crate)`, or C#'s `internal`. Any module within the defining package can access it, and no module outside the
+  package can.
 
+- **Public**: Any module can access a public module member. Code in any module in any package can reach public members
+  of any other module, with no restrictions.
 
-- **Package**: A package module member is public to the package, but not outside of the package. It works, semantically,
-  like Rusts's `pub(crate)`, or C#'s `internal`. A package module member can be accessed from any module within the same
-  package as the member is defined in, but not from any module outside of the package.
+## Class and superimposition scopes
 
+These access modifier rules are more involved, because a superimposition can sit outside the file that contains the
+class definition. To keep the access modifier control meaningful, the restrictions stay tight. Class members go by the
+name fields, and superimposition members are methods, type aliases, or cmp definitions.
 
-- **Public**: A public module member can be accessed from any module. Any code in any module in any package can access
-  public members of any other module. There are no restrictions on the access of public members.
+- **Private**: Only the defining class can access a private class member, and only from the module that defines the
+  enclosing class.
 
-## Class/Superimposition Scopes
+- **Protected**: The defining class can access a protected class member from the same module, and so can any subtype,
+  from the module that defines that subtype.
 
-These access modifier rules are slightly more complicated, because superimpositions can be done externally to the file
-containing the class definition of the module. To make the access modifier control meaningful, the restrictions are
-fairly tight. Class members are defined as "fields", and superimposition members are either "methods", "type aliases",
-or "cmp definitions".
+- **Package**: Any class, in any module, can access a package class member, as long as the module belongs to the same
+  package as the definition. This matches Rust's `pub(crate)`, or C#'s `internal`.
 
-- **Private**: A private class member can only be accessed from the same class as the member is defined in, in the same
-  module as the module that the enclosing class is defined in.
-
-
-- **Protected**: A protected class member can be accessed either from the same class the member is defined in, in the
-  same module, or from any subtypes, in the same module that the subtype was defined in.
-
-
-- **Package**: A package class member can be accessed form any class, in any module, so long as the module belongs to
-  the same package as the definition location. This is the same as Rust's `pub(crate)`, or C#'s `internal`.
-
-
-- **Public**: A public class member can be accessed from any module, and any type. There are no restrictions on the
-  access of public members. Even modules in different packages will be able to access public members of a class.
+- **Public**: Any module and any type can access a public class member, with no restrictions. Even modules in different
+  packages can access the public members of a class.

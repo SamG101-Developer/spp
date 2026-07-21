@@ -1,10 +1,10 @@
 # Annotations
 
-Annotations are similar to Python's decorators, or Rust's attributes. They are a way to attach metadata or behaviour to
-a construct, such as a function, class, or class field for example. Attributes are defined as functions, and have a
-specific context type which provides functionality.
+Annotations resemble Python's decorators, or Rust's attributes. They attach metadata or behaviour to a construct, such
+as a function, a class, or a class field. Annotations take the form of functions, and carry a specific context type that
+provides the behaviour.
 
-There are several annotations defined in the standard library, in `annotations.spp`, including:
+The standard library defines these annotations in `annotations.spp`, among others:
 
 ```s++
 
@@ -24,30 +24,30 @@ cmp fun compiler_builtin() -> Void { }
 cmp fun public() -> Void { }
 ```
 
-## Defining an Annotation
+## Defining an annotation
 
-To define an annotation, the `!annotation` attribute must be used. It is included in the prelude, so it is always
-available. The `target` parameter specifies the context type of the annotation, which determines where the annotation
-can be applied. The function must return `Void`, and can have any parameters.
+Defining an annotation requires the `!annotation` attribute. The prelude includes it, so it's always available. The
+`target` parameter gives the annotation's context type, which determines where the annotation can apply. The
+function must return `Void`, and takes any parameters.
 
-Not only must an annotation be a function, it must be a compile-time function. This allows for the state changes to be
-known at compile time, which is necessary for the compiler to be able to use the annotation for code generation and
-other purposes. The `cmp` keyword can be used to define a compile-time function.
+An annotation must be a function, and specifically a compile-time function. That keeps the state changes known at
+compile time, which the compiler needs before it can use the annotation for code generation and other purposes. The
+`cmp` keyword defines a compile-time function.
 
-## Annotation Targets
+## Annotation targets
 
-The following targets are available for annotations:
+Annotations can use the following targets:
 
-| Target                   | Description                                                    |
-|--------------------------|----------------------------------------------------------------|
-| `Annotation::function`   | The annotation can be applied to free functions.               |
-| `Annotation::method`     | The annotation can be applied to methods in a `sup` block.     |
-| `Annotation::ext_method` | The annotation can be applied to methods in a `sup-ext` block. |
-| `Annotation::class`      | The annotation can be applied to classes.                      |
-| `Annotation::new_type`   | The annotation can be applied to type statement aliases.       |
-| `Annotation::constant`   | The annotation can be applied to cmp constant declarations.    |
+| Target                   | Description                                     |
+|--------------------------|-------------------------------------------------|
+| `Annotation::function`   | Applies to free functions.                      |
+| `Annotation::method`     | Applies to methods in a `sup` block.            |
+| `Annotation::ext_method` | Applies to methods in a `sup-ext` block.        |
+| `Annotation::class`      | Applies to classes.                             |
+| `Annotation::new_type`   | Applies to type statement aliases.              |
+| `Annotation::constant`   | Applies to cmp constant declarations.           |
 
-There are also some combined targets available:
+Some combined targets also exist:
 
 ```s++
 cmp all: S32 = Self::function | Self::method | Self::ext_method | Self::class | Self::new_type | Self::constant

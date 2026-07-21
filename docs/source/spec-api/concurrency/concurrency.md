@@ -1,66 +1,65 @@
 # Concurrency
 
-S++ uses coroutines as the primary concurrency mechanism. They can be suspended and resumed, and support bidirectional
-data flow between the caller and the coroutine. They are defined in the same way as a function or method, but they
-require the `cor` keyword rather than `fun`.
+S++ uses coroutines as the primary concurrency mechanism. A coroutine can suspend and resume, and supports
+bidirectional data flow between the caller and the coroutine. Coroutines look the same as a function or method, except
+that they require the `cor` keyword rather than `fun`.
 
-Coroutine return types are constrained to generators, as explored below. Typically, there will be any number of `gen`
-expressions inside the coroutine, to generate or yield values to the caller. Assigning a value from the `gen` expression
-allows for sending data back into the coroutine on resuming.
+Coroutine return types must be generators, as explored below. A coroutine typically contains any number of `gen`
+expressions, which generate or yield values to the caller. Assigning a value from the `gen` expression sends data back
+into the coroutine on resumption.
 
-An important distinction is that coroutines are baked into control flow, rather than the type system purely. This means
-whilst the multiplicity, optionality and fallibility of a coroutine is depicted in the type system, the actual
-destructuring of a yielded value requires a specific block, designated for coroutines. This is because of second class
-borrows; for example, `Opt[&T]` cannot exist as a type, because this requires `Some[&T]`, which requires a borrow type
-attribute, invalidating the second class borrow rules. The `iter` block is explored in this [**section**]().
+One important distinction: coroutines live in control flow, not purely in the type system. The type system still
+captures the multiplicity, optionality, and fallibility of a coroutine, but destructuring a yielded value requires a
+block designated for coroutines. Second-class borrows force this. For example, `Opt[&T]` can't exist as a type, because
+it requires `Some[&T]`, which requires a borrow type attribute and breaks the second-class borrow rules. The
+[**section**]() below covers the `iter` block.
 
-## Coroutine Return Types
+## Coroutine return types
 
-There are four possible coroutine return types in S++:
+S++ has four possible coroutine return types:
 
 - `Gen[Yield, Send=Void]`
 - `GenOnce[Yield, Send=Void]`
 - `GenOpt[Yield, Send=Void]`
 - `GenRes[Yield, Err, Send=Void]`
 
-The standard generator type, `Gen`, will only ever yield into 2 different states: yielding a value of type `Yield`, or
-being exhausted with no more values. Every value yielded from a `Gen` coroutine is safely assumed to be valid, existing,
-and inferred as the `Yield` type. The `iter` block can match on value and exhaustion.
+The standard generator type, `Gen`, only ever reaches two states: it yields a value of type `Yield`, or it becomes
+exhausted with no more values. Every value that a `Gen` coroutine yields is valid and present, and takes the `Yield`
+type. The `iter` block can match on value and exhaustion.
 
-The `GenOnce` type is used when the coroutine is designed to yield a single value, and then be exhausted. This is useful
-for things like indexing a value in a vector. Calling `.res()` on a `GenOnce` coroutine will yield a value and
-auto-unwrap it into the inner value. `GenOpt` and `GenRes` can't be one hit due to their no-value or error states
-requiring consideration. If the one-hit generator is exhausted immediately, it will panic.
+The `GenOnce` type suits a coroutine that yields a single value and then becomes exhausted, such as indexing a value in
+a vector. Calling `.res()` on a `GenOnce` coroutine yields a value and auto-unwraps it into the inner value. `GenOpt`
+and `GenRes` can't be one-hit, because their no-value and error states need handling. A one-hit generator that starts
+out exhausted panics.
 
-The `GenOpt` type is used when the coroutine might yield a "no-value". This is seen when "getting" an element from a
-vector, as the bounds check might fail, and a "no-value" should be signified. A value yielded from a `GenOpt` coroutine
-can be assumed to be either a value of type `Yield`, or a "no-value" (which is represented as `Void` in the typesystem).
-The `iter` block can match on value, "no-value", and exhaustion.
+The `GenOpt` type suits a coroutine that might yield a "no-value" state. Getting an element from a vector works this
+way, because the bounds check might fail and needs to signal a "no-value" result. A value from a `GenOpt` coroutine is
+either a value of type `Yield` or a "no-value" state, which the type system represents as `Void`. The `iter` block can
+match on the value state, the "no-value" state, and exhaustion.
 
-Finally, the `GenRes` type is used when the coroutine might yield a value of type `Yield`, or an error of type `Err`.
-This is used for fallible generators, where the result can be either a value or an error. A value yielded from a
-`GenRes` coroutine can be assumed to be either a value of type `Yield`, or an error of type `Err`. The `iter` block can
-match on value, error and exhaustion.
+The `GenRes` type suits a coroutine that might yield a value of type `Yield`, or an error of type `Err`. Fallible
+generators use it, where the result is either a value or an error. A value from a `GenRes` coroutine is either a value
+of type `Yield` or an error of type `Err`. The `iter` block can match on value, error and exhaustion.
 
-The `Yield` generic parameter's corresponding argument determines the type of value being yielded from the coroutine.
-Whilst this is inferable, a design decision was taken to mark it explicitly in the return type, in the same way that a
-subroutine's return type must always be explicitly given, despite is being inferable from `ret` statements.
+The argument for the `Yield` generic parameter determines what the coroutine yields. The compiler could infer this, but
+S++ marks it explicitly in the return type, in the same way that a subroutine's return type always appears explicitly,
+despite being inferable from `ret` statements.
 
-A convention can be applied to the generic argument for the `Yield` parameter. Because borrows can be yielded from
-coroutines, the yielding convention must match the convention of the `Yield` argument. For example, if the gen
-expressions look like `gen &mut 123`, then the generator type would be `Gen[&mut S32]`. This allows for the full
-convention and type knowledge of the generated values to be accessible from the function signature alone.
+The generic argument for the `Yield` parameter can carry a convention. Coroutines can yield borrows, so the yielding
+convention must match the convention of the `Yield` argument. For example, `gen` expressions such as `gen &mut 123`
+give the generator type `Gen[&mut S32]`. The function signature alone conveys both the convention and the yielded
+type.
 
-The `Send` generic parameter represents the type being sent back to the coroutine. This defaults to `Void`, disallowing
-data to be sent back (cannot have a `Void` variable), but can be set to any type. Only owned objects can be sent back
-into a coroutine. Note that having `Void` as the parameter type causes it to be removed, so the `.res()` method will
-take no arguments, producing an argument free `.send()` internal call.
+The `Send` generic parameter names what the caller sends back into the coroutine. It defaults to `Void`, which
+forbids sending anything back, because no variable can hold `Void`, but it accepts any type. Only owned objects can go
+back into a coroutine. A `Void` parameter type disappears from the signature, so `.res()` takes no arguments and
+produces an argument-free internal `.send()` call.
 
-## Advancing a Generator
+## Advancing a generator
 
-A generator is advanced by using the `.res()` method. As this requires a special compiler intrinsic, `res` is a callable
-postfix keyword, rather than a method alone. Internally, this calls the private `.send()` method on the generator,
-passing in any data if the `Send` type is not `Void`.
+The `.res()` method advances a generator. This needs a compiler intrinsic, so `res` is a callable postfix keyword
+rather than a plain method. Internally it calls the private `.send()` method on the generator, passing in data when the
+`Send` type isn't `Void`.
 
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
@@ -77,11 +76,11 @@ fun main() -> Void {
 }
 ```
 
-## Passing Data Out of a Coroutine
+## Passing data out of a coroutine
 
-As seen above, data is passed out of a coroutine using the `gen` expression, including an optional convention. Allowing
-borrows to be yielded from coroutines is the basis for iteration, as it allows elements of a vector, for example, to be
-borrowed and used in the caller.
+As shown in the preceding section, the `gen` expression passes data out of a coroutine, with an optional convention.
+Yielding borrows from coroutines forms the basis for iteration: it lets the caller borrow and use elements of a vector,
+for example.
 
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
@@ -91,18 +90,17 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
 }
 ```
 
-## Invalidating Borrows
+## Invalidating borrows
 
-Yielded borrowed belong to the generator they are yielded from (the **yielder** context). Like function arguments coming
-_into_ a function, the law of exclusivity is applied to yields, to prevent accessing multiple mutable parts of a
-generator, which could be overlapping. So a mutably borrowed yield will invalidate the previous mutably borrowed yield
-in the **receiver** context.
+Yielded borrows belong to the generator that yields them, the **yielder** context. As with function arguments coming
+_into_ a function, the law of exclusivity applies to yields, which prevents access to more than one mutable part of a
+generator where those parts might overlap. A mutably borrowed yield invalidates the previous mutably borrowed yield in
+the **receiver** context.
 
-Immutable borrows are always owned by the yielder, where-as mutable borrows' ownership is temporarily transferred to the
-receiver (standard borrow semantics). Therefore, each consecutive mutable yield will invalidate the previous one in the
-receiver, and relinquish ownership back to the yielder, making the symbol available again in the yielder. Immutable
-borrows don't invalidate each other in the receiver, so they remain pinned in the yielder until the end of the
-coroutine.
+The yielder always owns immutable borrows, whereas ownership of mutable borrows transfers temporarily to the receiver,
+following standard borrow semantics. Each consecutive mutable yield invalidates the previous one in the receiver and
+hands ownership back to the yielder, which makes the symbol available in the yielder again. Immutable borrows don't
+invalidate each other in the receiver, so they stay pinned in the yielder until the end of the coroutine.
 
 ---
 
@@ -125,9 +123,9 @@ fun main() -> Void {
 }
 ```
 
-With immutable borrows, multiple yielded values can be taken and all remain valid, as they cannot be used to mutate the
-underlying data, and so overlaps are fine; there will never be a conflict with mutability. In the "yielder" context,
-these values are pinned, so they cannot be consumed in the yielder whilst being borrowed in the receiver.
+With immutable borrows, the receiver can take many yielded values and every one stays valid. None of them can mutate
+the underlying data, so overlaps are harmless and no mutability conflict can arise. In the yielder context these values
+stay pinned, so the yielder can't consume them while the receiver borrows them.
 
 ---
 
@@ -151,22 +149,22 @@ fun main() -> Void {
 }
 ```
 
-For mutable borrows, there is a stricter invalidation policy. Yielding a mutable borrow invalidates the previous mutable
-borrow that was yielded, otherwise there is no guarantee that there isn't an overlap in data being yielded. There is an
-alternative model, to check all yields in the yielder are non-overlapping, and then the receiver will never have to
-invalidate previous yields, but this would prevent the same object being yielded twice from the yielder, which is a
-common use-case. However, because control is regained per yield in the yielder, it is known that the object is singly
-owned in the coroutine, meaning yielded symbols are only pinned until the following yield.
+Mutable borrows follow a stricter invalidation policy. Yielding a mutable borrow invalidates the last yielded
+mutable borrow, because nothing else guarantees that the yielded data doesn't overlap. An alternative model would check
+that all yields in the yielder are non-overlapping, and the receiver would then never invalidate previous yields, but
+that model would stop the yielder from yielding the same object twice, which is a common use case. Because the yielder
+regains control at each yield, the coroutine holds the object as singly owned, so yielded symbols stay pinned only
+until the following yield.
 
-## Passing Data Into a Coroutine
+## Passing data into a coroutine
 
-The `.res()` method takes a single argument, whose type matches the `Send` generic parameter of the generator (coroutine
-return type). Because substituting `Void` as a generic parameter causes function parameters of that type to be removed
-from the signature, `.res()` can be used for th default `Send=Void` generic parameter.
+The `.res()` method takes a single argument, whose type matches the `Send` generic parameter of the generator, meaning
+the coroutine return type. Substituting `Void` as a generic parameter removes function parameters of that type from
+the signature, so plain `.res()` works for the default `Send=Void` generic parameter.
 
-Values are received by placing the `gen` expression on the right-hand-side of a variable definition statement. Variables
-are always moved into a coroutine, not borrowed. This means that receiving a second value into the coroutine doesn't
-invalidate the first one.
+A coroutine receives values by placing the `gen` expression on the right-hand side of a variable definition statement.
+Variables always move into a coroutine rather than borrowing, so receiving a second value into the coroutine doesn't
+invalidate the first.
 
 ```S++
 cor coroutine() -> Gen[Yield=S32, Send=S32] {
@@ -185,37 +183,34 @@ fun main() -> Void {
 }
 ```
 
-## Borrowing Data Into a Coroutine
+## Borrowing data into a coroutine
 
-A problem is presented when trying to use borrows with coroutines; a borrow could be passed into a coroutine, the
-coroutine suspends, the owned object in the caller context is consumed, and the borrow is subsequently used in the
-coroutine. To prevent this, memory pinning is used.
+Borrows with coroutines raise a problem. A borrow passes into a coroutine, the coroutine suspends, the caller context
+consumes the owned object, and the coroutine then uses the borrow. Memory pinning prevents this.
 
-All borrows into a coroutine are automatically pinned. This prevents them from being consumed in the caller context,
-until they are manually released. Releasing a pin will invalidate any object relying on the pin. Therefore, if a
-coroutine received a borrow, and the memory of that borrow is released, the coroutine is marked as consumed and is
-non-usable.
+Every borrow into a coroutine gets pinned automatically. Pinning stops the caller context from consuming the borrow
+until something releases the pin manually. Releasing a pin invalidates any object that relies on it, so when a coroutine
+has received a borrow and the memory behind that borrow gets released, the coroutine becomes consumed and unusable.
 
-## Chaining Coroutines
+## Chaining coroutines
 
-Coroutine chaining allows a coroutine to yield the entirety of another coroutine in a one-line expression; without a
-loop. This is identical to Pythons `yield from` statement. In S++, `gen with` is used, to generate values with another
-coroutine.
+Coroutine chaining lets a coroutine yield the entirety of another coroutine in a one-line expression, with no loop. This
+matches Python's `yield from` statement. S++ spells it `gen with`, which generates values with another coroutine.
 
-The following example shows equivalent code using a loop and coroutine chaining:
+The following example shows the same code written with a loop and with coroutine chaining:
 
 ```S++
 cor coroutine() -> Gen[Yield = S32] {
-gen 1
-gen 2
-gen 3
+    gen 1
+    gen 2
+    gen 3
 }
 
 cor coroutine_chain() -> Gen[Yield = S32] {
-gen 0
-for i in coroutine() {
-gen i
-}
+    gen 0
+    for i in coroutine() {
+        gen i
+    }
 }
 ```
 
@@ -232,24 +227,24 @@ cor coroutine_chain() -> Gen[Yield=S32] {
 }
 ```
 
-## The `GenOnce` type.
+## The `GenOnce` type
 
-The generator types `Gen`, `GenOpt` and `GenRes` all create wrapper `GeneratedXXX` types, that may contain the yielded
-value, and can be inspected in the `iter` block, as mentioned earlier. However, methods like `.index_ref()`, where there
-will only be one value yielded, which may be a borrow, and would always require an `iter` block matching on a present
-value, cause inconvenience. Therefore, the `GenOnce` type exists to allow for a single value to be yielded and
-automatically unwrapped. Automatic unwrapping also bypasses the need for `.res()`. Without and with `GenOnce`:
+The generator types `Gen`, `GenOpt` and `GenRes` all create wrapper `GeneratedXXX` types, which may contain the yielded
+value, and which the `iter` block can inspect, as described earlier. Methods like `.index_ref()` yield exactly one
+value, possibly a borrow, and would always need an `iter` block matching on a present value, which is inconvenient. The
+`GenOnce` type exists for that case: it yields a single value and unwraps it automatically. Automatic unwrapping also
+removes the need for `.res()`. Without and with `GenOnce`:
 
 ```S++
 cor get_value() -> GenOnce[Yield = &S32] {
-gen 42
+    gen 42
 }
 
 fun main() -> Void {
-let val: &Str
-iter t = get_value().res() of {
-val { val }
-}
+    let val: &Str
+    iter t = get_value().res() of {
+        val { val }
+    }
 }
 ```
 
@@ -263,8 +258,8 @@ fun main() -> Void {
 }
 ```
 
-In order to make this compatible with the memory model, the pinning is based not just off the generator (ie directly
-left of `.res()`), but the entire expression the generator is part of. This means that the following code is valid:
+To keep this compatible with the memory model, pinning covers not just the generator, meaning whatever sits directly
+left of `.res()`, but the entire expression containing the generator. The following code shows the effect:
 
 ```S++
 cls MyType { }
