@@ -20,7 +20,7 @@ names are checked for by the compiler, but are not required to be ran.
 
 ## The `src` folder
 
-The `src` folder contains the code fo the program. The `main.spp` file is the entry point of the program, and must
+The `src` folder contains the code of the program. The `main.spp` file is the entry point of the program, and must
 contain the `main` method. The sibling folder to `main.spp`, which must be the name of the project, contains the source
 code for the project. This is where all the modules and source files for the project must be placed.
 

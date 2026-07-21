@@ -21,12 +21,12 @@ There are three key techniques that are used to ensure memory safety in S++:
 1. **Ownership tracking**: This tracks the ownership (initialization state) of objects, and at any given line of the
    program, the compiler knows if a symbol is holding an initialized, partially initialized, or uninitialized value.
    This is used to prevent use after free, and double free errors. There are a number of restrictions on the usage of
-   unitialized and partially initialized values, such as they cannot be used in expressions, or passed to functions,
+   uninitialized and partially initialized values, such as they cannot be used in expressions, or passed to functions,
    until they are fully initialized.
 
 
 2. **Second-class borrows**: Objects can be borrowed immutable or mutable, without moving the object (ie without
-   changint the ownership). This allows a value to be temporarily shared into another function, modified or just read
+   changing the ownership). This allows a value to be temporarily shared into another function, modified or just read
    from, and then used after the function call has finished executing. Second class borrows enforce **where** a borrow
    can be made from: either ata function call site, or a generator yield point. This simplifies lifetime management.
 
@@ -48,11 +48,11 @@ Ownership tracking is a concept in the S++ memory model that monitors every oper
 with the symbol table to track the ownership state of every individual variable in the program. By knowing the
 initialization state of every symbol, the program can, at compile time, enforce restructions on certain operations. For
 example, borrowing a partially initialized value is prohibited, as is using a value or its fields after it has moved to
-the unitinialized state. This mitigates common memory errors such as:
+the uninitialized state. This mitigates common memory errors such as:
 
 - **Use-after-free**: This occurs when a program continues to use a value after the memory it points to has been
   deallocated. Ownership tracking prevents this by ensuring that once a value goes out of scope and is deallocated, or
-  is moved in another operation, thar further uses of the value prior to reinitialization are prohibited.
+  is moved in another operation, than further uses of the value prior to reinitialization are prohibited.
 
 
 - **Double free**: This occurs when a program attempts to deallocate the same memory more than once. The "scope-bound
@@ -70,8 +70,8 @@ of moved, meaning that both the original and new variable remain initialized and
 is identical to the behaviour Rust's `Copy` trait.
 
 In S++, the `Copy` type must be superimposed over the target type. This is seen for numbers, booleans, the string view
-type and some other in the STL. Due to specialization, we can also specialse optionals to be copyable, if and only if
-their inner type is also copyable. This applies to vectors and arrays, etc. The following exmaple shows making a normal
+type and some other in the STL. Due to specialization, we can also specialise optionals to be copyable, if and only if
+their inner type is also copyable. This applies to vectors and arrays, etc. The following example shows making a normal
 type copyable.
 
 ```s++
@@ -112,14 +112,14 @@ value is transferred to the new variable, and the original variable is left in a
 borrow arguments, but with no borrow operator, the value is moved.
 
 There is a way to make types copyable, which is explored further down in the section on copyable types, but for
-non-copyable types, move semantics are used by default. In the following example, the variable `x` is decalred by the
+non-copyable types, move semantics are used by default. In the following example, the variable `x` is declared by the
 `let` statement, and is initialized with the string `"hello world"`. The `Str` type is non-copyable, so move semantics
 are used. This matches Rust's string type ownership semantics.
 
-Following the declaration of `x` with the `Str` type, the subseqeuent assignment into the variable `y` moves the value
-of `x` into `y`, leaving `x` in an uninitialized state. Any further use of `x`, such as the `print` function call, will
+Following the declaration of `x` with the `Str` type, the subsequent assignment into the variable `y` moves the value of
+`x` into `y`, leaving `x` in an uninitialized state. Any further use of `x`, such as the `print` function call, will
 cause a compile time error, as the compiler knows that `x` is uninitialized at this point, and prevents its use. The
-only operation valie for `x` is on the left-hand-side of an assignment operation, or a variable redeclaration.
+only operation value for `x` is on the left-hand-side of an assignment operation, or a variable redeclaration.
 
 ```s++
 fun main() -> Void {
@@ -137,7 +137,7 @@ operations can be done on this value. For example, it cannot be moved, borrowed 
 moved from again.
 
 Partial moves can not be taken from borrowed objects even mutably borrowed objects. This is effectively the inverse of
-not being able to borrow from partially initialized memory. This guarantees that a borow will always be compeltely
+not being able to borrow from partially initialized memory. This guarantees that a borrow will always be completely
 initialized, and also forces partial moves to be bound to a single scope, and never cross boundaries. Tis heavily
 simplifies ownership tracking.
 
@@ -161,26 +161,26 @@ fun main() -> Void {
 ```
 
 Note that copying vs moving semantics also apply to partial moves. If an attribute is copyable, then it will be copied
-from the object, not moved off of it, leabing the object in the fully initialized state (provided it started in the
+from the object, not moved off of it, levbing the object in the fully initialized state (provided it started in the
 fully initialised state).
 
 ### Uninitialised Values
 
-When a value is unitialized, it is modelled as if it has no location in memory, which semantically is true. Therefore,
+When a value is uninitialized, it is modelled as if it has no location in memory, which semantically is true. Therefore,
 even setting attributes to an uninitlized variable, with the idea of making is partially initialized, is invalid. This
 is because the variable doesn't have a memory location, so it can't have fields.
 
 However, there is a quirk where moving all attributes off an object by partially moving, leaves the value in the
-partially-intiialized state; This is ebcause the object still has a poitner in memory, it just has no fields on it. This
+partially-initialized state; This is because the object still has a pointer in memory, it just has no fields on it. This
 follows the memory model, as its _contents_ have been moved, not the object itself.
 
-To use a variable that has been uninitialized or moved from, it must be intiialized via assignment, or redeclared with a
-`let` statemnt and a value.
+To use a variable that has been uninitialized or moved from, it must be initialized via assignment, or redeclared with a
+`let` statement and a value.
 
 ### TLDR Moving Rules
 
 1. **Moves**: A value is moved out of a variable when its type doesn't superimpose `Copy`, and it is used as an
-   assignment value, move-conention function argument, object initialization argument, move-convention yield, or a
+   assignment value, move-convention function argument, object initialization argument, move-convention yield, or a
    return value. Moving a value leaves the original variable in an uninitialized state, and the new variable takes
    ownership of the value.
 
@@ -190,7 +190,7 @@ To use a variable that has been uninitialized or moved from, it must be intiiali
    betake from the same object. This places the object in the **partially initialized** state.
 
 
-3. **Uninitialized Variables**: The only operation an uniitinlzied variable can be used in is the left-hand-side of an
+3. **Uninitialized Variables**: The only operation an uninitialized variable can be used in is the left-hand-side of an
    assignment, or a variable redeclaration. This is because an uninitialized variable has no memory location, so it
    can't have fields, and it can't be borrowed from, or moved from again.
 
@@ -229,13 +229,13 @@ section discusses how this is handed.
 ### Yielding Borrows
 
 The iteration model of S++ relies on borrowed being able to be yielded from coroutines, using the generator object. This
-is almost identical to Rust's `gen fn` technique, with the additional capability of being able to specift the return
+is almost identical to Rust's `gen fn` technique, with the additional capability of being able to specify the return
 type (that superimposes the generator type). Safety is enforced due to the fact that control will always return to the
 coroutine; memory pinning rules also handle a lot of yield safety, discussed below.
 
 ### Stacking Borrows
 
-If a borrow is used as a normal move argument, then the borrow becomes uninitilialized after the move:
+If a borrow is used as a normal move argument, then the borrow becomes uninitialized after the move:
 
 ```s++
 fun func(x: &Str) -> Void {
@@ -243,7 +243,7 @@ fun func(x: &Str) -> Void {
 }
 ```
 
-However, borrows can be "stacked" ie by taking a borrow of a borrow, but the type of the symbol automatically coalsesces
+However, borrows can be "stacked" ie by taking a borrow of a borrow, but the type of the symbol automatically coalesces
 to a single borrow. For example:
 
 ```s++
@@ -254,15 +254,15 @@ fun func(x: &Str) -> Void {
 }
 ```
 
-Reguarding mutability, a mutable borrow can either be taken mutable or immutably into an inner function, but an
-immutable borrow can only be reborrowed immutably. This is because a mutable borrow guarantees exclusive access to the
-value, so it can be safely reborrowed as either mutable or immutable. However, an immutable borrow does not guarantee
-exclusive access, so it can only be reborrowed immutably to prevent potential data races.
+Regarding mutability, a mutable borrow can either be taken mutable or immutably into an inner function, but an immutable
+borrow can only be reborrowed immutably. This is because a mutable borrow guarantees exclusive access to the value, so
+it can be safely reborrowed as either mutable or immutable. However, an immutable borrow does not guarantee exclusive
+access, so it can only be reborrowed immutably to prevent potential data races.
 
 ### Mutable Borrows vs Mutable Values
 
 The mutability of a value, and a borrow, can be different, as they provide different semantics. The mutability of a
-borrow referes to the contexnts of the borrow beung mutable or not, where-as the mutabliity of a value, who is borrowed,
+borrow refers to the contexts of the borrow being mutable or not, where-as the mutability of a value, who is borrowed,
 describes whether it can be rebound or not:
 
 | Borrow | Example                        | Value Mutability           | Borrow Mutability      |
@@ -309,11 +309,11 @@ However, `p.x` and `p.y` do not overlap, as they do not share any region of memo
 
 Memory pinning is an important (and largely hidden) part of the S++ memory model, that is used to ensure the validity of
 borrows in asynchronous or coroutine contexts. Borrows passed into asynchronously called function, or coroutines, are
-described as "escpaing borrows". This is because they don't, for definite, live in a smaller frame than the caller.
+described as "escaping borrows". This is because they don't, for definite, live in a smaller frame than the caller.
 Rather, they live in a concurrent frame.
 
 In order to enforce memory rules, "memory pinning" prevents the outer context from using the value that underlies the
-borrow. Scopeing rules that destroy coroutines and futures allow for the borrow to be unlocked.
+borrow. Scoping rules that destroy coroutines and futures allow for the borrow to be unlocked.
 
 ```s++
 cor my_coro(s: &Str) -> Gen[S32] {
@@ -334,6 +334,6 @@ duration of the coroutine, meaning that `s` gets pinned until the end of the sco
 block. This prevents `s` from being moved, partially moved, or mutated, whilst being immutable borrowed by the
 coroutine.
 
-Additionally, because the generatoe `g` contains `s`, `g` is pinned for the same duration as `s`, meaning that `g` also
+Additionally, because the generator `g` contains `s`, `g` is pinned for the same duration as `s`, meaning that `g` also
 cannot be moved or partially moved until the end of the `my_func` function block. This ensures that the generator object
 doesn't secretly propagate the internal borrow out of the scope it was defined in.

@@ -35,11 +35,18 @@ repos:
 #      - id: cmake-lint
 #      - id: cmake-format
 #
-#  - repo: https://github.com/codespell-project/codespell
-#    rev: v2.4.3
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        additional_dependencies: [ tomli ]
+        args:
+          - --ignore-words-list=CreateOr,olt
+
+#  - repo: https://github.com/errata-ai/vale
+#    rev: v3.15.1
 #    hooks:
-#      - id: codespell
-#        additional_dependencies: [ tomli ]
+#      - id: vale
 #
 #  - repo: https://github.com/shellcheck-py/shellcheck-py
 #    rev: v0.11.0.1

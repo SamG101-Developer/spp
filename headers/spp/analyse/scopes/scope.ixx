@@ -109,19 +109,17 @@ public:
     ~Scope();
 
     /**
-     * Create a new global scope for the scope manager. This is called once at the start of
-     * compilation. A global scope has no parent or corresponding ast; it is the root node of all
-     * namespaces. A corresponding namespace symbol is created for the global scope, for uniform
-     * handling of namespaces.
+     * Create a new global scope for the scope manager. This is called once at the start of compilation. A global scope
+     * has no parent or corresponding ast; it is the root node of all namespaces. A corresponding namespace symbol is
+     * created for the global scope, for uniform handling of namespaces.
      * @param mod The "main" module being compiled.
      * @return
      */
     static auto NewGlobal(compiler::Module const &mod) -> Shared<Scope>;
 
     /**
-     * Search all "sup" scopes of an existing scope (this will be a type scope), for a variable
-     * symbol with a name that matches "name". This is used when looking for the a constant defined
-     * with "cmp" within a sup-block of a type.
+     * Search all "sup" scopes of an existing scope (this will be a type scope), for a variable symbol with a name that
+     * matches "name". This is used when looking for the a constant defined with "cmp" within a sup-block of a type.
      * @param scope The starting scope to search from.
      * @param name The name of the variable symbol to search for.
      * @return The found variable symbol, or nullptr if not found.
@@ -129,9 +127,9 @@ public:
     static auto SearchSupScopesForVar(Scope const &scope, Shared<asts::IdentifierAst> const &name) -> Shared<VariableSymbol>;
 
     /**
-     * Search all "sup" scopes of an existing scope (this will be a type scope), for a type
-     * symbol with a name that matches "name". This is used when looking for a type defined with a
-     * "type" statement within a sup-block of a type.
+     * Search all "sup" scopes of an existing scope (this will be a type scope), for a type symbol with a name that
+     * matches "name". This is used when looking for a type defined with a "type" statement within a sup-block of a
+     * type.
      * @param scope The starting scope to search from.
      * @param name The name of the type symbol to search for.
      * @return The found type symbol, or nullptr if not found.
@@ -139,9 +137,9 @@ public:
     static auto SearchSupScopesForType(Scope const &scope, Shared<const asts::TypeAst> const &name) -> Shared<TypeSymbol>;
 
     /**
-     * Given a scope and a fully qualified type, this function moves through the namespace parts of
-     * the type, moving into the next namespace scopes. Finally, it will arrive at the scope for the
-     * innermost (rightmost) namespace part, and the compeltely unqualified type name. For example,
+     * Given a scope and a fully qualified type, this function moves through the namespace parts of the type, moving
+     * into the next namespace scopes. Finally, it will arrive at the scope for the innermost (rightmost) namespace
+     * part, and the completely unqualified type name. For example,
      * @c scope:random_scope and @c string::Str becomes @c scope:string and @c Str.
      * @param scope The starting scope to search from.
      * @param fq_type The fully qualified type to shift the scope for.
@@ -150,10 +148,9 @@ public:
     static auto ShiftForNamespacedType(Scope const &scope, asts::TypeAst const &fq_type) -> Pair<const Scope*, Shared<const asts::TypeIdentifierAst>>;
 
     /**
-     * Get the error formatter associated with this scope. Lots of scopes don't have error
-     * formatters, so if the formatter doesn't exist, the scope's parent's formatter is used,
-     * recursively searching upwards until a module scope is found, which will have an errror
-     * foratter.
+     * Get the error formatter associated with this scope. Lots of scopes don't have error formatters, so if the
+     * formatter doesn't exist, the scope's parent's formatter is used, recursively searching upwards until a module
+     * scope is found, which will have an error formatter.
      * @return The error formatter associated with this scope.
      */
     SPP_ATTR_NODISCARD auto GetErrorFormatter() const -> utils::errors::ErrorFormatter*;

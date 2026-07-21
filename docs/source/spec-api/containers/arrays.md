@@ -18,8 +18,8 @@ For a single element that is repeated, the syntax is `[value; count]`, where `va
 - `[0; 5]` creates an array of 5 integers, all initialized to 0.
 - `["x"; 3]` creates an array of 3 string views, all initialized to "x".
 
-The size must be `cmp` known, meaning that is is known or calculatable at compile time. This means that the size must be
-a constant expression, such as a literal or a const variable.
+The size must be `cmp` known, meaning it is known or calculable at compile time. This means that the size must be a
+constant expression, such as a literal or a const variable.
 
 ## Type Shorthand
 

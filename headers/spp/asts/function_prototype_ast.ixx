@@ -123,7 +123,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
     /**
      * The return type of the function prototype. This is the type that the function will return. This is required, and
-     * is never "inferrable" from the expressions inside the function.
+     * is never "inferable" from the expressions inside the function.
      */
     Shared<TypeAst> ReturnType;
 

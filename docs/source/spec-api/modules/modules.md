@@ -1,7 +1,7 @@
 # Modules
 
 In S++, in order to maximize the simplification of a module system, the following three concepts are tied together into
-teh same thing:
+the same thing:
 
 - Modules
 - Namespaces
@@ -9,7 +9,7 @@ teh same thing:
 
 Therefore, as seen in the stl, `std/string.spp` defines the module `std::string`, also represented by the namespace
 `std::string`, where the type `Str` is located. What this means, is that by looking at the filesystem, you can determine
-the namespace, and by seeing a (fully qualified namespace), you can identify teh file for the type.
+the namespace, and by seeing a (fully qualified namespace), you can identify the file for the type.
 
 ## Child Modules
 

@@ -152,7 +152,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
     using analyse::utils::mem_utils::ValidateInconsistentMemory;
     using analyse::utils::mem_utils::ValidateSymbolMemory;
 
-    // Move into the "case" scope and check the memory satus of the symbols in the branches.
+    // Move into the "case" scope and check the memory status of the symbols in the branches.
     sm->MoveToNextScope();
 
     // Check the memory state of the condition.

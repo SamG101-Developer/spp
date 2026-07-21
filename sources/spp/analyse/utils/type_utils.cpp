@@ -658,10 +658,6 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
     using asts::generate::common_types_precompiled::FWD_MUT;
     using asts::generate::common_types_precompiled::FWD_REF;
 
-    if (&type == reinterpret_cast<asts::TypeAst const*>(0x3112c5b0)) {
-        auto _ = 123;
-    }
-
     // Generic types do not have forward types, so return nullptr.
     const auto type_sym = sm.CurrentScope->GetTypeSymbol(type.shared_from_this());
     if (type_sym->IsGeneric) { return {nullptr, nullptr}; }
@@ -897,7 +893,7 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
         new_alias_stmt->OldType = new_alias_stmt->MappedOldType;
         new_alias_stmt->OldType->Stage7_AnalyseSemantics(sm, meta);
         // TODO: Remove generic parameters that have been given arguments (not always all generic args).
-        //  Move the argument filter out of the recursive alias searcher and re-use it here.
+        //  Move the argument filter out of the recursive alias searcher and reuse it here.
 
         const auto target_scope = new_alias_stmt->GetAstScope()->Parent;
         target_scope->AddTypeSymbol(new_cls_sym);
@@ -1036,7 +1032,7 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
             scoped_sym->AliasStmt->OldType = std::move(old_type_sub);
             scoped_sym->AliasStmt->MappedOldType = scoped_sym->AliasStmt->OldType;
             if (scoped_sym->AliasStmt->GetAstScope()) {
-                // Self doesnt have a scope on it
+                // Self doesn't have a scope on it
                 scoped_sym->AliasStmt->GetAstScope()->Parent = new_sup_scope_ptr;
             }
 

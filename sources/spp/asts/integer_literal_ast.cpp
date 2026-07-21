@@ -105,7 +105,7 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
     using spp::utils::strings::NormaliseIntegerString;
     using analyse::errors::SppIntegerOutOfBoundsError;
 
-    // For oct, we need to change "0o" to "0" for boost compatiblity. Replace "o" with "0".
+    // For oct, we need to change "0o" to "0" for boost compatibility. Replace "o" with "0".
     auto data = Val->TokenData;
     data |= genex::actions::replace('o', '0');
 

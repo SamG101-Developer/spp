@@ -211,7 +211,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     auto syms = type_syms;
     syms.AppendRange(comp_syms);
 
-    // Re-use above logic to collect generic symbols from the ancestor scopes.
+    // Reuse above logic to collect generic symbols from the ancestor scopes.
     const auto scopes = Ancestors()
         | genex::views::take_while([](auto *scope) { return not std::holds_alternative<ScopeIdentifierName>(scope->Name); })
         | genex::to<Vec>();

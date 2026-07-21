@@ -1,11 +1,11 @@
 # Type System
 
 S++ uses a static, strong type system. At any point in the program, the type of every variable is known, and no implicit
-casting can occur. S++ uses a range of feautres within its type system to maximize expressiveness and flexiblity, whilst
+casting can occur. S++ uses a range of features within its type system to maximize expressiveness and flexibility, whilst
 still only providing one way to achieve each task. The following is a brief overview of each of the features that forms
 the S++ type system:
 
-- **First-class types**: All types in S++ are first-class. This means that their behvaiour is consistent in all forms,
+- **First-class types**: All types in S++ are first-class. This means that their behaviour is consistent in all forms,
   including typically primitive types like booleans, numbers, void, arrays, tuples and functions. LLVM optimizes them
   down to the specially known types, but for all purposes within S++, all types behave the same.
 

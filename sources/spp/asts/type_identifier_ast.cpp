@@ -210,7 +210,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
     // Reject abstract types everywhere except the few positions that name a type without ever producing a value of it.
     // The generic substitution above may have created the scope this resolves to, so the symbol is re-fetched rather
-    // than re-using the base "type_sym" from before it existed.
+    // than reusing the base "type_sym" from before it existed.
     if (not meta->AllowAbstractType and meta->CurrentStage >= 8 and not type_sym->IsGeneric) {
         const auto resolved_sym = scope->GetTypeSymbol(AstClone(this));
         if (resolved_sym != nullptr and resolved_sym->LinkedScope != nullptr) {

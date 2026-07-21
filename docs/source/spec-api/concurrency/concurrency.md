@@ -43,8 +43,8 @@ This is used for fallible generators, where the result can be either a value or 
 match on value, error and exhaustion.
 
 The `Yield` generic parameter's corresponding argument determines the type of value being yielded from the coroutine.
-Whilst this is inferrable, a design decision was taken to mark it explicitly in the return type, in the same way that a
-subroutine's return type must always be explicitly given, despite is being inferrable from `ret` statements.
+Whilst this is inferable, a design decision was taken to mark it explicitly in the return type, in the same way that a
+subroutine's return type must always be explicitly given, despite is being inferable from `ret` statements.
 
 A convention can be applied to the generic argument for the `Yield` parameter. Because borrows can be yielded from
 coroutines, the yielding convention must match the convention of the `Yield` argument. For example, if the gen

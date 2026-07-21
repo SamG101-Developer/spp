@@ -92,7 +92,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
     auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
-     * Ensure the target annotation definition (as a function), is infact a function, and is a "cmp" function. Also, it
+     * Ensure the target annotation definition (as a function), is in fact a function, and is a "cmp" function. Also, it
      * must have the "!annotation" annotation too, to tightly couple it to the annotation system.
      * @param sm The scope manager to use for searching the annotation name.
      * @param meta Associated metadata.

@@ -197,7 +197,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>> {
     // Todo: TIDY this function big time. I WANT TO VOMIT.
     // If the name is empty (non-symbolic call) then return "no scopes".
-    // If the target scope is nullptr, then the functions are bein superimposed over a generic type.
+    // If the target scope is nullptr, then the functions are being superimposed over a generic type.
     if (target_fn_name.Val.empty() or target_scope == nullptr) { return {}; }
 
     // Get the function-type name from the function: "func()" => "$Func".

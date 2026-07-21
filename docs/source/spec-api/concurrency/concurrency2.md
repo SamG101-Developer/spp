@@ -33,14 +33,14 @@ the most common use case.
 
 The generator ype is defined as `cls Generator[Yield, Send=Void]`. This makes a generator that is optionally falible,
 and supports two way data exchange. The `Yield` type is the type of value that is yielded from the generator, ie the
-type inferred from the expresison attached to `gen`. No expression means that `Yield` must be `Void`.
+type inferred from the expression attached to `gen`. No expression means that `Yield` must be `Void`.
 
 It is commonly seen that `Gen[T | None]` is used. This is because `Gen[Opt[T]]` is problematic, as if `T` is a borrow
 type, then we get `Some[&T]`, which requires a borrowed attribute, violating second class borrows. Therefore, we define
 as alias there `T` remains unwrapped, allowing borrows to work.
 
 The `Send` type is used to define what type of data, if any, is being sent _into_ the coroutine. This is done by simply
-extending the `gen` expression into `let a = gen expr`. This is beacuse yields are only accelerated past with
+extending the `gen` expression into `let a = gen expr`. This is because yields are only accelerated past with
 `.send(value)`, meaning a value must always be provided, in order for the yield point to be moved on from. Calling a
 coroutine will immediately provide the `Gen` object, and move to the first yield point.
 
