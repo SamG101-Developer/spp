@@ -19,9 +19,18 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
       # Sonar needs full history for its new-code / blame analysis, which is also
-      # what the mtime restore wants, so the default checkout is right here.
-      - uses: ./.github/actions/checkout
+      # what the mtime restore below needs.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/restore-mtimes
 
       - name: Set Up Toolchain
         uses: ./.github/actions/setup-toolchain

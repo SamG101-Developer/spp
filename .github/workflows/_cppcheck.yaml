@@ -29,10 +29,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: ./.github/actions/checkout
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
-          fetch-depth: "1"
-          restore-mtimes: "false"
+          egress-policy: audit
+
+      # Nothing is compiled here, so a shallow clone is enough.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
 
       # Ubuntu ships a much older cppcheck than the one developers run locally, and
       # findings differ between versions, so build the pinned one and cache it.

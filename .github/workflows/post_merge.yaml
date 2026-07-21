@@ -24,9 +24,17 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: ./.github/actions/checkout
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
-          restore-mtimes: "false"
+          egress-policy: audit
+
+      # Full history so the before..sha diff below can be resolved. Nothing is built
+      # here, so the mtime pass is not needed.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
       - id: filter
         uses: ./.github/actions/detect-changes
         with:

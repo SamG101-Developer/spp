@@ -67,9 +67,20 @@ jobs:
       CACHE_KEY: build-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
 
     steps:
+      # harden-runner is Linux-only; this workflow also runs on macOS and Windows.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
       # fetch-depth 0 so mtimes can be reconstructed from history; without that the
       # restored build tree below looks stale and every run is a full rebuild.
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/restore-mtimes
 
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain

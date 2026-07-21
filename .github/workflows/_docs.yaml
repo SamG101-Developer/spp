@@ -21,10 +21,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: ./.github/actions/checkout
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
-          fetch-depth: "1"
-          restore-mtimes: "false"
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
 
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
         with:
