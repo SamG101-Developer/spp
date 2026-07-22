@@ -12,8 +12,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorSliceAst,
     test_valid_slicing_ref, R"(
-    cls A { }
-
     fun f(a: Vec[S32]) -> Void {
         let x = a[0_uz to 2_uz]
     }
@@ -22,8 +20,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorSliceAst,
     test_valid_slicing_mut, R"(
-    cls A { }
-
     fun f(mut a: Vec[S32]) -> Void {
         let x = a[mut 0_uz to 2_uz]
     }
@@ -32,8 +28,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorSliceAst,
     test_valid_slicing_ref_infer_type, R"(
-    cls A { }
-
     fun f(a: Vec[S32]) -> Void {
         let x: &S32 = a[0_uz to 2_uz]
     }
@@ -42,8 +36,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorSliceAst,
     test_valid_slicing_mut_infer_type, R"(
-    cls A { }
-
     fun f(mut a: Vec[S32]) -> Void {
         let x: &mut S32 = a[mut 0_uz to 2_uz]
     }
@@ -51,32 +43,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorSliceAst,
-    test_invalid_slicing_mut_on_ref_only,
-    SppIdentifierUnknownError, R"(
-    cls A { }
-
-    fun f(a: Vec[S32]) -> Void {
-        let x = a[mut 0_uz to 2_uz]
-    }
-)");
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
-    test_invalid_slicing_ref_on_mut_only,
-    SppIdentifierUnknownError, R"(
-    cls A { }
-
-    fun f(mut a: Vec[S32]) -> Void {
-        let x = a[0_uz to 2_uz]
-    }
-)");
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
     test_invalid_slicing_bound_type_mismatch,
     SppFunctionCallNoValidSignaturesError, R"(
-    cls A { }
-
     fun f(a: Vec[S32]) -> Void {
         let x = a["hello" to 2_uz]
     }

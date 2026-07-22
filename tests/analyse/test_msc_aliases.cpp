@@ -354,13 +354,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = Vec[ZZ]
+    cls A[T] {
+        buffer: std::memory::raw_buf::RawBuf[U8]
+    }
+    type MyVec[ZZ] = A[ZZ]
 
     fun f(v: MyVec[U8], v2: MyVec[U8]) -> Void {
         case v is MyVec[U8](mut buffer, ..) {
             buffer = std::memory::raw_buf::RawBuf[U8]()
         }
-        case v2 is Vec[U8](mut buffer, ..) {
+        case v2 is A[U8](mut buffer, ..) {
             buffer = std::memory::raw_buf::RawBuf[U8]()
         }
     }
@@ -378,9 +381,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
-    fun f(s: Str) -> Void {
-        let Str(mut data) = s
-        data = Vec[U8]::new()
+    cls A {
+        bytes: Vec[U8]
+    }
+
+    fun f(s: A) -> Void {
+        let A(mut bytes) = s
+        bytes = Vec[U8]::new()
     }
 )");
 
