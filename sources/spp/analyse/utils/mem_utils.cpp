@@ -84,6 +84,9 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     const auto copies = var_scope->GetTypeSymbol(var_sym->Type)->IsCopyable();
     const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta))->IsCopyable();
 
+    // A move only actually occurs when the accessed value is non-copyable.
+    const auto moves_value = value_ast.To<asts::IdentifierAst>() != nullptr ? not copies : not partial_copies;
+
     // Check for inconsistent memory initialization (from branching).
     if (var_sym->MemInfo->IsInconsistentlyInitialized.has_value()) {
         const auto pair = *var_sym->MemInfo->IsInconsistentlyInitialized;
@@ -121,14 +124,14 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     }
 
     // Check we aren't trying to move an escaping borrow (unless copyable).
-    if (check_move and not copies and not var_sym->MemInfo->AstContainersOfEscapingBorrows.IsEmpty()) {
+    if (check_move and moves_value and not var_sym->MemInfo->AstContainersOfEscapingBorrows.IsEmpty()) {
         const auto [where_contained, _] = var_sym->MemInfo->AstContainersOfEscapingBorrows[0];
         Raise<errors::SppMovingEscapingBorrowedMemoryError>(
             {sm.CurrentScope}, ERR_ARGS(*where_contained, move_ast));
     }
 
     // Check we aren't trying to move a comptime constant (unless copyable).
-    if (check_move and not copies and var_sym->MemInfo->AstCompTime != nullptr) {
+    if (check_move and moves_value and var_sym->MemInfo->AstCompTime != nullptr) {
         Raise<errors::SppMovingComptimeConstantMemoryError>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, move_ast));
     }
