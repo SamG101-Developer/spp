@@ -300,16 +300,14 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
 
     // Ensure overloads have the same visibility by comparing to the master symbol.
     // Todo: Tidy this?
-    if (Visibility.Second != nullptr and Name and not Name->Val.starts_with("$")) {
+    if (Name and not Name->Val.starts_with("$")) {
         if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
             if (const auto mock_sym = outer_scope->GetVarSymbol(Name, true)) {
                 if (mock_sym->Type and mock_sym->Type->IsCompilerGeneratedType()) {
                     // Enforce that all overloads have the same visibility.
-                    if (mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.First) {
-                        Raise<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
-                            {sm->CurrentScope},
-                            ERR_ARGS(*mock_sym->VisibilityAnnotation, *this));
-                    }
+                    RaiseIf<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
+                        mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.First,
+                        {sm->CurrentScope}, ERR_ARGS(*mock_sym->VisibilityAnnotation, *this));
                     mock_sym->Visibility = Visibility.First;
                     mock_sym->VisibilityAnnotation = Visibility.Second;
                 }

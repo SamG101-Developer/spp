@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
@@ -205,6 +206,14 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
+
+    // Sync the alias symbol's visibility from the AST (annotations set Visibility in Stage5). Without this the alias
+    // symbol keeps the symbol-constructor default (public), making every alias publicly accessible regardless of its
+    // annotation (or lack of one: unannotated statements are private).
+    if (_AliasSym != nullptr) {
+        _AliasSym->Visibility = Visibility.First;
+    }
+
     sm->MoveOutOfCurrentScope();
 }
 
@@ -223,6 +232,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+    using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
@@ -241,6 +251,14 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
             EnforceGenericConstraintsAllArgs(
                 *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
                 *sm->CurrentScope, *sm, *meta);
+        }
+
+        // Check visibility here specifically (almost always done in TypeIdentifierAst) because of the source type
+        // auto expansion.
+        const auto named_target_sym = sm->CurrentScope->GetTypeSymbol(Source.OriginalOldType->WithoutGenerics());
+        if (named_target_sym != nullptr and named_target_sym->ScopeDefinedIn != nullptr) {
+            CheckModuleTypeVisibility(
+                *named_target_sym, *Source.OriginalOldType, *named_target_sym->ScopeDefinedIn, *sm, *meta);
         }
 
         sm->MoveOutOfCurrentScope();

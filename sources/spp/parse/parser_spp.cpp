@@ -1643,7 +1643,9 @@ auto spp::parse::ParserSpp::parse_type_identifier()
     -> Unique<asts::TypeIdentifierAst> {
     PARSE_ONCE(p1, parse_lexeme_upper_identifier);
     PARSE_OPTIONAL(p2, parse_generic_argument_group);
-    return CREATE_AST(asts::TypeIdentifierAst, p1->PosStart(), p1->TokenData, p2);
+    auto t = CREATE_AST(asts::TypeIdentifierAst, p1->PosStart(), p1->TokenData, p2);
+    t->MarkSourceWritten();
+    return t;
 }
 
 auto spp::parse::ParserSpp::parse_type_array()

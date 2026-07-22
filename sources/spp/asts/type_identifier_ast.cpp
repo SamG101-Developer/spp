@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.class_prototype_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -105,6 +106,7 @@ auto spp::asts::TypeIdentifierAst::Clone() const
     auto t = MakeUnique<TypeIdentifierAst>(_Pos, Str(Name), AstClone(GnArgGroup));
     t->_CachedWithoutGenerics = _CachedWithoutGenerics;
     t->_IsNeverType = _IsNeverType;
+    t->_IsSourceWritten = _IsSourceWritten;
     return t;
 }
 
@@ -137,6 +139,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
     using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
+    using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
     using analyse::errors::SemanticError;
     using analyse::errors::SppAbstractTypeUseError;
     using analyse::errors::SppHigherOrderGenericsNotSupportedError;
@@ -152,6 +155,11 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     const auto type_sym = GetTypeSymOrError(
         *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
     if (Name == "Self") { return; }
+
+    if (_IsSourceWritten and type_sym->ScopeDefinedIn != nullptr and type_sym->Name->Name == Name) {
+        CheckModuleTypeVisibility(
+            *type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
+    }
     const auto &gn_param_group = type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
 
     auto is_tuple = false;
@@ -285,6 +293,11 @@ auto spp::asts::TypeIdentifierAst::NsParts() const
 auto spp::asts::TypeIdentifierAst::NsParts()
     -> Vec<Shared<IdentifierAst>> {
     return {};
+}
+
+auto spp::asts::TypeIdentifierAst::MarkSourceWritten()
+    -> void {
+    _IsSourceWritten = true;
 }
 
 auto spp::asts::TypeIdentifierAst::TypeParts() const

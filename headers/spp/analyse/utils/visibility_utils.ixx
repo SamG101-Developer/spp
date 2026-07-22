@@ -8,6 +8,7 @@ import std;
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct TypeSymbol;
     SPP_EXP_CLS struct VariableSymbol;
 }
 
@@ -37,6 +38,14 @@ namespace spp::analyse::utils::visibility_utils {
 
     SPP_EXP_FUN auto CheckModuleMemberVisibility(
         scopes::VariableSymbol const &sym,
+        asts::Ast const &access_ast,
+        scopes::Scope const &definition_scope,
+        scopes::ScopeManager const &sm,
+        asts::meta::CompilerMetaData const &meta)
+        -> void;
+
+    SPP_EXP_FUN auto CheckModuleTypeVisibility(
+        scopes::TypeSymbol const &sym,
         asts::Ast const &access_ast,
         scopes::Scope const &definition_scope,
         scopes::ScopeManager const &sm,

@@ -144,11 +144,26 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
                 *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
         }
 
-        auto scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope}, lhs_type_sym->LinkedScope->SupScopes()) | genex::to<Vec>())
+        auto all_scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope}, lhs_type_sym->LinkedScope->SupScopes()) | genex::to<Vec>())
             | genex::views::transform([name=Name.get()](auto const &x) { return MakePair(x, x->GetVarSymbol(AstCloneShared(name), true, false)); })
             | genex::to<Vec>()
-            | genex::views::filter([](auto const &x) { return x.Second != nullptr and not x.Second->Type->IsCompilerGeneratedType(); })
+            | genex::views::filter([](auto const &x) { return x.Second != nullptr; })
             | genex::views::transform([&](auto const &x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
+            | genex::to<Vec>();
+
+        // Enforce visibility on functional (method) members. Their mock ("$"-typed) symbols are excluded from the
+        // attribute handling below, so without this the visibility check never runs for method accesses.
+        auto fn_scopes_and_syms = all_scopes_and_syms
+            | genex::views::filter([](auto const &x) { return std::get<2>(x)->Type->IsCompilerGeneratedType(); })
+            | genex::to<Vec>();
+        if (not fn_scopes_and_syms.IsEmpty()) {
+            const auto fn_closest = fn_scopes_and_syms.Back();
+            const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
+            CheckTypeMemberVisibility(*std::get<2>(fn_closest), *Name, *cls_scope, *sm, *meta);
+        }
+
+        auto scopes_and_syms = all_scopes_and_syms
+            | genex::views::filter([](auto const &x) { return not std::get<2>(x)->Type->IsCompilerGeneratedType(); })
             | genex::to<Vec>();
 
         // If we only have functional types, just return.

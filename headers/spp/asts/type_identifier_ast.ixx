@@ -138,6 +138,9 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
     SPP_ATTR_NODISCARD auto ToView() const
         -> StrView;
 
+    auto MarkSourceWritten()
+        -> void;
+
 private:
     std::size_t _Pos;
 
@@ -146,6 +149,8 @@ private:
     bool _IsSelfType = false;
 
     bool _HasAnalysed = false;
+
+    bool _IsSourceWritten = false;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)

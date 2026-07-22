@@ -932,7 +932,7 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
 
     // Run generic substitution on the symbols in the scope.
     const auto fq_type = new_cls_sym->FqName();
-    auto substitution_generics = fq_type->TypeParts().Back()->GnArgGroup->GetAllArgs();
+    auto substitution_generics = fq_type->TypeParts().Back()->GnArgGroup->GetAllArgs(); // Todo: Possible ASAN death here.
     substitution_generics.AppendRange(type_part.GnArgGroup->GetAllArgs());
 
     // Substitute the "Self" sym.
@@ -964,7 +964,6 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
 
         // Remove void attributes from the class.
         if (IsTypeVoid(*attr->Type, *new_cls_scope_ptr)) {
-            // new_ast_ptr->impl |= genex::actions::remove_if([&](auto &&x) { return x == attr; }, [](auto &&x) { return x.get(); });
             new_cls_scope_ptr->RemVarSymbol(attr->Name);
             new_ast_ptr->Impl->Members |= genex::actions::remove_if([&](auto &&x) { return x.get() == attr; });
         }
@@ -1016,8 +1015,10 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
     auto tm = scopes::ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
     RegisterGenericSyms(external_generic_syms, generic_args.Args, new_sup_scope_ptr, &tm, meta);
 
-    // Add the "Self" symbol into the new scope.
+    meta->Save();
+    meta->IgnoreAccessModifierViolations = true;
     self_type->Stage7_AnalyseSemantics(&tm, meta);
+    meta->Restore();
     const auto new_self_sym = MakeShared<scopes::TypeSymbol>(
         MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm->SelfProto(), &new_cls_scope,
         new_sup_scope_ptr);
@@ -1057,6 +1058,7 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
         const auto new_fq_super_type = ext_ast->SuperClass->SubstituteGenerics(generic_args.GetAllArgs());
         meta->Save();
         meta->AllowAbstractType = true;
+        meta->IgnoreAccessModifierViolations = true;
         new_fq_super_type->Stage7_AnalyseSemantics(&tm, meta);
         meta->Restore();
         super_cls_scope = new_cls_scope.GetTypeSymbol(new_fq_super_type)->LinkedScope;

@@ -150,6 +150,12 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
+    // Sync the type symbols' visibility from the AST.
+    if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.First; }
+    if (sm->CurrentScope->TySym != nullptr) {
+        sm->CurrentScope->TySym->Visibility = Visibility.First;
+    }
+
     // Add the "Self" symbol into the scope.
     if (not Name->IsCompilerGeneratedType()) {
         const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
