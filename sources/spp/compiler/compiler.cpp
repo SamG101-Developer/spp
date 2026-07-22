@@ -50,8 +50,12 @@ auto spp::compiler::Compiler::Compile() -> void {
         progress_bars.EmplaceBack(std::move(p));
     }
 
+    // We need the cleanup on error for the test suite runs (parallel), but in debug it's one shot, and error checking
+    // needs the full stack trace.
     auto ps = progress_bars.begin();
+#ifdef NDEBUG
     try {
+#endif
         m_boot->Lex(**ps++, *m_modules);
         m_boot->Parse(**ps++, *m_modules);
         m_scope_manager = MakeUnique<analyse::scopes::ScopeManager>(
@@ -69,11 +73,15 @@ auto spp::compiler::Compiler::Compile() -> void {
         m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
         // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
         // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
+#ifdef NDEBUG
     }
     catch (...) {
+        // Clear globals while the scope tree is still alive (so precompiled types release before their scopes are
+        // freed), then re-throw to the caller.
         Cleanup();
         throw;
     }
+#endif
     Cleanup();
 }
 
