@@ -50,25 +50,30 @@ auto spp::compiler::Compiler::Compile() -> void {
         progress_bars.EmplaceBack(std::move(p));
     }
 
-    // Save the modules into the CompilerBoot instance, and lex/parse.
     auto ps = progress_bars.begin();
-    m_boot->Lex(**ps++, *m_modules);
-    m_boot->Parse(**ps++, *m_modules);
-    m_scope_manager = MakeUnique<analyse::scopes::ScopeManager>(
-        analyse::scopes::Scope::NewGlobal(*m_modules->GetModules()[0]), nullptr);
-    asts::generate::common_types_precompiled::InitTypes();
+    try {
+        m_boot->Lex(**ps++, *m_modules);
+        m_boot->Parse(**ps++, *m_modules);
+        m_scope_manager = MakeUnique<analyse::scopes::ScopeManager>(
+            analyse::scopes::Scope::NewGlobal(*m_modules->GetModules()[0]), nullptr);
+        asts::generate::common_types_precompiled::InitTypes();
 
-    m_boot->Stage1_PreProcess(**ps++, *m_modules, nullptr);
-    m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
-    m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
+        m_boot->Stage1_PreProcess(**ps++, *m_modules, nullptr);
+        m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.get());
+        m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.get());
+        m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.get());
+        m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.get());
+        m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.get());
+        m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
+        m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
+        m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
+        // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
+        // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
+    }
+    catch (...) {
+        Cleanup();
+        throw;
+    }
     Cleanup();
 }
 
