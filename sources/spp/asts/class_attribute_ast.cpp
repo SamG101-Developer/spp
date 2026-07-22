@@ -150,7 +150,8 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
     }
     var_sym->Type = Type;
 
-    if (meta->CurrentStage == 9 and DefaultVal != nullptr) {
+    if (meta->CurrentStage != 9) { return; }
+    if (DefaultVal != nullptr) {
         DefaultVal->Stage7_AnalyseSemantics(sm, meta);
         const auto default_type = DefaultVal->InferType(sm, meta);
 
