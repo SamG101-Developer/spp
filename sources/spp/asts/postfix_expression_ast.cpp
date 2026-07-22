@@ -15,6 +15,8 @@ import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_index_ast;
+import spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -110,12 +112,22 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
         return;
     }
 
+    // Index and slice operators desugar to borrow-based method calls (index_ref/mut, slice_ref/mut). Route memory
+    // checking through their mapped function like a normal method call, rather than treating the identifier lhs as a
+    // moved value here (which the desugared "&self"/"&mut self" call handles correctly).
+    if (Op->To<PostfixExpressionOperatorIndexAst>() != nullptr or Op->To<PostfixExpressionOperatorSliceAst>() != nullptr) {
+        Op->Stage8_CheckMemory(sm, meta);
+        return;
+    }
+
     // Check the memory of the lhs.
     Lhs->Stage8_CheckMemory(sm, meta);
     meta->Save();
     meta->PostfixExpressionLhs = Lhs.get();
     if (Lhs->To<IdentifierAst>() != nullptr) {
-        ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, true, false, false, false, false, meta);
+        // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
+        // it as a move: accessing a member/deref/etc reads or borrows the receiver, it never consumes it.
+        ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, false, false, false, false, meta);
     }
     Op->Stage8_CheckMemory(sm, meta);
     meta->Restore();

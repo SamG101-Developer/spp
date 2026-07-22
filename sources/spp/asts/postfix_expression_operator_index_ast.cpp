@@ -115,6 +115,11 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
+auto spp::asts::PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void {
+    _MappedFunc->Stage8_CheckMemory(sm, meta);
+}
+
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
