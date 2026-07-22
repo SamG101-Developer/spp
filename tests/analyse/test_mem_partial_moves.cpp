@@ -4,8 +4,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
     test_invalid_memory_assign_attribute_to_non_initialized_value,
     SppUninitializedMemoryUseError, R"(
+    cls A {
+        !public bytes: Vec[U8]
+    }
+
     fun f() -> Void {
-        let mut x: Str
+        let mut x: A
         x.bytes = Vec[U8]()
     }
 )");

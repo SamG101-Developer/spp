@@ -15,7 +15,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
 
     fun f(a: Vec[S32]) -> Void {
-        let x = a[0 to 2]
+        let x = a[0_uz to 2_uz]
     }
 )");
 
@@ -25,7 +25,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
 
     fun f(mut a: Vec[S32]) -> Void {
-        let x = a[mut 0 to 2]
+        let x = a[mut 0_uz to 2_uz]
     }
 )");
 
@@ -35,7 +35,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
 
     fun f(a: Vec[S32]) -> Void {
-        let x: &S32 = a[0 to 2]
+        let x: &S32 = a[0_uz to 2_uz]
     }
 )");
 
@@ -45,7 +45,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
 
     fun f(mut a: Vec[S32]) -> Void {
-        let x: &mut S32 = a[mut 0 to 2]
+        let x: &mut S32 = a[mut 0_uz to 2_uz]
     }
 )");
 
@@ -56,7 +56,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 
     fun f(a: Vec[S32]) -> Void {
-        let x = a[mut 0 to 2]
+        let x = a[mut 0_uz to 2_uz]
     }
 )");
 
@@ -67,7 +67,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 
     fun f(mut a: Vec[S32]) -> Void {
-        let x = a[0 to 2]
+        let x = a[0_uz to 2_uz]
     }
 )");
 
@@ -78,6 +78,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 
     fun f(a: Vec[S32]) -> Void {
-        let x = a["hello" to 2]
+        let x = a["hello" to 2_uz]
     }
 )");
