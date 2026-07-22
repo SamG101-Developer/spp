@@ -7,6 +7,8 @@ auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
     GEN_ONCE = nullptr;
     INDEX_REF = nullptr;
     INDEX_MUT = nullptr;
+    SLICE_REF = nullptr;
+    SLICE_MUT = nullptr;
     FUN_MOV = nullptr;
     FUN_MUT = nullptr;
     FUN_REF = nullptr;
