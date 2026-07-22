@@ -436,6 +436,9 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
 
     // Analyse the generic parameter group, and the parameter group.
+    for (auto const &p : FnParamGroup->GetNonSelfParams()) {
+        p->Stage6_PreAnalyseSemantics(sm, meta);
+    }
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
     // Note: the !compiler_builtin lowered-implementation swap now happens in Stage6_PreAnalyseSemantics, so that the
