@@ -152,7 +152,7 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
 
     // Ensure the argument isn't moved or partially moved (for all conventions)
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *TokGen, *sm, true, true, false, false, false, meta);
+    ValidateSymbolMemory(*Expr, *TokGen, *sm, true, true, false, false, meta);
 
     // If the value is non-symbolic, then there is no borrow logic to implement, so return.
     auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*Expr);
@@ -161,7 +161,7 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
     if (Conv == nullptr) {
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
-        ValidateSymbolMemory(*Expr, *TokGen, *sm, false, false, true, true, true, meta);
+        ValidateSymbolMemory(*Expr, *TokGen, *sm, false, false, true, true, meta);
     }
 
     else if (*Conv == ConventionTag::MUT) {

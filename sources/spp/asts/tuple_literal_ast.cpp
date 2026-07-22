@@ -127,7 +127,7 @@ auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
     // Check the memory of each element in the tuple literal.
     for (auto const &elem : Elems) {
         elem->Stage8_CheckMemory(sm, meta);
-        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, true, false, meta);
+        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
     }
 }
 

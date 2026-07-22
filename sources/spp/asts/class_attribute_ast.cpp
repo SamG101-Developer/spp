@@ -170,7 +170,7 @@ auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
     if (DefaultVal == nullptr) { return; }
 
     DefaultVal->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
 }
 
 auto spp::asts::ClassAttributeAst::Stage9_CompTimeResolve(

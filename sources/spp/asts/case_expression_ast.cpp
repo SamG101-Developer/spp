@@ -157,7 +157,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
 
     // Check the memory state of the condition.
     Cond->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Cond, *Cond, *sm, true, true, false, false, false, meta);
+    ValidateSymbolMemory(*Cond, *Cond, *sm, true, true, false, false, meta);
 
     // Validate the memory state across all branches (also calls stage 8 from within).
     meta->Save();

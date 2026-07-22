@@ -173,7 +173,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
         // the move, but do some checks before calling the internal memory checker on the postfix expression.
-        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, true, false, meta);
+        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, false, meta);
 
         meta->Save();
         meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
@@ -182,12 +182,12 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
         meta->Restore();
 
         // Fully validate the memory of the right-hand-side expression, marking the move.
-        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, true, meta);
+        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, meta);
 
         if (IsAttr(lhs_expr, sm)) {
             const auto pf = lhs_expr->To<PostfixExpressionAst>();
             const auto check_partial_move = IsAttr(pf->Lhs.get(), sm);
-            ValidateSymbolMemory(*lhs_expr, *TokAssign, *sm, true, check_partial_move, false, true, false, meta);
+            ValidateSymbolMemory(*lhs_expr, *TokAssign, *sm, true, check_partial_move, false, false, meta);
         }
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.

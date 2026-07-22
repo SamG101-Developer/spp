@@ -55,24 +55,23 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     const bool check_move,
     const bool check_partial_move,
     const bool check_move_from_borrowed_ctx,
-    const bool,
     const bool mark_moves,
     asts::meta::CompilerMetaData *meta) -> void {
     // For tuple and array literals, recursively analyse each element.
     if (auto const *arr_literal = value_ast.To<asts::ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
         const auto x = arr_literal->Elem.get();
-        ValidateSymbolMemory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
+        ValidateSymbolMemory(*x, move_ast, sm, true, true, true, mark_moves, meta);
         return;
     }
     if (auto const *arr_literal = value_ast.To<asts::ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
         for (auto &&x : arr_literal->Elems) {
-            ValidateSymbolMemory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
+            ValidateSymbolMemory(*x, move_ast, sm, true, true, true, mark_moves, meta);
         }
         return;
     }
     if (auto const *tup_literal = value_ast.To<asts::TupleLiteralAst>(); tup_literal != nullptr) {
         for (auto &&x : tup_literal->Elems) {
-            ValidateSymbolMemory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
+            ValidateSymbolMemory(*x, move_ast, sm, true, true, true, mark_moves, meta);
         }
         return;
     }
@@ -80,7 +79,6 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
     auto [var_sym, var_scope] = sm.CurrentScope->GetVarSymbolOutermost(value_ast);
     if (var_sym == nullptr) { return; }
-    const auto temp = var_scope->GetTypeSymbol(var_sym->Type);
     const auto copies = var_scope->GetTypeSymbol(var_sym->Type)->IsCopyable();
     const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta))->IsCopyable();
 
@@ -109,7 +107,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     }
 
     // Check for inconsistent escaping borrows (from branching).
-    if (var_sym->MemInfo->IsInconsistentlyPartiallyMoved.has_value()) {
+    if (var_sym->MemInfo->IsInconsistentlyBorrowEscaping.has_value()) {
         const auto pair = *var_sym->MemInfo->IsInconsistentlyBorrowEscaping;
         Raise<errors::SppInconsistentlyEscapingBorrows>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second));

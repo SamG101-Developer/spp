@@ -112,7 +112,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
 
     // Check the value's memory.
     meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
     const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);

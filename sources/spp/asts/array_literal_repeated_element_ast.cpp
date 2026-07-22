@@ -147,7 +147,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
 
     // Check the memory of the repeated element (is it initialized etc).
     Elem->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Elem, *TokSemicolon, *sm, true, true, true, true, false, meta);
+    ValidateSymbolMemory(*Elem, *TokSemicolon, *sm, true, true, true, false, meta);
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(

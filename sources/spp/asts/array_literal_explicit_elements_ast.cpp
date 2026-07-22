@@ -155,7 +155,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
     // Check the memory of each element in the array literal.
     for (auto const &elem : Elems) {
         elem->Stage8_CheckMemory(sm, meta);
-        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, true, false, meta);
+        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
     }
 }
 

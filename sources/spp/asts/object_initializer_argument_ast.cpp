@@ -46,7 +46,7 @@ auto spp::asts::ObjectInitializerArgumentAst::Stage8_CheckMemory(
     // Check the memory of the value expression.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
     Val->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Val, *this, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Val, *this, *sm, true, true, true, true, meta);
 }
 
 auto spp::asts::ObjectInitializerArgumentAst::Stage9_CompTimeResolve(

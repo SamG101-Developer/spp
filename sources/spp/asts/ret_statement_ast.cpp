@@ -149,7 +149,7 @@ auto spp::asts::RetStatementAst::Stage8_CheckMemory(
 
     // Ensure the argument isn't moved or partially moved (for all conventions)
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, meta);
 }
 
 auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(

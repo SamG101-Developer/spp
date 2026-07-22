@@ -177,7 +177,7 @@ auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
     // Check the memory of the type.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
     Value->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
 
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (not Type->IsCompilerGeneratedType()) {

@@ -133,7 +133,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
     auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope, sm->CurrentIterator());
 
-    ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, meta);
     for (auto &m : {sm, &tm}) {
         Cond->Stage8_CheckMemory(m, meta);
         Body->Stage8_CheckMemory(m, meta);

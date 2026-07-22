@@ -124,7 +124,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
     // Check the memory state of the expression if it is present. Expression is being moved into outer context, so
     // strict memory checks.
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *TokSeqExit.Back(), *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(

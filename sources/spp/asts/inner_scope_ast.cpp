@@ -122,7 +122,7 @@ auto spp::asts::InnerScopeAst<T>::Stage8_CheckMemory(
     // If the final expression of the inner scope is being used (ie assigned or outer variable), then memory check it.
     if (const auto move = meta->AssignmentTarget; not Members.IsEmpty() and move != nullptr) {
         if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
-            ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, true, meta);
+            ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
         }
     }
 
