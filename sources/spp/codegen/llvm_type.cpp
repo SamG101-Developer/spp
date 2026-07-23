@@ -33,8 +33,7 @@ import std;
 const spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
 const spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
 const spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
-const spp::Vec<spp::Str> kSizedIntegerSignedParts = {"std", "num", "sized_integer", "SizedIntegerSigned"};
-const spp::Vec<spp::Str> kSizedIntegerUnsignedParts = {"std", "num", "sized_integer", "SizedIntegerUnsigned"};
+const spp::Vec<spp::Str> kSizedIntegerParts = {"std", "num", "sized_integer", "SizedInteger"};
 const spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
 const spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
 const spp::Vec<spp::Str> kFunRefParts = {"std", "function", "FunRef"};
@@ -101,15 +100,8 @@ auto spp::codegen::RegisterLlvmTypeInfo(
         return;
     }
 
-    // Lower S++ "S[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type.
-    if (parts == kSizedIntegerSignedParts) {
-        EXTRACT_INT_SIZE;
-        cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
-        return;
-    }
-
-    // Lower S++ "U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type.
-    if (parts == kSizedIntegerUnsignedParts) {
+    // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
+    if (parts == kSizedIntegerParts) {
         EXTRACT_INT_SIZE;
         cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
         return;
