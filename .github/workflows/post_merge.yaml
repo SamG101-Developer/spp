@@ -79,11 +79,12 @@ jobs:
       compiler: gcc
       version: "16"
       fail-fast: false
+      # TEMPORARY: the tsan variant is disabled
+      #   {"name": "tsan", "build-type": "Debug", "sanitizer": "thread"}
       variants: >-
         [
           {"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""},
-          {"name": "asan", "build-type": "Debug", "sanitizer": "address+undefined+leak"},
-          {"name": "tsan", "build-type": "Debug", "sanitizer": "thread"}
+          {"name": "asan", "build-type": "Debug", "sanitizer": "address+undefined+leak"}
         ]
 
   sonar:

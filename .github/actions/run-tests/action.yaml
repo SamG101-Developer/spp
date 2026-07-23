@@ -14,12 +14,17 @@ inputs:
 runs:
   using: composite
   steps:
+    # Cache-key versions and toolchain pins all live in .github/versions.env.
+    - name: Load pinned versions
+      shell: bash
+      run: grep -E '^[A-Za-z_]+=' .github/versions.env >> "$GITHUB_ENV"
+
     - name: Cache gtest-parallel
       id: gtp-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ${{ runner.temp }}/gtest-parallel
-        key: gtest-parallel-${{ runner.os }}-v1
+        key: gtest-parallel-${{ runner.os }}-v${{ env.GTEST_PARALLEL_CACHE_VERSION }}
 
     - name: Fetch gtest-parallel
       if: steps.gtp-cache.outputs.cache-hit != 'true'

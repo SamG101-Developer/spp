@@ -30,6 +30,11 @@ inputs:
 runs:
   using: composite
   steps:
+    # Cache-key versions and toolchain pins all live in .github/versions.env.
+    - name: Load pinned versions
+      shell: bash
+      run: grep -E '^[A-Za-z_]+=' .github/versions.env >> "$GITHUB_ENV"
+
     # Runner images ship an older CMake (3.31.x); the project needs 4.1.2 to satisfy
     # cmake_minimum_required() in CMakeLists.txt.
     - name: Install CMake & Ninja
@@ -39,6 +44,7 @@ runs:
         ninjaVersion: "latest"
 
     # Compiler
+    # Linux + GCC
     - name: Fetch llvm.sh (Linux)
       if: runner.os == 'Linux'
       shell: bash
@@ -48,7 +54,7 @@ runs:
         chmod +x "${RUNNER_TEMP}/llvm.sh"
 
     - name: Install GCC (Linux)
-      if: inputs.compiler == 'gcc'
+      if: inputs.compiler == 'gcc' && runner.os == 'Linux'
       shell: bash
       env:
         GCC_VERSION: ${{ inputs.version }}
@@ -60,26 +66,54 @@ runs:
         echo "CC=gcc-${GCC_VERSION}" >> "$GITHUB_ENV"
         echo "CXX=g++-${GCC_VERSION}" >> "$GITHUB_ENV"
 
+    # Linux + Clang
     - name: Install Clang (Linux)
-      if: inputs.compiler == 'clang'
+      if: inputs.compiler == 'clang' && runner.os == 'Linux'
       shell: bash
       env:
         CLANG_VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
         sudo "${RUNNER_TEMP}/llvm.sh" "${CLANG_VERSION}"
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install -y "g++-${LIBSTDCXX_GCC_VERSION}"
         echo "CC=clang-${CLANG_VERSION}" >> "$GITHUB_ENV"
         echo "CXX=clang++-${CLANG_VERSION}" >> "$GITHUB_ENV"
 
+    # macOS + Clang
+    - name: Install Clang (macOS, brew)
+      if: inputs.compiler == 'clang' && runner.os == 'macOS'
+      shell: bash
+      env:
+        CLANG_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        formula="llvm${CLANG_VERSION:+@${CLANG_VERSION}}"
+        brew install "$formula"
+        prefix="$(brew --prefix "$formula")"
+        echo "CC=${prefix}/bin/clang" >> "$GITHUB_ENV"
+        echo "CXX=${prefix}/bin/clang++" >> "$GITHUB_ENV"
+        echo "LDFLAGS=-L${prefix}/lib/c++ -Wl,-rpath,${prefix}/lib/c++" >> "$GITHUB_ENV"
+        echo "LLVM_PREFIX=${prefix}" >> "$GITHUB_ENV"
+
+    # Windows + Clang-Cl
     - name: Set up MSVC / clang-cl (Windows)
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
 
-    # ---- Compiler cache ----------------------------------------------------
-    # Note this buys much less than it looks like it should: ccache does not
-    # understand C++20 named modules. The cached *build tree* is what makes
-    # CI incremental; this is a second line of defence for the plain translation
-    # units and for runs where the tree cache misses.
+    - name: Select Windows compiler
+      if: runner.os == 'Windows'
+      shell: bash
+      env:
+        COMPILER: ${{ inputs.compiler }}
+      run: |
+        set -euo pipefail
+        cc=cl; [ "$COMPILER" = "clang-cl" ] && cc=clang-cl
+        echo "CC=$cc" >> "$GITHUB_ENV"
+        echo "CXX=$cc" >> "$GITHUB_ENV"
+
+    # Small performance gains with ccache.
     - name: Install compiler cache
       if: inputs.compiler-cache == 'true'
       shell: bash
@@ -123,23 +157,32 @@ runs:
         echo "CCACHE_DISABLE=1" >> "$GITHUB_ENV"
         echo "SPP_NO_COMPILER_LAUNCHER=1" >> "$GITHUB_ENV"
 
-    # Project dependencies (Linux)
+    # Project dependencies
     # Boost and LLVM are the awkward two to build, so both come prebuilt.
     - name: Install Boost 1.91 (prebuilt)
-      if: inputs.dependencies == 'true' && runner.os == 'Linux'
+      if: inputs.dependencies == 'true'
       shell: bash
       run: |
         set -euo pipefail
-        url="https://github.com/MarkusJx/prebuilt-boost/releases/download/1.91.0/boost-1.91.0-ubuntu-24.04-gcc-static%2Bshared-x86.tar.gz"
+        base="https://github.com/MarkusJx/prebuilt-boost/releases/download/1.91.0"
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          url="$base/boost-1.91.0-windows-2025-msvc-static-x86.tar.gz"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          url="$base/boost-1.91.0-macos-15-clang-static%2Bshared-aarch64.tar.gz"
+        else
+          url="$base/boost-1.91.0-ubuntu-24.04-gcc-static%2Bshared-x86.tar.gz"
+        fi
         curl -fL -o "${RUNNER_TEMP}/boost.tar.gz" "$url"
         tar xf "${RUNNER_TEMP}/boost.tar.gz" -C "$HOME"   # extracts to $HOME/boost
-        echo "BOOST_ROOT=$HOME/boost" >> "$GITHUB_ENV"
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          echo "BOOST_ROOT=$(cygpath -m "$HOME/boost")" >> "$GITHUB_ENV"
+        else
+          echo "BOOST_ROOT=$HOME/boost" >> "$GITHUB_ENV"
+        fi
 
     - name: Install LLVM dev libraries (prebuilt, apt.llvm.org)
       if: inputs.dependencies == 'true' && runner.os == 'Linux'
       shell: bash
-      env:
-        LLVM_LIB_VERSION: "22"
       run: |
         set -euo pipefail
         # Already installed if this job's compiler *is* this LLVM release.
@@ -148,29 +191,52 @@ runs:
         fi
         sudo apt-get install -y "llvm-${LLVM_LIB_VERSION}-dev"
 
+    # Windows gets the official clang+llvm release tarball, which ships the
+    # static libs and lib/cmake/llvm that find_package(LLVM) needs.
+    - name: Cache LLVM dev libraries (Windows)
+      if: inputs.dependencies == 'true' && runner.os == 'Windows'
+      id: llvm-win-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/llvm
+        key: llvm-win-${{ env.LLVM_LIB_FULL_VERSION }}
+
+    - name: Install LLVM dev libraries (Windows, cache miss)
+      if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-win-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        url="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_LIB_FULL_VERSION}/clang+llvm-${LLVM_LIB_FULL_VERSION}-x86_64-pc-windows-msvc.tar.xz"
+        curl -fL -o "${RUNNER_TEMP}/llvm.tar.xz" "$url"
+        mkdir -p "$HOME/llvm"
+        tar xf "${RUNNER_TEMP}/llvm.tar.xz" -C "$HOME/llvm" --strip-components=1
+
     # The remaining libraries are header/CMake projects: clone, install, cache.
-    # Bump the trailing token in `key` to force a rebuild.
-    - name: Cache small libraries (Linux)
-      if: inputs.dependencies == 'true' && runner.os == 'Linux'
+    # Bump SPP_LIBS_CACHE_VERSION in .github/versions.env to force a rebuild.
+    - name: Cache small libraries
+      if: inputs.dependencies == 'true'
       id: libs-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.local
-        key: spp-libs-${{ runner.os }}-v5
+        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-v${{ env.SPP_LIBS_CACHE_VERSION }}
 
-    - name: Clone & install small libraries (Linux, cache miss)
-      if: inputs.dependencies == 'true' && runner.os == 'Linux' && steps.libs-cache.outputs.cache-hit != 'true'
+    - name: Clone & install small libraries (cache miss)
+      if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
       shell: bash
-      env:
-        LLVM_LIB_VERSION: "22"
       run: |
         set -euo pipefail
         PREFIX="$HOME/.local"
-        mkdir -p "$PREFIX" /tmp/libs
-        cd /tmp/libs
+        mkdir -p "$PREFIX" "${RUNNER_TEMP}/libs"
+        cd "${RUNNER_TEMP}/libs"
 
-        # So each library can find the ones installed before it (and Boost/LLVM).
-        export CMAKE_PREFIX_PATH="$PREFIX${BOOST_ROOT:+:$BOOST_ROOT}:/usr/lib/llvm-${LLVM_LIB_VERSION}"
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          PREFIX="$(cygpath -m "$PREFIX")"
+          export CMAKE_PREFIX_PATH="$PREFIX;${BOOST_ROOT};$(cygpath -m "$HOME/llvm")"
+        else
+          llvm_prefix="${LLVM_PREFIX:-/usr/lib/llvm-${LLVM_LIB_VERSION}}"
+          export CMAKE_PREFIX_PATH="$PREFIX${BOOST_ROOT:+:$BOOST_ROOT}:$llvm_prefix"
+        fi
 
         cmake_install() {
           local url="$1"; shift
@@ -195,10 +261,13 @@ runs:
         cmake_install https://github.com/SamG101-Developer/OpEx.git
         cmake_install https://github.com/SamG101-Developer/GenEx.git
 
-    - name: Expose dependency prefixes (Linux)
-      if: inputs.dependencies == 'true' && runner.os == 'Linux'
+    - name: Expose dependency prefixes
+      if: inputs.dependencies == 'true'
       shell: bash
-      env:
-        LLVM_LIB_VERSION: "22"
       run: |
-        echo "CMAKE_PREFIX_PATH=$HOME/.local:/usr/lib/llvm-${LLVM_LIB_VERSION}:${BOOST_ROOT}${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}" >> "$GITHUB_ENV"
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          echo "CMAKE_PREFIX_PATH=$(cygpath -m "$HOME/.local");$(cygpath -m "$HOME/llvm");${BOOST_ROOT}" >> "$GITHUB_ENV"
+        else
+          llvm_prefix="${LLVM_PREFIX:-/usr/lib/llvm-${LLVM_LIB_VERSION}}"
+          echo "CMAKE_PREFIX_PATH=$HOME/.local:${llvm_prefix}:${BOOST_ROOT}${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}" >> "$GITHUB_ENV"
+        fi
