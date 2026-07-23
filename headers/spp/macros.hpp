@@ -74,7 +74,8 @@ constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? x->ToString() : "")
 
-#define SPP_STRING_EXTEND(x, j) raw_string.append(std::ranges::to<Str>(std::ranges::views::join_with(std::ranges::views::transform(x, [&](auto &&x) { return x ? x->ToString() : ""; }), Str(j))))
+// #define SPP_STRING_EXTEND(x, j) raw_string.append(std::ranges::to<Str>(std::ranges::views::join_with(std::ranges::views::transform(x, [&](auto &&x) { return x ? x->ToString() : ""; }), Str(j))))
+#define SPP_STRING_EXTEND(x, j) raw_string.append(x | genex::views::transform([](auto &&y) { return y ? y->ToString() : ""; }) | genex::to<Vec<Str>>() | genex::views::intersperse(Str(j)) | genex::views::join | genex::to<Str>())
 
 #define SPP_STRING_END return raw_string
 
