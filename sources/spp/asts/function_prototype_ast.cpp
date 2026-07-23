@@ -76,7 +76,6 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     Impl(std::move(impl)),
     _LlvmFunc(nullptr),
     _AnnotationInfo(nullptr) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_FUN, "fun"); // TODO <- "cor"?
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
     // SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnParamGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokArrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");

@@ -23,11 +23,32 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_type;
+import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
 import llvm;
 
 SPP_MOD_BEGIN
+spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
+    decltype(Annotations) &&annotations,
+    decltype(TokCmp) &&tok_cmp,
+    decltype(TokFun) &&tok_fun,
+    decltype(Name) &&name,
+    decltype(GnParamGroup) &&generic_param_group,
+    decltype(FnParamGroup) &&param_group,
+    decltype(TokArrow) &&tok_arrow,
+    decltype(ReturnType) &&return_type,
+    decltype(Impl) &&impl) :
+    FunctionPrototypeAst(
+        std::move(annotations), std::move(tok_cmp), std::move(tok_fun), std::move(name),
+        std::move(generic_param_group), std::move(param_group), std::move(tok_arrow),
+        std::move(return_type), std::move(impl)),
+    LlvmCoroGenEnv(nullptr),
+    LlvmCoroGenEnvType(nullptr),
+    LlvmCoroResumeFunc(nullptr) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_COR, "cor");
+}
+
 spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
 auto spp::asts::CoroutinePrototypeAst::Clone() const
