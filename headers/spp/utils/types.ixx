@@ -307,6 +307,7 @@ public:
     // Legacy needed for ranges
     SPP_ATTR_ALWAYS_INLINE auto push_back(value_type const &v) -> void { _Vec.push_back(v); }
     SPP_ATTR_ALWAYS_INLINE auto push_back(value_type &&v) -> void { _Vec.push_back(std::move(v)); }
+    SPP_ATTR_ALWAYS_INLINE auto insert(const_iterator pos, value_type const &v) -> iterator { return _Vec.insert(pos, v); }
     SPP_ATTR_ALWAYS_INLINE auto reserve(size_type new_cap) -> void { _Vec.reserve(new_cap); }
     SPP_ATTR_ALWAYS_INLINE auto size() const noexcept { return _Vec.size(); }
     SPP_ATTR_ALWAYS_INLINE auto erase(const_iterator pos) -> iterator { return _Vec.erase(pos); }

@@ -296,9 +296,7 @@ auto spp::analyse::scopes::ScopeManager::PruneUnsatisfiedSupConstraints(
 
             // The constraint is not satisfied, so remove the attached super scope (and its paired class scope).
             auto &sup_scopes = dc.owner_scope->DirectSupScopes;
-            sup_scopes.Erase(
-                std::ranges::remove_if(sup_scopes, [&](auto const *s) { return s == dc.sup_scope or (dc.sup_cls_scope != nullptr and s == dc.sup_cls_scope); }).begin(),
-                sup_scopes.end());
+            sup_scopes |= genex::actions::remove_if([&](auto const *s) { return s == dc.sup_scope or (dc.sup_cls_scope != nullptr and s == dc.sup_cls_scope); });
             dc.owner_scope = nullptr;
             changed = true;
         }

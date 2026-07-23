@@ -258,10 +258,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
     const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
 
     auto sup_scopes = sm->CurrentScope->GetTypeSymbol(SuperClass)->LinkedScope->SupScopes();
-    sup_scopes.Insert(sup_scopes.begin(), sup_sym->LinkedScope);
-    sup_scopes.Erase(
-        std::ranges::remove_if(sup_scopes, [](auto const &x) { return x->AstNode->template To<ClassPrototypeAst>() == nullptr; }).begin(),
-        sup_scopes.end());
+    sup_scopes |= genex::actions::insert(sup_scopes.begin(), sup_sym->LinkedScope);
+    sup_scopes |= genex::actions::remove_if([](auto const &x) { return x->AstNode->template To<ClassPrototypeAst>() == nullptr; });
 
     // Mark the class as copyable if the "Copy" type is the supertype.
     for (const auto sup_scope : sup_scopes) {
