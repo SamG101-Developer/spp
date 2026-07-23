@@ -19,7 +19,7 @@ inline constexpr std::array kParamOrderArr{
 
 auto spp::analyse::utils::order_utils::DoOrder(
     Vec<asts::mixins::OrderableAst*> &&args,
-    Vec<asts::utils::OrderableTag> order)
+    Vec<asts::utils::OrderableTag> const &order)
     -> Vec<Pair<Str, asts::Ast*>> {
     // Tag each argument with its "order tag".
     auto tagged_args = args
@@ -47,12 +47,12 @@ auto spp::analyse::utils::order_utils::DoOrderArgs(
     Vec<asts::mixins::OrderableAst*> &&args)
     -> Vec<Pair<Str, asts::Ast*>> {
     // Call the generic order function with the argument order.
-    return DoOrder(std::move(args), Vec(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end()));
+    return DoOrder(std::move(args), ARG_ORDER_ARR);
 }
 
 auto spp::analyse::utils::order_utils::DoOrderParams(
     Vec<asts::mixins::OrderableAst*> &&params)
     -> Vec<Pair<Str, asts::Ast*>> {
     // Call the generic order function with the parameter order.
-    return DoOrder(std::move(params), Vec(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end()));
+    return DoOrder(std::move(params), PARAM_ORDER_ARR);
 }
