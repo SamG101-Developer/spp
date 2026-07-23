@@ -84,7 +84,7 @@ jobs:
   # immediately.
   build-test:
     name: Build & Test
-    needs: [ changes, cppcheck ]
+    needs: [ changes ] # cppcheck
     if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
     permissions:
       contents: read
@@ -106,7 +106,7 @@ jobs:
   # deliberately omitted from ci-success, so they never block a merge.
   build-test-extra:
     name: Build & Test (non-blocking)
-    needs: [ changes, cppcheck ]
+    needs: [ changes ] # cppcheck
     if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
     permissions:
       contents: read
