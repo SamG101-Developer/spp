@@ -1,5 +1,4 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 
 module spp.utils.error_formatter;
@@ -7,8 +6,8 @@ import spp.asts.ast;
 import spp.lex.tokens;
 import colex;
 import genex;
-import opex.cast;
 import std;
+import sys;
 
 SPP_MOD_BEGIN
 spp::utils::errors::ErrorFormatter::ErrorFormatter(Vec<lex::RawToken> tokens, Str file_path) :
@@ -51,8 +50,8 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
 
     // Build the source line string by concatenating raw token data.
     auto error_line_tokens = Vec(
-        _Tokens.begin() + (error_line_start_pos as SSize),
-        _Tokens.begin() + (error_line_end_pos as SSize));
+        _Tokens.begin() + static_cast<sys::ssize_t>(error_line_start_pos),
+        _Tokens.begin() + static_cast<sys::ssize_t>(error_line_end_pos));
     auto error_line_as_string = genex::fold_left(
         error_line_tokens, Str(),
         [](Str const &acc, const lex::RawToken &token) { return acc + token.data; });

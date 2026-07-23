@@ -58,7 +58,6 @@ find_package(magic_enum CONFIG REQUIRED) # magic_enum library
 find_package(CLI11 CONFIG REQUIRED) # CLI11 library
 find_package(GenEx CONFIG REQUIRED) # GenEx library
 find_package(ColEx CONFIG REQUIRED) # ColEx library
-find_package(OpEx CONFIG REQUIRED) # OpEx library
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 
 # Collect all source files and create the library.
@@ -140,7 +139,6 @@ target_link_libraries(
         Boost::boost
         CLI11::CLI11
         ColEx::ColEx
-        OpEx::OpEx
         GenEx::GenEx
         LLVMCore
         LLVMSupport
