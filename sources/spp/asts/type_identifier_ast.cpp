@@ -160,7 +160,10 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
         CheckModuleTypeVisibility(
             *type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
     }
-    const auto &gn_param_group = type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
+
+    const auto gn_param_group = type_sym->AliasStmt != nullptr
+        ? type_sym->AliasStmt->GnParamGroup.get()
+        : type_sym->Type != nullptr ? type_sym->Type->GnParamGroup.get() : nullptr;
 
     auto is_tuple = false;
     if (not type_sym->IsGeneric) {
@@ -172,7 +175,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
         // Name all the generic arguments.
         NameGnArgs(
             *GnArgGroup,
-            *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
+            *gn_param_group,
             *this, *sm, *meta, is_tuple);
 
         // Analyse the generic arguments.

@@ -298,7 +298,7 @@ auto spp::cli::handle_validate(
     // For the VCS folders, validate each VCS entry (if it exists).
     for (auto const &vcs_dir : std::filesystem::directory_iterator(cwd / VCS_FOLDER)) {
         std::filesystem::current_path(cwd / vcs_dir);
-        handle_validate(false);
+        handle_validate(build_type == "exe");
         std::filesystem::current_path(cwd);
     }
 
