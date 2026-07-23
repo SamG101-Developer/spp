@@ -172,8 +172,10 @@ runs:
         else
           url="$base/boost-1.91.0-ubuntu-24.04-gcc-static%2Bshared-x86.tar.gz"
         fi
-        curl -fL -o "${RUNNER_TEMP}/boost.tar.gz" "$url"
-        tar xf "${RUNNER_TEMP}/boost.tar.gz" -C "$HOME"   # extracts to $HOME/boost
+        tmp="$RUNNER_TEMP"
+        [ "$RUNNER_OS" = "Windows" ] && tmp="$(cygpath -u "$tmp")"
+        curl -fL -o "$tmp/boost.tar.gz" "$url"
+        tar xf "$tmp/boost.tar.gz" -C "$HOME"   # extracts to $HOME/boost
         if [ "$RUNNER_OS" = "Windows" ]; then
           echo "BOOST_ROOT=$(cygpath -m "$HOME/boost")" >> "$GITHUB_ENV"
         else
@@ -207,9 +209,10 @@ runs:
       run: |
         set -euo pipefail
         url="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_LIB_FULL_VERSION}/clang+llvm-${LLVM_LIB_FULL_VERSION}-x86_64-pc-windows-msvc.tar.xz"
-        curl -fL -o "${RUNNER_TEMP}/llvm.tar.xz" "$url"
+        tmp="$(cygpath -u "$RUNNER_TEMP")"
+        curl -fL -o "$tmp/llvm.tar.xz" "$url"
         mkdir -p "$HOME/llvm"
-        tar xf "${RUNNER_TEMP}/llvm.tar.xz" -C "$HOME/llvm" --strip-components=1
+        tar xf "$tmp/llvm.tar.xz" -C "$HOME/llvm" --strip-components=1
 
     # The remaining libraries are header/CMake projects: clone, install, cache.
     # Bump SPP_LIBS_CACHE_VERSION in .github/versions.env to force a rebuild.
