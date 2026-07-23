@@ -96,6 +96,9 @@ runs:
         echo "CXX=${prefix}/bin/clang++" >> "$GITHUB_ENV"
         echo "LDFLAGS=-L${prefix}/lib/c++ -Wl,-rpath,${prefix}/lib/c++" >> "$GITHUB_ENV"
         echo "LLVM_PREFIX=${prefix}" >> "$GITHUB_ENV"
+        resource_dir="$("${prefix}/bin/clang" -print-resource-dir)"
+        sed "s|\"\.\./\.\./|\"${prefix}/|g" \
+          "${prefix}/lib/c++/libc++.modules.json" > "${resource_dir}/libc++.modules.json"
 
     # Windows + Clang-Cl
     - name: Set up MSVC / clang-cl (Windows)
