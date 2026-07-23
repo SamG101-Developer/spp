@@ -148,13 +148,19 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     RaiseIf<SppHigherOrderGenericsNotSupportedError>(
         Name == "Self" and (GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty()),
         {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
-    if (Name == "Self" and meta->CurrentStage < 9) { return; }
+    if (Name == "Self" and meta->CurrentStage < 9) {
+        _HasAnalysed = true;
+        return;
+    }
 
     // Determine the scope and get the type symbol.
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto type_sym = GetTypeSymOrError(
         *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
-    if (Name == "Self") { return; }
+    if (Name == "Self") {
+        _HasAnalysed = true;
+        return;
+    }
 
     if (_IsSourceWritten and type_sym->ScopeDefinedIn != nullptr and type_sym->Name->Name == Name) {
         CheckModuleTypeVisibility(
@@ -163,7 +169,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
     const auto gn_param_group = type_sym->AliasStmt != nullptr
         ? type_sym->AliasStmt->GnParamGroup.get()
-        : type_sym->Type != nullptr ? type_sym->Type->GnParamGroup.get() : nullptr;
+        : type_sym->Type != nullptr
+        ? type_sym->Type->GnParamGroup.get()
+        : nullptr;
 
     auto is_tuple = false;
     if (not type_sym->IsGeneric) {
@@ -236,6 +244,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     }
 
     _HasAnalysed = true;
+    _CachedStringification.clear();
 }
 
 auto spp::asts::TypeIdentifierAst::Iterator() const
@@ -440,11 +449,9 @@ auto spp::asts::TypeIdentifierAst::AnkerlHash() const
 
 auto spp::asts::TypeIdentifierAst::ToView() const
     -> StrView {
-    if (_CachedStringification.empty()) {
+    if (_CachedStringification.empty() or not _HasAnalysed) {
         _CachedStringification = Name;
-        if (GnArgGroup != nullptr) {
-            _CachedStringification.append(GnArgGroup->ToString());
-        }
+        if (GnArgGroup != nullptr) { _CachedStringification.append(GnArgGroup->ToString()); }
     }
     return _CachedStringification;
 }
