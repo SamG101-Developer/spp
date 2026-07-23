@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.closure_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -8,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -76,6 +78,9 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::type_utils::IsTypeBorrowed;
+
     // Save the current scope for later resetting.
     const auto parent_scope = sm->CurrentScope;
     meta->Save();
@@ -114,7 +119,14 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
     _RetType = not meta->EnclosingFunctionRetType.IsEmpty() ? meta->EnclosingFunctionRetType[0] : Body->InferType(sm, meta);
+    _RetType->Stage7_AnalyseSemantics(sm, meta);
     Source._OriginalRetType = _RetType;
+
+    // The return type is inferred rather than declared, so it never passes through the function prototype's return
+    // type borrow check.
+    RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(
+        Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_RetType, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*this, *_RetType, "function return type"));
     meta->Restore(true);
     meta->Restore();
 

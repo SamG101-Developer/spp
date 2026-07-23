@@ -98,13 +98,19 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     auto expr_type = VoidType(PosStart());
     if (Expr != nullptr) {
         meta->Save();
-        auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
-            *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
+        if (not meta->EnclosingFunctionRetType.IsEmpty()) {
+            auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
+                *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
 
-        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : yield_type;
-        meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
-        meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
-        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }
+            meta->AssignmentTargetType = yield_type;
+            meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+            meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
+            SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }
+        }
+        else {
+            meta->AssignmentTargetType = nullptr;
+            meta->AssignmentTarget = nullptr;
+        }
         Expr->Stage7_AnalyseSemantics(sm, meta);
 
         RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -118,7 +124,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->EnclosingFunctionRetType.IsEmpty()) {
-        _GenType = GenType(Expr->PosStart(), expr_type);
+        _GenType = GenType(Expr ? Expr->PosStart() : TokGen->PosStart(), expr_type);
         _GenType->Stage7_AnalyseSemantics(sm, meta);
         meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
         meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);

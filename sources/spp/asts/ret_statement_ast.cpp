@@ -102,9 +102,12 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     if (Expr != nullptr) {
         meta->Save();
 
-        // For case conditions, we need an assignment target in case of variants.
+        // For case conditions, we need an assignment target in case of variants. Closures have no declared return
+        // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
         meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
-        meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+        if (meta->AssignmentTargetType != nullptr) {
+            meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+        }
         meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
         SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = meta->AssignmentTargetType; }
 
@@ -112,7 +115,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
         expr_type = Expr->InferType(sm, meta);
 
         _RetType = meta->AssignmentTargetType;
-        Source._OriginalRetType = meta->EnclosingFunctionSourceRetType[0];
+        Source._OriginalRetType = meta->EnclosingFunctionSourceRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionSourceRetType[0];
         meta->Restore();
 
         // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").

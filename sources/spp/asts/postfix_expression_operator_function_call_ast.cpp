@@ -125,8 +125,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     -> void {
     //
     using analyse::errors::SppInvalidComptimeOperationError;
+    using analyse::errors::SppSecondClassBorrowViolationError;
     using analyse::utils::func_utils::IsTargetCallable;
     using analyse::utils::overload_utils::DetermineOverload;
+    using analyse::utils::type_utils::IsTypeBorrowed;
     using analyse::utils::type_utils::TypeEq;
     using generate::common_types_precompiled::FUN_REF;
     using generate::common_types_precompiled::FUN_MUT;
@@ -194,6 +196,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
         _IsCoroAndAutoResume = is_once;
     }
     meta->PreventAutoGeneratorResume = false;
+
+    // Todo: Is this needed?
+    const auto ret_type = InferType(sm, meta);
+    RaiseIf<SppSecondClassBorrowViolationError>(
+        _OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*ret_type->WithoutConvention(), *sm),
+        {sm->CurrentScope}, ERR_ARGS(*this, *ret_type, "function return type"));
 
     // Copy some properties into the transform (clone arg group for the self arg convention).
     if (_TransformedAst) {

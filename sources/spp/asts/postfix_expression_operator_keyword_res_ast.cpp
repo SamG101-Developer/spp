@@ -94,7 +94,11 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
     auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(FnArgGroup), nullptr);
     func_call->Source.OriginalExpr = this;
     _MappedFunc = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+
+    meta->Save();
+    meta->IgnoreAccessModifierViolations = true; // Because of "Generated" Todo: Too broad?
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
