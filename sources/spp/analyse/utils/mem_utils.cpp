@@ -79,8 +79,8 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
     auto [var_sym, var_scope] = sm.CurrentScope->GetVarSymbolOutermost(value_ast);
     if (var_sym == nullptr) { return; }
-    const auto copies = var_scope->GetTypeSymbol(var_sym->Type)->IsCopyable();
-    const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta))->IsCopyable();
+    const auto copies = var_scope->GetTypeSymbol(var_sym->Type.get())->IsCopyable();
+    const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta).get())->IsCopyable();
 
     // A move only actually occurs when the accessed value is non-copyable.
     const auto moves_value = value_ast.To<asts::IdentifierAst>() != nullptr ? not copies : not partial_copies;
@@ -187,19 +187,19 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
     auto vs = sm->CurrentScope->AllVarSymbols();
     auto pre_analysis_mem_info = vs
-        | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
+        | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
         | genex::to<Vec>();
 
     // Make a record of the symbols' memory status in the scope before the branch is analysed.
     auto old_symbol_mem_info = vs
-        | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
+        | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
         | genex::to<Vec>();
 
     for (auto &&branch : branches) {
         // Analyse the memory and then recheck the symbols' memory status.
         branch->Stage8_CheckMemory(sm, meta);
         auto new_symbol_mem_info = vs
-            | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
+            | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
             | genex::to<Vec>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.

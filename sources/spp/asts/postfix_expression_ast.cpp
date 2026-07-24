@@ -80,7 +80,7 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
         auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
         temp_lhs->Stage7_AnalyseSemantics(sm, meta);
         temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
-        temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs)->FqName();
+        temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs.get())->FqName();
         Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {

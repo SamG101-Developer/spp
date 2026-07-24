@@ -33,7 +33,7 @@ constexpr auto SPP_VERSION = "0.1.0";
 #define SPP_IS_DEBUG_BUILD (defined(_DEBUG) || !defined(NDEBUG))
 
 #ifndef NDEBUG
-    #define SPP_ASSERT(x)                                                                                         \
+#define SPP_ASSERT(x)                                                                                         \
         do {                                                                                                      \
             if (!(x)) {                                                                                           \
                 std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
@@ -41,24 +41,22 @@ constexpr auto SPP_VERSION = "0.1.0";
             }                                                                                                     \
         } while (0)
 #else
-    #define SPP_ASSERT(x) do {} while (0)
+#define SPP_ASSERT(x) do {} while (0)
 #endif
 
 #ifndef NDEBUG
-    #define SPP_LOG(x)                                                                                            \
+#define SPP_LOG(x)                                                                                            \
         do {                                                                                                      \
             std::cerr << "[SPP LOG] " << x << " (file " << __FILE__ << ", line " << __LINE__ << ")" << std::endl; \
         } while (0)
 #else
-    #define SPP_LOG(x) do {} while (0)
+#define SPP_LOG(x) do {} while (0)
 #endif
-
 
 #define SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type)                                  \
     if (auto st = llvm::dyn_cast<llvm::StructType>(llvm_type); st != nullptr) { \
         SPP_ASSERT(st->isOpaque());                                             \
     }
-
 
 #define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr, ...)                              \
     if ((ast_attr) == nullptr) {                                                      \
@@ -74,8 +72,13 @@ constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? x->ToString() : "")
 
-// #define SPP_STRING_EXTEND(x, j) raw_string.append(std::ranges::to<Str>(std::ranges::views::join_with(std::ranges::views::transform(x, [&](auto &&x) { return x ? x->ToString() : ""; }), Str(j))))
-#define SPP_STRING_EXTEND(x, j) raw_string.append(x | genex::views::transform([](auto &&y) { return y ? y->ToString() : ""; }) | genex::to<Vec<Str>>() | genex::views::intersperse(Str(j)) | genex::views::join | genex::to<Str>())
+#define SPP_STRING_APPEND_RAW(x) raw_string.append(x)
+
+#define SPP_STRING_EXTEND(x, j)                    \
+    for (auto const& y: x) {                       \
+        raw_string.append(y ? y->ToString() : ""); \
+        raw_string.append(Str(j));                 \
+    }
 
 #define SPP_STRING_END return raw_string
 
@@ -102,14 +105,12 @@ constexpr auto SPP_VERSION = "0.1.0";
 #define SPP_DEREF_ALLOW_MOVE_HELPER(expr) \
     if (auto pe = expr->To<PostfixExpressionAst>(); pe != nullptr and pe->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr)
 
-
 #define SPP_EXP_FUN export
 #define SPP_EXP_CMP export inline
 #define SPP_EXP_CLS export extern "C++"
 
 #define SPP_MOD_BEGIN extern "C++" {
 #define SPP_MOD_END }
-
 
 /**
  * Shortcut to create an empty list of annotations for structs that contain an annotation list. The usual @c {} cannot

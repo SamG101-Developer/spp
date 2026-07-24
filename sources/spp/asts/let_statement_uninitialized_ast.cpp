@@ -68,7 +68,7 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
     -> void {
     // Analyse the type.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
     // Create a mock value for analysis.
     const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);
@@ -93,7 +93,7 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
     meta->LetStatementFromUninitialized = true;
     Var->Stage8_CheckMemory(sm, meta);
     for (auto const &v : Var->ExtractNames()) {
-        sm->CurrentScope->GetVarSymbol(v)->MemInfo->MovedBy(*this, sm->CurrentScope);
+        sm->CurrentScope->GetVarSymbol(v.get())->MemInfo->MovedBy(*this, sm->CurrentScope);
     }
     meta->Restore();
 }

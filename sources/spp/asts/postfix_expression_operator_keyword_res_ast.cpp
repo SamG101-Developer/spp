@@ -126,7 +126,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     auto env_ptr = static_cast<llvm::Value*>(nullptr);
     if (llvm_gen->getType()->isPointerTy()) {
         const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
-        const auto gen_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty), ctx));
+        const auto gen_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty.get()), ctx));
         resume_fn = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 0), "gen.resume.fn" + uid);
         env_ptr = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 1), "gen.env" + uid);
     }

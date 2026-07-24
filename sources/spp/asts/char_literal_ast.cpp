@@ -85,7 +85,7 @@ auto spp::asts::CharLiteralAst::Stage11_CodeGen(
     const auto code_point = spp::utils::strings::DecodeCharLiteral(Val->TokenData);
 
     // Resolve the llvm type from the inferred spp type (U8 for a byte-prefixed literal, else Char).
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta));
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get());
     const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
     // "b'a'" lowers to a raw U8 byte; a plain "'a'" lowers to the Char aggregate (a struct wrapping a U32

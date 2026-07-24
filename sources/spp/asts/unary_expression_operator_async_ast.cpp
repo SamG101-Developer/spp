@@ -80,7 +80,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
     // We need a "Fut[T]" object to work with immediately.
     const auto uid = "." + spp::utils::Uid(this);
     const auto fut_type = InferType(sm, meta);
-    const auto fut_type_sym = sm->CurrentScope->GetTypeSymbol(fut_type);
+    const auto fut_type_sym = sm->CurrentScope->GetTypeSymbol(fut_type.get());
     const auto llvm_fut_type = codegen::GetLlvmType(*fut_type_sym, ctx);
 
     // Allocate the future onto the stack and set the initial state.

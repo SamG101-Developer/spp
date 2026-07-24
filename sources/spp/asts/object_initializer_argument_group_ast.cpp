@@ -171,7 +171,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     Args |= genex::actions::remove_if([](auto const &x) { return x->IsCompilerGenerated; });
 
     // Get the attributes on the type and supertypes.
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType);
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType.get());
     const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
 
     // Type check the non-autofill arguments against the class attributes.
@@ -189,7 +189,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
         // Enforce visibility on the field being initialized.
         {
             const auto scope = cls_sym->LinkedScope->NonGenericScope;
-            const auto sym = scope->GetVarSymbol(arg->Name, true);
+            const auto sym = scope->GetVarSymbol(arg->Name.get(), true);
             CheckTypeMemberVisibility(*sym, *arg->Name, *scope, *sm, *meta);
         }
 

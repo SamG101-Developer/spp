@@ -194,7 +194,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
     auto phi = static_cast<llvm::PHINode*>(nullptr);
     if (is_expr) {
         ctx->Builder.SetInsertPoint(loop_end_bb);
-        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type);
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type.get());
         phi = ctx->Builder.CreatePHI(codegen::GetLlvmType(*ret_type_sym, ctx), 2U, "loop.phi" + uid);
     }
 

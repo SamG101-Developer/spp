@@ -81,18 +81,6 @@ export namespace spp::codegen::func_impls {
 
     auto std_boolean_ne(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
 
-    auto std_cast_upcast_mov(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-
-    auto std_cast_upcast_mut(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-
-    auto std_cast_upcast_ref(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-
-    auto std_cast_downcast_mov(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-
-    auto std_cast_downcast_mut(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-
-    auto std_cast_downcast_ref(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-
     auto std_generator_send(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_generator_once_send(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;

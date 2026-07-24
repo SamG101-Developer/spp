@@ -118,7 +118,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     if (parts == kArrParts) {
         const auto gn_arg_group = cls_sym->FqName()->TypeParts().Back()->GnArgGroup.get();
         const auto length_ast = gn_arg_group->CompAt("n")->Val->To<asts::IntegerLiteralAst>();
-        const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val);
+        const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val.get());
         if (length_ast != nullptr and elem_sym != nullptr) {
             if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
                 RegisterLlvmTypeInfo(elem_sym->Type, ctx);

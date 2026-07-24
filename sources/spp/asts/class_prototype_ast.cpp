@@ -23,6 +23,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_layout;
@@ -80,7 +81,8 @@ auto spp::asts::ClassPrototypeAst::Clone() const
 auto spp::asts::ClassPrototypeAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n");
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokCls).append(" ");
     SPP_STRING_APPEND(Name);
     SPP_STRING_APPEND(GnParamGroup).append(" ");
@@ -158,7 +160,7 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
 
     // Add the "Self" symbol into the scope.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
         const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
             MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
             sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
@@ -192,13 +194,14 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse semantics for the class body.
+    using generate::common_types_precompiled::SELF_TYPE;
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
     // Re-map "Self" to the true type.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
-        const auto self_sym = sm->CurrentScope->GetTypeSymbol(MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr), true);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
         self_sym->Type = cls_sym->Type;
         cls_sym->AliasedBySyms.EmplaceBack(self_sym);
     }

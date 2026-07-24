@@ -40,6 +40,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.compiler_stages;
 import spp.asts.utils.ast_utils;
@@ -110,7 +111,8 @@ auto spp::asts::FunctionPrototypeAst::Clone() const
 auto spp::asts::FunctionPrototypeAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n")
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokCmp).append(TokCmp ? " " : "");
     SPP_STRING_APPEND(TokFun).append(" ");
     SPP_STRING_APPEND(Name);
@@ -301,7 +303,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     // Todo: Tidy this?
     if (Name and not Name->Val.starts_with("$")) {
         if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
-            if (const auto mock_sym = outer_scope->GetVarSymbol(Name, true)) {
+            if (const auto mock_sym = outer_scope->GetVarSymbol(Name.get(), true)) {
                 if (mock_sym->Type and mock_sym->Type->IsCompilerGeneratedType()) {
                     // Enforce that all overloads have the same visibility.
                     RaiseIf<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
@@ -317,7 +319,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     // Carry the convention for error purposes.
     FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     ReturnType->Stage7_AnalyseSemantics(sm, meta);
-    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType)->FqName()->WithConvention(AstClone(ReturnType->GetConvention()));
+    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType.get())->FqName()->WithConvention(AstClone(ReturnType->GetConvention()));
 
     // Ensure the function's return type does not have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -330,7 +332,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     const auto mod_ctx = _Ctx->To<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
         ? sm->CurrentScope->ParentModule()
-        : _Ctx->GetAstScope()->GetTypeSymbol(AstName(_Ctx))->LinkedScope;
+        : _Ctx->GetAstScope()->GetTypeSymbol(AstName(_Ctx).get())->LinkedScope;
 
     // Error if there are conflicts.
     // Todo: Maybe need 2 scopes if the conflict is across modules (if possible, esp in sup-blocks)?
@@ -349,7 +351,7 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     using analyse::utils::func_utils::CheckForConflictingOverload;
     using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
     using analyse::errors::SppFunctionPrototypeConflictError;
-    using generate::common_types::SelfType;
+    using generate::common_types_precompiled::SELF_VAR;
 
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->MoveToNextScope();
@@ -365,13 +367,13 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
 
     // New version
     if (const auto self_param = FnParamGroup->GetSelfParam()) {
-        const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
+        const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
         const auto self_conv = self_param->Conv.get();
 
         self_sym->Type = ResolveAndSubstituteSelfType(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(AstClone(self_conv));
 
         for (auto const &param : FnParamGroup->GetAllParams()) {
-            const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName());
+            const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName().get());
             if (var_sym == nullptr) { continue; } // Destructuring parameters.
             var_sym->Type = ResolveAndSubstituteSelfType(*var_sym->Type, *sm->CurrentScope, *sm, *meta);
         }
@@ -517,7 +519,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
         GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
     }
 
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
     meta->Save();
     meta->EnclosingFunctionFlavour = TokFun.get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
@@ -678,13 +680,13 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 }
 
 auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
-    analyse::scopes::ScopeManager *sm,
-    codegen::LLvmCtx *ctx) const
+    analyse::scopes::ScopeManager const *sm,
+    codegen::LLvmCtx const *ctx) const
     -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
-    const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ReturnType), ctx);
+    const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ReturnType.get()), ctx);
     const auto llvm_param_types = FnParamGroup->GetNonSelfParams()
-        | genex::views::transform([&](auto const &x) { return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(x->Type), ctx); })
+        | genex::views::transform([&](auto const &x) { return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(x->Type.get()), ctx); })
         | genex::to<Vec>();
 
     // Check if any of the types failed to convert.

@@ -59,7 +59,8 @@ auto spp::asts::UseStatementVariableAst::Clone() const
 auto spp::asts::UseStatementVariableAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n");
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokUse).append(" ");
     SPP_STRING_APPEND(OldVar);
     SPP_STRING_END;
@@ -100,7 +101,7 @@ auto spp::asts::UseStatementVariableAst::Stage3_GenTopLvlAliases(
     const auto [old_var_sym, scope] = sm->CurrentScope->GetVarSymbolOutermost(*OldVar);
     if (old_var_sym != nullptr) {
         // Cmp statements
-        _Conversion->Type = scope->GetTypeSymbol(old_var_sym->Type)->FqName(false);
+        _Conversion->Type = scope->GetTypeSymbol(old_var_sym->Type.get())->FqName(false);
         old_var_sym->Type = _Conversion->Type;
 
         _Conversion->_AliasSym->AliasSym = old_var_sym;

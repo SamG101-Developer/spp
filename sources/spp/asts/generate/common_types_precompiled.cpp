@@ -48,6 +48,8 @@ auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
     CHAR = nullptr;
     STR_VIEW = nullptr;
     VIEW = nullptr;
+    SELF_TYPE = nullptr;
+    SELF_VAR = nullptr;
 }
 
 auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
@@ -104,4 +106,7 @@ auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
     CHAR = common_types::CharType(0);
     STR_VIEW = common_types::StringViewType(0)->WithoutGenerics();
     VIEW = common_types::ViewType(0, common_types::VoidType(0))->WithoutGenerics();
+
+    SELF_TYPE = common_types::SelfType(0)->WithoutGenerics();
+    SELF_VAR = MakeShared<IdentifierAst>(0, "self");
 }

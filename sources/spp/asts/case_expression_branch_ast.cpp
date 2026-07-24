@@ -67,7 +67,8 @@ auto spp::asts::CaseExpressionBranchAst::ToString() const
     -> Str {
     SPP_STRING_START;
     SPP_STRING_APPEND(Op).append(" ");
-    SPP_STRING_EXTEND(Patterns, ", ").append(" ");
+    SPP_STRING_EXTEND(Patterns, ", ");
+    SPP_STRING_APPEND_RAW(" ");
     SPP_STRING_APPEND(Guard).append(Guard ? " " : "");
     SPP_STRING_APPEND(Body);
     SPP_STRING_END;

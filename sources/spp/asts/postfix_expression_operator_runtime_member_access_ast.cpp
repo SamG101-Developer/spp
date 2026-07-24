@@ -96,7 +96,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     // Numeric index access (for tuples).
     if (std::isdigit(Name->Val[0])) {
         const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
 
         // Check the lhs is a tuple/array (the only indexable types).
         RaiseIf<SppMemberAccessNonIndexableError>(
@@ -116,9 +116,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         const auto lhs_as_ident = lhs_as_ident_raw ? MakeShared<IdentifierAst>(lhs_as_ident_raw->PosStart(), lhs_as_ident_raw->Val) : nullptr;
         const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
 
-        const auto lhs_ns_sym = sm->CurrentScope->GetNsSymbol(lhs_as_ident);
-        const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(lhs_as_ident);
-        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+        const auto lhs_ns_sym = sm->CurrentScope->GetNsSymbol(lhs_as_ident.get());
+        const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(lhs_as_ident.get());
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
 
         // Check the lhs is a variable and not a namespace.
         RaiseIf<SppMemberAccessStaticOperatorExpectedError>( // Todo: this error message uses "Type" -> accept param for ctx (ns)
@@ -126,7 +126,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
             ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "namespace"));
 
         // Check the target field exists on the type.
-        if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name, true)) {
+        if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
             // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
             // access to their members.
             auto [fwd_ref_type, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type, *sm);
@@ -145,7 +145,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         }
 
         auto all_scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope}, lhs_type_sym->LinkedScope->SupScopes()) | genex::to<Vec>())
-            | genex::views::transform([name=Name.get()](auto const &x) { return MakePair(x, x->GetVarSymbol(AstCloneShared(name), true, false)); })
+            | genex::views::transform([name=Name.get()](auto const &x) { return MakePair(x, x->GetVarSymbol(name, true, false)); })
             | genex::to<Vec>()
             | genex::views::filter([](auto const &x) { return x.Second != nullptr; })
             | genex::views::transform([&](auto const &x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
@@ -181,7 +181,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         // Enforce visibility on the accessed member.
         if (not closest.IsEmpty()) {
             const auto scope = closest[0].First->NonGenericScope;
-            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name, true), *Name, *scope, *sm, *meta);
+            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get(), true), *Name, *scope, *sm, *meta);
         }
 
         if (closest.Len() <= 1) { return; }
@@ -235,7 +235,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
     // Get the type of the left-hand-side expression.
     const auto uid = "." + spp::utils::Uid(this);
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
 
     // Index through the object's own type, never the borrow's pointer type, so a borrowed lhs (such as a "&Self"
     // parameter) indexes the same struct that an owned one does.
@@ -292,16 +292,16 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
     }
 
     // Get the field symbol and return its type, falling back to the forwarding type if needed.
-    auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
-    auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name);
+    auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
+    auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
     if (var_sym == nullptr) {
-        auto [fwd_ref_type, _] = GetFwdTypes(*lhs_type, *sm);
-        const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+        auto [fwd_ref_type, _] = GetFwdTypes(*lhs_type.get(), *sm);
+        const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val.get();
         lhs_sym = sm->CurrentScope->GetTypeSymbol(inner_type);
-        var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name);
+        var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
     }
     const auto field_type = var_sym->Type;
-    return lhs_sym->LinkedScope->GetTypeSymbol(field_type)->FqName();
+    return lhs_sym->LinkedScope->GetTypeSymbol(field_type.get())->FqName();
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const

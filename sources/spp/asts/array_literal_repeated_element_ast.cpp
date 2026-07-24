@@ -108,7 +108,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
         not IsPrimaryExprTypeValid(*Elem, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Elem));
     const auto elem_type = Elem->InferType(sm, meta);
-    const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type);
+    const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type.get());
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
     RaiseIf<SppNonCopyableTypeError>(

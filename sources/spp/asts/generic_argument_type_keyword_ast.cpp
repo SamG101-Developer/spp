@@ -96,7 +96,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
     Val->Stage7_AnalyseSemantics(sm, meta);
 
     // Analyse the name and value of the generic type argument.
-    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val);
+    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val.get());
     const auto tmp2 = tmp1->FqName();
     auto tmp3 = AstClone(Val->GetConvention());
     const auto tmp4 = tmp2->WithConvention(std::move(tmp3));

@@ -181,7 +181,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
     -> void {
     // Handle type symbols.
     if (scope.TySym != nullptr) {
-        const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics());
+        const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics().get());
         auto scopes = normal_sup_blocks[non_generic_sym.get()];
         scopes.AppendRange(generic_sup_blocks);
         AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta, deferred);
@@ -236,7 +236,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
         else {
             const auto sup_proto = sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>();
             new_sup_scope = sup_scope;
-            new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass)->LinkedScope : nullptr;
+            new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass.get())->LinkedScope : nullptr;
             sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
         }
 

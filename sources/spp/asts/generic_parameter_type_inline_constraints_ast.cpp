@@ -85,7 +85,7 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
         constraint->Stage7_AnalyseSemantics(sm, meta);
         meta->Restore();
 
-        auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics());
+        auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics().get());
         fq_constraints.EmplaceBack(
             constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->TypeParts().Back()->GnArgGroup)));
     }

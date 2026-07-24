@@ -86,7 +86,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     // Analyse the type if it has been given.
     if (Type != nullptr) {
         Type->Stage7_AnalyseSemantics(sm, meta);
-        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+        Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
     }
 
     // Add the type into the return type overload resolver.

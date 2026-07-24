@@ -83,7 +83,8 @@ auto spp::asts::InnerScopeAst<T>::ToString() const
     -> Str {
     SPP_STRING_START;
     SPP_STRING_APPEND(TokL).append(not Members.IsEmpty() ? "\n" : "");
-    SPP_STRING_EXTEND(Members, "\n").append(not Members.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Members, "\n");
+    SPP_STRING_APPEND_RAW(not Members.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }

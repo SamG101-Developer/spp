@@ -55,8 +55,10 @@ auto spp::asts::LoopControlFlowStatementAst::Clone() const
 auto spp::asts::LoopControlFlowStatementAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(TokSeqExit, " ").append(" ");
-    SPP_STRING_APPEND(TokSkip).append(" ");
+    SPP_STRING_EXTEND(TokSeqExit, " ");
+    SPP_STRING_APPEND_RAW(" ");
+    SPP_STRING_APPEND(TokSkip);
+    SPP_STRING_APPEND_RAW(" ");
     SPP_STRING_APPEND(Expr);
     SPP_STRING_END;
 }

@@ -115,7 +115,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
     ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
-    const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
     sym->MemInfo->InitializedBy(*Name, sm->CurrentScope);
     if (Conv != nullptr) {
         sym->MemInfo->AstBorrowed = {Conv.get(), sm->CurrentScope};
@@ -131,7 +131,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
     meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
 
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
     if (var_sym != nullptr) {
         // Can be nullptr for the materialization into $ symbols.
         var_sym->CompTimeValue = std::move(meta->CmpResult);
@@ -146,14 +146,14 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     -> llvm::Value* {
     // Create the alloca for the variable.
     const auto uid = spp::utils::Uid(this);
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType.get());
     const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // The storage for this variable. Normally a fresh alloca at the top of the function, but inside a coroutine the
     // resume prologue has already pointed the symbol at its env field (its frame lives on the caller's stack). Reuse
     // that pre-set alloca storage instead of allocating a fresh non-persisting slot.
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
     auto alloca = var_sym->LlvmInfo->Alloca;
     if (alloca == nullptr) {
         alloca = codegen::llvm_entry_alloca(llvm_type, "local.alloca" + uid, ctx);

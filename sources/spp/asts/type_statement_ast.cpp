@@ -83,7 +83,8 @@ auto spp::asts::TypeStatementAst::Clone() const
 auto spp::asts::TypeStatementAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n");
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokType).append(" ");
     SPP_STRING_APPEND(NewType);
     SPP_STRING_APPEND(GnParamGroup).append(" ");
@@ -150,7 +151,7 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
     auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::RecursiveAliasSearch(
         *this, _FromUseStatement, sm->CurrentScope->Parent, sm, meta);
 
-    const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics());
+    const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().get());
     _AliasSym->Type = final_sym->Type;
     _AliasSym->LinkedScope = final_sym->LinkedScope;
     _AliasSym->IsCopyable = [final_sym] { return final_sym->IsCopyable(); };
@@ -181,14 +182,14 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     sm->CurrentScope->AddTypeSymbol(self_sym);
 
     // Get the old type's symbol, without generics.
-    const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics(), false);
+    const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics().get(), false);
     if (not stripped_old_sym->IsGeneric) {
         auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, _TrackingScope);
         GnParamGroup->Stage4_QualifyTypes(&tm, meta);
         OldType->Stage4_QualifyTypes(&tm, meta); // Qualify from scope of lowest level alias
         OldType->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
 
-        const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType);
+        const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType.get());
         _AliasSym->Type = old_sym->Type;
         _AliasSym->LinkedScope = old_sym->LinkedScope;
         const auto alias_raw_s4 = _AliasSym.get();
@@ -246,7 +247,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
         OldType->Stage7_AnalyseSemantics(sm, meta);
         meta->Restore();
 
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType.get());
         if (cls_sym->Type) {
             EnforceGenericConstraintsAllArgs(
                 *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
@@ -255,7 +256,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
 
         // Check visibility here specifically (almost always done in TypeIdentifierAst) because of the source type
         // auto expansion.
-        const auto named_target_sym = sm->CurrentScope->GetTypeSymbol(Source.OriginalOldType->WithoutGenerics());
+        const auto named_target_sym = sm->CurrentScope->GetTypeSymbol(Source.OriginalOldType->WithoutGenerics().get());
         if (named_target_sym != nullptr and named_target_sym->ScopeDefinedIn != nullptr) {
             CheckModuleTypeVisibility(
                 *named_target_sym, *Source.OriginalOldType, *named_target_sym->ScopeDefinedIn, *sm, *meta);

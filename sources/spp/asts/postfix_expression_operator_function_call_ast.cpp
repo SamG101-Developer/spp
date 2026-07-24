@@ -326,7 +326,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         auto env_ptr = static_cast<llvm::Value*>(nullptr);
         if (closure_val->getType()->isPointerTy()) {
             const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
-            const auto closure_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty), ctx));
+            const auto closure_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty.get()), ctx));
             fn_ptr = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, 0), "closure.fn_ptr" + closure_uid);
             env_ptr = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, 1), "closure.env_ptr" + closure_uid);
         }
@@ -345,7 +345,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         auto closure_param_tys = closure_args
             | genex::views::transform([](auto const &v) { return v->getType(); })
             | genex::to<Vec>();
-        const auto closure_ret_ty = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(InferType(sm, meta)), ctx);
+        const auto closure_ret_ty = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get()), ctx);
         const auto closure_fn_ty = llvm::FunctionType::get(closure_ret_ty, closure_param_tys.ToStdVector(), false);
 
         // A call returning Void cannot be given a name (llvm forbids naming void values).
@@ -390,7 +390,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         const auto frame_vars = codegen::CollectCoroFrameVars(*coro_scope);
         const auto params = coro->FnParamGroup->GetAllParams();
         for (const auto [i, arg] : FnArgGroup->Args | genex::views::ptr | genex::views::enumerate) {
-            const auto param_sym = coro_scope->GetVarSymbol(params[i]->ExtractName());
+            const auto param_sym = coro_scope->GetVarSymbol(params[i]->ExtractName().get());
             auto field = std::to_underlying(codegen::GenEnvField::FRAME_START);
             for (auto const &[fi, fv] : frame_vars | genex::views::enumerate) {
                 if (fv.get() == param_sym.get()) {
@@ -434,7 +434,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     if (not FnArgGroup->GetKeywordArgs().IsEmpty() and FnArgGroup->GetKeywordArgs()[0]->Name->Val == "self") {
         // Get the type of the left-hand-side expression.
         const auto lhs_type = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs->InferType(sm, meta);
-        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
         const auto llvm_type = codegen::GetLlvmType(*lhs_type_sym, ctx);
         SPP_ASSERT(llvm_type != nullptr);
 
@@ -450,7 +450,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         }
 
         // This check prevents materializing static access, like "Vec::Vec::push" as it makes no sense to do so.
-        else if (sm->CurrentScope->GetTypeSymbol(AstClone(temp_lhs->To<TypeAst>())) == nullptr) {
+        else if (sm->CurrentScope->GetTypeSymbol(temp_lhs->To<TypeAst>()) == nullptr) {
             // Materialize the lhs expression into a temporary.
             const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
             const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
@@ -501,7 +501,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
 
     // If there is a scope present (non-closure), then fully qualify the return type.
     if (_OverloadInfo->OverloadScope != nullptr and not ret_type->IsSelfType()) {
-        ret_type = _OverloadInfo->OverloadScope->GetTypeSymbol(ret_type)->FqName();
+        ret_type = _OverloadInfo->OverloadScope->GetTypeSymbol(ret_type.get())->FqName();
     }
 
     // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.

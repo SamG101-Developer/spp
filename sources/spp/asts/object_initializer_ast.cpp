@@ -88,7 +88,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
-    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics());
+    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics().get());
 
     // If the type is a variant type, prevent instantiation.
     RaiseIf<SppObjectInitializerVariantError>(
@@ -110,7 +110,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
         ? base_cls_sym->Type->Impl->Members
         | genex::views::ptr
         | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([&](auto const &x) { return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type)->FqName()); })
+        | genex::views::transform([&](auto const &x) { return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type.get())->FqName()); })
         | genex::to<Vec>()
         : spp::Vec<Pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
 
@@ -118,7 +118,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     meta->InferSource = {generic_infer_source.begin(), generic_infer_source.end()};
     meta->InferTarget = {generic_infer_target.begin(), generic_infer_target.end()};
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
     meta->Restore();
 
     meta->Save();
@@ -162,7 +162,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
 
     // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
     const auto uid = spp::utils::Uid(this);
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
     const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
@@ -219,7 +219,7 @@ auto spp::asts::ObjectInitializerAst::InferType(
     -> Shared<TypeAst> {
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
-    return sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    return sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 }
 
 auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(

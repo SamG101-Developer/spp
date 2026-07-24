@@ -85,7 +85,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
         let->Stage7_AnalyseSemantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = sm->CurrentScope->GetVarSymbol(AstCloneShared(cap->Val->To<IdentifierAst>()));
+        const auto sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
         const auto conv = cap->Conv.get();
         sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
         sym->Type = sym->Type->WithConvention(AstClone(cap->Conv));
@@ -105,17 +105,17 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
         if (cap->Conv != nullptr) {
             // Mark the pins on the capture and the target.
             const auto cap_val = cap->Val->To<IdentifierAst>();
-            auto cap_sym = sm->CurrentScope->GetVarSymbol(AstCloneShared(cap_val));
+            auto cap_sym = sm->CurrentScope->GetVarSymbol(cap_val);
             cap_sym->MemInfo->AstBorrowed = {cap->Conv.get(), sm->CurrentScope};
             // if (ass_sym != nullptr) { ass_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get()); }
             // TODO: New escaping borrow system needs using here
 
-            cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(AstCloneShared(cap_val));
+            cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap_val);
             // cap_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get());
         }
         else {
             // Mark the symbol from the outer context as moved.
-            const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(AstCloneShared(cap->Val->To<IdentifierAst>()));
+            const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
             cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
         }
     }
@@ -136,9 +136,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
         // For the capture x, mock "let x = env.x".
         const auto cap_val = capture->Val->To<IdentifierAst>();
         const auto cap_ty = capture->InferType(sm, meta);
-        const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(cap_ty);
         const auto cap_llvm_type = codegen::GetLlvmType(
-            *sm->CurrentScope->GetTypeSymbol(cap_ty), ctx);
+            *sm->CurrentScope->GetTypeSymbol(cap_ty.get()), ctx);
 
         // Create the alloca for the variable.
         const auto alloca = codegen::llvm_entry_alloca(cap_llvm_type, "capture.alloca." + uid, ctx);

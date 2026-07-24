@@ -219,7 +219,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
         // branch body branches to), not the entry block.
         ctx->Builder.SetInsertPoint(case_end_bb);
         ret_type = InferType(sm, meta);
-        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type);
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type.get());
         phi = ctx->Builder.CreatePHI(
             codegen::GetLlvmType(*ret_type_sym, ctx), static_cast<unsigned>(Branches.Len()), "case.phi" + uid);
     }

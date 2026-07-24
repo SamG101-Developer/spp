@@ -295,12 +295,12 @@ auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
     //  each inner initializer may exist, may not, so check and create if needed.
     auto current_obj_init = object;
     auto current_obj_type = object->Type;
-    auto current_obj_sym = sm->CurrentScope->GetTypeSymbol(current_obj_type);
+    auto current_obj_sym = sm->CurrentScope->GetTypeSymbol(current_obj_type.get());
 
     for (auto const &attr_name : attr_path) {
         const auto is_final = attr_name == attr_path.Back();
-        current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type;
-        current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type);
+        current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name.get())->Type;
+        current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type.get());
 
         // Check if the attribute already exists in the current object initializer.
         const auto found = genex::contains(current_obj_init->ArgGroup->GetAllArgs(), *attr_name, [](auto const *x) -> decltype(auto) { return *x->Name; });
@@ -328,8 +328,8 @@ auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
             // initializer.
             if (not is_final) {
                 current_obj_init = obj;
-                current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type;
-                current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type);
+                current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name.get())->Type;
+                current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type.get());
                 continue;
             }
             current_obj_init->ArgGroup->Args.EmplaceBack(

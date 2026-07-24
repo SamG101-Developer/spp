@@ -43,14 +43,7 @@ include(FetchContent)
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED) # Boost libraries
-# Accept any LLVM 22.x.x (LLVM's config rejects a non-exact patch match).
 find_package(LLVM REQUIRED CONFIG) # LLVM libraries
-if(NOT LLVM_VERSION_MAJOR EQUAL 22)
-    message(
-        FATAL_ERROR
-        "LLVM 22 is required, but found ${LLVM_PACKAGE_VERSION}"
-    )
-endif()
 find_package(unordered_dense CONFIG REQUIRED) # unordered_dense library
 find_package(tomlplusplus CONFIG REQUIRED) # tomlplusplus library
 find_package(nlohmann_json CONFIG REQUIRED) # nlohmann_json library
@@ -71,7 +64,6 @@ target_compile_options(
     PRIVATE
         -Wall
         -Wextra
-        -fmodules
         -fvisibility=hidden
         -fvisibility-inlines-hidden
         -Wcast-align
@@ -149,40 +141,6 @@ target_link_libraries(
 
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
-
-# ASAN
-
-set(CMAKE_CXX_FLAGS_ASAN
-    "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls"
-    CACHE STRING
-    "Flags for ASan build"
-    FORCE
-)
-set(CMAKE_C_FLAGS_ASAN
-    "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls"
-    CACHE STRING
-    "Flags for ASan build"
-    FORCE
-)
-set(CMAKE_EXE_LINKER_FLAGS_ASAN
-    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined"
-    CACHE STRING
-    "Linker flags for ASan build"
-    FORCE
-)
-set(CMAKE_SHARED_LINKER_FLAGS_ASAN
-    "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined"
-    CACHE STRING
-    "Shared linker flags for ASan build"
-    FORCE
-)
-
-mark_as_advanced(
-    CMAKE_CXX_FLAGS_ASAN
-    CMAKE_C_FLAGS_ASAN
-    CMAKE_EXE_LINKER_FLAGS_ASAN
-    CMAKE_SHARED_LINKER_FLAGS_ASAN
-)
 
 # Unit test support.
 if(SPP_BUILD_TESTS)

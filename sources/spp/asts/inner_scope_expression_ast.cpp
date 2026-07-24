@@ -67,8 +67,10 @@ auto spp::asts::InnerScopeExpressionAst::Clone() const
 auto spp::asts::InnerScopeExpressionAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(TokL).append(not Members.IsEmpty() ? "\n" : "");
-    SPP_STRING_EXTEND(Members, "\n").append(not Members.IsEmpty() ? "\n" : "");
+    SPP_STRING_APPEND(TokL);
+    SPP_STRING_APPEND_RAW(not Members.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Members, "\n");
+    SPP_STRING_APPEND_RAW(not Members.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }
@@ -128,7 +130,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
             sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
             const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
             if (b == nullptr) { continue; }
-            sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto info) {
+            sm->CurrentScope->GetVarSymbol(b.get())->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto info) {
                 return *std::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
             });
         }

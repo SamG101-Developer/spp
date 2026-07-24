@@ -228,7 +228,7 @@ protected:
 
     SPP_ATTR_NODISCARD auto _DeduceMockClassType() const -> Pair<Shared<TypeAst>, Str>;
 
-    SPP_ATTR_NODISCARD auto _IsPureGeneric(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
+    SPP_ATTR_NODISCARD auto _IsPureGeneric(ScopeManager const *sm, codegen::LLvmCtx const *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)

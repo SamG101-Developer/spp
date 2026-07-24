@@ -62,8 +62,10 @@ auto spp::asts::AssignmentStatementAst::Clone() const
 auto spp::asts::AssignmentStatementAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Lhs, ", ").append(" ");
-    SPP_STRING_APPEND(TokAssign).append(" ");
+    SPP_STRING_EXTEND(Lhs, ", ");
+    SPP_STRING_APPEND_RAW(" ");
+    SPP_STRING_APPEND(TokAssign);
+    SPP_STRING_APPEND_RAW(" ");
     SPP_STRING_EXTEND(Rhs, ", ");
     SPP_STRING_END;
 }
@@ -269,7 +271,7 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
         }
         else if (IsIdentifier(Lhs[i].get())) {
             // "a = v" targets the variable's allocation directly (loading it would yield the rvalue).
-            const auto var_sym = sm->CurrentScope->GetVarSymbol(AstCloneShared(Lhs[i]->To<IdentifierAst>()));
+            const auto var_sym = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>());
             SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
             llvm_lhs = var_sym->LlvmInfo->Alloca;
         }

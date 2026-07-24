@@ -30,7 +30,7 @@ auto spp::codegen::CollectCoroFrameVars(
     auto out = Vec<Shared<analyse::scopes::VariableSymbol>>();
     for (auto const &sym : scope.AllVarSymbols(true)) {
         if (sym->IsGeneric or sym->Type == nullptr) { continue; }
-        out.EmplaceBack(sym);
+        out.EmplaceBack(sym->SharedFromThis<analyse::scopes::VariableSymbol>());
     }
 
     // Get all the child scopes' variables too. Closure scopes are auto avoided because of how they are parent-linked to
@@ -58,11 +58,11 @@ auto spp::codegen::CreateCoroEnvType(
     // Fixed header fields: state (i8), location (i32), the send slot and the yield slot.
     const auto llvm_state_type = llvm::Type::getInt8Ty(*ctx->Context);
     const auto llvm_location_type = llvm::Type::getInt32Ty(*ctx->Context);
-    const auto llvm_yield_type = GetLlvmType(*scope.GetTypeSymbol(yield_type), ctx);
+    const auto llvm_yield_type = GetLlvmType(*scope.GetTypeSymbol(yield_type.get()), ctx);
 
     // For Send != Void, the send slot carries the resumed value (dummy i8 otherwise, to keep field order stable).
     const auto llvm_send_type = not IsTypeVoid(*send_type, scope)
-        ? GetLlvmType(*scope.GetTypeSymbol(send_type), ctx)
+        ? GetLlvmType(*scope.GetTypeSymbol(send_type.get()), ctx)
         : llvm::Type::getInt8Ty(*ctx->Context);
 
     // Non-generically substituted guard.
@@ -74,7 +74,7 @@ auto spp::codegen::CreateCoroEnvType(
 
     // One field per frame variable (parameters and body locals), starting at GenEnvField::FRAME_START.
     for (auto const &var_sym : CollectCoroFrameVars(scope)) {
-        fields.EmplaceBack(GetLlvmType(*scope.GetTypeSymbol(var_sym->Type), ctx));
+        fields.EmplaceBack(GetLlvmType(*scope.GetTypeSymbol(var_sym->Type.get()), ctx));
     }
 
     const auto coro_env_type = llvm::StructType::create(

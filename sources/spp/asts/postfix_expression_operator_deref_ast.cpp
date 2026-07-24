@@ -77,7 +77,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
     const auto lhs_type_no_conv = lhs_type->WithoutConvention();
     RaiseIf<SppNonCopyableTypeError>(
-        not sm->CurrentScope->GetTypeSymbol(lhs_type)->IsCopyable() and not meta->AllowMoveDeref and not is_view,
+        not sm->CurrentScope->GetTypeSymbol(lhs_type.get())->IsCopyable() and not meta->AllowMoveDeref and not is_view,
         {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
 }
 

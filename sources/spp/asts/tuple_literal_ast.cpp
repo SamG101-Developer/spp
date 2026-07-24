@@ -155,7 +155,7 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
     // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
     const auto uid = "." + spp::utils::Uid(this);
     const auto tuple_type = InferType(sm, meta);
-    const auto tuple_type_sym = sm->CurrentScope->GetTypeSymbol(tuple_type);
+    const auto tuple_type_sym = sm->CurrentScope->GetTypeSymbol(tuple_type.get());
     const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 

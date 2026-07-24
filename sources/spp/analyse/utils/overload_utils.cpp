@@ -64,7 +64,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     //  to scope lookup.
     auto temp = Shared<asts::ExpressionAst>(nullptr);
     if (const auto id = lhs->To<asts::IdentifierAst>()) {
-        const auto x = sm->CurrentScope->GetVarSymbol(asts::AstCloneShared(id));
+        const auto x = sm->CurrentScope->GetVarSymbol(id);
         if (x and x->MemInfo->AstCompTime) {
             temp = x->FqName();
             lhs = temp.get();
@@ -319,6 +319,12 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
         auto tm = scopes::ScopeManager(sm->GlobalScope, new_fn_scope);
         new_fn_proto->GnParamGroup->Params = decltype(new_fn_proto->GnParamGroup->Params){};
 
+        // Capture the placeholder slot that "CreateGenericFunScope" just registered. It must be captured now (rather than
+        // via ".back()" at fill-time) because the parameter/return-type analysis below can trigger nested overload
+        // resolution against the same base prototype, appending further substitutions and shifting ".back()". The list
+        // node reference stays valid across those appends ("_GenericSubstitutions" is a std::list).
+        auto &generic_sub_slot = asts::AstBody(fn_scope->AstNode)[0]->To<asts::FunctionPrototypeAst>()->RegisteredGenericSubstitutions().back();
+
         // Substitute and analyse the function parameters and return type.
         for (auto *p : new_fn_proto->FnParamGroup->GetNonSelfParams()) {
             p->Type = p->Type->SubstituteGenerics(combined_generics->GetAllArgs());
@@ -335,7 +341,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
 
         // Save the generic implementation against the base function, and update the active scope and prototype.
         const auto new_fn_proto_ptr = new_fn_proto.get();
-        asts::AstBody(fn_scope->AstNode)[0]->To<asts::FunctionPrototypeAst>()->RegisteredGenericSubstitutions().back().Second = std::move(new_fn_proto);
+        generic_sub_slot.Second = std::move(new_fn_proto);
         return std::make_tuple(new_fn_proto_ptr, new_fn_scope);
     }
 
@@ -411,7 +417,7 @@ namespace {
         spp::analyse::scopes::Scope const &caller_scope)
         -> bool {
         const auto stripped = param_type.WithoutGenerics()->WithoutConvention();
-        const auto sym = caller_scope.GetTypeSymbol(stripped);
+        const auto sym = caller_scope.GetTypeSymbol(stripped.get());
         return sym != nullptr and sym->IsGeneric;
     }
 }
@@ -474,7 +480,7 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
         {}, [&](asts::FunctionCallArgumentKeywordAst *arg) { return genex::position(func_param_names, [&arg](auto const &param) { return *arg->Name == *param; }); });
 
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->GetAllParams())) {
-        auto p_type = fn_scope->GetTypeSymbol(param->Type)->FqName()->WithConvention(asts::AstClone(param->Type->GetConvention()));
+        auto p_type = fn_scope->GetTypeSymbol(param->Type.get())->FqName()->WithConvention(asts::AstClone(param->Type->GetConvention()));
         if (p_type->IsSelfType()) {
             p_type = asts::AstClone(meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>()->Lhs->To<asts::TypeAst>())->WithConvention(asts::AstClone(p_type->GetConvention()));
         }

@@ -76,8 +76,8 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
 
     // Check the type exists and qualify.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
-    const auto sym = sm->CurrentScope->GetVarSymbol(IdentifierAst::FromType(*Name));
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
+    const auto sym = sm->CurrentScope->GetVarSymbol(IdentifierAst::FromType(*Name).get());
     sym->Type = Type;
     meta->Restore();
 }

@@ -215,7 +215,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // }
 
     // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
-    if (not scope->HasTypeSymbol(AstClone(this))) {
+    if (not scope->HasTypeSymbol(this)) {
         const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
     }
@@ -231,7 +231,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // The generic substitution above may have created the scope this resolves to, so the symbol is re-fetched rather
     // than reusing the base "type_sym" from before it existed.
     if (not meta->AllowAbstractType and meta->CurrentStage >= 8 and not type_sym->IsGeneric) {
-        const auto resolved_sym = scope->GetTypeSymbol(AstClone(this));
+        const auto resolved_sym = scope->GetTypeSymbol(this);
         if (resolved_sym != nullptr and resolved_sym->LinkedScope != nullptr) {
             const auto unimplemented = GetUnimplementedAbstractMethods(*resolved_sym->LinkedScope);
 
@@ -437,7 +437,7 @@ auto spp::asts::TypeIdentifierAst::InferType(
     // Fully qualify this type name from the scope.
     // Have to AstClone because PostfixExpressionAst lhs (will change with removal of all shared pointers)
     const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-    const auto type_sym = type_scope->GetTypeSymbol(AstClone(this));
+    const auto type_sym = type_scope->GetTypeSymbol(this);
     return type_sym->FqName();
 }
 

@@ -33,7 +33,7 @@ namespace spp::analyse::scopes {
  * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
  * need for a base class.
  */
-SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
+SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
     SPP_GCC_VTABLE_FIX_BASE
 
     /**
@@ -42,6 +42,24 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
      * as it allows for proper cleanup of resources when a derived class is deleted.
      */
     virtual ~Symbol();
+
+    /**
+     * Obtain a @c Shared owning pointer to this symbol, downcast to the requested derived symbol type. Symbols are
+     * always created via @c MakeShared and stored in symbol tables, so the enclosing control block is guaranteed to
+     * exist; this mints an owning pointer lazily at the call sites that actually need shared ownership, without the
+     * ancestor-walking traversals having to copy @c Shared pointers per element.
+     * @tparam Derived The concrete symbol type to downcast to (defaults to @c Symbol for no downcast).
+     * @return A @c Shared pointer to this symbol as @c Derived.
+     */
+    template <typename Derived = Symbol>
+    SPP_ATTR_NODISCARD auto SharedFromThis() -> Shared<Derived> {
+        if constexpr (std::is_same_v<Derived, Symbol>) {
+            return shared_from_this();
+        }
+        else {
+            return std::static_pointer_cast<Derived>(shared_from_this());
+        }
+    }
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {

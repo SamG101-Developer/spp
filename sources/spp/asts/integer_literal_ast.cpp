@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
-import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
@@ -141,7 +141,7 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
 
     // Get the type of the integer literal.
     const auto type_ast = InferType(sm, meta);
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
     const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     const auto bit_width = llvm_type->getIntegerBitWidth();
 
@@ -163,27 +163,26 @@ auto spp::asts::IntegerLiteralAst::InferType(
     CompilerMetaData *)
     -> Shared<TypeAst> {
     //
-    using namespace generate::common_types;
+    using namespace generate::common_types_precompiled;
     using analyse::errors::SppInternalCompilerError;
 
     // Map the type string literal to the correct SPP type.
-    auto spp_type = Shared<TypeAst>(nullptr);
-    const auto p = PosStart();
-    if (Type.empty()) { spp_type = S32(p); }
-    else if (Type == "s8") { spp_type = S8(p); }
-    else if (Type == "s16") { spp_type = S16(p); }
-    else if (Type == "s32") { spp_type = S32(p); }
-    else if (Type == "s64") { spp_type = S64(p); }
-    else if (Type == "s128") { spp_type = S128(p); }
-    else if (Type == "s256") { spp_type = S256(p); }
-    else if (Type == "sz") { spp_type = SSize(p); }
-    else if (Type == "u8") { spp_type = U8(p); }
-    else if (Type == "u16") { spp_type = U16(p); }
-    else if (Type == "u32") { spp_type = U32(p); }
-    else if (Type == "u64") { spp_type = U64(p); }
-    else if (Type == "u128") { spp_type = U128(p); }
-    else if (Type == "u256") { spp_type = U256(p); }
-    else if (Type == "uz") { spp_type = USize(p); }
+    auto spp_type = static_cast<TypeAst*>(nullptr);
+    if (Type.empty()) { spp_type = S32.get(); }
+    else if (Type == "s8") { spp_type = S8.get(); }
+    else if (Type == "s16") { spp_type = S16.get(); }
+    else if (Type == "s32") { spp_type = S32.get(); }
+    else if (Type == "s64") { spp_type = S64.get(); }
+    else if (Type == "s128") { spp_type = S128.get(); }
+    else if (Type == "s256") { spp_type = S256.get(); }
+    else if (Type == "sz") { spp_type = SSIZE.get(); }
+    else if (Type == "u8") { spp_type = U8.get(); }
+    else if (Type == "u16") { spp_type = U16.get(); }
+    else if (Type == "u32") { spp_type = U32.get(); }
+    else if (Type == "u64") { spp_type = U64.get(); }
+    else if (Type == "u128") { spp_type = U128.get(); }
+    else if (Type == "u256") { spp_type = U256.get(); }
+    else if (Type == "uz") { spp_type = USIZE.get(); }
     else {
         Raise<SppInternalCompilerError>(
             {sm->CurrentScope},

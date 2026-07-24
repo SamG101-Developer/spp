@@ -3,9 +3,9 @@ module;
 
 export module spp.asts.generate.common_types_precompiled;
 import spp.asts.type_ast;
+import spp.asts.identifier_ast;
 import spp.utils.types;
 import std;
-
 
 namespace spp::asts::generate::common_types_precompiled {
     /**
@@ -68,6 +68,9 @@ namespace spp::asts::generate::common_types_precompiled {
     SPP_EXP_CMP Shared<TypeAst> CHAR = nullptr;
     SPP_EXP_CMP Shared<TypeAst> STR_VIEW = nullptr;
     SPP_EXP_CMP Shared<TypeAst> VIEW = nullptr;
+
+    SPP_EXP_CMP Shared<TypeAst> SELF_TYPE = nullptr;
+    SPP_EXP_CMP Shared<IdentifierAst> SELF_VAR = nullptr;
 
     /**
      * Initialize the precompiled common types. This must be called before using any of the precompiled types.

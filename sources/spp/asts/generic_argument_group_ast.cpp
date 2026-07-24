@@ -76,7 +76,7 @@ auto spp::asts::GenericArgumentGroupAst::FromMap(
     for (auto const &[arg_name, arg_val] : std::move(map)) {
         // Map type ASTs to keyword type arguments.
         if (auto *arg_val_for_type = arg_val->To<TypeAst>()) {
-            auto val = AstClone(arg_val_for_type);
+            auto val = arg_val_for_type->shared_from_this(); // Todo: do we need to clone here?
             auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(arg_name, nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }

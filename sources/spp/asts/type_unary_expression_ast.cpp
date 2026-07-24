@@ -122,7 +122,7 @@ auto spp::asts::TypeUnaryExpressionAst::InferType(
     -> Shared<TypeAst> {
     // Infer the RHS type.
     const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-    const auto type_sym = type_scope->GetTypeSymbol(AstClone(this)); // Temp
+    const auto type_sym = type_scope->GetTypeSymbol(this);
     return type_sym->FqName()->WithConvention(AstClone(GetConvention()));
 }
 

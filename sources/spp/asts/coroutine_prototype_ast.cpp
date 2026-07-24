@@ -87,7 +87,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
 
     // Update the meta information for enclosing function information.
     meta->Save();
@@ -148,7 +148,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
 
         // Generate the coroutine body into the start block. The "gen" expressions register continuation blocks.
         ctx->Builder.SetInsertPoint(start_bb);
-        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
         meta->Save();
         meta->EnclosingFunctionFlavour = TokFun.get();
         meta->EnclosingFunctionScope = sm->CurrentScope;

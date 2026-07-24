@@ -108,7 +108,7 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
     Lhs->Stage7_AnalyseSemantics(sm, meta);
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto lhs_type = Lhs->InferType(sm, meta);
-    const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type);
+    const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type.get());
     const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
     // Check there is only 1 target field on the lhs at the highest level.
@@ -116,7 +116,7 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
     auto sup_scopes = lhs_type_sym->LinkedScope->SupScopes();
     sup_scopes.Insert(sup_scopes.begin(), lhs_type_sym->LinkedScope);
     auto scopes_and_syms = sup_scopes
-        | genex::views::transform([name=op_nested->Name.get()](auto &&x) { return MakePair(x, x->GetTypeSymbol(AstClone(name), true)); })
+        | genex::views::transform([name=op_nested->Name.get()](auto &&x) { return MakePair(x, x->GetTypeSymbol(name, true)); })
         | genex::to<Vec>()
         | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
         | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
@@ -152,13 +152,13 @@ auto spp::asts::TypePostfixExpressionAst::InferType(
     // Infer the type of the left-hand-side.
     Lhs->Stage7_AnalyseSemantics(sm, meta);
     const auto lhs_type = Lhs->InferType(sm, meta);
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
     const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
     // Infer the type of the postfix operation.
     const auto op_nested = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
     const auto part = analyse::utils::type_utils::GetTypeSymOrError(*lhs_type_scope, *op_nested->Name, *sm, meta)->FqName();
-    const auto sym = lhs_type_scope->GetTypeSymbol(part);
+    const auto sym = lhs_type_scope->GetTypeSymbol(part.get());
     return sym->FqName();
 }
 

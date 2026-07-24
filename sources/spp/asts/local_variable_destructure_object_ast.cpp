@@ -95,9 +95,9 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     const auto val = meta->LetStatementValue;
     const auto val_type = val->InferType(sm, meta);
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
-    const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type)->Type;
+    const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type.get())->Type;
     const auto cls_attrs = cls_proto != nullptr ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>() : Vec<Ast*>{};
 
     const auto attributes = cls_attrs
@@ -150,7 +150,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
         auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
         _CondLet = MakeUnique<LetStatementInitializedAst>(nullptr, std::move(uid_var), nullptr, nullptr, AstClone(val));
         _CondLet->Stage7_AnalyseSemantics(sm, meta);
-        _CondSym = sm->CurrentScope->GetVarSymbol(uid_name);
+        _CondSym = sm->CurrentScope->GetVarSymbol(uid_name.get());
         _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
         _FlowSym->Type = Type;
         sm->CurrentScope->AddVarSymbol(_FlowSym);

@@ -31,13 +31,13 @@ auto spp::asts::GenericArgumentTypeAst::Stage4_QualifyTypes(
     CompilerMetaData *meta)
     -> void {
     Val->Stage4_QualifyTypes(sm, meta);
-    const auto sym = sm->CurrentScope->GetTypeSymbol(Val, true);
+    const auto sym = sm->CurrentScope->GetTypeSymbol(Val.get(), true);
     if (sym and not sym->AliasStmt) {
         Val = sym->FqName();
         return;
     }
 
-    const auto sym2 = sm->CurrentScope->GetTypeSymbol(Val->WithoutGenerics(), true);
+    const auto sym2 = sm->CurrentScope->GetTypeSymbol(Val->WithoutGenerics().get(), true);
     if (sym2 && !sym2->AliasStmt) {
         const auto fq = sym2->FqName();
         Val = fq->WithGenerics(std::move(Val->TypeParts().Back()->GnArgGroup))->WithConvention(AstClone(Val->GetConvention()));

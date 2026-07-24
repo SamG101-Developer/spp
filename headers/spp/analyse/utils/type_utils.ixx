@@ -244,7 +244,7 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto GetFwdTypes(
         asts::TypeAst const &type,
         scopes::ScopeManager const &sm)
-        -> Pair<Shared<const asts::TypeAst>, Shared<const asts::TypeAst>>;
+        -> Pair<Shared<asts::TypeAst>, Shared<asts::TypeAst>>;
 
     SPP_EXP_FUN auto ValidateInconsistentTypes(
         Vec<asts::CaseExpressionBranchAst*> const &branches,

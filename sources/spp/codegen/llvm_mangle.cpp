@@ -49,9 +49,9 @@ auto spp::codegen::mangle::mangle_fun_name(
     const auto mod_name = mangle_mod_name(owner_scope);
 
     // Get the return and parameter types of the function.
-    const auto return_type_sym = owner_scope.GetTypeSymbol(fun_proto.ReturnType);
+    const auto return_type_sym = owner_scope.GetTypeSymbol(fun_proto.ReturnType.get());
     const auto param_type_syms = fun_proto.FnParamGroup->Params
-        | genex::views::transform([&owner_scope](auto const &param) { return owner_scope.GetTypeSymbol(param->Type); })
+        | genex::views::transform([&owner_scope](auto const &param) { return owner_scope.GetTypeSymbol(param->Type.get()); })
         | genex::to<Vec>();
 
     // Save the type symbols into a vector.

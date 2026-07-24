@@ -337,7 +337,7 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
         auto identifier_part = MakeShared<asts::IdentifierAst>(0uz, Str(part));
 
         // If the part exists in the current scope (starting from the global scope), then move into it.
-        if (const auto quick_ns_sym = sm->CurrentScope->GetNsSymbol(identifier_part, true); quick_ns_sym != nullptr) {
+        if (const auto quick_ns_sym = sm->CurrentScope->GetNsSymbol(identifier_part.get(), true); quick_ns_sym != nullptr) {
             const auto ns_scope = quick_ns_sym->LinkedScope;
             sm->Reset(ns_scope);
         }

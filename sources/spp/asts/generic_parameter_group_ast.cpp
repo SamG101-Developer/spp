@@ -240,7 +240,7 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
 
         // Attach the scopes of the constraint types as sup-scopes to the generic scope.
         for (auto const &constraint : p->Constraints->Constraints) {
-            auto constraint_scope = sm->CurrentScope->GetTypeSymbol(constraint)->LinkedScope;
+            auto constraint_scope = sm->CurrentScope->GetTypeSymbol(constraint.get())->LinkedScope;
             for (auto const &dummy_scope : p->GetDummyScopes()) {
                 dummy_scope->DirectSupScopes.EmplaceBack(constraint_scope);
             }
@@ -275,7 +275,7 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
     for (auto const &p : GetTypeParams()) {
         for (auto const &constraint : p->Constraints->Constraints) {
             if (IsTypeCopyable(*constraint, *sm)) {
-                const auto generic_sym = sm->CurrentScope->GetTypeSymbol(p->Name);
+                const auto generic_sym = sm->CurrentScope->GetTypeSymbol(p->Name.get());
                 generic_sym->IsDirectlyCopyable = true;
             }
         }

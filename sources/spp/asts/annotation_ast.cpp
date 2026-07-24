@@ -211,13 +211,13 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     // Mark a type symbol as being "zero type".
     else if (fq_name == A::kZeroType and _Ctx->To<ClassPrototypeAst>()) {
         const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
-        const auto type_sym = sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics());
+        const auto type_sym = sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics().get());
         type_sym->IsDirectlyZeroType = true;
     }
     else if (fq_name == A::kZeroType and _Ctx->To<TypeStatementAst>()) {
         const auto cls_ctx = _Ctx->To<TypeStatementAst>();
-        sm->CurrentScope->GetTypeSymbol(cls_ctx->NewType->WithoutGenerics())->IsDirectlyZeroType = true;
-        sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType)->IsDirectlyZeroType = true;
+        sm->CurrentScope->GetTypeSymbol(cls_ctx->NewType->WithoutGenerics().get())->IsDirectlyZeroType = true;
+        sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType.get())->IsDirectlyZeroType = true;
     }
 
     // Mark a function as being inlinable via llvm.

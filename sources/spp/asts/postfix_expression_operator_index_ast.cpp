@@ -96,7 +96,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
     const auto lhs_type = const_shared_cast(
         meta->PostfixExpressionLhs->InferType(sm, meta));
 
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
     auto sup_types = Vec{lhs_type};
     sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 
