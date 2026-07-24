@@ -5,6 +5,9 @@ project(spp)
 # Set the C++ standard and other compiler options & flags.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
+set(CMAKE_AR gcc-ar)
+set(CMAKE_RANLIB gcc-ranlib)
+set(CMAKE_NM gcc-nm)
 
 # Local dev builds against a custom GCC at /usr/local/gcc-dev; CI passes
 # -DSPP_USE_DEV_RPATH=OFF so it doesn't bake in a path that isn't on the runner.
@@ -39,7 +42,13 @@ if(SPP_SANITIZER)
     add_link_options(-fsanitize=${_SPP_SAN_LIST})
 endif()
 
-include(FetchContent)
+set(CMAKE_LINKER_TYPE LLD)
+
+#if(NOT SPP_SANITIZER AND CMAKE_BUILD_TYPE STREQUAL "Release")
+#    message(STATUS "SPP: link-time optimization (LTO) enabled (fat objects)")
+#    add_compile_options(-flto=auto -ffat-lto-objects)
+#    add_link_options(-flto=auto  -ffat-lto-objects -Wno-odr -Wno-lto-type-mismatch)
+#endif()
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED) # Boost libraries
@@ -64,8 +73,8 @@ target_compile_options(
     PRIVATE
         -Wall
         -Wextra
-        -fvisibility=hidden
-        -fvisibility-inlines-hidden
+        #        -fvisibility=hidden
+        #        -fvisibility-inlines-hidden
         -Wcast-align
         -Wcast-qual
         -Wconversion

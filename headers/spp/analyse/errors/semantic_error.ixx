@@ -134,7 +134,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppGeneratedCodeError;
 }
 
-SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
+SPP_EXP_CLS struct SPP_ATTR_COLD spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
     using AbstractError::AbstractError;
     SemanticError(SemanticError const &) = default;
     ~SemanticError() override = default;

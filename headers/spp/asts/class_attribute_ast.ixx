@@ -16,7 +16,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 /**
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to
  * add "state" to a type.
@@ -89,6 +88,5 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
 
     auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassAttributeAst)

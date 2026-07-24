@@ -29,7 +29,7 @@ namespace spp {
 
     SPP_EXP_FUN template <typename E, typename A>
     requires std::derived_from<E, analyse::errors::SemanticError>
-    SPP_ATTR_NORETURN auto Raise(Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
+    SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise(Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
         std::apply(
             [&]<typename... Args2>(Args2 &&... unpacked_args) {
                 analyse::errors::SemanticErrorBuilder<E>()
@@ -62,7 +62,7 @@ namespace spp {
 }
 
 SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
-struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
+struct SPP_ATTR_COLD spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
     SemanticErrorBuilder() = default;
     ~SemanticErrorBuilder() override = default;
 
@@ -71,7 +71,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
         return *this;
     }
 
-    SPP_ATTR_NORETURN auto Raise() -> void override {
+    SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
         const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
 
         // Cycle the formatters to match the number of strings being formatted.

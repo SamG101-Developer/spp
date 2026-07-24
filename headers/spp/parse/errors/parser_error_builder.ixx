@@ -18,7 +18,7 @@ namespace spp::parse {
 }
 
 SPP_EXP_CLS template <typename T>
-struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
+struct SPP_ATTR_COLD spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
     std::size_t Pos = 0;
 
     std::set<lex::SppTokenType> Tokens = {};
@@ -27,7 +27,7 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
 
     ~SyntacticErrorBuilder() override = default;
 
-    SPP_ATTR_NORETURN auto Raise() -> void override {
+    SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
         using namespace std::string_literals;
 
         // auto token_set_str = tokens
