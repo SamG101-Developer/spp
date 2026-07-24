@@ -101,6 +101,9 @@ auto spp::analyse::utils::type_utils::TypeEq(
     scopes::Scope const &rhs_scope,
     const bool check_variant)
     -> bool {
+    // Identity fast path: the same type node is equal to itself, skipping the strip + triple symbol lookup.
+    if (&lhs_type == &rhs_type) { return true; }
+
     // Special case for the "!" never type.
     using asts::generate::common_types_precompiled::VAR;
     if (rhs_type.IsNeverType()) { return true; }
@@ -257,7 +260,8 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
     const auto stripped_rhs_sym = rhs_scope.GetTypeSymbol(stripped_rhs.get());
     if (stripped_rhs_sym->IsGeneric) {
-        const auto t = dynamic_shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
+        // A generic (stripped) type is always a bare type identifier, so the downcast is known-safe.
+        const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
         if (check_constraints and not ConstraintEq(stripped_rhs_sym->GenericConstraints, lhs_type, rhs_scope, lhs_scope)) { return false; }
         return true;
@@ -269,7 +273,8 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
 
     const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs.get());
     if (stripped_lhs_sym->IsGeneric) {
-        const auto t = dynamic_shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
+        // A generic (stripped) type is always a bare type identifier, so the downcast is known-safe.
+        const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
         if (check_constraints and not ConstraintEq(stripped_lhs_sym->GenericConstraints, rhs_type, lhs_scope, rhs_scope)) { return false; }
         return true;
@@ -289,8 +294,10 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     auto &lhs_generics = lhs_type.LastTypePart()->GnArgGroup->Args;
     auto &rhs_generics = rhs_type.LastTypePart()->GnArgGroup->Args;
 
-    // Special case for variadic parameter types.
-    const auto temp_type_proto = lhs_scope.GetTypeSymbol(&lhs_type)->Type;
+    // Special case for variadic parameter types. Reuse the stripped symbol's prototype (equal to the rhs's, checked
+    // above) rather than a fresh generic-inclusive GetTypeSymbol(&lhs_type): the last generic parameter's variadic-ness
+    // is a structural property of the class prototype, invariant under generic instantiation.
+    const auto temp_type_proto = stripped_lhs_sym->Type;
     if (temp_type_proto and not temp_type_proto->GnParamGroup->Params.IsEmpty()) {
         if (temp_type_proto->GnParamGroup->Params.Back()->To<asts::FunctionParameterVariadicAst>() != nullptr) {
             if (lhs_generics.Len() != rhs_generics.Len()) { return false; }
@@ -299,14 +306,14 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
 
     // Ensure each generic argument is symbolically equal to the other. Todo: why genex broke here?
     for (auto [lhs_generic, rhs_generic] : std::views::zip(lhs_generics, rhs_generics)) {
-        if (rhs_generic->To<asts::GenericArgumentTypeAst>()) {
-            const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentTypeAst>();
-            const auto rhs_generic_part = rhs_generic->To<asts::GenericArgumentTypeAst>();
+        if (const auto rhs_generic_part_t = rhs_generic->To<asts::GenericArgumentTypeAst>()) {
+            const auto rhs_generic_part = rhs_generic_part_t;
+            const auto lhs_generic_part = lhs_generic->ToUnchecked<asts::GenericArgumentTypeAst>();
             if (not RelaxedTypeEq(*lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args, check_variant, check_constraints)) { return false; }
         }
         else {
-            const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentCompAst>();
-            const auto rhs_generic_part = rhs_generic->To<asts::GenericArgumentCompAst>();
+            const auto lhs_generic_part = lhs_generic->ToUnchecked<asts::GenericArgumentCompAst>();
+            const auto rhs_generic_part = rhs_generic->ToUnchecked<asts::GenericArgumentCompAst>();
             if (not RelaxedTypeEq(*lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args)) { return false; }
         }
     }

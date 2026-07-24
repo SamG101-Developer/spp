@@ -192,7 +192,7 @@ auto spp::asts::TypeUnaryExpressionAst::WithoutConvention() const
 
 auto spp::asts::TypeUnaryExpressionAst::GetConvention() const
     -> ConventionAst* {
-    if (auto const *op_borrow = Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
+    if (const auto op_borrow = Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
         return op_borrow->Conv.get();
     }
     return nullptr;
@@ -208,7 +208,7 @@ auto spp::asts::TypeUnaryExpressionAst::WithConvention(
     if (conv == nullptr) {
         return MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
     }
-    if (Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
+    if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
         return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
     }
     return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), MakeShared<TypeUnaryExpressionAst>(Op, Rhs));

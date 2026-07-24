@@ -121,11 +121,8 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
     Scope const &scope,
     asts::TypeAst const &fq_type)
     -> Pair<const Scope*, asts::TypeIdentifierAst const*> {
-    // Fast path: a bare type identifier has no namespace or nested-type parts, so no scope shifting is required and the
-    // final part is the identifier itself. Avoids building two shared-pointer part vectors on the hot path.
-    if (auto const *ident = fq_type.To<asts::TypeIdentifierAst>()) {
-        return MakePair(&scope, ident);
-    }
+    // Note: the sole caller (GetTypeSymbol) only reaches here for non-TypeIdentifier types, so there is always at least
+    // one namespace or nested-type part to shift through.
 
     // Get the namespace and type parts, to get the scopes.
     const auto ns_parts = fq_type.NsParts();
@@ -441,7 +438,8 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
     auto scope = this;
     auto sym_name_extracted = static_cast<asts::TypeIdentifierAst const*>(nullptr);
     if (sym_name->IsTypeIdentifier()) {
-        sym_name_extracted = sym_name->To<asts::TypeIdentifierAst>();
+        // IsTypeIdentifier() guarantees the dynamic type, so skip the dynamic_cast.
+        sym_name_extracted = sym_name->ToUnchecked<asts::TypeIdentifierAst>();
     }
     else {
         auto [scope_, sym_name_extracted_] = ShiftForNamespacedType(*this, *sym_name);

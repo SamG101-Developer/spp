@@ -77,7 +77,7 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     meta->ReturnTypeOverloadResolverType = nullptr;
     meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
-        auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
+        auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
         temp_lhs->Stage7_AnalyseSemantics(sm, meta);
         temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
         temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs.get())->FqName();

@@ -112,10 +112,9 @@ auto spp::asts::TypeIdentifierAst::Clone() const
 
 auto spp::asts::TypeIdentifierAst::ToString() const
     -> Str {
-    SPP_STRING_START;
-    raw_string.append(Name);
-    SPP_STRING_APPEND(GnArgGroup);
-    SPP_STRING_END;
+    // Reuse the cached stringification (identical content: Name + GnArgGroup->ToString()) to avoid rebuilding the
+    // string (and recursively re-stringifying every generic argument) on each call.
+    return Str(ToView());
 }
 
 auto spp::asts::TypeIdentifierAst::Stage4_QualifyTypes(
@@ -143,6 +142,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     using analyse::errors::SemanticError;
     using analyse::errors::SppAbstractTypeUseError;
     using analyse::errors::SppHigherOrderGenericsNotSupportedError;
+    using generate::common_types_precompiled::TUP;
 
     if (_HasAnalysed) { return; }
     RaiseIf<SppHigherOrderGenericsNotSupportedError>(
@@ -156,7 +156,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // Determine the scope and get the type symbol.
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto type_sym = GetTypeSymOrError(
-        *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
+        *scope, *WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), *sm, meta);
     if (Name == "Self") {
         _HasAnalysed = true;
         return;
@@ -177,7 +177,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     if (not type_sym->IsGeneric) {
         is_tuple = ( {
             const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
-            as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->To<TypeUnaryExpressionAst>();
+            as_unary != nullptr and *as_unary == *TUP->ToUnchecked<TypeUnaryExpressionAst>();
         });
 
         // Name all the generic arguments.
@@ -371,17 +371,17 @@ auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
     auto gen_comp_args = Vec<Pair<TypeIdentifierAst*, ExpressionAst*>>{};
     for (auto const &arg : args) {
         if (auto const *type_kw_arg = arg->To<GenericArgumentTypeKeywordAst>()) {
-            gen_type_args.EmplaceBack(type_kw_arg->Name->To<TypeIdentifierAst>(), type_kw_arg->Val.get());
+            gen_type_args.EmplaceBack(type_kw_arg->Name->ToUnchecked<TypeIdentifierAst>(), type_kw_arg->Val.get());
         }
         else if (auto const *comp_kw_arg = arg->To<GenericArgumentCompKeywordAst>()) {
-            gen_comp_args.EmplaceBack(comp_kw_arg->Name->To<TypeIdentifierAst>(), comp_kw_arg->Val.get());
+            gen_comp_args.EmplaceBack(comp_kw_arg->Name->ToUnchecked<TypeIdentifierAst>(), comp_kw_arg->Val.get());
         }
     }
 
     // Check if this type directly matches any generic type argument name.
     for (auto const &[gen_arg_name, gen_arg_val] : gen_type_args) {
-        if (*this == *gen_arg_name->To<TypeIdentifierAst>()) {
-            return AstClone(gen_arg_val->To<TypeAst>());
+        if (*this == *gen_arg_name) {
+            return AstClone(gen_arg_val->ToUnchecked<TypeAst>());
         }
     }
 
@@ -410,7 +410,7 @@ auto spp::asts::TypeIdentifierAst::ContainsGenerics(
     GenericParameterAst const &generic) const
     -> bool {
     // Check if the parameter's name is in the type parts iterated from this type.
-    auto cast_name = generic.Name->To<TypeIdentifierAst>();
+    auto cast_name = generic.Name->ToUnchecked<TypeIdentifierAst>();
     return genex::any_of(
         Iterator() | genex::to<Vec>(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }

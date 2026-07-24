@@ -523,7 +523,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
         // Todo: use Resolve method (which scope??)
         const auto inferred = is_runtime
             ? pf->Lhs->InferType(sm, meta)
-            : AstClone(pf->Lhs->To<TypeAst>());
+            : AstClone(pf->Lhs->ToUnchecked<TypeAst>());
 
         auto generic = MakeUnique<GenericArgumentTypeKeywordAst>(
             SelfType(0), nullptr,

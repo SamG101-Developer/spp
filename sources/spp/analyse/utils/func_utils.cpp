@@ -234,7 +234,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
         // Todo: use the "is_valid_ext_scope"?
         for (auto *sup_scope : sup_scopes) {
             for (auto *sup_ast : asts::AstBody(sup_scope->AstNode) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
-                if (sup_ast->Name->To<asts::TypeIdentifierAst>()->Name == mapped_name->Val) {
+                if (sup_ast->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name == mapped_name->Val) {
                     auto generics = MakeUnique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->GetGenerics(), nullptr);
                     auto scope = sup_scope;
                     auto proto = asts::AstBody(sup_ast)[0]->To<asts::FunctionPrototypeAst>();
@@ -674,7 +674,7 @@ auto spp::analyse::utils::func_utils::NameGnArgs(
     // Build index map once for O(n).
     auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
     for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
+        param_index[p->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name] = i;
     }
 
     a_group.Args |= genex::actions::sort([&](auto const &a, auto const &b) {
@@ -1004,7 +1004,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     // Emit the final arg list sorted into parameter declaration order.
     auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
     for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
+        param_index[p->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name] = i;
     }
 
     auto final_args = Vec<Unique<asts::GenericArgumentAst>>();

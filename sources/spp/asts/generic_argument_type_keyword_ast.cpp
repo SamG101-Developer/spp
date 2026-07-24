@@ -106,7 +106,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
 auto spp::asts::GenericArgumentTypeKeywordAst::ViewName() const
     -> StrView {
     // Get the name from the keyword part.
-    return Name->To<TypeIdentifierAst>()->Name;
+    return Name->ToUnchecked<TypeIdentifierAst>()->Name;
 }
 
 SPP_MOD_END
