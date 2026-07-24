@@ -1,0 +1,62 @@
+name: lint
+
+# The two cheap gates, run side by side. Both must pass before anything expensive
+# starts, so a malformed PR title costs seconds rather than a full compile.
+
+on:
+  workflow_call: { }
+
+jobs:
+  pr-title:
+    name: PR Title Format
+    # Only a pull_request event has a title to check; merge-queue and dispatch runs
+    # skip this, and a skipped job counts as a pass for the caller.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: read  # read the PR title to validate its format
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            core
+          requireScope: false
+          subjectPattern: '^[a-z][a-z0-9 .-]*$'
+          subjectPatternError: "The description must match the regex."
+
+  pre-commit:
+    name: Format & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      # Nothing here compiles, so a shallow clone is enough and no mtime pass is
+      # needed.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.14"
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd

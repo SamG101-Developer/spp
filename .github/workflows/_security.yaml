@@ -4,42 +4,56 @@ on:
   workflow_call:
     inputs:
       full-scan:
-        description: "Run a full security scan (including dev dependencies)"
+        description: "Run a full security scan (security-and-quality rather than security-extended)."
         required: false
         type: boolean
         default: false
-
-permissions:
-  contents: read
-  security-events: write
-  actions: read
 
 jobs:
   codeql:
     name: CodeQL
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    permissions:
+      contents: read          # checkout
+      security-events: write  # upload CodeQL results
+      actions: read           # read workflow run metadata (private repos)
     steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@v2
+      # Deliberately uncached, in both senses:
+      #
+      #  * no build tree is restored - CodeQL's manual build mode extracts code by
+      #    observing the compiler run, so a tree that is already up to date makes
+      #    Ninja do nothing and yields a database with no code in it, and
+      #  * `compiler-cache: false` below, because a ccache hit short-circuits the
+      #    real compiler for exactly the same reason.
+      #
+      # A CodeQL job that silently analyses nothing still reports green, so this is
+      # one place where slow and correct beats fast.
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7
-      - name: Set up toolchain
-        uses: ./.github/actions/_setup_toolchain
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+
+      - name: Set Up Toolchain
+        uses: ./.github/actions/setup-toolchain
         with:
           compiler: gcc
-          version: 16
+          version: "16"
+          compiler-cache: "false"
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:
           languages: c-cpp
           build-mode: manual
           queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
 
       - name: Configure
-        uses: ./.github/actions/_configure_cmake
+        uses: ./.github/actions/configure-cmake
         with:
           build-type: Debug
 
@@ -47,34 +61,41 @@ jobs:
         run: cmake --build build --parallel
 
       - name: Analyze
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:
           category: "/language:c-cpp"
 
   osv:
-    name: OSV dependency scan
+    name: OSV Dependency Scan
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read          # read the dependency manifests
+      security-events: write  # upload the OSV SARIF
     steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
-      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+
       - name: Install OSV-Scanner
         run: |
-          curl -sSL -o osv-scanner \
+          set -euo pipefail
+          curl -sSLf -o osv-scanner \
             https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
           chmod +x osv-scanner
           sudo mv osv-scanner /usr/local/bin/
 
-      - name: Scan dependencies
-        run: |
-          osv-scanner scan --recursive --format sarif --output osv.sarif ./
+      - name: Scan Dependencies
         continue-on-error: true
+        run: osv-scanner scan --recursive --format sarif --output osv.sarif ./
 
-      - name: Upload OSV results
-        uses: github/codeql-action/upload-sarif@v4
+      - name: Upload OSV Results
+        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:
           sarif_file: osv.sarif
           category: osv-scanner

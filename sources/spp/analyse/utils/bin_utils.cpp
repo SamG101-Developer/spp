@@ -46,7 +46,7 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
             std::move(bin_expr.Rhs));
     }
 
-    // Non-symbolic value being re-used -> put it into a variable first.
+    // Non-symbolic value being reused -> put it into a variable first.
     if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).First == nullptr) {
         const auto temp_var_name = ( {
             const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());

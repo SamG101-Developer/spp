@@ -15,31 +15,12 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
 import spp.lex.tokens;
 import genex;
+import llvm;
 
 SPP_MOD_BEGIN
-auto spp::asts::LoopControlFlowStatementAst::Skip(
-    const std::size_t pos)
-    -> Unique<LoopControlFlowStatementAst> {
-    // No exit statements, one skip statement.
-    auto exits = Vec<Unique<TokenAst>>();
-    auto skip = MakeUnique<TokenAst>(pos, lex::SppTokenType::KW_SKIP, "skip");
-    return MakeUnique<LoopControlFlowStatementAst>(std::move(exits), std::move(skip), nullptr);
-}
-
-auto spp::asts::LoopControlFlowStatementAst::Exit(
-    const std::size_t pos,
-    const std::size_t depth)
-    -> Unique<LoopControlFlowStatementAst> {
-    // One exit statement, no skip statements.
-    auto skip = nullptr;
-    auto exits = Vec<Unique<TokenAst>>();
-    for (auto i = 0uz; i < depth; ++i) {
-        exits.EmplaceBack(MakeUnique<TokenAst>(pos, lex::SppTokenType::KW_EXIT, "exit"));
-    }
-    return MakeUnique<LoopControlFlowStatementAst>(std::move(exits), skip, nullptr);
-}
 
 spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
     decltype(TokSeqExit) &&tok_seq_exit,
@@ -74,8 +55,10 @@ auto spp::asts::LoopControlFlowStatementAst::Clone() const
 auto spp::asts::LoopControlFlowStatementAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(TokSeqExit, " ").append(" ");
-    SPP_STRING_APPEND(TokSkip).append(" ");
+    SPP_STRING_EXTEND(TokSeqExit, " ");
+    SPP_STRING_APPEND_RAW(" ");
+    SPP_STRING_APPEND(TokSkip);
+    SPP_STRING_APPEND_RAW(" ");
     SPP_STRING_APPEND(Expr);
     SPP_STRING_END;
 }
@@ -143,7 +126,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
     // Check the memory state of the expression if it is present. Expression is being moved into outer context, so
     // strict memory checks.
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *TokSeqExit.Back(), *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
@@ -151,14 +134,35 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // For "exit" statements, we need to branch to the end bb of N loops, N being the number of exit tokens.
-    // TODO
+    //
+    using analyse::errors::SppInternalCompilerError;
 
-    // For "skip" statements, we need to branch to the condition check bb of the innermost loop.
-    // TODO
+    // The loop stack is ordered outermost-first, so the innermost enclosing loop is the back element.
+    const auto num_exits = TokSeqExit.Len();
+    const auto has_skip = TokSkip != nullptr;
+    const auto num_loops = meta->LlvmLoopStack.Len();
 
-    // If there is an attached expression, code generate it.
-    return Expr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+    // Generate the attached expression (if present) before the branch, so the value is available to the phi node.
+    const auto llvm_val = Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+
+    // For "skip" statements, branch to the condition check of the target loop, starting the next iteration. Any
+    // preceding "exit" tokens select an outer loop. A "skip" never has a value, so no phi node is involved.
+    if (has_skip) {
+        const auto &target = meta->LlvmLoopStack[num_loops - num_exits - 1];
+        ctx->Builder.CreateBr(target.CondBB);
+        return nullptr;
+    }
+
+    // For "exit" statements, branch to the end block of the Nth innermost loop, N being the number of exit tokens.
+    // The exited loop's phi node collects the yielded value from this edge.
+    const auto &target = meta->LlvmLoopStack[num_loops - num_exits];
+    if (target.Phi != nullptr) {
+        const auto incoming_val = llvm_val;
+        const auto incoming_bb = ctx->Builder.GetInsertBlock();
+        target.Phi->addIncoming(incoming_val != nullptr ? incoming_val : llvm::UndefValue::get(target.Phi->getType()), incoming_bb);
+    }
+    ctx->Builder.CreateBr(target.EndBB);
+    return nullptr;
 }
 
 auto spp::asts::LoopControlFlowStatementAst::InferType(

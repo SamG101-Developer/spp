@@ -62,8 +62,10 @@ auto spp::asts::AssignmentStatementAst::Clone() const
 auto spp::asts::AssignmentStatementAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Lhs, ", ").append(" ");
-    SPP_STRING_APPEND(TokAssign).append(" ");
+    SPP_STRING_EXTEND(Lhs, ", ");
+    SPP_STRING_APPEND_RAW(" ");
+    SPP_STRING_APPEND(TokAssign);
+    SPP_STRING_APPEND_RAW(" ");
     SPP_STRING_EXTEND(Rhs, ", ");
     SPP_STRING_END;
 }
@@ -134,7 +136,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
         RaiseIf<SppInvalidMutationError>(
-            IsAttr(lhs_expr, sm) and lhs_type->GetConvention() and *lhs_type->GetConvention() == ConventionTag::REF,
+            IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
             {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
 
         // Dereference assignment (ie "x@ = y") writes through a borrow, so the borrow being dereferenced must be &mut.
@@ -173,7 +175,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
         // the move, but do some checks before calling the internal memory checker on the postfix expression.
-        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, true, false, meta);
+        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, false, meta);
 
         meta->Save();
         meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
@@ -182,12 +184,12 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
         meta->Restore();
 
         // Fully validate the memory of the right-hand-side expression, marking the move.
-        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, true, meta);
+        ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, meta);
 
         if (IsAttr(lhs_expr, sm)) {
             const auto pf = lhs_expr->To<PostfixExpressionAst>();
             const auto check_partial_move = IsAttr(pf->Lhs.get(), sm);
-            ValidateSymbolMemory(*lhs_expr, *TokAssign, *sm, true, check_partial_move, false, true, false, meta);
+            ValidateSymbolMemory(*lhs_expr, *TokAssign, *sm, true, check_partial_move, false, false, meta);
         }
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.
@@ -245,6 +247,10 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value * {
+    // Alias the common utils functions and types.
+    using analyse::utils::assignment_utils::IsDeref;
+    using analyse::utils::assignment_utils::IsIdentifier;
+
     // Generate code for each assignment in sequence.
     for (auto i = 0uz; i < Lhs.Len(); ++i) {
         // Set the meta information for generating with values.
@@ -256,8 +262,26 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
         const auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
         meta->Restore();
 
-        // Generate the LHS location and store the RHS value into it.
-        const auto llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
+        // Determine the LHS store location.
+        auto llvm_lhs = static_cast<llvm::Value*>(nullptr);
+        if (IsDeref(Lhs[i].get())) {
+            // "x@ = v" writes through a borrow: the target is the borrow pointer itself.
+            const auto inner = Lhs[i]->To<PostfixExpressionAst>()->Lhs.get();
+            llvm_lhs = inner->Stage11_CodeGen(sm, meta, ctx);
+        }
+        else if (IsIdentifier(Lhs[i].get())) {
+            // "a = v" targets the variable's allocation directly (loading it would yield the rvalue).
+            const auto var_sym = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>());
+            SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
+            llvm_lhs = var_sym->LlvmInfo->Alloca;
+        }
+        else {
+            // "x.y = v" (attribute): the runtime member access already yields the field pointer.
+            llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
+        }
+
+        // Store the RHS value into the resolved LHS location.
+        SPP_ASSERT(llvm_lhs != nullptr and llvm_rhs != nullptr);
         ctx->Builder.CreateStore(llvm_rhs, llvm_lhs);
     }
 

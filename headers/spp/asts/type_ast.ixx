@@ -31,8 +31,6 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, EnableLocalSharedFromThis<TypeAst> {
     SPP_GCC_VTABLE_FIX
 
-    mutable utils::Cache<analyse::scopes::Scope const*, Weak<analyse::scopes::TypeSymbol>> CachedTypeSymbols;
-
     TypeAst();
 
     ~TypeAst() override;

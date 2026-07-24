@@ -75,8 +75,8 @@ auto spp::asts::GenericArgumentGroupAst::FromMap(
 
     for (auto const &[arg_name, arg_val] : std::move(map)) {
         // Map type ASTs to keyword type arguments.
-        if (auto *arg_val_for_type = arg_val->To<TypeAst>()) {
-            auto val = AstClone(arg_val_for_type);
+        if (const auto arg_val_for_type = arg_val->To<TypeAst>()) {
+            auto val = arg_val_for_type->shared_from_this(); // Todo: do we need to clone here?
             auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(arg_name, nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }
@@ -109,8 +109,6 @@ spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
     TokL(std::move(tok_l)),
     Args(std::move(args)),
     TokR(std::move(tok_r)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
 spp::asts::GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
@@ -138,9 +136,9 @@ auto spp::asts::GenericArgumentGroupAst::ToString() const
     -> Str {
     SPP_STRING_START;
     if (not Args.IsEmpty()) {
-        SPP_STRING_APPEND(TokL);
+        SPP_STRING_APPEND_RAW("[");
         SPP_STRING_EXTEND(Args, ", ");
-        SPP_STRING_APPEND(TokR);
+        SPP_STRING_APPEND_RAW("]");
     }
     SPP_STRING_END;
 }
@@ -242,7 +240,7 @@ auto spp::asts::GenericArgumentGroupAst::TypeAt(
     -> GenericArgumentTypeAst const* {
     // Iterate the type arguments to find the matching key.
     for (const auto *arg : GetTypeArgs() | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()) {
-        if (dynamic_shared_cast<TypeIdentifierAst>(arg->Name->TypeParts().Back())->Name == key) {
+        if (arg->Name->LastTypePart()->Name == key) {
             return arg;
         }
     }
@@ -254,7 +252,7 @@ auto spp::asts::GenericArgumentGroupAst::CompAt(
     -> GenericArgumentCompAst const* {
     // Iterate the comptime arguments to find the matching key.
     for (const auto *arg : GetCompArgs() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
-        if (dynamic_shared_cast<TypeIdentifierAst>(arg->Name->TypeParts().Back())->Name == key) {
+        if (arg->Name->LastTypePart()->Name == key) {
             return arg;
         }
     }
@@ -267,11 +265,11 @@ auto spp::asts::GenericArgumentGroupAst::MergeGenerics(
     // Append the other arguments to this argument group, checking named duplicates.
     for (auto &&other_arg : std::move(other_args)) {
         if (const auto kw_comp = other_arg->To<GenericArgumentCompKeywordAst>(); kw_comp != nullptr) {
-            if (CompAt(kw_comp->Name->To<TypeIdentifierAst>()->Name.c_str()) != nullptr) { continue; }
+            if (CompAt(kw_comp->Name->ToUnchecked<TypeIdentifierAst>()->Name.c_str()) != nullptr) { continue; }
             Args.EmplaceBack(std::move(other_arg));
         }
         else if (const auto kw_type = other_arg->To<GenericArgumentTypeKeywordAst>(); kw_type != nullptr) {
-            if (TypeAt(kw_type->Name->To<TypeIdentifierAst>()->Name.c_str()) != nullptr) { continue; }
+            if (TypeAt(kw_type->Name->ToUnchecked<TypeIdentifierAst>()->Name.c_str()) != nullptr) { continue; }
             Args.EmplaceBack(std::move(other_arg));
         }
     }

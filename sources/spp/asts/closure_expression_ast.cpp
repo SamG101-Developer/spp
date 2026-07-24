@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.closure_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -8,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -21,6 +23,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_identifier_ast;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -75,6 +78,9 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::type_utils::IsTypeBorrowed;
+
     // Save the current scope for later resetting.
     const auto parent_scope = sm->CurrentScope;
     meta->Save();
@@ -104,16 +110,23 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
 
     // Add the inherited generics into the closure-inner scope.
     for (auto const &type_generic_sym : inherited_type_generics) {
-        sm->CurrentScope->AddTypeSymbol(type_generic_sym);
+        sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
     }
     for (auto const &comp_generic_sym : inherited_comp_generics) {
-        sm->CurrentScope->AddVarSymbol(comp_generic_sym);
+        sm->CurrentScope->AddVarSymbol(comp_generic_sym->SharedFromThis<analyse::scopes::VariableSymbol>());
     }
 
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
     _RetType = not meta->EnclosingFunctionRetType.IsEmpty() ? meta->EnclosingFunctionRetType[0] : Body->InferType(sm, meta);
+    _RetType->Stage7_AnalyseSemantics(sm, meta);
     Source._OriginalRetType = _RetType;
+
+    // The return type is inferred rather than declared, so it never passes through the function prototype's return
+    // type borrow check.
+    RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(
+        Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_RetType, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*this, *_RetType, "function return type"));
     meta->Restore(true);
     meta->Restore();
 
@@ -156,18 +169,18 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     auto env_field_types = Vec<llvm::Type*>{};
     for (auto const &capture : PcGroup->CaptureGroup->Captures) {
         const auto cap_ty = capture->InferType(sm, meta);
-        const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(cap_ty);
-        env_field_types.EmplaceBack(codegen::llvm_type(*cap_ty_sym, ctx));
+        const auto cap_ty_sym = sm->CurrentScope->GetTypeSymbol(cap_ty.get());
+        env_field_types.EmplaceBack(codegen::GetLlvmType(*cap_ty_sym, ctx));
     }
     env_ty->setBody(env_field_types.ToStdVector(), false);
 
     // Build a new function that the body of the closure is built into. Needs a variable binding at the top (ie allow
     // "let a = env.a" as the function signature will be "(env: $ClosureX, ...params: Params) -> RetType").
     auto llvm_param_types = PcGroup->ParamGroup->GetAllParams()
-        | genex::views::transform([&](auto const &param) { return codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(param->Type), ctx); })
+        | genex::views::transform([&](auto const &param) { return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(param->Type.get()), ctx); })
         | genex::to<Vec>();
     llvm_param_types.Insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
-    const auto llvm_ret_ty = codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(_RetType), ctx);
+    const auto llvm_ret_ty = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(_RetType.get()), ctx);
     const auto llvm_fn_ty = llvm::FunctionType::get(llvm_ret_ty, llvm_param_types.ToStdVector(), PcGroup->ParamGroup->GetVariadicParams() != nullptr);
     const auto llvm_fn = llvm::Function::Create(llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->Module.get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
@@ -194,7 +207,15 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     meta->Save();
     PcGroup->Stage11_CodeGen(sm, meta, ctx);
     sm->MoveToNextScope();
-    Body->Stage11_CodeGen(sm, meta, ctx);
+    const auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
+
+    // Terminate the closure function with a return of the body's value (closures return their body implicitly).
+    if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+        if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
+        else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
+        else { ctx->Builder.CreateUnreachable(); }
+    }
+
     meta->Restore();
     sm->CurrentScope = parent_scope;
 
@@ -207,27 +228,28 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     ctx->CurrentClosureType = saved_current_closure_type;
 
     // Allocate the closure environment.
-    const auto env_alloca = ctx->Builder.CreateAlloca(env_ty, nullptr, "closure.env.alloca." + uid);
+    const auto env_alloca = codegen::llvm_entry_alloca(env_ty, "closure.env.alloca." + uid, ctx);
     for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
         const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
         const auto capture_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
 
         const auto field_ptr = ctx->Builder.CreateInBoundsGEP(
             env_ty, env_alloca, {zero, capture_index}, "closure.env.gep." + std::to_string(i));
-        const auto val = capture->Val->Stage11_CodeGen(sm, meta, ctx); // always an identifier, no worry abt double generation.
+
+        // For a borrowed capture (&x / &mut x) the env field is a pointer, so store the address of thec captured
+        // variable; for a by-value (mov) capture, store the value itself.
+        const auto val = capture->Conv != nullptr
+            ? sm->CurrentScope->GetVarSymbol(capture->Val->To<IdentifierAst>())->LlvmInfo->Alloca
+            : capture->Val->Stage11_CodeGen(sm, meta, ctx);
         ctx->Builder.CreateStore(val, field_ptr);
     }
 
-    // Allocate the closure object.
-    const auto closure_ty = llvm::StructType::create(*ctx->Context, "$ClosureObj" + uid);
-    const auto closure_alloca = ctx->Builder.CreateAlloca(closure_ty, nullptr, "closure.obj.alloca." + uid);
-    ctx->Builder.CreateStore(
-        llvm_fn,
-        ctx->Builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0)}));
-
-    ctx->Builder.CreateStore(
-        env_alloca,
-        ctx->Builder.CreateInBoundsGEP(closure_ty, closure_alloca, {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 1)}));
+    // Build the closure value as its FunXXX type, which lowers to a { fn_ptr, env_ptr } pair (RegisterLlvmTypeInfo).
+    const auto closure_ty = llvm::cast<llvm::StructType>(
+        codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get()), ctx));
+    const auto closure_alloca = codegen::llvm_entry_alloca(closure_ty, "closure.obj.alloca." + uid, ctx);
+    ctx->Builder.CreateStore(llvm_fn, ctx->Builder.CreateStructGEP(closure_ty, closure_alloca, 0));
+    ctx->Builder.CreateStore(env_alloca, ctx->Builder.CreateStructGEP(closure_ty, closure_alloca, 1));
 
     // Return the generated closure.
     return ctx->Builder.CreateLoad(closure_ty, closure_alloca, "load.closure.obj." + uid);

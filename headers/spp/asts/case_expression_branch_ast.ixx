@@ -76,7 +76,11 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
     auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+    auto MarkForIterLoopYield() -> void;
+
 private:
+    bool _ForIterLoopYield = false;
+
     /**
      * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is
      * because the semantic analysis will have guaranteed that all the expressions are boolean. If there is only 1

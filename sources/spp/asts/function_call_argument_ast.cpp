@@ -83,7 +83,7 @@ auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
 
     // Materialize the lhs expression into a temporary.
     const auto materialized_val = codegen::llvm_materialize(*Val, sm, meta, ctx);
-    const auto materialized_sym = sm->CurrentScope->GetVarSymbol(AstClone(materialized_val));
+    const auto materialized_sym = sm->CurrentScope->GetVarSymbol(materialized_val);
 
     const auto llvm_alloca = materialized_sym->LlvmInfo->Alloca;
     SPP_ASSERT(llvm_alloca->getType()->isPointerTy());

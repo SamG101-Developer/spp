@@ -15,6 +15,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct GenericParameterAst;
@@ -91,6 +92,24 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &param_type,
         scopes::Scope const &arg_scope,
         scopes::Scope const &param_scope)
+        -> bool;
+
+    /**
+     * Check whether a function "mock" type (a @c $ type generated per function, which superimposes a
+     * @c FunMov/FunMut/FunRef type for each of its overloads) matches a target function type. This is what
+     * allows a plain function or method to be passed wherever a function type is expected. @c $ types are
+     * only ever generated for this purpose.
+     * @param mock_type The @c $ mock type (the function/method reference).
+     * @param func_type The target function type (@c FunMov/FunMut/FunRef) to match against.
+     * @param mock_scope The scope of the mock type.
+     * @param func_scope The scope of the target function type.
+     * @return If any of the mock's superimposed function types is equal to the target function type.
+     */
+    SPP_EXP_FUN auto TypeFuncEq(
+        asts::TypeAst const &mock_type,
+        asts::TypeAst const &func_type,
+        scopes::Scope const &mock_scope,
+        scopes::Scope const &func_scope)
         -> bool;
 
     SPP_EXP_FUN auto RelaxedTypeEq(
@@ -225,7 +244,7 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto GetFwdTypes(
         asts::TypeAst const &type,
         scopes::ScopeManager const &sm)
-        -> Pair<Shared<const asts::TypeAst>, Shared<const asts::TypeAst>>;
+        -> Pair<Shared<asts::TypeAst>, Shared<asts::TypeAst>>;
 
     SPP_EXP_FUN auto ValidateInconsistentTypes(
         Vec<asts::CaseExpressionBranchAst*> const &branches,
@@ -236,7 +255,33 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto GetAllAttrs(
         asts::TypeAst const &type,
         scopes::ScopeManager const *sm)
-        -> Vec<Pair<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>>>;
+        -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>;
+
+    /**
+     * Collect the methods that are visible on a type but left unimplemented, that is, the methods declared with the
+     * @c !abstract_method annotation that no superimposition on the type provides a same-signature implementation for.
+     * A type with any such method is abstract: it cannot be instantiated, because calling one of them would have no
+     * body to dispatch to. Abstractness propagates, so a type that superimposes an abstract type and implements only
+     * some of its abstract methods is itself abstract, and reports the ones that are still outstanding.
+     * @param type_scope The scope of the type whose methods are being collected.
+     * @return The abstract methods that the type never implements, empty if the type is concrete.
+     */
+    SPP_EXP_FUN auto GetUnimplementedAbstractMethods(
+        scopes::Scope const &type_scope)
+        -> Vec<asts::FunctionPrototypeAst const*>;
+
+    /**
+     * Get the class attribute ASTs of a type and all of its super types, in the same order as @c GetAllAttrs, so the
+     * two line up index for index. This gives access to per-attribute information that isn't carried on the variable
+     * symbols, such as an attribute's default value.
+     * @param type The type whose attribute ASTs are being collected.
+     * @param sm The scope manager, used to resolve the type.
+     * @return The attribute ASTs of the type and its super types.
+     */
+    SPP_EXP_FUN auto GetAllAttrAsts(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const *sm)
+        -> Vec<asts::ClassAttributeAst*>;
 
     SPP_EXP_FUN auto CreateGenericClsScope(
         asts::TypeIdentifierAst &type_part,

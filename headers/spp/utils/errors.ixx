@@ -17,7 +17,7 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
 }
 
-SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
+SPP_EXP_CLS struct SPP_ATTR_COLD spp::utils::errors::AbstractError : std::runtime_error {
     Vec<Str> messages;
     Str final_message;
 
@@ -34,7 +34,7 @@ SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
 };
 
 SPP_EXP_CLS template <typename T>
-struct spp::utils::errors::AbstractErrorBuilder {
+struct SPP_ATTR_COLD spp::utils::errors::AbstractErrorBuilder {
     AbstractErrorBuilder() = default;
     virtual ~AbstractErrorBuilder() = default;
 
@@ -62,7 +62,7 @@ public:
         return *this;
     }
 
-    SPP_ATTR_NORETURN virtual auto Raise() -> void {
+    SPP_ATTR_COLD SPP_ATTR_NORETURN virtual auto Raise() -> void {
         // Throw the error object.
         this->_ErrObj->final_message = this->_ErrObj->messages
             | genex::views::join_with('\n')

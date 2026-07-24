@@ -23,6 +23,7 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts::meta {
+    SPP_EXP_CLS struct LlvmLoopInfo;
     SPP_EXP_CLS struct CompilerMetaDataState;
     SPP_EXP_CLS struct CompilerMetaData;
 }
@@ -30,6 +31,17 @@ namespace spp::asts::meta {
 namespace spp::codegen {
     SPP_EXP_CLS struct LLvmCtx;
 }
+
+/**
+ * The llvm blocks belonging to a single enclosing loop, tracked so that @c exit and @c skip statements can branch to
+ * the correct loop. The stack of these is ordered outermost-first, so the innermost loop is the back element.
+ */
+SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
+    llvm::BasicBlock *CondBB;
+    llvm::BasicBlock *EndBB;
+    llvm::PHINode *Phi;
+    llvm::Value *EnteredFlag;
+};
 
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     double CurrentStage;
@@ -70,9 +82,11 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     llvm::Value *LlvmAssignmentTarget;
     llvm::Value *LlvmAssignmentTargetType;
     llvm::PHINode *LlvmPhi;
+    Vec<LlvmLoopInfo> LlvmLoopStack;
     ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs;
     Unique<ExpressionAst> CmpResult;
     bool IgnoreAccessModifierViolations;
+    bool AllowAbstractType;
 };
 
 /**
@@ -81,7 +95,11 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
  */
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaData : CompilerMetaDataState {
 private:
-    std::stack<CompilerMetaDataState> _History;
+    // Pooled save/restore history. This is a hand-rolled stack over a vector that never shrinks: `_Depth` is the live
+    // top-of-stack, and slots above it are parked (retaining their allocated buffers) for reuse by the next Save. This
+    // avoids the node alloc/free churn a `std::stack<..., std::deque>` incurs across nested Save/Restore cycles.
+    Vec<CompilerMetaDataState> _History;
+    std::size_t _Depth = 0;
 
 public:
     CompilerMetaData();

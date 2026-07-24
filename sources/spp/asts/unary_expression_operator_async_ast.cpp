@@ -16,6 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
@@ -77,13 +78,13 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // We need a "Fut[T]" object to work with immediately.
-    const auto uid = spp::utils::Uid(this);
+    const auto uid = "." + spp::utils::Uid(this);
     const auto fut_type = InferType(sm, meta);
-    const auto fut_type_sym = sm->CurrentScope->GetTypeSymbol(fut_type);
-    const auto llvm_fut_type = codegen::llvm_type(*fut_type_sym, ctx);
+    const auto fut_type_sym = sm->CurrentScope->GetTypeSymbol(fut_type.get());
+    const auto llvm_fut_type = codegen::GetLlvmType(*fut_type_sym, ctx);
 
     // Allocate the future onto the stack and set the initial state.
-    const auto fut_alloca = ctx->Builder.CreateAlloca(llvm_fut_type, nullptr, "async.fut.alloca" + uid);
+    const auto fut_alloca = codegen::llvm_entry_alloca(llvm_fut_type, "async.fut.alloca" + uid, ctx);
     const auto fut_state_ptr = ctx->Builder.CreateStructGEP(llvm_fut_type, fut_alloca, 0, "async.fut.state_ptr" + uid);
     const auto fut_state = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), 0);
     ctx->Builder.CreateStore(fut_state, fut_state_ptr);

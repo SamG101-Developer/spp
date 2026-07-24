@@ -1,5 +1,4 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
@@ -35,7 +34,6 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
-import opex.cast;
 
 SPP_MOD_BEGIN
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -154,12 +152,12 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
     using analyse::utils::mem_utils::ValidateInconsistentMemory;
     using analyse::utils::mem_utils::ValidateSymbolMemory;
 
-    // Move into the "case" scope and check the memory satus of the symbols in the branches.
+    // Move into the "case" scope and check the memory status of the symbols in the branches.
     sm->MoveToNextScope();
 
     // Check the memory state of the condition.
     Cond->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Cond, *Cond, *sm, true, true, false, false, false, meta);
+    ValidateSymbolMemory(*Cond, *Cond, *sm, true, true, false, false, meta);
 
     // Validate the memory state across all branches (also calls stage 8 from within).
     meta->Save();
@@ -215,10 +213,15 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     ctx->Builder.CreateBr(case_entry_bb);
 
     auto phi = static_cast<llvm::PHINode*>(nullptr);
+    auto ret_type = Shared<TypeAst>(nullptr);
     if (is_expr) {
-        ctx->Builder.SetInsertPoint(case_entry_bb);
-        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta));
-        phi = ctx->Builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), Branches.Len() as U32, "case.phi" + uid);
+        // The phi merges the value yielded by each branch, so it belongs in the end block (where every
+        // branch body branches to), not the entry block.
+        ctx->Builder.SetInsertPoint(case_end_bb);
+        ret_type = InferType(sm, meta);
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type.get());
+        phi = ctx->Builder.CreatePHI(
+            codegen::GetLlvmType(*ret_type_sym, ctx), static_cast<unsigned>(Branches.Len()), "case.phi" + uid);
     }
 
     // Set "case" information to the meta struct for branches and patterns to use.
@@ -227,10 +230,20 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     meta->LlvmEndBB = case_end_bb;
     meta->LlvmPhi = phi;
 
+    // Branches need the yielded type, not just the phi's llvm type, so they can wrap a member value into a variant.
+    meta->AssignmentTargetType = ret_type;
+
     // Generate each branch (no return value because phi is modified by the branch).
     ctx->Builder.SetInsertPoint(case_entry_bb);
     for (auto const &branch : Branches) {
         branch->Stage11_CodeGen(sm, meta, ctx);
+    }
+
+    // After the last branch, the insert point is the fall-through block reached when no pattern matched; it
+    // needs a terminator.
+    if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+        if (is_expr) { ctx->Builder.CreateUnreachable(); }
+        else { ctx->Builder.CreateBr(case_end_bb); }
     }
 
     meta->Restore();

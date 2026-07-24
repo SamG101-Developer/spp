@@ -1,0 +1,55 @@
+name: configure-cmake
+description: "Run the CMake configure step for the project into the `build` directory."
+
+inputs:
+  build-type:
+    description: "CMAKE_BUILD_TYPE to configure with."
+    required: false
+    default: "RelWithDebInfo"
+  sanitizer:
+    description: "Sanitizer set to enable, e.g. `address+undefined+leak`; empty means none."
+    required: false
+    default: ""
+  extra-flags:
+    description: "Additional flags appended verbatim to the CMake configure command."
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Configure
+      shell: bash
+      env:
+        BUILD_TYPE: ${{ inputs.build-type }}
+        SANITIZER: ${{ inputs.sanitizer }}
+        EXTRA_FLAGS: ${{ inputs.extra-flags }}
+      run: |
+        set -euo pipefail
+
+        args=()
+
+        # setup-toolchain sets SPP_NO_COMPILER_LAUNCHER when the compiler cache is
+        # off (CodeQL), in which case the compiler must be invoked directly.
+        if [ -z "${SPP_NO_COMPILER_LAUNCHER:-}" ]; then
+          if [ "$RUNNER_OS" = "Windows" ]; then LAUNCHER=sccache; else LAUNCHER=ccache; fi
+          args+=(-DCMAKE_C_COMPILER_LAUNCHER="$LAUNCHER" -DCMAKE_CXX_COMPILER_LAUNCHER="$LAUNCHER")
+        fi
+
+        if [ -n "$SANITIZER" ]; then
+          args+=(-DSPP_SANITIZER="$SANITIZER")
+        fi
+
+        # Ubuntu injects -D_FORTIFY_SOURCE=3, which triggers a GCC 16 ICE.
+        FORTIFY_OFF="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
+
+        # shellcheck disable=SC2086  # EXTRA_FLAGS is a deliberate word-split flag list.
+        cmake -S . -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+          -DCMAKE_C_FLAGS="$FORTIFY_OFF" \
+          -DCMAKE_CXX_FLAGS="$FORTIFY_OFF" \
+          -DSPP_WERROR=ON \
+          -DSPP_BUILD_TESTS=ON \
+          -DSPP_USE_DEV_RPATH=OFF \
+          "${args[@]}" \
+          $EXTRA_FLAGS

@@ -59,20 +59,14 @@ namespace spp::analyse::utils::mem_utils {
      * @param check_move If a full move is being checked for validity.
      * @param check_partial_move If a partial move is being checked for validity.
      * @param check_move_from_borrowed_ctx If moving from a borrowed context is being checked.
-     * @param check_pins If moving pinned objects is being checked.
-     * @param check_linked_pins If moving objects linked to pins is being checked.
      * @param mark_moves Whether to mark the symbol as moved following the checks (given they pass).
      * @param meta Associated metadata.
      * @throw spp::analyse::errors::SppUninitializedMemoryUseError If the value is used before it is initialized.
      * @throw spp::analyse::errors::SppPartiallyInitializedMemoryUseError If the value is used whilst partially
      * initialized.
      * @throw spp::analyse::errors::SppMoveFromBorrowedMemoryError If the value is moved from a borrowed context.
-     * @throw spp::analyse::errors::SppMoveFromPinnedMemoryError If the value is moved from a pinned context.
-     * @throw spp::analyse::errors::SppMoveFromPinLinkedMemoryError If the value is moved from a context that is linked
-     * to another pin.
      * @throw spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError If an inconsistently initialized symbol
      * is used.
-     * @throw spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError If an inconsistently pinned symbol is used.
      */
     SPP_EXP_FUN auto ValidateSymbolMemory(
         asts::ExpressionAst &value_ast,
@@ -81,7 +75,6 @@ namespace spp::analyse::utils::mem_utils {
         bool check_move,
         bool check_partial_move,
         bool check_move_from_borrowed_ctx,
-        bool check_pins,
         bool mark_moves,
         asts::meta::CompilerMetaData *meta)
         -> void;

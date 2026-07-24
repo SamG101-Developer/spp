@@ -129,10 +129,10 @@ auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
     for (auto const &cls_proto : cls_members) {
         // If this is not a base generic (Vec::Vec)
         if (cls_proto->GetRegisteredGenericSubstitutions().IsEmpty()) {
-            codegen::register_llvm_type_info(cls_proto, ctx);
+            codegen::RegisterLlvmTypeInfo(cls_proto, ctx);
 
             // All aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = codegen::llvm_type(*cls_proto->GetAstScope()->TySym, ctx);
+            const auto llvm_type = codegen::GetLlvmType(*cls_proto->GetAstScope()->TySym, ctx);
             for (auto const &alias_sym : cls_proto->GetAstScope()->TySym->AliasedBySyms) {
                 alias_sym->LlvmInfo->LlvmType = llvm_type;
             }
@@ -141,10 +141,10 @@ auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
         // All concrete generic implementations (not Vec::Vec[T]).
         // Todo: don't generate when one of the generics is "comp->identifier" or "type->generic"
         for (auto const &generic_sub : cls_proto->GetRegisteredGenericSubstitutions()) {
-            codegen::register_llvm_type_info(generic_sub.Second, ctx);
+            codegen::RegisterLlvmTypeInfo(generic_sub.Second, ctx);
 
             // All generic aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = codegen::llvm_type(*generic_sub.Second->GetAstScope()->TySym, ctx);
+            const auto llvm_type = codegen::GetLlvmType(*generic_sub.Second->GetAstScope()->TySym, ctx);
             for (auto const &alias_sym : generic_sub.Second->GetAstScope()->TySym->AliasedBySyms) {
                 alias_sym->LlvmInfo->LlvmType = llvm_type;
             }
@@ -181,7 +181,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
     -> void {
     // Handle type symbols.
     if (scope.TySym != nullptr) {
-        const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics());
+        const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics().get());
         auto scopes = normal_sup_blocks[non_generic_sym.get()];
         scopes.AppendRange(generic_sup_blocks);
         AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta, deferred);
@@ -198,11 +198,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     using utils::type_utils::CreateGenericSupScope;
     using utils::type_utils::RelaxedTypeEq;
     using utils::type_utils::GenericInferenceMap;
-
-    // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
-    const auto scope_name = scope.TySym->FqName();
     if (sup_scopes.IsEmpty()) { return; }
-    if (scope_name->IsCompilerGeneratedType()) { return; }
 
     // Clear the sup scopes list.
     scope.DirectSupScopes.Clear();
@@ -240,7 +236,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
         else {
             const auto sup_proto = sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>();
             new_sup_scope = sup_scope;
-            new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass)->LinkedScope : nullptr;
+            new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass.get())->LinkedScope : nullptr;
             sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
         }
 
@@ -300,9 +296,7 @@ auto spp::analyse::scopes::ScopeManager::PruneUnsatisfiedSupConstraints(
 
             // The constraint is not satisfied, so remove the attached super scope (and its paired class scope).
             auto &sup_scopes = dc.owner_scope->DirectSupScopes;
-            sup_scopes.Erase(
-                std::ranges::remove_if(sup_scopes, [&](auto const *s) { return s == dc.sup_scope or (dc.sup_cls_scope != nullptr and s == dc.sup_cls_scope); }).begin(),
-                sup_scopes.end());
+            sup_scopes |= genex::actions::remove_if([&](auto const *s) { return s == dc.sup_scope or (dc.sup_cls_scope != nullptr and s == dc.sup_cls_scope); });
             dc.owner_scope = nullptr;
             changed = true;
         }

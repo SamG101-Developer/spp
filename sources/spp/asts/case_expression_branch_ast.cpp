@@ -56,16 +56,19 @@ auto spp::asts::CaseExpressionBranchAst::PosEnd() const
 
 auto spp::asts::CaseExpressionBranchAst::Clone() const
     -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<CaseExpressionBranchAst>(
+    // Clone all the members of the ast, carrying over the desugaring marker.
+    auto cloned = MakeUnique<CaseExpressionBranchAst>(
         AstClone(Op), AstCloneVec(Patterns), AstClone(Guard), AstClone(Body));
+    cloned->_ForIterLoopYield = _ForIterLoopYield;
+    return cloned;
 }
 
 auto spp::asts::CaseExpressionBranchAst::ToString() const
     -> Str {
     SPP_STRING_START;
     SPP_STRING_APPEND(Op).append(" ");
-    SPP_STRING_EXTEND(Patterns, ", ").append(" ");
+    SPP_STRING_EXTEND(Patterns, ", ");
+    SPP_STRING_APPEND_RAW(" ");
     SPP_STRING_APPEND(Guard).append(Guard ? " " : "");
     SPP_STRING_APPEND(Body);
     SPP_STRING_END;
@@ -175,6 +178,14 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     ctx->Builder.CreateCondBr(cond, body_bb, next_bb);
     ctx->Builder.SetInsertPoint(body_bb);
 
+    // For a desugared iterable loop, reaching this branch means the generator yielded, so the enclosing loop counts as
+    // having been entered and its "else" block must not run.
+    if (_ForIterLoopYield and not meta->LlvmLoopStack.IsEmpty()) {
+        if (const auto entered_flag = meta->LlvmLoopStack.Back().EnteredFlag; entered_flag != nullptr) {
+            ctx->Builder.CreateStore(llvm::ConstantInt::getTrue(*ctx->Context), entered_flag);
+        }
+    }
+
     // Generate the body.
     auto llvm_val = Body->Stage11_CodeGen(sm, meta, ctx);
     const auto incoming_bb = ctx->Builder.GetInsertBlock();
@@ -197,6 +208,11 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     ctx->Builder.SetInsertPoint(next_bb);
     sm->MoveOutOfCurrentScope();
     return nullptr;
+}
+
+auto spp::asts::CaseExpressionBranchAst::MarkForIterLoopYield()
+    -> void {
+    _ForIterLoopYield = true;
 }
 
 auto spp::asts::CaseExpressionBranchAst::InferType(

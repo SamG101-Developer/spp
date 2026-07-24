@@ -46,7 +46,7 @@ auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
     -> void {
     // Analyse the type.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
     // Create the variable for the parameter (use temp copies and put them back).
     const auto ast = MakeUnique<LetStatementUninitializedAst>(nullptr, std::move(Var), nullptr, Type);
@@ -56,7 +56,7 @@ auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
     // Mark the symbol as initialized.
     const auto conv = Type->GetConvention();
     for (auto const &name : ExtractNames()) {
-        const auto sym = sm->CurrentScope->GetVarSymbol(name);
+        const auto sym = sm->CurrentScope->GetVarSymbol(name.get());
         sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
         sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
     }
@@ -68,7 +68,7 @@ auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
     -> void {
     // Check the memory of each name.
     for (auto const &name : ExtractNames()) {
-        const auto sym = sm->CurrentScope->GetVarSymbol(name);
+        const auto sym = sm->CurrentScope->GetVarSymbol(name.get());
         sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     }
 }

@@ -86,7 +86,8 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppLoopTooManyControlFlowStatementsError;
     SPP_EXP_CLS struct SppObjectInitializerMultipleAutofillArgumentsError;
     SPP_EXP_CLS struct SppObjectInitializerInvalidArgumentError;
-    SPP_EXP_CLS struct SppObjectInitializerGenericWithArgsError;
+    SPP_EXP_CLS struct SppObjectInitializerVariantError;
+    SPP_EXP_CLS struct SppAbstractTypeUseError;
     SPP_EXP_CLS struct SppArgumentNameInvalidError;
     SPP_EXP_CLS struct SppArgumentMissingError;
     SPP_EXP_CLS struct SppEarlyReturnRequiresTryTypeError;
@@ -129,15 +130,18 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
     SPP_EXP_CLS struct SppMovingEscapingBorrowedMemoryError;
     SPP_EXP_CLS struct SppMovingComptimeConstantMemoryError;
+    SPP_EXP_CLS struct SppHigherOrderGenericsNotSupportedError;
+    SPP_EXP_CLS struct SppGeneratedCodeError;
 }
 
-SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
+SPP_EXP_CLS struct SPP_ATTR_COLD spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
     using AbstractError::AbstractError;
     SemanticError(SemanticError const &) = default;
     ~SemanticError() override = default;
 
     enum class ErrorInformationType {
-        HEADER, ERROR, CONTEXT, FOOTER
+        HEADER, ERROR, CONTEXT, FOOTER,
+        WRAPPED
     };
 
     Vec<std::tuple<asts::Ast const*, ErrorInformationType, Str, Str>> ErrorInfo;
@@ -149,6 +153,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
     auto AddCtxForErr(asts::Ast const *ast, Str &&tag) -> void;
 
     auto AddFooter(Str &&note, Str &&help) -> void;
+
+    auto AddWrapped(Str &&msg) -> void;
 
     SPP_ATTR_NODISCARD
     auto Clone() const -> Unique<SemanticError>;
@@ -326,8 +332,12 @@ SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerInvalidArgumentErro
     explicit SppObjectInitializerInvalidArgumentError(asts::ObjectInitializerArgumentAst const &arg);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerGenericWithArgsError final : SemanticError {
-    explicit SppObjectInitializerGenericWithArgsError(asts::TypeAst const &type, asts::ObjectInitializerArgumentAst const &arg);
+SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerVariantError final : SemanticError {
+    explicit SppObjectInitializerVariantError(asts::TypeAst const &type);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppAbstractTypeUseError final : SemanticError {
+    explicit SppAbstractTypeUseError(asts::TypeAst const &type, asts::FunctionPrototypeAst const &unimplemented);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppArgumentNameInvalidError final : SemanticError {
@@ -497,4 +507,12 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMovingEscapingBorrowedMemoryError fi
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMovingComptimeConstantMemoryError final : SemanticError {
     explicit SppMovingComptimeConstantMemoryError(asts::Ast const &ast, asts::Ast const &move_location);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppHigherOrderGenericsNotSupportedError final : SemanticError {
+    explicit SppHigherOrderGenericsNotSupportedError(asts::Ast const &ast, asts::Ast const &generic_arg_group);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppGeneratedCodeError final : SemanticError {
+    explicit SppGeneratedCodeError(asts::Ast const &ast, Str &&wrapped_error);
 };

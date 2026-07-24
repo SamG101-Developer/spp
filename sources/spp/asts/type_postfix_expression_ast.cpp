@@ -108,15 +108,15 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
     Lhs->Stage7_AnalyseSemantics(sm, meta);
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto lhs_type = Lhs->InferType(sm, meta);
-    const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type);
+    const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type.get());
     const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
     // Check there is only 1 target field on the lhs at the highest level.
-    const auto op_nested = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
     auto sup_scopes = lhs_type_sym->LinkedScope->SupScopes();
     sup_scopes.Insert(sup_scopes.begin(), lhs_type_sym->LinkedScope);
     auto scopes_and_syms = sup_scopes
-        | genex::views::transform([name=op_nested->Name.get()](auto &&x) { return MakePair(x, x->GetTypeSymbol(AstClone(name), true)); })
+        | genex::views::transform([name=op_nested->Name.get()](auto &&x) { return MakePair(x, x->GetTypeSymbol(name, true)); })
         | genex::to<Vec>()
         | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
         | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
@@ -152,13 +152,13 @@ auto spp::asts::TypePostfixExpressionAst::InferType(
     // Infer the type of the left-hand-side.
     Lhs->Stage7_AnalyseSemantics(sm, meta);
     const auto lhs_type = Lhs->InferType(sm, meta);
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
     const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
     // Infer the type of the postfix operation.
-    const auto op_nested = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
     const auto part = analyse::utils::type_utils::GetTypeSymOrError(*lhs_type_scope, *op_nested->Name, *sm, meta)->FqName();
-    const auto sym = lhs_type_scope->GetTypeSymbol(part);
+    const auto sym = lhs_type_scope->GetTypeSymbol(part.get());
     return sym->FqName();
 }
 
@@ -205,6 +205,19 @@ auto spp::asts::TypePostfixExpressionAst::TypeParts()
     return parts;
 }
 
+auto spp::asts::TypePostfixExpressionAst::LastTypePart() const
+    -> TypeIdentifierAst const* {
+    // The operator's part (if any) is appended last; otherwise the final part comes from the lhs.
+    if (auto const *op_part = const_shared_cast(TokOp)->LastTypePart()) { return op_part; }
+    return const_shared_cast(Lhs)->LastTypePart();
+}
+
+auto spp::asts::TypePostfixExpressionAst::LastTypePart()
+    -> TypeIdentifierAst* {
+    if (auto *op_part = TokOp->LastTypePart()) { return op_part; }
+    return Lhs->LastTypePart();
+}
+
 auto spp::asts::TypePostfixExpressionAst::WithoutConvention() const
     -> Shared<const TypeAst> {
     return shared_from_this();
@@ -227,7 +240,7 @@ auto spp::asts::TypePostfixExpressionAst::WithConvention(
 
 auto spp::asts::TypePostfixExpressionAst::WithoutGenerics() const
     -> Shared<TypeAst> {
-    const auto rhs = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_lhs = AstClone(Lhs); // Todo: clone needed?
     auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
         nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->WithoutGenerics()));
@@ -237,7 +250,7 @@ auto spp::asts::TypePostfixExpressionAst::WithoutGenerics() const
 auto spp::asts::TypePostfixExpressionAst::SubstituteGenerics(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<TypeAst> {
-    const auto rhs = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_lhs = Lhs->SubstituteGenerics(args);
     auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
         nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->SubstituteGenerics(args)));
@@ -247,7 +260,7 @@ auto spp::asts::TypePostfixExpressionAst::SubstituteGenerics(
 auto spp::asts::TypePostfixExpressionAst::ContainsGenerics(
     GenericParameterAst const &generic) const
     -> bool {
-    const auto rhs = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
     return rhs->Name->ContainsGenerics(generic);
 }
 
@@ -256,7 +269,7 @@ auto spp::asts::TypePostfixExpressionAst::WithGenerics(
     -> Shared<TypeAst> {
     // Clone this type and add the generics to the right most part.
     auto type_clone = AstClone(this);
-    type_clone->TypeParts().Back()->GnArgGroup = std::move(arg_group);
+    type_clone->LastTypePart()->GnArgGroup = std::move(arg_group);
     return type_clone;
 }
 

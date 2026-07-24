@@ -27,7 +27,7 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
     -> bool {
     // Only allow types if types are explicitly allowed, or are zero type.
     if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
-        const auto type_sym = sm.CurrentScope->GetTypeSymbol(asts::AstClone(expr.To<asts::TypeAst>()));
+        const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<asts::TypeAst>());
         return type_sym->IsZeroType();
     }
 
@@ -55,8 +55,8 @@ auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
 
 auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
     asts::IdentifierAst const &identifier,
-    Vec<Shared<scopes::VariableSymbol>> const &var_symbols,
-    Vec<Shared<scopes::NamespaceSymbol>> const &ns_symbols,
+    Vec<scopes::VariableSymbol*> const &var_symbols,
+    Vec<scopes::NamespaceSymbol*> const &ns_symbols,
     scopes::ScopeManager const &sm)
     -> void {
     //
@@ -80,7 +80,7 @@ auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
 
 auto spp::analyse::utils::expr_utils::RaiseMissingTypeIdentifierAndClosestOptions(
     asts::TypeIdentifierAst const &identifier,
-    Vec<Shared<scopes::TypeSymbol>> const &symbols,
+    Vec<scopes::TypeSymbol*> const &symbols,
     scopes::ScopeManager const &sm)
     -> void {
     //

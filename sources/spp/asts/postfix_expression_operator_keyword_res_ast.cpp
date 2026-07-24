@@ -4,7 +4,9 @@ module;
 module spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
@@ -23,6 +25,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 
@@ -91,7 +94,11 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
     auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(FnArgGroup), nullptr);
     func_call->Source.OriginalExpr = this;
     _MappedFunc = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+
+    meta->Save();
+    meta->IgnoreAccessModifierViolations = true; // Because of "Generated" Todo: Too broad?
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
@@ -107,34 +114,41 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // TODO
-    // The llvm generator environment is the lhs of this postfix expression. (both Gen and Generated are the env, but
-    // separate types for analysis). the "resuming" on Generated types simply shiftf the state inside the environment.
-    const auto uid = spp::utils::Uid(this);
-    const auto llvm_gen_env = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
-    const auto llvm_gen_env_type = llvm_gen_env->getType();
+    // The left-hand side is a generator value: the { resume_fn, env } fat pointer. Resuming advances the state machine
+    // that "env" points at.
+    const auto uid = "." + spp::utils::Uid(this);
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    const auto llvm_gen = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
 
-    // Get the resume function pointer (field 0) from the generator environment.
-    const auto resume_slot = ctx->Builder.CreateStructGEP(llvm_gen_env_type, llvm_gen_env, 0, "gen.resume.fn.slot" + uid);
-    const auto llvm_resume_func_ptr = ctx->Builder.CreateLoad(
-        llvm::PointerType::get(*ctx->Context, 0), resume_slot, "gen.resume.fn.ptr" + uid);
+    // Extract the resume function pointer and the env pointer. The lhs is the fat pointer value directly, or a
+    // borrowed generator, so read the two fields accordingly.
+    auto resume_fn = static_cast<llvm::Value*>(nullptr);
+    auto env_ptr = static_cast<llvm::Value*>(nullptr);
+    if (llvm_gen->getType()->isPointerTy()) {
+        const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
+        const auto gen_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty.get()), ctx));
+        resume_fn = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 0), "gen.resume.fn" + uid);
+        env_ptr = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 1), "gen.env" + uid);
+    }
+    else {
+        resume_fn = ctx->Builder.CreateExtractValue(llvm_gen, {0u}, "gen.resume.fn" + uid);
+        env_ptr = ctx->Builder.CreateExtractValue(llvm_gen, {1u}, "gen.env" + uid);
+    }
 
-    // Convert the send value, if it exists, to the correct LLVM type.
+    // The send value, if any. When there is no ".res(x)" argument (Send == Void), the env's send slot is a dummy i8,
+    // so pass a matching zero.
     const auto llvm_send_value = FnArgGroup != nullptr and not FnArgGroup->Args.IsEmpty()
         ? FnArgGroup->Args[0]->Stage11_CodeGen(sm, meta, ctx)
-        : llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->Context));
+        : static_cast<llvm::Value*>(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), 0));
 
-    // Call the resume function with the generator environment and send value.
+    // Call the resume function "(env*, send) -> void" through the pointer.
     ctx->Builder.CreateCall(
-        llvm::FunctionType::get(
-            llvm::Type::getVoidTy(*ctx->Context),
-            {llvm::PointerType::get(*ctx->Context, 0), llvm_send_value->getType()},
-            false),
-        llvm_resume_func_ptr,
-        {llvm_gen_env, llvm_send_value});
+        llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty, llvm_send_value->getType()}, false),
+        resume_fn, {env_ptr, llvm_send_value});
 
-    // Return the generated value (ie wrapped in the generator environment).
-    return llvm_gen_env;
+    // Return the generator value (unchanged fat pointer; its env has now advanced). Reading the yielded value is a
+    // separate access off the yield slot.
+    return llvm_gen;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(

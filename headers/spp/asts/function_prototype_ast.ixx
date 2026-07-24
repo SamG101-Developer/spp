@@ -123,7 +123,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
     /**
      * The return type of the function prototype. This is the type that the function will return. This is required, and
-     * is never "inferrable" from the expressions inside the function.
+     * is never "inferable" from the expressions inside the function.
      */
     Shared<TypeAst> ReturnType;
 
@@ -226,9 +226,9 @@ protected:
 
     Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
 
-    SPP_ATTR_NODISCARD auto _DeduceMockClassType() const -> Shared<TypeAst>;
+    SPP_ATTR_NODISCARD auto _DeduceMockClassType() const -> Pair<Shared<TypeAst>, Str>;
 
-    SPP_ATTR_NODISCARD auto _IsPureGeneric(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
+    SPP_ATTR_NODISCARD auto _IsPureGeneric(ScopeManager const *sm, codegen::LLvmCtx const *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)

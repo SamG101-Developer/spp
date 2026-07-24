@@ -40,6 +40,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.compiler_stages;
 import spp.asts.utils.ast_utils;
@@ -76,7 +77,6 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     Impl(std::move(impl)),
     _LlvmFunc(nullptr),
     _AnnotationInfo(nullptr) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_FUN, "fun"); // TODO <- "cor"?
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
     // SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnParamGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokArrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
@@ -111,7 +111,8 @@ auto spp::asts::FunctionPrototypeAst::Clone() const
 auto spp::asts::FunctionPrototypeAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n")
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokCmp).append(TokCmp ? " " : "");
     SPP_STRING_APPEND(TokFun).append(" ");
     SPP_STRING_APPEND(Name);
@@ -180,8 +181,7 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
 
     // Convert the "fun" function to a "sup" superimposition of a "Fun[Mov|Mut|Ref]" type over a mock type.
     auto mock_class_name = TypeIdentifierAst::FromIdentifier(*Name->ToFuncIdentifier());
-    auto function_type = _DeduceMockClassType();
-    auto function_call = MakeUnique<IdentifierAst>(Name->PosStart(), "call");
+    auto [function_type, function_call_name] = _DeduceMockClassType();
 
     // If this is the first overload being converted, then the class needs to be made for the mock type.
     const auto needs_generation = genex::operations::empty(AstBody(ctx)
@@ -211,6 +211,8 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
     // Superimpose the function type over the mock class.
     auto sup_ext_impl_members = Vec<Unique<Ast>>();
     auto clone = AstClone(this);
+    // clone->Name = MakeShared<IdentifierAst>(Name->PosStart(), function_call_name);
+
     for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.get()); }
     sup_ext_impl_members.EmplaceBack(std::move(clone));
     auto mock_sup_ext_impl = MakeUnique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
@@ -299,16 +301,14 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
 
     // Ensure overloads have the same visibility by comparing to the master symbol.
     // Todo: Tidy this?
-    if (Visibility.Second != nullptr and Name and not Name->Val.starts_with("$")) {
+    if (Name and not Name->Val.starts_with("$")) {
         if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
-            if (const auto mock_sym = outer_scope->GetVarSymbol(Name, true)) {
+            if (const auto mock_sym = outer_scope->GetVarSymbol(Name.get(), true)) {
                 if (mock_sym->Type and mock_sym->Type->IsCompilerGeneratedType()) {
                     // Enforce that all overloads have the same visibility.
-                    if (mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.First) {
-                        Raise<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
-                            {sm->CurrentScope},
-                            ERR_ARGS(*mock_sym->VisibilityAnnotation, *this));
-                    }
+                    RaiseIf<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
+                        mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.First,
+                        {sm->CurrentScope}, ERR_ARGS(*mock_sym->VisibilityAnnotation, *this));
                     mock_sym->Visibility = Visibility.First;
                     mock_sym->VisibilityAnnotation = Visibility.Second;
                 }
@@ -319,7 +319,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     // Carry the convention for error purposes.
     FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     ReturnType->Stage7_AnalyseSemantics(sm, meta);
-    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType)->FqName()->WithConvention(AstClone(ReturnType->GetConvention()));
+    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType.get())->FqName()->WithConvention(AstClone(ReturnType->GetConvention()));
 
     // Ensure the function's return type does not have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -332,7 +332,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     const auto mod_ctx = _Ctx->To<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
         ? sm->CurrentScope->ParentModule()
-        : _Ctx->GetAstScope()->GetTypeSymbol(AstName(_Ctx))->LinkedScope;
+        : _Ctx->GetAstScope()->GetTypeSymbol(AstName(_Ctx).get())->LinkedScope;
 
     // Error if there are conflicts.
     // Todo: Maybe need 2 scopes if the conflict is across modules (if possible, esp in sup-blocks)?
@@ -351,7 +351,7 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     using analyse::utils::func_utils::CheckForConflictingOverload;
     using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
     using analyse::errors::SppFunctionPrototypeConflictError;
-    using generate::common_types::SelfType;
+    using generate::common_types_precompiled::SELF_VAR;
 
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->MoveToNextScope();
@@ -367,12 +367,13 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
 
     // New version
     if (const auto self_param = FnParamGroup->GetSelfParam()) {
-        const auto self_sym = sm->CurrentScope->GetVarSymbol(MakeShared<IdentifierAst>(0, "self"));
+        const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
         const auto self_conv = self_param->Conv.get();
+
         self_sym->Type = ResolveAndSubstituteSelfType(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(AstClone(self_conv));
 
         for (auto const &param : FnParamGroup->GetAllParams()) {
-            const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName());
+            const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName().get());
             if (var_sym == nullptr) { continue; } // Destructuring parameters.
             var_sym->Type = ResolveAndSubstituteSelfType(*var_sym->Type, *sm->CurrentScope, *sm, *meta);
         }
@@ -434,6 +435,9 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
 
     // Analyse the generic parameter group, and the parameter group.
+    for (auto const &p : FnParamGroup->GetNonSelfParams()) {
+        p->Stage6_PreAnalyseSemantics(sm, meta);
+    }
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
     // Note: the !compiler_builtin lowered-implementation swap now happens in Stage6_PreAnalyseSemantics, so that the
@@ -515,7 +519,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
         GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
     }
 
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
     meta->Save();
     meta->EnclosingFunctionFlavour = TokFun.get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
@@ -539,6 +543,14 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     else if (not is_extern) {
         // Generate the function implementation.
         Impl->Stage11_CodeGen(sm, meta, ctx);
+
+        // The body is an expression scope, so it never emits its own terminator. Return with void if there is no return
+        // statement, otherwise we have already returned to emit an "unreachable" instruction.
+        if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+            GetLlvmFunc()->Target->getReturnType()->isVoidTy()
+                ? static_cast<llvm::Instruction*>(ctx->Builder.CreateRetVoid())
+                : static_cast<llvm::Instruction*>(ctx->Builder.CreateUnreachable());
+        }
     }
     else {
         // Skip the scope, linker will provide implementation for ffi.
@@ -632,7 +644,7 @@ auto spp::asts::FunctionPrototypeAst::GetAnnotationInfo() const
 }
 
 auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
-    -> Shared<TypeAst> {
+    -> Pair<Shared<TypeAst>, Str> {
     //
     using generate::common_types::FunMovType;
     using generate::common_types::FunMutType;
@@ -646,35 +658,35 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 
     // Module level functions, and static methods, are always FunRef.
     if (_Ctx->To<ModulePrototypeAst>() == nullptr or FnParamGroup->GetSelfParam() == nullptr) {
-        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref"));
     }
 
     // Class methods with "self" are the FunMov type.
     if (FnParamGroup->GetSelfParam()->Conv == nullptr) {
-        return FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mov"));
     }
 
     // Class methods with "&mut self" are the FunMut type.
     if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::MUT) {
-        return FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mut"));
     }
 
     // Class methods with "&self" are the FunRef type.
     if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::REF) {
-        return FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType);
+        return MakePair(FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref"));
     }
 
     std::unreachable();
 }
 
 auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
-    analyse::scopes::ScopeManager *sm,
-    codegen::LLvmCtx *ctx) const
+    analyse::scopes::ScopeManager const *sm,
+    codegen::LLvmCtx const *ctx) const
     -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
-    const auto llvm_ret_type = codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(ReturnType), ctx);
+    const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ReturnType.get()), ctx);
     const auto llvm_param_types = FnParamGroup->GetNonSelfParams()
-        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->CurrentScope->GetTypeSymbol(x->Type), ctx); })
+        | genex::views::transform([&](auto const &x) { return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(x->Type.get()), ctx); })
         | genex::to<Vec>();
 
     // Check if any of the types failed to convert.

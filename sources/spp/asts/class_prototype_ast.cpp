@@ -14,16 +14,21 @@ import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import genex;
@@ -76,7 +81,8 @@ auto spp::asts::ClassPrototypeAst::Clone() const
 auto spp::asts::ClassPrototypeAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n");
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokCls).append(" ");
     SPP_STRING_APPEND(Name);
     SPP_STRING_APPEND(GnParamGroup).append(" ");
@@ -146,9 +152,15 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
+    // Sync the type symbols' visibility from the AST.
+    if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.First; }
+    if (sm->CurrentScope->TySym != nullptr) {
+        sm->CurrentScope->TySym->Visibility = Visibility.First;
+    }
+
     // Add the "Self" symbol into the scope.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
         const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
             MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
             sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
@@ -182,13 +194,14 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse semantics for the class body.
+    using generate::common_types_precompiled::SELF_TYPE;
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
     // Re-map "Self" to the true type.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
-        const auto self_sym = sm->CurrentScope->GetTypeSymbol(MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr), true);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
         self_sym->Type = cls_sym->Type;
         cls_sym->AliasedBySyms.EmplaceBack(self_sym);
     }
@@ -320,31 +333,67 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
     return _ClsSym.get();
 }
 
+static auto ApplyStructLayout(
+    llvm::StructType *struct_type,
+    spp::Vec<llvm::Type*> const &field_types,
+    const spp::codegen::StructLayout layout,
+    spp::codegen::LlvmTypeSymInfo *sym_info,
+    spp::codegen::LLvmCtx const *ctx)
+    -> void {
+    switch (layout) {
+        case spp::codegen::StructLayout::C: {
+            // Keep declaration order, with natural alignment padding.
+            struct_type->setBody(field_types.ToStdVector(), false);
+            sym_info->FieldIndexMap.clear();
+            break;
+        }
+        case spp::codegen::StructLayout::Packed: {
+            // Keep declaration order, but remove all inter-field padding.
+            struct_type->setBody(field_types.ToStdVector(), true);
+            sym_info->FieldIndexMap.clear();
+            break;
+        }
+        case spp::codegen::StructLayout::Spp: {
+            // Re-order the fields to minimize padding, and record where each declared attribute ended up, so that
+            // codegen can map a declaration index to its physical field index.
+            auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
+            struct_type->setBody(sorted_types.ToStdVector(), false);
+            sym_info->FieldIndexMap = std::move(index_map);
+            break;
+        }
+        default: {
+            std::unreachable();
+        }
+    }
+}
+
 auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
-    ScopeManager *sm,
+    ScopeManager const *sm,
     analyse::scopes::TypeSymbol const *type_sym,
     codegen::LLvmCtx *ctx) const
     -> void {
     // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
 
-    // Non-struct types are compiler known special types, or $ types - no generation needed.
-    if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
+    // Non-struct types are compiler known special types, so don't have any field generation.
+    const auto lt = codegen::GetLlvmType(*type_sym, ctx);
+    if (lt == nullptr or not llvm::isa<llvm::StructType>(lt)) {
         return;
     }
 
     auto types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), sm)
-        | genex::views::transform([&](auto const &pair) { return codegen::llvm_type(*pair.Second, ctx); })
+        | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*std::get<1>(pair), ctx); })
         | genex::to<Vec>();
 
     // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
     if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
-        const auto struct_type = llvm::dyn_cast<llvm::StructType>(codegen::llvm_type(*type_sym, ctx));
-        struct_type->setBody(types.ToStdVector());
+        const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
+        ApplyStructLayout(struct_type, types, codegen::StructLayout::Spp, type_sym->LlvmInfo.get(), ctx);
     }
 
-    // Pass this layout to aliases too.
+    // Pass this layout to aliases too (the field re-ordering as well as the type itself).
     for (auto const &alias : type_sym->AliasedBySyms) {
-        alias->LlvmInfo->LlvmType = codegen::llvm_type(*type_sym, ctx);
+        alias->LlvmInfo->LlvmType = lt;
+        alias->LlvmInfo->FieldIndexMap = type_sym->LlvmInfo->FieldIndexMap;
     }
 }
 

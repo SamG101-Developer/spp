@@ -21,6 +21,9 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_layout;
+import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 import llvm;
@@ -71,8 +74,9 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::errors::SppSecondClassBorrowViolationError;
-    using analyse::errors::SppObjectInitializerGenericWithArgsError;
+    using analyse::errors::SppObjectInitializerVariantError;
     using analyse::utils::type_utils::IsTypeBorrowed;
+    using analyse::utils::type_utils::IsTypeVariant;
 
     // Get the base class symbol (no generics) and check it exists.
     meta->Save();
@@ -84,24 +88,17 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
+    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics().get());
 
-    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics());
-
-    // Generic types cannot have any attributes set.
-    // TODO: future with constraints will allow some.
-    RaiseIf<SppObjectInitializerGenericWithArgsError>(
-        base_cls_sym->IsGeneric and not ArgGroup->Args.IsEmpty(),
-        {sm->CurrentScope}, ERR_ARGS(*Type, *ArgGroup->Args[0]));
-
-    // Generic types being initialized uses pure default initialization, so there is no inference to be done.
-    if (base_cls_sym->IsGeneric) {
-        return;
-    }
+    // If the type is a variant type, prevent instantiation.
+    RaiseIf<SppObjectInitializerVariantError>(
+        IsTypeVariant(*base_cls_sym->FqName(), *sm->CurrentScope),
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
 
     // Prepare the object initializer arguments.
     meta->Save();
     meta->ObjectInitType = Type->WithoutGenerics();
-    ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
+    if (not ArgGroup->Args.IsEmpty()) { ArgGroup->Stage6_PreAnalyseSemantics(sm, meta); }
     meta->Restore();
 
     // Determine the generic inference source and target values.
@@ -109,26 +106,24 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
         | genex::views::transform([sm, meta](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
         | genex::to<Vec>();
 
-    auto generic_infer_target = base_cls_sym->Type->Impl->Members
+    auto generic_infer_target = not base_cls_sym->IsGeneric
+        ? base_cls_sym->Type->Impl->Members
         | genex::views::ptr
         | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([&](auto const &x) { return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type)->FqName()); })
-        | genex::to<Vec>();
-
-    // Analyse the type and object argument group. TODO: might still need this
-    // auto tm = ScopeManager(sm->GlobalScope, base_cls_sym->scope);
-    // base_cls_sym->Type->impl->Stage7_AnalyseSemantics(&tm, meta);
+        | genex::views::transform([&](auto const &x) { return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type.get())->FqName()); })
+        | genex::to<Vec>()
+        : spp::Vec<Pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
 
     meta->Save();
     meta->InferSource = {generic_infer_source.begin(), generic_infer_source.end()};
     meta->InferTarget = {generic_infer_target.begin(), generic_infer_target.end()};
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
     meta->Restore();
 
     meta->Save();
     meta->ObjectInitType = Type;
-    ArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    if (not ArgGroup->Args.IsEmpty()) { ArgGroup->Stage7_AnalyseSemantics(sm, meta); }
     meta->Restore();
 }
 
@@ -162,38 +157,38 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    //
+    using analyse::utils::type_utils::GetAllAttrs;
+
     // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
     const auto uid = spp::utils::Uid(this);
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+    SPP_ASSERT(llvm_type != nullptr);
 
-    // Re-order the arguments to match the fields on the type.
-    // Todo: use the type_utils::get_attrs() function here?
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Type);
-    const auto attr_names = analyse::utils::type_utils::GetAllAttrs(*cls_sym->FqName(), sm)
-        | genex::views::transform([](auto const &attr) { return attr.First; })
+    const auto attr_names = GetAllAttrs(*type_sym->FqName(), sm)
+        | genex::views::tuple_nth<0>
         | genex::to<Vec>();
 
-    // Sort the arguments (by name) to match the type's attributes.
-    auto sorted_args = ArgGroup->Args
-        | genex::views::ptr
-        | genex::to<Vec>();
+    // Types with no attributes have nothing to fill in, so they initialize to their zero value. This covers the
+    // compiler-known primitives (which don't even lower to structs) and the fat pointer types. Also the base cases for
+    // the recursive default initialization.
+    if (attr_names.IsEmpty()) { return llvm::Constant::getNullValue(llvm_type); }
 
-    sorted_args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::position(attr_names, [&a](auto const &attr_name) { return *attr_name == *a->Name; });
-        const auto b_index = genex::position(attr_names, [&b](auto const &attr_name) { return *attr_name == *b->Name; });
-        return a_index < b_index;
-    });
+    // The physical field order isn't the declaration order, because the S++ layout re-orders the fields to minimize
+    // padding, so every attribute's index has to be resolved through the type's field index map.
+    const auto field_index = [&](IdentifierAst const &name) {
+        const auto decl_index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
+        SPP_ASSERT(decl_index >= 0);
+        return codegen::GetPhysicalFieldIndex(*type_sym->LlvmInfo, static_cast<std::size_t>(decl_index));
+    };
 
     // Runtime pathway.
     if (not ctx->InConstantContext) {
         // Set each field value in the aggregate.
-        SPP_ASSERT(llvm_type != nullptr);
-
-        const auto aggregate = ctx->Builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate" + uid);
-        for (auto i = 0uz; i < sorted_args.Len(); ++i) {
-            auto const &arg = sorted_args[i];
-            const auto attr_ptr = ctx->Builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->Name->Val);
+        const auto aggregate = codegen::llvm_entry_alloca(llvm_type, "obj_init.aggregate" + uid, ctx);
+        for (auto const &arg : ArgGroup->Args) {
+            const auto attr_ptr = ctx->Builder.CreateStructGEP(llvm_type, aggregate, field_index(*arg->Name), arg->Name->Val);
             const auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
 
             SPP_ASSERT(val != nullptr and attr_ptr != nullptr);
@@ -206,15 +201,16 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     }
 
     // Constant pathway.
-    // Set each field value in the constant.
-    auto comp_fields = Vec<llvm::Constant*>(sorted_args.Len());
-    for (auto i = 0uz; i < sorted_args.Len(); ++i) {
-        const auto comp_val = sorted_args[i]->Val->Stage11_CodeGen(sm, meta, ctx);
-        comp_fields[i] = llvm::cast<llvm::Constant>(comp_val);
+    // Set each field value in the constant, indexed by its physical position in the struct.
+    const auto struct_type = llvm::cast<llvm::StructType>(llvm_type);
+    auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements());
+    for (auto const &arg : ArgGroup->Args) {
+        const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
+        comp_fields[field_index(*arg->Name)] = llvm::cast<llvm::Constant>(comp_val);
     }
 
     // Return the constant struct.
-    return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_fields.ToStdVector());
+    return llvm::ConstantStruct::get(struct_type, comp_fields.ToStdVector());
 }
 
 auto spp::asts::ObjectInitializerAst::InferType(
@@ -223,7 +219,7 @@ auto spp::asts::ObjectInitializerAst::InferType(
     -> Shared<TypeAst> {
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
-    return sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    return sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 }
 
 auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(

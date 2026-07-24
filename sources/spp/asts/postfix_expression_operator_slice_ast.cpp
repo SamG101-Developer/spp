@@ -105,7 +105,7 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     const auto lhs_type = const_shared_cast(
         meta->PostfixExpressionLhs->InferType(sm, meta));
 
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
     auto sup_types = Vec{lhs_type};
     sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 
@@ -133,6 +133,11 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     func_call->Source.OriginalExpr = this;
     _MappedFunc = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+}
+
+auto spp::asts::PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void {
+    _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(

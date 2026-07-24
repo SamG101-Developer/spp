@@ -109,7 +109,7 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
     const auto lhs_as_ident = lhs.To<asts::IdentifierAst>();
 
     // If the lhs is an identifier, it must be a variable symbol, not a namespace symbol.
-    if (lhs_as_ident and sm.CurrentScope->GetVarSymbol(asts::AstClone(lhs_as_ident)) == nullptr) {
+    if (lhs_as_ident and sm.CurrentScope->GetVarSymbol(lhs_as_ident) == nullptr) {
         RaiseMissingIdentifierAndClosestOptions(*lhs_as_ident, sm.CurrentScope->AllVarSymbols(), {}, sm);
     }
 
@@ -122,21 +122,21 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
     if (postfix_lhs != nullptr and runtime_field != nullptr) {
         fn_owner_type = postfix_lhs->Lhs->InferType(&sm, meta);
         fn_name = runtime_field->Name;
-        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type)->LinkedScope;
+        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type.get())->LinkedScope;
     }
 
     // Static access into a type: "Type::method()" or "ns::Type::method()".
     else if (static_field != nullptr and postfix_lhs_as_type != nullptr) {
         fn_owner_type = asts::AstCloneShared(postfix_lhs_as_type);
         fn_name = static_field->Name;
-        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type)->LinkedScope;
+        fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type.get())->LinkedScope;
     }
 
     // Direct access into a namespaced free function: "std::io::print(variable)".
     else if (postfix_lhs != nullptr and static_field != nullptr) {
         fn_owner_scope = sm.CurrentScope->ConvertPostfixToNestedScope(postfix_lhs->Lhs.get());
         fn_name = static_field->Name;
-        fn_owner_type = fn_owner_scope->GetVarSymbol(fn_name)->Type;
+        fn_owner_type = fn_owner_scope->GetVarSymbol(fn_name.get())->Type;
     }
 
     // Direct access into a non-namespaced function: "function()":
@@ -160,7 +160,7 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
     asts::TypeAst const &function_owner_type,
     asts::IdentifierAst const &function_name,
     asts::PostfixExpressionAst const &lhs,
-    asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
+    asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
     -> Pair<Unique<asts::PostfixExpressionAst>, Unique<asts::PostfixExpressionOperatorFunctionCallAst>> {
@@ -197,7 +197,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>> {
     // Todo: TIDY this function big time. I WANT TO VOMIT.
     // If the name is empty (non-symbolic call) then return "no scopes".
-    // If the target scope is nullptr, then the functions are bein superimposed over a generic type.
+    // If the target scope is nullptr, then the functions are being superimposed over a generic type.
     if (target_fn_name.Val.empty() or target_scope == nullptr) { return {}; }
 
     // Get the function-type name from the function: "func()" => "$Func".
@@ -234,7 +234,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
         // Todo: use the "is_valid_ext_scope"?
         for (auto *sup_scope : sup_scopes) {
             for (auto *sup_ast : asts::AstBody(sup_scope->AstNode) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
-                if (sup_ast->Name->To<asts::TypeIdentifierAst>()->Name == mapped_name->Val) {
+                if (sup_ast->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name == mapped_name->Val) {
                     auto generics = MakeUnique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->GetGenerics(), nullptr);
                     auto scope = sup_scope;
                     auto proto = asts::AstBody(sup_ast)[0]->To<asts::FunctionPrototypeAst>();
@@ -272,8 +272,8 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     if (target_scope->TySym != nullptr and meta->CurrentStage >= 9.0) {
         auto [fwd_ref_type, fwd_mut_type] = type_utils::GetFwdTypes(*target_scope->TySym->FqName(), sm);
         if (fwd_ref_type != nullptr) {
-            const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
-            auto inner_scopes = GetAllFunctionScopes(target_fn_name, sm.CurrentScope->GetTypeSymbol(inner_type)->LinkedScope, sm, meta);
+            const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val;
+            auto inner_scopes = GetAllFunctionScopes(target_fn_name, sm.CurrentScope->GetTypeSymbol(inner_type.get())->LinkedScope, sm, meta);
             for (auto &&i : inner_scopes) {
                 std::get<3>(i) = asts::AstCloneShared(inner_type);
             }
@@ -297,8 +297,8 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
 
     // Get the methods that belong to this type, or any of its supertypes.
     auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>();
-    auto existing_fns = existing | genex::views::tuple_nth<1>();
+    auto existing_scopes = existing | genex::views::tuple_nth<0>;
+    auto existing_fns = existing | genex::views::tuple_nth<1>;
 
     // Check for an overload conflict with all functions of the same name.
     for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
@@ -336,18 +336,16 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
     return nullptr;
 }
 
-auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
-    scopes::Scope const &this_scope,
-    scopes::Scope const *target_scope,
-    asts::FunctionPrototypeAst const &new_fn,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta,
-    scopes::Scope const *exclude_scope)
-    -> asts::FunctionPrototypeAst* {
+auto spp::analyse::utils::func_utils::SameSignature(
+    asts::FunctionPrototypeAst const &fn_a,
+    scopes::Scope const &scope_a,
+    asts::FunctionPrototypeAst const &fn_b,
+    scopes::Scope const &scope_b)
+    -> bool {
     //
     using type_utils::TypeEq;
 
-    // Helper function to get the type of the convention AST applied to the "self" parameter.
+    // Helper function to check whether a "self" parameter is present.
     auto hs = [](asts::FunctionPrototypeAst const *f) {
         return f->FnParamGroup->GetSelfParam() != nullptr;
     };
@@ -357,11 +355,6 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
         return hs(f) ? f->FnParamGroup->GetSelfParam()->Conv.get() : nullptr;
     };
 
-    // Get the existing functions that belong to this type, or any of its supertypes.
-    auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>();
-    auto existing_fns = existing | genex::views::tuple_nth<1>();
-
     auto param_names_eq = [](auto const &a, auto const &b) {
         if (a.Len() != b.Len()) { return false; }
         for (auto const &[x, y] : genex::views::zip(a, b)) {
@@ -370,51 +363,68 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
         return true;
     };
 
+    // The names must match. Note that the "cmp" state does NOT have to match.
+    if (*fn_a.Name != *fn_b.Name) { return false; }
+
+    // Get the two parameter lists and create copies.
+    auto params_a = fn_a.FnParamGroup->GetNonSelfParams();
+    auto params_b = fn_b.FnParamGroup->GetNonSelfParams();
+
+    // Get a list of conditions to check for conflicting functions.
+    if (params_a.Len() != params_b.Len()) { return false; }
+
+    // All parameters must have the same names.
+    if (genex::any_of(
+        genex::views::zip(params_a, params_b) | genex::to<Vec>(),
+        [&](auto pq) { return not param_names_eq(std::get<0>(pq)->ExtractNames(), std::get<1>(pq)->ExtractNames()); })) {
+        return false;
+    }
+
+    // All parameters must have the same types.
+    if (genex::any_of(
+        genex::views::zip(params_a, params_b) | genex::to<Vec>(),
+        [&](auto pq) { return not TypeEq(*std::get<0>(pq)->Type, *std::get<1>(pq)->Type, scope_a, scope_b, false); })) {
+        return false;
+    }
+
+    // The function type (subroutine vs coroutine) must match.
+    if (fn_a.TokFun->TokenType != fn_b.TokFun->TokenType) {
+        return false;
+    }
+
+    // The return types must be symbolically equal.
+    if (not TypeEq(*fn_a.ReturnType, *fn_b.ReturnType, scope_a, scope_b, false)) {
+        return false;
+    }
+
+    // Check the self parameters' conventions.
+    return not(hs(&fn_a) != hs(&fn_b) or (sc(&fn_a) and *sc(&fn_a) != sc(&fn_b)) or (not sc(&fn_a) and sc(&fn_b)));
+}
+
+auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
+    scopes::Scope const &this_scope,
+    scopes::Scope const *target_scope,
+    asts::FunctionPrototypeAst const &new_fn,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta,
+    scopes::Scope const *exclude_scope)
+    -> asts::FunctionPrototypeAst* {
+    // Get the existing functions that belong to this type, or any of its supertypes.
+    // Look the methods up by the name the function was written with. "Name" has been rewritten to the call method
+    // of the function's type ("call_ref" and friends), but the mock class that holds the method is still named after
+    // the source name, which is what "GetAllFunctionScopes" maps to a "$Func" class to search for.
+    auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
+    auto existing_scopes = existing | genex::views::tuple_nth<0>();
+    auto existing_fns = existing | genex::views::tuple_nth<1>();
+
     // Check for an overload conflict with all functions of the same name.
-    // Note that the "cmp" state does NOT have to match.
     for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
         // Ignore if the method is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_scope == exclude_scope) { continue; }
 
-        // Get the two parameter lists and create copies.
-        auto params_new = new_fn.FnParamGroup->GetNonSelfParams();
-        auto params_old = old_fn->FnParamGroup->GetNonSelfParams();
-
-        // Get a list of conditions to check for conflicting functions.
-        if (params_new.Len() != params_old.Len()) { continue; }
-
-        // All parameters must have the same names.
-        if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::to<Vec>(),
-            [&](auto pq) { return not param_names_eq(std::get<0>(pq)->ExtractNames(), std::get<1>(pq)->ExtractNames()); })) {
-            continue;
-        }
-
-        // All parameters must have the same types.
-        if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::to<Vec>(),
-            [&](auto pq) { return not TypeEq(*std::get<0>(pq)->Type, *std::get<1>(pq)->Type, this_scope, *old_scope, false); })) {
-            continue;
-        }
-
-        // The function type (subroutine vs coroutine) must match.
-        if (new_fn.TokFun->TokenType != old_fn->TokFun->TokenType) {
-            continue;
-        }
-
-        // The return types must be symbolically equal.
-        if (not TypeEq(*new_fn.ReturnType, *old_fn->ReturnType, this_scope, *old_scope)) {
-            continue;
-        }
-
-        // Check the self parameters' conventions.
-        if (hs(&new_fn) != hs(old_fn) or (sc(&new_fn) and *sc(&new_fn) != sc(old_fn)) or (not sc(&new_fn) and sc(old_fn))) {
-            continue;
-        }
-
-        // The functions must have identical signatures at this point, so return the old function.
-        return old_fn;
+        // The functions must have identical signatures to conflict, so return the old function.
+        if (SameSignature(new_fn, this_scope, *old_fn, *old_scope)) { return old_fn; }
     }
 
     return nullptr;
@@ -459,27 +469,16 @@ auto spp::analyse::utils::func_utils::EnforceNoInvalidGnArgs(
     using errors::SppArgumentNameInvalidError;
     if (named_args.IsEmpty()) { return; }
 
-    // Get the parameter names using the attribute.
-    const auto p_names = params
-        | genex::views::cast_dynamic<GenericParamType*>()
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::to<Vec>();
-
-    // Get the argument names using the attribute.
-    const auto a_names = named_args
-        | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>()
-        | genex::views::transform([](auto *x) { return x->Name; })
-        | genex::to<Vec>();
-
     // Check for invalid argument names against parameter names.
-    const auto invalid_arg_names = a_names
-        | genex::views::not_in(p_names, genex::meta::deref, genex::meta::deref)
-        | genex::to<Vec>();
-
-    // Raise an error if any invalid argument names were found.
-    RaiseIf<SppArgumentNameInvalidError>(
-        not invalid_arg_names.IsEmpty(), {sm.CurrentScope},
-        ERR_ARGS(*params[0], "gn param", *invalid_arg_names[0], "gn arg"));
+    for (auto &&a : named_args | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>) {
+        auto found = false;
+        for (auto &&p : params | genex::views::cast_dynamic<GenericParamType*>) {
+            found = *a->Name == *p->Name;
+            if (found) { break; }
+        }
+        RaiseIf<SppArgumentNameInvalidError>(
+            not found, {sm.CurrentScope}, ERR_ARGS(*params[0], "gn param", *a, "gn arg"));
+    }
 }
 
 template <typename InferenceResultMap>
@@ -552,14 +551,17 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
         auto con_group_cloned = Vec<Shared<asts::TypeAst>>();
         for (auto p_con : p_con_group) {
             auto def_type_raw = p_con->WithoutGenerics();
-            if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw); def_val_type_sym != nullptr and meta.CurrentStage > 4) {
+            if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_val_type_sym != nullptr and meta.CurrentStage > 4) {
                 auto temp = def_val_type_sym->FqName();
-                temp = temp->WithGenerics(asts::AstClone(p_con->TypeParts().Back()->GnArgGroup));
+                temp = temp->WithGenerics(asts::AstClone(p_con->LastTypePart()->GnArgGroup));
                 p_con = std::move(temp);
             }
 
             const auto sub = p_con->SubstituteGenerics(all_args);
+            meta.Save();
+            meta.AllowAbstractType = true;
             sub->Stage7_AnalyseSemantics(&sm, &meta);
+            meta.Restore();
             con_group_cloned.push_back(sub);
         }
         p_con_groups_cloned.push_back(std::move(con_group_cloned));
@@ -672,7 +674,7 @@ auto spp::analyse::utils::func_utils::NameGnArgs(
     // Build index map once for O(n).
     auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
     for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
+        param_index[p->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name] = i;
     }
 
     a_group.Args |= genex::actions::sort([&](auto const &a, auto const &b) {
@@ -784,7 +786,7 @@ static auto CollectDirectInferences(
             auto shared = typed->shared_from_this();
             // Variadic unwrap: inferred value is Tup[T]; extract the inner type.
             if (variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name) {
-                auto &inner = shared->TypeParts().Back()->GnArgGroup->Args[0];
+                auto &inner = shared->LastTypePart()->GnArgGroup->Args[0];
                 shared = inner->To<spp::asts::GenericArgumentTypeAst>()->Val;
             }
             type_inferred[inferred_name].EmplaceBack(std::move(shared));
@@ -879,7 +881,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
             if (inferred_type == nullptr) { continue; }
 
             // Build the candidate list from the type and all subtypes.
-            const auto concrete_sym = sm.CurrentScope->GetTypeSymbol(inferred_type);
+            const auto concrete_sym = sm.CurrentScope->GetTypeSymbol(inferred_type.get());
             auto candidates = Vec<Shared<asts::TypeAst>>{};
             if (concrete_sym != nullptr and not concrete_sym->IsGeneric) {
                 candidates.EmplaceBack(concrete_sym->FqName());
@@ -948,10 +950,10 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
         if (genex::contains(type_i_names, *cast_name, genex::meta::deref)) { continue; }
         auto def_type = opt_param->DefaultVal;
         auto def_type_raw = def_type->WithoutGenerics();
-        if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw); def_sym != nullptr and meta.CurrentStage > 4) {
+        if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_sym != nullptr and meta.CurrentStage > 4) {
             auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
             if (not type_utils::IsTypeSelf(*def_type)) {
-                temp = temp->WithGenerics(asts::AstClone(def_type->TypeParts().Back()->GnArgGroup));
+                temp = temp->WithGenerics(asts::AstClone(def_type->LastTypePart()->GnArgGroup));
             }
             def_type = std::move(temp);
         }
@@ -1002,7 +1004,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     // Emit the final arg list sorted into parameter declaration order.
     auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
     for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-        param_index[p->Name->To<asts::TypeIdentifierAst>()->Name] = i;
+        param_index[p->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name] = i;
     }
 
     auto final_args = Vec<Unique<asts::GenericArgumentAst>>();
@@ -1045,11 +1047,11 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
 
         for (auto &&[kv, param] : genex::views::zip(sorted_comp, comp_params)) {
             auto *inferred_val = kv.second;
-            auto a_type = owner_scope.GetTypeSymbol(inferred_val->InferType(&sm, &meta))->FqName();
+            auto a_type = owner_scope.GetTypeSymbol(inferred_val->InferType(&sm, &meta).get())->FqName();
             auto p_type = param->Type->SubstituteGenerics(all_final_args);
 
             if (param->To<asts::GenericParameterCompVariadicAst>()) {
-                for (auto const &inner : a_type->TypeParts().Back()->GnArgGroup->Args
+                for (auto const &inner : a_type->LastTypePart()->GnArgGroup->Args
                      | genex::views::ptr
                      | genex::views::cast_dynamic<asts::GenericArgumentTypePositionalAst*>()
                      | genex::views::transform([](auto *g) { return g->Val; })
@@ -1081,7 +1083,7 @@ auto spp::analyse::utils::func_utils::IsTargetCallable(
 
     // Return the expr_type unless its generic, in which case
     // return the "func_type" -> got from constraints.
-    const auto is_generic = sm.CurrentScope->GetTypeSymbol(expr_type)->IsGeneric;
+    const auto is_generic = sm.CurrentScope->GetTypeSymbol(expr_type.get())->IsGeneric;
     return is_generic ? func_type : expr_type;
 }
 
@@ -1089,8 +1091,8 @@ auto spp::analyse::utils::func_utils::CreateCallablePrototype(
     asts::TypeAst const &expr_type)
     -> Unique<asts::FunctionPrototypeAst> {
     // Extract the parameter and return types from the expression type.
-    auto dummy_return_type = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Out")->Val;
-    auto dummy_param_types = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Args")->Val->TypeParts().Back()->GnArgGroup->GetTypeArgs()
+    auto dummy_return_type = expr_type.LastTypePart()->GnArgGroup->TypeAt("Out")->Val;
+    auto dummy_param_types = expr_type.LastTypePart()->GnArgGroup->TypeAt("Args")->Val->LastTypePart()->GnArgGroup->GetTypeArgs()
         | genex::views::transform([](auto *g) { return MakeUnique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, g->Val); })
         | spp::views::cast_unique<asts::FunctionParameterAst>();
 
@@ -1112,7 +1114,7 @@ auto spp::analyse::utils::func_utils::GetOverloadTypes(
     scopes::Scope const &scope)
     -> Vec<Shared<asts::TypeAst>> {
     // Extract the overload types from the overload set type and are functional.
-    return scope.GetTypeSymbol(overload_set_type.shared_from_this())->LinkedScope->SupTypes()
+    return scope.GetTypeSymbol(&overload_set_type)->LinkedScope->SupTypes()
         | genex::views::filter([&](auto &&t) { return type_utils::IsTypeFunc(*t, scope); })
         | genex::to<Vec>();
 }

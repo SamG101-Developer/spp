@@ -76,7 +76,8 @@ auto spp::asts::CmpStatementAst::Clone() const
 auto spp::asts::CmpStatementAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n");
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokCmp).append(" ");
     SPP_STRING_APPEND(Name);
     SPP_STRING_APPEND(TokColon).append(" ");
@@ -126,7 +127,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
     Type->Stage7_AnalyseSemantics(sm, meta);
 
     if (not _FromUseStatement and not Type->IsCompilerGeneratedType() and not Type->IsSelfType()) {
-        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+        Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
         _AliasSym->Type = Type;
     }
 }
@@ -177,11 +178,11 @@ auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
     // Check the memory of the type.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
     Value->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
 
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (not Type->IsCompilerGeneratedType()) {
-        const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+        const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
         var_sym->CompTimeValue = AstClone(Value);
     }
 }
@@ -195,7 +196,7 @@ auto spp::asts::CmpStatementAst::Stage9_CompTimeResolve(
 
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (not Type->IsCompilerGeneratedType()) {
-        const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+        const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
         Value->Stage9_CompTimeResolve(sm, meta);
         var_sym->CompTimeValue = std::move(meta->CmpResult);
     }
@@ -211,13 +212,13 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
 
     // Generate the value in a constant context.
     ctx->InConstantContext = true;
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
     const auto val = var_sym->CompTimeValue->Stage11_CodeGen(sm, meta, ctx);
     ctx->InConstantContext = false;
 
     // Create the global variable for the constant.
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     const auto llvm_global_var = new llvm::GlobalVariable(
         *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
         codegen::mangle::mangle_cmp_name(*sm->CurrentScope, *this));

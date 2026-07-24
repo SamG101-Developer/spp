@@ -10,9 +10,17 @@ namespace spp::asts {
     SPP_EXP_CLS struct SubroutinePrototypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
-    using FunctionPrototypeAst::FunctionPrototypeAst;
+    SubroutinePrototypeAst(
+        decltype(Annotations) &&annotations,
+        decltype(TokCmp) &&tok_cmp,
+        decltype(TokFun) &&tok_fun,
+        decltype(Name) &&name,
+        decltype(GnParamGroup) &&generic_param_group,
+        decltype(FnParamGroup) &&param_group,
+        decltype(TokArrow) &&tok_arrow,
+        decltype(ReturnType) &&return_type,
+        decltype(Impl) &&impl);
 
     ~SubroutinePrototypeAst() override;
 

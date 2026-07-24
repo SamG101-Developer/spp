@@ -1,6 +1,6 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.array_literal_explicit_elements_ast;
 import spp.analyse.errors.semantic_error;
@@ -20,6 +20,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
@@ -96,13 +97,13 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::errors::SppSecondClassBorrowViolationError;
+    using analyse::errors::SppTypeMismatchError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeArr;
     using analyse::utils::type_utils::IsTypeBorrowed;
     using analyse::utils::type_utils::TypeEq;
-    using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::errors::SppSecondClassBorrowViolationError;
-    using analyse::errors::SppTypeMismatchError;
 
     // Analyse the element inside the array. Also enforce beforehand that the element
     // is an acceptable primary expression, ie not a TypeAst or a TokenAst.
@@ -116,9 +117,11 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     // Determine the "correct type" that all elements are compared against. If a pre-defined array type has
     // been given, allowing a variant element type to be respected; otherwise just use the 0th element.
     const auto z_elem = Elems[0].get();
-    const auto from_target = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
+    const auto from_target = meta->AssignmentTargetType != nullptr and
+        IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
+
     const auto z_type = from_target
-        ? meta->AssignmentTargetType->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val
+        ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->TypeAt("T")->Val
         : z_elem->InferType(sm, meta);
 
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -152,7 +155,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
     // Check the memory of each element in the array literal.
     for (auto const &elem : Elems) {
         elem->Stage8_CheckMemory(sm, meta);
-        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, true, false, meta);
+        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
     }
 }
 
@@ -190,11 +193,11 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
         }
 
         // Create the array type and allocation.
-        const auto uid = Uid(this);
+        const auto uid = "." + Uid(this);
         const auto elem_ty = vals[0]->getType();
         const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.Len());
         SPP_ASSERT(arr_ty != nullptr);
-        const auto arr_alloc = ctx->Builder.CreateAlloca(arr_ty, nullptr, "array.explicit.alloca" + uid);
+        const auto arr_alloc = codegen::llvm_entry_alloca(arr_ty, "array.explicit.alloca" + uid, ctx);
 
         // Store the elements in the array allocation.
         for (auto i = 0uz; i < vals.Len(); ++i) {
@@ -206,8 +209,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
             ctx->Builder.CreateStore(vals[i], elem_ptr);
         }
 
-        // Return the array allocation.
-        return arr_alloc;
+        // Return the array by value.
+        return ctx->Builder.CreateLoad(arr_ty, arr_alloc, "array.explicit.result" + uid);
     }
 
     // Constant array creation.
@@ -236,7 +239,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
     auto size_tok = MakeUnique<TokenAst>(TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
     auto size_gen = MakeUnique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");
     auto elem_gen = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope)
-        ? AstCloneShared(meta->AssignmentTargetType->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val)
+        ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->TypeAt("T")->Val)
         : Elems[0]->InferType(sm, meta);
 
     // Create an array type with the inferred element type and size.

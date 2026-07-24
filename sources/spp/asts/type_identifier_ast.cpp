@@ -1,13 +1,18 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_identifier_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.class_prototype_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_comp_positional_ast;
@@ -101,15 +106,15 @@ auto spp::asts::TypeIdentifierAst::Clone() const
     auto t = MakeUnique<TypeIdentifierAst>(_Pos, Str(Name), AstClone(GnArgGroup));
     t->_CachedWithoutGenerics = _CachedWithoutGenerics;
     t->_IsNeverType = _IsNeverType;
+    t->_IsSourceWritten = _IsSourceWritten;
     return t;
 }
 
 auto spp::asts::TypeIdentifierAst::ToString() const
     -> Str {
-    SPP_STRING_START;
-    raw_string.append(Name);
-    SPP_STRING_APPEND(GnArgGroup);
-    SPP_STRING_END;
+    // Reuse the cached stringification (identical content: Name + GnArgGroup->ToString()) to avoid rebuilding the
+    // string (and recursively re-stringifying every generic argument) on each call.
+    return Str(ToView());
 }
 
 auto spp::asts::TypeIdentifierAst::Stage4_QualifyTypes(
@@ -126,33 +131,59 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    //
+    // Todo: Add higher order generic checks into the unit tests (self and generic type).
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
     using analyse::utils::func_utils::InferGnArgs;
     using analyse::utils::func_utils::NameGnArgs;
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
+    using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
+    using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
+    using analyse::errors::SemanticError;
+    using analyse::errors::SppAbstractTypeUseError;
+    using analyse::errors::SppHigherOrderGenericsNotSupportedError;
+    using generate::common_types_precompiled::TUP;
+
     if (_HasAnalysed) { return; }
-    if (Name == "Self" and meta->CurrentStage < 9) { return; }
+    RaiseIf<SppHigherOrderGenericsNotSupportedError>(
+        Name == "Self" and (GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty()),
+        {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
+    if (Name == "Self" and meta->CurrentStage < 9) {
+        _HasAnalysed = true;
+        return;
+    }
 
     // Determine the scope and get the type symbol.
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto type_sym = GetTypeSymOrError(
-        *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
-    if (Name == "Self") { return; }
-    const auto &gn_param_group = type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
+        *scope, *WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), *sm, meta);
+    if (Name == "Self") {
+        _HasAnalysed = true;
+        return;
+    }
+
+    if (_IsSourceWritten and type_sym->ScopeDefinedIn != nullptr and type_sym->Name->Name == Name) {
+        CheckModuleTypeVisibility(
+            *type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
+    }
+
+    const auto gn_param_group = type_sym->AliasStmt != nullptr
+        ? type_sym->AliasStmt->GnParamGroup.get()
+        : type_sym->Type != nullptr
+        ? type_sym->Type->GnParamGroup.get()
+        : nullptr;
 
     auto is_tuple = false;
     if (not type_sym->IsGeneric) {
         is_tuple = ( {
             const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
-            as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->To<TypeUnaryExpressionAst>();
+            as_unary != nullptr and *as_unary == *TUP->ToUnchecked<TypeUnaryExpressionAst>();
         });
 
         // Name all the generic arguments.
         NameGnArgs(
             *GnArgGroup,
-            *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
+            *gn_param_group,
             *this, *sm, *meta, is_tuple);
 
         // Analyse the generic arguments.
@@ -165,6 +196,11 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
             *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget, type_sym->FqName(), *type_sym->LinkedScope,
             nullptr, is_tuple, *sm, *meta);
         GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    }
+    else {
+        RaiseIf<SppHigherOrderGenericsNotSupportedError>(
+            GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
+            {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
     }
 
     // For variant types, collapse any duplicate generic arguments.
@@ -179,19 +215,36 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // }
 
     // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
-    if (not scope->HasTypeSymbol(AstClone(this))) {
+    if (not scope->HasTypeSymbol(this)) {
         const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
     }
 
-    // Enforce generic constraints from the pre-analysis stage (CurrentStage >= 8) onwards, not just the main
-    // analysis stage. Sup scopes are fully loaded by the end of stage 5, so constraints can be reliably checked here,
-    // and some need to be done before stage 7 for order agnostic behaviour.
+    // Enforce generic constraints from the pre-analysis stage (CurrentStage >= 8) onwards, not just the main analysis
+    // stage. Sup scopes are fully loaded by the end of stage 5, so constraints can be reliably checked here, and some
+    // need to be done before stage 7 for order agnostic behaviour.
     if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 8) {
         EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
     }
 
+    // Reject abstract types everywhere except the few positions that name a type without ever producing a value of it.
+    // The generic substitution above may have created the scope this resolves to, so the symbol is re-fetched rather
+    // than reusing the base "type_sym" from before it existed.
+    if (not meta->AllowAbstractType and meta->CurrentStage >= 8 and not type_sym->IsGeneric) {
+        const auto resolved_sym = scope->GetTypeSymbol(this);
+        if (resolved_sym != nullptr and resolved_sym->LinkedScope != nullptr) {
+            const auto unimplemented = GetUnimplementedAbstractMethods(*resolved_sym->LinkedScope);
+
+            // Stack "if" first, not "RaiseIf", because we need scope access from it.
+            if (not unimplemented.IsEmpty()) {
+                Raise<SppAbstractTypeUseError>(
+                    {sm->CurrentScope, unimplemented[0]->GetAstScope()}, ERR_ARGS(*this, *unimplemented[0]));
+            }
+        }
+    }
+
     _HasAnalysed = true;
+    _CachedStringification.clear();
 }
 
 auto spp::asts::TypeIdentifierAst::Iterator() const
@@ -254,6 +307,11 @@ auto spp::asts::TypeIdentifierAst::NsParts()
     return {};
 }
 
+auto spp::asts::TypeIdentifierAst::MarkSourceWritten()
+    -> void {
+    _IsSourceWritten = true;
+}
+
 auto spp::asts::TypeIdentifierAst::TypeParts() const
     -> Vec<Shared<const TypeIdentifierAst>> {
     return Vec{dynamic_shared_cast<const TypeIdentifierAst>(shared_from_this())};
@@ -262,6 +320,16 @@ auto spp::asts::TypeIdentifierAst::TypeParts() const
 auto spp::asts::TypeIdentifierAst::TypeParts()
     -> Vec<Shared<TypeIdentifierAst>> {
     return Vec{dynamic_shared_cast<TypeIdentifierAst>(shared_from_this())};
+}
+
+auto spp::asts::TypeIdentifierAst::LastTypePart() const
+    -> TypeIdentifierAst const* {
+    return this;
+}
+
+auto spp::asts::TypeIdentifierAst::LastTypePart()
+    -> TypeIdentifierAst* {
+    return this;
 }
 
 auto spp::asts::TypeIdentifierAst::WithoutConvention() const
@@ -303,17 +371,17 @@ auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
     auto gen_comp_args = Vec<Pair<TypeIdentifierAst*, ExpressionAst*>>{};
     for (auto const &arg : args) {
         if (auto const *type_kw_arg = arg->To<GenericArgumentTypeKeywordAst>()) {
-            gen_type_args.EmplaceBack(type_kw_arg->Name->To<TypeIdentifierAst>(), type_kw_arg->Val.get());
+            gen_type_args.EmplaceBack(type_kw_arg->Name->ToUnchecked<TypeIdentifierAst>(), type_kw_arg->Val.get());
         }
         else if (auto const *comp_kw_arg = arg->To<GenericArgumentCompKeywordAst>()) {
-            gen_comp_args.EmplaceBack(comp_kw_arg->Name->To<TypeIdentifierAst>(), comp_kw_arg->Val.get());
+            gen_comp_args.EmplaceBack(comp_kw_arg->Name->ToUnchecked<TypeIdentifierAst>(), comp_kw_arg->Val.get());
         }
     }
 
     // Check if this type directly matches any generic type argument name.
     for (auto const &[gen_arg_name, gen_arg_val] : gen_type_args) {
-        if (*this == *gen_arg_name->To<TypeIdentifierAst>()) {
-            return AstClone(gen_arg_val->To<TypeAst>());
+        if (*this == *gen_arg_name) {
+            return AstClone(gen_arg_val->ToUnchecked<TypeAst>());
         }
     }
 
@@ -342,7 +410,7 @@ auto spp::asts::TypeIdentifierAst::ContainsGenerics(
     GenericParameterAst const &generic) const
     -> bool {
     // Check if the parameter's name is in the type parts iterated from this type.
-    auto cast_name = generic.Name->To<TypeIdentifierAst>();
+    auto cast_name = generic.Name->ToUnchecked<TypeIdentifierAst>();
     return genex::any_of(
         Iterator() | genex::to<Vec>(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }
@@ -379,7 +447,7 @@ auto spp::asts::TypeIdentifierAst::InferType(
     // Fully qualify this type name from the scope.
     // Have to AstClone because PostfixExpressionAst lhs (will change with removal of all shared pointers)
     const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-    const auto type_sym = type_scope->GetTypeSymbol(AstClone(this));
+    const auto type_sym = type_scope->GetTypeSymbol(this);
     return type_sym->FqName();
 }
 
@@ -391,11 +459,9 @@ auto spp::asts::TypeIdentifierAst::AnkerlHash() const
 
 auto spp::asts::TypeIdentifierAst::ToView() const
     -> StrView {
-    if (_CachedStringification.empty()) {
+    if (_CachedStringification.empty() or not _HasAnalysed) {
         _CachedStringification = Name;
-        if (GnArgGroup != nullptr) {
-            _CachedStringification.append(GnArgGroup->ToString());
-        }
+        if (GnArgGroup != nullptr) { _CachedStringification.append(GnArgGroup->ToString()); }
     }
     return _CachedStringification;
 }

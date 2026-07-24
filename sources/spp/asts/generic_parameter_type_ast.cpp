@@ -41,14 +41,14 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
 
     // Create a dummy scope for the generic type.
     auto dummy_scope_name = analyse::scopes::ScopeBlockName::FromParts(
-        "generic-parameter-type", {Name->TypeParts().Back().get()}, PosStart());
+        "generic-parameter-type", {Name->LastTypePart()}, PosStart());
     _DummyAst = MakeUnique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, nullptr, nullptr, nullptr);
     auto dummy_scope = MakeUnique<analyse::scopes::Scope>(
         dummy_scope_name, sm->CurrentScope, _DummyAst.get());
 
     // Create the type symbol for the generic parameter.
     const auto sym = MakeShared<analyse::scopes::TypeSymbol>(
-        AstCloneShared(Name->TypeParts().Back()), nullptr, dummy_scope.get(), sm->CurrentScope, nullptr, true, false,
+        AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(), sm->CurrentScope, nullptr, true, false,
         Visibility::kPublic, nullptr, Constraints->Constraints);
     sm->CurrentScope->AddTypeSymbol(sym);
     dummy_scope->TySym = sym;

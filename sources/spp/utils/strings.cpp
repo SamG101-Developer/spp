@@ -1,5 +1,26 @@
 module spp.utils.strings;
 
+static auto DecodeEscapeChar(
+    const char c)
+    -> char {
+    switch (c) {
+        case 'n': return '\n';
+        case 't': return '\t';
+        case 'r': return '\r';
+        case '0': return '\0';
+        case '\\': return '\\';
+        case '\'': return '\'';
+        case '"': return '"';
+        default: return c;
+    }
+}
+
+static auto StripLiteralQuotes(
+    const spp::StrView token_data)
+    -> spp::StrView {
+    return token_data.size() >= 2 ? token_data.substr(1, token_data.size() - 2) : spp::StrView();
+}
+
 auto spp::utils::strings::IsAlNum(
     const char c)
     -> bool {
@@ -116,5 +137,57 @@ auto spp::utils::strings::NormaliseAnyString(
     auto out = Str();
     out.reserve(s1.length());
     std::ranges::copy_if(s1, std::back_inserter(out), [](const char c) { return c != '_'; });
+    return out;
+}
+
+auto spp::utils::strings::DecodeCharLiteral(
+    const StrView token_data)
+    -> std::uint32_t {
+    const auto content = StripLiteralQuotes(token_data);
+
+    // Defensive guard against an empty literal (eg "''"); a well-formed char always has content.
+    if (content.empty()) { return 0; }
+
+    // Escape sequences, eg "\n" (a backslash followed by a single character).
+    if (content.size() >= 2 and content[0] == '\\') {
+        return static_cast<unsigned char>(DecodeEscapeChar(content[1]));
+    }
+
+    // Otherwise decode the single UTF-8 scalar value into its Unicode code point.
+    const auto b0 = static_cast<unsigned char>(content[0]);
+    if (b0 < 0x80 or content.size() < 2) {
+        return b0;
+    }
+    if ((b0 >> 5) == 0x6 and content.size() >= 2) {
+        return ((b0 & 0x1Fu) << 6) | (static_cast<unsigned char>(content[1]) & 0x3Fu);
+    }
+    if ((b0 >> 4) == 0xE and content.size() >= 3) {
+        return ((b0 & 0x0Fu) << 12) | ((static_cast<unsigned char>(content[1]) & 0x3Fu) << 6)
+            | (static_cast<unsigned char>(content[2]) & 0x3Fu);
+    }
+    if ((b0 >> 3) == 0x1E and content.size() >= 4) {
+        return ((b0 & 0x07u) << 18) | ((static_cast<unsigned char>(content[1]) & 0x3Fu) << 12)
+            | ((static_cast<unsigned char>(content[2]) & 0x3Fu) << 6) | (static_cast<unsigned char>(content[3]) & 0x3Fu);
+    }
+    return b0;
+}
+
+auto spp::utils::strings::DecodeStringLiteral(
+    const StrView token_data)
+    -> Str {
+    const auto content = StripLiteralQuotes(token_data);
+
+    // Copy the bytes across, resolving backslash escape sequences; multi-byte UTF-8 bytes pass through.
+    auto out = Str();
+    out.reserve(content.size());
+    for (auto i = 0uz; i < content.size(); ++i) {
+        if (content[i] == '\\' and i + 1 < content.size()) {
+            out += DecodeEscapeChar(content[i + 1]);
+            ++i;
+        }
+        else {
+            out += content[i];
+        }
+    }
     return out;
 }

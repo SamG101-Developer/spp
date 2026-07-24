@@ -6,6 +6,7 @@ module spp.asts.function_parameter_optional_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.identifier_ast;
@@ -60,24 +61,27 @@ auto spp::asts::FunctionParameterOptionalAst::ToString() const
     SPP_STRING_END;
 }
 
-auto spp::asts::FunctionParameterOptionalAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
     using analyse::errors::SppTypeMismatchError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::type_utils::TypeEq;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);
 
-    // Make sure the default expression the correct type. Only do this from true stage 7 analysis, not via stage 5.
-    if (meta->CurrentStage >= 9) {
-        DefaultVal->Stage7_AnalyseSemantics(sm, meta);
-        const auto default_type = DefaultVal->InferType(sm, meta);
+    DefaultVal->Stage7_AnalyseSemantics(sm, meta);
+    const auto default_type = DefaultVal->InferType(sm, meta);
 
-        RaiseIf<SppTypeMismatchError>(
-            not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
-    }
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*DefaultVal, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*DefaultVal));
+
+    RaiseIf<SppTypeMismatchError>(
+        not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
 }
 
 auto spp::asts::FunctionParameterOptionalAst::Stage8_CheckMemory(
@@ -90,7 +94,7 @@ auto spp::asts::FunctionParameterOptionalAst::Stage8_CheckMemory(
 
     // Check the memory status of the default value expression.
     DefaultVal->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
 }
 
 SPP_MOD_END

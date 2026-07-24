@@ -28,8 +28,8 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
     auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
-     * Case patterns can introduce varialbes via the bindings. To neatly introduce all required bindings into scope,
-     * there is a conversion mechainsm, which can also handle the nested bindings. This is overridden on the different
+     * Case patterns can introduce variables via the bindings. To neatly introduce all required bindings into scope,
+     * there is a conversion mechanism, which can also handle the nested bindings. This is overridden on the different
      * destructuring patterns.
      * @param meta Associated metadata.
      * @return The converted variable AST.

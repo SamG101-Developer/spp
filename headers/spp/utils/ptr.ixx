@@ -30,6 +30,16 @@ namespace spp {
         return std::dynamic_pointer_cast<Out>(ptr);
     }
 
+    SPP_EXP_FUN template <typename Out, typename In>
+    requires (std::derived_from<In, Out> or std::derived_from<Out, In>)
+    SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
+    inline auto static_shared_cast(Shared<In> const &ptr) -> Shared<Out> {
+        // Non-checked cast: only use where the dynamic type is already known (a guaranteed downcast, or an always-safe
+        // upcast). Avoids the RTTI walk of dynamic_cast on hot paths.
+        if (ptr == nullptr) { return nullptr; }
+        return std::static_pointer_cast<Out>(ptr);
+    }
+
     SPP_EXP_FUN template <typename In>
     requires (not std::is_const_v<In> and not std::is_reference_v<In>)
     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE

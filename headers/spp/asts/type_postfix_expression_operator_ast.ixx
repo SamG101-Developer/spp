@@ -33,4 +33,10 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
     SPP_ATTR_NODISCARD virtual auto TypeParts() const -> Vec<Shared<const TypeIdentifierAst>> = 0;
 
     SPP_ATTR_NODISCARD virtual auto TypeParts() -> Vec<Shared<TypeIdentifierAst>> = 0;
+
+    /// Non-allocating final-type-part accessor: returns the borrowed part this operator contributes, or @c nullptr if
+    /// it contributes none (so the caller can fall back to the left-hand side).
+    SPP_ATTR_NODISCARD virtual auto LastTypePart() const -> TypeIdentifierAst const* { return nullptr; }
+
+    SPP_ATTR_NODISCARD virtual auto LastTypePart() -> TypeIdentifierAst* { return nullptr; }
 };

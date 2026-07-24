@@ -1,0 +1,46 @@
+Todo
+
+# Systems-programming and compiler vocabulary used throughout the spec. Case
+# variants are written as regexes rather than as separate entries: listing both
+# `coroutine` and `Coroutine` makes Vale.Terms treat one casing as canonical and
+# flag every use of the other.
+[Aa]sync
+[Bb]ooleans?
+[Cc]odegen
+[Cc]oroutines?
+[Dd]eallocates?
+[Dd]eallocated
+[Dd]eallocation
+[Dd]ereferencing
+[Dd]estructures?
+[Dd]estructured
+[Dd]estructuring
+[Ii]ntrinsics
+[Mm]onomorphiz(e|es|ed|ing|ation)
+[Mm]utexes
+[Nn]amespaces?
+[Oo]ptionals
+[Pp]arameterization
+[Rr]ebindable
+[Rr]ecompil(e|es|ed|ing|ation)
+[Rr]eborrow(s|ed|ing)?
+[Rr]edeclar(e|es|ed|ing|ation|ations)
+[Rr]einitialization
+[Rr]elocations
+[Ss]tackless
+[Ss]ubfolders?
+[Ss]ubstring
+[Ss]uperimpositions?
+[Tt]oolchain
+[Vv]ariadic
+
+# S++ identifiers and abbreviations that appear in running prose.
+APIs?
+STL
+Deref
+Ptr
+Vec
+cmp
+config
+const
+yielder

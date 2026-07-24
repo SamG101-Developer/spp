@@ -35,16 +35,16 @@ namespace spp::analyse::utils::expr_utils {
         scopes::ScopeManager const &sm)
         -> void;
 
-    SPP_EXP_FUN SPP_ATTR_NORETURN auto RaiseMissingIdentifierAndClosestOptions(
+    SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingIdentifierAndClosestOptions(
         asts::IdentifierAst const &identifier,
-        Vec<Shared<scopes::VariableSymbol>> const &var_symbols,
-        Vec<Shared<scopes::NamespaceSymbol>> const &ns_symbols,
+        Vec<scopes::VariableSymbol*> const &var_symbols,
+        Vec<scopes::NamespaceSymbol*> const &ns_symbols,
         scopes::ScopeManager const &sm)
         -> void;
 
-    SPP_EXP_FUN SPP_ATTR_NORETURN auto RaiseMissingTypeIdentifierAndClosestOptions(
+    SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingTypeIdentifierAndClosestOptions(
         asts::TypeIdentifierAst const &identifier,
-        Vec<Shared<scopes::TypeSymbol>> const &symbols,
+        Vec<scopes::TypeSymbol*> const &symbols,
         scopes::ScopeManager const &sm)
         -> void;
 }

@@ -1,0 +1,9 @@
+name: restore-mtimes
+description: "Rewrite tracked files' mtimes from commit history so cached build trees stay usable."
+
+runs:
+  using: composite
+  steps:
+    - name: Restore source mtimes
+      shell: bash
+      run: python3 "$GITHUB_ACTION_PATH/restore_mtimes.py"

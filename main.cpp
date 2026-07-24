@@ -5,8 +5,7 @@ import std.compat;
 
 #include <execinfo.h>
 
-
-auto print_stacktrace_for_sigsegv(void *user_data, const char *reason, bool gen_crash_diag) -> void {
+static auto print_stacktrace_for_sigsegv(void *user_data, const char *reason, bool gen_crash_diag) -> void {
     void *array[10];
 
     // get void*'s for all entries on the stack
@@ -18,7 +17,6 @@ auto print_stacktrace_for_sigsegv(void *user_data, const char *reason, bool gen_
     std::printf("Backtrace:\n");
     backtrace_symbols_fd(array, static_cast<int>(size), 2);
 }
-
 
 auto main(const std::int32_t, char **argv) -> int {
     // Temporary test code to test a small project.

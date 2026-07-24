@@ -118,7 +118,7 @@ private:
 
     auto _GenerateSymbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
 
-    auto _FillLlvmLayout(ScopeManager *sm, analyse::scopes::TypeSymbol const *type_sym, codegen::LLvmCtx *ctx) const -> void;
+    auto _FillLlvmLayout(ScopeManager const *sm, analyse::scopes::TypeSymbol const *type_sym, codegen::LLvmCtx *ctx) const -> void;
 };
 
 

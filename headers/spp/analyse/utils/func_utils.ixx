@@ -105,7 +105,7 @@ namespace spp::analyse::utils::func_utils {
         asts::TypeAst const &function_owner_type,
         asts::IdentifierAst const &function_name,
         asts::PostfixExpressionAst const &lhs,
-        asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
+        asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
         -> Pair<Unique<asts::PostfixExpressionAst>, Unique<asts::PostfixExpressionOperatorFunctionCallAst>>;
@@ -124,6 +124,13 @@ namespace spp::analyse::utils::func_utils {
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
         -> asts::FunctionPrototypeAst *;
+
+    SPP_EXP_FUN auto SameSignature(
+        asts::FunctionPrototypeAst const &fn_a,
+        scopes::Scope const &scope_a,
+        asts::FunctionPrototypeAst const &fn_b,
+        scopes::Scope const &scope_b)
+        -> bool;
 
     SPP_EXP_FUN auto CheckForConflictingOverride(
         scopes::Scope const &this_scope,

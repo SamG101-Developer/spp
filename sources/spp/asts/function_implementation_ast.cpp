@@ -34,7 +34,7 @@ auto spp::asts::FunctionImplementationAst::Stage9_CompTimeResolve(
     -> void {
     // Inject the argument values. Todo: && & std::move?
     for (auto const &[arg_name, arg_comp] : meta->CmpArgs) {
-        const auto arg_sym = sm->CurrentScope->GetVarSymbol(arg_name);
+        const auto arg_sym = sm->CurrentScope->GetVarSymbol(arg_name.get());
         arg_sym->CompTimeValue = AstClone(arg_comp);
     }
 

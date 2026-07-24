@@ -1,5 +1,4 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
@@ -27,7 +26,6 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.algorithms;
 import genex;
-import opex.cast;
 
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
@@ -101,7 +99,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
     // Determine number of elements in the left-hand-side and right-hand-side tuples.
     // Todo: Test destructuring generic array - how would that work? like Arr[Str, n] => don't allow.
     const auto num_lhs_arr_elems = Elems.Len();
-    const auto num_rhs_arr_elems = val->InferType(sm, meta)->TypeParts().Back()->GnArgGroup->Args.Len();
+    const auto num_rhs_arr_elems = val->InferType(sm, meta)->LastTypePart()->GnArgGroup->Args.Len();
     RaiseIf<SppVariableTupleDestructureTupleSizeMismatchError>(
         (num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.IsEmpty()) or (num_lhs_arr_elems > num_rhs_arr_elems),
         {sm->CurrentScope}, ERR_ARGS(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems));
@@ -109,7 +107,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = Unique<TupleLiteralAst>(nullptr);
     if (not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr) {
-        const auto m = genex::position(Elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
+        const auto m = static_cast<std::size_t>(genex::position(Elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }));
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::to<Vec>()
             | genex::views::transform([val](const auto i) -> Unique<ExpressionAst> {
@@ -125,7 +123,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.IsEmpty()
-        ? genex::position(Elems | genex::views::ptr, [&](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+        ? static_cast<std::size_t>(genex::position(Elems | genex::views::ptr, [&](auto &&x) { return x == multi_arg_skips[0]; }))
         : Elems.Len() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<Vec>();
     indexes.AppendRange(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<Vec>());

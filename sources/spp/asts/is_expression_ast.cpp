@@ -91,7 +91,7 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
     // This includes the lhs symbol if it's been flow typed.
     if (not sm->CurrentScope->NameAsString().starts_with("<inner-scope#")) {
         const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->AllVarSymbols(true, true);
-        for (auto const &x : destructure_syms) { sm->CurrentScope->AddVarSymbol(x); }
+        for (auto const &x : destructure_syms) { sm->CurrentScope->AddVarSymbol(x->SharedFromThis<analyse::scopes::VariableSymbol>()); }
     }
 }
 
@@ -111,9 +111,9 @@ auto spp::asts::IsExpressionAst::Stage11_CodeGen(
     // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
     // into the flow typed symbol.
     if (_LhsAsId) {
-        const auto flow_typed_lhs_sym = sm->CurrentScope->GetVarSymbol(_LhsAsId, true);
+        const auto flow_typed_lhs_sym = sm->CurrentScope->GetVarSymbol(_LhsAsId.get(), true);
         if (flow_typed_lhs_sym != nullptr) {
-            auto original_sym = sm->CurrentScope->Parent->GetVarSymbol(_LhsAsId);
+            auto original_sym = sm->CurrentScope->Parent->GetVarSymbol(_LhsAsId.get());
             original_sym = original_sym ? original_sym : flow_typed_lhs_sym;
             flow_typed_lhs_sym->LlvmInfo->Alloca = original_sym->LlvmInfo->Alloca;
         }

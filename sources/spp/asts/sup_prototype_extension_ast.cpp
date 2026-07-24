@@ -177,15 +177,20 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
-    // Analyse the type being superimposed over.
+    // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
+    // methods are declared, and where a derived type implements them.
+    meta->Save();
+    meta->AllowAbstractType = true;
     Name->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
+
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Name, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
-    Name = sm->CurrentScope->GetTypeSymbol(Name)->FqName();
+    Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName();
 
     // Register the superimposition against the base symbol.
-    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics());
+    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
     if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
         if (not base_cls_sym->IsGeneric) {
             analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym.get()].EmplaceBack(sm->CurrentScope);
@@ -197,7 +202,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
 
     // Add the "Self" symbol into the scope.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
         const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
             MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
             sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
@@ -209,10 +214,10 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*SuperClass, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *SuperClass, "superimposition supertype"));
-    SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass)->FqName();
+    SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->FqName();
 
     // Check the supertype is not generic.
-    const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
+    const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
     RaiseIf<SppGenericTypeInvalidUsageError>(
         sup_sym->IsGeneric, {sm->CurrentScope},
         ERR_ARGS(*SuperClass, *Source.OriginalSuperClass, "superimposition supertype"));
@@ -242,24 +247,25 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
     // Re-analyse the superclass type so its generic-argument constraints are enforced at this pre-analysis
     // stage. If they are done in stage 7, then we get misleading errors because when something else correctly fails, a
     // missing constraint enforcement spews some inference error. Note to self: trust this comment.
+    meta->Save();
+    meta->AllowAbstractType = true;
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 
     // Get the symbols.
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
-    const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+    const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
 
-    auto sup_scopes = sm->CurrentScope->GetTypeSymbol(SuperClass)->LinkedScope->SupScopes();
-    sup_scopes.Insert(sup_scopes.begin(), sup_sym->LinkedScope);
-    sup_scopes.Erase(
-        std::ranges::remove_if(sup_scopes, [](auto const &x) { return x->AstNode->template To<ClassPrototypeAst>() == nullptr; }).begin(),
-        sup_scopes.end());
+    auto sup_scopes = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->LinkedScope->SupScopes();
+    sup_scopes |= genex::actions::insert(sup_scopes.begin(), sup_sym->LinkedScope);
+    sup_scopes |= genex::actions::remove_if([](auto const &x) { return x->AstNode->template To<ClassPrototypeAst>() == nullptr; });
 
     // Mark the class as copyable if the "Copy" type is the supertype.
     for (const auto sup_scope : sup_scopes) {
         const auto fq_name = sup_scope->TySym->FqName();
         if (TypeEq(*fq_name, *COPY, *sup_scope, *sm->CurrentScope)) {
-            sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics())->IsDirectlyCopyable = true;
+            sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())->IsDirectlyCopyable = true;
             cls_sym->IsDirectlyCopyable = true;
             break;
         }
@@ -286,7 +292,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
             // Sync up the annotations from the base function.
             // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
             this_method->Visibility = base_method->Visibility;
-            const auto func_sym = sm->CurrentScope->GetVarSymbol(this_method->Name, true);
+            const auto func_sym = sm->CurrentScope->GetVarSymbol(this_method->Name.get(), true);
             func_sym->Visibility = base_method->Visibility.First;
             func_sym->VisibilityAnnotation = this_method->Visibility.Second;
         }
@@ -294,7 +300,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
         else if (const auto type_member = member->To<TypeStatementAst>()) {
             // Get the associated type from the supertype directly.
             const auto this_type = type_member->NewType;
-            const auto base_type = sup_sym->LinkedScope->GetTypeSymbol(this_type, true);
+            const auto base_type = sup_sym->LinkedScope->GetTypeSymbol(this_type.get(), true);
 
             // Check to see if the base type exists.
             RaiseIf<SppSuperimpositionExtensionTypeStatementInvalidError>(
@@ -305,7 +311,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
         else if (const auto cmp_member = member->To<CmpStatementAst>()) {
             // Get the associated cmp from the supertype directly.
             const auto this_const = cmp_member->Name;
-            const auto base_const = sup_sym->LinkedScope->GetVarSymbol(this_const, true);
+            const auto base_const = sup_sym->LinkedScope->GetVarSymbol(this_const.get(), true);
 
             // Check to see if the base cmp exists.
             RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
@@ -331,6 +337,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+    using generate::common_types_precompiled::SELF_TYPE;
 
     // Move to the next scope.
     sm->MoveToNextScope();
@@ -338,17 +345,21 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
 
     // Re-map "Self" to the true type.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
-        const auto self_sym = sm->CurrentScope->GetTypeSymbol(MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr), true);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
         self_sym->Type = cls_sym->Type;
         cls_sym->AliasedBySyms.EmplaceBack(self_sym);
     }
 
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
+    // Both the superimposition target and the superclass are allowed to be abstract, as neither names a value.
+    meta->Save();
+    meta->AllowAbstractType = true;
+
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     if (cls_sym->Type)
         EnforceGenericConstraintsAllArgs(
             *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
@@ -356,10 +367,12 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->Type->Name->IsCompilerGeneratedType()) {
-        const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
+        const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
         EnforceGenericConstraintsAllArgs(
             *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
     }
+
+    meta->Restore();
 
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();

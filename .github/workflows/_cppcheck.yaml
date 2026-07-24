@@ -1,0 +1,132 @@
+name: cppcheck
+
+# Static analysis gate. Runs before anything is compiled: cppcheck parses the
+# sources on its own (system headers are deliberately not supplied - see
+# .cppcheck-suppressions), so it needs no toolchain and no dependencies, and it
+# rejects a bad change in ~2 minutes instead of after a 40-minute build.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: >-
+          cppcheck git ref to build. Pin this to the tag matching your local cppcheck so CI and
+          `git blame`-driven local runs agree on the finding set; `main` tracks upstream.
+        required: false
+        type: string
+        default: "main"
+      std:
+        description: "Language standard passed to cppcheck. Raise to c++26 once cppcheck understands it."
+        required: false
+        type: string
+        default: "c++23"
+
+jobs:
+  cppcheck:
+    name: Cppcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      # Nothing is compiled here, so a shallow clone is enough.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+
+      # Ubuntu ships a much older cppcheck than the one developers run locally, and
+      # findings differ between versions, so build the pinned one and cache it.
+      - name: Resolve cppcheck commit
+        id: resolve
+        env:
+          CPPCHECK_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          sha=$(git ls-remote https://github.com/danmar/cppcheck.git "$CPPCHECK_REF" | cut -f1)
+          if [ -z "$sha" ]; then
+            echo "::error::cppcheck ref '$CPPCHECK_REF' does not exist"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Restore cppcheck
+        id: cppcheck-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.local/cppcheck
+          key: cppcheck-${{ runner.os }}-${{ steps.resolve.outputs.sha }}
+
+      - name: Build cppcheck
+        if: steps.cppcheck-cache.outputs.cache-hit != 'true'
+        env:
+          CPPCHECK_SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git clone https://github.com/danmar/cppcheck.git "${RUNNER_TEMP}/cppcheck-src"
+          git -C "${RUNNER_TEMP}/cppcheck-src" checkout --detach "$CPPCHECK_SHA"
+          # MatchCompiler roughly halves analysis time; worth it since we cache the result.
+          cmake -S "${RUNNER_TEMP}/cppcheck-src" -B "${RUNNER_TEMP}/cppcheck-build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$HOME/.local/cppcheck" \
+            -DUSE_MATCHCOMPILER=ON \
+            -DBUILD_TESTS=OFF \
+            -GNinja
+          cmake --build "${RUNNER_TEMP}/cppcheck-build" --parallel
+          cmake --install "${RUNNER_TEMP}/cppcheck-build"
+
+      - name: Analyse
+        env:
+          STD: ${{ inputs.std }}
+        run: |
+          set -uo pipefail
+          export PATH="$HOME/.local/cppcheck/bin:$PATH"
+          cppcheck --version
+
+          # Turns each reported line into an inline PR annotation.
+          echo "::add-matcher::.github/matchers/cppcheck.json"
+
+          # --error-exitcode=1 with --enable=all makes every severity a hard failure;
+          # narrow the set here, or add an entry to .cppcheck-suppressions, to relax it.
+          set +e
+          cppcheck \
+            --enable=all \
+            --inline-suppr \
+            --suppressions-list=.cppcheck-suppressions \
+            --check-level=exhaustive \
+            --std="$STD" \
+            --language=c++ \
+            --error-exitcode=1 \
+            --template='{file}:{line}:{column}: {severity}: {message} [{id}]' \
+            --template-location='{file}:{line}:{column}: note: {info}' \
+            --output-file=cppcheck-report.txt \
+            -j $(nproc) \
+            -I headers \
+            headers sources main.cpp
+          status=$?
+          set -e
+
+          echo "::remove-matcher owner=cppcheck::"
+
+          if [ -s cppcheck-report.txt ]; then
+            {
+              echo "### Cppcheck findings"
+              echo '```'
+              head -c 60000 cppcheck-report.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          exit "$status"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: cppcheck-report
+          path: cppcheck-report.txt
+          if-no-files-found: ignore

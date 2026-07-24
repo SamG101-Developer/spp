@@ -14,6 +14,8 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
+import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
@@ -77,6 +79,16 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
     -> void {
     // Forward memory checks into the name and alias.
     _MappedLet->Stage8_CheckMemory(sm, meta);
+}
+
+auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Emit the binding, then report a constant "true" match so the branch is always taken.
+    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
+    return llvm::ConstantInt::getTrue(*ctx->Context);
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::ConvToVar(

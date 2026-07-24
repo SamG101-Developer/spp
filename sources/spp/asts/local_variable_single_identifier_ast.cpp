@@ -13,6 +13,7 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_ast;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 
@@ -111,10 +112,10 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
 
     // Check the value's memory.
     meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
-    const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
     sym->MemInfo->InitializedBy(*Name, sm->CurrentScope);
     if (Conv != nullptr) {
         sym->MemInfo->AstBorrowed = {Conv.get(), sm->CurrentScope};
@@ -130,7 +131,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
     meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
 
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
     if (var_sym != nullptr) {
         // Can be nullptr for the materialization into $ symbols.
         var_sym->CompTimeValue = std::move(meta->CmpResult);
@@ -145,18 +146,19 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     -> llvm::Value* {
     // Create the alloca for the variable.
     const auto uid = spp::utils::Uid(this);
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType.get());
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
-    // Always alloca at the top of the function for stack variables.
-    const auto func = ctx->Builder.GetInsertBlock()->getParent();
-    const auto entry = &func->getEntryBlock();
-    auto temp_builder = llvm::IRBuilder(entry, entry->begin());
-
-    const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);
-    var_sym->LlvmInfo->Alloca = alloca;
+    // The storage for this variable. Normally a fresh alloca at the top of the function, but inside a coroutine the
+    // resume prologue has already pointed the symbol at its env field (its frame lives on the caller's stack). Reuse
+    // that pre-set alloca storage instead of allocating a fresh non-persisting slot.
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
+    auto alloca = var_sym->LlvmInfo->Alloca;
+    if (alloca == nullptr) {
+        alloca = codegen::llvm_entry_alloca(llvm_type, "local.alloca" + uid, ctx);
+        var_sym->LlvmInfo->Alloca = alloca;
+    }
 
     // Generate the initializer expression.
     if (not meta->LetStatementFromUninitialized) {

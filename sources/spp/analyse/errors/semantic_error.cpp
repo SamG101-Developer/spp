@@ -109,6 +109,13 @@ auto spp::analyse::errors::SemanticError::AddFooter(
     ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::FOOTER, std::move(note), std::move(help));
 }
 
+auto spp::analyse::errors::SemanticError::AddWrapped(
+    Str &&msg)
+    -> void {
+    // Add a wrapped error information entry.
+    ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::WRAPPED, std::move(msg), "");
+}
+
 auto spp::analyse::errors::SemanticError::Clone() const
     -> Unique<SemanticError> {
     // Use the copy constructor to clone the error.
@@ -120,7 +127,7 @@ spp::analyse::errors::SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpress
     AddHeaders(1, "Invalid Primary Expression Error");
     AddErr(&expr, "Primary expression introduced here");
     AddFooter(
-        "The current context requires a primary expression that is not a type or token ast.",
+        "The current context requires a primary expression that is not a (non-zero) type or token ast.",
         "Change the expression to a different value expression.");
 }
 
@@ -434,7 +441,7 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
     AddHeaders(34, "Identifier Unknown Error");
     AddErr(&name, "Unknown " + INLINE_INFO(Str(what)) + " introduced here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     AddFooter(
-        "The " + INLINE_NOTE(Str(what)) + " of " + INLINE_NOTE(name.ToString()) +  " is not defined in the current scope.",
+        "The " + INLINE_NOTE(Str(what)) + " of " + INLINE_NOTE(name.ToString()) + " is not defined in the current scope.",
         "Define the identifier or correct its name.");
 }
 
@@ -623,15 +630,25 @@ spp::analyse::errors::SppObjectInitializerInvalidArgumentError::SppObjectInitial
         "attribute. Otherwise, use the keyword format " + INLINE_HELP("attr=value") + ".");
 }
 
-spp::analyse::errors::SppObjectInitializerGenericWithArgsError::SppObjectInitializerGenericWithArgsError(
-    asts::TypeAst const &type,
-    asts::ObjectInitializerArgumentAst const &arg) {
-    AddHeaders(51, "Object Initializer Generic With Arguments Error");
-    AddCtxForErr(&type, "Generic type initialized here");
-    AddErr(&arg, "Argument introduced here");
+spp::analyse::errors::SppObjectInitializerVariantError::SppObjectInitializerVariantError(
+    asts::TypeAst const &type) {
+    AddHeaders(51, "Object Initializer Variant Error");
+    AddCtxForErr(&type, "Variant initialized here");
     AddFooter(
-        "A generic type cannot be initialized with arguments.",
-        "Remove the arguments from the object initializer.");
+        "A variant type cannot be initialized.",
+        "Use the layout: " + INLINE_HELP("let x: VariantType = InnerType()") + ".");
+}
+
+spp::analyse::errors::SppAbstractTypeUseError::SppAbstractTypeUseError(
+    asts::TypeAst const &type,
+    asts::FunctionPrototypeAst const &unimplemented) {
+    AddHeaders(96, "Abstract Type Use Error");
+    AddCtxForErr(&unimplemented, "Abstract method defined here");
+    AddErr(&type, "Abstract type used here");
+    AddFooter(
+        "A type is abstract if it contains 1 or more non-overridden abstract methods. Abstract\n"
+        "types have very restricted usages",
+        "Implement the absent abstract method.");
 }
 
 spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(
@@ -1112,6 +1129,28 @@ spp::analyse::errors::SppMovingComptimeConstantMemoryError::SppMovingComptimeCon
     AddFooter(
         "Compile-time constants cannot be moved from.",
         "Remove the move operation or ensure the value is not a compile-time constant.");
+}
+
+spp::analyse::errors::SppHigherOrderGenericsNotSupportedError::SppHigherOrderGenericsNotSupportedError(
+    asts::Ast const &ast,
+    asts::Ast const &generic_arg_group) {
+    AddHeaders(94, "Higher-Order Generics Not Supported Error");
+    AddCtxForErr(&ast, "Generic type used here");
+    AddErr(&generic_arg_group, "Generic argument group defined here");
+    AddFooter(
+        "Higher-order generics are not yet supported.",
+        "Remove the generic argument group from the generic type.");
+}
+
+spp::analyse::errors::SppGeneratedCodeError::SppGeneratedCodeError(
+    asts::Ast const &ast,
+    Str &&wrapped_error) {
+    AddHeaders(95, "Generated Code Error");
+    AddWrapped(std::move(wrapped_error));
+    AddErr(&ast, "Generated code expanded from here");
+    AddFooter(
+        "An error occurred in generated code.",
+        "Refer to the wrapped error.");
 }
 
 SPP_MOD_END

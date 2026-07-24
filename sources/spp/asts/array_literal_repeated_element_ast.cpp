@@ -1,6 +1,6 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.array_literal_repeated_element_ast;
 import spp.analyse.errors.semantic_error;
@@ -19,6 +19,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.lex.tokens;
 import spp.utils.uid;
 import llvm;
@@ -107,7 +108,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
         not IsPrimaryExprTypeValid(*Elem, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Elem));
     const auto elem_type = Elem->InferType(sm, meta);
-    const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type);
+    const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type.get());
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
     RaiseIf<SppNonCopyableTypeError>(
@@ -146,7 +147,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
 
     // Check the memory of the repeated element (is it initialized etc).
     Elem->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Elem, *TokSemicolon, *sm, true, true, true, true, false, meta);
+    ValidateSymbolMemory(*Elem, *TokSemicolon, *sm, true, true, true, false, meta);
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
@@ -180,11 +181,11 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
         }
 
         // Create the array type.
-        const auto uid = spp::utils::Uid(this);
+        const auto uid = "." + spp::utils::Uid(this);
         const auto elem_ty = vals[0]->getType();
         const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.Len());
         SPP_ASSERT(arr_ty != nullptr);
-        const auto arr_alloc = ctx->Builder.CreateAlloca(arr_ty, nullptr, "array.repeated.alloca" + uid);
+        const auto arr_alloc = codegen::llvm_entry_alloca(arr_ty, "array.repeated.alloca" + uid, ctx);
 
         // Store the elements in the array allocation.
         for (auto i = 0uz; i < vals.Len(); ++i) {
@@ -196,8 +197,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
             ctx->Builder.CreateStore(vals[i], elem_ptr);
         }
 
-        // Return the array allocation.
-        return arr_alloc;
+        // Return the array by value.
+        return ctx->Builder.CreateLoad(arr_ty, arr_alloc, "array.repeated.result" + uid);
     }
 
     // Constant array creation.

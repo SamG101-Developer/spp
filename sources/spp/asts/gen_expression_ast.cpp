@@ -98,13 +98,19 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     auto expr_type = VoidType(PosStart());
     if (Expr != nullptr) {
         meta->Save();
-        auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
-            *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
+        if (not meta->EnclosingFunctionRetType.IsEmpty()) {
+            auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
+                *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
 
-        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : yield_type;
-        meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
-        meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
-        SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }
+            meta->AssignmentTargetType = yield_type;
+            meta->AssignmentTargetType = ResolveAndSubstituteSelfType(*meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+            meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
+            SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }
+        }
+        else {
+            meta->AssignmentTargetType = nullptr;
+            meta->AssignmentTarget = nullptr;
+        }
         Expr->Stage7_AnalyseSemantics(sm, meta);
 
         RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -118,7 +124,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->EnclosingFunctionRetType.IsEmpty()) {
-        _GenType = GenType(Expr->PosStart(), expr_type);
+        _GenType = GenType(Expr ? Expr->PosStart() : TokGen->PosStart(), expr_type);
         _GenType->Stage7_AnalyseSemantics(sm, meta);
         meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
         meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);
@@ -152,7 +158,7 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
 
     // Ensure the argument isn't moved or partially moved (for all conventions)
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *TokGen, *sm, true, true, false, false, false, meta);
+    ValidateSymbolMemory(*Expr, *TokGen, *sm, true, true, false, false, meta);
 
     // If the value is non-symbolic, then there is no borrow logic to implement, so return.
     auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*Expr);
@@ -161,7 +167,7 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
     if (Conv == nullptr) {
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
-        ValidateSymbolMemory(*Expr, *TokGen, *sm, false, false, true, true, true, meta);
+        ValidateSymbolMemory(*Expr, *TokGen, *sm, false, false, true, true, meta);
     }
 
     else if (*Conv == ConventionTag::MUT) {
@@ -182,66 +188,48 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    //
-    using analyse::utils::type_utils::TypeEq;
-
-    // Get the generator environment.
+    // Get the generator environment (the env pointer bound as the resume function's first argument) and its struct type
+    // (for GEPs into the frame).
     const auto coro = meta->EnclosingFunctionScope->AstNode->To<CoroutinePrototypeAst>();
-    const auto llvm_gen_env = coro->LlvmGenEnv;
-    SPP_ASSERT(llvm_gen_env != nullptr);
+    const auto llvm_gen_env = coro->LlvmCoroGenEnv;
+    const auto env_type = coro->LlvmCoroGenEnvType;
+    SPP_ASSERT(llvm_gen_env != nullptr and env_type != nullptr);
 
-    const auto uid = spp::utils::Uid(this);
-    const auto [_, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
-        *_GenType, *sm->CurrentScope, *_GenType, "gen");
-    const auto yielded_type = Expr ? Expr->InferType(sm, meta) : nullptr;
-    const auto is_exception = yielded_type and TypeEq(
-        *yield_type, *yielded_type, *sm->CurrentScope, *sm->CurrentScope);
-    const auto gen_env_type = llvm::PointerType::get(*ctx->Context, 0);
+    const auto uid = "." + spp::utils::Uid(this);
 
-    // Generate the value and store it in the generator environment.
-    if (Expr != nullptr and not is_exception) {
-        ctx->Builder.CreateStore(
-            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), static_cast<std::uint8_t>(codegen::CoroutineState::VARIABLE)),
-            ctx->Builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
+    // Mark the coroutine as suspended-with-a-value (state: YIELDED) and record the location to resume at. This "gen" is
+    // the i-th yield, and the resume switch maps location i+1 to its continuation block.
+    const auto location = ctx->YieldContinuations.Len() + 1;
+    ctx->Builder.CreateStore(
+        llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), std::to_underlying(codegen::CoroutineState::YIELDED)),
+        ctx->Builder.CreateStructGEP(env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::STATE), "gen.state" + uid));
+    ctx->Builder.CreateStore(
+        llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), location),
+        ctx->Builder.CreateStructGEP(env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::LOCATION), "gen.loc" + uid));
 
-        ctx->Builder.CreateStore(
-            Expr->Stage11_CodeGen(sm, meta, ctx),
-            ctx->Builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::YIELD_SLOT)));
-    }
-
-    // Generate the exception and store it in the generator environment.
-    else if (is_exception) {
-        ctx->Builder.CreateStore(
-            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), static_cast<std::uint8_t>(codegen::CoroutineState::EXCEPTION)),
-            ctx->Builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
-
+    // Store the yielded value into the yield slot (skipped for a bare "gen" with no expression).
+    if (Expr != nullptr) {
         ctx->Builder.CreateStore(
             Expr->Stage11_CodeGen(sm, meta, ctx),
-            ctx->Builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::ERROR_SLOT)));
+            ctx->Builder.CreateStructGEP(env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::YIELD_SLOT), "gen.yield.slot" + uid));
     }
 
-    // No expression => store "no value" state.
-    else {
-        ctx->Builder.CreateStore(
-            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), static_cast<std::uint8_t>(codegen::CoroutineState::NO_VALUE)),
-            ctx->Builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
-
-        ctx->Builder.CreateStore(
-            llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->Context)),
-            ctx->Builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::YIELD_SLOT)));
-    }
-
+    // To suspend, return control to the caller.
     ctx->Builder.CreateRetVoid();
 
-    // Continuation block.
-    const auto cont_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.cont" + uid, ctx->Builder.GetInsertBlock()->getParent());
+    // The continuation block: where the resume switch jumps to on the next ".res()". Register it so the coroutine
+    // prototype can add its switch case.
+    const auto cont_bb = llvm::BasicBlock::Create(
+        *ctx->Context, "gen.cont" + uid,
+        ctx->Builder.GetInsertBlock()->getParent());
     ctx->YieldContinuations.push_back(cont_bb);
     ctx->Builder.SetInsertPoint(cont_bb);
 
-    // If this gen expression was "sent" a value, return it. Read off of the "send" slot.
+    // The value of the "gen" expression is whatever was sent in via ".res(x)", so read it back off the send slot.
+    const auto send_slot_ty = env_type->getElementType(std::to_underlying(codegen::GenEnvField::SEND_SLOT));
     const auto send_slot_ptr = ctx->Builder.CreateStructGEP(
-        gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::SEND_SLOT));
-    return ctx->Builder.CreateLoad(ctx->Builder.getInt8Ty(), send_slot_ptr, "gen.send.val" + uid);
+        env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::SEND_SLOT), "gen.send.slot" + uid);
+    return ctx->Builder.CreateLoad(send_slot_ty, send_slot_ptr, "gen.send.val" + uid);
 }
 
 auto spp::asts::GenExpressionAst::InferType(
@@ -249,7 +237,7 @@ auto spp::asts::GenExpressionAst::InferType(
     CompilerMetaData *)
     -> Shared<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
-    auto send_type = _GenType->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
+    auto send_type = _GenType->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
     return send_type;
 }
 

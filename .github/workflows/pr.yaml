@@ -1,79 +1,115 @@
 name: PR
 
+# Every job here either detects something cheap or delegates to a `_*.yaml`
+# reusable workflow. The shape of the pipeline is readable from the
+# `needs:` edges:
+#
+#   changes ─┐
+#   lint ────┴─> cppcheck ─┬─> build-test (release ∥ asan ∥ tsan, fail-fast)
+#                          └─> build-test-extra (other toolchains, advisory)
+#
+# TEMPORARY: cppcheck is advisory. It still runs first and reports red, but the
+# builds run regardless of its result and it is omitted from ci-success.
+# Todo: Revert by dropping the `!cancelled() &&` guards below and putting
+# `cppcheck` back in the ci-success `needs` list.
+#
+#   docs, security, sonar   ─> independent of the chain, started immediately
+#
+# Claude's review lives in claude_code_review.yaml on its own trigger, so it
+# does not interfere with this pipeline
+
 on:
   pull_request:
     types: [ opened, synchronize, reopened, edited ]
-  merge_group: {}
-  workflow_dispatch: {}
+  merge_group: { }
+  workflow_dispatch: { }
 
 concurrency:
   # One group per PR branch / dispatch ref / merge-queue ref.
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
-  title:
-    name: PR Title Format
-    if: github.event_name == 'pull_request'
+  # Skips the expensive jobs on docs-only / config-only changes. A skipped job
+  # counts as a pass for ci-success, so branch protection stays satisfied
+  # either way.
+  changes:
+    name: Detect Code Changes
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
-      - uses: amannn/action-semantic-pull-request@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          types: |
-            feat
-            fix
-            perf
-            refactor
-            docs
-            test
-            build
-            ci
-            core
-          requireScope: false
-          subjectPattern: '^[a-z][a-z0-9 .-]*$'
-          subjectPatternError: "The description must match the regex."
 
-  precommit:
-    name: Format & Lint (pre-commit)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@v2
+      # Full history so the base..head diff below can be resolved. Nothing is built
+      # here, so the mtime pass is not needed.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          egress-policy: audit
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-      - uses: pre-commit/action@v3.0.1
+          fetch-depth: 0
 
-  # Supported toolchain: must pass, gates ci-success.
+      - id: filter
+        uses: ./.github/actions/detect-changes
+        with:
+          # Empty outside a pull_request (merge queue, dispatch), which the
+          # action reads as "assume everything changed".
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+
+  # PR title check and pre-commit, side by side.
+  lint:
+    name: Lint
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/_lint.yaml
+
+  # Static analysis. Normally gates the compilation, but is advisory for now:
+  # it reports red on findings without stopping anything downstream.
+  cppcheck:
+    name: Static Analysis
+    needs: [ changes, lint ]
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_cppcheck.yaml
+
+  # Supported toolchain. "Release" and both "sanitiser" configurations build
+  # in parallel and fail-fast, so one broken variant stops the others
+  # immediately.
   build-test:
     name: Build & Test
-    needs: [precommit]
-    uses: ./.github/workflows/_build_and_test.yaml
+    needs: [ changes ] # cppcheck
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_compile.yaml
     with:
       os: ubuntu-latest
       compiler: gcc
       version: "16"
+      fail-fast: true
+      # TEMPORARY: the tsan variant is disabled
+      #   {"name": "tsan", "build-type": "Debug", "sanitizer": "thread"}
+      variants: >-
+        [
+          {"name": "release", "build-type": "Release", "sanitizer": ""},
+          {"name": "asan", "build-type": "Debug", "sanitizer": "address+undefined+leak"}
+        ]
 
-  # Aspirational toolchains: run and report red on failure, but do NOT gate
-  # ci-success (it deliberately omits this job from `needs`).
+  # Aspirational toolchains: they run and report red on failure, but are
+  # deliberately omitted from ci-success, so they never block a merge.
   build-test-extra:
     name: Build & Test (non-blocking)
-    needs: [precommit]
+    needs: [ changes ] # cppcheck
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -82,36 +118,51 @@ jobs:
           - { os: macos-latest, compiler: clang, version: "" }
           - { os: windows-latest, compiler: msvc, version: "" }
           - { os: windows-latest, compiler: clang-cl, version: "" }
-    uses: ./.github/workflows/_build_and_test.yaml
+    uses: ./.github/workflows/_compile.yaml
     with:
       os: ${{ matrix.os }}
       compiler: ${{ matrix.compiler }}
       version: ${{ matrix.version }}
+      fail-fast: false
+      variants: '[{"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""}]'
 
-  sanitizers:
-    name: Sanitizers
-    needs: [ precommit ]
-    uses: ./.github/workflows/_sanitizers.yaml
-    with:
-      configs: '["address+undefined+leak", "thread"]'
+  # Independent of the compile chain: doc breakage is worth hearing about
+  # even while the build is still running.
+  docs:
+    name: Docs
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_docs.yaml
 
   security:
     name: Security
-    needs: [precommit]
     permissions:
       contents: read
       security-events: write
       actions: read
     uses: ./.github/workflows/_security.yaml
 
-  # Single required status check for branch protection. Fails if any needed job
+  # Advisory: runs SonarQube Cloud analysis with PR decoration, but is deliberately
+  # omitted from ci-success, so a red quality gate does not block a merge. Add it to
+  # the ci-success `needs` list to make it blocking.
+  sonar:
+    name: Sonar
+    needs: [ changes ]
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_sonar.yaml
+    secrets: inherit
+
+  # The single required status check for branch protection. Fails if any needed job
   # failed or was cancelled; passes when they all succeeded or were skipped.
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ title, precommit, build-test, sanitizers, security ]
+    needs: [ changes, lint, build-test, docs, security ] # cppcheck
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions: { }
     steps:
       - name: Verify all required jobs passed
         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}

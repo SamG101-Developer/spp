@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
@@ -82,7 +83,8 @@ auto spp::asts::TypeStatementAst::Clone() const
 auto spp::asts::TypeStatementAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n");
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(TokType).append(" ");
     SPP_STRING_APPEND(NewType);
     SPP_STRING_APPEND(GnParamGroup).append(" ");
@@ -149,7 +151,7 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
     auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::RecursiveAliasSearch(
         *this, _FromUseStatement, sm->CurrentScope->Parent, sm, meta);
 
-    const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics());
+    const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().get());
     _AliasSym->Type = final_sym->Type;
     _AliasSym->LinkedScope = final_sym->LinkedScope;
     _AliasSym->IsCopyable = [final_sym] { return final_sym->IsCopyable(); };
@@ -180,14 +182,14 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     sm->CurrentScope->AddTypeSymbol(self_sym);
 
     // Get the old type's symbol, without generics.
-    const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics(), false);
+    const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics().get(), false);
     if (not stripped_old_sym->IsGeneric) {
         auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, _TrackingScope);
         GnParamGroup->Stage4_QualifyTypes(&tm, meta);
         OldType->Stage4_QualifyTypes(&tm, meta); // Qualify from scope of lowest level alias
         OldType->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
 
-        const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType);
+        const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType.get());
         _AliasSym->Type = old_sym->Type;
         _AliasSym->LinkedScope = old_sym->LinkedScope;
         const auto alias_raw_s4 = _AliasSym.get();
@@ -205,6 +207,14 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
+
+    // Sync the alias symbol's visibility from the AST (annotations set Visibility in Stage5). Without this the alias
+    // symbol keeps the symbol-constructor default (public), making every alias publicly accessible regardless of its
+    // annotation (or lack of one: unannotated statements are private).
+    if (_AliasSym != nullptr) {
+        _AliasSym->Visibility = Visibility.First;
+    }
+
     sm->MoveOutOfCurrentScope();
 }
 
@@ -223,20 +233,33 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+    using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
     if (_Generated) {
         sm->MoveToNextScope();
         SPP_ASSERT(sm->CurrentScope == _Scope);
+
+        meta->Save();
+        meta->AllowAbstractType = true;
         OldType->ResetCache();
         OldType->Stage7_AnalyseSemantics(sm, meta);
+        meta->Restore();
 
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType.get());
         if (cls_sym->Type) {
             EnforceGenericConstraintsAllArgs(
                 *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
                 *sm->CurrentScope, *sm, *meta);
+        }
+
+        // Check visibility here specifically (almost always done in TypeIdentifierAst) because of the source type
+        // auto expansion.
+        const auto named_target_sym = sm->CurrentScope->GetTypeSymbol(Source.OriginalOldType->WithoutGenerics().get());
+        if (named_target_sym != nullptr and named_target_sym->ScopeDefinedIn != nullptr) {
+            CheckModuleTypeVisibility(
+                *named_target_sym, *Source.OriginalOldType, *named_target_sym->ScopeDefinedIn, *sm, *meta);
         }
 
         sm->MoveOutOfCurrentScope();

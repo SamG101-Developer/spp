@@ -17,6 +17,7 @@ namespace spp::codegen {
 
 
 SPP_EXP_CLS struct spp::codegen::LLvmCtx {
+    // General context information.
     llvm::LLVMContext *Context;
     Unique<llvm::Module> Module;
     llvm::IRBuilder<> Builder;
@@ -29,10 +30,6 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     // Closure tracking information.
     llvm::Type *CurrentClosureType = nullptr;
     analyse::scopes::Scope *CurrentClosureScope = nullptr;
-
-    // Loop black tracking information (for loop control flow).
-    std::stack<llvm::BasicBlock*> LoopEndBBStack; // Allows breaking out of N loops.
-    llvm::BasicBlock *LoopInnermostCondBB = nullptr; // For "skip" statements.
 
     LLvmCtx(LLvmCtx const &) = delete;
     LLvmCtx(LLvmCtx &&) noexcept = delete;

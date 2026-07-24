@@ -66,7 +66,7 @@ public:
     inline static Vec<Unique<Scope>> temp_scopes = {};
 
     /**
-     * The global scope is the root scope fo the entire program. It is a @c Shared as temp scope manager's need
+     * The global scope is the root scope of the entire program. It is a @c Shared as temp scope manager's need
      * to be created sometimes, where the global scope will be shared. Not a raw pointer as the scope managers do own
      * the global scope.
      */

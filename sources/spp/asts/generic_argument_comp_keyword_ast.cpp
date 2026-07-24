@@ -35,7 +35,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::FromSym(
     else if (const auto comptime_arg = c->To<GenericArgumentCompAst>(); comptime_arg != nullptr) {
         value = AstClone(comptime_arg->Val);
     }
-    if (auto *value_as_type = value->To<TypeIdentifierAst>(); value_as_type != nullptr) {
+    if (const auto value_as_type = value->To<TypeIdentifierAst>(); value_as_type != nullptr) {
         value = IdentifierAst::FromType(*AstCloneShared(value_as_type)); // Don't remove "shared_ptr". Todo: Try new "AstCloneShared"
     }
 
@@ -122,13 +122,13 @@ auto spp::asts::GenericArgumentCompKeywordAst::Stage8_CheckMemory(
 
     // Check the value for memory issues.
     Val->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Val, *Val, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Val, *Val, *sm, true, true, true, true, meta);
 }
 
 auto spp::asts::GenericArgumentCompKeywordAst::ViewName() const
     -> StrView {
     // Get the name from the keyword part.
-    return Name->To<TypeIdentifierAst>()->Name;
+    return Name->ToUnchecked<TypeIdentifierAst>()->Name;
 }
 
 SPP_MOD_END

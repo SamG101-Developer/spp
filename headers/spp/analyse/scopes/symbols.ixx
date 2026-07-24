@@ -10,7 +10,6 @@ import spp.codegen.llvm_sym_info;
 import spp.utils.types;
 import std;
 
-
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct ClassPrototypeAst;
@@ -29,13 +28,12 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct VariableSymbol;
 }
 
-
 /**
  * The base Symbol type for all symb variations to inherit from. This provides a common interface for all symbols, and
  * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
  * need for a base class.
  */
-SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
+SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
     SPP_GCC_VTABLE_FIX_BASE
 
     /**
@@ -44,8 +42,25 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
      * as it allows for proper cleanup of resources when a derived class is deleted.
      */
     virtual ~Symbol();
-};
 
+    /**
+     * Obtain a @c Shared owning pointer to this symbol, downcast to the requested derived symbol type. Symbols are
+     * always created via @c MakeShared and stored in symbol tables, so the enclosing control block is guaranteed to
+     * exist; this mints an owning pointer lazily at the call sites that actually need shared ownership, without the
+     * ancestor-walking traversals having to copy @c Shared pointers per element.
+     * @tparam Derived The concrete symbol type to downcast to (defaults to @c Symbol for no downcast).
+     * @return A @c Shared pointer to this symbol as @c Derived.
+     */
+    template <typename Derived = Symbol>
+    SPP_ATTR_NODISCARD auto SharedFromThis() -> Shared<Derived> {
+        if constexpr (std::is_same_v<Derived, Symbol>) {
+            return shared_from_this();
+        }
+        else {
+            return std::static_pointer_cast<Derived>(shared_from_this());
+        }
+    }
+};
 
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
@@ -67,7 +82,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
         NamespaceSymbol const &that) const
         -> bool;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
@@ -114,7 +128,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     SPP_ATTR_NODISCARD auto FqName() const
         -> Shared<asts::ExpressionAst>;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
@@ -178,8 +191,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         -> Shared<asts::TypeAst>;
 };
 
-
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::NamespaceSymbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::VariableSymbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::TypeSymbol)

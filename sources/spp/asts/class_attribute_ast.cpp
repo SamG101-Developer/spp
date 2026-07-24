@@ -63,7 +63,8 @@ auto spp::asts::ClassAttributeAst::Clone() const
 auto spp::asts::ClassAttributeAst::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Annotations, "\n");
+    SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
     SPP_STRING_APPEND(Name);
     SPP_STRING_APPEND(TokColon).append(" ");
     SPP_STRING_APPEND(Type);
@@ -110,14 +111,14 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
     // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
-    const auto sym = sm->CurrentScope->GetVarSymbol(Name, true);
+    const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
     sym->Visibility = Visibility.First;
     sym->VisibilityAnnotation = Visibility.Second;
 
     // Check the type is valid before scopes are attached.
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
-    sm->CurrentScope->GetVarSymbol(Name)->Type = Type;
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    sm->CurrentScope->GetVarSymbol(Name.get())->Type = Type;
 
     // Ensure that the field type doesn't have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -140,17 +141,18 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
         for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
     }
 
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
     Type->Stage7_AnalyseSemantics(sm, meta);
     if (not IsTypeSelf(*Type)) {
-        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+        Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
         RaiseIf<SppSecondClassBorrowViolationError>(
             IsTypeBorrowed(*Type, *sm),
             {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
     }
     var_sym->Type = Type;
 
-    if (meta->CurrentStage == 9 and DefaultVal != nullptr) {
+    if (meta->CurrentStage != 9) { return; }
+    if (DefaultVal != nullptr) {
         DefaultVal->Stage7_AnalyseSemantics(sm, meta);
         const auto default_type = DefaultVal->InferType(sm, meta);
 
@@ -170,7 +172,7 @@ auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
     if (DefaultVal == nullptr) { return; }
 
     DefaultVal->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
 }
 
 auto spp::asts::ClassAttributeAst::Stage9_CompTimeResolve(

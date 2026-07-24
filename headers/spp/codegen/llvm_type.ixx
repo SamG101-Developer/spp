@@ -14,14 +14,13 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionPrototypeAst;
 }
 
-
 namespace spp::codegen {
-    SPP_EXP_FUN auto register_llvm_type_info(
+    SPP_EXP_FUN auto RegisterLlvmTypeInfo(
         asts::ClassPrototypeAst const *cls_proto,
         LLvmCtx const *ctx)
         -> void;
 
-    SPP_EXP_FUN auto llvm_type(
+    SPP_EXP_FUN auto GetLlvmType(
         analyse::scopes::TypeSymbol const &type_sym,
         LLvmCtx const *ctx)
         -> llvm::Type*;

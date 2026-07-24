@@ -25,7 +25,7 @@ SPP_MOD_BEGIN
 auto spp::asts::IdentifierAst::FromType(
     TypeAst const &val)
     -> Unique<IdentifierAst> {
-    return MakeUnique<IdentifierAst>(val.PosStart(), Str(val.TypeParts().Back()->Name));
+    return MakeUnique<IdentifierAst>(val.PosStart(), Str(val.LastTypePart()->Name));
 }
 
 spp::asts::IdentifierAst::IdentifierAst(
@@ -122,14 +122,13 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
 
     // Check there is a symbol with the same name in the current scope.
-    const auto shared = AstCloneShared(this);
-    if (not sm->CurrentScope->HasVarSymbol(shared) and not sm->CurrentScope->HasNsSymbol(shared)) {
+    if (not sm->CurrentScope->HasVarSymbol(this) and not sm->CurrentScope->HasNsSymbol(this)) {
         RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
         RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
     }
 
     // Enforce module-level visibility on the accessed symbol.
-    if (const auto sym = sm->CurrentScope->GetVarSymbol(shared)) {
+    if (const auto sym = sm->CurrentScope->GetVarSymbol(this)) {
         if (sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
             CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
         }
@@ -144,7 +143,7 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
     using analyse::errors::SppCompileTimeConstantError;
 
     // Extract the value from the symbol table and return it.
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
     auto tm = analyse::scopes::ScopeManager(
         sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
 
@@ -165,7 +164,7 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
 
     // Get the allocation for the variable from the current scope.
     const auto uid = spp::utils::Uid(this);
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
     SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
 
     // Handle local variable allocation extraction + load.
@@ -191,7 +190,7 @@ auto spp::asts::IdentifierAst::InferType(
     CompilerMetaData *)
     -> Shared<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
     return var_sym ? var_sym->Type : nullptr;
 }
 

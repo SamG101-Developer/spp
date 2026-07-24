@@ -122,7 +122,7 @@ auto spp::asts::TypeUnaryExpressionAst::InferType(
     -> Shared<TypeAst> {
     // Infer the RHS type.
     const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-    const auto type_sym = type_scope->GetTypeSymbol(AstClone(this)); // Temp
+    const auto type_sym = type_scope->GetTypeSymbol(this);
     return type_sym->FqName()->WithConvention(AstClone(GetConvention()));
 }
 
@@ -171,6 +171,17 @@ auto spp::asts::TypeUnaryExpressionAst::TypeParts()
     return parts;
 }
 
+auto spp::asts::TypeUnaryExpressionAst::LastTypePart() const
+    -> TypeIdentifierAst const* {
+    // Unary operators (namespace, borrow) contribute no type parts, so the final part is always the rhs's.
+    return const_shared_cast(Rhs)->LastTypePart();
+}
+
+auto spp::asts::TypeUnaryExpressionAst::LastTypePart()
+    -> TypeIdentifierAst* {
+    return Rhs->LastTypePart();
+}
+
 auto spp::asts::TypeUnaryExpressionAst::WithoutConvention() const
     -> Shared<const TypeAst> {
     if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
@@ -181,7 +192,7 @@ auto spp::asts::TypeUnaryExpressionAst::WithoutConvention() const
 
 auto spp::asts::TypeUnaryExpressionAst::GetConvention() const
     -> ConventionAst* {
-    if (auto const *op_borrow = Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
+    if (const auto op_borrow = Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
         return op_borrow->Conv.get();
     }
     return nullptr;
@@ -197,7 +208,7 @@ auto spp::asts::TypeUnaryExpressionAst::WithConvention(
     if (conv == nullptr) {
         return MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
     }
-    if (Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
+    if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
         return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
     }
     return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), MakeShared<TypeUnaryExpressionAst>(Op, Rhs));
@@ -227,7 +238,7 @@ auto spp::asts::TypeUnaryExpressionAst::WithGenerics(
     // Clone this type and add the generics to the right most part.
     auto type_clone = AstClone(this);
     arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
-    type_clone->TypeParts().Back()->GnArgGroup = std::move(arg_group);
+    type_clone->LastTypePart()->GnArgGroup = std::move(arg_group);
     return type_clone;
 }
 

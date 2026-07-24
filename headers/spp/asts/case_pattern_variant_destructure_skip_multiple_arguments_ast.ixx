@@ -24,7 +24,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArguments
 
     /**
      * The optional binding for the skip multiple arguments pattern. This is used to bind the skipped arguments to a
-     * variable, as an inner array or tuple (based on the outer type being destructured). No biding means that these
+     * variable, as an inner array or tuple (based on the outer type being destructured). No binding means that these
      * values are dropped.
      */
     Unique<CasePatternVariantSingleIdentifierAst> Binding;

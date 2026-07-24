@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
     test_invalid_moving_non_copy_cmp,
-    SppMovingEscapingBorrowedMemoryError, R"(
+    SppMovingComptimeConstantMemoryError, R"(
     cls MyType { }
     sup MyType {
         !public cmp n: (Bool, Bool) = (false, false)

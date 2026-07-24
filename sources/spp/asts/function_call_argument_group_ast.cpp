@@ -161,7 +161,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
             {sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        const auto max = static_cast<sys::ssize_t>(arg_type->TypeParts().Back()->GnArgGroup->Args.Len());
+        const auto max = static_cast<sys::ssize_t>(arg_type->LastTypePart()->GnArgGroup->Args.Len());
         for (auto j = max - 1; j > -1z; --j) {
             auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
             auto new_ast = MakeUnique<PostfixExpressionAst>(
@@ -218,8 +218,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         // When an argument is consumed by value, any escaping borrows established during its evaluation (e.g. from an
         // inner coroutine call like "self.chars()") are released when the argument is consumed. Clear the assignment
         // target so that those inner borrows are not incorrectly attributed to the outer handle.
+        //
+        // The same applies when this call itself does not propagate escaping borrows (not a coroutine/async call, i.e.
+        // "not pins_required"): only such calls carry a borrow through to the handle. A non-propagating call like
+        // "self.buf[i] == byte" (which lowers to "eq(&self.buf[i], byte)" returning a Bool) consumes any borrows made
+        // while evaluating its arguments, so an inner coroutine (e.g. "self.buf[i]" -> "index_ref") must not attribute
+        // its escaping borrow to the outer handle ("found" here).
         const auto saved_assignment_target = meta->AssignmentTarget;
-        if (arg->Conv == nullptr) { meta->AssignmentTarget = nullptr; }
+        if (arg->Conv == nullptr or not pins_required) { meta->AssignmentTarget = nullptr; }
         arg->Stage8_CheckMemory(sm, meta);
         meta->AssignmentTarget = saved_assignment_target;
 
@@ -229,18 +235,18 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
         // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
         // for moving from borrowed context right here.
-        ValidateSymbolMemory(*arg->Val, *arg, *sm, false, false, false, false, false, meta);
+        ValidateSymbolMemory(*arg->Val, *arg, *sm, false, false, false, false, meta);
 
         if (arg->Conv == nullptr) {
-            // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the
-            // move or partial move of the argument. Note the "check_pins_linked=False" because function calls can only
-            // imply an inner scope, so it is guaranteed that lifetimes aren't being extended.
-            ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, true, meta);
+            // Ensure that attributes aren't being moved off of a borrowed value. Mark the move or partial move of the
+            // argument. Function calls can only imply an inner scope, so it is guaranteed that lifetimes aren't being
+            // extended.
+            ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta);
 
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
-            if (not sm->CurrentScope->GetTypeSymbol(arg->Val->InferType(sm, meta))->IsCopyable()) {
+            if (not sm->CurrentScope->GetTypeSymbol(arg->Val->InferType(sm, meta).get())->IsCopyable()) {
                 auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
                     | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
                     | genex::to<Vec>();

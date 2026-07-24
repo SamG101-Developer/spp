@@ -102,6 +102,29 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     }
 
     /**
+     * Unchecked node cast to a target @T type using @c static_cast. Only used where the dynamic type is already known.
+     * Prefer @c To() unless on a measured hot path. Unlike @c To(), this only supports up/down casts along the class
+     * hierarchy, not cross-casts to sibling mixin base types.
+     * @tparam T The target AST type to cast to.
+     * @return The node cast to @c T*.
+     */
+    template <typename T>
+    auto ToUnchecked() -> T* {
+        return static_cast<T*>(this);
+    }
+
+    /**
+     * Constant node casting to a target @T type. This uses @c static_cast to perform a cast where the target type is
+     * guaranteed value, either from previous analysis, or upcasting.
+     * @tparam T The target AST type to cast to.
+     * @return The node cast to @c T const*.
+     */
+    template <typename T>
+    auto ToUnchecked() const -> T const* {
+        return static_cast<T const*>(this);
+    }
+
+    /**
      * Default behaviour: bind the context to this AST, for future analysis stages.
      * @param ctx The context AST.
      */

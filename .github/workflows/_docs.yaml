@@ -1,0 +1,81 @@
+name: docs
+
+on:
+  workflow_call:
+    inputs:
+      upload-pages-artifact:
+        description: "Upload the built site as a GitHub Pages artifact, ready for a deploy job to consume."
+        required: false
+        type: boolean
+        default: false
+
+env:
+  DOXYGEN_VERSION: "1.17.0"
+  DOXYGEN_SHA256: "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
+
+jobs:
+  docs:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Cache Doxygen
+        id: doxygen-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.local/doxygen
+          key: doxygen-${{ runner.os }}-${{ env.DOXYGEN_VERSION }}
+
+      - name: Install Doxygen
+        if: steps.doxygen-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          url="https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
+          curl -sSLf -o "${RUNNER_TEMP}/doxygen.tar.gz" "$url"
+          echo "${DOXYGEN_SHA256}  ${RUNNER_TEMP}/doxygen.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.local/doxygen"
+          tar xzf "${RUNNER_TEMP}/doxygen.tar.gz" -C "$HOME/.local/doxygen" --strip-components=1
+
+      - name: Expose Doxygen
+        run: echo "$HOME/.local/doxygen/bin" >> "$GITHUB_PATH"
+
+      - name: Install Python Dependencies (uv)
+        run: uv sync --locked
+
+      - name: Check Versions
+        run: |
+          doxygen --version
+          uv run sphinx-build --version
+
+      - name: Build Documentation
+        run: uv run python docs/generate2.py
+
+      - name: Upload HTML Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: docs-html
+          path: docs/build/html
+          retention-days: 7
+
+      - name: Upload Pages Artifact
+        if: inputs.upload-pages-artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+        with:
+          path: docs/build/html

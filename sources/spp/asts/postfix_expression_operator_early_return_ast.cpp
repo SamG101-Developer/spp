@@ -91,7 +91,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
     const auto try_type = GetTryType(*lhs_type, *lhs, *sm);
 
     // Check the Residual type is compatible with the function's return type.
-    const auto residual_type = try_type->TypeParts().Back()->GnArgGroup->TypeAt("Residual")->Val;
+    const auto residual_type = try_type->LastTypePart()->GnArgGroup->TypeAt("Residual")->Val;
 
     // Subroutine return type check.
     if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
@@ -132,7 +132,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
     // Create the condition by attempting an "is" against the residual.
     const auto type_check = ( {
         auto is_expr_lhs = AstClone(lhs);
-        auto is_expr_rhs = try_type->TypeParts().Back()->GnArgGroup->TypeAt("Residual")->Val;
+        auto is_expr_rhs = try_type->LastTypePart()->GnArgGroup->TypeAt("Residual")->Val;
 
         auto skip_all = MakeUnique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(nullptr, nullptr);
         auto destructures = Vec<Unique<CasePatternVariantAst>>{};
@@ -201,7 +201,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
 
     // Get the Try type's Output generic argument.
     const auto try_type = GetTryType(*lhs_type, *lhs, *sm);
-    return try_type->TypeParts().Back()->GnArgGroup->TypeAt("Value")->Val;
+    return try_type->LastTypePart()->GnArgGroup->TypeAt("Value")->Val;
 }
 
 SPP_MOD_END

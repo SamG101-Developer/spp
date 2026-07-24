@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
@@ -147,15 +147,22 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    using spp::utils::strings::NormalizeFloatString;
+
     // Get the type of the float literal.
     const auto type_ast = InferType(sm, meta);
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast);
-    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
+    const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-    // Create the LLVM constant float value.
+    // Normalise the literal exactly as Stage7 does, then apply the optional sign.
     auto const &semantics = llvm_type->getFltSemantics();
-    const auto val = IntVal->TokenData + "." + FracVal->TokenData;
-    const auto ap_float = llvm::APFloat(semantics, val);
+    auto mapped_val = NormalizeFloatString(IntVal->TokenData, FracVal->TokenData);
+    if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
+        mapped_val = boost::negate_integer(mapped_val, std::true_type());
+    }
+
+    // Create the LLVM constant float value from the normalised value string.
+    const auto ap_float = llvm::APFloat(semantics, mapped_val.str());
     return llvm::ConstantFP::get(*ctx->Context, ap_float);
 }
 
@@ -165,17 +172,16 @@ auto spp::asts::FloatLiteralAst::InferType(
     -> Shared<TypeAst> {
     //
     using analyse::errors::SppInternalCompilerError;
-    using namespace generate::common_types;
+    using namespace generate::common_types_precompiled;
 
     // Map the type string literal to the correct SPP type.
-    auto spp_type = Shared<TypeAst>(nullptr);
-    const auto p = PosStart();
-    if (Type.empty()) { spp_type = F32(p); }
-    else if (Type == "f8") { spp_type = F8(p); }
-    else if (Type == "f16") { spp_type = F16(p); }
-    else if (Type == "f32") { spp_type = F32(p); }
-    else if (Type == "f64") { spp_type = F64(p); }
-    else if (Type == "f128") { spp_type = F128(p); }
+    auto spp_type = static_cast<TypeAst*>(nullptr);
+    if (Type.empty()) { spp_type = F32.get(); }
+    else if (Type == "f8") { spp_type = F8.get(); }
+    else if (Type == "f16") { spp_type = F16.get(); }
+    else if (Type == "f32") { spp_type = F32.get(); }
+    else if (Type == "f64") { spp_type = F64.get(); }
+    else if (Type == "f128") { spp_type = F128.get(); }
     else {
         Raise<SppInternalCompilerError>(
             {sm->CurrentScope},

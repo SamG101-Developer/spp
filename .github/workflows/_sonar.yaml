@@ -1,0 +1,65 @@
+name: sonar
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        required: false
+        type: string
+        default: "Release"
+    secrets:
+      SONAR_TOKEN:
+        required: true
+
+jobs:
+  sonar:
+    name: SonarQube Cloud
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      # Sonar needs full history for its new-code / blame analysis, which is also
+      # what the mtime restore below needs.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/restore-mtimes
+
+      - name: Set Up Toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          compiler: gcc
+          version: "16"
+          cache-key-suffix: sonar
+
+      # Shares the release variant's tree: Sonar only adds
+      # -DCMAKE_EXPORT_COMPILE_COMMANDS, which does not invalidate any objects.
+      - name: Restore build tree
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: build
+          key: build-ubuntu-latest-gcc16-release-${{ github.sha }}
+          restore-keys: |
+            build-ubuntu-latest-gcc16-release-
+
+      - name: Configure
+        uses: ./.github/actions/configure-cmake
+        with:
+          build-type: ${{ inputs.build-type }}
+          extra-flags: -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io

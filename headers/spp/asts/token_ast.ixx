@@ -18,7 +18,7 @@ namespace spp::asts {
  * A TokenAST represents a low level token created by the lexer. This includes @c = or @c + for example, seen in
  * statements and expressions. Associated token data is needed when strings or numbers are created for example. This AST
  * is also the terminator for @c pos_end() recursive calls; the end position is the length of the associated data added
- * to is the sart position.
+ * to is the start position.
  */
 SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
     /**

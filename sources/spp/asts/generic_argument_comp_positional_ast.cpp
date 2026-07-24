@@ -87,7 +87,7 @@ auto spp::asts::GenericArgumentCompPositionalAst::Stage8_CheckMemory(
 
     // Ensure the argument isn't moved or partially moved (for all conventions)
     Val->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Val, *Val, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Val, *Val, *sm, true, true, true, true, meta);
 }
 
 SPP_MOD_END

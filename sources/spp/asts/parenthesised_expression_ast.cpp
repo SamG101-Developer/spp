@@ -76,7 +76,7 @@ auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
 
     // Check the memory of the expression.
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *this, *sm, true, true, true, false, false, meta);
+    ValidateSymbolMemory(*Expr, *this, *sm, true, true, true, false, meta);
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage9_CompTimeResolve(

@@ -16,6 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 import genex;
@@ -126,7 +127,7 @@ auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
     // Check the memory of each element in the tuple literal.
     for (auto const &elem : Elems) {
         elem->Stage8_CheckMemory(sm, meta);
-        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, true, false, meta);
+        ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
     }
 }
 
@@ -152,14 +153,14 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
-    const auto uid = spp::utils::Uid(this);
+    const auto uid = "." + spp::utils::Uid(this);
     const auto tuple_type = InferType(sm, meta);
-    const auto tuple_type_sym = sm->CurrentScope->GetTypeSymbol(tuple_type);
-    const auto llvm_type = codegen::llvm_type(*tuple_type_sym, ctx);
+    const auto tuple_type_sym = sm->CurrentScope->GetTypeSymbol(tuple_type.get());
+    const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // Create the alloca for the tuple.
-    const auto alloca = ctx->Builder.CreateAlloca(llvm_type, nullptr, "tuple.alloca" + uid);
+    const auto alloca = codegen::llvm_entry_alloca(llvm_type, "tuple.alloca" + uid, ctx);
     SPP_ASSERT(alloca != nullptr);
 
     // Store each element into the tuple alloca.

@@ -379,84 +379,6 @@ auto spp::codegen::func_impls::std_boolean_ne(analyse::scopes::ScopeManager cons
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->Context), closure);
 }
 
-auto spp::codegen::func_impls::std_cast_upcast_mov(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty)
-    -> void {
-    // TODO
-    (void)sm;
-    (void)proto;
-    (void)ctx;
-    (void)ty;
-}
-
-auto spp::codegen::func_impls::std_cast_upcast_mut(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty)
-    -> void {
-    // TODO
-    (void)sm;
-    (void)proto;
-    (void)ctx;
-    (void)ty;
-}
-
-auto spp::codegen::func_impls::std_cast_upcast_ref(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty)
-    -> void {
-    // TODO
-    (void)sm;
-    (void)proto;
-    (void)ctx;
-    (void)ty;
-}
-
-auto spp::codegen::func_impls::std_cast_downcast_mov(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty)
-    -> void {
-    // TODO
-    (void)sm;
-    (void)proto;
-    (void)ctx;
-    (void)ty;
-}
-
-auto spp::codegen::func_impls::std_cast_downcast_mut(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty)
-    -> void {
-    // TODO
-    (void)sm;
-    (void)proto;
-    (void)ctx;
-    (void)ty;
-}
-
-auto spp::codegen::func_impls::std_cast_downcast_ref(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty)
-    -> void {
-    // TODO
-    (void)sm;
-    (void)proto;
-    (void)ctx;
-    (void)ty;
-}
-
 auto spp::codegen::func_impls::std_generator_send(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
@@ -491,8 +413,8 @@ auto spp::codegen::func_impls::std_memory_clear(
     -> void {
     // Define the types that will be used in the function.
     const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty)), ctx);
-    const auto usize_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto mem_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty).get()), ctx);
+    const auto usize_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).get()), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->Context, 0)}, false);
     const auto fn = llvm::Function::Create(
@@ -530,11 +452,11 @@ auto spp::codegen::func_impls::std_memory_place_element(
     Shared<asts::TypeAst> const &spp_ty)
     -> void {
     // Define the types that will be used in the function.
-    const auto ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(spp_ty), ctx);
+    const auto ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(spp_ty.get()), ctx);
     const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto mem_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty).get()), ctx);
+    const auto ptr_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, spp_ty).get()), ctx);
+    const auto size_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).get()), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->Context, 0), size_ty, ty}, false);
     const auto fn = llvm::Function::Create(
@@ -571,11 +493,11 @@ auto spp::codegen::func_impls::std_memory_take_element(
     Shared<asts::TypeAst> const &spp_ty)
     -> void {
     // Define the types that will be used in the function.
-    const auto ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(spp_ty), ctx);
-    const auto opt_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::OptionType(0, spp_ty)), ctx);
-    const auto mem_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(spp_ty.get()), ctx);
+    const auto opt_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::OptionType(0, spp_ty).get()), ctx);
+    const auto mem_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::MemoryType(0, spp_ty).get()), ctx);
+    const auto ptr_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::SingleType(0, spp_ty).get()), ctx);
+    const auto size_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).get()), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(opt_ty, {llvm::PointerType::get(*ctx->Context, 0), size_ty}, false);
     const auto fn = llvm::Function::Create(
@@ -639,7 +561,7 @@ auto spp::codegen::func_impls::std_memops_sizeof(
     LLvmCtx *ctx,
     Shared<asts::TypeAst> const &spp_ty) -> void {
     // Calculate the size of the type of object, known at compile time.
-    const auto size_ty = llvm_type(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0)), ctx);
+    const auto size_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(asts::generate::common_types::USize(0).get()), ctx);
     const auto size_const = llvm::ConstantInt::get(size_ty, SizeOf(*sm, spp_ty));
 
     const auto fn_ty = llvm::FunctionType::get(size_ty, {}, false);

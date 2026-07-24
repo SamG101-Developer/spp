@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.assignment_statement_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
@@ -18,6 +19,7 @@ import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.case_pattern_variant_else_ast;
+import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.inner_scope_expression_ast;
@@ -27,12 +29,12 @@ import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.loop_else_statement_ast;
-import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.loop_conditional_expression_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -99,10 +101,9 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
 
     // Simple statements to move from.
     const auto uid = spp::utils::Uid(this);
-    auto skip_stmt = LoopControlFlowStatementAst::Skip(PosStart());
-    auto exit_stmt = LoopControlFlowStatementAst::Exit(PosStart(), 1);
     auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter_" + uid);
     auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res_" + uid);
+    auto flag_name = MakeShared<IdentifierAst>(PosStart(), "$_ok_" + uid);
     _IterableName = iterable_name;
 
     // Grab the generator's inner type.
@@ -123,6 +124,15 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
         auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), iterable_name, nullptr);
         auto iterable_val = std::move(Iterable);
         MakeUnique<LetStatementInitializedAst>(nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
+    });
+
+    // Create the let statement holding the loop's continuation flag, to control entering the else block.
+    // Translated: "let mut $_ok = true".
+    auto flag_let = ( {
+        auto mut = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
+        auto flag_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), flag_name, nullptr);
+        auto flag_val = BooleanLiteralAst::True(PosStart());
+        MakeUnique<LetStatementInitializedAst>(nullptr, std::move(flag_var), nullptr, nullptr, std::move(flag_val));
     });
 
     // Create the "let" statement that increments the iterator.
@@ -151,17 +161,27 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
         MakeUnique<CaseExpressionBranchAst>(std::move(is_tok), std::move(patterns), nullptr, std::move(Body));
     });
 
-    // Otherwise, exit the loop.
-    // Translated: "<case-of-expr> else { exit }".
+    // Reaching the branch above is what counts as the loop having taken an iteration.
+    case_valid_branch->MarkForIterLoopYield();
+
+    // Otherwise, the generator is exhausted, so clear the continuation flag.
+    // Translated: "<case-of-expr> else { $_ok = false }".
     auto case_else_branch = ( {
         auto case_else_pattern = MakeUnique<CasePatternVariantElseAst>(nullptr);
         auto case_else_body = InnerScopeExpressionAst::NewEmpty();
         case_else_pattern->MarkForIterLoopExit();
 
+        auto flag_clear_lhs = UniqueVec<ExpressionAst>();
+        auto flag_clear_rhs = UniqueVec<ExpressionAst>();
+        flag_clear_lhs.EmplaceBack(AstClone(flag_name));
+        flag_clear_rhs.EmplaceBack(BooleanLiteralAst::False(PosStart()));
+        auto flag_clear = MakeUnique<AssignmentStatementAst>(
+            std::move(flag_clear_lhs), nullptr, std::move(flag_clear_rhs));
+
         auto is_tok = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_IS, "is");
         auto patterns = Vec<Unique<CasePatternVariantAst>>();
         patterns.EmplaceBack(std::move(case_else_pattern));
-        case_else_body->Members.EmplaceBack(std::move(exit_stmt));
+        case_else_body->Members.EmplaceBack(std::move(flag_clear));
         MakeUnique<CaseExpressionBranchAst>(std::move(is_tok), std::move(patterns), nullptr, std::move(case_else_body));
     });
 
@@ -174,27 +194,22 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     });
 
     // New boolean loop that manually iterates the iterable.
+    // Translated: "loop $_ok { ... } else { ... }".
     auto loop_new = ( {
-        auto cond = BooleanLiteralAst::True(PosStart());
+        auto cond = AstClone(flag_name);
         MakeUnique<LoopConditionalExpressionAst>(nullptr, std::move(cond), nullptr, std::move(ElseBlock));
     });
     loop_new->Body->Members.EmplaceBack(std::move(resume_let));
     loop_new->Body->Members.EmplaceBack(std::move(case_expr));
+    loop_new->MarkAsIterDesugar();
     _TransformedLoop = std::move(loop_new);
 
-    // Analyse the initial let statement.
+    // Analyse the initial let statements.
     iterable_let->Stage7_AnalyseSemantics(sm, meta);
     _TransformedLet = std::move(iterable_let);
-
-    // Analyse the transformed loop (makes its own scope).
-    meta->Save();
-    meta->LoopCurrentDepth += 1;
-    meta->LoopCurrentAst = this;
+    flag_let->Stage7_AnalyseSemantics(sm, meta);
+    _TransformedFlagLet = std::move(flag_let);
     _TransformedLoop->Stage7_AnalyseSemantics(sm, meta);
-    if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-        m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
-    }
-    meta->Restore();
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
@@ -203,13 +218,14 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
     -> void {
     // Call the memory check on the transformed loop.
     _TransformedLet->Stage8_CheckMemory(sm, meta);
+    _TransformedFlagLet->Stage8_CheckMemory(sm, meta);
     _TransformedLoop->Stage8_CheckMemory(sm, meta);
 
     // The desugared iterator ("$_iter") is a hidden temporary whose lifetime ends with the loop. Release any escaping
     // borrows it holds (e.g. the "&mut v" established by "v.iter_mut()").
-    const auto iter_sym = sm->CurrentScope->GetVarSymbol(_IterableName);
+    const auto iter_sym = sm->CurrentScope->GetVarSymbol(_IterableName.get());
     for (auto const &ceb : iter_sym->MemInfo->AstContainedEscapingBorrows) {
-        const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
+        const auto b = std::get<0>(ceb)->To<IdentifierAst>();
         if (b == nullptr) { continue; }
         sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto info) {
             return *std::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
@@ -225,7 +241,18 @@ auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(
     -> llvm::Value* {
     // Generate the code for the transformed loop.
     _TransformedLet->Stage11_CodeGen(sm, meta, ctx);
+    _TransformedFlagLet->Stage11_CodeGen(sm, meta, ctx);
     return _TransformedLoop->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto spp::asts::LoopIterableExpressionAst::InferType(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> Shared<TypeAst> {
+    // Before the desugaring in stage 7 there is no transformed loop to ask, so fall back to the base implementation.
+    return _TransformedLoop == nullptr
+        ? LoopExpressionAst::InferType(sm, meta)
+        : _TransformedLoop->InferType(sm, meta);
 }
 
 SPP_MOD_END

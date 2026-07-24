@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.coroutine_prototype_ast;
 import spp.analyse.errors.semantic_error;
@@ -24,11 +23,32 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_type;
+import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
 import llvm;
 
 SPP_MOD_BEGIN
+spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
+    decltype(Annotations) &&annotations,
+    decltype(TokCmp) &&tok_cmp,
+    decltype(TokFun) &&tok_fun,
+    decltype(Name) &&name,
+    decltype(GnParamGroup) &&generic_param_group,
+    decltype(FnParamGroup) &&param_group,
+    decltype(TokArrow) &&tok_arrow,
+    decltype(ReturnType) &&return_type,
+    decltype(Impl) &&impl) :
+    FunctionPrototypeAst(
+        std::move(annotations), std::move(tok_cmp), std::move(tok_fun), std::move(name),
+        std::move(generic_param_group), std::move(param_group), std::move(tok_arrow),
+        std::move(return_type), std::move(impl)),
+    LlvmCoroGenEnv(nullptr),
+    LlvmCoroGenEnvType(nullptr),
+    LlvmCoroResumeFunc(nullptr) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_COR, "cor");
+}
+
 spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
 auto spp::asts::CoroutinePrototypeAst::Clone() const
@@ -51,9 +71,8 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
     ast->InlineAnnotation = InlineAnnotation;
     ast->Visibility = Visibility;
     ast->_LlvmFunc = _LlvmFunc;
-    ast->LlvmCoroYieldSlot = LlvmCoroYieldSlot;
-    ast->LlvmGenEnv = LlvmGenEnv;
-    ast->_LlvmResumeFunc = _LlvmResumeFunc;
+    ast->LlvmCoroGenEnv = LlvmCoroGenEnv;
+    ast->LlvmCoroResumeFunc = LlvmCoroResumeFunc;
     for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
     return ast;
 }
@@ -68,7 +87,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
 
     // Update the meta information for enclosing function information.
     meta->Save();
@@ -96,25 +115,40 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     // Move into the coroutine scope.
     sm->MoveToNextScope();
     // SPP_ASSERT(sm->CurrentScope == _Scope);
+    const auto uid = spp::utils::Uid(this);
+    const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
 
-    // Create the coroutine constructor function.
-    const auto [llvm_coro_ctor, llvm_gen_env, llvm_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->CurrentScope);
-    if (llvm_gen_env != nullptr) {
-        const auto uid = spp::utils::Uid(this);
-        const auto llvm_coro_resume_func = codegen::create_coro_res_func(this, llvm_gen_env_args_type, ctx, *sm->CurrentScope);
-        _LlvmResumeFunc = llvm_coro_resume_func; // Save for interaction with ".res()" calls.
-        LlvmGenEnv = llvm_gen_env; // Save for interaction with ".res()" calls.
+    // Build the coroutine's env struct (its frame). A null result means this is a generic base (its types are not
+    // concrete), so no code is generated for it.
+    const auto env_type = LlvmCoroGenEnvType != nullptr
+        ? LlvmCoroGenEnvType
+        : codegen::CreateCoroEnvType(this, ctx, *sm->CurrentScope);
+    auto result = static_cast<llvm::Value*>(nullptr);
 
-        // Load the resume function into the 0th field of the coroutine environment.
-        ctx->Builder.CreateStore(
-            ctx->Builder.CreateBitCast(llvm_coro_resume_func, llvm::PointerType::get(*ctx->Context, 0)),
-            ctx->Builder.CreateStructGEP(llvm_coro_ctor->getReturnType(), llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN)));
+    if (env_type != nullptr) {
+        // Create the resume function "(env*, send) -> void" if not already made. Its prologue binds the env pointer
+        // (LlvmGenEnv) and points every frame variable at its env field.
+        const auto resume_func = LlvmCoroResumeFunc != nullptr
+            ? LlvmCoroResumeFunc
+            : codegen::CreateCoroResFunc(this, ctx, *sm->CurrentScope);
+        const auto env_ptr = resume_func->getArg(0);
+        ctx->Builder.SetInsertPoint(&resume_func->getEntryBlock());
+        result = GetLlvmFunc()->Target;
 
-        // Entry block into the resume function.
-        const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, llvm_coro_resume_func);
-        ctx->Builder.SetInsertPoint(entry_bb);
+        // Switch on the location field: 0 => start of the body, i+1 => the i-th "gen" continuation.
+        const auto loc_slot = ctx->Builder.CreateStructGEP(env_type, env_ptr, std::to_underlying(codegen::GenEnvField::LOCATION), "coro.loc.slot" + uid);
+        const auto loc_val = ctx->Builder.CreateLoad(i32_ty, loc_slot, "coro.loc.load" + uid);
+        const auto bad_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.bad" + uid, resume_func);
+        const auto start_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.start" + uid, resume_func);
+        const auto switch_inst = ctx->Builder.CreateSwitch(loc_val, bad_bb);
+        switch_inst->addCase(llvm::ConstantInt::get(i32_ty, 0), start_bb);
 
-        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+        ctx->Builder.SetInsertPoint(bad_bb);
+        ctx->Builder.CreateUnreachable();
+
+        // Generate the coroutine body into the start block. The "gen" expressions register continuation blocks.
+        ctx->Builder.SetInsertPoint(start_bb);
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
         meta->Save();
         meta->EnclosingFunctionFlavour = TokFun.get();
         meta->EnclosingFunctionScope = sm->CurrentScope;
@@ -123,45 +157,39 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
         Impl->Stage11_CodeGen(sm, meta, ctx);
         meta->Restore();
 
-        // Reset to the start of the resume function to build the switch.
-        ctx->Builder.SetInsertPoint(entry_bb);
-
-        // Create the "switch" header block, mapping location values to labels.
-        const auto number_of_yields = static_cast<std::uint32_t>(ctx->YieldContinuations.Len());
-        const auto switch_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.switch" + uid, llvm_coro_resume_func);
-
-        // Switch on the value loaded from the coroutine environment's location field.
-        const auto loc_field = ctx->Builder.CreateStructGEP(llvm::PointerType::get(*ctx->Context, 0), llvm_coro_resume_func->getArg(0), 1, "coro.loc.gep" + uid);
-        const auto loc_value = ctx->Builder.CreateLoad(llvm::Type::getInt32Ty(*ctx->Context), loc_field, "coro.loc.load" + uid);
-        const auto switch_inst = ctx->Builder.CreateSwitch(loc_value, switch_bb, number_of_yields + 1);
-
-        // Case for "0" => start of the coroutine.
-        const auto start_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.start" + uid, llvm_coro_resume_func);
-        switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0), start_bb);
-        ctx->Builder.SetInsertPoint(start_bb);
-
-        // Loop up the yield counter, generating a "case" and "jump" for each yield point.
-        for (std::size_t i = 0; i < number_of_yields; ++i) {
-            const auto target_block = ctx->YieldContinuations[i];
-            switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i + 1), target_block);
+        // The body falling through means the coroutine is exhausted: mark EXHAUSTED and return.
+        if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+            ctx->Builder.CreateStore(
+                llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), std::to_underlying(codegen::CoroutineState::EXHAUSTED)),
+                ctx->Builder.CreateStructGEP(env_type, env_ptr, std::to_underlying(codegen::GenEnvField::STATE), "coro.state.done" + uid));
+            ctx->Builder.CreateRetVoid();
         }
 
-        // Reset the yield continuations for future coroutines.
+        // Wire each "gen" continuation into the switch (location i+1 => the i-th continuation block).
+        for (auto const &[i, cont_bb] : ctx->YieldContinuations | genex::views::enumerate) {
+            switch_inst->addCase(llvm::ConstantInt::get(i32_ty, i + 1), cont_bb);
+        }
         ctx->YieldContinuations.Clear();
+
+        // The coroutine's own function is never called directly. Emit an empty stub so it remains a valid (defined)
+        // internal function.
+        const auto main_func = GetLlvmFunc()->Target;
+        if (main_func->empty()) {
+            const auto stub_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, main_func);
+            ctx->Builder.SetInsertPoint(stub_bb);
+            if (main_func->getReturnType()->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
+            else { ctx->Builder.CreateRet(llvm::UndefValue::get(main_func->getReturnType())); }
+        }
     }
     else {
-        // Generic base function so not generating for it.
-        // Manual scope skipping.
+        // Generic base function so not generating for it. Manual scope skipping.
         const auto final_scope = sm->CurrentScope->FinalChildScope();
-        while (sm->CurrentScope != final_scope) {
-            sm->MoveToNextScope(false);
-        }
+        while (sm->CurrentScope != final_scope) { sm->MoveToNextScope(false); }
     }
     sm->MoveOutOfCurrentScope();
 
-    // Can't use "llvm_func == nullptr" because of coroutine ctor function.
-    if (llvm_gen_env == nullptr) {
-        // Analyse to make a new scope in the correct place.
+    // For a generic base, generate each of its concrete substitutions.
+    if (env_type == nullptr) {
         for (auto const &[_, generic_impl] : _GenericSubstitutions) {
             auto tm = ScopeManager(sm->GlobalScope, _Scope->Parent);
             tm.Reset(tm.CurrentScope);
@@ -169,7 +197,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
         }
     }
 
-    return llvm_coro_ctor;
+    return result;
 }
 
 auto spp::asts::CoroutinePrototypeAst::IsCoroutine() const

@@ -25,6 +25,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.asts.generate.common_types_precompiled;
 import spp.lex.tokens;
 import genex;
 
@@ -153,15 +154,20 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
-    // Analyse the type being superimposed over.
+    // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
+    // methods are declared.
+    meta->Save();
+    meta->AllowAbstractType = true;
     Name->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
+
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Name, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalName, "superimposition type"));
-    Name = sm->CurrentScope->GetTypeSymbol(Name)->FqName();
+    Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName();
 
     // Register the superimposition against the base symbol.
-    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics());
+    const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
     if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
         if (not base_cls_sym->IsGeneric) {
             ScopeManager::normal_sup_blocks[base_cls_sym.get()].EmplaceBack(sm->CurrentScope);
@@ -173,7 +179,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 
     // Add the "Self" symbol into the scope.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
         const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
             MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
             sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
@@ -204,24 +210,29 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+    using generate::common_types_precompiled::SELF_TYPE;
 
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
+
+    meta->Save();
+    meta->AllowAbstractType = true;
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 
     // Re-map "Self" to the true type.
     if (not Name->IsCompilerGeneratedType()) {
-        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
-        const auto self_sym = sm->CurrentScope->GetTypeSymbol(MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr), true);
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
         self_sym->Type = cls_sym->Type;
         cls_sym->AliasedBySyms.EmplaceBack(self_sym);
     }
 
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     if (cls_sym->Type)
         EnforceGenericConstraintsAllArgs(
             *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
