@@ -669,23 +669,22 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
     const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
     if (type_sym->IsGeneric) { return {nullptr, nullptr}; }
 
-    // Discover the supertypes and add the current type to it.
-    auto sup_types = Vec{asts::AstCloneShared(&type)};
-    sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
+    // Find the first FwdRef and first FwdMut super type in a single pass.
+    auto fwd_ref_type = Shared<asts::TypeAst>(nullptr);
+    auto fwd_mut_type = Shared<asts::TypeAst>(nullptr);
+    const auto consider = [&](Shared<asts::TypeAst> const &candidate) {
+        const auto bare = candidate->WithoutGenerics();
+        if (fwd_ref_type == nullptr and TypeEq(*bare, *FWD_REF, *sm.CurrentScope, *sm.CurrentScope)) { fwd_ref_type = candidate; }
+        else if (fwd_mut_type == nullptr and TypeEq(*bare, *FWD_MUT, *sm.CurrentScope, *sm.CurrentScope)) { fwd_mut_type = candidate; }
+    };
 
-    // Search through the supertypes for a direct FwdRef type.
-    const auto fwd_ref_type_candidates = sup_types
-        | genex::views::filter([&sm](auto const &sup_type) { return TypeEq(*sup_type->WithoutGenerics(), *FWD_REF, *sm.CurrentScope, *sm.CurrentScope); })
-        | genex::to<Vec>();
+    // Search the types for whichever marker is still missing.
+    consider(type.WithoutGenerics());
+    for (auto const &sup_type : type_sym->LinkedScope->SupTypes()) {
+        if (fwd_ref_type != nullptr and fwd_mut_type != nullptr) { break; }
+        consider(sup_type);
+    }
 
-    // Search through the supertypes for a direct FwdMut type.
-    const auto fwd_mut_type_candidates = sup_types
-        | genex::views::filter([&sm](auto const &sup_type) { return TypeEq(*sup_type->WithoutGenerics(), *FWD_MUT, *sm.CurrentScope, *sm.CurrentScope); })
-        | genex::to<Vec>();
-
-    // No error raised here; just return the pair of types (nullptr if not found).
-    auto fwd_ref_type = fwd_ref_type_candidates.IsEmpty() ? nullptr : fwd_ref_type_candidates[0];
-    auto fwd_mut_type = fwd_mut_type_candidates.IsEmpty() ? nullptr : fwd_mut_type_candidates[0];
     return MakePair(fwd_ref_type, fwd_mut_type);
 }
 
@@ -1422,14 +1421,16 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
     const auto true_self_type = scope.GetEnclosingSelfType(meta);
     if (true_self_type == nullptr) { return AstClone(&type); }
 
-    //
-    auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
-        SelfType(0), nullptr, true_self_type);
-    const auto gg = asts::GenericArgumentGroupAst::NewEmpty();
-    gg->Args.PushBack(std::move(g));
+    // If "Self" is not present, return a plain clone.
+    if (genex::none_of(type.Iterator(), [](auto const &part) { return part->Name == "Self"; })) {
+        return AstClone(&type);
+    }
 
-    //
-    auto t = type.SubstituteGenerics(gg->GetAllArgs());
+    // Substitute "Self" with the concrete enclosing type.
+    const auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(SelfType(0), nullptr, true_self_type);
+    const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
+
+    auto t = type.SubstituteGenerics(args);
     meta.Save();
     meta.AllowAbstractType = true;
     t->Stage7_AnalyseSemantics(&sm, &meta);
