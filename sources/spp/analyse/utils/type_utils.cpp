@@ -134,8 +134,8 @@ auto spp::analyse::utils::type_utils::TypeEq(
         if (rhs_type.IsCompilerGeneratedType()) { return TypeFuncEq(rhs_type, lhs_type, rhs_scope, lhs_scope); }
         return TypeFwdEq(rhs_type, lhs_type, rhs_scope, lhs_scope);
     }
-    auto &lhs_generics = lhs_type.TypeParts().Back()->GnArgGroup->Args;
-    auto &rhs_generics = rhs_type.TypeParts().Back()->GnArgGroup->Args;
+    auto &lhs_generics = lhs_type.LastTypePart()->GnArgGroup->Args;
+    auto &rhs_generics = rhs_type.LastTypePart()->GnArgGroup->Args;
 
     // Special case for variadic parameter types.
     const auto temp_type_proto = lhs_sym->Type;
@@ -213,7 +213,7 @@ auto spp::analyse::utils::type_utils::TypeFwdEq(
     // Todo: probably ensure that the ref & mut both forward to the same type?
     for (auto const &sup_type : sup_types) {
         if (not TypeEq(*sup_type->WithoutGenerics(), *fwd_target, arg_scope, arg_scope, false)) { continue; }
-        const auto inner_type = sup_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val->WithConvention(asts::AstClone(param_type.GetConvention()));
+        const auto inner_type = sup_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithConvention(asts::AstClone(param_type.GetConvention()));
         if (TypeEq(*inner_type, param_type, param_scope, param_scope)) { return true; }
     }
 
@@ -286,8 +286,8 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
 
     // If the stripped types aren't equal, then return false.
     if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) { return false; }
-    auto &lhs_generics = lhs_type.TypeParts().Back()->GnArgGroup->Args;
-    auto &rhs_generics = rhs_type.TypeParts().Back()->GnArgGroup->Args;
+    auto &lhs_generics = lhs_type.LastTypePart()->GnArgGroup->Args;
+    auto &rhs_generics = rhs_type.LastTypePart()->GnArgGroup->Args;
 
     // Special case for variadic parameter types.
     const auto temp_type_proto = lhs_scope.GetTypeSymbol(&lhs_type)->Type;
@@ -472,7 +472,7 @@ auto spp::analyse::utils::type_utils::IsTypeBorrowed(
 
     // Check the inner types for variant types.
     if (deep and TypeEq(*type.WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope, false)) {
-        for (auto const &inner_type_arg : type.TypeParts().Back()->GnArgGroup->GetTypeArgs()) {
+        for (auto const &inner_type_arg : type.LastTypePart()->GnArgGroup->GetTypeArgs()) {
             if (IsTypeBorrowed(*inner_type_arg->Val, sm)) { return true; }
         }
     }
@@ -528,13 +528,13 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
     // For tuples, count the number of generic arguments.
     using errors::SppInternalCompilerError;
     if (IsTypeTup(type, scope)) {
-        auto elems = type.TypeParts().Back()->GnArgGroup->Args.Len();
+        auto elems = type.LastTypePart()->GnArgGroup->Args.Len();
         return MakePair(index < elems, elems);
     }
 
     // For arrays, check the size argument.
     if (IsTypeArr(type, scope)) {
-        const auto size_arg = type.TypeParts().Back()->GnArgGroup->CompAt("n");
+        const auto size_arg = type.LastTypePart()->GnArgGroup->CompAt("n");
         const auto size_arg_cast = size_arg->Val->To<asts::IntegerLiteralAst>();
         const auto elems = std::stoul(size_arg_cast->Val->TokenData);
         return MakePair(index < elems, elems);
@@ -553,12 +553,12 @@ auto spp::analyse::utils::type_utils::GetNthTypeOfIndexableType(
     // For tuples, return the nth generic argument.
     using errors::SppInternalCompilerError;
     if (IsTypeTup(type, scope)) {
-        return type.TypeParts().Back()->GnArgGroup->GetTypeArgs()[index]->Val;
+        return type.LastTypePart()->GnArgGroup->GetTypeArgs()[index]->Val;
     }
 
     // For arrays, return the element type.
     if (IsTypeArr(type, scope)) {
-        return type.TypeParts().Back()->GnArgGroup->GetTypeArgs()[0]->Val;
+        return type.LastTypePart()->GnArgGroup->GetTypeArgs()[0]->Val;
     }
 
     Raise<SppInternalCompilerError>(
@@ -615,7 +615,7 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
 
     // Extract the generator and yield type.
     auto generator_type = generator_type_candidates[0];
-    auto yield_type = generator_type->TypeParts().Back()->GnArgGroup->TypeAt("Yield")->Val;
+    auto yield_type = generator_type->LastTypePart()->GnArgGroup->TypeAt("Yield")->Val;
 
     // Extract the multiplicity, optionality and fallibility from the generator type.
     auto is_once = TypeEq(
@@ -714,7 +714,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
     else if (not variant_branches_type_info.IsEmpty()) {
         auto most_inner_types = 0uz;
         for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-            const auto variant_size = variant_type->TypeParts().Back()->GnArgGroup->TypeAt("Variant")->Val->TypeParts().Back()->GnArgGroup->Args.Len();
+            const auto variant_size = variant_type->LastTypePart()->GnArgGroup->TypeAt("Variant")->Val->LastTypePart()->GnArgGroup->Args.Len();
             if (variant_size > most_inner_types) {
                 master_branch_type_info = MakePair(variant_branch, variant_type);
                 most_inner_types = variant_size;
@@ -936,7 +936,7 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
 
     // Run generic substitution on the symbols in the scope.
     const auto fq_type = new_cls_sym->FqName();
-    auto substitution_generics = fq_type->TypeParts().Back()->GnArgGroup->GetAllArgs(); // Todo: Possible ASAN death here.
+    auto substitution_generics = fq_type->LastTypePart()->GnArgGroup->GetAllArgs(); // Todo: Possible ASAN death here.
     substitution_generics.AppendRange(type_part.GnArgGroup->GetAllArgs());
 
     // Substitute the "Self" sym.
@@ -1091,7 +1091,7 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
 
         // If the target is generic, then create a generic scope for it.
         // auto generic_scope = generic_scope = ( {
-        //     auto generic_scope_name = scopes::ScopeBlockName("<generic#" + type_arg->Name->TypeParts().Back()->name + ">");
+        //     auto generic_scope_name = scopes::ScopeBlockName("<generic#" + type_arg->Name->LastTypePart()->name + ">");
         //     MakeUnique<scopes::Scope>(generic_scope_name, nullptr);
         // });
 
@@ -1252,11 +1252,11 @@ auto spp::analyse::utils::type_utils::DedupVariableInnerTypes(
     -> Vec<Shared<asts::TypeAst>> {
     // Create the list of types.
     auto out = Vec<Shared<asts::TypeAst>>();
-    if (type.TypeParts().Back()->GnArgGroup->Args.IsEmpty()) {
+    if (type.LastTypePart()->GnArgGroup->Args.IsEmpty()) {
         return out;
     }
 
-    for (auto &&generic_arg : type.TypeParts().Back()->GnArgGroup->GetTypeArgs()[0]->Val->TypeParts().Back()->GnArgGroup->GetTypeArgs()) {
+    for (auto &&generic_arg : type.LastTypePart()->GnArgGroup->GetTypeArgs()[0]->Val->LastTypePart()->GnArgGroup->GetTypeArgs()) {
         // Inspect inner variant types by extending the composite type list.
         if (IsTypeVariant(*generic_arg->Val->WithoutGenerics(), scope)) {
             out.AppendRange(DedupVariableInnerTypes(*generic_arg->Val, scope));
@@ -1339,7 +1339,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
         return {old_type, generic_params, old_sym->LinkedScope};
     }
 
-    auto generic_args = asts::AstClone(old_type->TypeParts().Back()->GnArgGroup.get());
+    auto generic_args = asts::AstClone(old_type->LastTypePart()->GnArgGroup.get());
     auto final_generic_params = asts::GenericParameterGroupAst::NewEmptyShared();
     tracking_scope = old_sym->ScopeDefinedIn;
 
@@ -1352,19 +1352,19 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
 
         // If this alias is from a use statement, we need to propagate its generics for the next alias search.
         if (old_sym->AliasStmt and old_sym->AliasStmt->IsFromUseStatement()) {
-            use_stmt_propagating_generics = old_type->TypeParts().Back()->GnArgGroup.get();
+            use_stmt_propagating_generics = old_type->LastTypePart()->GnArgGroup.get();
             if (use_stmt_propagating_generics->Args.IsEmpty()) { use_stmt_propagating_generics = nullptr; }
             tracking_scope = old_sym->ScopeDefinedIn;
         }
 
         // Name the generics for this alias, and shift into the next scope.
         else {
-            func_utils::NameGnArgs(*old_type->TypeParts().Back()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+            func_utils::NameGnArgs(*old_type->LastTypePart()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
             if (old_sym->AliasStmt) {
-                final_generic_params = filter_params(*old_sym->AliasStmt->GnParamGroup, *old_type->TypeParts().Back()->GnArgGroup);
+                final_generic_params = filter_params(*old_sym->AliasStmt->GnParamGroup, *old_type->LastTypePart()->GnArgGroup);
             }
             old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
-            *generic_args += *old_type->TypeParts().Back()->GnArgGroup;
+            *generic_args += *old_type->LastTypePart()->GnArgGroup;
             tracking_scope = old_sym->ScopeDefinedIn;
         }
 
@@ -1375,9 +1375,9 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
         if (old_sym->AliasStmt == nullptr and (use_stmt_propagating_generics == nullptr or use_stmt_propagating_generics->Args.IsEmpty())) { break; }
     }
 
-    old_type = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get())->FqName()->WithGenerics(AstClone(old_type->TypeParts().Back()->GnArgGroup));
+    old_type = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get())->FqName()->WithGenerics(AstClone(old_type->LastTypePart()->GnArgGroup));
 
-    auto &temp = *old_type->TypeParts().Back()->GnArgGroup;
+    auto &temp = *old_type->LastTypePart()->GnArgGroup;
     func_utils::NameGnArgs(
         temp, *extract_params(*old_sym), *old_type, *sm, *meta, false);
     old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());

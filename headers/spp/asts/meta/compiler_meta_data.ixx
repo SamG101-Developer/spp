@@ -95,7 +95,11 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
  */
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaData : CompilerMetaDataState {
 private:
-    std::stack<CompilerMetaDataState> _History;
+    // Pooled save/restore history. This is a hand-rolled stack over a vector that never shrinks: `_Depth` is the live
+    // top-of-stack, and slots above it are parked (retaining their allocated buffers) for reuse by the next Save. This
+    // avoids the node alloc/free churn a `std::stack<..., std::deque>` incurs across nested Save/Restore cycles.
+    Vec<CompilerMetaDataState> _History;
+    std::size_t _Depth = 0;
 
 public:
     CompilerMetaData();

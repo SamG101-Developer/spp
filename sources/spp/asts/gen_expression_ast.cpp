@@ -237,7 +237,7 @@ auto spp::asts::GenExpressionAst::InferType(
     CompilerMetaData *)
     -> Shared<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
-    auto send_type = _GenType->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
+    auto send_type = _GenType->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
     return send_type;
 }
 

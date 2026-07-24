@@ -121,7 +121,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
         IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
 
     const auto z_type = from_target
-        ? meta->AssignmentTargetType->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val
+        ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->TypeAt("T")->Val
         : z_elem->InferType(sm, meta);
 
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -239,7 +239,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
     auto size_tok = MakeUnique<TokenAst>(TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
     auto size_gen = MakeUnique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");
     auto elem_gen = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope)
-        ? AstCloneShared(meta->AssignmentTargetType->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val)
+        ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->TypeAt("T")->Val)
         : Elems[0]->InferType(sm, meta);
 
     // Create an array type with the inferred element type and size.

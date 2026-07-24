@@ -207,7 +207,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
 
         // This is where we need to handle the FwdRef/FwdMut logic.
         auto [fwd_ref_type, _] = GetFwdTypes(*lhs_as_type, *sm);
-        const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+        const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val;
         const auto inner_type_sym = sm->CurrentScope->GetTypeSymbol(inner_type.get());
         const auto fwd_sym = inner_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
         return fwd_sym->Type;

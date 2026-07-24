@@ -131,7 +131,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
             // access to their members.
             auto [fwd_ref_type, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type, *sm);
             if (fwd_ref_type != nullptr) {
-                const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
+                const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
                 auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(inner_type), nullptr);
                 auto mock_access = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, Name);
                 const auto pf = MakeUnique<PostfixExpressionAst>(std::move(mock_init), std::move(mock_access));
@@ -296,7 +296,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
     auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
     if (var_sym == nullptr) {
         auto [fwd_ref_type, _] = GetFwdTypes(*lhs_type.get(), *sm);
-        const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val.get();
+        const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val.get();
         lhs_sym = sm->CurrentScope->GetTypeSymbol(inner_type);
         var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
     }

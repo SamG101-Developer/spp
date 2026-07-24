@@ -25,7 +25,7 @@ SPP_MOD_BEGIN
 auto spp::asts::IdentifierAst::FromType(
     TypeAst const &val)
     -> Unique<IdentifierAst> {
-    return MakeUnique<IdentifierAst>(val.PosStart(), Str(val.TypeParts().Back()->Name));
+    return MakeUnique<IdentifierAst>(val.PosStart(), Str(val.LastTypePart()->Name));
 }
 
 spp::asts::IdentifierAst::IdentifierAst(

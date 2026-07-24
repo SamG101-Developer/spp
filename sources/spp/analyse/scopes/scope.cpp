@@ -121,6 +121,12 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
     Scope const &scope,
     asts::TypeAst const &fq_type)
     -> Pair<const Scope*, asts::TypeIdentifierAst const*> {
+    // Fast path: a bare type identifier has no namespace or nested-type parts, so no scope shifting is required and the
+    // final part is the identifier itself. Avoids building two shared-pointer part vectors on the hot path.
+    if (auto const *ident = fq_type.To<asts::TypeIdentifierAst>()) {
+        return MakePair(&scope, ident);
+    }
+
     // Get the namespace and type parts, to get the scopes.
     const auto ns_parts = fq_type.NsParts();
     const auto type_parts = fq_type.TypeParts();

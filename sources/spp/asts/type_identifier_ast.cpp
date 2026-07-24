@@ -322,6 +322,16 @@ auto spp::asts::TypeIdentifierAst::TypeParts()
     return Vec{dynamic_shared_cast<TypeIdentifierAst>(shared_from_this())};
 }
 
+auto spp::asts::TypeIdentifierAst::LastTypePart() const
+    -> TypeIdentifierAst const* {
+    return this;
+}
+
+auto spp::asts::TypeIdentifierAst::LastTypePart()
+    -> TypeIdentifierAst* {
+    return this;
+}
+
 auto spp::asts::TypeIdentifierAst::WithoutConvention() const
     -> Shared<const TypeAst> {
     return shared_from_this();

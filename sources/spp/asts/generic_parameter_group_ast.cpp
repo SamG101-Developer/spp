@@ -49,8 +49,6 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
     TokL(std::move(tok_l)),
     Params(std::move(params)),
     TokR(std::move(tok_r)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
 spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
@@ -93,9 +91,9 @@ auto spp::asts::GenericParameterGroupAst::ToString() const
     -> Str {
     SPP_STRING_START;
     if (not Params.IsEmpty()) {
-        SPP_STRING_APPEND(TokL);
+        SPP_STRING_APPEND_RAW("[");
         SPP_STRING_EXTEND(Params, ", ");
-        SPP_STRING_APPEND(TokR);
+        SPP_STRING_APPEND_RAW("]");
     }
     SPP_STRING_END;
 }

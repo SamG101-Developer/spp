@@ -205,6 +205,19 @@ auto spp::asts::TypePostfixExpressionAst::TypeParts()
     return parts;
 }
 
+auto spp::asts::TypePostfixExpressionAst::LastTypePart() const
+    -> TypeIdentifierAst const* {
+    // The operator's part (if any) is appended last; otherwise the final part comes from the lhs.
+    if (auto const *op_part = const_shared_cast(TokOp)->LastTypePart()) { return op_part; }
+    return const_shared_cast(Lhs)->LastTypePart();
+}
+
+auto spp::asts::TypePostfixExpressionAst::LastTypePart()
+    -> TypeIdentifierAst* {
+    if (auto *op_part = TokOp->LastTypePart()) { return op_part; }
+    return Lhs->LastTypePart();
+}
+
 auto spp::asts::TypePostfixExpressionAst::WithoutConvention() const
     -> Shared<const TypeAst> {
     return shared_from_this();
@@ -256,7 +269,7 @@ auto spp::asts::TypePostfixExpressionAst::WithGenerics(
     -> Shared<TypeAst> {
     // Clone this type and add the generics to the right most part.
     auto type_clone = AstClone(this);
-    type_clone->TypeParts().Back()->GnArgGroup = std::move(arg_group);
+    type_clone->LastTypePart()->GnArgGroup = std::move(arg_group);
     return type_clone;
 }
 

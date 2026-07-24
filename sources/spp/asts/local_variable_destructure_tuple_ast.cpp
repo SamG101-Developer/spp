@@ -99,7 +99,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
     // Determine number of elements in the left-hand-side and right-hand-side tuples.
     // Todo: Test destructuring generic array - how would that work? like Arr[Str, n] => don't allow.
     const auto num_lhs_arr_elems = Elems.Len();
-    const auto num_rhs_arr_elems = val->InferType(sm, meta)->TypeParts().Back()->GnArgGroup->Args.Len();
+    const auto num_rhs_arr_elems = val->InferType(sm, meta)->LastTypePart()->GnArgGroup->Args.Len();
     RaiseIf<SppVariableTupleDestructureTupleSizeMismatchError>(
         (num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.IsEmpty()) or (num_lhs_arr_elems > num_rhs_arr_elems),
         {sm->CurrentScope}, ERR_ARGS(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems));

@@ -580,7 +580,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_HandleFunctionFolding
             fold_indexes.EmplaceBack(i);
             folded_args.EmplaceBack(arg);
             folded_arg_types.EmplaceBack(arg_type.get());
-            folded_tup_lens.EmplaceBack(arg_type->TypeParts().Back()->GnArgGroup->Args.Len());
+            folded_tup_lens.EmplaceBack(arg_type->LastTypePart()->GnArgGroup->Args.Len());
         }
     }
 

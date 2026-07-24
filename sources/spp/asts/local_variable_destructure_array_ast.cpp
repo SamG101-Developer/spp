@@ -102,7 +102,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     // Todo: Test destructuring generic array - how would that work? like Arr[Str, n] => don't allow.
     const auto num_lhs_arr_elems = Elems.Len();
     const auto num_rhs_arr_elems = std::stoul(
-        val_type->TypeParts().Back()->GnArgGroup->Args[1]->To<GenericArgumentCompAst>()->Val->To<IntegerLiteralAst>()->Val->TokenData);
+        val_type->LastTypePart()->GnArgGroup->Args[1]->To<GenericArgumentCompAst>()->Val->To<IntegerLiteralAst>()->Val->TokenData);
     RaiseIf<SppVariableArrayDestructureArraySizeMismatchError>(
         (num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.IsEmpty()) or (num_lhs_arr_elems > num_rhs_arr_elems),
         {sm->CurrentScope}, ERR_ARGS(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems));

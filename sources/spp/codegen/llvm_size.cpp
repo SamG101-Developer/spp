@@ -81,14 +81,14 @@ auto spp::codegen::SizeOf(
 
     // Array (fixed length) size is element size * length.
     if (TypeEq(*type->WithoutGenerics(), *ARR, *sm.CurrentScope, *sm.CurrentScope)) {
-        const auto element_type = type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
-        const auto length = std::stoll(type->TypeParts().Back()->GnArgGroup->CompAt("n")->Val->To<asts::IntegerLiteralAst>()->Val->TokenData);
+        const auto element_type = type->LastTypePart()->GnArgGroup->TypeAt("T")->Val;
+        const auto length = std::stoll(type->LastTypePart()->GnArgGroup->CompAt("n")->Val->To<asts::IntegerLiteralAst>()->Val->TokenData);
         return SizeOf(sm, element_type) * static_cast<std::size_t>(length);
     }
 
     // Tuple (sum the sizes of its contained types).
     if (TypeEq(*type->WithoutGenerics(), *TUP, *sm.CurrentScope, *sm.CurrentScope)) {
-        const auto all_types = type->TypeParts().Back()->GnArgGroup->GetTypeArgs()
+        const auto all_types = type->LastTypePart()->GnArgGroup->GetTypeArgs()
             | genex::views::transform([&sm](auto &&x) { return SizeOf(sm, x->Val); })
             | genex::to<Vec>();
         const auto total_size = genex::fold_left_first(all_types, std::plus{});
@@ -100,7 +100,7 @@ auto spp::codegen::SizeOf(
     // an LLVM context should measure the lowered type with the data layout instead.
     if (TypeEq(*type->WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope)) {
         auto max_size = 0uz;
-        for (auto const &inner_type : type->TypeParts().Back()->GnArgGroup->GetTypeArgs()) {
+        for (auto const &inner_type : type->LastTypePart()->GnArgGroup->GetTypeArgs()) {
             max_size = std::max(max_size, SizeOf(sm, inner_type->Val));
         }
         return max_size + sizeof(std::size_t);

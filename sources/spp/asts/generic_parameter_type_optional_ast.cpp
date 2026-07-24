@@ -73,7 +73,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::Stage4_QualifyTypes(
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     if (const auto sym = sm->CurrentScope->GetTypeSymbol(DefaultVal->WithoutGenerics().get()); sym != nullptr) {
         auto temp = sym->FqName()->WithConvention(AstClone(DefaultVal->GetConvention()));
-        temp = temp->WithGenerics(AstClone(DefaultVal->TypeParts().Back()->GnArgGroup));
+        temp = temp->WithGenerics(AstClone(DefaultVal->LastTypePart()->GnArgGroup));
         DefaultVal = std::move(temp);
     }
 }

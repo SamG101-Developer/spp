@@ -223,13 +223,13 @@ auto spp::analyse::utils::overload_utils::RetrieveImplicitGenericArgsForCall(
 
     // If we are using a forwarding type, inspect that type's generics.
     if (fwd_type != nullptr) {
-        auto fwd_generics = std::move(fwd_type->TypeParts().Back()->GnArgGroup->Args);
+        auto fwd_generics = std::move(fwd_type->LastTypePart()->GnArgGroup->Args);
         gn_args->MergeGenerics(std::move(fwd_generics));
     }
 
     // Otherwise, take the generics from the owning type (given it isn't a module-level function).
     else if (is_type != nullptr) {
-        auto lhs_generics = std::move(is_type->TypeParts().Back()->GnArgGroup->Args);
+        auto lhs_generics = std::move(is_type->LastTypePart()->GnArgGroup->Args);
         gn_args->MergeGenerics(std::move(lhs_generics));
     }
 
@@ -490,7 +490,7 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
 
         // Special case for variadic parameters (updates p_type so don't follow with "else if").
         if (param->To<asts::FunctionParameterVariadicAst>()) {
-            auto ts = Vec(a_type->TypeParts().Back()->GnArgGroup->Args.Len(), p_type);
+            auto ts = Vec(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
             p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
             p_type->Stage7_AnalyseSemantics(sm, meta);
         }

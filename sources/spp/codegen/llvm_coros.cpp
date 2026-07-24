@@ -53,7 +53,7 @@ auto spp::codegen::CreateCoroEnvType(
     // Get the type being yielded and the type being sent back in.
     const auto [generator_type, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
         *coro->ReturnType, scope, *coro->ReturnType, "coroutine prototype");
-    const auto send_type = generator_type->TypeParts().Back()->GnArgGroup->TypeAt("Send")->Val;
+    const auto send_type = generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
 
     // Fixed header fields: state (i8), location (i32), the send slot and the yield slot.
     const auto llvm_state_type = llvm::Type::getInt8Ty(*ctx->Context);

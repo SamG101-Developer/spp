@@ -161,7 +161,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
             {sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        const auto max = static_cast<sys::ssize_t>(arg_type->TypeParts().Back()->GnArgGroup->Args.Len());
+        const auto max = static_cast<sys::ssize_t>(arg_type->LastTypePart()->GnArgGroup->Args.Len());
         for (auto j = max - 1; j > -1z; --j) {
             auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
             auto new_ast = MakeUnique<PostfixExpressionAst>(

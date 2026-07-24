@@ -66,8 +66,10 @@ auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    //
-    if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
+    // Handle the "Self" type.
+    if (Val->IsSelfType() and
+        sm->CurrentScope->AstNode != nullptr and
+        sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
     if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
     Val->Stage7_AnalyseSemantics(sm, meta);
 

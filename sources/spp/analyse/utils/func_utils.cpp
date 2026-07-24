@@ -272,7 +272,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     if (target_scope->TySym != nullptr and meta->CurrentStage >= 9.0) {
         auto [fwd_ref_type, fwd_mut_type] = type_utils::GetFwdTypes(*target_scope->TySym->FqName(), sm);
         if (fwd_ref_type != nullptr) {
-            const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+            const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val;
             auto inner_scopes = GetAllFunctionScopes(target_fn_name, sm.CurrentScope->GetTypeSymbol(inner_type.get())->LinkedScope, sm, meta);
             for (auto &&i : inner_scopes) {
                 std::get<3>(i) = asts::AstCloneShared(inner_type);
@@ -553,7 +553,7 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
             auto def_type_raw = p_con->WithoutGenerics();
             if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_val_type_sym != nullptr and meta.CurrentStage > 4) {
                 auto temp = def_val_type_sym->FqName();
-                temp = temp->WithGenerics(asts::AstClone(p_con->TypeParts().Back()->GnArgGroup));
+                temp = temp->WithGenerics(asts::AstClone(p_con->LastTypePart()->GnArgGroup));
                 p_con = std::move(temp);
             }
 
@@ -786,7 +786,7 @@ static auto CollectDirectInferences(
             auto shared = typed->shared_from_this();
             // Variadic unwrap: inferred value is Tup[T]; extract the inner type.
             if (variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name) {
-                auto &inner = shared->TypeParts().Back()->GnArgGroup->Args[0];
+                auto &inner = shared->LastTypePart()->GnArgGroup->Args[0];
                 shared = inner->To<spp::asts::GenericArgumentTypeAst>()->Val;
             }
             type_inferred[inferred_name].EmplaceBack(std::move(shared));
@@ -953,7 +953,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
         if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_sym != nullptr and meta.CurrentStage > 4) {
             auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
             if (not type_utils::IsTypeSelf(*def_type)) {
-                temp = temp->WithGenerics(asts::AstClone(def_type->TypeParts().Back()->GnArgGroup));
+                temp = temp->WithGenerics(asts::AstClone(def_type->LastTypePart()->GnArgGroup));
             }
             def_type = std::move(temp);
         }
@@ -1051,7 +1051,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
             auto p_type = param->Type->SubstituteGenerics(all_final_args);
 
             if (param->To<asts::GenericParameterCompVariadicAst>()) {
-                for (auto const &inner : a_type->TypeParts().Back()->GnArgGroup->Args
+                for (auto const &inner : a_type->LastTypePart()->GnArgGroup->Args
                      | genex::views::ptr
                      | genex::views::cast_dynamic<asts::GenericArgumentTypePositionalAst*>()
                      | genex::views::transform([](auto *g) { return g->Val; })
@@ -1091,8 +1091,8 @@ auto spp::analyse::utils::func_utils::CreateCallablePrototype(
     asts::TypeAst const &expr_type)
     -> Unique<asts::FunctionPrototypeAst> {
     // Extract the parameter and return types from the expression type.
-    auto dummy_return_type = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Out")->Val;
-    auto dummy_param_types = expr_type.TypeParts().Back()->GnArgGroup->TypeAt("Args")->Val->TypeParts().Back()->GnArgGroup->GetTypeArgs()
+    auto dummy_return_type = expr_type.LastTypePart()->GnArgGroup->TypeAt("Out")->Val;
+    auto dummy_param_types = expr_type.LastTypePart()->GnArgGroup->TypeAt("Args")->Val->LastTypePart()->GnArgGroup->GetTypeArgs()
         | genex::views::transform([](auto *g) { return MakeUnique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, g->Val); })
         | spp::views::cast_unique<asts::FunctionParameterAst>();
 

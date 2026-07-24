@@ -98,6 +98,12 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
     SPP_ATTR_NODISCARD auto TypeParts()
         -> Vec<Shared<TypeIdentifierAst>> override;
 
+    SPP_ATTR_NODISCARD auto LastTypePart() const
+        -> TypeIdentifierAst const* override;
+
+    SPP_ATTR_NODISCARD auto LastTypePart()
+        -> TypeIdentifierAst* override;
+
     SPP_ATTR_NODISCARD auto WithoutConvention() const
         -> Shared<const TypeAst> override;
 

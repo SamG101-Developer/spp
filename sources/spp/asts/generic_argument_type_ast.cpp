@@ -40,7 +40,7 @@ auto spp::asts::GenericArgumentTypeAst::Stage4_QualifyTypes(
     const auto sym2 = sm->CurrentScope->GetTypeSymbol(Val->WithoutGenerics().get(), true);
     if (sym2 && !sym2->AliasStmt) {
         const auto fq = sym2->FqName();
-        Val = fq->WithGenerics(std::move(Val->TypeParts().Back()->GnArgGroup))->WithConvention(AstClone(Val->GetConvention()));
+        Val = fq->WithGenerics(std::move(Val->LastTypePart()->GnArgGroup))->WithConvention(AstClone(Val->GetConvention()));
     }
 }
 

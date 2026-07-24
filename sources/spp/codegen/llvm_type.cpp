@@ -26,7 +26,7 @@ import std;
 
 #define EXTRACT_INT_SIZE                                                                                         \
     const auto bit_width_ast =                                                                                   \
-        scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>(); \
+        scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>(); \
     if (bit_width_ast == nullptr) { return; }                                                                    \
     const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));
 
@@ -116,7 +116,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
     // Lower S++ Arr" to the llvm "[T * n]" type.
     if (parts == kArrParts) {
-        const auto gn_arg_group = cls_sym->FqName()->TypeParts().Back()->GnArgGroup.get();
+        const auto gn_arg_group = cls_sym->FqName()->LastTypePart()->GnArgGroup.get();
         const auto length_ast = gn_arg_group->CompAt("n")->Val->To<asts::IntegerLiteralAst>();
         const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val.get());
         if (length_ast != nullptr and elem_sym != nullptr) {
