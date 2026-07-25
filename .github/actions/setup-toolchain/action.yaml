@@ -33,7 +33,9 @@ runs:
     # Cache-key versions and toolchain pins all live in .github/versions.env.
     - name: Load pinned versions
       shell: bash
-      run: grep -E '^[A-Za-z_]+=' .github/versions.env >> "$GITHUB_ENV"
+      run: |
+        grep -E '^[A-Za-z_]+=' .github/versions.env >> "$GITHUB_ENV"
+        echo "CACHE_DATE=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
 
     # Runner images ship an older CMake (3.31.x); the project needs 4.1.2 to satisfy
     # cmake_minimum_required() in CMakeLists.txt.
@@ -218,14 +220,16 @@ runs:
         tar xf "$tmp/llvm.tar.xz" -C "$HOME/llvm" --strip-components=1
 
     # The remaining libraries are header/CMake projects: clone, install, cache.
-    # Bump SPP_LIBS_CACHE_VERSION in .github/versions.env to force a rebuild.
+    # The key rotates daily (CACHE_DATE) so upstream changes get picked up on
+    # their own; bump SPP_LIBS_CACHE_VERSION in .github/versions.env to force a
+    # rebuild before the next rollover.
     - name: Cache small libraries
       if: inputs.dependencies == 'true'
       id: libs-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.local
-        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-v${{ env.SPP_LIBS_CACHE_VERSION }}
+        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ env.CACHE_DATE }}-v${{ env.SPP_LIBS_CACHE_VERSION }}
 
     - name: Clone & install small libraries (cache miss)
       if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
@@ -256,6 +260,7 @@ runs:
         }
 
         cmake_install https://github.com/martinus/unordered_dense.git
+        cmake_install https://github.com/microsoft/mimalloc.git   -DMI_SECURE=OFF
         cmake_install https://github.com/nlohmann/json.git        -DJSON_BuildTests=OFF
         cmake_install https://github.com/marzer/tomlplusplus.git
         cmake_install https://github.com/Neargye/magic_enum.git   -DMAGIC_ENUM_OPT_BUILD_TESTS=OFF -DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF
