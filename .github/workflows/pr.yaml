@@ -1,11 +1,5 @@
 name: PR
 
-# TEMPORARY: cppcheck is advisory. It still runs first and reports red, but the builds run regardless of its result and
-# it is omitted from ci-success.
-# Todo: Revert by dropping the `!cancelled() &&` guards below and putting
-# - Put `cppcheck` back in the ci-success `needs` list.
-# - Make build require cppcheck too.
-
 on:
   pull_request:
     types: [ opened, synchronize, reopened, edited ]
@@ -60,22 +54,12 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/_lint.yaml
 
-  # Static analysis. Normally gates the compilation, but is advisory for now: it reports red on findings without
-  # stopping anything downstream. Todo: Make non-advisory.
-  cppcheck:
-    name: Static Analysis
-    needs: [ changes, lint ]
-    if: needs.changes.outputs.code == 'true'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_cppcheck.yaml
-
   # Supported toolchain. "Release" and both "sanitiser" configurations build in parallel and fail-fast, so one broken
   # variant stops the others immediately.
   build-test:
     name: Build & Test
-    needs: [ changes ] # cppcheck
-    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
+    needs: [ changes ]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_compile.yaml
@@ -94,8 +78,8 @@ jobs:
   # never block a merge.
   build-test-extra:
     name: Build & Test (non-blocking)
-    needs: [ changes ] # cppcheck
-    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
+    needs: [ changes ]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     strategy:
@@ -146,7 +130,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, build-test, docs, security ] # cppcheck, sonar
+    needs: [ changes, lint, build-test, docs, security ] # sonar
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: { }

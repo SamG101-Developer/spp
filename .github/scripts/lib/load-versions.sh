@@ -13,7 +13,6 @@ set -euo pipefail
   # $HOME would not expand.
   #
   #   SPP_LOCAL_PREFIX     the small CMake libraries, cached as one tree (spp-libs-*)
-  #   SPP_CPPCHECK_PREFIX  cppcheck, cached on its own by commit sha (cppcheck-*)
   #   SPP_DOXYGEN_PREFIX   doxygen, cached on its own by release version (doxygen-*)
   #   SPP_LLVM_WIN_PREFIX  the Windows clang+llvm tarball, cached by version (llvm-win-*)
   #
@@ -27,7 +26,6 @@ set -euo pipefail
   # Workflow `path:` keys deliberately keep the literal `~/...` spelling instead of these variables: actions/cache
   # expands `~` itself on every runner, whereas the value below is a POSIX path that a Windows runner would not resolve.
   echo "SPP_LOCAL_PREFIX=$HOME/.local"
-  echo "SPP_CPPCHECK_PREFIX=$HOME/.tools/cppcheck"
   echo "SPP_DOXYGEN_PREFIX=$HOME/.tools/doxygen"
   echo "SPP_LLVM_WIN_PREFIX=$HOME/llvm"
 } >> "$GITHUB_ENV"

@@ -23,6 +23,31 @@ repos:
       - id: forbid-new-submodules
       - id: no-commit-to-branch
 
+#  - repo: https://github.com/pocc/pre-commit-hooks
+#    rev: 0c2dfae267d798c9adff7b86976fa602aa0999b7
+#    hooks:
+#      - id: clang-format
+#        args: [ --style=Google ]
+#      - id: clang-tidy
+#      - id: oclint
+#        args: [-rc=TAB_SIZE=4]
+#      - id: uncrustify
+#      - id: cppcheck
+#        args:
+#          - --enable=all
+#          - --inline-suppr
+#          - --suppressions-list=.cppcheck-suppressions
+#          - --check-level=exhaustive
+#          - --std=c++26
+#          - --language=c++
+#          - --error-exitcode=1
+#          - -Iheaders
+#          - '--template={file}:{line}:{column}: {severity}: {message} [{id}]'
+#          - '--template-location={file}:{line}:{column}: note: {info}'
+#      - id: cpplint
+#      - id: include-what-you-use # No module support yet.
+#        args: [-Iheaders]
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:

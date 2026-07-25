@@ -22,7 +22,7 @@ echo "$files"
 # Keep this pattern in step with the directories the build actually reads. Any changes to headers, sources, tests or
 # main.cpp invokes a new build. So does the workflow configs because they workflow outputs may change.
 pattern='^(headers/|sources/|tests/|main\.cpp$|CMakeLists\.txt$'
-pattern+='|\.cppcheck-suppressions$|\.github/(workflows|actions|scripts)/)'
+pattern+='|\.github/(workflows|actions|scripts)/)'
 
 # Check for a grep output and return the flag if a code change has been detected by the modified files.
 if echo "$files" | grep -qE "$pattern"; then

@@ -28,12 +28,11 @@ keep="-$(date -u +%Y-%m-%d)-v${version}"
 echo "keeping spp-libs caches ending in '${keep}'"
 prune ".[] | select(.key | startswith(\"spp-libs-\")) | select(.key | endswith(\"${keep}\") | not) | [.id, .key] | @tsv"
 
-# The compiler and cppcheck caches both end in a commit sha, so only the newest entry behind a given prefix can ever be
-# hit again: the compiler caches are restored through a prefix restore-key that picks the newest match, and a cppcheck
-# sha is never requested again once its ref has moved on. Group on (ref, prefix), keep the newest of each group, delete
-# what is behind it.
-echo "keeping the newest cc- and cppcheck- cache per branch and key prefix"
-prune '[.[] | select(.key | (startswith("cc-") or startswith("cppcheck-")))]
+# The compiler caches end in a commit sha and are restored through a prefix restore-key that picks the newest match, so
+# only the newest entry behind a given prefix can ever be hit again. Group on (ref, prefix), keep the newest of each
+# group, delete what is behind it.
+echo "keeping the newest cc- cache per branch and key prefix"
+prune '[.[] | select(.key | startswith("cc-"))]
        | group_by([.ref, (.key | sub("-[^-]*$"; ""))])
        | map(sort_by(.createdAt) | .[:-1])
        | flatten | .[] | [.id, "\(.key) on \(.ref)"] | @tsv'

@@ -48,7 +48,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
-      # Set up the cache steps for the doxygen installation, same as cppcheck.
+      # Set up the cache steps for the doxygen installation, keyed on the pinned release.
       - name: Cache Doxygen
         id: doxygen-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -75,7 +75,7 @@ jobs:
       - name: Build documentation
         run: uv run python docs/generate2.py
 
-      # Unlike the cppcheck report and the test logs, an empty site is not a valid outcome: it means the build produced
+      # Unlike the test logs, an empty site is not a valid outcome: it means the build produced
       # nothing, so fail rather than upload an empty artefact.
       - name: Upload HTML artefact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
