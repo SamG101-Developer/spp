@@ -17,8 +17,6 @@ option(
     ON
 )
 if(SPP_USE_DEV_RPATH)
-    # /usr/local/lib is where libmimalloc.so.2 lives but isn't on the default loader search path (WSL), so bake it into
-    # the rpath alongside the dev toolchain libs. RPATH is a ';'-separated list.
     set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64;/usr/local/lib")
     set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 endif()
@@ -121,7 +119,15 @@ target_sources(
     PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
     PRIVATE ${SOURCE_FILES}
 )
-target_compile_features(${PROJECT_NAME}_lib PRIVATE cxx_std_26)
+
+target_compile_features(
+    ${PROJECT_NAME}_lib
+    PRIVATE $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>
+)
+target_compile_options(
+    ${PROJECT_NAME}_lib
+    PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>
+)
 target_compile_definitions(${PROJECT_NAME}_lib PRIVATE ${LLVM_DEFINITIONS_LIST})
 target_include_directories(
     ${PROJECT_NAME}_lib
