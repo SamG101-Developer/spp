@@ -2,6 +2,7 @@ import spp.cli;
 import llvm;
 import std;
 import std.compat;
+import mimalloc;
 
 #include <execinfo.h>
 

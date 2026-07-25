@@ -17,7 +17,9 @@ option(
     ON
 )
 if(SPP_USE_DEV_RPATH)
-    set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
+    # /usr/local/lib is where libmimalloc.so.2 lives but isn't on the default loader search path (WSL), so bake it into
+    # the rpath alongside the dev toolchain libs. RPATH is a ';'-separated list.
+    set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64;/usr/local/lib")
     set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 endif()
 
@@ -51,15 +53,16 @@ set(CMAKE_LINKER_TYPE LLD)
 #endif()
 
 # Find dependencies.
-find_package(Boost 1.91.0 REQUIRED) # Boost libraries
-find_package(LLVM REQUIRED CONFIG) # LLVM libraries
-find_package(unordered_dense CONFIG REQUIRED) # unordered_dense library
-find_package(tomlplusplus CONFIG REQUIRED) # tomlplusplus library
-find_package(nlohmann_json CONFIG REQUIRED) # nlohmann_json library
-find_package(magic_enum CONFIG REQUIRED) # magic_enum library
-find_package(CLI11 CONFIG REQUIRED) # CLI11 library
-find_package(GenEx CONFIG REQUIRED) # GenEx library
-find_package(ColEx CONFIG REQUIRED) # ColEx library
+find_package(Boost 1.91.0 REQUIRED)
+find_package(LLVM REQUIRED CONFIG)
+find_package(mimalloc CONFIG REQUIRED)
+find_package(unordered_dense CONFIG REQUIRED)
+find_package(tomlplusplus CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(magic_enum CONFIG REQUIRED)
+find_package(CLI11 CONFIG REQUIRED)
+find_package(GenEx CONFIG REQUIRED)
+find_package(ColEx CONFIG REQUIRED)
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 
 # Collect all source files and create the library.
@@ -133,19 +136,20 @@ target_include_directories(
 target_link_libraries(
     ${PROJECT_NAME}_lib
     PUBLIC
-        unordered_dense::unordered_dense
-        nlohmann_json::nlohmann_json
-        tomlplusplus::tomlplusplus
-        magic_enum::magic_enum
         Boost::boost
-        CLI11::CLI11
-        ColEx::ColEx
-        GenEx::GenEx
         LLVMCore
         LLVMSupport
         LLVMCodeGen
         LLVMScalarOpts
         LLVMTransformUtils
+        mimalloc
+        unordered_dense::unordered_dense
+        tomlplusplus::tomlplusplus
+        nlohmann_json::nlohmann_json
+        magic_enum::magic_enum
+        CLI11::CLI11
+        ColEx::ColEx
+        GenEx::GenEx
 )
 
 add_executable(${PROJECT_NAME} main.cpp)
