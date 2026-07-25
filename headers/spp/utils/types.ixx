@@ -39,12 +39,21 @@ namespace spp {
     SPP_EXP_CLS template <typename T>
     using EnableLocalSharedFromThis = std::enable_shared_from_this<T>;
 
+    template <typename Sig>
+    struct _IsFunctionSignature : std::false_type {};
+
+    template <typename R, typename... Args>
+    struct _IsFunctionSignature<R(Args...)> : std::true_type {};
+
+    template <typename Sig>
+    concept IsFunctionSignature = _IsFunctionSignature<Sig>::value;
+
     SPP_EXP_CLS template <typename Sig>
-    // requires std::copyable_function<Sig>
+    requires IsFunctionSignature<Sig>
     using Function = std::function<Sig>;
 
     SPP_EXP_CLS template <typename Sig>
-    // requires std::copyable_function<Sig>
+    requires IsFunctionSignature<Sig>
     using FunctionRef = std::function_ref<Sig>;
 
     SPP_EXP_FUN template <typename T, typename... Args>
@@ -317,265 +326,6 @@ private:
     underlying_type _Vec;
 };
 
-// SPP_EXP_CLS class spp::Str {
-//     using underlying_type = stringzilla::string;
-//     using char_type = underlying_type::char_type;
-//
-//     using traits_type = std::char_traits<char_type>;
-//     using value_type = char_type;
-//     using pointer = char_type *;
-//     using const_pointer = char_type const *;
-//     using reference = char_type &;
-//     using const_reference = char_type const &;
-//     using const_iterator = const_pointer;
-//     using iterator = pointer;
-//     using const_reverse_iterator = stringzilla::reversed_iterator_for<char_type const>;
-//     using reverse_iterator = stringzilla::reversed_iterator_for<char_type>;
-//     using size_type = std::size_t;
-//     using difference_type = std::ptrdiff_t;
-//
-// private:
-//     underlying_type _Str;
-// };
-
-// SPP_EXP_CLS template <typename T>
-// class spp::Shared {
-//     // Mock up of boost's local shared pointer.
-// public:
-//     template <typename U>
-//     friend class spp::Shared;
-//
-//     using element_type = T;
-//     using pointer = element_type*;
-//     using const_pointer = element_type const*;
-//
-//     Shared() noexcept = default;
-//     explicit Shared(pointer p) : _Ptr(p), _RefCount(p != nullptr ? new std::size_t(1) : nullptr) {}
-//     Shared(std::nullptr_t) noexcept : _Ptr(nullptr), _RefCount(nullptr) {}
-//
-//     Shared(Shared const &other) noexcept : _Ptr(other._Ptr), _RefCount(other._RefCount) { _AddRef(); }
-//
-//     Shared(Shared &&other) noexcept : _Ptr(other._Ptr), _RefCount(other._RefCount) {
-//         other._Ptr = nullptr;
-//         other._RefCount = nullptr;
-//     }
-//
-//     template <typename U>
-//     Shared(Shared<U> const &other) noexcept : _Ptr(static_cast<T*>(other._Ptr)), _RefCount(other._RefCount) {
-//         _AddRef();
-//     }
-//
-//     template <typename U>
-//     Shared(Shared<U> &&other) noexcept : _Ptr(other._Ptr), _RefCount(other._RefCount) {
-//         other._Ptr = nullptr;
-//         other._RefCount = nullptr;
-//     }
-//
-//     ~Shared() noexcept { _Release(); }
-//
-//     // CTOR for Unique&&
-//     template <typename U>
-//     Shared(Unique<U> &&unique) noexcept :
-//         _Ptr(unique.release()),
-//         _RefCount(_Ptr ? new std::size_t(1) : nullptr) {
-//     }
-//
-//     template <typename U>
-//     auto operator=(Unique<U> &&unique) noexcept -> Shared& {
-//         _Release();
-//         _Ptr = unique.release();
-//         _RefCount = _Ptr ? new std::size_t(1) : nullptr;
-//         return *this;
-//     }
-//
-//     auto operator=(Shared const &other) noexcept -> Shared& {
-//         if (this == &other) { return *this; }
-//         _Release();
-//         _Ptr = other._Ptr;
-//         _RefCount = other._RefCount;
-//         _AddRef();
-//         return *this;
-//     }
-//
-//     auto operator=(Shared &&other) noexcept -> Shared& {
-//         if (this == &other) { return *this; }
-//         _Release();
-//         _Ptr = other._Ptr;
-//         _RefCount = other._RefCount;
-//         other._Ptr = nullptr;
-//         other._RefCount = nullptr;
-//         return *this;
-//     }
-//
-//     auto operator=(std::nullptr_t) noexcept -> Shared& {
-//         _Release();
-//         return *this;
-//     }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto Get() const noexcept -> pointer { return _Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator*() const -> element_type& { return *_Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator->() const -> pointer { return _Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     explicit operator bool() const noexcept { return static_cast<bool>(_Ptr); }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto UseCount() const noexcept -> std::size_t { return _RefCount ? *_RefCount : 0; }
-//
-//     auto Reset(pointer p = nullptr) -> void {
-//         _Release();
-//         if (p == nullptr) { return; }
-//         _Ptr = p;
-//         _RefCount = new std::size_t(1);
-//     }
-//
-//     auto Swap(Shared &other) noexcept -> void {
-//         std::swap(_Ptr, other._Ptr);
-//         std::swap(_RefCount, other._RefCount);
-//     }
-//
-//     SPP_ATTR_NODISCARD static auto FromRefCount(std::size_t *refcount_ptr, pointer obj) -> Shared {
-//         Shared s;
-//         s._Ptr = obj;
-//         s._RefCount = refcount_ptr;
-//         if (s._RefCount) { ++(*s._RefCount); }
-//         return s;
-//     }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator==(const Shared &other) const -> bool { return _Ptr == other._Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator!=(const Shared &other) const -> bool { return _Ptr != other._Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator==(std::nullptr_t) const -> bool { return _Ptr == nullptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator!=(std::nullptr_t) const -> bool { return _Ptr != nullptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto _RefCountPtr() const noexcept -> std::size_t* {
-//         return _RefCount;
-//     }
-//
-// private:
-//     pointer _Ptr = nullptr;
-//     std::size_t *_RefCount = nullptr;
-//
-//     auto _AddRef() const noexcept -> void {
-//         if (_RefCount) { ++(*_RefCount); }
-//     }
-//
-//     auto _Release() noexcept -> void {
-//         if (_RefCount && --(*_RefCount) == 0) {
-//             delete _Ptr;
-//             delete _RefCount;
-//         }
-//
-//         _Ptr = nullptr;
-//         _RefCount = nullptr;
-//     }
-// };
-//
-// SPP_EXP_CLS template <typename T>
-// class spp::Unique {
-// public:
-//     template <typename U>
-//     friend class spp::Unique;
-//
-//     using element_type = T;
-//     using pointer = element_type*;
-//     using const_pointer = element_type const*;
-//
-//     Unique() noexcept = default;
-//     explicit Unique(const pointer p) noexcept : _Ptr(p) {}
-//     Unique(std::nullptr_t) noexcept : _Ptr(nullptr) {}
-//
-//     Unique(Unique const &) = delete;
-//     Unique(Unique &&other) noexcept : _Ptr(other._Ptr) { other._Ptr = nullptr; }
-//     ~Unique() { delete Release(); }
-//
-//     template <typename U>
-//         requires std::derived_from<U, T>
-//     Unique(Unique<U> &&other) noexcept : _Ptr(other._Ptr) { other._Ptr = nullptr; }
-//
-//     auto operator=(Unique const &) -> Unique& = delete;
-//
-//     auto operator=(Unique &&other) noexcept -> Unique& {
-//         if (this == &other) { return *this; }
-//         Reset(other.release());
-//         return *this;
-//     }
-//
-//     template <typename U>
-//     requires std::derived_from<U, T>
-//     Unique& operator=(Unique<U> &&other) noexcept {
-//         Reset(other.release());
-//         return *this;
-//     }
-//
-//     auto operator=(std::nullptr_t) noexcept -> Unique& {
-//         Reset();
-//         return *this;
-//     }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto Get() const noexcept -> pointer { return _Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator*() const -> element_type& { return *_Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator->() const -> pointer { return _Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     explicit operator bool() const noexcept { return static_cast<bool>(_Ptr); }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto Release() noexcept -> pointer { return std::exchange(_Ptr, nullptr); }
-//
-//     auto Reset(pointer p = nullptr) noexcept {
-//         delete _Ptr;
-//         _Ptr = p;
-//     }
-//
-//     auto Swap(Unique &other) noexcept { std::swap(_Ptr, other._Ptr); }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator==(const Unique &other) const -> bool { return _Ptr == other._Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator!=(const Unique &other) const -> bool { return _Ptr != other._Ptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator==(std::nullptr_t) const -> bool { return _Ptr == nullptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto operator!=(std::nullptr_t) const -> bool { return _Ptr != nullptr; }
-//
-//     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
-//     auto ToShared() && -> Shared<element_type> {
-//         // Move/Release the raw pointer into Shared (not copy).
-//         if (_Ptr == nullptr) { return nullptr; }
-//         return Shared<element_type>(Release());
-//     }
-//
-//     // Legacy
-//     // auto get() const noexcept -> const_pointer { return _Ptr; }
-//     // auto get() noexcept -> pointer { return _Ptr; }
-//
-// private:
-//     pointer _Ptr = nullptr;
-// };
-
 SPP_EXP_CLS template <typename K, typename V>
 struct spp::Pair {
     K First;
@@ -640,26 +390,3 @@ struct spp::Pair {
         return First == other.First && Second == other.Second;
     }
 };
-
-// SPP_EXP_CLS template <typename T>
-// struct spp::EnableLocalSharedFromThis {
-//     auto _SetWeakRefCount(std::size_t *refcount) noexcept -> void {
-//         _WeakRefCount = refcount;
-//     }
-//
-//     auto shared_from_this() -> Shared<T> {
-//         return Shared<T>::FromRefCount(_WeakRefCount, static_cast<T*>(this));
-//     }
-//
-//     auto shared_from_this() const -> Shared<const T> {
-//         return Shared<const T>::FromRefCount(_WeakRefCount, static_cast<const T*>(this));
-//     }
-//
-//     auto Constshared_from_this() const -> Shared<const T> {
-//         // Force "const" even from mutable context.
-//         return shared_from_this();
-//     }
-//
-// private:
-//     std::size_t *_WeakRefCount = nullptr;
-// };
