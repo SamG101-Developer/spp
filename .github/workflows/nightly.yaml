@@ -19,3 +19,45 @@ jobs:
     uses: ./.github/workflows/_security.yaml
     with:
       full-scan: true
+
+  # The dependency cache key carries the UTC date and SPP_LIBS_CACHE_VERSION (see
+  # .github/actions/setup-toolchain), so the moment either changes the previous
+  # entries never used, but stay in the cache.
+  prune-caches:
+    name: Prune Stale Caches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write  # delete the repository's Actions caches
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+
+      - name: Delete superseded dependency caches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          version="$(grep -oP '^SPP_LIBS_CACHE_VERSION=\K.*' .github/versions.env)"
+          keep="-$(date -u +%Y-%m-%d)-v${version}"
+          echo "keeping spp-libs caches ending in '${keep}'"
+
+          for _ in $(seq 10); do
+            stale="$(gh cache list --limit 100 --json id,key \
+              --jq ".[] | select(.key | startswith(\"spp-libs-\")) | select(.key | endswith(\"${keep}\") | not) | [.id, .key] | @tsv")"
+            [ -n "$stale" ] || break
+            while IFS=$'\t' read -r id key; do
+              echo "deleting ${key}"
+              gh cache delete "$id" || echo "::warning::could not delete ${key}"
+            done <<< "$stale"
+          done
