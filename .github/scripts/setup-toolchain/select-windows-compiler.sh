@@ -4,5 +4,7 @@ set -euo pipefail
 
 cc=cl
 [ "$COMPILER" = "clang-cl" ] && cc=clang-cl
-echo "CC=$cc" >> "$GITHUB_ENV"
-echo "CXX=$cc" >> "$GITHUB_ENV"
+{
+  echo "CC=$cc"
+  echo "CXX=$cc"
+} >> "$GITHUB_ENV"

@@ -3,5 +3,7 @@
 # unset.
 set -euo pipefail
 
-echo "CCACHE_DISABLE=1" >> "$GITHUB_ENV"
-echo "SPP_NO_COMPILER_LAUNCHER=1" >> "$GITHUB_ENV"
+{
+  echo "CCACHE_DISABLE=1"
+  echo "SPP_NO_COMPILER_LAUNCHER=1"
+} >> "$GITHUB_ENV"
