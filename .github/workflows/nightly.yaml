@@ -40,7 +40,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Delete superseded dependency caches
+      - name: Delete superseded caches
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -48,16 +48,25 @@ jobs:
         run: |
           set -euo pipefail
 
+          prune() {
+            local filter="$1" stale id key
+            for _ in $(seq 10); do
+              stale="$(gh cache list --limit 100 --json id,key,ref,createdAt --jq "$filter")"
+              [ -n "$stale" ] || break
+              while IFS=$'\t' read -r id key; do
+                echo "deleting ${key}"
+                gh cache delete "$id" || echo "::warning::could not delete ${key}"
+              done <<< "$stale"
+            done
+          }
+
           version="$(grep -oP '^SPP_LIBS_CACHE_VERSION=\K.*' .github/versions.env)"
           keep="-$(date -u +%Y-%m-%d)-v${version}"
           echo "keeping spp-libs caches ending in '${keep}'"
+          prune ".[] | select(.key | startswith(\"spp-libs-\")) | select(.key | endswith(\"${keep}\") | not) | [.id, .key] | @tsv"
 
-          for _ in $(seq 10); do
-            stale="$(gh cache list --limit 100 --json id,key \
-              --jq ".[] | select(.key | startswith(\"spp-libs-\")) | select(.key | endswith(\"${keep}\") | not) | [.id, .key] | @tsv")"
-            [ -n "$stale" ] || break
-            while IFS=$'\t' read -r id key; do
-              echo "deleting ${key}"
-              gh cache delete "$id" || echo "::warning::could not delete ${key}"
-            done <<< "$stale"
-          done
+          echo "keeping the newest cc- cache per branch and key prefix"
+          prune '[.[] | select(.key | startswith("cc-"))]
+                 | group_by([.ref, (.key | sub("-[^-]*$"; ""))])
+                 | map(sort_by(.createdAt) | .[:-1])
+                 | flatten | .[] | [.id, "\(.key) on \(.ref)"] | @tsv'
