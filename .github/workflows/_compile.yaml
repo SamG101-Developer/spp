@@ -110,6 +110,14 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Save build tree
+        if: always() && inputs.cache-build-tree
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: build
+          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
+
       - name: Test (gtest-parallel)
         if: inputs.run-tests
         uses: ./.github/actions/run-tests
@@ -121,13 +129,3 @@ jobs:
           name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
           path: tests/test_output
           if-no-files-found: ignore
-
-      # Saved even on failure: a half-finished tree still spares the next run every
-      # object that did compile.
-      - name: Save build tree
-        if: always() && inputs.cache-build-tree
-        continue-on-error: true
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: build
-          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
