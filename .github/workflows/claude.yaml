@@ -25,7 +25,16 @@ jobs:
       id-token: write
       actions: read
     steps:
-      - name: Checkout Repository
+      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
+      # This ensures better security in CI/CD pipeline.
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
+      # secured under the above "harden-runner" step.
+      - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 1

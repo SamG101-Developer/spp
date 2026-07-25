@@ -1,10 +1,5 @@
 name: compile
 
-# Builds one or more configurations of the project and runs the test suite against
-# each. This replaces the old `_build_and_test.yaml` + `_sanitizers.yaml` pair, which
-# were the same twenty steps with different CMake flags: a sanitizer build is just a
-# variant, so it is expressed as one.
-
 on:
   workflow_call:
     inputs:
@@ -49,6 +44,8 @@ on:
 
 jobs:
   compile:
+    # The main compile jobs handles the cmake config + build, caching and incremental build management, and running the
+    # tests against the built with upload of a failure log if any tests fail.
     name: ${{ inputs.compiler }}${{ inputs.version && format('-{0}', inputs.version) || '' }} · ${{ matrix.variant.name }}
     runs-on: ${{ inputs.os }}
     timeout-minutes: 120
@@ -67,20 +64,24 @@ jobs:
       CACHE_KEY: build-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
 
     steps:
-      # harden-runner is Linux-only; this workflow also runs on macOS and Windows.
+      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
+      # This ensures better security in CI/CD pipeline.
       - name: Harden Runner
         if: runner.os == 'Linux'
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
 
-      # fetch-depth 0 so mtimes can be reconstructed from history; without that the
-      # restored build tree below looks stale and every run is a full rebuild.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
+      # secured under the above "harden-runner" step. Use fetch-depth 0 so mtimes can be reconstructed from history,
+      # preventing full rebuild.
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/restore-mtimes
+      - name: Restore source mtimes
+        uses: ./.github/actions/restore-mtimes
 
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
@@ -89,27 +90,27 @@ jobs:
           version: ${{ inputs.version }}
           cache-key-suffix: ${{ matrix.variant.name }}
 
-      # Falls back to the newest tree for this variant on this branch, then on the
-      # base branch (post-merge warms master, so a fresh PR starts warm too).
+      # Falls back to the newest tree for this variant on this branch, then on the base branch.
       - name: Restore build tree
         if: inputs.cache-build-tree
-        id: tree
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
           key: ${{ env.CACHE_KEY }}-${{ github.sha }}
-          restore-keys: |
-            ${{ env.CACHE_KEY }}-
+          restore-keys: ${{ env.CACHE_KEY }}-
 
+      # Launch the cmake configuration steps.
       - name: Configure
         uses: ./.github/actions/configure-cmake
         with:
           build-type: ${{ matrix.variant.build-type }}
           sanitizer: ${{ matrix.variant.sanitizer }}
 
+      # Build the cmake project with the parallel flag set.
       - name: Build
         run: cmake --build build --parallel
 
+      # Save the build tree to the cache.
       - name: Save build tree
         if: always() && inputs.cache-build-tree
         continue-on-error: true
@@ -118,10 +119,12 @@ jobs:
           path: build
           key: ${{ env.CACHE_KEY }}-${{ github.sha }}
 
-      - name: Test (gtest-parallel)
+      # Launch the specialised parallel googletest script.
+      - name: Run tests
         if: inputs.run-tests
         uses: ./.github/actions/run-tests
 
+      # If any tests failed, then upload the log as an artefact so it can be downloaded for analysis.
       - name: Upload test logs on failure
         if: failure() && inputs.run-tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

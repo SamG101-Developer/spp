@@ -1,9 +1,8 @@
 name: cppcheck
 
-# Static analysis gate. Runs before anything is compiled: cppcheck parses the
-# sources on its own (system headers are deliberately not supplied - see
-# .cppcheck-suppressions), so it needs no toolchain and no dependencies, and it
-# rejects a bad change in ~2 minutes instead of after a 40-minute build.
+# Static analysis gate. Runs before anything is compiled: cppcheck parses the sources on its own (system headers are
+# deliberately not supplied - see .cppcheck-suppressions), so it needs no toolchain and no dependencies, and it rejects
+# a bad change in ~2 minutes instead of after a 40-minute build.
 
 on:
   workflow_call:
@@ -29,100 +28,61 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
+      # This ensures better security in CI/CD pipeline.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
 
-      # Nothing is compiled here, so a shallow clone is enough.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
+      # secured under the above "harden-runner" step. Nothing is compiled here, so a shallow clone is enough.
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 1
 
-      # Ubuntu ships a much older cppcheck than the one developers run locally, and
-      # findings differ between versions, so build the pinned one and cache it.
+      # Cache-key versions and the install prefixes all live in .github/versions.env and its loader.
+      - name: Load pinned versions
+        run: bash .github/scripts/lib/load-versions.sh
+
+      # Ubuntu ships a much older cppcheck than the one developers run locally, and findings differ between versions, so
+      # build the pinned one and cache it. The newer version has module support which is critical.
       - name: Resolve cppcheck commit
         id: resolve
         env:
           CPPCHECK_REF: ${{ inputs.ref }}
-        run: |
-          set -euo pipefail
-          sha=$(git ls-remote https://github.com/danmar/cppcheck.git "$CPPCHECK_REF" | cut -f1)
-          if [ -z "$sha" ]; then
-            echo "::error::cppcheck ref '$CPPCHECK_REF' does not exist"
-            exit 1
-          fi
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+        run: bash .github/scripts/cppcheck/resolve-commit.sh
 
-      - name: Restore cppcheck
+      # Restore the pre-built cppcheck binary from the previous step, should it exist. Key against the operating system
+      # and the hash.
+      - name: Cache cppcheck
         id: cppcheck-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: ~/.local/cppcheck
-          key: cppcheck-${{ runner.os }}-${{ steps.resolve.outputs.sha }}
+          # SPP_CPPCHECK_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
+          path: ~/.tools/cppcheck
+          # The ref is folded in so two callers on different refs never share an entry, and the sha stays last so the
+          # nightly pruner can group these exactly like the compiler caches.
+          key: cppcheck-${{ runner.os }}-${{ steps.resolve.outputs.ref-slug }}-v${{ env.CPPCHECK_CACHE_VERSION }}-${{ steps.resolve.outputs.sha }}
 
-      - name: Build cppcheck
+      # If the restore step didn't find the binary, then it needs to be built. Call the build script to install it,
+      # including all the cmake build steps.
+      - name: Build cppcheck (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
         env:
           CPPCHECK_SHA: ${{ steps.resolve.outputs.sha }}
-        run: |
-          set -euo pipefail
-          git clone https://github.com/danmar/cppcheck.git "${RUNNER_TEMP}/cppcheck-src"
-          git -C "${RUNNER_TEMP}/cppcheck-src" checkout --detach "$CPPCHECK_SHA"
-          # MatchCompiler roughly halves analysis time; worth it since we cache the result.
-          cmake -S "${RUNNER_TEMP}/cppcheck-src" -B "${RUNNER_TEMP}/cppcheck-build" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="$HOME/.local/cppcheck" \
-            -DUSE_MATCHCOMPILER=ON \
-            -DBUILD_TESTS=OFF \
-            -GNinja
-          cmake --build "${RUNNER_TEMP}/cppcheck-build" --parallel
-          cmake --install "${RUNNER_TEMP}/cppcheck-build"
+        run: bash .github/scripts/cppcheck/build-cppcheck.sh
 
-      - name: Analyse
+      # Call the analyse script, which triggers a full cppcheck analysis, fully configured to be as strict as possible.
+      # Errors will be saved.
+      - name: Run cppcheck
         env:
           STD: ${{ inputs.std }}
-        run: |
-          set -uo pipefail
-          export PATH="$HOME/.local/cppcheck/bin:$PATH"
-          cppcheck --version
+        run: bash .github/scripts/cppcheck/analyse.sh
 
-          # Turns each reported line into an inline PR annotation.
-          echo "::add-matcher::.github/matchers/cppcheck.json"
-
-          # --error-exitcode=1 with --enable=all makes every severity a hard failure;
-          # narrow the set here, or add an entry to .cppcheck-suppressions, to relax it.
-          set +e
-          cppcheck \
-            --enable=all \
-            --inline-suppr \
-            --suppressions-list=.cppcheck-suppressions \
-            --check-level=exhaustive \
-            --std="$STD" \
-            --language=c++ \
-            --error-exitcode=1 \
-            --template='{file}:{line}:{column}: {severity}: {message} [{id}]' \
-            --template-location='{file}:{line}:{column}: note: {info}' \
-            --output-file=cppcheck-report.txt \
-            -j $(nproc) \
-            -I headers \
-            headers sources main.cpp
-          status=$?
-          set -e
-
-          echo "::remove-matcher owner=cppcheck::"
-
-          if [ -s cppcheck-report.txt ]; then
-            {
-              echo "### Cppcheck findings"
-              echo '```'
-              head -c 60000 cppcheck-report.txt
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          exit "$status"
-
+      # For any failures in the cppcheck report, upload the errors as an artefact, which can be downloaded and analysed,
+      # in the same way as failed unit tests.
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

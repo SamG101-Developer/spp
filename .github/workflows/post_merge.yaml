@@ -1,9 +1,9 @@
-name: post-merge
+name: Post-merge
 
-# Two jobs of work: publish the site, and rebuild master so its build-tree
-# caches are fresh. The second part is important as GitHub only lets a PR
-# branch read caches from its own branch and from the base branch, so a
-# warm master is what lets a brand-new PR compile incrementally.
+# The "post-merge" workflow consists of two jobs: publish the site, and rebuild master so its build-tree caches are
+# fresh. The second part is important as GitHub only lets a PR branch read caches from its own branch and from the base
+# branch, so a warm master is what lets a brand-new PR compile incrementally. As this is post-merge, it doesn't slow
+# down the merge process or act as a blocker.
 
 on:
   push:
@@ -24,18 +24,24 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
+      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
+      # This ensures better security in CI/CD pipeline.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
 
-      # Full history so the before..sha diff below can be resolved. Nothing is built
-      # here, so the mtime pass is not needed.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
+      # secured under the above "harden-runner" step.
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
 
-      - id: filter
+      # Full history so the before..sha diff below can be resolved. Nothing is built here, so the mtime pass is not
+      # needed.
+      - name: Detect changed paths
+        id: filter
         uses: ./.github/actions/detect-changes
         with:
           base: ${{ github.event.before }}
