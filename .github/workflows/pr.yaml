@@ -42,6 +42,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # Full history so the base..head diff below can be resolved.
       - name: Detect changed paths
@@ -137,7 +138,8 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # The single required status check for branch protection. Fails if any needed job failed or was cancelled; passes when
   # they all succeeded or were skipped.

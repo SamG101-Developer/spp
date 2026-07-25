@@ -18,6 +18,16 @@ repos:
       - id: check-json
       - id: check-symlinks
       - id: destroyed-symlinks
+      - id: check-executables-have-shebangs
+      - id: check-illegal-windows-names
+      - id: forbid-new-submodules
+      - id: no-commit-to-branch
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        language_version: "1.25.7"
 
   - repo: https://github.com/BlankSpruce/gersemi-pre-commit
     rev: 0.27.7
@@ -55,3 +65,15 @@ repos:
     hooks:
       - id: yamllint
         args: [ -c, .yamllint.yaml ]
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.16.5
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages: [ pre-push ]
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.28.0
+    hooks:
+      - id: zizmor
