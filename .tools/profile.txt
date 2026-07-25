@@ -13,8 +13,9 @@ perf record -g -F 99 -o /tmp/perf.data ./cmake-build-debug-wsl-dev/spp && \
 
 TREE
 ----
-perf record -g -F 99 ./cmake-build-debug-wsl-dev/spp
-perf script | c++filt | gprof2dot -f perf --strip --wrap --node-thres=1 --edge-thres=1 | dot -Tsvg -Gsplines=ortho -Grankdir=LR -Gconcentrate=true -o graph.svg
+perf record -g -F 99 ./cmake-build-debug-wsl-dev/spp && \
+  perf script | c++filt | gprof2dot -f perf --strip --wrap --node-thres=1 --edge-thres=1 | dot -Tsvg -Gsplines=ortho -Grankdir=LR -Gconcentrate=true -o graph.svg && \
+  rm ./perf.data
 
 TEST
 ----
