@@ -5,7 +5,7 @@ export module spp.asts.sup_member_ast;
 import spp.asts.ast;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct SupMemberAst;
+  SPP_EXP_CLS struct SupMemberAst;
 }
 
 /**
@@ -15,7 +15,7 @@ namespace spp::asts {
  * @note: This is a tag-based base class.
  */
 SPP_EXP_CLS struct spp::asts::SupMemberAst {
-    SupMemberAst();
+  SupMemberAst();
 
-    virtual ~SupMemberAst();
+  virtual ~SupMemberAst();
 };

@@ -24,11 +24,11 @@ import genex;
 import llvm;
 import std;
 
-#define EXTRACT_INT_SIZE                                                                                         \
-    const auto bit_width_ast =                                                                                   \
-        scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>(); \
-    if (bit_width_ast == nullptr) { return; }                                                                    \
-    const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));
+#define EXTRACT_INT_SIZE                                                                                 \
+  const auto bit_width_ast =                                                                             \
+    scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>(); \
+  if (bit_width_ast == nullptr) { return; }                                                              \
+  const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));
 
 const spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
 const spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
@@ -44,123 +44,124 @@ const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
 const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
 
 static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
-    switch (bit_width) {
-        case 8: { return llvm::APFloatBase::Float8E4M3(); }
-        case 16: { return llvm::APFloatBase::IEEEhalf(); }
-        case 32: { return llvm::APFloatBase::IEEEsingle(); }
-        case 64: { return llvm::APFloatBase::IEEEdouble(); }
-        case 128: { return llvm::APFloatBase::IEEEquad(); }
-        default: std::unreachable();
-    }
-    std::unreachable();
+  switch (bit_width) {
+    case 8: { return llvm::APFloatBase::Float8E4M3(); }
+    case 16: { return llvm::APFloatBase::IEEEhalf(); }
+    case 32: { return llvm::APFloatBase::IEEEsingle(); }
+    case 64: { return llvm::APFloatBase::IEEEdouble(); }
+    case 128: { return llvm::APFloatBase::IEEEquad(); }
+    default: std::unreachable();
+  }
+  std::unreachable();
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
-    asts::ClassPrototypeAst const *cls_proto,
-    LLvmCtx const *ctx)
-    -> void {
-    // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
+  asts::ClassPrototypeAst const *cls_proto,
+  LLvmCtx const *ctx)
+  -> void {
+  // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
 
-    // $ types are function "mock" types (a $-type generated per function that superimposes n FunXXXs over itself). A
-    // function used as a value is one of these mocks, so it lowers to the same { fn_ptr, env_ptr } pair as the function
-    // type it extends, making it interchangeable with closures.
-    if (cls_proto->Name->IsCompilerGeneratedType()) {
-        const auto mock_sym = cls_proto->GetClsSym();
-        const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-        mock_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
-        return;
+  // $ types are function "mock" types (a $-type generated per function that superimposes n FunXXXs over itself). A
+  // function used as a value is one of these mocks, so it lowers to the same { fn_ptr, env_ptr } pair as the function
+  // type it extends, making it interchangeable with closures.
+  if (cls_proto->Name->IsCompilerGeneratedType()) {
+    const auto mock_sym = cls_proto->GetClsSym();
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    mock_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+    return;
+  }
+
+  // Get the class symbol from the current scope.
+  const auto scope = cls_proto->GetAstScope();
+  const auto cls_sym = scope->TySym;
+
+  // For compiler known types, specialize the llvm type symbols.
+  const auto parts = scope->Ancestors()
+    | genex::views::drop_last(1)
+    | genex::views::transform([](auto *x) { return x->NameAsString(); })
+    | genex::views::reverse
+    | genex::to<Vec>();
+
+  // Lower S++ "Void" to the llvm "void" type.
+  if (parts == kVoidParts) {
+    cls_sym->LlvmInfo->LlvmType = llvm::Type::getVoidTy(*ctx->Context);
+    return;
+  }
+
+  // Lower S++ "Bool" to the llvm "i1" type.
+  if (parts == kBoolParts) {
+    cls_sym->LlvmInfo->LlvmType = llvm::Type::getInt1Ty(*ctx->Context);
+    return;
+  }
+
+  // Lower S++ "StrView" to the llvm "i8*" type.
+  if (parts == kStrViewParts) {
+    cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
+    return;
+  }
+
+  // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
+  if (parts == kSizedIntegerParts) {
+    EXTRACT_INT_SIZE;
+    cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
+    return;
+  }
+
+  // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
+  if (parts == kSizedFloatParts) {
+    EXTRACT_INT_SIZE;
+    cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(w));
+    return;
+  }
+
+  // Lower S++ Arr" to the llvm "[T * n]" type.
+  if (parts == kArrParts) {
+    const auto gn_arg_group = cls_sym->FqName()->LastTypePart()->GnArgGroup.get();
+    const auto length_ast = gn_arg_group->CompAt("n")->Val->To<asts::IntegerLiteralAst>();
+    const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val.get());
+    if (length_ast != nullptr and elem_sym != nullptr) {
+      if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
+        RegisterLlvmTypeInfo(elem_sym->Type, ctx);
+      }
+      if (const auto elem_llvm_type = GetLlvmType(*elem_sym, ctx); elem_llvm_type != nullptr) {
+        cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, std::stoull(length_ast->Val->TokenData));
+      }
     }
+    return;
+  }
 
-    // Get the class symbol from the current scope.
-    const auto scope = cls_proto->GetAstScope();
-    const auto cls_sym = scope->TySym;
+  // Lower the function types to a { fn_ptr, env_ptr } pair (a "fat pointer": the function code plus a pointer to its
+  // captured environment; the env pointer is null for capture-less functions). All three share this layout, so plain
+  // functions and closures are interchangeable.
+  if (parts == kFunMovParts or parts == kFunMutParts or parts == kFunRefParts) {
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+    return;
+  }
 
-    // For compiler known types, specialize the llvm type symbols.
-    const auto parts = scope->Ancestors()
-        | genex::views::drop_last(1)
-        | genex::views::transform([](auto *x) { return x->NameAsString(); })
-        | genex::views::reverse
-        | genex::to<Vec>();
+  // Lower the generator types to a { resume_fn_ptr, env_ptr } pair (a "fat pointer": the coroutine resume function
+  // plus a pointer to its frame/environment, which lives on the caller's stack - no heap allocation).
+  if (parts == kGenParts or parts == kGenOnceParts or parts == kGeneratedParts) {
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+    return;
+  }
 
-    // Lower S++ "Void" to the llvm "void" type.
-    if (parts == kVoidParts) {
-        cls_sym->LlvmInfo->LlvmType = llvm::Type::getVoidTy(*ctx->Context);
-        return;
-    }
+  // If the type already exists in LLVM, skip.
+  if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->Context, mangle::mangle_type_name(*cls_sym));
+    llvm_type != nullptr) {
+    cls_sym->LlvmInfo->LlvmType = llvm_type;
+    return;
+  }
 
-    // Lower S++ "Bool" to the llvm "i1" type.
-    if (parts == kBoolParts) {
-        cls_sym->LlvmInfo->LlvmType = llvm::Type::getInt1Ty(*ctx->Context);
-        return;
-    }
-
-    // Lower S++ "StrView" to the llvm "i8*" type.
-    if (parts == kStrViewParts) {
-        cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
-        return;
-    }
-
-    // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
-    if (parts == kSizedIntegerParts) {
-        EXTRACT_INT_SIZE;
-        cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
-        return;
-    }
-
-    // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
-    if (parts == kSizedFloatParts) {
-        EXTRACT_INT_SIZE;
-        cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(w));
-        return;
-    }
-
-    // Lower S++ Arr" to the llvm "[T * n]" type.
-    if (parts == kArrParts) {
-        const auto gn_arg_group = cls_sym->FqName()->LastTypePart()->GnArgGroup.get();
-        const auto length_ast = gn_arg_group->CompAt("n")->Val->To<asts::IntegerLiteralAst>();
-        const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val.get());
-        if (length_ast != nullptr and elem_sym != nullptr) {
-            if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
-                RegisterLlvmTypeInfo(elem_sym->Type, ctx);
-            }
-            if (const auto elem_llvm_type = GetLlvmType(*elem_sym, ctx); elem_llvm_type != nullptr) {
-                cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, std::stoull(length_ast->Val->TokenData));
-            }
-        }
-        return;
-    }
-
-    // Lower the function types to a { fn_ptr, env_ptr } pair (a "fat pointer": the function code plus a pointer to its
-    // captured environment; the env pointer is null for capture-less functions). All three share this layout, so plain
-    // functions and closures are interchangeable.
-    if (parts == kFunMovParts or parts == kFunMutParts or parts == kFunRefParts) {
-        const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-        cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
-        return;
-    }
-
-    // Lower the generator types to a { resume_fn_ptr, env_ptr } pair (a "fat pointer": the coroutine resume function
-    // plus a pointer to its frame/environment, which lives on the caller's stack - no heap allocation).
-    if (parts == kGenParts or parts == kGenOnceParts or parts == kGeneratedParts) {
-        const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-        cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
-        return;
-    }
-
-    // If the type already exists in LLVM, skip.
-    if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->Context, mangle::mangle_type_name(*cls_sym)); llvm_type != nullptr) {
-        cls_sym->LlvmInfo->LlvmType = llvm_type;
-        return;
-    }
-
-    // Empty struct, will fill in stage_10 when all attributes' types have been generated.
-    cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
+  // Empty struct, will fill in stage_10 when all attributes' types have been generated.
+  cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
 }
 
 auto spp::codegen::GetLlvmType(
-    analyse::scopes::TypeSymbol const &type_sym,
-    LLvmCtx const *ctx)
-    -> llvm::Type* {
-    // Either return the llvm type bound to the symbol, or a pointer for borrows.
-    return type_sym.Convention != nullptr ? llvm::PointerType::get(*ctx->Context, 0) : type_sym.LlvmInfo->LlvmType;
+  analyse::scopes::TypeSymbol const &type_sym,
+  LLvmCtx const *ctx)
+  -> llvm::Type* {
+  // Either return the llvm type bound to the symbol, or a pointer for borrows.
+  return type_sym.Convention != nullptr ? llvm::PointerType::get(*ctx->Context, 0) : type_sym.LlvmInfo->LlvmType;
 }

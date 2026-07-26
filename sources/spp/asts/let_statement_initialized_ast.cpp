@@ -20,145 +20,149 @@ import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
-    decltype(TokLet) &&tok_let,
-    decltype(Var) &&var,
-    decltype(Type) type,
-    decltype(TokAssign) &&tok_assign,
-    decltype(Val) &&val) :
-    TokLet(std::move(tok_let)),
-    Var(std::move(var)),
-    Type(std::move(type)),
-    TokAssign(std::move(tok_assign)),
-    Val(std::move(val)) {
-    //
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
-    Source.OriginalType = AstClone(Type);
+  decltype(TokLet) &&tok_let,
+  decltype(Var) &&var,
+  decltype(Type) type,
+  decltype(TokAssign) &&tok_assign,
+  decltype(Val) &&val) :
+  TokLet(std::move(tok_let)),
+  Var(std::move(var)),
+  Type(std::move(type)),
+  TokAssign(std::move(tok_assign)),
+  Val(std::move(val)) {
+  //
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
+  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::LetStatementInitializedAst::~LetStatementInitializedAst() = default;
 
 auto spp::asts::LetStatementInitializedAst::PosStart() const
-    -> std::size_t {
-    // Use the "let" token.
-    return TokLet->PosStart();
+  -> std::size_t {
+  // Use the "let" token.
+  return TokLet->PosStart();
 }
 
 auto spp::asts::LetStatementInitializedAst::PosEnd() const
-    -> std::size_t {
-    // Use the value.
-    return Val->PosEnd();
+  -> std::size_t {
+  // Use the value.
+  return Val->PosEnd();
 }
 
 auto spp::asts::LetStatementInitializedAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<LetStatementInitializedAst>(
-        AstClone(TokLet), AstClone(Var), AstClone(Type), AstClone(TokAssign), AstClone(Val));
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  return MakeUnique<LetStatementInitializedAst>(
+    AstClone(TokLet),
+    AstClone(Var),
+    AstClone(Type),
+    AstClone(TokAssign),
+    AstClone(Val));
 }
 
 auto spp::asts::LetStatementInitializedAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(TokLet).append(" ");
-    SPP_STRING_APPEND(Var);
-    SPP_STRING_APPEND(Type).append(" ");
-    SPP_STRING_APPEND(TokAssign).append(" ");
-    SPP_STRING_APPEND(Val);
-    SPP_STRING_END;
+  -> Str {
+  SPP_STRING_START;
+  SPP_STRING_APPEND(TokLet).append(" ");
+  SPP_STRING_APPEND(Var);
+  SPP_STRING_APPEND(Type).append(" ");
+  SPP_STRING_APPEND(TokAssign).append(" ");
+  SPP_STRING_APPEND(Val);
+  SPP_STRING_END;
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
-    using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
-    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-    using analyse::utils::type_utils::TypeEq;
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
+  using analyse::errors::SppInvalidPrimaryExpressionError;
+  using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
+  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  using analyse::utils::type_utils::TypeEq;
 
-    // An explicit type can only be applied if the left-hand-side is a single identifier.
-    RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
-        Type != nullptr and Var->To<LocalVariableSingleIdentifierAst>() == nullptr,
-        {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
+  // An explicit type can only be applied if the left-hand-side is a single identifier.
+  RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
+    Type != nullptr and Var->To<LocalVariableSingleIdentifierAst>() == nullptr,
+    {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
 
-    // Analyse the type if it has been given.
-    if (Type != nullptr) {
-        Type->Stage7_AnalyseSemantics(sm, meta);
-        Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
-    }
+  // Analyse the type if it has been given.
+  if (Type != nullptr) {
+    Type->Stage7_AnalyseSemantics(sm, meta);
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  }
 
-    // Add the type into the return type overload resolver.
-    meta->Save();
-    meta->ReturnTypeOverloadResolverType = Type;
+  // Add the type into the return type overload resolver.
+  meta->Save();
+  meta->ReturnTypeOverloadResolverType = Type;
 
-    // Check the value is a valid expression type.
-    Val->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Val, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+  // Check the value is a valid expression type.
+  Val->Stage7_AnalyseSemantics(sm, meta);
+  RaiseIf<SppInvalidPrimaryExpressionError>(
+    not IsPrimaryExprTypeValid(*Val, *sm),
+    {sm->CurrentScope}, ERR_ARGS(*Val.get()));
 
-    meta->AssignmentTarget = Var->ExtractName();
+  meta->AssignmentTarget = Var->ExtractName();
 
-    // Ensure the value's type matches the type (if given), including variant matching.
-    if (Type != nullptr) {
-        meta->AssignmentTargetType = Type;
-        const auto val_type = Val->InferType(sm, meta);
-        RaiseIf<analyse::errors::SppTypeMismatchError>(
-            not TypeEq(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Val, *val_type));
-    }
+  // Ensure the value's type matches the type (if given), including variant matching.
+  if (Type != nullptr) {
+    meta->AssignmentTargetType = Type;
+    const auto val_type = Val->InferType(sm, meta);
+    RaiseIf<analyse::errors::SppTypeMismatchError>(
+      not TypeEq(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
+      {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Val, *val_type));
+  }
 
-    meta->LetStatementExplicitType = Type;
-    meta->LetStatementValue = Val.get();
-    Var->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
+  meta->LetStatementExplicitType = Type;
+  meta->LetStatementValue = Val.get();
+  Var->Stage7_AnalyseSemantics(sm, meta);
+  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
-    meta->Save();
-    meta->AssignmentTarget = Var->ExtractName();
-    meta->LetStatementExplicitType = Type;
-    meta->LetStatementValue = Val.get();
-    Var->Stage8_CheckMemory(sm, meta);
-    meta->Restore();
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
+  meta->Save();
+  meta->AssignmentTarget = Var->ExtractName();
+  meta->LetStatementExplicitType = Type;
+  meta->LetStatementValue = Val.get();
+  Var->Stage8_CheckMemory(sm, meta);
+  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Comptime resolve the value.
-    Val->Stage9_CompTimeResolve(sm, meta);
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Comptime resolve the value.
+  Val->Stage9_CompTimeResolve(sm, meta);
 
-    // Assign the comptime value to the variable.
-    meta->Save();
-    meta->AssignmentTarget = Var->ExtractName();
-    meta->LetStatementExplicitType = Type;
-    meta->LetStatementValue = Val.get();
-    Var->Stage9_CompTimeResolve(sm, meta);
-    meta->Restore();
+  // Assign the comptime value to the variable.
+  meta->Save();
+  meta->AssignmentTarget = Var->ExtractName();
+  meta->LetStatementExplicitType = Type;
+  meta->LetStatementValue = Val.get();
+  Var->Stage9_CompTimeResolve(sm, meta);
+  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-    // Delegate the code generation to the variable, after setting up the meta.
-    meta->Save();
-    meta->AssignmentTarget = Var->ExtractName();
-    meta->AssignmentTargetType = Type ? Type : Val->InferType(sm, meta);
-    meta->LetStatementExplicitType = Type ? Type : Val->InferType(sm, meta);
-    meta->LetStatementValue = Val.get();
-    const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
-    meta->Restore();
-    return alloca;
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LLvmCtx *ctx)
+  -> llvm::Value* {
+  // Delegate the code generation to the variable, after setting up the meta.
+  meta->Save();
+  meta->AssignmentTarget = Var->ExtractName();
+  meta->AssignmentTargetType = Type ? Type : Val->InferType(sm, meta);
+  meta->LetStatementExplicitType = Type ? Type : Val->InferType(sm, meta);
+  meta->LetStatementValue = Val.get();
+  const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
+  meta->Restore();
+  return alloca;
 }
 
 SPP_MOD_END

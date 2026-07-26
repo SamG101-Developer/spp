@@ -9,26 +9,25 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct FunctionImplementationLoweredAst;
+  SPP_EXP_CLS struct FunctionImplementationLoweredAst;
 }
-
 
 SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final : FunctionImplementationAst {
 private:
-    Str _ScopePtr;
+  Str _ScopePtr;
 
 public:
-    static auto NewEmpty() -> Unique<FunctionImplementationLoweredAst>;
+  static auto NewEmpty() -> Unique<FunctionImplementationLoweredAst>;
 
-    using FunctionImplementationAst::FunctionImplementationAst;
+  using FunctionImplementationAst::FunctionImplementationAst;
 
-    ~FunctionImplementationLoweredAst() override;
+  ~FunctionImplementationLoweredAst() override;
 
-    SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
+  SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto SetScopePtr(Str const &scope_str) -> void;
+  auto SetScopePtr(Str const &scope_str) -> void;
 };

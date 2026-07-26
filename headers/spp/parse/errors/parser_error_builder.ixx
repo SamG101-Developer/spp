@@ -9,42 +9,46 @@ import spp.utils.types;
 import std;
 
 namespace spp::parse::errors {
-    SPP_EXP_CLS template <typename T>
-    struct SyntacticErrorBuilder;
+  SPP_EXP_CLS
+  template <typename T>
+  struct SyntacticErrorBuilder;
 }
 
 namespace spp::parse {
-    SPP_EXP_CLS class ParserSpp;
+  SPP_EXP_CLS class ParserSpp;
 }
 
-SPP_EXP_CLS template <typename T>
-struct SPP_ATTR_COLD spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
-    std::size_t Pos = 0;
+SPP_EXP_CLS
+template <typename T>
+struct SPP_ATTR_COLD
 
-    std::set<lex::SppTokenType> Tokens = {};
+  spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
+  std::size_t Pos = 0;
 
-    SyntacticErrorBuilder() = default;
+  std::set<lex::SppTokenType> Tokens = {};
 
-    ~SyntacticErrorBuilder() override = default;
+  SyntacticErrorBuilder() = default;
 
-    SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
-        using namespace std::string_literals;
+  ~SyntacticErrorBuilder() override = default;
 
-        // auto token_set_str = tokens
-        //     | genex::views::transform(&lex::tok_to_string)
-        //     | genex::views::intersperse(", "s)
-        //     | genex::views::join
-        //     | genex::to<Str>();
-        auto token_set_str = Str();
-        token_set_str = "'" + token_set_str + "'";
+  SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
+    using namespace std::string_literals;
 
-        // Replace the "£" with the string tokens.
-        auto err_msg = this->_ErrObj->header;
-        err_msg.replace(err_msg.find("£"), 1, std::move(token_set_str));
-        err_msg = this->_ErrFormatters[0]->ErrorRawPos(Pos, 1, std::move(err_msg), "Syntax error");
-        std::cout << err_msg << std::endl;
-        this->_ErrObj->messages = {err_msg};
+    // auto token_set_str = tokens
+    //     | genex::views::transform(&lex::tok_to_string)
+    //     | genex::views::intersperse(", "s)
+    //     | genex::views::join
+    //     | genex::to<Str>();
+    auto token_set_str = Str();
+    token_set_str = "'" + token_set_str + "'";
 
-        utils::errors::AbstractErrorBuilder<T>::Raise();
-    }
+    // Replace the "£" with the string tokens.
+    auto err_msg = this->_ErrObj->header;
+    err_msg.replace(err_msg.find("£"), 1, std::move(token_set_str));
+    err_msg = this->_ErrFormatters[0]->ErrorRawPos(Pos, 1, std::move(err_msg), "Syntax error");
+    std::cout << err_msg << std::endl;
+    this->_ErrObj->messages = {err_msg};
+
+    utils::errors::AbstractErrorBuilder<T>::Raise();
+  }
 };

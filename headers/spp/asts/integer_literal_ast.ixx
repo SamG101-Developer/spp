@@ -11,61 +11,63 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct IntegerLiteralAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct IntegerLiteralAst;
+  SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
-    SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX
 
-    /**
-     * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
-     * literal. No sign means the integer is positive by default.
-     */
-    Unique<TokenAst> TokSign;
+  /**
+   * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
+   * literal. No sign means the integer is positive by default.
+   */
+  Unique<TokenAst> TokSign;
 
-    /**
-     * The token that represents the integer literal. This is the actual integer value in the source code.
-     */
-    Unique<TokenAst> Val;
+  /**
+   * The token that represents the integer literal. This is the actual integer value in the source code.
+   */
+  Unique<TokenAst> Val;
 
-    /**
-     * The raw type of the integer literal. This is from the postfix tag to the literal, like "i32" or "u64".
-     */
-    Str Type;
+  /**
+   * The raw type of the integer literal. This is from the postfix tag to the literal, like "i32" or "u64".
+   */
+  Str Type;
 
-    /**
-     * Construct the IntegerLiteralAst with the arguments matching the members.
-     * @param[in] tok_sign The optionally provided sign token.
-     * @param[in] val The token that represents the integer literal.
-     * @param[in] type The type of the integer literal.
-     */
-    IntegerLiteralAst(
-        decltype(TokSign) &&tok_sign,
-        decltype(Val) &&val,
-        Str &&type);
+  /**
+   * Construct the IntegerLiteralAst with the arguments matching the members.
+   * @param[in] tok_sign The optionally provided sign token.
+   * @param[in] val The token that represents the integer literal.
+   * @param[in] type The type of the integer literal.
+   */
+  IntegerLiteralAst(
+    decltype(TokSign) &&tok_sign,
+    decltype(Val) &&val,
+    Str &&type);
 
-    ~IntegerLiteralAst() override;
+  ~IntegerLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto EqualsIntegerLiteral(IntegerLiteralAst const &) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto EqualsIntegerLiteral(
+    IntegerLiteralAst const &) const
+    -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(
+    ExpressionAst const &other) const
+    -> Ordering override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    template <typename T> requires std::integral<T>
-    auto CppVal() const -> T;
+  template <typename T> requires std::integral<T>
+  auto CppVal() const -> T;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IntegerLiteralAst)

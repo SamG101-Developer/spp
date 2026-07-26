@@ -9,21 +9,21 @@ spp::asts::TypePostfixExpressionOperatorAst::TypePostfixExpressionOperatorAst() 
 spp::asts::TypePostfixExpressionOperatorAst::~TypePostfixExpressionOperatorAst() = default;
 
 auto spp::asts::TypePostfixExpressionOperatorAst::operator<=>(
-    TypePostfixExpressionOperatorAst const &that) const
-    -> Ordering {
-    return Equals(that);
+  TypePostfixExpressionOperatorAst const &that) const
+  -> Ordering {
+  return Equals(that);
 }
 
 auto spp::asts::TypePostfixExpressionOperatorAst::operator==(
-    TypePostfixExpressionOperatorAst const &that) const
-    -> bool {
-    return Equals(that) == Ordering::equal;
+  TypePostfixExpressionOperatorAst const &that) const
+  -> bool {
+  return Equals(that) == Ordering::equal;
 }
 
 auto spp::asts::TypePostfixExpressionOperatorAst::EqualsNestedType(
-    TypePostfixExpressionOperatorNestedTypeAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  TypePostfixExpressionOperatorNestedTypeAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 SPP_MOD_END

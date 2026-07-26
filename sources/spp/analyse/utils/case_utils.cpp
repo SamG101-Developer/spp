@@ -31,149 +31,155 @@ import std;
 
 template <typename T>
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsCore(
-    Vec<asts::CasePatternVariantAst*> const &elems,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta,
-    std::copyable_function<T(asts::Ast *)> &&mapper)
-    -> Vec<T> {
-    auto transformed = Vec<T>();
-    transformed.reserve(elems.Len());
+  Vec<asts::CasePatternVariantAst*> const &elems,
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta,
+  std::copyable_function<T(asts::Ast *)> &&mapper)
+  -> Vec<T> {
+  auto transformed = Vec<T>();
+  transformed.reserve(elems.Len());
 
-    if (not elems.IsEmpty() and elems[0]->To<asts::CasePatternVariantExpressionAst>()) {
-        // For expression patterns, just generate the expression once.
-        const auto expr_part = elems[0]->To<asts::CasePatternVariantExpressionAst>();
-        auto transform = mapper(expr_part->Expr.get());
-        transformed.EmplaceBack(std::move(transform));
-        return transformed;
-    }
-
-    for (auto const &[i, part] : elems | genex::views::enumerate) {
-        // For literals and expressions, generate the equality checks.
-        if (part->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
-            // Generate the extraction on the condition for this part, like "cond.0".
-            auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(i));
-            auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-            auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-            // Turn the "literal part" into a function argument.
-            auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
-            auto eq_arg_val = asts::AstClone(part->To<asts::CasePatternVariantLiteralAst>()->Literal->To<asts::ExpressionAst>());
-            auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
-
-            // Create the ".eq" part.
-            auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
-            auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(eq_field_name));
-            auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
-
-            // Make the ".eq" part callable, as ".eq()" (no arguments right now)
-            auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-            eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
-            const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
-            const auto current_scope = sm->CurrentScope;
-            const auto current_scope_iter = sm->CurrentIterator();
-            eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
-            sm->Reset(current_scope, current_scope_iter);
-
-            // Generate the equality check.
-            auto transform = mapper(eq_call_expr.get());
-            transformed.EmplaceBack(std::move(transform));
-        }
-
-        // For named attribute bindings whose value is a literal, like "field=literal".
-        else if (const auto cast_attr = part->To<asts::CasePatternVariantDestructureAttributeBindingAst>();
-            cast_attr != nullptr and cast_attr->Val->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
-            const auto literal_part = cast_attr->Val->To<asts::CasePatternVariantLiteralAst>();
-
-            // Generate the extraction on the condition by attribute name, like "cond.field".
-            auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, asts::AstCloneShared(cast_attr->Name));
-            auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-            // Turn the "literal part" into a function argument.
-            auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
-            auto eq_arg_val = asts::AstClone(literal_part->Literal->To<asts::ExpressionAst>());
-            auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
-
-            // Create the ".eq" part.
-            auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
-            auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(eq_field_name));
-            auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
-
-            // Make the ".eq" part callable, as ".eq()"
-            auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-            eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
-            const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
-            const auto current_scope = sm->CurrentScope;
-            const auto current_scope_iter = sm->CurrentIterator();
-            eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
-            sm->Reset(current_scope, current_scope_iter);
-
-            // Generate the equality check.
-            auto transform = mapper(eq_call_expr.get());
-            transformed.EmplaceBack(std::move(transform));
-        }
-
-        // For nested objects (array, tuple, object)
-        else if (
-            part->To<asts::CasePatternVariantDestructureArrayAst>() != nullptr or
-            part->To<asts::CasePatternVariantDestructureTupleAst>() != nullptr or
-            part->To<asts::CasePatternVariantDestructureObjectAst>() != nullptr) {
-            // Generate the extraction on the condition for this part, like "cond.0".
-            auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(i));
-            auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-            auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-            // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
-            meta->Save();
-            meta->CaseCondition = pf_expr.get();
-
-            // Combine the result.
-            auto transform = mapper(part);
-            transformed.EmplaceBack(std::move(transform));
-            meta->Restore();
-        }
-    }
-
+  if (not elems.IsEmpty() and elems[0]->To<asts::CasePatternVariantExpressionAst>()) {
+    // For expression patterns, just generate the expression once.
+    const auto expr_part = elems[0]->To<asts::CasePatternVariantExpressionAst>();
+    auto transform = mapper(expr_part->Expr.get());
+    transformed.EmplaceBack(std::move(transform));
     return transformed;
+  }
+
+  for (auto const &[i, part] : elems | genex::views::enumerate) {
+    // For literals and expressions, generate the equality checks.
+    if (part->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
+      // Generate the extraction on the condition for this part, like "cond.0".
+      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(i));
+      auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+      auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
+
+      // Turn the "literal part" into a function argument.
+      auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
+      auto eq_arg_val = asts::AstClone(
+        part->To<asts::CasePatternVariantLiteralAst>()->Literal->To<asts::ExpressionAst>());
+      auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
+                                                                        std::move(eq_arg_val));
+
+      // Create the ".eq" part.
+      auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
+      auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
+        nullptr, std::move(eq_field_name));
+      auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
+
+      // Make the ".eq" part callable, as ".eq()" (no arguments right now)
+      auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+      eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
+      const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
+
+      const auto current_scope = sm->CurrentScope;
+      const auto current_scope_iter = sm->CurrentIterator();
+      eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
+      sm->Reset(current_scope, current_scope_iter);
+
+      // Generate the equality check.
+      auto transform = mapper(eq_call_expr.get());
+      transformed.EmplaceBack(std::move(transform));
+    }
+
+    // For named attribute bindings whose value is a literal, like "field=literal".
+    else if (const auto cast_attr = part->To<asts::CasePatternVariantDestructureAttributeBindingAst>();
+      cast_attr != nullptr and cast_attr->Val->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
+      const auto literal_part = cast_attr->Val->To<asts::CasePatternVariantLiteralAst>();
+
+      // Generate the extraction on the condition by attribute name, like "cond.field".
+      auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
+        nullptr, asts::AstCloneShared(cast_attr->Name));
+      auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
+
+      // Turn the "literal part" into a function argument.
+      auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
+      auto eq_arg_val = asts::AstClone(literal_part->Literal->To<asts::ExpressionAst>());
+      auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
+                                                                        std::move(eq_arg_val));
+
+      // Create the ".eq" part.
+      auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
+      auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
+        nullptr, std::move(eq_field_name));
+      auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
+
+      // Make the ".eq" part callable, as ".eq()"
+      auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+      eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
+      const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
+
+      const auto current_scope = sm->CurrentScope;
+      const auto current_scope_iter = sm->CurrentIterator();
+      eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
+      sm->Reset(current_scope, current_scope_iter);
+
+      // Generate the equality check.
+      auto transform = mapper(eq_call_expr.get());
+      transformed.EmplaceBack(std::move(transform));
+    }
+
+    // For nested objects (array, tuple, object)
+    else if (
+      part->To<asts::CasePatternVariantDestructureArrayAst>() != nullptr or
+      part->To<asts::CasePatternVariantDestructureTupleAst>() != nullptr or
+      part->To<asts::CasePatternVariantDestructureObjectAst>() != nullptr) {
+      // Generate the extraction on the condition for this part, like "cond.0".
+      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(i));
+      auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+      auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
+
+      // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
+      meta->Save();
+      meta->CaseCondition = pf_expr.get();
+
+      // Combine the result.
+      auto transform = mapper(part);
+      transformed.EmplaceBack(std::move(transform));
+      meta->Restore();
+    }
+  }
+
+  return transformed;
 }
 
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
-    Vec<asts::CasePatternVariantAst*> const &elems,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> Vec<llvm::Value*> {
-    // Get the expression and map then to LLVM values.
-    std::copyable_function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {
-        return x->Stage11_CodeGen(sm, meta, ctx);
-    };
+  Vec<asts::CasePatternVariantAst*> const &elems,
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta,
+  codegen::LLvmCtx *ctx)
+  -> Vec<llvm::Value*> {
+  // Get the expression and map then to LLVM values.
+  std::copyable_function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {
+    return x->Stage11_CodeGen(sm, meta, ctx);
+  };
 
-    auto asts = CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(map));
-    return asts;
+  auto asts = CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(map));
+  return asts;
 }
 
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime(
-    Vec<asts::CasePatternVariantAst*> const &elems,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Vec<Unique<asts::ExpressionAst>> {
-    // Get the expression and map then to Comptime values.
-    std::copyable_function<Unique<asts::ExpressionAst>(asts::Ast *)> map = [&](asts::Ast *x) {
-        x->Stage9_CompTimeResolve(sm, meta);
-        return std::move(meta->CmpResult);
-    };
+  Vec<asts::CasePatternVariantAst*> const &elems,
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta)
+  -> Vec<Unique<asts::ExpressionAst>> {
+  // Get the expression and map then to Comptime values.
+  std::copyable_function<Unique<asts::ExpressionAst>(asts::Ast *)> map = [&](asts::Ast *x) {
+    x->Stage9_CompTimeResolve(sm, meta);
+    return std::move(meta->CmpResult);
+  };
 
-    auto asts = CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(map));
-    return asts;
+  auto asts = CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(map));
+  return asts;
 }
 
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
-    Vec<asts::CasePatternVariantAst*> const &elems,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void {
-    //
-    std::copyable_function<std::monostate(asts::Ast *)> noop = [](asts::Ast *) { return std::monostate{}; };
-    CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(noop));
+  Vec<asts::CasePatternVariantAst*> const &elems,
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta)
+  -> void {
+  //
+  std::copyable_function<std::monostate(asts::Ast *)> noop = [](asts::Ast *) { return std::monostate{}; };
+  CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(noop));
 }

@@ -5,9 +5,8 @@ export module spp.asts.class_member_ast;
 import spp.asts.ast;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ClassMemberAst;
+  SPP_EXP_CLS struct ClassMemberAst;
 }
-
 
 /**
  * The ClassMemberAst class is the base class for all members of a class in the abstract syntax tree. This is only
@@ -15,7 +14,7 @@ namespace spp::asts {
  * @note: This is a tag-based base class.
  */
 SPP_EXP_CLS struct spp::asts::ClassMemberAst {
-    ClassMemberAst();
+  ClassMemberAst();
 
-    virtual ~ClassMemberAst();
+  virtual ~ClassMemberAst();
 };

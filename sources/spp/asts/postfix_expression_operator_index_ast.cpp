@@ -31,109 +31,111 @@ import genex;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorIndexAst::PostfixExpressionOperatorIndexAst(
-    Unique<TokenAst> &&tok_l,
-    Unique<TokenAst> &&tok_mut,
-    Unique<ExpressionAst> &&expr,
-    Unique<TokenAst> &&tok_r) :
-    TokL(std::move(tok_l)),
-    TokMut(std::move(tok_mut)),
-    Expr(std::move(expr)),
-    TokR(std::move(tok_r)),
-    _MappedFunc(nullptr) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
+  Unique<TokenAst> &&tok_l,
+  Unique<TokenAst> &&tok_mut,
+  Unique<ExpressionAst> &&expr,
+  Unique<TokenAst> &&tok_r) :
+  TokL(std::move(tok_l)),
+  TokMut(std::move(tok_mut)),
+  Expr(std::move(expr)),
+  TokR(std::move(tok_r)),
+  _MappedFunc(nullptr) {
 }
 
 spp::asts::PostfixExpressionOperatorIndexAst::~PostfixExpressionOperatorIndexAst() = default;
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::PosStart() const
-    -> std::size_t {
-    // Use the "[" token.
-    return TokL->PosStart();
+  -> std::size_t {
+  // Use the "[" token.
+  return TokL->PosStart();
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::PosEnd() const
-    -> std::size_t {
-    // Use the "]" token.
-    return TokR->PosEnd();
+  -> std::size_t {
+  // Use the "]" token.
+  return TokR->PosEnd();
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    auto ast = MakeUnique<PostfixExpressionOperatorIndexAst>(
-        AstClone(TokL), AstClone(TokMut), AstClone(Expr), AstClone(TokR));
-    ast->_MappedFunc = _MappedFunc;
-    return ast;
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  auto ast = MakeUnique<PostfixExpressionOperatorIndexAst>(
+    AstClone(TokL),
+    AstClone(TokMut),
+    AstClone(Expr),
+    AstClone(TokR));
+  ast->_MappedFunc = _MappedFunc;
+  return ast;
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    if (_MappedFunc != nullptr) {
-        SPP_STRING_APPEND(_MappedFunc->Op);
-        SPP_STRING_END;
-    }
-    SPP_STRING_APPEND(TokL);
-    SPP_STRING_APPEND(TokMut).append(TokMut ? " " : "");
-    SPP_STRING_APPEND(Expr);
-    SPP_STRING_APPEND(TokR);
+  -> Str {
+  SPP_STRING_START;
+  if (_MappedFunc != nullptr) {
+    SPP_STRING_APPEND(_MappedFunc->Op);
     SPP_STRING_END;
+  }
+  SPP_STRING_APPEND_RAW("[");
+  SPP_STRING_APPEND(TokMut).append(TokMut ? " " : "");
+  SPP_STRING_APPEND(Expr);
+  SPP_STRING_APPEND_RAW("]");
+  SPP_STRING_END;
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Already analysed => return early.
-    using analyse::errors::SppExpressionAmbiguousIndexableError;
-    using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-    using analyse::utils::type_utils::TypeEq;
-    if (_MappedFunc != nullptr) { return; }
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Already analysed => return early.
+  using analyse::errors::SppExpressionAmbiguousIndexableError;
+  using analyse::errors::SppInvalidPrimaryExpressionError;
+  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  using analyse::utils::type_utils::TypeEq;
+  if (_MappedFunc != nullptr) { return; }
 
-    // Determine the left-hand-side type.
-    const auto lhs_type = const_shared_cast(
-        meta->PostfixExpressionLhs->InferType(sm, meta));
+  // Determine the left-hand-side type.
+  const auto lhs_type = const_shared_cast(
+    meta->PostfixExpressionLhs->InferType(sm, meta));
 
-    const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
-    auto sup_types = Vec{lhs_type};
-    sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
+  const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
+  auto sup_types = Vec{lhs_type};
+  sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 
-    // Create the mapped function for the index operator; create the index argument.
-    Unique<FunctionCallArgumentAst> arg = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(Expr));
-    auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<decltype(arg)>{}, nullptr);
-    arg_group->Args.EmplaceBack(std::move(arg));
+  // Create the mapped function for the index operator; create the index argument.
+  Unique<FunctionCallArgumentAst> arg = MakeUnique<
+    FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(Expr));
+  auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<decltype(arg)>{}, nullptr);
+  arg_group->Args.EmplaceBack(std::move(arg));
 
-    // Field name is either "index_ref" or "index_mut", then call it with the argument group (index).
-    auto field_name = MakeUnique<IdentifierAst>(PosStart(), TokMut != nullptr ? "index_mut" : "index_ref");
-    auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-    auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
-    auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
-    func_call->Source.OriginalExpr = this;
-    _MappedFunc = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
-    _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+  // Field name is either "index_ref" or "index_mut", then call it with the argument group (index).
+  auto field_name = MakeUnique<IdentifierAst>(PosStart(), TokMut != nullptr ? "index_mut" : "index_ref");
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
+  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
+  func_call->Source.OriginalExpr = this;
+  _MappedFunc = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+  _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
-    ScopeManager *sm, CompilerMetaData *meta) -> void {
-    _MappedFunc->Stage8_CheckMemory(sm, meta);
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Forward to the mapped function.
-    _MappedFunc->Stage9_CompTimeResolve(sm, meta);
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Forward to the mapped function.
+  _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::InferType(
-    analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    // Forward to the mapped function's return type.
-    return _MappedFunc->InferType(sm, meta);
+  analyse::scopes::ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> Shared<TypeAst> {
+  // Forward to the mapped function's return type.
+  return _MappedFunc->InferType(sm, meta);
 }
 
 SPP_MOD_END

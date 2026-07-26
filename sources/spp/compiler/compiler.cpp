@@ -16,78 +16,78 @@ import std;
 
 SPP_MOD_BEGIN
 spp::compiler::Compiler::Compiler(
-    const Mode mode,
-    const BuildType build_type) :
-    m_modules(MakeUnique<ModuleTree>(std::filesystem::current_path())),
-    m_mode(mode),
-    m_build_type(build_type) {
-    m_path = std::filesystem::current_path() / "src";
-    m_boot = MakeUnique<CompilerBoot>();
+  const Mode mode,
+  const BuildType build_type) :
+  m_modules(MakeUnique<ModuleTree>(std::filesystem::current_path())),
+  m_mode(mode),
+  m_build_type(build_type) {
+  m_path = std::filesystem::current_path() / "src";
+  m_boot = MakeUnique<CompilerBoot>();
 }
 
 auto spp::compiler::Compiler::ForUnitTests(
-    const Mode mode,
-    Str &&main_code)
-    -> Unique<Compiler> {
-    auto c = MakeUnique<Compiler>();
-    c->m_modules = ModuleTree::ForUnitTests(std::filesystem::current_path(), std::move(main_code));
-    c->m_mode = mode;
-    c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
-    c->m_path = std::filesystem::current_path() / "src";
-    c->m_boot = MakeUnique<CompilerBoot>();
-    c->m_for_unit_tests = true;
-    return c;
+  const Mode mode,
+  Str &&main_code)
+  -> Unique<Compiler> {
+  auto c = MakeUnique<Compiler>();
+  c->m_modules = ModuleTree::ForUnitTests(std::filesystem::current_path(), std::move(main_code));
+  c->m_mode = mode;
+  c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
+  c->m_path = std::filesystem::current_path() / "src";
+  c->m_boot = MakeUnique<CompilerBoot>();
+  c->m_for_unit_tests = true;
+  return c;
 }
 
 spp::compiler::Compiler::~Compiler() = default;
 
 auto spp::compiler::Compiler::Compile() -> void {
-    const auto is_exe = m_build_type == BuildType::EXE;
-    auto progress_bars = Vec<Unique<utils::ProgressBar>>();
-    auto num_modules = static_cast<std::uint32_t>(m_modules->GetModules().Len());
-    for (auto stage : kCompilerStageNames) {
-        auto p = MakeUnique<utils::ProgressBar>(stage, num_modules, not m_for_unit_tests);
-        progress_bars.EmplaceBack(std::move(p));
-    }
+  const auto is_exe = m_build_type == BuildType::EXE;
+  auto progress_bars = Vec<Unique<utils::ProgressBar>>();
+  auto num_modules = static_cast<std::uint32_t>(m_modules->GetModules().Len());
+  for (auto stage : kCompilerStageNames) {
+    auto p = MakeUnique<utils::ProgressBar>(stage, num_modules, not m_for_unit_tests);
+    progress_bars.EmplaceBack(std::move(p));
+  }
 
-    // We need the cleanup on error for the test suite runs (parallel), but in debug it's one shot, and error checking
-    // needs the full stack trace.
-    auto ps = progress_bars.begin();
+  // We need the cleanup on error for the test suite runs (parallel), but in debug it's one shot, and error checking
+  // needs the full stack trace.
+  auto ps = progress_bars.begin();
 #ifdef NDEBUG
-    try {
+  try {
 #endif
-        m_boot->Lex(**ps++, *m_modules);
-        m_boot->Parse(**ps++, *m_modules);
-        m_scope_manager = MakeUnique<analyse::scopes::ScopeManager>(
-            analyse::scopes::Scope::NewGlobal(*m_modules->GetModules()[0]), nullptr);
-        asts::generate::common_types_precompiled::InitTypes();
+    m_boot->Lex(**ps++, *m_modules);
+    m_boot->Parse(**ps++, *m_modules);
+    m_scope_manager = MakeUnique<analyse::scopes::ScopeManager>(
+      analyse::scopes::Scope::NewGlobal(*m_modules->GetModules()[0]), nullptr);
+    asts::generate::common_types_precompiled::InitTypes();
 
-        m_boot->Stage1_PreProcess(**ps++, *m_modules, nullptr);
-        m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.get());
-        m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.get());
-        m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.get());
-        m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.get());
-        m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.get());
-        m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
-        m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
-        m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
-        // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
-        // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage1_PreProcess(**ps++, *m_modules, nullptr);
+    m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
+    m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
 #ifdef NDEBUG
-    }
-    catch (...) {
-        // Clear globals while the scope tree is still alive (so precompiled types release before their scopes are
-        // freed), then re-throw to the caller.
-        Cleanup();
-        throw;
-    }
-#endif
+  }
+  catch (...) {
+    // Clear globals while the scope tree is still alive (so precompiled types release before their scopes are
+    // freed), then re-throw to the caller.
     Cleanup();
+    throw;
+  }
+#endif
+  Cleanup();
 }
 
 auto spp::compiler::Compiler::Cleanup() -> void {
-    asts::generate::common_types_precompiled::ClearTypes();
-    analyse::scopes::ScopeManager::Cleanup();
+  asts::generate::common_types_precompiled::ClearTypes();
+  analyse::scopes::ScopeManager::Cleanup();
 }
 
 SPP_MOD_END

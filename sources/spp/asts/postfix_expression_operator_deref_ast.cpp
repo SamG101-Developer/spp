@@ -18,102 +18,102 @@ import spp.asts.generate.common_types_precompiled;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
-    decltype(TokDeref) &&tok_deref) :
-    TokDeref(std::move(tok_deref)) {
+  decltype(TokDeref) &&tok_deref) :
+  TokDeref(std::move(tok_deref)) {
 }
 
 spp::asts::PostfixExpressionOperatorDerefAst::~PostfixExpressionOperatorDerefAst() = default;
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::PosStart() const
-    -> std::size_t {
-    // Use the "@" token.
-    return TokDeref->PosStart();
+  -> std::size_t {
+  // Use the "@" token.
+  return TokDeref->PosStart();
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::PosEnd() const
-    -> std::size_t {
-    // Use the "@" token.
-    return TokDeref->PosEnd();
+  -> std::size_t {
+  // Use the "@" token.
+  return TokDeref->PosEnd();
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<PostfixExpressionOperatorDerefAst>(
-        AstClone(TokDeref));
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  return MakeUnique<PostfixExpressionOperatorDerefAst>(
+    AstClone(TokDeref));
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(TokDeref);
-    SPP_STRING_END;
+  -> Str {
+  SPP_STRING_START;
+  SPP_STRING_APPEND(TokDeref);
+  SPP_STRING_END;
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    //
-    using analyse::errors::SppDereferenceNonBorrowedTypeError;
-    using analyse::errors::SppNonCopyableTypeError;
-    using analyse::utils::type_utils::TypeEq;
-    using generate::common_types_precompiled::STR_VIEW;
-    using generate::common_types_precompiled::VIEW;
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  //
+  using analyse::errors::SppDereferenceNonBorrowedTypeError;
+  using analyse::errors::SppNonCopyableTypeError;
+  using analyse::utils::type_utils::TypeEq;
+  using generate::common_types_precompiled::STR_VIEW;
+  using generate::common_types_precompiled::VIEW;
 
-    // Todo: some sort of inner mutability check?
-    // Get the right-hand-side expression's type for constraint checks.
-    const auto lhs = meta->PostfixExpressionLhs;
-    const auto lhs_type = lhs->InferType(sm, meta);
-    const auto is_view =
-        TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
-        TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
+  // Todo: some sort of inner mutability check?
+  // Get the right-hand-side expression's type for constraint checks.
+  const auto lhs = meta->PostfixExpressionLhs;
+  const auto lhs_type = lhs->InferType(sm, meta);
+  const auto is_view =
+    TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
+    TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
 
-    // Check the right-hand-side expression is a borrowable type.
-    RaiseIf<SppDereferenceNonBorrowedTypeError>(
-        lhs_type->GetConvention() == nullptr,
-        {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
+  // Check the right-hand-side expression is a borrowable type.
+  RaiseIf<SppDereferenceNonBorrowedTypeError>(
+    lhs_type->GetConvention() == nullptr,
+    {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
 
-    // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
-    const auto lhs_type_no_conv = lhs_type->WithoutConvention();
-    RaiseIf<SppNonCopyableTypeError>(
-        not sm->CurrentScope->GetTypeSymbol(lhs_type.get())->IsCopyable() and not meta->AllowMoveDeref and not is_view,
-        {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
+  // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
+  const auto lhs_type_no_conv = lhs_type->WithoutConvention();
+  RaiseIf<SppNonCopyableTypeError>(
+    not sm->CurrentScope->GetTypeSymbol(lhs_type.get())->IsCopyable() and not meta->AllowMoveDeref and not is_view,
+    {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // As this is cmp context, just return the "lhs" generation.
-    meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // As this is cmp context, just return the "lhs" generation.
+  meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-    // Get the value underlying the borrow.
-    const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
-    SPP_ASSERT(borrow_val != nullptr);
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LLvmCtx *ctx)
+  -> llvm::Value* {
+  // Get the value underlying the borrow.
+  const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+  SPP_ASSERT(borrow_val != nullptr);
 
-    // Dereference the borrow to get the underlying value.
-    const auto deref_val = ctx->Builder.CreateLoad(
-        borrow_val->getType(), borrow_val, "deref");
-    return deref_val;
+  // Dereference the borrow to get the underlying value.
+  const auto deref_val = ctx->Builder.CreateLoad(
+    borrow_val->getType(), borrow_val, "deref");
+  return deref_val;
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::InferType(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    // Get the right-hand-side expression's type.
-    const auto lhs = meta->PostfixExpressionLhs;
-    const auto lhs_type = lhs->InferType(sm, meta);
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> Shared<TypeAst> {
+  // Get the right-hand-side expression's type.
+  const auto lhs = meta->PostfixExpressionLhs;
+  const auto lhs_type = lhs->InferType(sm, meta);
 
-    // Return the dereferenced type.
-    return AstClone(lhs_type->WithoutConvention());
+  // Return the dereferenced type.
+  return AstClone(lhs_type->WithoutConvention());
 }
 
 SPP_MOD_END

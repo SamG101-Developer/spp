@@ -11,64 +11,64 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
-    decltype(TokElse) &&tok_else) :
-    TokElse(std::move(tok_else)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokElse, lex::SppTokenType::KW_ELSE, "else");
+  decltype(TokElse) &&tok_else) :
+  TokElse(std::move(tok_else)) {
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokElse, lex::SppTokenType::KW_ELSE, "else");
 }
 
 spp::asts::CasePatternVariantElseAst::~CasePatternVariantElseAst() = default;
 
 auto spp::asts::CasePatternVariantElseAst::PosStart() const
-    -> std::size_t {
-    // Use the "else" token.
-    return TokElse->PosStart();
+  -> std::size_t {
+  // Use the "else" token.
+  return TokElse->PosStart();
 }
 
 auto spp::asts::CasePatternVariantElseAst::PosEnd() const
-    -> std::size_t {
-    // Use the "else" token,
-    return TokElse->PosEnd();
+  -> std::size_t {
+  // Use the "else" token,
+  return TokElse->PosEnd();
 }
 
 auto spp::asts::CasePatternVariantElseAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<CasePatternVariantElseAst>(
-        AstClone(TokElse));
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  return MakeUnique<CasePatternVariantElseAst>(
+    AstClone(TokElse));
 }
 
 auto spp::asts::CasePatternVariantElseAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(TokElse);
-    SPP_STRING_END;
+  -> Str {
+  SPP_STRING_START;
+  SPP_STRING_APPEND(TokElse);
+  SPP_STRING_END;
 }
 
 auto spp::asts::CasePatternVariantElseAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *meta)
-    -> void {
-    // The "else" pattern always matches, so return "true".
-    meta->CmpResult = BooleanLiteralAst::True(TokElse->PosStart());
+  ScopeManager *,
+  CompilerMetaData *meta)
+  -> void {
+  // The "else" pattern always matches, so return "true".
+  meta->CmpResult = BooleanLiteralAst::True(TokElse->PosStart());
 }
 
 auto spp::asts::CasePatternVariantElseAst::Stage11_CodeGen(
-    ScopeManager *,
-    CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-    // The "else" pattern always matches, so return "true".
-    return llvm::ConstantInt::getTrue(*ctx->Context);
+  ScopeManager *,
+  CompilerMetaData *,
+  codegen::LLvmCtx *ctx)
+  -> llvm::Value* {
+  // The "else" pattern always matches, so return "true".
+  return llvm::ConstantInt::getTrue(*ctx->Context);
 }
 
 auto spp::asts::CasePatternVariantElseAst::MarkForIterLoopExit()
-    -> void {
-    _ForIterLoopExit = true;
+  -> void {
+  _ForIterLoopExit = true;
 }
 
 auto spp::asts::CasePatternVariantElseAst::MarkedForIterLoopExit() const
-    -> bool {
-    return _ForIterLoopExit;
+  -> bool {
+  return _ForIterLoopExit;
 }
 
 SPP_MOD_END

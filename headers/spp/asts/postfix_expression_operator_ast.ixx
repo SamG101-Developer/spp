@@ -8,15 +8,14 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct PostfixExpressionOperatorAst;
-    SPP_EXP_CLS struct TypeAst; // TODO: GCC BUG REQUIRES THIS
+  SPP_EXP_CLS struct PostfixExpressionOperatorAst;
+  SPP_EXP_CLS struct TypeAst; // TODO: GCC BUG REQUIRES THIS
 }
 
-
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
-    PostfixExpressionOperatorAst();
+  PostfixExpressionOperatorAst();
 
-    ~PostfixExpressionOperatorAst() override;
+  ~PostfixExpressionOperatorAst() override;
 
-    SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<Ast*>;
+  SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<Ast*>;
 };

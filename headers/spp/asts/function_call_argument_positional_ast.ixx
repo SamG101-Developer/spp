@@ -7,8 +7,8 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
-    SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
+  SPP_EXP_CLS struct TokenAst;
 }
 
 /**
@@ -16,24 +16,24 @@ namespace spp::asts {
  * to be matched by an index rather than a keyword. It also support for unpacking a tuple into arguments.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
-    /**
-     * The token that represents the @c .. unpacking operator. This is used to indicate that the argument is a tuple
-     * being unpacked into the resulting arguments.
-     */
-    Unique<TokenAst> TokUnpack;
+  /**
+   * The token that represents the @c .. unpacking operator. This is used to indicate that the argument is a tuple
+   * being unpacked into the resulting arguments.
+   */
+  Unique<TokenAst> TokUnpack;
 
-    /**
-     * Construct the FunctionCallArgumentPositionalAst with the arguments matching the members.
-     * @param conv The convention on the argument being passed into the function call.
-     * @param val The expression that is being passed as the argument to the function call.
-     * @param tok_unpack The token that represents the @c .. unpacking operator.
-     */
-    FunctionCallArgumentPositionalAst(
-        decltype(Conv) &&conv,
-        decltype(TokUnpack) &&tok_unpack,
-        decltype(Val) &&val);
+  /**
+   * Construct the FunctionCallArgumentPositionalAst with the arguments matching the members.
+   * @param conv The convention on the argument being passed into the function call.
+   * @param val The expression that is being passed as the argument to the function call.
+   * @param tok_unpack The token that represents the @c .. unpacking operator.
+   */
+  FunctionCallArgumentPositionalAst(
+    decltype(Conv) &&conv,
+    decltype(TokUnpack) &&tok_unpack,
+    decltype(Val) &&val);
 
-    ~FunctionCallArgumentPositionalAst() override;
+  ~FunctionCallArgumentPositionalAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 };

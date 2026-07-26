@@ -8,98 +8,98 @@ spp::asts::ExpressionAst::ExpressionAst() = default;
 spp::asts::ExpressionAst::~ExpressionAst() = default;
 
 auto spp::asts::ExpressionAst::operator<=>(
-    const ExpressionAst &rhs_expr) const
-    -> Ordering {
-    return Equals(rhs_expr);
+  const ExpressionAst &rhs_expr) const
+  -> Ordering {
+  return Equals(rhs_expr);
 }
 
 auto spp::asts::ExpressionAst::operator==(
-    const ExpressionAst &rhs_expr) const
-    -> bool {
-    return Equals(rhs_expr) == Ordering::equal;
+  const ExpressionAst &rhs_expr) const
+  -> bool {
+  return Equals(rhs_expr) == Ordering::equal;
 }
 
 auto spp::asts::ExpressionAst::EqualsArrayLiteralExplicitElements(
-    ArrayLiteralExplicitElementsAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  ArrayLiteralExplicitElementsAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsArrayLiteralRepeatedElement(
-    ArrayLiteralRepeatedElementAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  ArrayLiteralRepeatedElementAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsBooleanLiteral(
-    BooleanLiteralAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  BooleanLiteralAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsCharLiteral(
-    CharLiteralAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  CharLiteralAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsFloatLiteral(
-    FloatLiteralAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  FloatLiteralAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsIdentifier(
-    IdentifierAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  IdentifierAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsIntegerLiteral(
-    IntegerLiteralAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  IntegerLiteralAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsStringLiteral(
-    StringLiteralAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  StringLiteralAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsTupleLiteral(
-    TupleLiteralAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  TupleLiteralAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsTypeIdentifier(
-    TypeIdentifierAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  TypeIdentifierAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsTypeUnaryExpression(
-    TypeUnaryExpressionAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  TypeUnaryExpressionAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::EqualsTypePostfixExpression(
-    TypePostfixExpressionAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  TypePostfixExpressionAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::Equals(
-    ExpressionAst const &) const
-    -> Ordering {
-    return Ordering::less;
+  ExpressionAst const &) const
+  -> Ordering {
+  return Ordering::less;
 }
 
 auto spp::asts::ExpressionAst::ExprParts() const
-    -> Vec<Ast*> {
-    return {};
+  -> Vec<Ast*> {
+  return {};
 }
 
 SPP_MOD_END

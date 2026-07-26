@@ -9,46 +9,50 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct StringLiteralAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct StringLiteralAst;
+  SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
-    SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX
 
-    /**
-     * The optional "b" prefix, converting the char into a byte string.
-     */
-    Unique<TokenAst> BytePrefix;
+  /**
+   * The optional "b" prefix, converting the char into a byte string.
+   */
+  Unique<TokenAst> BytePrefix;
 
-    /**
-     * The string value of the string literal. This is the actual string that is represented by the literal.
-     */
-    Unique<TokenAst> Val;
+  /**
+   * The string value of the string literal. This is the actual string that is represented by the literal.
+   */
+  Unique<TokenAst> Val;
 
-    /**
-     * Construct the StringLiteralAst with the arguments matching the members.
-     * @param[in] byte_prefix The optional byte prefix of the string literal (e.g., 'b' for byte literals).
-     * @param[in] val The string value of the string literal.
-     */
-    explicit StringLiteralAst(
-        decltype(BytePrefix) &&byte_prefix,
-        decltype(Val) &&val);
+  /**
+   * Construct the StringLiteralAst with the arguments matching the members.
+   * @param[in] byte_prefix The optional byte prefix of the string literal (e.g., 'b' for byte literals).
+   * @param[in] val The string value of the string literal.
+   */
+  explicit StringLiteralAst(
+    decltype(BytePrefix) &&byte_prefix,
+    decltype(Val) &&val);
 
-    ~StringLiteralAst() override;
+  ~StringLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto EqualsStringLiteral(StringLiteralAst const &) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto EqualsStringLiteral(
+    StringLiteralAst const &) const
+    -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(
+    ExpressionAst const &other) const
+    -> Ordering override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::StringLiteralAst)

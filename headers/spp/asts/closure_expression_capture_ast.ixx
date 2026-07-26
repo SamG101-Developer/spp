@@ -7,16 +7,15 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ClosureExpressionCaptureAst;
+  SPP_EXP_CLS struct ClosureExpressionCaptureAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {
-    ClosureExpressionCaptureAst(
-        decltype(Conv) &&conv,
-        decltype(Val) &&val);
+  ClosureExpressionCaptureAst(
+    decltype(Conv) &&conv,
+    decltype(Val) &&val);
 
-    ~ClosureExpressionCaptureAst() override;
+  ~ClosureExpressionCaptureAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 };

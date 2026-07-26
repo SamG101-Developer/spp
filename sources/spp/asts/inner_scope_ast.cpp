@@ -37,8 +37,6 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     TokL(nullptr),
     Members(),
     TokR(nullptr) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_CURLY_BRACE, "{");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
 template <typename T>
@@ -49,8 +47,6 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
     TokL(std::move(tok_l)),
     Members(std::move(members)),
     TokR(std::move(tok_r)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_CURLY_BRACE, "{");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
 template <typename T>
@@ -82,10 +78,10 @@ template <typename T>
 auto spp::asts::InnerScopeAst<T>::ToString() const
     -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(TokL).append(not Members.IsEmpty() ? "\n" : "");
+    SPP_STRING_APPEND_RAW("{").append(not Members.IsEmpty() ? "\n" : "");
     SPP_STRING_EXTEND(Members, "\n");
     SPP_STRING_APPEND_RAW(not Members.IsEmpty() ? "\n" : "");
-    SPP_STRING_APPEND(TokR);
+    SPP_STRING_APPEND_RAW("}");
     SPP_STRING_END;
 }
 

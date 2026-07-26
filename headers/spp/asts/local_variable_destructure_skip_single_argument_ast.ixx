@@ -7,32 +7,31 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct LocalVariableDestructureSkipSingleArgumentAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct LocalVariableDestructureSkipSingleArgumentAst;
+  SPP_EXP_CLS struct IdentifierAst;
+  SPP_EXP_CLS struct TokenAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVariableAst {
-    /**
-     * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
-     * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object
-     * destructuring as it is purely keyword based, and not positional.
-     */
-    Unique<TokenAst> TokUnderscore;
+  /**
+   * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
+   * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object
+   * destructuring as it is purely keyword based, and not positional.
+   */
+  Unique<TokenAst> TokUnderscore;
 
-    /**
-     * Construct the LocalVariableDestructureSkipSingleArgumentAst with the arguments matching the members.
-     * @param tok_underscore The @c _ token that indicates the skip single argument pattern.
-     */
-    explicit LocalVariableDestructureSkipSingleArgumentAst(
-        decltype(TokUnderscore) &&tok_underscore);
+  /**
+   * Construct the LocalVariableDestructureSkipSingleArgumentAst with the arguments matching the members.
+   * @param tok_underscore The @c _ token that indicates the skip single argument pattern.
+   */
+  explicit LocalVariableDestructureSkipSingleArgumentAst(
+    decltype(TokUnderscore) &&tok_underscore);
 
-    ~LocalVariableDestructureSkipSingleArgumentAst() override;
+  ~LocalVariableDestructureSkipSingleArgumentAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+  SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 };

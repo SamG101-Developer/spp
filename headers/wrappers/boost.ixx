@@ -6,15 +6,32 @@ module;
 export module boost;
 
 export namespace boost {
-    using BigInt = ::boost::multiprecision::cpp_int;
-    using BigDec = ::boost::multiprecision::cpp_dec_float_100;
-    using ::boost::multiprecision::pow;
+  // using BigInt = ::boost::multiprecision::cpp_int;
+  // using BigDec = ::boost::multiprecision::cpp_dec_float_100;
 
-    using ::boost::multiprecision::operator*;
-    using ::boost::multiprecision::backends::cpp_int_backend;
-    using ::boost::multiprecision::backends::negate_integer;
-    using ::boost::multiprecision::backends::eval_right_shift;
-    using ::boost::multiprecision::backends::eval_multiply;
-    using ::boost::multiprecision::backends::eval_get_sign;
-    using ::boost::multiprecision::backends::divide_unsigned_helper;
+  // Stack versions.
+  using BigInt = ::boost::multiprecision::number<
+    boost::multiprecision::cpp_int_backend<
+      512, 512, ::boost::multiprecision::signed_magnitude, ::boost::multiprecision::unchecked, void>,
+    ::boost::multiprecision::et_off>;
+
+  using BigDec = ::boost::multiprecision::cpp_dec_float_100;
+
+  using ::boost::multiprecision::int128_t;
+  using ::boost::multiprecision::uint128_t;
+  using ::boost::multiprecision::int256_t;
+  using ::boost::multiprecision::uint256_t;
+
+  // DO NOT REMOVE ANY OF THESE (BOOST INTERNAL USAGE)
+  using ::boost::multiprecision::backends::cpp_int_backend;
+  using ::boost::multiprecision::backends::eval_right_shift;
+  using ::boost::multiprecision::backends::eval_get_sign;
+  using ::boost::multiprecision::backends::eval_complement;
+  using ::boost::multiprecision::backends::eval_ldexp;
+  using ::boost::multiprecision::backends::eval_frexp;
+  using ::boost::multiprecision::backends::eval_multiply;
+  using ::boost::multiprecision::backends::eval_add;
+  using ::boost::multiprecision::backends::divide_unsigned_helper;
 }
+
+export using ::boost::multiprecision::operator-;

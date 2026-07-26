@@ -6,22 +6,22 @@ import spp.codegen.llvm_ctx;
 import llvm;
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct TypeSymbol;
+  SPP_EXP_CLS struct TypeSymbol;
 }
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ClassPrototypeAst;
-    SPP_EXP_CLS struct FunctionPrototypeAst;
+  SPP_EXP_CLS struct ClassPrototypeAst;
+  SPP_EXP_CLS struct FunctionPrototypeAst;
 }
 
 namespace spp::codegen {
-    SPP_EXP_FUN auto RegisterLlvmTypeInfo(
-        asts::ClassPrototypeAst const *cls_proto,
-        LLvmCtx const *ctx)
-        -> void;
+  SPP_EXP_FUN auto RegisterLlvmTypeInfo(
+    asts::ClassPrototypeAst const *cls_proto,
+    LLvmCtx const *ctx)
+    -> void;
 
-    SPP_EXP_FUN auto GetLlvmType(
-        analyse::scopes::TypeSymbol const &type_sym,
-        LLvmCtx const *ctx)
-        -> llvm::Type*;
+  SPP_EXP_FUN auto GetLlvmType(
+    analyse::scopes::TypeSymbol const &type_sym,
+    LLvmCtx const *ctx)
+    -> llvm::Type*;
 }

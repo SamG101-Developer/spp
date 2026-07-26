@@ -7,41 +7,40 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct GenericParameterTypeOptionalAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct GenericParameterTypeOptionalAst;
+  SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAst {
-    /**
-     * The token that separates the parameter name from the default value.
-     */
-    Unique<TokenAst> TokAssign;
+  /**
+   * The token that separates the parameter name from the default value.
+   */
+  Unique<TokenAst> TokAssign;
 
-    /**
-     * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
-     */
-    Shared<TypeAst> DefaultVal;
+  /**
+   * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
+   */
+  Shared<TypeAst> DefaultVal;
 
-    /**
-     * Construct the GenericParameterTypeOptionalAst with the arguments matching the members.
-     * @param name The name of the generic type parameter.
-     * @param constraints The optional inline constraints for the generic type parameter.
-     * @param tok_assign The token that separates the parameter name from the default value.
-     * @param default_val The default value for the parameter.
-     */
-    GenericParameterTypeOptionalAst(
-        decltype(Name) &&name,
-        decltype(Constraints) &&constraints,
-        decltype(TokAssign) &&tok_assign,
-        decltype(DefaultVal) &&default_val);
+  /**
+   * Construct the GenericParameterTypeOptionalAst with the arguments matching the members.
+   * @param name The name of the generic type parameter.
+   * @param constraints The optional inline constraints for the generic type parameter.
+   * @param tok_assign The token that separates the parameter name from the default value.
+   * @param default_val The default value for the parameter.
+   */
+  GenericParameterTypeOptionalAst(
+    decltype(Name) &&name,
+    decltype(Constraints) &&constraints,
+    decltype(TokAssign) &&tok_assign,
+    decltype(DefaultVal) &&default_val);
 
-    ~GenericParameterTypeOptionalAst() override;
+  ~GenericParameterTypeOptionalAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

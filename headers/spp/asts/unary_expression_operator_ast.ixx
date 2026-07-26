@@ -7,13 +7,12 @@ import spp.asts.mixins.type_inferrable_ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct UnaryExpressionOperatorAst;
+  SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct UnaryExpressionOperatorAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
-    UnaryExpressionOperatorAst();
+  UnaryExpressionOperatorAst();
 
-    ~UnaryExpressionOperatorAst() override;
+  ~UnaryExpressionOperatorAst() override;
 };

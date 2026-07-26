@@ -9,52 +9,51 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ExpressionAst;
-    SPP_EXP_CLS struct RetStatementAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct ExpressionAst;
+  SPP_EXP_CLS struct RetStatementAst;
+  SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
-    /**
-     * The @c ret token that starts this statement.
-     */
-    Unique<TokenAst> TokRet;
+  /**
+   * The @c ret token that starts this statement.
+   */
+  Unique<TokenAst> TokRet;
 
-    /**
-     * The optional value that is being returned from the function. This is the expression that will be evaluated and
-     * returned.
-     */
-    Unique<ExpressionAst> Expr;
+  /**
+   * The optional value that is being returned from the function. This is the expression that will be evaluated and
+   * returned.
+   */
+  Unique<ExpressionAst> Expr;
 
-    struct {
-        Shared<TypeAst> _OriginalRetType;
-    } Source;
+  struct {
+    Shared<TypeAst> _OriginalRetType;
+  } Source;
 
-    /**
-     * Construct the RetStatementAst with the arguments matching the members.
-     * @param tok_ret The @c return token that starts this statement.
-     * @param val The optional value that is being returned from the function.
-     */
-    RetStatementAst(
-        decltype(TokRet) &&tok_ret,
-        decltype(Expr) &&val);
+  /**
+   * Construct the RetStatementAst with the arguments matching the members.
+   * @param tok_ret The @c return token that starts this statement.
+   * @param val The optional value that is being returned from the function.
+   */
+  RetStatementAst(
+    decltype(TokRet) &&tok_ret,
+    decltype(Expr) &&val);
 
-    ~RetStatementAst() override;
+  ~RetStatementAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
 private:
-    Shared<TypeAst> _RetType;
+  Shared<TypeAst> _RetType;
 };

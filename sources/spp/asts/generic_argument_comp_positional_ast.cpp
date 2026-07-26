@@ -17,77 +17,77 @@ import spp.asts.utils.orderable;
 
 SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
-    decltype(Val) &&val) :
-    GenericArgumentCompAst(std::move(val), utils::OrderableTag::kPositionalArg) {
+  decltype(Val) &&val) :
+  GenericArgumentCompAst(std::move(val), utils::OrderableTag::kPositionalArg) {
 }
 
 spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
 
 auto spp::asts::GenericArgumentCompPositionalAst::EqualsGenericArgumentCompPositional(
-    GenericArgumentCompPositionalAst const &other) const
-    -> Ordering {
-    // Equality is based on the value of the argument.
-    return *Val == *other.Val ? Ordering::equal : Ordering::less;
+  GenericArgumentCompPositionalAst const &other) const
+  -> Ordering {
+  // Equality is based on the value of the argument.
+  return *Val == *other.Val ? Ordering::equal : Ordering::less;
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::Equals(
-    GenericArgumentAst const &other) const
-    -> Ordering {
-    // Reverse hook (double dispatch).
-    return other.EqualsGenericArgumentCompPositional(*this);
+  GenericArgumentAst const &other) const
+  -> Ordering {
+  // Reverse hook (double dispatch).
+  return other.EqualsGenericArgumentCompPositional(*this);
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::PosStart() const
-    -> std::size_t {
-    // Use the value.
-    return Val->PosStart();
+  -> std::size_t {
+  // Use the value.
+  return Val->PosStart();
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::PosEnd() const
-    -> std::size_t {
-    // Use the value.
-    return Val->PosEnd();
+  -> std::size_t {
+  // Use the value.
+  return Val->PosEnd();
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<GenericArgumentCompPositionalAst>(
-        AstClone(Val));
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  return MakeUnique<GenericArgumentCompPositionalAst>(
+    AstClone(Val));
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(Val);
-    SPP_STRING_END;
+  -> Str {
+  SPP_STRING_START;
+  SPP_STRING_APPEND(Val);
+  SPP_STRING_END;
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    //
-    using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  //
+  using analyse::errors::SppInvalidPrimaryExpressionError;
+  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
-    // Analyse the value.
-    Val->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Val, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+  // Analyse the value.
+  Val->Stage7_AnalyseSemantics(sm, meta);
+  RaiseIf<SppInvalidPrimaryExpressionError>(
+    not IsPrimaryExprTypeValid(*Val, *sm),
+    {sm->CurrentScope}, ERR_ARGS(*Val.get()));
 }
 
 auto spp::asts::GenericArgumentCompPositionalAst::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    //
-    using analyse::utils::mem_utils::ValidateSymbolMemory;
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  //
+  using analyse::utils::mem_utils::ValidateSymbolMemory;
 
-    // Ensure the argument isn't moved or partially moved (for all conventions)
-    Val->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Val, *Val, *sm, true, true, true, true, meta);
+  // Ensure the argument isn't moved or partially moved (for all conventions)
+  Val->Stage8_CheckMemory(sm, meta);
+  ValidateSymbolMemory(*Val, *Val, *sm, true, true, true, true, meta);
 }
 
 SPP_MOD_END

@@ -8,43 +8,42 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct TypeBinaryExpressionAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct TypeBinaryExpressionAst;
+  SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : Ast, mixins::TempTypeAst {
-    /**
-     * The left-hand side expression of the type binary expression. This is the first operand.
-     */
-    Shared<TypeAst> Lhs;
+  /**
+   * The left-hand side expression of the type binary expression. This is the first operand.
+   */
+  Shared<TypeAst> Lhs;
 
-    /**
-     * The operator token that represents the type binary operation. This indicates the type of operation being
-     * performed. Either an "or" (union) or "and" (intersection) operation.
-     */
-    Unique<TokenAst> TokOp;
+  /**
+   * The operator token that represents the type binary operation. This indicates the type of operation being
+   * performed. Either an "or" (union) or "and" (intersection) operation.
+   */
+  Unique<TokenAst> TokOp;
 
-    /**
-     * The right-hand side expression of the type binary expression. This is the second operand.
-     */
-    Shared<TypeAst> Rhs;
+  /**
+   * The right-hand side expression of the type binary expression. This is the second operand.
+   */
+  Shared<TypeAst> Rhs;
 
-    /**
-     * Construct the TypeBinaryExpressionAst with the arguments matching the members.
-     * @param lhs The left-hand side expression of the type binary expression.
-     * @param tok_op The operator token that represents the type binary operation.
-     * @param rhs The right-hand side expression of the type binary expression.
-     */
-    TypeBinaryExpressionAst(
-        decltype(Lhs) &&lhs,
-        decltype(TokOp) &&tok_op,
-        decltype(Rhs) &&rhs);
+  /**
+   * Construct the TypeBinaryExpressionAst with the arguments matching the members.
+   * @param lhs The left-hand side expression of the type binary expression.
+   * @param tok_op The operator token that represents the type binary operation.
+   * @param rhs The right-hand side expression of the type binary expression.
+   */
+  TypeBinaryExpressionAst(
+    decltype(Lhs) &&lhs,
+    decltype(TokOp) &&tok_op,
+    decltype(Rhs) &&rhs);
 
-    ~TypeBinaryExpressionAst() override;
+  ~TypeBinaryExpressionAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Convert() -> Unique<TypeAst> override;
+  auto Convert() -> Unique<TypeAst> override;
 };

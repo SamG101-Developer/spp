@@ -13,29 +13,28 @@ import spp.utils.uid;
 import spp.utils.types;
 import std;
 
-
 auto spp::codegen::llvm_materialize(
-    asts::ExpressionAst &ast,
-    analyse::scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta,
-    LLvmCtx *ctx)
-    -> asts::IdentifierAst* {
-    // Materialise an expression by assigning it to a temporary variable.
-    auto uid = spp::utils::Uid(&ast);
-    auto var_name = MakeShared<asts::IdentifierAst>(ast.PosStart(), "$temp" + std::move(uid));
-    const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
+  asts::ExpressionAst &ast,
+  analyse::scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta,
+  LLvmCtx *ctx)
+  -> asts::IdentifierAst* {
+  // Materialise an expression by assigning it to a temporary variable.
+  auto uid = spp::utils::Uid(&ast);
+  auto var_name = MakeShared<asts::IdentifierAst>(ast.PosStart(), "$temp" + std::move(uid));
+  const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
 
-    // Analyse semantics and generate code for the let statement.
-    meta->Save();
-    meta->LetStatementFromUninitialized = true; // Prevent double analysis of the expression.
-    meta->LetStatementExplicitType = ast.InferType(sm, meta);
-    var->Stage7_AnalyseSemantics(sm, meta);
+  // Analyse semantics and generate code for the let statement.
+  meta->Save();
+  meta->LetStatementFromUninitialized = true; // Prevent double analysis of the expression.
+  meta->LetStatementExplicitType = ast.InferType(sm, meta);
+  var->Stage7_AnalyseSemantics(sm, meta);
 
-    // Set the lhs to the variable name.
-    meta->LetStatementFromUninitialized = false; // Need to generate the expression now.
-    meta->LetStatementValue = &ast;
-    var->Stage11_CodeGen(sm, meta, ctx);
-    meta->Restore();
-    const auto materialized_val = var->To<asts::LocalVariableSingleIdentifierAst>()->Name.get();
-    return materialized_val;
+  // Set the lhs to the variable name.
+  meta->LetStatementFromUninitialized = false; // Need to generate the expression now.
+  meta->LetStatementValue = &ast;
+  var->Stage11_CodeGen(sm, meta, ctx);
+  meta->Restore();
+  const auto materialized_val = var->To<asts::LocalVariableSingleIdentifierAst>()->Name.get();
+  return materialized_val;
 }

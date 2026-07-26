@@ -9,36 +9,35 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct CasePatternVariantElseAst;
-    SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct CasePatternVariantElseAst;
+  SPP_EXP_CLS struct TokenAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
-    /**
-     * The @c else keyword that indicates this is an else branch of the case pattern variant.
-     */
-    Unique<TokenAst> TokElse;
+  /**
+   * The @c else keyword that indicates this is an else branch of the case pattern variant.
+   */
+  Unique<TokenAst> TokElse;
 
-    /**
-     * Construct the CasePatternVariantElseAst with the arguments matching the members.
-     * @param tok_else The @c else keyword that indicates this is an else branch of the case pattern variant.
-     */
-    explicit CasePatternVariantElseAst(
-        decltype(TokElse) &&tok_else);
+  /**
+   * Construct the CasePatternVariantElseAst with the arguments matching the members.
+   * @param tok_else The @c else keyword that indicates this is an else branch of the case pattern variant.
+   */
+  explicit CasePatternVariantElseAst(
+    decltype(TokElse) &&tok_else);
 
-    ~CasePatternVariantElseAst() override;
+  ~CasePatternVariantElseAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto MarkForIterLoopExit() -> void;
+  auto MarkForIterLoopExit() -> void;
 
-    SPP_ATTR_NODISCARD auto MarkedForIterLoopExit() const -> bool;
+  SPP_ATTR_NODISCARD auto MarkedForIterLoopExit() const -> bool;
 
 private:
-    bool _ForIterLoopExit = false;
+  bool _ForIterLoopExit = false;
 };

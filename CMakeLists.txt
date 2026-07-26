@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 4.1.2)
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+cmake_minimum_required(VERSION 4.4.0)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
 project(spp)
 
 # Set the C++ standard and other compiler options & flags.

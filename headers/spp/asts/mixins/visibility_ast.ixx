@@ -7,20 +7,20 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct AnnotationAst;
-    SPP_EXP_CLS struct TypeStatementAst;
+  SPP_EXP_CLS struct AnnotationAst;
+  SPP_EXP_CLS struct TypeStatementAst;
 }
 
 namespace spp::asts::mixins {
-    SPP_EXP_CLS struct VisibilityAst;
-    SPP_EXP_CLS using VisibilityPair = Pair<utils::Visibility, AnnotationAst*>;
+  SPP_EXP_CLS struct VisibilityAst;
+  SPP_EXP_CLS
+  using VisibilityPair = Pair<utils::Visibility, AnnotationAst*>;
 }
 
-
 SPP_EXP_CLS struct spp::asts::mixins::VisibilityAst {
-    VisibilityPair Visibility;
+  VisibilityPair Visibility;
 
-    VisibilityAst();
+  VisibilityAst();
 
-    virtual ~VisibilityAst();
+  virtual ~VisibilityAst();
 };

@@ -9,55 +9,58 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct GenericArgumentAst;
-    SPP_EXP_CLS struct GenericArgumentCompAst;
-    SPP_EXP_CLS struct GenericArgumentTypeAst;
-    SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
-    SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
-    SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
-    SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
+  SPP_EXP_CLS struct GenericArgumentAst;
+  SPP_EXP_CLS struct GenericArgumentCompAst;
+  SPP_EXP_CLS struct GenericArgumentTypeAst;
+  SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+  SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
+  SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
+  SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
 }
-
 
 namespace spp::asts::detail {
-    SPP_EXP_CLS template <typename GenericArgType>
-    struct make_keyword_arg {
-        using type = GenericArgType;
-    };
+  SPP_EXP_CLS
 
-    template <>
-    struct make_keyword_arg<GenericArgumentCompAst> {
-        using type = GenericArgumentCompKeywordAst;
-    };
+  template <typename GenericArgType>
+  struct make_keyword_arg {
+    using type = GenericArgType;
+  };
 
-    template <>
-    struct make_keyword_arg<GenericArgumentTypeAst> {
-        using type = GenericArgumentTypeKeywordAst;
-    };
+  template <>
+  struct make_keyword_arg<GenericArgumentCompAst> {
+    using type = GenericArgumentCompKeywordAst;
+  };
 
-    SPP_EXP_CLS template <typename T>
-    using make_keyword_arg_t = typename make_keyword_arg<T>::type;
+  template <>
+  struct make_keyword_arg<GenericArgumentTypeAst> {
+    using type = GenericArgumentTypeKeywordAst;
+  };
 
+  SPP_EXP_CLS
+  template <typename T>
+  using make_keyword_arg_t = typename make_keyword_arg<T>::type;
 
-    SPP_EXP_CLS template <typename GenericArgType>
-    struct make_positional_arg {
-        using type = GenericArgType;
-    };
+  SPP_EXP_CLS
 
-    template <>
-    struct make_positional_arg<GenericArgumentCompAst> {
-        using type = GenericArgumentCompPositionalAst;
-    };
+  template <typename GenericArgType>
+  struct make_positional_arg {
+    using type = GenericArgType;
+  };
 
-    template <>
-    struct make_positional_arg<GenericArgumentTypeAst> {
-        using type = GenericArgumentTypePositionalAst;
-    };
+  template <>
+  struct make_positional_arg<GenericArgumentCompAst> {
+    using type = GenericArgumentCompPositionalAst;
+  };
 
-    SPP_EXP_CLS template <typename T>
-    using make_positional_arg_t = typename make_positional_arg<T>::type;
+  template <>
+  struct make_positional_arg<GenericArgumentTypeAst> {
+    using type = GenericArgumentTypePositionalAst;
+  };
+
+  SPP_EXP_CLS
+  template <typename T>
+  using make_positional_arg_t = typename make_positional_arg<T>::type;
 }
-
 
 /**
  * The GenericArgumentAst is the base class for all generic arguments. It is inherited by the @c GenericArgumentCompAst
@@ -65,15 +68,19 @@ namespace spp::asts::detail {
  * inherited for the positional and keyword variants.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
-    explicit GenericArgumentAst(utils::OrderableTag order_tag);
-    ~GenericArgumentAst() override;
-    auto operator<=>(GenericArgumentAst const &other) const -> Ordering;
-    auto operator==(GenericArgumentAst const &other) const -> bool;
+  explicit GenericArgumentAst(utils::OrderableTag order_tag);
+  ~GenericArgumentAst() override;
+  auto operator<=>(GenericArgumentAst const &other) const -> Ordering;
+  auto operator==(GenericArgumentAst const &other) const -> bool;
 
-    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompKeyword(GenericArgumentCompKeywordAst const &) const -> Ordering;
-    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompPositional(GenericArgumentCompPositionalAst const &) const -> Ordering;
-    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypeKeyword(GenericArgumentTypeKeywordAst const &) const -> Ordering;
-    SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypePositional(GenericArgumentTypePositionalAst const &) const -> Ordering;
-    SPP_ATTR_NODISCARD virtual auto Equals(GenericArgumentAst const &other) const -> Ordering = 0;
-    SPP_ATTR_NODISCARD virtual auto ViewName() const -> StrView;
+  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompKeyword(
+    GenericArgumentCompKeywordAst const &) const -> Ordering;
+  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompPositional(
+    GenericArgumentCompPositionalAst const &) const -> Ordering;
+  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypeKeyword(
+    GenericArgumentTypeKeywordAst const &) const -> Ordering;
+  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypePositional(
+    GenericArgumentTypePositionalAst const &) const -> Ordering;
+  SPP_ATTR_NODISCARD virtual auto Equals(GenericArgumentAst const &other) const -> Ordering = 0;
+  SPP_ATTR_NODISCARD virtual auto ViewName() const -> StrView;
 };
