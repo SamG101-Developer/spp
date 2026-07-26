@@ -12,7 +12,7 @@ One important distinction: coroutines live in control flow, not purely in the ty
 captures the multiplicity, optionality, and fallibility of a coroutine, but destructuring a yielded value requires a
 block designated for coroutines. Second-class borrows force this. For example, `Opt[&T]` can't exist as a type, because
 it requires `Some[&T]`, which requires a borrow type attribute and breaks the second-class borrow rules. The
-[**section**]() below covers the `iter` block.
+[**section**](<>) below covers the `iter` block.
 
 ## Coroutine return types
 
@@ -102,7 +102,7 @@ following standard borrow semantics. Each consecutive mutable yield invalidates 
 hands ownership back to the yielder, which makes the symbol available in the yielder again. Immutable borrows don't
 invalidate each other in the receiver, so they stay pinned in the yielder until the end of the coroutine.
 
----
+______________________________________________________________________
 
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
@@ -127,7 +127,7 @@ With immutable borrows, the receiver can take many yielded values and every one 
 the underlying data, so overlaps are harmless and no mutability conflict can arise. In the yielder context these values
 stay pinned, so the yielder can't consume them while the receiver borrows them.
 
----
+______________________________________________________________________
 
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {

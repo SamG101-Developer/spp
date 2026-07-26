@@ -12,9 +12,8 @@ scope gets dropped. Put briefly:
 
 Allocation and deallocation happen automatically, but the programmer takes borrows manually with the `&` or `&mut`
 operator, which marks where a borrow occurs. S++ could take the C++ route and derive borrows automatically by type
-checking the parameters, but that leaves the borrow implicit at the function call site. S++ instead
-inherits the Rust-like explicit borrow syntax, so the code shows exactly when it borrows a value and when it creates a
-new one.
+checking the parameters, but that leaves the borrow implicit at the function call site. S++ instead inherits the
+Rust-like explicit borrow syntax, so the code shows exactly when it borrows a value and when it creates a new one.
 
 Four key techniques ensure memory safety in S++:
 
@@ -23,16 +22,16 @@ Four key techniques ensure memory safety in S++:
    This prevents use-after-free and double-free errors. Restrictions govern uninitialized and partially initialized
    values: they can't appear in expressions, or pass to functions, until they're fully initialized.
 
-2. **Second-class borrows**: Code can borrow objects immutably or mutably without moving them, and so without changing
-   ownership. A value can pass temporarily into another function, get changed or read, and still see use after that
-   call returns. Second-class borrows constrain **where** a borrow can originate: either at a function call site, or at
-   a generator yield point. This simplifies lifetime management.
+1. **Second-class borrows**: Code can borrow objects immutably or mutably without moving them, and so without changing
+   ownership. A value can pass temporarily into another function, get changed or read, and still see use after that call
+   returns. Second-class borrows constrain **where** a borrow can originate: either at a function call site, or at a
+   generator yield point. This simplifies lifetime management.
 
-3. **The law of exclusivity**: At any given time, overlapping regions of memory admit either one mutable reference, xor
+1. **The law of exclusivity**: At any given time, overlapping regions of memory admit either one mutable reference, xor
    n immutable borrows. This prevents data races and invalid memory access in concurrent contexts. The compiler checks
    this at compile time and raises an error when it detects a violation.
 
-4. **Memory pinning**: This prevents values from moving in memory, which keeps borrows valid in asynchronous or
+1. **Memory pinning**: This prevents values from moving in memory, which keeps borrows valid in asynchronous or
    coroutine contexts. A pinned value can't move, so its borrows stay valid over extended periods. Pinning is fully
    automatic, and scope rules unpin values.
 
@@ -97,9 +96,9 @@ sup [T: Copy] MyType[T] ext Copy { }
 ### Moving and uninitialized values
 
 Like Rust, S++ uses move semantics by default, except for copyable types. All operations that use a value, such as
-assignments, variable declarations and function call arguments, **move** values: ownership transfers to the new
-variable and the original variable becomes uninitialized. Functions can borrow arguments, but without a borrow operator
-the value moves.
+assignments, variable declarations and function call arguments, **move** values: ownership transfers to the new variable
+and the original variable becomes uninitialized. Functions can borrow arguments, but without a borrow operator the value
+moves.
 
 Types can opt into copying, as the section on copyable types describes, but non-copyable types use move semantics by
 default. In the following example, the `let` statement declares `x` and initializes it with the string
@@ -167,14 +166,14 @@ To use a variable that became uninitialized or moved from, initialize it through
 ### Moving rules in brief
 
 1. **Moves**: A value moves out of a variable when its type doesn't superimpose `Copy` and the value appears as an
-   assignment value, move-convention function argument, object initialization argument, move-convention yield, or
-   return value. The move leaves the original variable uninitialized, and the new variable takes ownership.
+   assignment value, move-convention function argument, object initialization argument, move-convention yield, or return
+   value. The move leaves the original variable uninitialized, and the new variable takes ownership.
 
-2. **Partial moves**: A partial move requires that the value isn't borrowed, not even mutably, and that the attribute
+1. **Partial moves**: A partial move requires that the value isn't borrowed, not even mutably, and that the attribute
    itself is fully initialized. More than one partial move can come from the same object, as long as the moved regions
    don't overlap. This places the object in the **partially initialized** state.
 
-3. **Uninitialized variables**: An uninitialized variable can appear only on the left-hand side of an assignment, or in
+1. **Uninitialized variables**: An uninitialized variable can appear only on the left-hand side of an assignment, or in
    a variable redeclaration. It has no memory location, so it can't have fields, and nothing can borrow from it or move
    from it again.
 
@@ -191,9 +190,9 @@ Borrows can originate in two places:
   function can then read or change the value without taking ownership. The borrow lasts for the duration of the call,
   and the value stays usable after the call returns.
 
-- Generator yield points: the same two operators borrow a value yielded from a generator. The generator can then yield
-  a reference without the receiving context taking ownership. Once control reaches the next yield point, the yielded
-  value is no longer borrowed and the generator can use it again.
+- Generator yield points: the same two operators borrow a value yielded from a generator. The generator can then yield a
+  reference without the receiving context taking ownership. Once control reaches the next yield point, the yielded value
+  is no longer borrowed and the generator can use it again.
 
 ### Function call site borrows
 
@@ -223,8 +222,8 @@ fun func(x: &Str) -> Void {
 }
 ```
 
-Borrows can also stack, meaning code can take a borrow of a borrow, and the symbol's type automatically
-coalesces to a single borrow. For example:
+Borrows can also stack, meaning code can take a borrow of a borrow, and the symbol's type automatically coalesces to a
+single borrow. For example:
 
 ```s++
 fun other_func(x: &Str) -> Void { }
@@ -245,13 +244,13 @@ mutability refers to whether the contents behind the borrow can change, whereas 
 describes whether the code can rebind it:
 
 | Borrow | Example                        | Value mutability     | Borrow mutability |
-|--------|--------------------------------|----------------------|-------------------|
-| `N`    | `fun f(x: T) -> Void`          | `x` isn't rebindable  | `x` is immutable |
-| `N`    | `fun f(mut x: T) -> Void`      | `x` is rebindable     | `x` is mutable   |
-| `Y`    | `fun f(x: &T) -> Void`         | `x` isn't rebindable  | `x` is immutable |
-| `Y`    | `fun f(mut x: &T) -> Void`     | `x` is rebindable     | `x` is immutable |
-| `Y`    | `fun f(x: &mut T) -> Void`     | `x` isn't rebindable  | `x` is mutable   |
-| `Y`    | `fun f(mut x: &mut T) -> Void` | `x` is rebindable     | `x` is mutable   |
+| ------ | ------------------------------ | -------------------- | ----------------- |
+| `N`    | `fun f(x: T) -> Void`          | `x` isn't rebindable | `x` is immutable  |
+| `N`    | `fun f(mut x: T) -> Void`      | `x` is rebindable    | `x` is mutable    |
+| `Y`    | `fun f(x: &T) -> Void`         | `x` isn't rebindable | `x` is immutable  |
+| `Y`    | `fun f(mut x: &T) -> Void`     | `x` is rebindable    | `x` is immutable  |
+| `Y`    | `fun f(x: &mut T) -> Void`     | `x` isn't rebindable | `x` is mutable    |
+| `Y`    | `fun f(mut x: &mut T) -> Void` | `x` is rebindable    | `x` is mutable    |
 
 ### Destructuring borrows
 

@@ -3,7 +3,7 @@
 ## Commands
 
 | Command         | Description                                                          | Implemented |
-|-----------------|----------------------------------------------------------------------|-------------|
+| --------------- | -------------------------------------------------------------------- | ----------- |
 | `spp init`      | Create a new S++ project in the current directory.                   | `Y`         |
 | `spp build`     | Compile the S++ project in the current directory.                    | `Y`         |
 | `spp run`       | Build and run the S++ project in the current directory.              | `Y`         |
@@ -45,9 +45,9 @@ generate the scope and symbol tables.
 A few flags apply to the build process. They don't live in the config file, because they relate to the build process
 itself rather than to the project configuration:
 
-| Flag                   | Description                                                  |
-|------------------------|--------------------------------------------------------------|
-| `--mode <mode>`        | Set the build mode, `dev` or `rel`. Defaults to `dev`.            |
+| Flag                   | Description                                                          |
+| ---------------------- | -------------------------------------------------------------------- |
+| `--mode <mode>`        | Set the build mode, `dev` or `rel`. Defaults to `dev`.               |
 | `--target-type <type>` | Set the target type: `exe`, `shared` or `static`. Defaults to `exe`. |
 
 A project built as a shared or static library produces no executable, so it needs no entry point. The compiler drops
@@ -65,8 +65,8 @@ spp build && ./out/target-type/<binary_name>
 
 The run command accepts the following flag and passes it to the build process:
 
-| Flag            | Description                                       |
-|-----------------|---------------------------------------------------|
+| Flag            | Description                                            |
+| --------------- | ------------------------------------------------------ |
 | `--mode <mode>` | Set the build mode, `dev` or `rel`. Defaults to `dev`. |
 
 This command runs the target, so it supports executable targets only, and it adds the `--target-type exe` flag to the
@@ -109,5 +109,5 @@ of the S++ language and standard library.
 A flag also applies the version command recursively to all dependencies in the `vcs` directory:
 
 | Flag     | Description                                       |
-|----------|---------------------------------------------------|
+| -------- | ------------------------------------------------- |
 | `--deps` | Display version information for all dependencies. |

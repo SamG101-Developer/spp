@@ -27,8 +27,8 @@ cmp fun public() -> Void { }
 ## Defining an annotation
 
 Defining an annotation requires the `!annotation` attribute. The prelude includes it, so it's always available. The
-`target` parameter gives the annotation's context type, which determines where the annotation can apply. The
-function must return `Void`, and takes any parameters.
+`target` parameter gives the annotation's context type, which determines where the annotation can apply. The function
+must return `Void`, and takes any parameters.
 
 An annotation must be a function, and specifically a compile-time function. That keeps the state changes known at
 compile time, which the compiler needs before it can use the annotation for code generation and other purposes. The
@@ -38,14 +38,14 @@ compile time, which the compiler needs before it can use the annotation for code
 
 Annotations can use the following targets:
 
-| Target                   | Description                                     |
-|--------------------------|-------------------------------------------------|
-| `Annotation::function`   | Applies to free functions.                      |
-| `Annotation::method`     | Applies to methods in a `sup` block.            |
-| `Annotation::ext_method` | Applies to methods in a `sup-ext` block.        |
-| `Annotation::class`      | Applies to classes.                             |
-| `Annotation::new_type`   | Applies to type statement aliases.              |
-| `Annotation::constant`   | Applies to cmp constant declarations.           |
+| Target                   | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `Annotation::function`   | Applies to free functions.               |
+| `Annotation::method`     | Applies to methods in a `sup` block.     |
+| `Annotation::ext_method` | Applies to methods in a `sup-ext` block. |
+| `Annotation::class`      | Applies to classes.                      |
+| `Annotation::new_type`   | Applies to type statement aliases.       |
+| `Annotation::constant`   | Applies to cmp constant declarations.    |
 
 Some combined targets also exist:
 
