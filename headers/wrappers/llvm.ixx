@@ -43,6 +43,7 @@ export namespace llvm {
   using ::llvm::GlobalVariable;
   using ::llvm::IRBuilder;
   using ::llvm::Instruction;
+  using ::llvm::IntegerType;
   using ::llvm::LLVMContext;
   using ::llvm::MaybeAlign;
   using ::llvm::Module;
