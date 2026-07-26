@@ -105,7 +105,6 @@ auto spp::analyse::utils::type_utils::TypeEq(
   if (&lhs_type == &rhs_type) { return true; }
 
   // Special case for the "!" never type.
-  using asts::generate::common_types_precompiled::VAR;
   if (rhs_type.IsNeverType()) { return true; }
   if (lhs_type.IsNeverType()) { return rhs_type.IsNeverType(); }
   if (lhs_type.IsSelfType() and rhs_type.IsSelfType()) { return true; }
@@ -121,15 +120,10 @@ auto spp::analyse::utils::type_utils::TypeEq(
     GetTypeSymbol(stripped_rhs.get(), false);
   const auto lhs_sym = lhs_scope.GetTypeSymbol(&lhs_type);
 
-  // If the left-hand-side is a "Variant" type, check the composite types first.
-  if (check_variant and TypeEq(*stripped_lhs_sym->FqName(), *VAR, lhs_scope, lhs_scope, false)) {
-    const auto lhs_composite_types = DedupVariableInnerTypes(*lhs_sym->FqName(), lhs_scope);
-    if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) {
-      return TypeEq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope);
-    })) {
-      return true;
-    }
-  }
+  // If the left-hand-side is a "Variant" type, check the member types first.
+  // - "Str or Bool" should accept "Str".
+  // - "Str or Bool or S32" should accept "Str or S32".
+  if (check_variant and TypeVariantEq(lhs_type, rhs_type, lhs_scope, rhs_scope)) { return true; }
 
   if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
@@ -182,6 +176,36 @@ auto spp::analyse::utils::type_utils::TypeEq(
   -> bool {
   // Simple equality between the expressions.
   return lhs_expr == rhs_expr;
+}
+
+auto spp::analyse::utils::type_utils::TypeVariantEq(
+  asts::TypeAst const &variant_type,
+  asts::TypeAst const &type,
+  scopes::Scope const &variant_scope,
+  scopes::Scope const &type_scope)
+  -> bool {
+  // Ask for the members rather than testing whether this is a variant: an empty list is the same answer, and going
+  // through the one lookup keeps a structural test from disagreeing with what the members turn out to be. The lookup
+  // resolves an alias spelling ("Res[Str, Err1]") to the variant it names, so either form can be asked.
+  const auto variant_member_types = DedupVariableInnerTypes(variant_type, variant_scope);
+  if (variant_member_types.IsEmpty()) { return false; }
+
+  // A variant fits when every one of its members fits, so that the wider one has room for whichever member the
+  // narrower one is holding. Compare the members without the variant fallback, to match them against each other
+  // rather than against the variant either belongs to.
+  const auto type_member_types = DedupVariableInnerTypes(type, type_scope);
+  if (not type_member_types.IsEmpty()) {
+    return genex::all_of(type_member_types, [&](auto &&type_member_type) {
+      return genex::any_of(variant_member_types, [&](auto &&variant_member_type) {
+        return TypeEq(*variant_member_type, *type_member_type, variant_scope, type_scope, false);
+      });
+    });
+  }
+
+  // Otherwise this is a single value, which fits when it is one of the members.
+  return genex::any_of(variant_member_types, [&](auto &&variant_member_type) {
+    return TypeEq(*variant_member_type, type, variant_scope, type_scope);
+  });
 }
 
 auto spp::analyse::utils::type_utils::TypeFwdEq(
@@ -502,8 +526,8 @@ auto spp::analyse::utils::type_utils::IsTypeBorrowed(
 
   // Check the inner types for variant types.
   if (deep and TypeEq(*type.WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope, false)) {
-    for (auto const &inner_type_arg : type.LastTypePart()->GnArgGroup->GetTypeArgs()) {
-      if (IsTypeBorrowed(*inner_type_arg->Val, sm)) { return true; }
+    for (auto const &inner_type : DedupVariableInnerTypes(type, *sm.CurrentScope)) {
+      if (IsTypeBorrowed(*inner_type, sm)) { return true; }
     }
   }
   return false;
@@ -751,8 +775,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   else if (not variant_branches_type_info.IsEmpty()) {
     auto most_inner_types = 0uz;
     for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-      const auto variant_size = variant_type->LastTypePart()->GnArgGroup->TypeAt("Variant")->Val->LastTypePart()->
-                                              GnArgGroup->Args.Len();
+      const auto variant_size = DedupVariableInnerTypes(*variant_type, *sm.CurrentScope).Len();
       if (variant_size > most_inner_types) {
         master_branch_type_info = MakePair(variant_branch, variant_type);
         most_inner_types = variant_size;
@@ -1297,23 +1320,39 @@ auto spp::analyse::utils::type_utils::DedupVariableInnerTypes(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> Vec<Shared<asts::TypeAst>> {
-  // Create the list of types.
+  // Extract the initial "Variant" group of member types (if possible ie raw variant).
   auto out = Vec<Shared<asts::TypeAst>>();
-  if (type.LastTypePart()->GnArgGroup->Args.IsEmpty()) {
-    return out;
+  auto variants_arg = type.LastTypePart()->GnArgGroup->TypeAt("Variants");
+  auto resolved_type = Shared<asts::TypeAst>(nullptr);
+  if (variants_arg == nullptr) {
+
+    // Truly non-variant: return the empty list (no variant members).
+    const auto type_sym = scope.GetTypeSymbol(&type);
+    if (type_sym == nullptr) { return out; }
+    resolved_type = type_sym->FqName();
+    if (resolved_type == nullptr) { return out; }
+
+    // Re-extract the variants from the true type.
+    variants_arg = resolved_type->LastTypePart()->GnArgGroup->TypeAt("Variants");
   }
 
-  const auto &tup_generic_args = type.LastTypePart()->GnArgGroup->GetTypeArgs()[0]->Val;
-  const auto &var_generic_args = tup_generic_args->LastTypePart()->GnArgGroup;
-  for (auto &&generic_arg : var_generic_args->GetTypeArgs()) {
-    // Inspect inner variant types by extending the composite type list.
-    if (IsTypeVariant(*generic_arg->Val->WithoutGenerics(), scope)) {
-      out.AppendRange(DedupVariableInnerTypes(*generic_arg->Val, scope));
-    }
+  // Guard against non variant types.
+  if (variants_arg == nullptr or variants_arg->Val == nullptr) { return out; }
 
-    // Inspect a non-variant type, and if it hasn't beem added to the list, add it.
-    else if (not genex::any_of(out, [&](auto x) { return TypeEq(*generic_arg->Val, *x, scope, scope); })) {
-      out.EmplaceBack(generic_arg->Val);
+  // Add a member, unless a TypeEq-equal one is already present.
+  auto add_unique = [&out, &scope](Shared<asts::TypeAst> const &member) {
+    if (not genex::any_of(out, [&](auto x) { return TypeEq(*member, *x, scope, scope, false); })) {
+      out.EmplaceBack(member);
+    }
+  };
+
+  // Recursively search through the variant's member types, adding the unique ones.
+  const auto &var_generic_args = variants_arg->Val->LastTypePart()->GnArgGroup;
+  for (auto &&generic_arg : var_generic_args->GetTypeArgs()) {
+    auto inner_types = DedupVariableInnerTypes(*generic_arg->Val, scope);
+    if (inner_types.IsEmpty()) { add_unique(generic_arg->Val); }
+    else {
+      for (auto const &inner_type : inner_types) { add_unique(inner_type); }
     }
   }
 

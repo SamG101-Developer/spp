@@ -181,6 +181,15 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
     return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
   }
 
+  // Handle any other address the symbol was pointed at, such as the payload a variant's flow-typed symbol is narrowed
+  // onto by a case pattern. Such an address carries no llvm type of its own under opaque pointers, so the load goes
+  // through the symbol's own type instead of through the instruction that produced the address.
+  if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
+    const auto llvm_type = sm->CurrentScope->GetTypeSymbol(var_sym->Type.get())->LlvmInfo->LlvmType;
+    SPP_ASSERT(llvm_type != nullptr);
+    return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
+  }
+
   // If the variable is neither local nor global, this is an internal compiler error.
   Raise<SppInternalCompilerError>(
     {sm->CurrentScope},

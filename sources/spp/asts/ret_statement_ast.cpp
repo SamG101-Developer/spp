@@ -183,20 +183,33 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
     return nullptr;
   }
 
+  // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
+  // coerced into the return variant before it leaves the function.
+  const auto uid = "." + spp::utils::Uid(this);
+  const auto ret_type = _RetType != nullptr
+    ? _RetType
+    : meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+
+  auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
+    if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
+    return codegen::CoerceToVariant(
+      llvm_ret_val, *ret_type, *Expr->InferType(sm, meta), *sm->CurrentScope, "ret.variant" + uid, ctx);
+  };
+
   // Temp holder for non-symbolic condition.
   if (sm->CurrentScope->GetVarSymbolOutermost(*Expr).First == nullptr) {
     meta->Save();
     meta->AssignmentTargetType = _RetType;
     const auto ret_val = codegen::llvm_materialize(*Expr, sm, meta, ctx);
     const auto llvm_ret_val = ret_val->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateRet(llvm_ret_val);
+    ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
     meta->Restore();
   }
 
   // Otherwise, generate normally.
   else {
     const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateRet(llvm_ret_val);
+    ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
   }
 
   return nullptr;

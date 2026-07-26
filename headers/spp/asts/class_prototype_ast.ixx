@@ -119,7 +119,7 @@ private:
   auto _GenerateSymbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
 
   auto _FillLlvmLayout(ScopeManager const *sm, analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LLvmCtx *ctx) const -> void;
+    codegen::LLvmCtx const *ctx) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)

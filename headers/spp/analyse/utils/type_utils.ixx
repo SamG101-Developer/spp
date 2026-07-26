@@ -113,6 +113,28 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope const &func_scope)
     -> bool;
 
+  /**
+   * Check whether a value of @p type can be held by the variant @p variant_type, which is how a variant accepts
+   * anything other than itself. There are two ways in: @p type is one of the variant's members (@c {Some[T]} into a
+   * @c {Opt[T]}), or @p type is itself a variant whose members are all members of this one (@c {Str or S32} into a
+   * @c {Str or S32 or Bool}), because whichever member the narrower one holds, the wider one has room for it. An
+   * overlap is not enough, as the members that are not shared would have nowhere to go.
+   *
+   * A type with no members is not a variant, so it never matches here; the caller falls back to comparing the two
+   * types structurally, which is also what happens when the members do not line up.
+   * @param variant_type The variant type being matched into.
+   * @param type The type being matched, either a member or a narrower variant.
+   * @param variant_scope The scope of the variant type.
+   * @param type_scope The scope of the type being matched.
+   * @return If a value of @p type can be held by @p variant_type.
+   */
+  SPP_EXP_FUN auto TypeVariantEq(
+    asts::TypeAst const &variant_type,
+    asts::TypeAst const &type,
+    scopes::Scope const &variant_scope,
+    scopes::Scope const &type_scope)
+    -> bool;
+
   SPP_EXP_FUN auto RelaxedTypeEq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type,

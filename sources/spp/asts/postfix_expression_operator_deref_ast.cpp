@@ -15,6 +15,8 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.generate.common_types_precompiled;
+import spp.codegen.llvm_sym_info;
+import spp.utils.uid;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
@@ -99,9 +101,15 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(borrow_val != nullptr);
 
+  // Load through the pointee's own type, never the borrow value's type: under opaque pointers the latter is just
+  // "ptr", so the pointee is unrecoverable from it and has to come from the symbol table instead.
+  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+  const auto llvm_type = sm->CurrentScope->GetTypeSymbol(lhs_type.get())->LlvmInfo->LlvmType;
+  SPP_ASSERT(llvm_type != nullptr);
+
   // Dereference the borrow to get the underlying value.
   const auto deref_val = ctx->Builder.CreateLoad(
-    borrow_val->getType(), borrow_val, "deref");
+    llvm_type, borrow_val, "deref" + uid);
   return deref_val;
 }
 

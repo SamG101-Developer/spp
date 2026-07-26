@@ -125,10 +125,11 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   const auto lhs_type = lhs->InferType(sm, meta);
   const auto try_type = GetTryType(*lhs_type, *lhs, *sm);
 
-  // Temp holder for non-symbolic condition.
-  if (sm->CurrentScope->GetVarSymbolOutermost(*lhs).First == nullptr) {
-    lhs = codegen::llvm_materialize(*lhs, sm, meta, ctx);
-  }
+  // Materialize the lhs unconditionally, rather than only when it is non-symbolic. It is referenced three times below
+  // (the residual test, the early return and the value extraction), so anything with a side effect would otherwise
+  // run three times; and the residual test only works against a plain identifier, because that is what lets the case
+  // pattern flow-type the condition and read its discriminant.
+  lhs = codegen::llvm_materialize(*lhs, sm, meta, ctx);
 
   // Create the condition by attempting an "is" against the residual.
   const auto type_check = ( {

@@ -28,6 +28,7 @@ import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
@@ -141,6 +142,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_utils::CreateGenericClsScope;
   using analyse::utils::type_utils::GetTypeSymOrError;
   using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
+  using analyse::utils::type_utils::TypeEq;
   using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
   using analyse::errors::SemanticError;
   using analyse::errors::SppAbstractTypeUseError;
@@ -206,16 +208,21 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
   }
 
-  // For variant types, collapse any duplicate generic arguments.
-  // if (TypeEq(*without_generics(), *generate::common_types_precompiled::VAR, *scope, *sm->CurrentScope, false)) {
-  //     auto inner_types = analyse::utils::type_utils::deduplicate_variant_inner_types(*this, *sm->CurrentScope);
-  //     auto inner_types_as_tup = generate::common_types::tuple_type(PosStart(), std::move(inner_types));
-  //     meta->Save();
-  //     meta->TypeAnalysisTypeScope = type_scope;
-  //     inner_types_as_tup->Stage7_AnalyseSemantics(sm, meta);
-  //     meta->Restore();
-  //     ast_cast<GenericArgumentTypeAst>(generic_arg_group->Args[0].get())->val = std::move(inner_types_as_tup);
-  // }
+  // For variant types, collapse any duplicate generic arguments, so that "Str or S32 or Str" names the same type as
+  // "Str or S32", and so that a nested variant is flattened into its parent. Without this, two spellings of the same
+  // set of members would produce distinct type symbols.
+  if (GnArgGroup != nullptr and GnArgGroup->TypeAt("Variants") != nullptr
+    and analyse::utils::type_utils::IsTypeVariant(*type_sym->FqName(), *sm->CurrentScope)) {
+    auto inner_types = analyse::utils::type_utils::DedupVariableInnerTypes(*this, *sm->CurrentScope);
+    if (not inner_types.IsEmpty()) {
+      auto inner_types_as_tup = generate::common_types::TupleType(PosStart(), std::move(inner_types));
+      meta->Save();
+      meta->TypeAnalysisTypeScope = scope;
+      inner_types_as_tup->Stage7_AnalyseSemantics(sm, meta);
+      meta->Restore();
+      GnArgGroup->Args[0]->ToUnchecked<GenericArgumentTypeAst>()->Val = std::move(inner_types_as_tup);
+    }
+  }
 
   // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
   if (not scope->HasTypeSymbol(this)) {

@@ -195,12 +195,12 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   const auto incoming_bb = ctx->Builder.GetInsertBlock();
 
   // Sometimes, a type is returned from a branch that is part of the variant type on the lhs. For example, a Opt[T]
-  // might receive a Some[T] in one branch, and a None in another. In this case, we need to cast the returned
-  // value to the variant type.
-  if (meta->AssignmentTarget != nullptr and llvm_val != nullptr) {
-    const auto target_llvm_type = meta->LlvmPhi->getType();
-    const auto casted_val = ctx->Builder.CreateBitCast(llvm_val, target_llvm_type, "case.branch.cast.ptr");
-    llvm_val = casted_val;
+  // might receive a Some[T] in one branch, and a None in another. In this case the member value has to be tagged and
+  // copied into the variant's payload (a bit-cast cannot express that).
+  if (meta->AssignmentTarget != nullptr and meta->AssignmentTargetType != nullptr and llvm_val != nullptr) {
+    llvm_val = codegen::CoerceToVariant(
+      llvm_val, *meta->AssignmentTargetType, *Body->InferType(sm, meta), *sm->CurrentScope,
+      "case.branch.variant" + uid, ctx);
   }
 
   if (incoming_bb->getTerminator() == nullptr) {
