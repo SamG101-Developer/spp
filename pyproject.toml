@@ -14,10 +14,11 @@ dependencies = [
 
 [tool.typos.default.extend-words]
 olt = "olt"
+CreateMemCpy = "CreateMemCpy"
 
 [tool.typos.files]
 extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
 
 [tool.codespell]
-ignore-words-list = "CreateOr,olt"
+ignore-words-list = "CreateOr,CreateMemCpy,olt"
 skip = "./.vale,./tests/gtest-parallel,*.svg"
