@@ -147,7 +147,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // Create the alloca for the variable.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType.get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);

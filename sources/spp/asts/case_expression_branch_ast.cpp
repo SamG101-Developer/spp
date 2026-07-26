@@ -172,7 +172,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   -> llvm::Value* {
   // Generate the branch architecture.
   sm->MoveToNextScope();
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   const auto func = ctx->Builder.GetInsertBlock()->getParent();
   const auto body_bb = llvm::BasicBlock::Create(*ctx->Context, "case.branch.body" + uid, func);
   const auto next_bb = llvm::BasicBlock::Create(*ctx->Context, "case.branch.next" + uid, func);

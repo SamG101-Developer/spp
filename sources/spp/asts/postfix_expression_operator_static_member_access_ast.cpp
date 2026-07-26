@@ -175,7 +175,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
 
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {

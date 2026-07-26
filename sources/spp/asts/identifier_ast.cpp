@@ -165,7 +165,7 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   using analyse::errors::SppInternalCompilerError;
 
   // Get the allocation for the variable from the current scope.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
 

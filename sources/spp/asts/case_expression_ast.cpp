@@ -205,7 +205,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   sm->MoveToNextScope();
 
   // Determine if this "case" will be yielding an expression, and generate the condition.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   const auto is_expr = meta->AssignmentTarget != nullptr;
   Cond->Stage11_CodeGen(sm, meta, ctx);
 

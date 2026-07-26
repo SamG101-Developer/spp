@@ -45,7 +45,7 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
   F &&method)
   -> void {
   // Create the add_assign function.
-  const auto uid = spp::utils::Uid();
+  const auto uid = "." + spp::utils::Uid();
   const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto fn_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty, ty}, false);
@@ -73,7 +73,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop(
   F &&method)
   -> void {
   // Create the unary function.
-  const auto uid = spp::utils::Uid();
+  const auto uid = "." + spp::utils::Uid();
   const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
   const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
   const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
@@ -94,7 +94,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
   F &&method)
   -> void {
   // Create the unop_assign function.
-  const auto uid = spp::utils::Uid();
+  const auto uid = "." + spp::utils::Uid();
   const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto fn_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false);
@@ -119,7 +119,7 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call(
   const llvm::Intrinsic::IndependentIntrinsics intrinsic)
   -> void {
   // Create the function.
-  const auto uid = spp::utils::Uid();
+  const auto uid = "." + spp::utils::Uid();
   const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
   const auto fn_ty = llvm::FunctionType::get(ty, {ty, ty}, false);
   const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
@@ -141,7 +141,7 @@ auto spp::codegen::func_impls::simple_unary_intrinsic_call(
   const llvm::Intrinsic::IndependentIntrinsics intrinsic)
   -> void {
   // Create the function.
-  const auto uid = spp::utils::Uid();
+  const auto uid = "." + spp::utils::Uid();
   const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
   const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
   const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());

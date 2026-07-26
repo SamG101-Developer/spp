@@ -17,7 +17,6 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_materialize;
-import spp.utils.uid;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
@@ -70,7 +69,6 @@ auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
 
   // Handle the convention (to pointer).
   // If the lhs is symbolic, get the address of the outermost part.
-  const auto uid = spp::utils::Uid(this);
   const auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*Val);
 
   if (sym != nullptr) {

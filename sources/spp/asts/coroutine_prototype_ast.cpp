@@ -122,7 +122,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // Move into the coroutine scope.
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
 
   // Build the coroutine's env struct (its frame). A null result means this is a generic base (its types are not

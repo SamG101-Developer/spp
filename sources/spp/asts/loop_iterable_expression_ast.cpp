@@ -104,10 +104,10 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Simple statements to move from.
-  const auto uid = spp::utils::Uid(this);
-  auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter_" + uid);
-  auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res_" + uid);
-  auto flag_name = MakeShared<IdentifierAst>(PosStart(), "$_ok_" + uid);
+  const auto uid = "_" + spp::utils::Uid(this);
+  auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter" + uid);
+  auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res" + uid);
+  auto flag_name = MakeShared<IdentifierAst>(PosStart(), "$_ok" + uid);
   _IterableName = iterable_name;
 
   // Grab the generator's inner type.

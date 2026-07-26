@@ -366,7 +366,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // pointer is returned. Resuming (".res()", or an immediate auto-resume for GenOnce) drives the state machine.
   if (_OverloadInfo->Proto->IsCoroutine()) {
     const auto coro = _OverloadInfo->Proto->To<CoroutinePrototypeAst>();
-    const auto coro_uid = spp::utils::Uid(this);
+    const auto coro_uid = "." + spp::utils::Uid(this);
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto coro_scope = coro->GetAstScope();
 
@@ -439,7 +439,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   }
 
   // SPP_ASSERT(not ctx->Builder.GetInsertBlock()->getTerminator());
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
 
   if (not FnArgGroup->GetKeywordArgs().IsEmpty() and FnArgGroup->GetKeywordArgs()[0]->Name->Val == "self") {

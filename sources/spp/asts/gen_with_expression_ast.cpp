@@ -93,10 +93,10 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokGen));
 
   // Desugar "gen with <Expr>" into "loop _tmp in <Expr> { gen _tmp }". This keeps all "gen" analysis uniform.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "_" + spp::utils::Uid(this);
   auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(
-    nullptr, MakeShared<IdentifierAst>(PosStart(), "$gen_with_" + uid), nullptr);
-  auto gen_value = MakeUnique<IdentifierAst>(PosStart(), "$gen_with_" + uid);
+    nullptr, MakeShared<IdentifierAst>(PosStart(), "$gen_with" + uid), nullptr);
+  auto gen_value = MakeUnique<IdentifierAst>(PosStart(), "$gen_with" + uid);
   auto gen_expression = MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
   auto loop_body = InnerScopeExpressionAst::NewEmpty();
   loop_body->Members.EmplaceBack(std::move(gen_expression));

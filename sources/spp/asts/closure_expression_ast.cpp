@@ -168,8 +168,8 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   // Strategy: build an "environment" struct for the closure. Attributes are captures. The safety is already
   // guaranteed by semantic analysis.
   // Todo: Add LLVM attributes to pointer types for optimizations (unique, nonnull, etc).
-  const auto uid = spp::utils::Uid(this);
-  const auto env_ty = llvm::StructType::create(*ctx->Context, "$ClosureEnv" + uid);
+  const auto uid = "." + spp::utils::Uid(this);
+  const auto env_ty = llvm::StructType::create(*ctx->Context, "closure.env_type." + uid);
   auto env_field_types = Vec<llvm::Type*>{};
   for (auto const &capture : PcGroup->CaptureGroup->Captures) {
     const auto cap_ty = capture->InferType(sm, meta);
@@ -190,7 +190,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   const auto llvm_fn_ty = llvm::FunctionType::get(
     llvm_ret_ty, llvm_param_types.ToStdVector(), PcGroup->ParamGroup->GetVariadicParams() != nullptr);
   const auto llvm_fn = llvm::Function::Create(
-    llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->Module.get());
+    llvm_fn_ty, llvm::Function::InternalLinkage, "closure.fn." + uid, ctx->Module.get());
   const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
 
   const auto saved_bb = ctx->Builder.GetInsertBlock();

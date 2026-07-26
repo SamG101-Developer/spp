@@ -95,6 +95,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // Get the value underlying the borrow.
+  const auto uid = "." + spp::utils::Uid(this);
   const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(borrow_val != nullptr);
 
