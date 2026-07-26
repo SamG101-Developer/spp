@@ -57,11 +57,12 @@ repos:
     rev: 0.27.7
     hooks:
       - id: gersemi
+        args: [--indent, "2"]
 
-#  - repo: https://github.com/cheshirekow/cmake-format-precommit
-#    rev: v0.6.13
-#    hooks:
-#      - id: cmake-lint
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+      - id: cmake-lint
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.3

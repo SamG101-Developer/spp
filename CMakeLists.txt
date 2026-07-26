@@ -12,43 +12,36 @@ set(CMAKE_NM gcc-nm)
 # Local dev builds against a custom GCC at /usr/local/gcc-dev; CI passes
 # -DSPP_USE_DEV_RPATH=OFF so it doesn't bake in a path that isn't on the runner.
 option(
-    SPP_USE_DEV_RPATH
-    "Bake in the local dev toolchain rpath (/usr/local/gcc-dev/lib64)"
-    ON
+  SPP_USE_DEV_RPATH
+  "Bake in the local dev toolchain rpath (/usr/local/gcc-dev/lib64)"
+  ON
 )
-if(SPP_USE_DEV_RPATH)
-    set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64;/usr/local/lib")
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-endif()
+if (SPP_USE_DEV_RPATH)
+  set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64;/usr/local/lib")
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+endif ()
 
 # Build options (consumed by CI in the configure-cmake composite action).
 option(SPP_WERROR "Treat compiler warnings as errors" ON)
 option(SPP_BUILD_TESTS "Build the unit tests" ON)
 set(SPP_SANITIZER
-    ""
-    CACHE STRING
-    "Sanitizers to enable, e.g. 'address,undefined,leak' or 'thread'"
+  ""
+  CACHE STRING
+  "Sanitizers to enable, e.g. 'address,undefined,leak' or 'thread'"
 )
 
-# Apply sanitizer flags to every target defined below (library, executable, tests).
-# Accepts either '+' or ',' as the separator (CI passes e.g. 'address+undefined+leak').
-if(SPP_SANITIZER)
-    string(REPLACE "+" "," _SPP_SAN_LIST "${SPP_SANITIZER}")
-    add_compile_options(
-        -fsanitize=${_SPP_SAN_LIST}
-        -fno-omit-frame-pointer
-        -fno-optimize-sibling-calls
-    )
-    add_link_options(-fsanitize=${_SPP_SAN_LIST})
-endif()
+# Apply sanitizer flags to every target defined below.
+if (SPP_SANITIZER)
+  string(REPLACE "+" "," _SPP_SAN_LIST "${SPP_SANITIZER}")
+  add_compile_options(
+    -fsanitize=${_SPP_SAN_LIST}
+    -fno-omit-frame-pointer
+    -fno-optimize-sibling-calls
+  )
+  add_link_options(-fsanitize=${_SPP_SAN_LIST})
+endif ()
 
 set(CMAKE_LINKER_TYPE LLD)
-
-#if(NOT SPP_SANITIZER AND CMAKE_BUILD_TYPE STREQUAL "Release")
-#    message(STATUS "SPP: link-time optimization (LTO) enabled (fat objects)")
-#    add_compile_options(-flto=auto -ffat-lto-objects)
-#    add_link_options(-flto=auto  -ffat-lto-objects -Wno-odr -Wno-lto-type-mismatch)
-#endif()
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
@@ -68,105 +61,104 @@ file(GLOB_RECURSE MODULE_FILES CONFIGURE_DEPENDS "headers/*.ixx")
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
 add_library(${PROJECT_NAME}_lib)
 
-# Enable all warnings (treating them as errors is gated behind SPP_WERROR, applied below). # -Wswitch-enum
+# Enable all warnings (SPP_WERROR => treating as errors).
+# -Wswitch-enum
 target_compile_options(
-    ${PROJECT_NAME}_lib
-    PRIVATE
-        -Wall
-        -Wextra
-        #        -fvisibility=hidden
-        #        -fvisibility-inlines-hidden
-        -Wcast-align
-        -Wcast-qual
-        -Wconversion
-        -Wsign-conversion
-        -Wsign-promo
-        -Wctor-dtor-privacy
-        -Winit-self
-        -Wold-style-cast
-        -Wundef
-        -Wdisabled-optimization
-        -Wmissing-declarations
-        -Wmissing-include-dirs
-        -Wformat=2
-        -Wduplicated-cond
-        -Wduplicated-branches
-        -Wredundant-decls
-        -Wlogical-op
-        -Wuseless-cast
-        -Wdouble-promotion
-        -Wstrict-null-sentinel
-        -Wswitch-default
-        -Wsuggest-override
-        -Wzero-as-null-pointer-constant
-        -Wimplicit-fallthrough=5
-        -Wstrict-overflow=2
-        -Wnon-virtual-dtor
-        -Wunused
-        -Wno-maybe-uninitialized
-        -Wno-error=array-bounds
-        -Wno-error=overloaded-virtual
-        -Wno-null-dereference
-        -Wodr
+  ${PROJECT_NAME}_lib
+  PRIVATE
+  -Wall
+  -Wextra
+  -Wcast-align
+  -Wcast-qual
+  -Wconversion
+  -Wsign-conversion
+  -Wsign-promo
+  -Wctor-dtor-privacy
+  -Winit-self
+  -Wold-style-cast
+  -Wundef
+  -Wdisabled-optimization
+  -Wmissing-declarations
+  -Wmissing-include-dirs
+  -Wformat=2
+  -Wduplicated-cond
+  -Wduplicated-branches
+  -Wredundant-decls
+  -Wlogical-op
+  -Wuseless-cast
+  -Wdouble-promotion
+  -Wstrict-null-sentinel
+  -Wswitch-default
+  -Wsuggest-override
+  -Wzero-as-null-pointer-constant
+  -Wimplicit-fallthrough=5
+  -Wstrict-overflow=2
+  -Wnon-virtual-dtor
+  -Wunused
+  -Wno-maybe-uninitialized
+  -Wno-error=array-bounds
+  -Wno-error=overloaded-virtual
+  -Wno-null-dereference
+  -Wodr
 )
 
-if(SPP_WERROR)
-    target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
-endif()
+if (SPP_WERROR)
+  target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
+endif ()
 
 target_sources(
-    ${PROJECT_NAME}_lib
-    PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
-    PRIVATE ${SOURCE_FILES}
+  ${PROJECT_NAME}_lib
+  PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
+  PRIVATE ${SOURCE_FILES}
 )
 
 target_compile_features(
-    ${PROJECT_NAME}_lib
-    PRIVATE $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>
+  ${PROJECT_NAME}_lib
+  PRIVATE $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>
 )
 target_compile_options(
-    ${PROJECT_NAME}_lib
-    PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>
+  ${PROJECT_NAME}_lib
+  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>
 )
 target_compile_definitions(${PROJECT_NAME}_lib PRIVATE ${LLVM_DEFINITIONS_LIST})
 target_include_directories(
-    ${PROJECT_NAME}_lib
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers
+  ${PROJECT_NAME}_lib
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers
 )
 target_include_directories(
-    ${PROJECT_NAME}_lib
-    SYSTEM
-    PUBLIC ${LLVM_INCLUDE_DIRS}
+  ${PROJECT_NAME}_lib
+  SYSTEM
+  PUBLIC ${LLVM_INCLUDE_DIRS}
 )
 
 target_link_libraries(
-    ${PROJECT_NAME}_lib
-    PUBLIC
-        Boost::boost
-        LLVMCore
-        LLVMSupport
-        LLVMCodeGen
-        LLVMScalarOpts
-        LLVMTransformUtils
-        mimalloc
-        unordered_dense::unordered_dense
-        tomlplusplus::tomlplusplus
-        nlohmann_json::nlohmann_json
-        magic_enum::magic_enum
-        CLI11::CLI11
-        ColEx::ColEx
-        GenEx::GenEx
+  ${PROJECT_NAME}_lib
+  PUBLIC
+  Boost::boost
+  LLVMCore
+  LLVMSupport
+  LLVMCodeGen
+  LLVMScalarOpts
+  LLVMTransformUtils
+  mimalloc
+  unordered_dense::unordered_dense
+  tomlplusplus::tomlplusplus
+  nlohmann_json::nlohmann_json
+  magic_enum::magic_enum
+  CLI11::CLI11
+  ColEx::ColEx
+  GenEx::GenEx
 )
 
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 
 # Unit test support.
-if(SPP_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
+if (SPP_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
 
-    # Ensure the test executable is (re)built whenever the main project is built, so tests
-    # never run against a stale binary after updating the repo.
-    # add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_tests)
-endif()
+  # Rebuild test exe when main exe is rebuilt.
+  # never run against a stale binary after updating the repo.
+  # add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_tests)
+endif ()
