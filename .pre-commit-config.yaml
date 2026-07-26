@@ -1,5 +1,7 @@
 minimum_pre_commit_version: "3.5.0"
 default_stages: [ pre-commit ]
+default_language_version:
+  python: python3.14
 exclude: '^\.vale/'
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -9,19 +11,26 @@ repos:
       - id: mixed-line-ending
         args: [ --fix=lf ]
       - id: end-of-file-fixer
+      - id: check-vcs-permalinks
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: check-added-large-files
         args: [ --maxkb=512 ]
       - id: check-yaml
       - id: check-toml
-      - id: check-json
-      - id: check-symlinks
       - id: destroyed-symlinks
       - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
       - id: check-illegal-windows-names
-      - id: forbid-new-submodules
+      - id: forbid-submodules
       - id: no-commit-to-branch
+      # - id: check-json
+      # - id: check-symlinks
+
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
 
   # C++ CHECKS
 
@@ -88,6 +97,12 @@ repos:
     hooks:
       - id: shellcheck
 
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.13.1-1
+    hooks:
+      - id: shfmt
+        args: [ -i, "2", -sr, -bn, -ci ]
+
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
@@ -105,6 +120,11 @@ repos:
     hooks:
       - id: mdformat
         additional_dependencies: [ mdformat-gfm, mdformat-toc ]
+
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
 
   # VCS HYGIENE
 
@@ -135,3 +155,9 @@ repos:
         args: [ "--verbose" ]
       - id: check-github-actions
       - id: check-dependabot
+
+#  Todo: Wait for https://github.com/suzuki-shunsuke/pinact/pull/971 to be merged
+#  - repo: https://github.com/suzuki-shunsuke/pinact
+#    rev: v4.1.0
+#    hooks:
+#      - id: pinact
