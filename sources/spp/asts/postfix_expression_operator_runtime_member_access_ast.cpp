@@ -134,7 +134,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
       // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
       // access to their members.
-      auto [fwd_ref_type, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type, *sm);
+      const auto [fwd_ref_type, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type, *sm);
       if (fwd_ref_type != nullptr) {
         const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
         auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(inner_type), nullptr);
@@ -279,7 +279,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
   // The physical field order isn't the declaration order, because the S++ layout re-orders the fields to minimize
   // padding, so the declaration index has to be resolved through the type's field index map.
   const auto decl_index = GetFieldIndexInType(
-    *lhs_type, *Name, sm);
+    *lhs_type, *Name, *sm);
   const auto field_index = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, decl_index);
   return ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
 }

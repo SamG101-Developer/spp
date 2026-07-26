@@ -373,7 +373,7 @@ static auto ApplyStructLayout(
 auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
   ScopeManager const *sm,
   analyse::scopes::TypeSymbol const *type_sym,
-  codegen::LLvmCtx *ctx) const
+  codegen::LLvmCtx const *ctx) const
   -> void {
   // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
 
@@ -383,7 +383,7 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
     return;
   }
 
-  auto types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), sm)
+  auto types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), *sm)
     | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*std::get<1>(pair), ctx); })
     | genex::to<Vec>();
 

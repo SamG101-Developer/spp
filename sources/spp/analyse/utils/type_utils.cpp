@@ -719,7 +719,7 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
 
 auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   Vec<asts::CaseExpressionBranchAst*> const &branches,
-  scopes::ScopeManager *sm,
+  scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *meta)
   -> std::tuple<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>> {
   //
@@ -728,12 +728,12 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
 
   // Collect type information for each branch, pairing the branch with its inferred type.
   auto branches_type_info = branches
-    | genex::views::transform([sm, meta](auto *x) { return MakePair(x, x->InferType(sm, meta)); })
+    | genex::views::transform([&sm, meta](auto *x) { return MakePair(x, x->InferType(&sm, meta)); })
     | genex::to<Vec>();
 
   // Filter the branch types down to variant types for custom analysis.
   auto variant_branches_type_info = branches_type_info
-    | genex::views::filter([sm](auto &&x) { return type_utils::IsTypeVariant(*x.Second, *sm->CurrentScope); })
+    | genex::views::filter([&sm](auto &&x) { return type_utils::IsTypeVariant(*x.Second, *sm.CurrentScope); })
     | genex::to<Vec>();
 
   // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently
@@ -764,11 +764,11 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   // Todo: Shouldn't need to auto-remove "!" type, because TypeEq handles it?
   auto mismatch_branches_type_info = branches_type_info
     | genex::views::remove_if([&](auto const &x) {
-      return TypeEq(*NEVER, *x.Second, *sm->CurrentScope, *sm->CurrentScope);
+      return TypeEq(*NEVER, *x.Second, *sm.CurrentScope, *sm.CurrentScope);
     })
     | genex::views::remove_if([&](auto const &x) { return x.First == master_branch_type_info.First; })
     | genex::views::remove_if([&](auto const &x) {
-      return TypeEq(*master_branch_type_info.Second, *x.Second, *sm->CurrentScope, *sm->CurrentScope);
+      return TypeEq(*master_branch_type_info.Second, *x.Second, *sm.CurrentScope, *sm.CurrentScope);
     })
     | genex::to<Vec>();
 
@@ -777,7 +777,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
     const auto [master_branch, master_branch_type] = master_branch_type_info;
     const auto final_member = master_branch ? master_branch->Body->FinalMember() : meta->AssignmentTarget.get();
     Raise<SppTypeMismatchError>(
-      {sm->CurrentScope},
+      {sm.CurrentScope},
       ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
   }
 
@@ -796,10 +796,10 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
 
 auto spp::analyse::utils::type_utils::GetAllAttrs(
   asts::TypeAst const &type,
-  scopes::ScopeManager const *sm)
+  scopes::ScopeManager const &sm)
   -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>> {
   // Get the symbol of the class type.
-  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(&type);
+  const auto cls_sym = sm.CurrentScope->GetTypeSymbol(&type);
 
   // Get the attribute information from the class type and all super types.
   auto all_scopes = Vec{cls_sym->LinkedScope};
@@ -894,10 +894,10 @@ auto spp::analyse::utils::type_utils::GetUnimplementedAbstractMethods(
 
 auto spp::analyse::utils::type_utils::GetAllAttrAsts(
   asts::TypeAst const &type,
-  scopes::ScopeManager const *sm)
+  scopes::ScopeManager const &sm)
   -> Vec<asts::ClassAttributeAst*> {
   // Get the symbol of the class type.
-  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(&type);
+  const auto cls_sym = sm.CurrentScope->GetTypeSymbol(&type);
 
   // Walk the class and its super types in the same order as "GetAllAttrs", so the results line up index for index.
   auto all_scopes = Vec{cls_sym->LinkedScope};
@@ -1443,7 +1443,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
 auto spp::analyse::utils::type_utils::GetFieldIndexInType(
   asts::TypeAst const &type_sym,
   asts::IdentifierAst const &field_name,
-  scopes::ScopeManager *sm)
+  scopes::ScopeManager const &sm)
   -> std::size_t {
   // Get all the attributes on the type.
   const auto all_attrs = GetAllAttrs(type_sym, sm);

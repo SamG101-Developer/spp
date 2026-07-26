@@ -169,7 +169,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  const auto attr_names = GetAllAttrs(*type_sym->FqName(), sm)
+  const auto attr_names = GetAllAttrs(*type_sym->FqName(), *sm)
     | genex::views::tuple_nth<0>
     | genex::to<Vec>();
 

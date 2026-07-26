@@ -89,7 +89,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
   using analyse::utils::type_utils::GetAllAttrs;
 
-  const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
+  const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, *sm);
   const auto all_attr_names = all_attrs
     | genex::views::tuple_nth<0>
     | genex::to<Vec>();
@@ -174,7 +174,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 
   // Get the attributes on the type and supertypes.
   const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType.get());
-  const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
+  const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, *sm);
 
   // Type check the non-autofill arguments against the class attributes.
   for (auto const &arg : GetNonAutoFillArgs()) {
@@ -217,7 +217,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   }
 
   // Generate an argument for every attribute the user didn't pass.
-  const auto all_attr_asts = GetAllAttrAsts(*meta->ObjectInitType, sm);
+  const auto all_attr_asts = GetAllAttrAsts(*meta->ObjectInitType, *sm);
   const auto given_names = GetNonAutoFillArgs()
     | genex::views::transform([](auto const &x) { return x->Name; })
     | genex::to<Vec>();

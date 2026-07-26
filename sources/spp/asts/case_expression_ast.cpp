@@ -266,7 +266,7 @@ auto spp::asts::CaseExpressionAst::InferType(
 
   // Ensure consistency across branches.
   auto [master_branch_type_info, branches_type_info] = ValidateInconsistentTypes(
-    Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
+    Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
 
   // Ensure there is an "else" branch if the branches are not exhaustive.
   // Todo: Need to investigate how to detect exhaustion.

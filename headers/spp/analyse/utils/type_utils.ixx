@@ -249,13 +249,13 @@ namespace spp::analyse::utils::type_utils {
 
   SPP_EXP_FUN auto ValidateInconsistentTypes(
     Vec<asts::CaseExpressionBranchAst*> const &branches,
-    scopes::ScopeManager *sm,
+    scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>>;
 
   SPP_EXP_FUN auto GetAllAttrs(
     asts::TypeAst const &type,
-    scopes::ScopeManager const *sm)
+    scopes::ScopeManager const &sm)
     -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>;
 
   /**
@@ -281,7 +281,7 @@ namespace spp::analyse::utils::type_utils {
    */
   SPP_EXP_FUN auto GetAllAttrAsts(
     asts::TypeAst const &type,
-    scopes::ScopeManager const *sm)
+    scopes::ScopeManager const &sm)
     -> Vec<asts::ClassAttributeAst*>;
 
   SPP_EXP_FUN auto CreateGenericClsScope(
@@ -372,7 +372,7 @@ namespace spp::analyse::utils::type_utils {
   SPP_EXP_FUN auto GetFieldIndexInType(
     asts::TypeAst const &type_sym,
     asts::IdentifierAst const &field_name,
-    scopes::ScopeManager *sm)
+    scopes::ScopeManager const &sm)
     -> std::size_t;
 
   SPP_EXP_FUN auto ResolveAndSubstituteSelfType(
