@@ -21,6 +21,7 @@ auto spp::codegen::SizeOf(
   Shared<asts::TypeAst> const &type)
   -> std::size_t {
   //
+  using analyse::utils::type_utils::DedupVariableInnerTypes;
   using analyse::utils::type_utils::TypeEq;
   using namespace asts::generate::common_types_precompiled;
 
@@ -102,8 +103,8 @@ auto spp::codegen::SizeOf(
   // an LLVM context should measure the lowered type with the data layout instead.
   if (TypeEq(*type->WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope)) {
     auto max_size = 0uz;
-    for (auto const &inner_type : type->LastTypePart()->GnArgGroup->GetTypeArgs()) {
-      max_size = std::max(max_size, SizeOf(sm, inner_type->Val));
+    for (auto const &inner_type : DedupVariableInnerTypes(*type, *sm.CurrentScope)) {
+      max_size = std::max(max_size, SizeOf(sm, inner_type));
     }
     return max_size + sizeof(std::size_t);
   }
