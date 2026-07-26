@@ -11,3 +11,13 @@ dependencies = [
     "sphinx>=9.1.0",
     "ty>=0.0.61",
 ]
+
+[tool.typos.default.extend-words]
+olt = "olt"
+
+[tool.typos.files]
+extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
+
+[tool.codespell]
+ignore-words-list = "CreateOr,olt"
+skip = "./.vale,./tests/gtest-parallel,*.svg"

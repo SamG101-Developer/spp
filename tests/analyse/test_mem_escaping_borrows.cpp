@@ -1,7 +1,7 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMemoryEscpaingBorrows,
+    TestMemoryEscapingBorrows,
     test_invalid_memory_escaping_borrows_conflicting_borrow_mut_mut,
     SppMemoryOverlapUsageError, R"(
     cor c(a: &mut Str) -> Gen[&StrView] {
@@ -16,7 +16,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMemoryEscpaingBorrows,
+    TestMemoryEscapingBorrows,
     test_invalid_memory_escaping_borrows_conflicting_borrow_mut_ref,
     SppMemoryOverlapUsageError, R"(
     cor c1(a: &mut Str) -> Gen[&StrView] {
@@ -35,7 +35,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMemoryEscpaingBorrows,
+    TestMemoryEscapingBorrows,
     test_invalid_memory_escaping_borrows_conflicting_borrow_ref_mut,
     SppMemoryOverlapUsageError, R"(
     cor c1(a: &Str) -> Gen[&StrView] {
@@ -54,7 +54,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestMemoryEscpaingBorrows,
+    TestMemoryEscapingBorrows,
     test_valid_memory_escaping_borrows_conflicting_borrow_ref_ref, R"(
     cor c(a: &Str) -> Gen[&StrView] {
         gen "0"

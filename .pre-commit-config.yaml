@@ -23,35 +23,32 @@ repos:
       - id: forbid-new-submodules
       - id: no-commit-to-branch
 
-  #  - repo: https://github.com/pocc/pre-commit-hooks
-  #    rev: 0c2dfae267d798c9adff7b86976fa602aa0999b7
-  #    hooks:
-  #      - id: clang-format
+  # C++ CHECKS
+
+#  - repo: https://github.com/pocc/pre-commit-hooks
+#    rev: 0c2dfae267d798c9adff7b86976fa602aa0999b7
+#    hooks:
+#      - id: cppcheck
+#        args:
+#          - --enable=all
+#          - --inline-suppr
+#          - --suppressions-list=.cppcheck-suppressions
+#          - --check-level=exhaustive
+#          - --std=c++26
+#          - --language=c++
+#          - --error-exitcode=1
+#          - -Iheaders
+#          - '--template={file}:{line}:{column}: {severity}: {message} [{id}]'
+#          - '--template-location={file}:{line}:{column}: note: {info}'
+  #      - id: cpplint
+  #        args: [-Iheaders]
   #        args: [ --style=file ]
+  #      - id: clang-format
   #      - id: clang-tidy
   #      - id: oclint
   #      - id: uncrustify
-  #      - id: cppcheck
-  #        args:
-  #          - --enable=all
-  #          - --inline-suppr
-  #          - --suppressions-list=.cppcheck-suppressions
-  #          - --check-level=exhaustive
-  #          - --std=c++26
-  #          - --language=c++
-  #          - --error-exitcode=1
-  #          - -Iheaders
-  #          - '--template={file}:{line}:{column}: {severity}: {message} [{id}]'
-  #          - '--template-location={file}:{line}:{column}: note: {info}'
-  #      - id: cpplint
-  #      - id: include-what-you-use # No module support yet.
-  #        args: [-Iheaders]
 
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
-    hooks:
-      - id: gitleaks
-        language_version: "1.25.7"
+  # CMake CHECKS
 
   - repo: https://github.com/BlankSpruce/gersemi-pre-commit
     rev: 0.27.7
@@ -64,20 +61,27 @@ repos:
     hooks:
       - id: cmake-lint
 
+  # SPELLING & GRAMMAR
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.48.0
+    hooks:
+      - id: typos
+        args: [ --force-exclude ]
+
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.3
     hooks:
       - id: codespell
         additional_dependencies: [ tomli ]
-        exclude: ^.vale
-        args:
-          - --ignore-words-list=CreateOr,olt
 
   - repo: https://github.com/errata-ai/vale
     rev: v3.15.1
     hooks:
       - id: vale
         language_version: "1.25.7"
+
+  # CONFIG FILE LINTING
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
@@ -102,6 +106,8 @@ repos:
       - id: mdformat
         additional_dependencies: [ mdformat-gfm, mdformat-toc ]
 
+  # VCS HYGIENE
+
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.16.5
     hooks:
@@ -109,7 +115,23 @@ repos:
       - id: commitizen-branch
         stages: [ pre-push ]
 
+  # SECURITY
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        language_version: "1.25.7"
+
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
     rev: v1.28.0
     hooks:
       - id: zizmor
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.37.4
+    hooks:
+      - id: check-github-workflows
+        args: [ "--verbose" ]
+      - id: check-github-actions
+      - id: check-dependabot

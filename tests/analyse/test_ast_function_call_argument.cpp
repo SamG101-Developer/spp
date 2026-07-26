@@ -101,7 +101,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentAst,
-    test_invalid_convention_mistmatch_ref_vs_mov_3,
+    test_invalid_convention_mismatch_ref_vs_mov_3,
     SppFunctionCallNoValidSignaturesError, R"(
     fun f(a: Bool) -> Void { }
 

@@ -22,6 +22,21 @@ fi
 # fail. Don't think it's an issue on GCC 17 but runner must use GCC 16.
 FORTIFY_OFF="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
 
+# Ninja lives in a per-run RUNNER_TEMP directory, so its absolute path changes on every workflow run. A build tree
+# restored from the cache still names the previous run's path in CMAKE_MAKE_PROGRAM, and CMake runs that dead path from
+# project() before it ever looks at PATH. Pin the entry to the Ninja on this run's PATH; a command-line -D lands in the
+# cache ahead of project(), so it overrides the stale value.
+if ! NINJA="$(command -v ninja)"; then
+  echo "configure: ninja is not on PATH; setup-toolchain must run before this step" >&2
+  exit 1
+fi
+
+# Git Bash reports an MSYS path (/c/...) that CMake cannot execute; -m gives the mixed C:/... form CMake wants.
+if [ "$RUNNER_OS" = "Windows" ]; then
+  NINJA="$(cygpath -m "$NINJA")"
+fi
+args+=(-DCMAKE_MAKE_PROGRAM="$NINJA")
+
 # Launch the cmake configuration script into the "build" folder. Ninja must be used for the c++ module support.
 # shellcheck disable=SC2086  # EXTRA_FLAGS is a deliberate word-split flag list passed in from the calling action.
 cmake -S . -B build -G Ninja \

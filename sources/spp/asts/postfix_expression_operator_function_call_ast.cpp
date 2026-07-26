@@ -236,7 +236,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     _ClosureDummyArgGroup->Stage8_CheckMemory(sm, meta);
   }
 
-  // Check the argument group, now the old borrows hae been invalidated.
+  // Check the argument group, now the old borrows have been invalidated.
   GnArgGroup->Stage8_CheckMemory(sm, meta);
 
   meta->Save();

@@ -85,7 +85,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionPrototypeAst,
-    test_invalid_conflic_ignoring_self_variation,
+    test_invalid_conflict_ignoring_self_variation,
     SppFunctionPrototypeConflictError, R"(
     cls A { }
     sup A {

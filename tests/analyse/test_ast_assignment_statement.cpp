@@ -54,7 +54,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
-    test_valid_non_initialized_mutbale_variable_targe, R"(
+    test_valid_non_initialized_mutable_variable_targe, R"(
     fun f() -> Void {
         let mut a: Bool
         a = false
@@ -63,7 +63,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
-    test_valid_non_initialized_mutbale_variable_target_then_reassign, R"(
+    test_valid_non_initialized_mutable_variable_target_then_reassign, R"(
     fun f() -> Void {
         let mut a: Bool
         a = false

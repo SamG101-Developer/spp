@@ -102,7 +102,7 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
 private:
   /**
    * The AST that represents the functional version of this binary expression. For example, @code 1 + 2@endcode
-   * becomes @c 1.add(2). The mapped function itelf has its own internal mapping, in this case that would be
+   * becomes @c 1.add(2). The mapped function itself has its own internal mapping, in this case that would be
    * @c std::number::S32::add(1, 2).
    */
   Shared<PostfixExpressionAst> _MappedFunc;

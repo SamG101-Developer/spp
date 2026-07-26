@@ -337,7 +337,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
     }
     new_fn_proto->ReturnType = new_fn_proto->ReturnType->SubstituteGenerics(combined_generics->GetAllArgs());
     new_fn_proto->ReturnType->Stage7_AnalyseSemantics(&tm, meta);
-    // Todo: new_fn_proto->ReturnTye = scope->GetTypeSymbol(...)->FqName() ?
+    // Todo: new_fn_proto->ReturnType = scope->GetTypeSymbol(...)->FqName() ?
 
     // Check the new return type isn't a borrow type.
     RaiseIf<SppSecondClassBorrowViolationError>(
