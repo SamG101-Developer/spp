@@ -6,15 +6,7 @@ module;
 export module boost;
 
 export namespace boost {
-  // using BigInt = ::boost::multiprecision::cpp_int;
-  // using BigDec = ::boost::multiprecision::cpp_dec_float_100;
-
-  // Stack versions.
-  using BigInt = ::boost::multiprecision::number<
-    boost::multiprecision::cpp_int_backend<
-      512, 512, ::boost::multiprecision::signed_magnitude, ::boost::multiprecision::unchecked, void>,
-    ::boost::multiprecision::et_off>;
-
+  using BigInt = ::boost::multiprecision::cpp_int;
   using BigDec = ::boost::multiprecision::cpp_dec_float_100;
 
   using ::boost::multiprecision::int128_t;
