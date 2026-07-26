@@ -14,7 +14,7 @@ dependencies = [
 
 [tool.typos.default.extend-words]
 olt = "olt"
-CreateMemCpy = "CreateMemCpy"
+Cpy = "Cpy"
 
 [tool.typos.files]
 extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
