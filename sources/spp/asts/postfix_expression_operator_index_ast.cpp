@@ -130,6 +130,15 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
   _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
+auto spp::asts::PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LLvmCtx *ctx)
+  -> llvm::Value* {
+  // Forward to the mapped function.
+  return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
+}
+
 auto spp::asts::PostfixExpressionOperatorIndexAst::InferType(
   analyse::scopes::ScopeManager *sm,
   CompilerMetaData *meta)

@@ -3,7 +3,9 @@ module;
 
 export module spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -81,6 +83,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For
