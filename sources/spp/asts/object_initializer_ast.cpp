@@ -167,7 +167,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   const auto uid = spp::utils::Uid(this);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
-  SPP_ASSERT(llvm_type != nullptr);
+  SPP_ASSERT(llvm_type != nullptr); // todo : could be from stage10 cmp, so generate here
 
   const auto attr_names = GetAllAttrs(*type_sym->FqName(), *sm)
     | genex::views::tuple_nth<0>
@@ -206,7 +206,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   // Constant pathway.
   // Set each field value in the constant, indexed by its physical position in the struct.
   const auto struct_type = llvm::cast<llvm::StructType>(llvm_type);
-  auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements());
+  auto comp_fields = Vec<llvm::Constant*>(attr_names.Len(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
     comp_fields[field_index(*arg->Name)] = llvm::cast<llvm::Constant>(comp_val);
