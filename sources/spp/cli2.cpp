@@ -13,11 +13,13 @@ inline constexpr spp::Str FFI_FOLDER_NAME = "ffi";
 inline constexpr spp::Str MAIN_FILE_NAME = "main.spp";
 inline constexpr spp::Str CONFIG_FILE_NAME = "spp.toml";
 
+// language=s++
 inline const auto MAIN_FILE_CONTENTS = R"(
     fun main(args: Vec[Str]) -> Void {
         std::io::println("Hello world!")
     })"_formatted;
 
+// language=toml
 inline const auto CONFIG_FILE_CONTENTS = R"(
     [project]
     name = "$"

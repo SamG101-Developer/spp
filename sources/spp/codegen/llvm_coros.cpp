@@ -73,6 +73,7 @@ auto spp::codegen::CreateCoroEnvType(
   auto fields = Vec<llvm::Type*>{llvm_state_type, llvm_location_type, llvm_send_type, llvm_yield_type};
 
   // One field per frame variable (parameters and body locals), starting at GenEnvField::FRAME_START.
+  // Todo: is this ignoring the borrow convention?
   for (auto const &var_sym : CollectCoroFrameVars(scope)) {
     fields.EmplaceBack(GetLlvmType(*scope.GetTypeSymbol(var_sym->Type.get()), ctx));
   }
