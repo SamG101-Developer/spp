@@ -181,7 +181,9 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
     auto vals = Vec<llvm::Value*>();
     vals.reserve(num_vals);
     for (auto i = 0uz; i < num_vals; ++i) {
-      vals.EmplaceBack(Elem->Stage11_CodeGen(sm, meta, ctx));
+      const auto val = Elem->Stage11_CodeGen(sm, meta, ctx);
+      SPP_ASSERT(val != nullptr);
+      vals.EmplaceBack(val);
     }
 
     // Create the array type.
@@ -207,6 +209,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
 
   // Constant array creation.
   const auto comp_val = llvm::cast<llvm::Constant>(Elem->Stage11_CodeGen(sm, meta, ctx));
+  SPP_ASSERT(comp_val != nullptr);
   const auto comp_vals = Vec(num_vals, comp_val);
 
   const auto elem_ty = comp_val->getType();

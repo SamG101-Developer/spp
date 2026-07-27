@@ -219,6 +219,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   comp_vals.Reserve(Elems.Len());
   for (auto const &elem : Elems) {
     const auto comp_val = llvm::cast<llvm::Constant>(elem->Stage11_CodeGen(sm, meta, ctx));
+    SPP_ASSERT(comp_val != nullptr);
     comp_vals.EmplaceBack(comp_val);
   }
   const auto elem_ty = comp_vals[0]->getType();
