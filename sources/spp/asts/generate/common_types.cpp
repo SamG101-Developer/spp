@@ -33,10 +33,10 @@ import genex;
     auto generics_list = UniqueVec<GenericArgumentAst>();
 
 #define ADD_TYPE_GENERIC(gn) \
-    generics_list.push_back(MakeUnique<GenericArgumentTypePositionalAst>(std::move(gn)));
+    generics_list.push_back(MakeUnique<GenericArgumentTypePositionalAst>(gn));
 
 #define ADD_COMP_GENERIC(gn) \
-    generics_list.push_back(MakeUnique<GenericArgumentCompPositionalAst>(std::move(gn)));
+    generics_list.push_back(MakeUnique<GenericArgumentCompPositionalAst>(gn));
 
 #define ADD_ALL_GENERICS()                                                                            \
     for (auto &&inner_type : inner_types) {                                                           \
@@ -233,7 +233,7 @@ auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAs
   Unique<ExpressionAst> &&size) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(elem_type)
-  ADD_COMP_GENERIC(size)
+  ADD_COMP_GENERIC(std::move(size))
   FINISH_GENERICS()
 
   MAKE_TYPE_WITH_GN("Arr")

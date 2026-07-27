@@ -28,14 +28,14 @@ namespace ops {
   template <typename T>
   struct bit_shl {
     constexpr auto operator()(const T &x, const T &y) const -> T {
-      return x << y;
+      return static_cast<T>(x << y);
     }
   };
 
   template <typename T>
   struct bit_shr {
     constexpr auto operator()(const T &x, const T &y) const -> T {
-      return x >> y;
+      return static_cast<T>(x >> y);
     }
   };
 
@@ -77,35 +77,35 @@ namespace ops {
   template <typename T>
   struct fabs {
     constexpr auto operator()(const T &x) const -> T {
-      return static_cast<T>(std::fabsl(x));
+      return static_cast<T>(std::fabsl(static_cast<long double>(x)));
     }
   };
 
   template <typename T>
   struct floor {
     constexpr auto operator()(const T &x) const -> T {
-      return std::floor(x);
+      return static_cast<T>(std::floorl(static_cast<long double>(x)));
     }
   };
 
   template <typename T>
   struct ceil {
     constexpr auto operator()(const T &x) const -> T {
-      return std::ceil(x);
+      return static_cast<T>(std::ceill(static_cast<long double>(x)));
     }
   };
 
   template <typename T>
   struct trunc {
     constexpr auto operator()(const T &x) const -> T {
-      return std::trunc(x);
+      return static_cast<T>(std::truncl(static_cast<long double>(x)));
     }
   };
 
   template <typename T>
   struct round {
     constexpr auto operator()(const T &x) const -> T {
-      return std::round(x);
+      return static_cast<T>(std::roundl(static_cast<long double>(x)));
     }
   };
 
@@ -117,13 +117,13 @@ namespace ops {
   };
 }
 
-#define SPP_STANDARD_BINARY_BOOL_OP(Op)                                                         \
+#define SPP_STANDARD_BINARY_BOOL_OP(Op)                                                       \
   const auto cpp_result = Op<bool>()(lhs.CppVal(), rhs.CppVal());                             \
   const auto lex_tok = cpp_result ? lex::SppTokenType::KW_TRUE : lex::SppTokenType::KW_FALSE; \
   auto tok_ast = MakeUnique<asts::TokenAst>(0uz, lex_tok, spp::lex::tok_to_string(lex_tok));  \
   return MakeUnique<asts::BooleanLiteralAst>(std::move(tok_ast))
 
-#define SPP_STANDARD_UNARY_BOOL_OP(Op)                                                          \
+#define SPP_STANDARD_UNARY_BOOL_OP(Op)                                                        \
   const auto cpp_result = Op<bool>()(val.CppVal());                                           \
   const auto lex_tok = cpp_result ? lex::SppTokenType::KW_TRUE : lex::SppTokenType::KW_FALSE; \
   auto tok_ast = MakeUnique<asts::TokenAst>(0uz, lex_tok, spp::lex::tok_to_string(lex_tok));  \
@@ -132,8 +132,8 @@ namespace ops {
 #define SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, Ty, CppTy)                                             \
   if (lhs.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(lhs.CppVal<CppTy>(), rhs.CppVal<CppTy>());                               \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
-    return MakeUnique<asts::IntegerLiteralAst>(nullptr,  std::move(val_tok), Str(lhs.Type));                 \
+    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<std::size_t>(result))); \
+    return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), Str(lhs.Type));                 \
   }
 
 #define SPP_STANDARD_BINARY_INT_OP_RETURN_BOOL_HANDLER(Op, Ty, CppTy)                              \
@@ -147,14 +147,14 @@ namespace ops {
 #define SPP_STANDARD_UNARY_INT_OP_RETURN_INT_HANDLER(Op, Ty, CppTy)                                              \
   if (val.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(val.CppVal<CppTy>());                                                    \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
+    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<std::size_t>(result))); \
     return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), Str(val.Type));                  \
   }
 
 #define SPP_STANDARD_BINARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, Ty, CppTy)                                         \
   if (lhs.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(lhs.CppVal<CppTy>(), rhs.CppVal<CppTy>());                               \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
+    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<double>(result))); \
     return asts::FloatLiteralAst::FromSingleTok(nullptr, std::move(val_tok), Str(lhs.Type));                 \
   }
 
@@ -169,7 +169,7 @@ namespace ops {
 #define SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, Ty, CppTy)                                          \
   if (val.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(val.CppVal<CppTy>());                                                    \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
+    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<double>(result))); \
     return asts::FloatLiteralAst::FromSingleTok(nullptr, std::move(val_tok), Str(val.Type));                 \
   }
 

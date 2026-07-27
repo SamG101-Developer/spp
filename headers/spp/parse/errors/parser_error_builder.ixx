@@ -20,14 +20,12 @@ namespace spp::parse {
 
 SPP_EXP_CLS
 template <typename T>
-struct SPP_ATTR_COLD
-
-  spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
+struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
   std::size_t Pos = 0;
 
   std::set<lex::SppTokenType> Tokens = {};
 
-  SyntacticErrorBuilder() = default;
+  SPP_ATTR_COLD SyntacticErrorBuilder() = default;
 
   ~SyntacticErrorBuilder() override = default;
 

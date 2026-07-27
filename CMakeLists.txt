@@ -101,6 +101,8 @@ target_compile_options(
   -Wno-error=overloaded-virtual
   -Wno-null-dereference
   -Wno-unknown-warning-option # for clang to ignore gcc-specific flags
+  -Wno-reserved-module-identifier
+  -Wno-pessimizing-move # for clang in parser
   -Wodr
 )
 

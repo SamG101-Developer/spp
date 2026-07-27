@@ -197,7 +197,7 @@ auto spp::asts::FloatLiteralAst::InferType(
   return sym->FqName();
 }
 
-template <typename T> requires std::floating_point<T>
+template <typename T> // requires std::floating_point<T>
 auto spp::asts::FloatLiteralAst::CppVal() const -> T {
   const auto raw_str = IntVal->ToString() + "." + FracVal->ToString();
   const auto signed_str = TokSign != nullptr ? "-" + raw_str : raw_str;

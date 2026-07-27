@@ -18,13 +18,13 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
 }
 
-SPP_EXP_CLS struct SPP_ATTR_COLD spp::utils::errors::AbstractError : std::runtime_error {
+SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
   Vec<Str> messages;
   Str final_message;
 
-  AbstractError() : std::runtime_error("") {}
+  SPP_ATTR_COLD AbstractError() : std::runtime_error("") {}
 
-  AbstractError(AbstractError const &) = default;
+  SPP_ATTR_COLD AbstractError(AbstractError const &) = default;
 
   ~AbstractError() override = default;
 
@@ -38,10 +38,10 @@ SPP_EXP_CLS struct SPP_ATTR_COLD spp::utils::errors::AbstractError : std::runtim
 SPP_EXP_CLS
 
 template <typename T>
-struct SPP_ATTR_COLD spp::utils::errors::AbstractErrorBuilder {
-  AbstractErrorBuilder() = default;
-  virtual
-  ~AbstractErrorBuilder() = default;
+struct spp::utils::errors::AbstractErrorBuilder {
+  SPP_ATTR_COLD AbstractErrorBuilder() = default;
+
+  virtual ~AbstractErrorBuilder() = default;
 
 protected:
   Unique<T> _ErrObj;

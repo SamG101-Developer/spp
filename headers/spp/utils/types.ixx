@@ -1,9 +1,20 @@
 module;
 #include <spp/macros.hpp>
+#ifdef __clang__
+#include <bits/floatn-common.h>
+#endif
 
 export module spp.utils.types;
-// import llvm;
 import std;
+
+#ifdef __clang__
+export namespace std {
+  using float16_t = _Float16;
+  using float32_t = _Float32;
+  using float64_t = _Float64;
+  using float128_t = __float128;
+}
+#endif
 
 namespace spp {
   SPP_EXP_CLS

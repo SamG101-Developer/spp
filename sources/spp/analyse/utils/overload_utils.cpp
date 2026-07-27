@@ -507,7 +507,7 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
 
     // Special case for variadic parameters (updates p_type so don't follow with "else if").
     if (param->To<asts::FunctionParameterVariadicAst>()) {
-      auto ts = Vec(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
+      auto ts = Vec<Shared<asts::TypeAst>>(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
       p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
       p_type->Stage7_AnalyseSemantics(sm, meta);
     }

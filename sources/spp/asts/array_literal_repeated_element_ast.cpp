@@ -210,7 +210,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
   // Constant array creation.
   const auto comp_val = llvm::cast<llvm::Constant>(Elem->Stage11_CodeGen(sm, meta, ctx));
   SPP_ASSERT(comp_val != nullptr);
-  const auto comp_vals = Vec(num_vals, comp_val);
+  const auto comp_vals = Vec<llvm::Constant*>(num_vals, comp_val);
 
   const auto elem_ty = comp_val->getType();
   const auto arr_ty = llvm::ArrayType::get(elem_ty, comp_vals.Len());

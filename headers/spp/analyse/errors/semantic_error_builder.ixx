@@ -75,8 +75,8 @@ namespace spp {
 
 SPP_EXP_CLS
 template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
-struct SPP_ATTR_COLD spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
-  SemanticErrorBuilder() = default;
+struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
+  SPP_ATTR_COLD SemanticErrorBuilder() = default;
 
   ~SemanticErrorBuilder() override = default;
 
@@ -97,7 +97,7 @@ struct SPP_ATTR_COLD spp::analyse::errors::SemanticErrorBuilder final : spp::uti
     // Format all the error strings by the correct formatter (file agnostic).
     cast_error->messages = genex::views::zip(cast_error->ErrorInfo, std::move(formatters))
       | genex::to<Vec>()
-      | genex::views::transform([this](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
+      | genex::views::transform([](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
       | genex::to<Vec>();
 
     // Format and append each per-overload sub-error consecutively beneath the main error.

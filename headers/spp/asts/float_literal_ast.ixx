@@ -88,7 +88,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  template <typename T> requires std::floating_point<T>
+  template <typename T> // requires std::floating_point<T> Todo: Clang fails on concept.
   auto CppVal() const -> T;
 };
 
