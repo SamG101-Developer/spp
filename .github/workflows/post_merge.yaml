@@ -96,8 +96,8 @@ jobs:
 
   sonar:
     name: Sonar
-    needs: [ changes, build-test ]
-    if: needs.changes.outputs.code == 'true'
+#    needs: [ changes, build-test ]
+#    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml
