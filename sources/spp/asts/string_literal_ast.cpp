@@ -91,15 +91,17 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::StringLiteralAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  ScopeManager *sm,
+  CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // A char literal is either a StrView or Vec[U8] type, depending on the "b" byte prefix.
   using generate::common_types::StringViewType;
   using generate::common_types::ViewU8Type;
-  return BytePrefix != nullptr
+  auto type = BytePrefix != nullptr
     ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
     : StringViewType(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
+  type->Stage7_AnalyseSemantics(sm, meta); // Todo: single analysis somewhere?
+  return type;
 }
 
 SPP_MOD_END
