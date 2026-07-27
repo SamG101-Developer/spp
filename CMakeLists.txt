@@ -46,6 +46,7 @@ set(CMAKE_LINKER_TYPE LLD)
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
+find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
 find_package(unordered_dense CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
@@ -140,6 +141,7 @@ target_link_libraries(
   LLVMCodeGen
   LLVMScalarOpts
   LLVMTransformUtils
+  Threads::Threads
   mimalloc
   unordered_dense::unordered_dense
   tomlplusplus::tomlplusplus
