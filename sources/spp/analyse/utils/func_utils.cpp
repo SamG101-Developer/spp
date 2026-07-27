@@ -164,7 +164,14 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *meta)
   -> Pair<Unique<asts::PostfixExpressionAst>, Unique<asts::PostfixExpressionOperatorFunctionCallAst>> {
-  auto self_arg_val = asts::AstClone(lhs.Lhs);
+  // A method reached through a forwarding type is invoked on the forwarded-to value, not on the object that forwards
+  // to it: "w.greet()" calls "greet" on "w.fwd_ref()". The member access has already built that call, so use it as
+  // the receiver; a method found on the object's own type uses the object itself.
+  // Todo: Check this for when we use a method on a type who has a forwarding type, but the forward isn't used.
+  const auto member_access = lhs.Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>();
+  const auto fwd_receiver = member_access != nullptr ? member_access->GetFwdReceiver() : nullptr;
+  const auto self_expr = fwd_receiver != nullptr ? fwd_receiver : lhs.Lhs.get();
+  auto self_arg_val = asts::AstClone(self_expr);
 
   // Create the static method access (without the function call and args).
   auto field = MakeUnique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(
@@ -182,7 +189,12 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
   auto new_fn_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(
     AstClone(fn_call.GnArgGroup), AstClone(fn_call.FnArgGroup), nullptr);
   new_fn_call->FnArgGroup->Args = std::move(fn_args);
-  new_fn_call->FnArgGroup->Args[0]->SetSelfType(lhs.Lhs->InferType(&sm, meta));
+  // The forwarding receiver is a "GenOnce" call that resumes itself, so its type is the borrow it yields. Infer it
+  // with resumption allowed, whatever the surrounding expression asked for (an "async" call suppresses it).
+  meta->Save();
+  meta->PreventAutoGeneratorResume = false;
+  new_fn_call->FnArgGroup->Args[0]->SetSelfType(self_expr->InferType(&sm, meta));
+  meta->Restore();
   new_fn_call->Source.OriginalExpr = fn_call.Source.OriginalExpr;
 
   // Return the new ASTs.

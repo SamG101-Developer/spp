@@ -1,5 +1,4 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
@@ -21,6 +20,8 @@ import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
@@ -37,6 +38,9 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
@@ -739,6 +743,33 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
   }
 
   return MakePair(fwd_ref_type, fwd_mut_type);
+}
+
+auto spp::analyse::utils::type_utils::BuildFwdCall(
+  asts::ExpressionAst const &receiver,
+  asts::TypeAst const &receiver_type,
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta)
+  -> Unique<asts::PostfixExpressionAst> {
+  // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut". The
+  // immutable forward is preferred, matching how the forwarded-to members are resolved.
+  const auto [fwd_ref_type, fwd_mut_type] = GetFwdTypes(receiver_type, *sm);
+  if (fwd_ref_type == nullptr and fwd_mut_type == nullptr) { return nullptr; }
+
+  // Build "<receiver>.fwd_ref()". The forwarding coroutines return a "GenOnce", so the call resumes itself and the
+  // expression evaluates to the borrow of the forwarded-to value.
+  auto field_name = MakeUnique<asts::IdentifierAst>(
+    receiver.PosStart(), fwd_ref_type != nullptr ? "fwd_ref" : "fwd_mut");
+  auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+  auto member_access = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(&receiver), std::move(field));
+  auto func_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+  auto fwd_call = MakeUnique<asts::PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+
+  // Analyse the built call, so that it can be inferred from and generated like any other analysed expression. The
+  // receiver is analysed a second time here (it is a clone of an already analysed expression), which is what the
+  // other operators that map themselves onto a method call do too.
+  fwd_call->Stage7_AnalyseSemantics(sm, meta);
+  return fwd_call;
 }
 
 auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(

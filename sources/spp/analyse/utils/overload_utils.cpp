@@ -529,5 +529,14 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
         param_is_rigid_generic or not RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp),
         {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
     }
+
+    // The argument may have matched its parameter by forwarding ("&Vec[T]" satisfying a "&View[T]" parameter), in
+    // which case the value the callee is handed is the forwarded-to one, so the argument becomes that call. This is
+    // the argument-position counterpart of a method being called on the value its receiver forwards to.
+    else if (type_utils::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
+      if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
+        arg->Val = std::move(fwd_call);
+      }
+    }
   }
 }

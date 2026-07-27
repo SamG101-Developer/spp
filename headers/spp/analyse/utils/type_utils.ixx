@@ -21,6 +21,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct GenericParameterAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
   SPP_EXP_CLS struct GenericParameterTypeAst;
+  SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct TypeAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
   SPP_EXP_CLS struct TypeStatementAst;
@@ -268,6 +269,25 @@ namespace spp::analyse::utils::type_utils {
     asts::TypeAst const &type,
     scopes::ScopeManager const &sm)
     -> Pair<Shared<asts::TypeAst>, Shared<asts::TypeAst>>;
+
+  /**
+   * Build the call that forwards a receiver to the type it forwards to, that is @code x.fwd_ref()@endcode for a type
+   * superimposing @c FwdRef (or @code x.fwd_mut()@endcode for @c FwdMut). Because the forwarding coroutines return a
+   * @c GenOnce, the call resumes automatically and evaluates to the borrow of the forwarded-to value, which is the
+   * receiver every forwarded member access and method call actually operates on. The returned expression is fully
+   * analysed, so it can be inferred from and generated like any other expression.
+   * @param[in] receiver The expression that forwards, which is cloned into the built call.
+   * @param[in] receiver_type The type of the receiver, whose superimpositions are searched for the forwarding marker.
+   * @param[in,out] sm The scope manager to analyse the built call with.
+   * @param[in,out] meta Associated metadata.
+   * @return The forwarding call, or @c nullptr if the receiver's type does not forward.
+   */
+  SPP_EXP_FUN auto BuildFwdCall(
+    asts::ExpressionAst const &receiver,
+    asts::TypeAst const &receiver_type,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> Unique<asts::PostfixExpressionAst>;
 
   SPP_EXP_FUN auto ValidateInconsistentTypes(
     Vec<asts::CaseExpressionBranchAst*> const &branches,
