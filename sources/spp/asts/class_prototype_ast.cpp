@@ -376,6 +376,7 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
   codegen::LLvmCtx const *ctx) const
   -> void {
   // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
+  using analyse::utils::type_utils::IsTypeTup;
 
   // Non-struct types are compiler known special types, so don't have any field generation.
   const auto lt = codegen::GetLlvmType(*type_sym, ctx);
@@ -383,14 +384,30 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
     return;
   }
 
-  auto types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), *sm)
-    | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*std::get<1>(pair), ctx); })
-    | genex::to<Vec>();
+  const auto is_tuple = IsTypeTup(*type_sym->FqName(), *sm->CurrentScope);
+  auto types = Vec<llvm::Type*>();
+
+  // Tuple fields are positional based off of the types found in the generic arguments.
+  if (is_tuple) {
+    const auto elems = type_sym->FqName()->LastTypePart()->GnArgGroup->GetTypeArgs();
+    for (auto const &elem : elems) {
+      const auto elem_sym = sm->CurrentScope->GetTypeSymbol(elem->Val.get());
+      types.EmplaceBack(elem_sym != nullptr ? codegen::GetLlvmType(*elem_sym, ctx) : nullptr);
+    }
+  }
+
+  // Class attributes are read from the attribute types.
+  else {
+    types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), *sm)
+      | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*std::get<1>(pair), ctx); })
+      | genex::to<Vec>();
+  }
 
   // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
   if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
     const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
-    ApplyStructLayout(struct_type, types, codegen::StructLayout::Spp, type_sym->LlvmInfo.get(), ctx);
+    const auto layout = is_tuple ? codegen::StructLayout::C : codegen::StructLayout::Spp;
+    ApplyStructLayout(struct_type, types, layout, type_sym->LlvmInfo.get(), ctx);
   }
 
   // Pass this layout to aliases too (the field re-ordering as well as the type itself).
