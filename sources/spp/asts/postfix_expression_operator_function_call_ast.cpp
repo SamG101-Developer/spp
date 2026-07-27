@@ -442,37 +442,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
 
-  if (not FnArgGroup->GetKeywordArgs().IsEmpty() and FnArgGroup->GetKeywordArgs()[0]->Name->Val == "self") {
-    // Get the type of the left-hand-side expression.
-    const auto lhs_type = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs->InferType(sm, meta);
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
-    const auto llvm_type = codegen::GetLlvmType(*lhs_type_sym, ctx);
-    SPP_ASSERT(llvm_type != nullptr);
-
-    // If the lhs is non-symbolic, we need to materialize it, and use as the self argument.
-    const auto temp_lhs = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs.get();
-    const auto [var_sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*temp_lhs);
-    auto base_ptr = static_cast<llvm::Value*>(nullptr);
-    if (var_sym != nullptr) {
-      // Get the alloca for the lhs symbol (the base pointer).
-      const auto lhs_alloca = var_sym->LlvmInfo->Alloca;
-      SPP_ASSERT(lhs_alloca != nullptr);
-      base_ptr = ctx->Builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr" + uid);
-    }
-
-    // This check prevents materializing static access, like "Vec::Vec::push" as it makes no sense to do so.
-    else if (sm->CurrentScope->GetTypeSymbol(temp_lhs->To<TypeAst>()) == nullptr) {
-      // Materialize the lhs expression into a temporary.
-      const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
-      const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
-      ctx->Builder.CreateStore(lhs_val, temp);
-      base_ptr = temp;
-    }
-
-    // Use the proper pointer to the self arg (sometimes for semantic analysis dummy vars are used).
-    llvm_self_arg = ctx->Builder.CreateLoad(llvm_type, base_ptr, "load.member_access.self_arg" + uid);
-  }
-
   // Get the llvm function target, and generate the argument values.
   const auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
