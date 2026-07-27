@@ -3,7 +3,9 @@ module;
 
 export module spp.asts.postfix_expression_operator_keyword_not_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -39,6 +41,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : Pos
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
