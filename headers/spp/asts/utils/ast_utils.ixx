@@ -127,4 +127,13 @@ namespace spp::asts {
   SPP_EXP_FUN auto AstName(Ast *ast) -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto AstBody(Ast *ast) -> Vec<Ast*>;
+
+  /**
+   * Check if an AST is a runtime member access ("a.b"), that is a @c PostfixExpressionAst whose operator is a
+   * @c PostfixExpressionOperatorRuntimeMemberAccessAst. Code generation uses this to know that an expression can
+   * produce the address of what it names, rather than only a value.
+   * @param[in] ast The AST to check.
+   * @return If the AST is a runtime member access expression.
+   */
+  SPP_EXP_FUN auto IsRuntimeMemberAccess(Ast const *ast) -> bool;
 }
