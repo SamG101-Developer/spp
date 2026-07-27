@@ -65,27 +65,9 @@ auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
+  // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }
-
-  // Handle the convention (to pointer).
-  // If the lhs is symbolic, get the address of the outermost part.
-  const auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*Val);
-
-  if (sym != nullptr) {
-    // Get the alloca for the lhs symbol (the base pointer).
-    const auto llvm_alloca = sym->LlvmInfo->Alloca;
-    SPP_ASSERT(llvm_alloca != nullptr);
-    SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
-    return llvm_alloca;
-  }
-
-  // Materialize the lhs expression into a temporary.
-  const auto materialized_val = codegen::llvm_materialize(*Val, sm, meta, ctx);
-  const auto materialized_sym = sm->CurrentScope->GetVarSymbol(materialized_val);
-
-  const auto llvm_alloca = materialized_sym->LlvmInfo->Alloca;
-  SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
-  return llvm_alloca;
+  return codegen::llvm_addr_of(*Val, sm, meta, ctx);
 }
 
 auto spp::asts::FunctionCallArgumentAst::InferType(

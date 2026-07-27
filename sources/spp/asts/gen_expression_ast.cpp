@@ -28,6 +28,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_materialize;
 import spp.lex.tokens;
 import spp.utils.uid;
 import llvm;
@@ -212,10 +213,15 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
     ctx->Builder.CreateStructGEP(
       env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::LOCATION), "gen.loc" + uid));
 
-  // Store the yielded value into the yield slot (skipped for a bare "gen" with no expression).
+  // Store the yielded value into the yield slot (if an expression is given). A borrowed yield expression puts the
+  // address of what is borrowed into the slot, because the slot holds a "&T" or "&mut T".
   if (Expr != nullptr) {
+    const auto yield_val = Conv != nullptr
+      ? codegen::llvm_addr_of(*Expr, sm, meta, ctx)
+      : Expr->Stage11_CodeGen(sm, meta, ctx);
+
     ctx->Builder.CreateStore(
-      Expr->Stage11_CodeGen(sm, meta, ctx),
+      yield_val,
       ctx->Builder.CreateStructGEP(
         env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::YIELD_SLOT), "gen.yield.slot" + uid));
   }
