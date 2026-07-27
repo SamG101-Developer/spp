@@ -10,6 +10,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct IdentifierAst;
+  SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorRuntimeMemberAccessAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -49,4 +50,22 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
 
   SPP_ATTR_NODISCARD auto ExprParts() const
     -> Vec<Ast*> override;
+
+  /**
+   * The call that forwards the left-hand-side to the type this member was found on, that is the
+   * @code x.fwd_ref()@endcode of the mapped access, or @c nullptr when the member belongs to the left-hand-side's own
+   * type. A method call reached through forwarding needs it, because the forwarded-to value, and not the object that
+   * forwards to it, is the @c self the method is invoked on.
+   * @return The forwarding call applied to the left-hand-side, or @c nullptr if no forwarding took place.
+   */
+  SPP_ATTR_NODISCARD auto GetFwdReceiver() const
+    -> PostfixExpressionAst*;
+
+private:
+  /**
+   * The access rewritten against the forwarded-to value (@code x.fwd_ref().field@endcode), built when the member is
+   * not found on the left-hand-side's own type but is reachable through a @c FwdRef / @c FwdMut superimposition. When
+   * it is set, inference and code generation both defer to it.
+   */
+  Shared<PostfixExpressionAst> _MappedFwd;
 };

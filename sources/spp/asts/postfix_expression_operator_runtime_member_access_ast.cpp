@@ -63,10 +63,12 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PosEnd() const
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const
   -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+  // Clone all the members of the ast, sharing the mapped forwarding access so a clone taken after analysis keeps it.
+  auto ast = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     AstClone(TokDot),
     AstClone(Name));
+  ast->_MappedFwd = _MappedFwd;
+  return ast;
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const
@@ -86,9 +88,13 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   using analyse::errors::SppMemberAccessOutOfBoundsError;
   using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
+  using analyse::utils::type_utils::BuildFwdCall;
   using analyse::utils::type_utils::IsTypeCompTimeIndexable;
   using analyse::utils::type_utils::IsIndexWithinBound;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
+
+  // Already rewritten against a forwarded-to value by an earlier pass, which analysed the rewrite as it built it.
+  if (_MappedFwd != nullptr) { return; }
 
   // Prevent types on the left-hand-side of a runtime member access.
   RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
@@ -132,15 +138,15 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
 
     // Check the target field exists on the type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
-      // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
-      // access to their members.
-      const auto [fwd_ref_type, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type, *sm);
-      if (fwd_ref_type != nullptr) {
-        const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
-        auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(inner_type), nullptr);
-        auto mock_access = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, Name);
-        const auto pf = MakeUnique<PostfixExpressionAst>(std::move(mock_init), std::move(mock_access));
-        pf->Stage7_AnalyseSemantics(sm, meta);
+      // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing access to
+      // their members. The access is rewritten against the forwarded-to value ("x.field" becomes
+      // "x.fwd_ref().field"), which is what inference and code generation use from here on.
+      auto fwd_call = BuildFwdCall(*meta->PostfixExpressionLhs, *lhs_type, sm, meta);
+      if (fwd_call != nullptr) {
+        _MappedFwd = MakeShared<PostfixExpressionAst>(
+          std::move(fwd_call),
+          MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, Name));
+        _MappedFwd->Stage7_AnalyseSemantics(sm, meta);
         return;
       }
 
@@ -208,6 +214,12 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTime
   //
   using analyse::utils::cmp_utils::GetCompTimeAttrValue;
 
+  // A member reached by forwarding is resolved against the forwarded-to value, which the rewritten access names.
+  if (_MappedFwd != nullptr) {
+    _MappedFwd->Stage9_CompTimeResolve(sm, meta);
+    return;
+  }
+
   // Resolve the left-hand-side expression.
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
 
@@ -241,47 +253,102 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
   -> llvm::Value* {
   //
   using analyse::utils::type_utils::GetFieldIndexInType;
+  using analyse::utils::type_utils::IsTypeArr;
+
+  // A member reached by forwarding lives on the forwarded-to value, so the mapped ast generates it: the forwarding call
+  // it is applied to produces the borrow that is then indexed into.
+  if (_MappedFwd != nullptr) { return _MappedFwd->Stage11_CodeGen(sm, meta, ctx); }
+
+  // This expression names storage, so it can produce either the address of the field or the value held in it. The
+  // consume ast picks: assignment targets and borrows want the address, every other context wants the value.
+  const auto want_address = meta->LlvmWantAddress;
 
   // Get the type of the left-hand-side expression.
   const auto uid = "." + spp::utils::Uid(this);
   const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
   const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
 
-  // Index through the object's own type, never the borrow's pointer type, so a borrowed lhs (such as a "&Self"
-  // parameter) indexes the same struct that an owned one does.
-  const auto is_borrow = lhs_type_sym->Convention != nullptr;
+  // Index through the object's own type, not a borrow's pointer type.
+  const auto is_borrow = lhs_type->GetConvention() != nullptr;
   const auto llvm_type = lhs_type_sym->LlvmInfo->LlvmType;
   SPP_ASSERT(llvm_type != nullptr);
+  const auto lhs_is_member_access = IsRuntimeMemberAccess(meta->PostfixExpressionLhs);
 
-  // If the lhs is symbolic, get the address of the outermost part.
-  const auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs);
+  meta->Save();
+  meta->LlvmWantAddress = lhs_is_member_access;
+
+  // For attribute access on an object, the base pointer will be the field immediately left of this specific access
+  // operator. For "a.b.c", it is "a.b" etc.
   auto base_ptr = static_cast<llvm::Value*>(nullptr);
-  if (sym != nullptr) {
-    // The symbol's alloca is already the address of the object (the base pointer). Load borrows to get value.
+  if (lhs_is_member_access) {
+    base_ptr = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+    if (is_borrow) {
+      base_ptr = ctx->Builder.CreateLoad(
+        llvm::PointerType::get(*ctx->Context, 0), base_ptr, "load.member_access.base_ptr" + uid);
+    }
+  }
+
+  // If the lhs is symbolic, get the address of the outermost part. The symbol's alloca is already the address of the
+  // object (the base pointer). Load borrows to get value.
+  else if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs).First;
+    sym != nullptr) {
     SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
     base_ptr = is_borrow
-      ? ctx->Builder.CreateLoad(llvm::PointerType::get(*ctx->Context, 0), sym->LlvmInfo->Alloca,
-                                "load.member_access.base_ptr" + uid)
+      ? ctx->Builder.CreateLoad(
+        llvm::PointerType::get(*ctx->Context, 0), sym->LlvmInfo->Alloca, "load.member_access.base_ptr" + uid)
       : sym->LlvmInfo->Alloca;
   }
+
+  // A borrowed expression already evaluates to the address of the object.
   else if (is_borrow) {
-    // A borrowed expression already evaluates to the address of the object.
     base_ptr = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   }
+
+  // Materialize the lhs expression into a temporary, to have an address to index through.
   else {
-    // Materialize the lhs expression into a temporary, to have an address to index through.
     const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
     const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
     ctx->Builder.CreateStore(lhs_val, temp);
     base_ptr = temp;
   }
+  meta->Restore();
 
-  // The physical field order isn't the declaration order, because the S++ layout re-orders the fields to minimize
-  // padding, so the declaration index has to be resolved through the type's field index map.
-  const auto decl_index = GetFieldIndexInType(
-    *lhs_type, *Name, *sm);
-  const auto field_index = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, decl_index);
-  return ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
+  // Resolve the address of the member. A numeric name indexes a tuple or array positionally; any other name is an
+  // attribute, whose physical position depends on how the owning type was laid out.
+  auto field_ptr = static_cast<llvm::Value*>(nullptr);
+  if (std::isdigit(Name->Val[0])) {
+    const auto index = static_cast<std::uint32_t>(std::stoul(Name->Val));
+
+    // An array lowers to "[n x T]" rather than to a struct, so it is indexed through the array itself: the leading
+    // zero index steps over the pointer to the array, and the second one selects the element.
+    if (IsTypeArr(*lhs_type->WithoutConvention(), *sm->CurrentScope)) {
+      const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+      field_ptr = ctx->Builder.CreateGEP(
+        llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
+        "member_access.arr.elem_ptr" + uid);
+    }
+
+    // A tuple lowers to a struct whose fields keep declaration order, so element "n" is field "n".
+    else {
+      field_ptr = ctx->Builder.CreateStructGEP(llvm_type, base_ptr, index, "member_access.tup.elem_ptr" + uid);
+    }
+  }
+
+  else {
+    // The physical field order isn't the declaration order, because the S++ layout re-orders the fields to minimize
+    // padding, so the declaration index has to be resolved through the type's field index map.
+    const auto decl_index = GetFieldIndexInType(*lhs_type, *Name, *sm);
+    const auto field_index = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, decl_index);
+    field_ptr = ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
+  }
+  if (want_address) { return field_ptr; }
+
+  // Otherwise read the field out. Fields are never borrows (the second class borrow rules forbid storing one), so the
+  // field's own lowered type is always the type held in the slot.
+  const auto field_type = InferType(sm, meta);
+  const auto field_llvm_type = sm->CurrentScope->GetTypeSymbol(field_type.get())->LlvmInfo->LlvmType;
+  SPP_ASSERT(field_llvm_type != nullptr);
+  return ctx->Builder.CreateLoad(field_llvm_type, field_ptr, "member_access.field" + uid);
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
@@ -289,8 +356,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
-  using analyse::utils::type_utils::GetFwdTypes;
   using analyse::utils::type_utils::GetNthTypeOfIndexableType;
+
+  // A member reached by forwarding belongs to the forwarded-to type, so the rewritten access knows its type.
+  if (_MappedFwd != nullptr) { return _MappedFwd->InferType(sm, meta); }
 
   // Get the type of the left-hand-side expression.
   const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
@@ -302,17 +371,17 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
     return elem_type;
   }
 
-  // Get the field symbol and return its type, falling back to the forwarding type if needed.
-  auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
-  auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
-  if (var_sym == nullptr) {
-    auto [fwd_ref_type, _] = GetFwdTypes(*lhs_type.get(), *sm);
-    const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val.get();
-    lhs_sym = sm->CurrentScope->GetTypeSymbol(inner_type);
-    var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
-  }
+  // Get the field symbol and return its type.
+  const auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
+  const auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
   const auto field_type = var_sym->Type;
   return lhs_sym->LinkedScope->GetTypeSymbol(field_type.get())->FqName();
+}
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const
+  -> PostfixExpressionAst* {
+  // The lhs of the rewritten access is the forwarding call ("x.fwd_ref()") applied to the original lhs.
+  return _MappedFwd != nullptr ? _MappedFwd->Lhs->To<PostfixExpressionAst>() : nullptr;
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const
