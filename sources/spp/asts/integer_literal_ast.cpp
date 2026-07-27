@@ -145,7 +145,14 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
   // Get the type of the integer literal.
   const auto type_ast = InferType(sm, meta);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+
+  // If come from stage10 cmp statement, do the int type immediately.
+  if (llvm_type == nullptr) {
+    codegen::RegisterLlvmTypeInfo(type_sym->Type, ctx);
+    llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  }
+
   const auto bit_width = llvm_type->getIntegerBitWidth();
 
   // Normalise the literal exactly as Stage7 does, then apply the optional sign.

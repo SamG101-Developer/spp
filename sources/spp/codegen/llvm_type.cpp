@@ -28,12 +28,6 @@ import genex;
 import llvm;
 import std;
 
-#define EXTRACT_INT_SIZE                                                                                 \
-  const auto bit_width_ast =                                                                             \
-    scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>(); \
-  if (bit_width_ast == nullptr) { return; }                                                              \
-  const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));
-
 const spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
 const spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
 const spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
@@ -90,7 +84,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // For compiler known types, specialize the llvm type symbols.
   const auto parts = scope->Ancestors()
     | genex::views::drop_last(1)
-    | genex::views::transform([](auto *x) { return x->NameAsString(); })
+    | genex::views::transform([](auto *x) { return x->NonGenericScope->NameAsString(); })
     | genex::views::reverse
     | genex::to<Vec>();
 
@@ -114,14 +108,20 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
   if (parts == kSizedIntegerParts) {
-    EXTRACT_INT_SIZE;
+    const auto bit_width_ast = scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<
+      asts::IntegerLiteralAst>();
+    if (bit_width_ast == nullptr) { return; }
+    const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
     return;
   }
 
   // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
   if (parts == kSizedFloatParts) {
-    EXTRACT_INT_SIZE;
+    const auto bit_width_ast = scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<
+      asts::IntegerLiteralAst>();
+    if (bit_width_ast == nullptr) { return; }
+    const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(w));
     return;
   }
