@@ -100,6 +100,7 @@ target_compile_options(
   -Wno-error=array-bounds
   -Wno-error=overloaded-virtual
   -Wno-null-dereference
+  -Wno-unknown-warning-option # for clang to ignore gcc-specific flags
   -Wodr
 )
 
