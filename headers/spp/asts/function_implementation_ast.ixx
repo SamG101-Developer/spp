@@ -7,8 +7,8 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-    SPP_EXP_CLS struct FunctionImplementationAst;
+  SPP_EXP_CLS struct Ast;
+  SPP_EXP_CLS struct FunctionImplementationAst;
 }
 
 /**
@@ -17,13 +17,13 @@ namespace spp::asts {
  * InnerScopeAst.
  */
 SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAst {
-    static auto NewEmpty() -> Unique<FunctionImplementationAst>;
+  static auto NewEmpty() -> Unique<FunctionImplementationAst>;
 
-    using InnerScopeExpressionAst::InnerScopeExpressionAst;
+  using InnerScopeExpressionAst::InnerScopeExpressionAst;
 
-    SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
+  SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-    ~FunctionImplementationAst() override;
+  ~FunctionImplementationAst() override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

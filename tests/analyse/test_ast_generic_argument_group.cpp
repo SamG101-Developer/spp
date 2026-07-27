@@ -155,9 +155,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret Vec[U]()
     }
 
-    fun f() -> Void {
-        let mut x = g[]()
-        x.append(element=Str::from("hello"))
+    fun f[T]() -> Void {
+        let mut x = g[T]()
+        x.append(element=T())
     }
 )");
 

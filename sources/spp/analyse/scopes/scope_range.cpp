@@ -4,23 +4,20 @@ module;
 module spp.analyse.scopes.scope_range;
 import spp.analyse.scopes.scope;
 
-
 SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeRange::ScopeRange(
-    Scope *root) :
-    _Root(root) {
+  Scope *root) :
+  _Root(root) {
 }
-
 
 auto spp::analyse::scopes::ScopeRange::begin() const
-    -> ScopeIterator {
-    return ScopeIterator(_Root);
+  -> ScopeIterator {
+  return ScopeIterator(_Root);
 }
 
-
-auto spp::analyse::scopes::ScopeRange::end() const // NOLINT(readability-convert-member-functions-to-static)
-    -> ScopeIterator {
-    return ScopeIterator();
+auto spp::analyse::scopes::ScopeRange::end() const
+  -> ScopeIterator {
+  return ScopeIterator();
 }
 
 SPP_MOD_END

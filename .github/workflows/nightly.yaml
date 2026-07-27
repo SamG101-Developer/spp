@@ -1,21 +1,60 @@
 name: Nightly
+
+# The Nightly script runs as 4am every day, to perform long actions that will conflict with pushing code. They key jobs
+# are pruning stale caches (force external package rebuild every day for updates). Cache keys also use a manual version
+# so can be bumped within the day.
+
 on:
   schedule:
     - cron: '0 4 * * *'  # 04:00 UTC daily
-  workflow_dispatch: {}
+  workflow_dispatch: { }
 
 concurrency:
   group: nightly
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  security-events: write
-  actions: read
-
 jobs:
+  # Re-run the security steps just as a failsafe; anything else should have been picked up, but this also covers
+  # multiple individually scanned branches now in combination on master.
   security:
-    name: Security (full scan)
+    name: Security (Full Scan)
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     uses: ./.github/workflows/_security.yaml
     with:
       full-scan: true
+
+  # The dependency cache key carries the UTC date and SPP_LIBS_CACHE_VERSION (see .github/actions/setup-toolchain), so
+  # the moment either changes the previous entries never used, but stay in the cache. The same goes for every compiler
+  # cache behind the newest one on its branch. This builds up to the 10GB limit, so prune once stale.
+  prune-caches:
+    name: Prune Stale Caches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write  # delete the repository's Actions caches
+    steps:
+      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
+      # This ensures better security in CI/CD pipeline.
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
+      # secured under the above "harden-runner" step.
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Run the prune-cache script.
+      - name: Delete superseded caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash .github/scripts/nightly/prune-caches.sh

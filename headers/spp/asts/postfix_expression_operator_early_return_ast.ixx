@@ -9,34 +9,33 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct PostfixExpressionOperatorEarlyReturnAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct PostfixExpressionOperatorEarlyReturnAst;
+  SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
-    /**
-     * The @c ? token that indicates an early return in a postfix expression. This token is used to signify that the
-     * expression should be checked for its result-type failure type, and if it matches, the expression will lift the
-     * error to the caller.
-     */
-    Unique<TokenAst> TokQst;
+  /**
+   * The @c ? token that indicates an early return in a postfix expression. This token is used to signify that the
+   * expression should be checked for its result-type failure type, and if it matches, the expression will lift the
+   * error to the caller.
+   */
+  Unique<TokenAst> TokQst;
 
-    /**
-     * Construct the PostfixExpressionOperatorEarlyReturnAst with the arguments matching the members.
-     * @param[in] tok_qst The @c ? token that indicates an early return in a postfix expression.
-     */
-    explicit PostfixExpressionOperatorEarlyReturnAst(
-        decltype(TokQst) &&tok_qst);
+  /**
+   * Construct the PostfixExpressionOperatorEarlyReturnAst with the arguments matching the members.
+   * @param[in] tok_qst The @c ? token that indicates an early return in a postfix expression.
+   */
+  explicit PostfixExpressionOperatorEarlyReturnAst(
+    decltype(TokQst) &&tok_qst);
 
-    ~PostfixExpressionOperatorEarlyReturnAst() override;
+  ~PostfixExpressionOperatorEarlyReturnAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };

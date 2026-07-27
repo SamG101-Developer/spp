@@ -251,16 +251,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericInference_Constraint,
     test_valid_infer_generic_from_constraint, R"(
-    cls MyU { }
+    cls MyUType { }
     cls Other[U] { }
     cls Concrete { }
-    sup Concrete ext Other[MyU] { }
+    sup Concrete ext Other[MyUType] { }
 
     fun f[U, T: Other[U]](x: T) -> U { ret U() }
 
     fun g() -> Void {
         let mut x = f(Concrete())
-        x = MyU()
+        x = MyUType()
     }
 )");
 

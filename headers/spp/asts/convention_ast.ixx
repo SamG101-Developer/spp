@@ -5,10 +5,10 @@ export module spp.asts.convention_ast;
 import spp.asts.ast;
 
 namespace spp::asts {
-    SPP_EXP_CLS enum class ConventionTag { MOV, MUT, REF };
-    SPP_EXP_CLS struct ConventionAst;
-}
+  SPP_EXP_CLS enum class ConventionTag { MOV, MUT, REF };
 
+  SPP_EXP_CLS struct ConventionAst;
+}
 
 /**
  * The ConventionAst class represents a convention for either a function parameter, function argument, or a generated
@@ -20,14 +20,14 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ConventionAst : Ast {
 private:
-    ConventionTag _Tag;
+  ConventionTag _Tag;
 
 public:
-    explicit ConventionAst(ConventionTag tag);
+  explicit ConventionAst(ConventionTag tag);
 
-    ~ConventionAst() override;
+  ~ConventionAst() override;
 
-    auto operator==(ConventionAst const *that) const -> bool;
+  auto operator==(ConventionAst const *that) const -> bool;
 
-    auto operator==(ConventionTag that_tag) const -> bool;
+  auto operator==(ConventionTag that_tag) const -> bool;
 };

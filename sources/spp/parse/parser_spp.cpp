@@ -23,2744 +23,2790 @@ constexpr auto kOctChars = spp::StrView("01234567");
 constexpr auto kHexChars = spp::StrView("0123456789abcdefABCDEF");
 
 auto spp::parse::ParserSpp::parse()
-    -> Unique<asts::ModulePrototypeAst> {
-    auto root = parse_root();
-    if (root == nullptr) {
-        _ErrorBuilder->Raise();
-    }
-    return root;
+  -> Unique<asts::ModulePrototypeAst> {
+  auto root = parse_root();
+  if (root == nullptr) {
+    _ErrorBuilder->Raise();
+  }
+  return root;
 }
 
 auto spp::parse::ParserSpp::parse_root()
-    -> Unique<asts::ModulePrototypeAst> {
-    PARSE_ONCE(p1, parse_module_prototype)
-    PARSE_ONCE(_a, parse_eof);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ModulePrototypeAst> {
+  PARSE_ONCE(p1, parse_module_prototype)
+  PARSE_ONCE(_a, parse_eof);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_eof()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::SP_EOF, lex::SppTokenType::SP_NO_TOK); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::SP_EOF, lex::SppTokenType::SP_NO_TOK); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_module_prototype()
-    -> Unique<asts::ModulePrototypeAst> {
-    PARSE_ONCE(p1, parse_module_implementation);
-    return CREATE_AST(asts::ModulePrototypeAst, p1);
+  -> Unique<asts::ModulePrototypeAst> {
+  PARSE_ONCE(p1, parse_module_implementation);
+  return CREATE_AST(asts::ModulePrototypeAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_module_implementation()
-    -> Unique<asts::ModuleImplementationAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_module_member, parse_newline);
-    return CREATE_AST(asts::ModuleImplementationAst, p1);
+  -> Unique<asts::ModuleImplementationAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_module_member, parse_newline);
+  return CREATE_AST(asts::ModuleImplementationAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_module_member()
-    -> Unique<asts::Ast> {
-    PARSE_ALTERNATE(
-        p1, asts::Ast, parse_function_prototype, parse_class_prototype, parse_sup_prototype_extension,
-        parse_sup_prototype_functions, parse_global_use_statement, parse_global_use_var_statement,
-        parse_global_type_statement, parse_global_cmp_statement);
-    return FORWARD_AST(p1);
+  -> Unique<asts::Ast> {
+  PARSE_ALTERNATE(
+    p1, asts::Ast, parse_function_prototype, parse_class_prototype, parse_sup_prototype_extension,
+    parse_sup_prototype_functions, parse_global_use_statement, parse_global_use_var_statement,
+    parse_global_type_statement, parse_global_cmp_statement);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_class_prototype()
-    -> Unique<asts::ClassPrototypeAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_keyword_cls);
-    PARSE_ONCE(p3, parse_upper_identifier);
-    PARSE_OPTIONAL(p4, parse_generic_parameter_group);
-    PARSE_ONCE(p5, parse_class_implementation);
-    return CREATE_AST(asts::ClassPrototypeAst, p1, p2, asts::TypeIdentifierAst::FromIdentifier(*p3), p4, p5);
+  -> Unique<asts::ClassPrototypeAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_keyword_cls);
+  PARSE_ONCE(p3, parse_upper_identifier);
+  PARSE_OPTIONAL(p4, parse_generic_parameter_group);
+  PARSE_ONCE(p5, parse_class_implementation);
+  return CREATE_AST(asts::ClassPrototypeAst, p1, p2, asts::TypeIdentifierAst::FromIdentifier(*p3), p4, p5);
 }
 
 auto spp::parse::ParserSpp::parse_class_implementation()
-    -> Unique<asts::ClassImplementationAst> {
-    PARSE_ONCE(p1, parse_token_left_curly_brace);
-    PARSE_ZERO_OR_MORE(p2, parse_class_member, parse_newline);
-    PARSE_ONCE(p3, parse_token_right_curly_brace);
-    return CREATE_AST(asts::ClassImplementationAst, p1, p2, p3);
+  -> Unique<asts::ClassImplementationAst> {
+  PARSE_ONCE(p1, parse_token_left_curly_brace);
+  PARSE_ZERO_OR_MORE(p2, parse_class_member, parse_newline);
+  PARSE_ONCE(p3, parse_token_right_curly_brace);
+  return CREATE_AST(asts::ClassImplementationAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_class_member()
-    -> Unique<asts::Ast> {
-    PARSE_ALTERNATE(p1, asts::Ast, parse_class_attribute);
-    return FORWARD_AST(p1);
+  -> Unique<asts::Ast> {
+  PARSE_ALTERNATE(p1, asts::Ast, parse_class_attribute);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_class_attribute()
-    -> Unique<asts::ClassAttributeAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_identifier);
-    PARSE_ONCE(p3, parse_token_colon);
-    PARSE_ONCE(p4, parse_type_expression);
-    PARSE_OPTIONAL(p5, parse_class_attribute_default_value);
-    return CREATE_AST(asts::ClassAttributeAst, p1, p2, p3, p4, p5);
+  -> Unique<asts::ClassAttributeAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_identifier);
+  PARSE_ONCE(p3, parse_token_colon);
+  PARSE_ONCE(p4, parse_type_expression);
+  PARSE_OPTIONAL(p5, parse_class_attribute_default_value);
+  return CREATE_AST(asts::ClassAttributeAst, p1, p2, p3, p4, p5);
 }
 
 auto spp::parse::ParserSpp::parse_class_attribute_default_value()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ONCE(p1, parse_token_assign);
-    PARSE_ONCE(p2, parse_expression); // TODO: Force this "cmp" in SA?
-    return FORWARD_AST(p2);
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ONCE(p1, parse_token_assign);
+  PARSE_ONCE(p2, parse_expression); // TODO: Force this "cmp" in SA?
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_sup_prototype_functions()
-    -> Unique<asts::SupPrototypeFunctionsAst> {
-    PARSE_ONCE(p1, parse_keyword_sup);
-    PARSE_OPTIONAL(p2, parse_generic_parameter_group);
-    PARSE_ONCE(p3, parse_type_expression);
-    PARSE_ONCE(p4, parse_sup_implementation);
-    return CREATE_AST(asts::SupPrototypeFunctionsAst, p1, p2, p3, p4);
+  -> Unique<asts::SupPrototypeFunctionsAst> {
+  PARSE_ONCE(p1, parse_keyword_sup);
+  PARSE_OPTIONAL(p2, parse_generic_parameter_group);
+  PARSE_ONCE(p3, parse_type_expression);
+  PARSE_ONCE(p4, parse_sup_implementation);
+  return CREATE_AST(asts::SupPrototypeFunctionsAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_sup_prototype_extension()
-    -> Unique<asts::SupPrototypeExtensionAst> {
-    PARSE_ONCE(p1, parse_keyword_sup);
-    PARSE_OPTIONAL(p2, parse_generic_parameter_group);
-    PARSE_ONCE(p3, parse_type_expression);
-    PARSE_ONCE(p4, parse_keyword_ext);
-    PARSE_ONCE(p5, parse_type_expression);
-    PARSE_ONCE(p6, parse_sup_implementation);
-    return CREATE_AST(asts::SupPrototypeExtensionAst, p1, p2, p3, p4, p5, p6);
+  -> Unique<asts::SupPrototypeExtensionAst> {
+  PARSE_ONCE(p1, parse_keyword_sup);
+  PARSE_OPTIONAL(p2, parse_generic_parameter_group);
+  PARSE_ONCE(p3, parse_type_expression);
+  PARSE_ONCE(p4, parse_keyword_ext);
+  PARSE_ONCE(p5, parse_type_expression);
+  PARSE_ONCE(p6, parse_sup_implementation);
+  return CREATE_AST(asts::SupPrototypeExtensionAst, p1, p2, p3, p4, p5, p6);
 }
 
 auto spp::parse::ParserSpp::parse_sup_implementation()
-    -> Unique<asts::SupImplementationAst> {
-    PARSE_ONCE(p1, parse_token_left_curly_brace);
-    PARSE_ZERO_OR_MORE(p2, parse_sup_member, parse_newline);
-    PARSE_ONCE(p3, parse_token_right_curly_brace);
-    return CREATE_AST(asts::SupImplementationAst, p1, p2, p3);
+  -> Unique<asts::SupImplementationAst> {
+  PARSE_ONCE(p1, parse_token_left_curly_brace);
+  PARSE_ZERO_OR_MORE(p2, parse_sup_member, parse_newline);
+  PARSE_ONCE(p3, parse_token_right_curly_brace);
+  return CREATE_AST(asts::SupImplementationAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_sup_member()
-    -> Unique<asts::Ast> {
-    PARSE_ALTERNATE(
-        p1, asts::Ast, parse_function_prototype, parse_sup_type_statement, parse_sup_cmp_statement);
-    return FORWARD_AST(p1);
+  -> Unique<asts::Ast> {
+  PARSE_ALTERNATE(
+    p1, asts::Ast, parse_function_prototype, parse_sup_type_statement, parse_sup_cmp_statement);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_sup_type_statement()
-    -> Unique<asts::TypeStatementAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_type_statement);
-    p2->Annotations = std::move(p1);
-    return p2;
+  -> Unique<asts::TypeStatementAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_type_statement);
+  p2->Annotations = std::move(p1);
+  return p2;
 }
 
 auto spp::parse::ParserSpp::parse_sup_cmp_statement()
-    -> Unique<asts::CmpStatementAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_cmp_statement);
-    p2->Annotations = std::move(p1);
-    return p2;
+  -> Unique<asts::CmpStatementAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_cmp_statement);
+  p2->Annotations = std::move(p1);
+  return p2;
 }
 
 auto spp::parse::ParserSpp::parse_function_prototype()
-    -> Unique<asts::FunctionPrototypeAst> {
-    PARSE_ALTERNATE(p1, asts::FunctionPrototypeAst, parse_subroutine_prototype, parse_coroutine_prototype);
-    return FORWARD_AST(p1);
+  -> Unique<asts::FunctionPrototypeAst> {
+  PARSE_ALTERNATE(p1, asts::FunctionPrototypeAst, parse_subroutine_prototype, parse_coroutine_prototype);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_subroutine_prototype()
-    -> Unique<asts::SubroutinePrototypeAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_OPTIONAL(p2, parse_keyword_cmp);
-    PARSE_ONCE(p3, parse_keyword_fun);
-    PARSE_ONCE(p4, parse_identifier);
-    PARSE_OPTIONAL(p5, parse_generic_parameter_group);
-    PARSE_ONCE(p6, parse_function_parameter_group);
-    PARSE_ONCE(p7, parse_token_arrow_right);
-    PARSE_ONCE(p8, parse_type_expression);
-    PARSE_ONCE(p9, parse_function_implementation);
-    return CREATE_AST(asts::SubroutinePrototypeAst, p1, p2, p3, p4, p5, p6, p7, p8, p9);
+  -> Unique<asts::SubroutinePrototypeAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_OPTIONAL(p2, parse_keyword_cmp);
+  PARSE_ONCE(p3, parse_keyword_fun);
+  PARSE_ONCE(p4, parse_identifier);
+  PARSE_OPTIONAL(p5, parse_generic_parameter_group);
+  PARSE_ONCE(p6, parse_function_parameter_group);
+  PARSE_ONCE(p7, parse_token_arrow_right);
+  PARSE_ONCE(p8, parse_type_expression);
+  PARSE_ONCE(p9, parse_function_implementation);
+  return CREATE_AST(asts::SubroutinePrototypeAst, p1, p2, p3, p4, p5, p6, p7, p8, p9);
 }
 
 auto spp::parse::ParserSpp::parse_coroutine_prototype()
-    -> Unique<asts::CoroutinePrototypeAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_keyword_cor);
-    PARSE_ONCE(p3, parse_identifier);
-    PARSE_OPTIONAL(p4, parse_generic_parameter_group);
-    PARSE_ONCE(p5, parse_function_parameter_group);
-    PARSE_ONCE(p6, parse_token_arrow_right);
-    PARSE_ONCE(p7, parse_type_expression);
-    PARSE_ONCE(p8, parse_function_implementation);
-    return CREATE_AST(asts::CoroutinePrototypeAst, p1, nullptr, p2, p3, p4, p5, p6, p7, p8);
+  -> Unique<asts::CoroutinePrototypeAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_keyword_cor);
+  PARSE_ONCE(p3, parse_identifier);
+  PARSE_OPTIONAL(p4, parse_generic_parameter_group);
+  PARSE_ONCE(p5, parse_function_parameter_group);
+  PARSE_ONCE(p6, parse_token_arrow_right);
+  PARSE_ONCE(p7, parse_type_expression);
+  PARSE_ONCE(p8, parse_function_implementation);
+  return CREATE_AST(asts::CoroutinePrototypeAst, p1, nullptr, p2, p3, p4, p5, p6, p7, p8);
 }
 
 auto spp::parse::ParserSpp::parse_function_implementation()
-    -> Unique<asts::FunctionImplementationAst> {
-    PARSE_ONCE(p1, parse_token_left_curly_brace);
-    PARSE_ZERO_OR_MORE(p2, parse_function_member, parse_newline);
-    PARSE_ONCE(p3, parse_token_right_curly_brace);
-    return CREATE_AST(asts::FunctionImplementationAst, p1, p2, p3);
+  -> Unique<asts::FunctionImplementationAst> {
+  PARSE_ONCE(p1, parse_token_left_curly_brace);
+  PARSE_ZERO_OR_MORE(p2, parse_function_member, parse_newline);
+  PARSE_ONCE(p3, parse_token_right_curly_brace);
+  return CREATE_AST(asts::FunctionImplementationAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_function_member()
-    -> Unique<asts::StatementAst> {
-    PARSE_ONCE(p1, parse_statement);
-    return FORWARD_AST(p1);
+  -> Unique<asts::StatementAst> {
+  PARSE_ONCE(p1, parse_statement);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter_group()
-    -> Unique<asts::FunctionParameterGroupAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p2, parse_function_parameter, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::FunctionParameterGroupAst, p1, p2, p3);
+  -> Unique<asts::FunctionParameterGroupAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ZERO_OR_MORE(p2, parse_function_parameter, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::FunctionParameterGroupAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter()
-    -> Unique<asts::FunctionParameterAst> {
-    PARSE_ALTERNATE(
-        p1, asts::FunctionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
-        parse_function_parameter_required, parse_function_parameter_self);
-    return FORWARD_AST(p1);
+  -> Unique<asts::FunctionParameterAst> {
+  PARSE_ALTERNATE(
+    p1, asts::FunctionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
+    parse_function_parameter_required, parse_function_parameter_self);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter_self()
-    -> Unique<asts::FunctionParameterSelfAst> {
-    PARSE_ALTERNATE(
-        p1, asts::FunctionParameterSelfAst, parse_function_parameter_self_without_convention,
-        parse_function_parameter_self_with_convention);
-    return FORWARD_AST(p1);
+  -> Unique<asts::FunctionParameterSelfAst> {
+  PARSE_ALTERNATE(
+    p1, asts::FunctionParameterSelfAst, parse_function_parameter_self_without_convention,
+    parse_function_parameter_self_with_convention);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter_self_with_convention()
-    -> Unique<asts::FunctionParameterSelfAst> {
-    PARSE_ONCE(p1, parse_convention);
-    PARSE_ONCE(p2, parse_self_identifier);
-    return CREATE_AST(asts::FunctionParameterSelfAst, p1, CREATE_AST(asts::LocalVariableSingleIdentifierAst, nullptr, p2, nullptr));
+  -> Unique<asts::FunctionParameterSelfAst> {
+  PARSE_ONCE(p1, parse_convention);
+  PARSE_ONCE(p2, parse_self_identifier);
+  return CREATE_AST(asts::FunctionParameterSelfAst, p1,
+                    CREATE_AST(asts::LocalVariableSingleIdentifierAst, nullptr, p2, nullptr));
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter_self_without_convention()
-    -> Unique<asts::FunctionParameterSelfAst> {
-    PARSE_OPTIONAL(p1, parse_keyword_mut)
-    PARSE_ONCE(p2, parse_self_identifier);
-    return CREATE_AST(asts::FunctionParameterSelfAst, nullptr, CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, nullptr));
+  -> Unique<asts::FunctionParameterSelfAst> {
+  PARSE_OPTIONAL(p1, parse_keyword_mut)
+  PARSE_ONCE(p2, parse_self_identifier);
+  return CREATE_AST(asts::FunctionParameterSelfAst, nullptr,
+                    CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, nullptr));
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter_required()
-    -> Unique<asts::FunctionParameterRequiredAst> {
-    PARSE_ONCE(p1, parse_local_variable);
-    PARSE_ONCE(p2, parse_token_colon);
-    PARSE_ONCE(p3, parse_type_expression);
-    return CREATE_AST(asts::FunctionParameterRequiredAst, p1, p2, p3);
+  -> Unique<asts::FunctionParameterRequiredAst> {
+  PARSE_ONCE(p1, parse_local_variable);
+  PARSE_ONCE(p2, parse_token_colon);
+  PARSE_ONCE(p3, parse_type_expression);
+  return CREATE_AST(asts::FunctionParameterRequiredAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter_optional()
-    -> Unique<asts::FunctionParameterOptionalAst> {
-    PARSE_ONCE(p1, parse_local_variable);
-    PARSE_ONCE(p2, parse_token_colon);
-    PARSE_ONCE(p3, parse_type_expression);
-    PARSE_ONCE(p4, parse_token_assign);
-    PARSE_ONCE(p5, parse_expression); // TODO: Force this "cmp" in SA?
-    return CREATE_AST(asts::FunctionParameterOptionalAst, p1, p2, p3, p4, p5);
+  -> Unique<asts::FunctionParameterOptionalAst> {
+  PARSE_ONCE(p1, parse_local_variable);
+  PARSE_ONCE(p2, parse_token_colon);
+  PARSE_ONCE(p3, parse_type_expression);
+  PARSE_ONCE(p4, parse_token_assign);
+  PARSE_ONCE(p5, parse_expression); // TODO: Force this "cmp" in SA?
+  return CREATE_AST(asts::FunctionParameterOptionalAst, p1, p2, p3, p4, p5);
 }
 
 auto spp::parse::ParserSpp::parse_function_parameter_variadic()
-    -> Unique<asts::FunctionParameterVariadicAst> {
-    PARSE_ONCE(p1, parse_token_double_dot);
-    PARSE_ONCE(p2, parse_local_variable);
-    PARSE_ONCE(p3, parse_token_colon);
-    PARSE_ONCE(p4, parse_type_expression);
-    return CREATE_AST(asts::FunctionParameterVariadicAst, p1, p2, p3, p4);
+  -> Unique<asts::FunctionParameterVariadicAst> {
+  PARSE_ONCE(p1, parse_token_double_dot);
+  PARSE_ONCE(p2, parse_local_variable);
+  PARSE_ONCE(p3, parse_token_colon);
+  PARSE_ONCE(p4, parse_type_expression);
+  return CREATE_AST(asts::FunctionParameterVariadicAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_function_call_argument_group()
-    -> Unique<asts::FunctionCallArgumentGroupAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p2, parse_function_call_argument, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::FunctionCallArgumentGroupAst, p1, p2, p3);
+  -> Unique<asts::FunctionCallArgumentGroupAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ZERO_OR_MORE(p2, parse_function_call_argument, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::FunctionCallArgumentGroupAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_function_call_argument()
-    -> Unique<asts::FunctionCallArgumentAst> {
-    PARSE_ALTERNATE(
-        p1, asts::FunctionCallArgumentAst, parse_function_call_argument_keyword,
-        parse_function_call_argument_positional);
-    return FORWARD_AST(p1);
+  -> Unique<asts::FunctionCallArgumentAst> {
+  PARSE_ALTERNATE(
+    p1, asts::FunctionCallArgumentAst, parse_function_call_argument_keyword,
+    parse_function_call_argument_positional);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_function_call_argument_positional()
-    -> Unique<asts::FunctionCallArgumentPositionalAst> {
-    PARSE_OPTIONAL(p1, parse_convention);
-    PARSE_OPTIONAL(p2, parse_token_double_dot)
-    PARSE_ONCE(p3, parse_expression);
-    return CREATE_AST(asts::FunctionCallArgumentPositionalAst, p1, p2, p3);
+  -> Unique<asts::FunctionCallArgumentPositionalAst> {
+  PARSE_OPTIONAL(p1, parse_convention);
+  PARSE_OPTIONAL(p2, parse_token_double_dot)
+  PARSE_ONCE(p3, parse_expression);
+  return CREATE_AST(asts::FunctionCallArgumentPositionalAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_function_call_argument_keyword()
-    -> Unique<asts::FunctionCallArgumentKeywordAst> {
-    PARSE_ONCE(p1, parse_identifier);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_OPTIONAL(p3, parse_convention);
-    PARSE_ONCE(p4, parse_expression);
-    return CREATE_AST(asts::FunctionCallArgumentKeywordAst, p1, p2, p3, p4);
+  -> Unique<asts::FunctionCallArgumentKeywordAst> {
+  PARSE_ONCE(p1, parse_identifier);
+  PARSE_ONCE(p2, parse_token_assign);
+  PARSE_OPTIONAL(p3, parse_convention);
+  PARSE_ONCE(p4, parse_expression);
+  return CREATE_AST(asts::FunctionCallArgumentKeywordAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_group()
-    -> Unique<asts::GenericParameterGroupAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ZERO_OR_MORE(p2, parse_generic_parameter, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_square_bracket);
-    return CREATE_AST(asts::GenericParameterGroupAst, p1, p2, p3);
+  -> Unique<asts::GenericParameterGroupAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_ZERO_OR_MORE(p2, parse_generic_parameter, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_square_bracket);
+  return CREATE_AST(asts::GenericParameterGroupAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter()
-    -> Unique<asts::GenericParameterAst> {
-    PARSE_ALTERNATE(
-        p1, asts::GenericParameterAst, parse_generic_parameter_type, parse_generic_parameter_comp);
-    return FORWARD_AST(p1);
+  -> Unique<asts::GenericParameterAst> {
+  PARSE_ALTERNATE(
+    p1, asts::GenericParameterAst, parse_generic_parameter_type, parse_generic_parameter_comp);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp()
-    -> Unique<asts::GenericParameterCompAst> {
-    PARSE_ALTERNATE(
-        p1, asts::GenericParameterCompAst, parse_generic_parameter_comp_variadic, parse_generic_parameter_comp_optional,
-        parse_generic_parameter_comp_required);
-    return FORWARD_AST(p1);
+  -> Unique<asts::GenericParameterCompAst> {
+  PARSE_ALTERNATE(
+    p1, asts::GenericParameterCompAst, parse_generic_parameter_comp_variadic, parse_generic_parameter_comp_optional,
+    parse_generic_parameter_comp_required);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp_required()
-    -> Unique<asts::GenericParameterCompRequiredAst> {
-    PARSE_ONCE(p1, parse_keyword_cmp);
-    PARSE_ONCE(p2, parse_identifier);
-    PARSE_ONCE(p3, parse_token_colon);
-    PARSE_ONCE(p4, parse_type_expression);
-    return CREATE_AST(asts::GenericParameterCompRequiredAst, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4);
+  -> Unique<asts::GenericParameterCompRequiredAst> {
+  PARSE_ONCE(p1, parse_keyword_cmp);
+  PARSE_ONCE(p2, parse_identifier);
+  PARSE_ONCE(p3, parse_token_colon);
+  PARSE_ONCE(p4, parse_type_expression);
+  return CREATE_AST(asts::GenericParameterCompRequiredAst, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp_optional()
-    -> Unique<asts::GenericParameterCompOptionalAst> {
-    PARSE_ONCE(p1, parse_keyword_cmp);
-    PARSE_ONCE(p2, parse_identifier);
-    PARSE_ONCE(p3, parse_token_colon);
-    PARSE_ONCE(p4, parse_type_expression);
-    PARSE_ONCE(p5, parse_token_assign);
-    PARSE_ONCE(p6, parse_expression); // TODO: Force this "cmp" in SA?
-    return CREATE_AST(asts::GenericParameterCompOptionalAst, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4, p5, p6);
+  -> Unique<asts::GenericParameterCompOptionalAst> {
+  PARSE_ONCE(p1, parse_keyword_cmp);
+  PARSE_ONCE(p2, parse_identifier);
+  PARSE_ONCE(p3, parse_token_colon);
+  PARSE_ONCE(p4, parse_type_expression);
+  PARSE_ONCE(p5, parse_token_assign);
+  PARSE_ONCE(p6, parse_expression); // TODO: Force this "cmp" in SA?
+  return CREATE_AST(asts::GenericParameterCompOptionalAst, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4, p5,
+                    p6);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp_variadic()
-    -> Unique<asts::GenericParameterCompVariadicAst> {
-    PARSE_ONCE(p1, parse_keyword_cmp);
-    PARSE_ONCE(p2, parse_token_double_dot);
-    PARSE_ONCE(p3, parse_identifier);
-    PARSE_ONCE(p4, parse_token_colon);
-    PARSE_ONCE(p5, parse_type_expression);
-    return CREATE_AST(asts::GenericParameterCompVariadicAst, p1, p2, asts::TypeIdentifierAst::FromIdentifier(*p3), p4, p5);
+  -> Unique<asts::GenericParameterCompVariadicAst> {
+  PARSE_ONCE(p1, parse_keyword_cmp);
+  PARSE_ONCE(p2, parse_token_double_dot);
+  PARSE_ONCE(p3, parse_identifier);
+  PARSE_ONCE(p4, parse_token_colon);
+  PARSE_ONCE(p5, parse_type_expression);
+  return CREATE_AST(asts::GenericParameterCompVariadicAst, p1, p2, asts::TypeIdentifierAst::FromIdentifier(*p3), p4,
+                    p5);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type()
-    -> Unique<asts::GenericParameterTypeAst> {
-    PARSE_ALTERNATE(
-        p1, asts::GenericParameterTypeAst, parse_generic_parameter_type_variadic, parse_generic_parameter_type_optional,
-        parse_generic_parameter_type_required);
-    return FORWARD_AST(p1);
+  -> Unique<asts::GenericParameterTypeAst> {
+  PARSE_ALTERNATE(
+    p1, asts::GenericParameterTypeAst, parse_generic_parameter_type_variadic, parse_generic_parameter_type_optional,
+    parse_generic_parameter_type_required);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_required()
-    -> Unique<asts::GenericParameterTypeRequiredAst> {
-    PARSE_ONCE(p1, parse_type_identifier);
-    PARSE_OPTIONAL(p2, parse_generic_parameter_type_inline_constraints);
-    return CREATE_AST(asts::GenericParameterTypeRequiredAst, p1, p2);
+  -> Unique<asts::GenericParameterTypeRequiredAst> {
+  PARSE_ONCE(p1, parse_type_identifier);
+  PARSE_OPTIONAL(p2, parse_generic_parameter_type_inline_constraints);
+  return CREATE_AST(asts::GenericParameterTypeRequiredAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_optional()
-    -> Unique<asts::GenericParameterTypeOptionalAst> {
-    PARSE_ONCE(p1, parse_type_identifier);
-    PARSE_OPTIONAL(p2, parse_generic_parameter_type_inline_constraints);
-    PARSE_ONCE(p3, parse_token_assign);
-    PARSE_ONCE(p4, parse_type_expression);
-    return CREATE_AST(asts::GenericParameterTypeOptionalAst, p1, p2, p3, p4);
+  -> Unique<asts::GenericParameterTypeOptionalAst> {
+  PARSE_ONCE(p1, parse_type_identifier);
+  PARSE_OPTIONAL(p2, parse_generic_parameter_type_inline_constraints);
+  PARSE_ONCE(p3, parse_token_assign);
+  PARSE_ONCE(p4, parse_type_expression);
+  return CREATE_AST(asts::GenericParameterTypeOptionalAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_variadic()
-    -> Unique<asts::GenericParameterTypeVariadicAst> {
-    PARSE_ONCE(p1, parse_token_double_dot);
-    PARSE_ONCE(p2, parse_type_identifier);
-    PARSE_OPTIONAL(p3, parse_generic_parameter_type_inline_constraints);
-    return CREATE_AST(asts::GenericParameterTypeVariadicAst, p1, p2, p3);
+  -> Unique<asts::GenericParameterTypeVariadicAst> {
+  PARSE_ONCE(p1, parse_token_double_dot);
+  PARSE_ONCE(p2, parse_type_identifier);
+  PARSE_OPTIONAL(p3, parse_generic_parameter_type_inline_constraints);
+  return CREATE_AST(asts::GenericParameterTypeVariadicAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_inline_constraints()
-    -> Unique<asts::GenericParameterTypeInlineConstraintsAst> {
-    PARSE_ONCE(p1, parse_token_colon);
-    PARSE_ONE_OR_MORE(p2, parse_type_expression, parse_token_bit_and);
-    return CREATE_AST(asts::GenericParameterTypeInlineConstraintsAst, p1, p2);
+  -> Unique<asts::GenericParameterTypeInlineConstraintsAst> {
+  PARSE_ONCE(p1, parse_token_colon);
+  PARSE_ONE_OR_MORE(p2, parse_type_expression, parse_token_bit_and);
+  return CREATE_AST(asts::GenericParameterTypeInlineConstraintsAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_group()
-    -> Unique<asts::GenericArgumentGroupAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ZERO_OR_MORE(p2, parse_generic_argument, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_square_bracket);
-    return CREATE_AST(asts::GenericArgumentGroupAst, p1, p2, p3);
+  -> Unique<asts::GenericArgumentGroupAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_ZERO_OR_MORE(p2, parse_generic_argument, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_square_bracket);
+  return CREATE_AST(asts::GenericArgumentGroupAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument()
-    -> Unique<asts::GenericArgumentAst> {
-    PARSE_ALTERNATE(
-        p1, asts::GenericArgumentAst, parse_generic_argument_type, parse_generic_argument_comp);
-    return FORWARD_AST(p1);
+  -> Unique<asts::GenericArgumentAst> {
+  PARSE_ALTERNATE(
+    p1, asts::GenericArgumentAst, parse_generic_argument_type, parse_generic_argument_comp);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_comp()
-    -> Unique<asts::GenericArgumentCompAst> {
-    PARSE_ALTERNATE(
-        p1, asts::GenericArgumentCompAst, parse_generic_argument_comp_keyword, parse_generic_argument_comp_positional);
-    return FORWARD_AST(p1);
+  -> Unique<asts::GenericArgumentCompAst> {
+  PARSE_ALTERNATE(
+    p1, asts::GenericArgumentCompAst, parse_generic_argument_comp_keyword, parse_generic_argument_comp_positional);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_comp_positional()
-    -> Unique<asts::GenericArgumentCompPositionalAst> {
-    PARSE_ONCE(p1, parse_expression); // TODO: Force this "cmp" in SA?
-    return CREATE_AST(asts::GenericArgumentCompPositionalAst, p1);
+  -> Unique<asts::GenericArgumentCompPositionalAst> {
+  PARSE_ONCE(p1, parse_expression); // TODO: Force this "cmp" in SA?
+  return CREATE_AST(asts::GenericArgumentCompPositionalAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_comp_keyword()
-    -> Unique<asts::GenericArgumentCompKeywordAst> {
-    PARSE_ONCE(p1, parse_identifier);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONCE(p3, parse_expression); // TODO: Force this "cmp" in SA?
-    return CREATE_AST(asts::GenericArgumentCompKeywordAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, p3);
+  -> Unique<asts::GenericArgumentCompKeywordAst> {
+  PARSE_ONCE(p1, parse_identifier);
+  PARSE_ONCE(p2, parse_token_assign);
+  PARSE_ONCE(p3, parse_expression); // TODO: Force this "cmp" in SA?
+  return CREATE_AST(asts::GenericArgumentCompKeywordAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_type()
-    -> Unique<asts::GenericArgumentTypeAst> {
-    PARSE_ALTERNATE(
-        p1, asts::GenericArgumentTypeAst, parse_generic_argument_type_keyword, parse_generic_argument_type_positional);
-    PARSE_NEGATE(lex::RawTokenType::TK_LEFT_PARENTHESIS)
-    return FORWARD_AST(p1);
+  -> Unique<asts::GenericArgumentTypeAst> {
+  PARSE_ALTERNATE(
+    p1, asts::GenericArgumentTypeAst, parse_generic_argument_type_keyword, parse_generic_argument_type_positional);
+  PARSE_NEGATE(lex::RawTokenType::TK_LEFT_PARENTHESIS)
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_type_positional()
-    -> Unique<asts::GenericArgumentTypePositionalAst> { // 1964
-    PARSE_ONCE(p1, parse_type_expression);
-    return CREATE_AST(asts::GenericArgumentTypePositionalAst, asts::AstClone(p1));
+  -> Unique<asts::GenericArgumentTypePositionalAst> {
+  // 1964
+  PARSE_ONCE(p1, parse_type_expression);
+  return CREATE_AST(asts::GenericArgumentTypePositionalAst, asts::AstClone(p1));
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_type_keyword()
-    -> Unique<asts::GenericArgumentTypeKeywordAst> {
-    PARSE_ONCE(p1, parse_upper_identifier);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONCE(p3, parse_type_expression);
-    return CREATE_AST(asts::GenericArgumentTypeKeywordAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, p3);
+  -> Unique<asts::GenericArgumentTypeKeywordAst> {
+  PARSE_ONCE(p1, parse_upper_identifier);
+  PARSE_ONCE(p2, parse_token_assign);
+  PARSE_ONCE(p3, parse_type_expression);
+  return CREATE_AST(asts::GenericArgumentTypeKeywordAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_annotation()
-    -> Unique<asts::AnnotationAst> {
-    PARSE_ALTERNATE(p1, asts::AnnotationAst, parse_annotation_call, parse_annotation_no_call);
-    return FORWARD_AST(p1);
+  -> Unique<asts::AnnotationAst> {
+  PARSE_ALTERNATE(p1, asts::AnnotationAst, parse_annotation_call, parse_annotation_no_call);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_annotation_call()
-    -> Unique<asts::AnnotationAst> {
-    PARSE_ONCE(p1, parse_token_exclamation_mark);
-    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_zero)
-    PARSE_OPTIONAL(p3, parse_generic_argument_group);
-    PARSE_ONCE(p4, parse_function_call_argument_group);
-    return CREATE_AST(asts::AnnotationAst, p1, p2, p3, p4);
+  -> Unique<asts::AnnotationAst> {
+  PARSE_ONCE(p1, parse_token_exclamation_mark);
+  PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_zero)
+  PARSE_OPTIONAL(p3, parse_generic_argument_group);
+  PARSE_ONCE(p4, parse_function_call_argument_group);
+  return CREATE_AST(asts::AnnotationAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_annotation_no_call()
-    -> Unique<asts::AnnotationAst> {
-    PARSE_ONCE(p1, parse_token_exclamation_mark);
-    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_zero);
-    return CREATE_AST(asts::AnnotationAst, p1, p2, nullptr, nullptr);
+  -> Unique<asts::AnnotationAst> {
+  PARSE_ONCE(p1, parse_token_exclamation_mark);
+  PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_zero);
+  return CREATE_AST(asts::AnnotationAst, p1, p2, nullptr, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_expression()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ONCE(p1, parse_binary_expression);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ONCE(p1, parse_binary_expression);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_binary_expression(const std::uint8_t min_prec)
-    -> Unique<asts::ExpressionAst> {
-    using RT = lex::RawTokenType;
+  -> Unique<asts::ExpressionAst> {
+  using RT = lex::RawTokenType;
 
-    struct BinOpInfo {
-        Unique<asts::TokenAst> tok;
-        std::uint8_t prec;
-        bool is_is;
-    };
+  struct BinOpInfo {
+    Unique<asts::TokenAst> tok;
+    std::uint8_t prec;
+    bool is_is;
+  };
 
-    auto try_tok = [this](auto fn, const std::uint8_t prec, const bool is_is = false) -> std::optional<BinOpInfo> {
-        const auto pos = _Pos;
-        if (auto tok = fn()) return BinOpInfo{std::move(tok), prec, is_is};
-        _Pos = pos;
-        return std::nullopt;
-    };
+  auto try_tok = [this](auto fn, const std::uint8_t prec, const bool is_is = false) -> std::optional<BinOpInfo> {
+    const auto pos = _Pos;
+    if (auto tok = fn()) return BinOpInfo{std::move(tok), prec, is_is};
+    _Pos = pos;
+    return std::nullopt;
+  };
 
-    auto try_bin_op = [&]() -> BinOpInfo {
-        auto peek = _Pos;
-        while (peek < _TokensLen && (_Tokens[peek].type == RT::TK_LINE_FEED || _Tokens[peek].type == RT::TK_SPACE))
-            peek++;
-        if (peek >= _TokensLen) return {};
+  auto try_bin_op = [&]() -> BinOpInfo {
+    auto peek = _Pos;
+    while (peek < _TokensLen && (_Tokens[peek].type == RT::TK_LINE_FEED || _Tokens[peek].type == RT::TK_SPACE))
+      peek++;
+    if (peek >= _TokensLen) return {};
 
-        switch (_Tokens[peek].type) {
-            case RT::TK_ASTERISK:
-                if (auto r = try_tok([this] { return parse_token_pow_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_pow(); }, 11)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_mul_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_mul(); }, 11)) return std::move(*r);
-                break;
-            case RT::TK_PLUS_SIGN:
-                if (auto r = try_tok([this] { return parse_token_add_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_add(); }, 10)) return std::move(*r);
-                break;
-            case RT::TK_HYPHEN:
-                if (auto r = try_tok([this] { return parse_token_sub_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_sub(); }, 10)) return std::move(*r);
-                break;
-            case RT::TK_SLASH:
-                if (auto r = try_tok([this] { return parse_token_div_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_div(); }, 11)) return std::move(*r);
-                break;
-            case RT::TK_PERCENT_SIGN:
-                if (auto r = try_tok([this] { return parse_token_rem_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_rem(); }, 11)) return std::move(*r);
-                break;
-            case RT::TK_VERTICAL_BAR:
-                if (auto r = try_tok([this] { return parse_token_bit_ior_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_bit_ior(); }, 6)) return std::move(*r);
-                break;
-            case RT::TK_CARET:
-                if (auto r = try_tok([this] { return parse_token_bit_xor_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_bit_xor(); }, 7)) return std::move(*r);
-                break;
-            case RT::TK_AMPERSAND:
-                if (auto r = try_tok([this] { return parse_token_bit_and_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_bit_and(); }, 8)) return std::move(*r);
-                break;
-            case RT::TK_LESS_THAN:
-                if (auto r = try_tok([this] { return parse_token_bit_shl_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_bit_shl(); }, 9)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_less_than_equals(); }, 5)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_less_than(); }, 5)) return std::move(*r);
-                break;
-            case RT::TK_GREATER_THAN:
-                if (auto r = try_tok([this] { return parse_token_bit_shr_assign(); }, 1)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_bit_shr(); }, 9)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_greater_than_equals(); }, 5)) return std::move(*r);
-                if (auto r = try_tok([this] { return parse_token_greater_than(); }, 5)) return std::move(*r);
-                break;
-            case RT::TK_EQUALS_TO:
-                if (auto r = try_tok([this] { return parse_token_equals(); }, 5)) return std::move(*r);
-                break;
-            case RT::TK_EXCLAMATION_MARK:
-                if (auto r = try_tok([this] { return parse_token_not_equals(); }, 5)) return std::move(*r);
-                break;
-            case RT::KW_OR:
-                if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
-                break;
-            case RT::KW_AND:
-                if (auto r = try_tok([this] { return parse_keyword_and(); }, 3)) return std::move(*r);
-                break;
-            case RT::KW_IS:
-                if (auto r = try_tok([this] { return parse_keyword_is(); }, 4, true)) return std::move(*r);
-                break;
-            default: break;
-        }
-        return {};
-    };
+    switch (_Tokens[peek].type) {
+      case RT::TK_ASTERISK:
+        if (auto r = try_tok([this] { return parse_token_pow_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_pow(); }, 11)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_mul_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_mul(); }, 11)) return std::move(*r);
+        break;
+      case RT::TK_PLUS_SIGN:
+        if (auto r = try_tok([this] { return parse_token_add_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_add(); }, 10)) return std::move(*r);
+        break;
+      case RT::TK_HYPHEN:
+        if (auto r = try_tok([this] { return parse_token_sub_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_sub(); }, 10)) return std::move(*r);
+        break;
+      case RT::TK_SLASH:
+        if (auto r = try_tok([this] { return parse_token_div_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_div(); }, 11)) return std::move(*r);
+        break;
+      case RT::TK_PERCENT_SIGN:
+        if (auto r = try_tok([this] { return parse_token_rem_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_rem(); }, 11)) return std::move(*r);
+        break;
+      case RT::TK_VERTICAL_BAR:
+        if (auto r = try_tok([this] { return parse_token_bit_ior_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_bit_ior(); }, 6)) return std::move(*r);
+        break;
+      case RT::TK_CARET:
+        if (auto r = try_tok([this] { return parse_token_bit_xor_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_bit_xor(); }, 7)) return std::move(*r);
+        break;
+      case RT::TK_AMPERSAND:
+        if (auto r = try_tok([this] { return parse_token_bit_and_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_bit_and(); }, 8)) return std::move(*r);
+        break;
+      case RT::TK_LESS_THAN:
+        if (auto r = try_tok([this] { return parse_token_bit_shl_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_bit_shl(); }, 9)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_less_than_equals(); }, 5)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_less_than(); }, 5)) return std::move(*r);
+        break;
+      case RT::TK_GREATER_THAN:
+        if (auto r = try_tok([this] { return parse_token_bit_shr_assign(); }, 1)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_bit_shr(); }, 9)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_greater_than_equals(); }, 5)) return std::move(*r);
+        if (auto r = try_tok([this] { return parse_token_greater_than(); }, 5)) return std::move(*r);
+        break;
+      case RT::TK_EQUALS_TO:
+        if (auto r = try_tok([this] { return parse_token_equals(); }, 5)) return std::move(*r);
+        break;
+      case RT::TK_EXCLAMATION_MARK:
+        if (auto r = try_tok([this] { return parse_token_not_equals(); }, 5)) return std::move(*r);
+        break;
+      case RT::KW_OR:
+        if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
+        break;
+      case RT::KW_AND:
+        if (auto r = try_tok([this] { return parse_keyword_and(); }, 3)) return std::move(*r);
+        break;
+      case RT::KW_IS:
+        if (auto r = try_tok([this] { return parse_keyword_is(); }, 4, true)) return std::move(*r);
+        break;
+      default: break;
+    }
+    return {};
+  };
 
-    PARSE_ONCE(lhs, parse_unary_expression);
+  PARSE_ONCE(lhs, parse_unary_expression);
 
-    while (true) {
-        const auto saved = _Pos;
-        auto bin_op = try_bin_op();
-        if (!bin_op.tok || bin_op.prec < min_prec) {
-            _Pos = saved;
-            break;
-        }
-
-        if (bin_op.is_is) {
-            PARSE_ONCE(rhs, parse_case_expression_pattern_variant_destructure);
-            lhs = CREATE_AST(asts::IsExpressionAst, lhs, bin_op.tok, rhs);
-        }
-        else {
-            auto rhs = parse_binary_expression(static_cast<std::uint8_t>(bin_op.prec + 1));
-            if (!rhs) {
-                _Pos = saved;
-                break;
-            }
-            lhs = CREATE_AST(asts::BinaryExpressionAst, lhs, bin_op.tok, rhs);
-        }
+  while (true) {
+    const auto saved = _Pos;
+    auto bin_op = try_bin_op();
+    if (!bin_op.tok || bin_op.prec < min_prec) {
+      _Pos = saved;
+      break;
     }
 
-    return lhs;
+    if (bin_op.is_is) {
+      PARSE_ONCE(rhs, parse_case_expression_pattern_variant_destructure);
+      lhs = CREATE_AST(asts::IsExpressionAst, lhs, bin_op.tok, rhs);
+    }
+    else {
+      auto rhs = parse_binary_expression(static_cast<std::uint8_t>(bin_op.prec + 1));
+      if (!rhs) {
+        _Pos = saved;
+        break;
+      }
+      lhs = CREATE_AST(asts::BinaryExpressionAst, lhs, bin_op.tok, rhs);
+    }
+  }
+
+  return lhs;
 }
 
 auto spp::parse::ParserSpp::parse_unary_expression()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_unary_expression_op, parse_nothing);
-    PARSE_ONCE(p2, parse_postfix_expression);
-    return utils::algorithms::MoveAccumulate(
-        p1.rbegin(), p1.rend(), std::move(p2),
-        [](Unique<asts::ExpressionAst> &&acc, Unique<asts::UnaryExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::UnaryExpressionAst, std::move(x), std::move(acc));
-        });
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_unary_expression_op, parse_nothing);
+  PARSE_ONCE(p2, parse_postfix_expression);
+  return utils::algorithms::MoveAccumulate(
+    p1.rbegin(), p1.rend(), std::move(p2),
+    [](Unique<asts::ExpressionAst> &&acc, Unique<asts::UnaryExpressionOperatorAst> &&x) {
+      return CREATE_AST(asts::UnaryExpressionAst, std::move(x), std::move(acc));
+    });
 }
 
 auto spp::parse::ParserSpp::parse_unary_expression_op()
-    -> Unique<asts::UnaryExpressionOperatorAst> {
-    PARSE_ALTERNATE(
-        p1, asts::UnaryExpressionOperatorAst, parse_unary_expression_op_async);
-    return FORWARD_AST(p1);
+  -> Unique<asts::UnaryExpressionOperatorAst> {
+  PARSE_ALTERNATE(
+    p1, asts::UnaryExpressionOperatorAst, parse_unary_expression_op_async);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_unary_expression_op_async()
-    -> Unique<asts::UnaryExpressionOperatorAsyncAst> {
-    PARSE_ONCE(p1, parse_keyword_async);
-    return CREATE_AST(asts::UnaryExpressionOperatorAsyncAst, p1);
+  -> Unique<asts::UnaryExpressionOperatorAsyncAst> {
+  PARSE_ONCE(p1, parse_keyword_async);
+  return CREATE_AST(asts::UnaryExpressionOperatorAsyncAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ONCE(p1, parse_primary_expression);
-    PARSE_ZERO_OR_MORE(p2, parse_postfix_expression_op, parse_nothing);
-    return utils::algorithms::MoveAccumulate(
-        p2.begin(), p2.end(), std::move(p1),
-        [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
-        });
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ONCE(p1, parse_primary_expression);
+  PARSE_ZERO_OR_MORE(p2, parse_postfix_expression_op, parse_nothing);
+  return utils::algorithms::MoveAccumulate(
+    p2.begin(), p2.end(), std::move(p1),
+    [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorAst> &&x) {
+      return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
+    });
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op()
-    -> Unique<asts::PostfixExpressionOperatorAst> {
-    PARSE_ALTERNATE(
-        p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_deref,
-        parse_postfix_expression_op_early_return, parse_postfix_expression_op_function_call,
-        parse_postfix_expression_op_runtime_member_access, parse_postfix_expression_op_static_member_access,
-        parse_postfix_expression_op_keyword_not, parse_postfix_expression_op_keyword_res,
-        parse_postfix_expression_op_slice, parse_postfix_expression_op_index);
-    return FORWARD_AST(p1);
+  -> Unique<asts::PostfixExpressionOperatorAst> {
+  PARSE_ALTERNATE(
+    p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_deref,
+    parse_postfix_expression_op_early_return, parse_postfix_expression_op_function_call,
+    parse_postfix_expression_op_runtime_member_access, parse_postfix_expression_op_static_member_access,
+    parse_postfix_expression_op_keyword_not, parse_postfix_expression_op_keyword_res,
+    parse_postfix_expression_op_slice, parse_postfix_expression_op_index);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_deref()
-    -> Unique<asts::PostfixExpressionOperatorDerefAst> {
-    PARSE_ONCE(p1, parse_token_deref);
-    PARSE_NEGATE(lex::RawTokenType::LX_CHARACTER)
-    return CREATE_AST(asts::PostfixExpressionOperatorDerefAst, p1);
+  -> Unique<asts::PostfixExpressionOperatorDerefAst> {
+  PARSE_ONCE(p1, parse_token_deref);
+  PARSE_NEGATE(lex::RawTokenType::LX_CHARACTER)
+  return CREATE_AST(asts::PostfixExpressionOperatorDerefAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_early_return()
-    -> Unique<asts::PostfixExpressionOperatorEarlyReturnAst> {
-    PARSE_ONCE(p1, parse_token_question_mark);
-    return CREATE_AST(asts::PostfixExpressionOperatorEarlyReturnAst, p1);
+  -> Unique<asts::PostfixExpressionOperatorEarlyReturnAst> {
+  PARSE_ONCE(p1, parse_token_question_mark);
+  return CREATE_AST(asts::PostfixExpressionOperatorEarlyReturnAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_function_call()
-    -> Unique<asts::PostfixExpressionOperatorFunctionCallAst> {
-    PARSE_OPTIONAL(p1, parse_generic_argument_group);
-    PARSE_ONCE(p2, parse_function_call_argument_group);
-    PARSE_OPTIONAL(p3, parse_fold_expression);
-    return CREATE_AST(asts::PostfixExpressionOperatorFunctionCallAst, p1, p2, p3);
+  -> Unique<asts::PostfixExpressionOperatorFunctionCallAst> {
+  PARSE_OPTIONAL(p1, parse_generic_argument_group);
+  PARSE_ONCE(p2, parse_function_call_argument_group);
+  PARSE_OPTIONAL(p3, parse_fold_expression);
+  return CREATE_AST(asts::PostfixExpressionOperatorFunctionCallAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_runtime_member_access()
-    -> Unique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst> {
-    PARSE_ONCE(p1, parse_token_dot);
-    PARSE_ALTERNATE(p2, asts::IdentifierAst, parse_identifier, parse_numeric_identifier);
-    return CREATE_AST(asts::PostfixExpressionOperatorRuntimeMemberAccessAst, p1, p2);
+  -> Unique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst> {
+  PARSE_ONCE(p1, parse_token_dot);
+  PARSE_ALTERNATE(p2, asts::IdentifierAst, parse_identifier, parse_numeric_identifier);
+  return CREATE_AST(asts::PostfixExpressionOperatorRuntimeMemberAccessAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_static_member_access()
-    -> Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> {
-    PARSE_ONCE(p1, parse_token_double_colon);
-    PARSE_ONCE(p2, parse_identifier);
-    return CREATE_AST(asts::PostfixExpressionOperatorStaticMemberAccessAst, p1, p2);
+  -> Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> {
+  PARSE_ONCE(p1, parse_token_double_colon);
+  PARSE_ONCE(p2, parse_identifier);
+  return CREATE_AST(asts::PostfixExpressionOperatorStaticMemberAccessAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_keyword_not()
-    -> Unique<asts::PostfixExpressionOperatorKeywordNotAst> {
-    PARSE_ONCE(p1, parse_token_dot);
-    PARSE_ONCE(p2, parse_keyword_not);
-    return CREATE_AST(asts::PostfixExpressionOperatorKeywordNotAst, p1, p2);
+  -> Unique<asts::PostfixExpressionOperatorKeywordNotAst> {
+  PARSE_ONCE(p1, parse_token_dot);
+  PARSE_ONCE(p2, parse_keyword_not);
+  return CREATE_AST(asts::PostfixExpressionOperatorKeywordNotAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_keyword_res()
-    -> Unique<asts::PostfixExpressionOperatorKeywordResAst> {
-    PARSE_ONCE(p1, parse_token_dot);
-    PARSE_ONCE(p2, parse_keyword_res);
-    PARSE_ONCE(p3, parse_function_call_argument_group)
-    return CREATE_AST(asts::PostfixExpressionOperatorKeywordResAst, p1, p2, p3);
+  -> Unique<asts::PostfixExpressionOperatorKeywordResAst> {
+  PARSE_ONCE(p1, parse_token_dot);
+  PARSE_ONCE(p2, parse_keyword_res);
+  PARSE_ONCE(p3, parse_function_call_argument_group)
+  return CREATE_AST(asts::PostfixExpressionOperatorKeywordResAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_index()
-    -> Unique<asts::PostfixExpressionOperatorIndexAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_OPTIONAL(p2, parse_keyword_mut);
-    PARSE_ONCE(p3, parse_expression);
-    PARSE_ONCE(p4, parse_token_right_square_bracket);
-    return CREATE_AST(asts::PostfixExpressionOperatorIndexAst, p1, p2, p3, p4);
+  -> Unique<asts::PostfixExpressionOperatorIndexAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_OPTIONAL(p2, parse_keyword_mut);
+  PARSE_ONCE(p3, parse_expression);
+  PARSE_ONCE(p4, parse_token_right_square_bracket);
+  return CREATE_AST(asts::PostfixExpressionOperatorIndexAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_slice()
-    -> Unique<asts::PostfixExpressionOperatorSliceAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_OPTIONAL(p2, parse_keyword_mut);
-    PARSE_OPTIONAL(p3, parse_expression);
-    PARSE_ONCE(p4, parse_keyword_to);
-    PARSE_OPTIONAL(p5, parse_expression);
-    PARSE_ONCE(p6, parse_token_right_square_bracket);
-    return CREATE_AST(asts::PostfixExpressionOperatorSliceAst, p1, p2, p3, p4, p5, p6);
+  -> Unique<asts::PostfixExpressionOperatorSliceAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_OPTIONAL(p2, parse_keyword_mut);
+  PARSE_OPTIONAL(p3, parse_expression);
+  PARSE_ONCE(p4, parse_keyword_to);
+  PARSE_OPTIONAL(p5, parse_expression);
+  PARSE_ONCE(p6, parse_token_right_square_bracket);
+  return CREATE_AST(asts::PostfixExpressionOperatorSliceAst, p1, p2, p3, p4, p5, p6);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_strictly_static_access_zero()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ONCE(p1, parse_identifier_as_expression);
-    PARSE_ZERO_OR_MORE(p2, parse_postfix_expression_op_static_member_access, parse_nothing);
-    return utils::algorithms::MoveAccumulate(
-        p2.begin(), p2.end(), std::move(p1),
-        [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
-            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
-        });
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ONCE(p1, parse_identifier_as_expression);
+  PARSE_ZERO_OR_MORE(p2, parse_postfix_expression_op_static_member_access, parse_nothing);
+  return utils::algorithms::MoveAccumulate(
+    p2.begin(), p2.end(), std::move(p1),
+    [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
+      return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
+    });
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_strictly_static_access_one()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ONCE(p1, parse_identifier_as_expression);
-    PARSE_ONE_OR_MORE(p2, parse_postfix_expression_op_static_member_access, parse_nothing);
-    return utils::algorithms::MoveAccumulate(
-        p2.begin(), p2.end(), std::move(p1),
-        [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
-            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
-        });
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ONCE(p1, parse_identifier_as_expression);
+  PARSE_ONE_OR_MORE(p2, parse_postfix_expression_op_static_member_access, parse_nothing);
+  return utils::algorithms::MoveAccumulate(
+    p2.begin(), p2.end(), std::move(p1),
+    [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
+      return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
+    });
 }
 
 auto spp::parse::ParserSpp::parse_primary_expression()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ALTERNATE(
-        p1, asts::PrimaryExpressionAst, parse_closure_expression, parse_parenthesised_expression, parse_literal,
-        parse_object_initializer, parse_case_of_expression, parse_case_expression, parse_loop_expression,
-        parse_gen_unroll_expression, parse_gen_expression, parse_type_expression, parse_identifier,
-        parse_self_identifier, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); },
-        parse_fold_expression);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ALTERNATE(
+    p1, asts::PrimaryExpressionAst, parse_closure_expression, parse_parenthesised_expression, parse_literal,
+    parse_object_initializer, parse_case_of_expression, parse_case_expression, parse_loop_expression,
+    parse_gen_expression, parse_type_expression, parse_identifier,
+    parse_self_identifier, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); },
+    parse_fold_expression);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_parenthesised_expression()
-    -> Unique<asts::ParenthesisedExpressionAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ONCE(p2, parse_expression);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::ParenthesisedExpressionAst, p1, p2, p3);
+  -> Unique<asts::ParenthesisedExpressionAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ONCE(p2, parse_expression);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::ParenthesisedExpressionAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_fold_expression()
-    -> Unique<asts::FoldExpressionAst> {
-    PARSE_ONCE(p1, parse_token_double_dot);
-    return CREATE_AST(asts::FoldExpressionAst, p1);
+  -> Unique<asts::FoldExpressionAst> {
+  PARSE_ONCE(p1, parse_token_double_dot);
+  return CREATE_AST(asts::FoldExpressionAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression()
-    -> Unique<asts::CaseExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_case);
-    PARSE_ONCE(p2, parse_expression);
-    PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    PARSE_ZERO_OR_MORE(p4, parse_case_expression_branch, parse_nothing);
-    return CREATE_AST_CUSTOM(asts::CaseExpressionAst, NewNonPatternMatch, p1, p2, p3, p4);
+  -> Unique<asts::CaseExpressionAst> {
+  PARSE_ONCE(p1, parse_keyword_case);
+  PARSE_ONCE(p2, parse_expression);
+  PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+  PARSE_ZERO_OR_MORE(p4, parse_case_expression_branch, parse_nothing);
+  return CREATE_AST_CUSTOM(asts::CaseExpressionAst, NewNonPatternMatch, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_branch()
-    -> Unique<asts::CaseExpressionBranchAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CaseExpressionBranchAst, parse_case_expression_branch_else_case, parse_case_expression_branch_else)
-    return p1;
+  -> Unique<asts::CaseExpressionBranchAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CaseExpressionBranchAst, parse_case_expression_branch_else_case, parse_case_expression_branch_else)
+  return p1;
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_branch_else()
-    -> Unique<asts::CaseExpressionBranchAst> {
-    PARSE_ONCE(p1, parse_case_expression_pattern_variant_else);
-    PARSE_ONCE(p2, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+  -> Unique<asts::CaseExpressionBranchAst> {
+  PARSE_ONCE(p1, parse_case_expression_pattern_variant_else);
+  PARSE_ONCE(p2, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
 
-    auto temp = Vec<decltype(p1)>(1);
-    temp[0] = std::move(p1);
-    return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, std::move(temp), nullptr, p2);
+  auto temp = Vec<decltype(p1)>(1);
+  temp[0] = std::move(p1);
+  return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, std::move(temp), nullptr, p2);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_branch_else_case()
-    -> Unique<asts::CaseExpressionBranchAst> {
-    PARSE_ONCE(p1, parse_case_expression_pattern_variant_else_case);
+  -> Unique<asts::CaseExpressionBranchAst> {
+  PARSE_ONCE(p1, parse_case_expression_pattern_variant_else_case);
 
-    auto else_pattern = dynamic_unique_cast<asts::CasePatternVariantAst>(CREATE_AST(asts::CasePatternVariantElseAst, nullptr));
-    auto temp_1 = Vec<Unique<asts::StatementAst>>();
-    auto ptr = dynamic_unique_cast<asts::StatementAst>(
-        std::move(dynamic_unique_cast<asts::CasePatternVariantElseCaseAst>(std::move(p1))->CaseExpr));
-    temp_1.EmplaceBack(std::move(ptr));
+  auto else_pattern = dynamic_unique_cast<asts::CasePatternVariantAst>(
+    CREATE_AST(asts::CasePatternVariantElseAst, nullptr));
+  auto temp_1 = Vec<Unique<asts::StatementAst>>();
+  auto ptr = dynamic_unique_cast<asts::StatementAst>(
+    std::move(dynamic_unique_cast<asts::CasePatternVariantElseCaseAst>(std::move(p1))->CaseExpr));
+  temp_1.EmplaceBack(std::move(ptr));
 
-    auto else_case_body = CREATE_AST(asts::InnerScopeExpressionAst, nullptr, std::move(temp_1), nullptr);
-    auto temp_2 = Vec<decltype(else_pattern)>();
-    temp_2.EmplaceBack(std::move(else_pattern));
-    return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, temp_2, nullptr, else_case_body);
+  auto else_case_body = CREATE_AST(asts::InnerScopeExpressionAst, nullptr, std::move(temp_1), nullptr);
+  auto temp_2 = Vec<decltype(else_pattern)>();
+  temp_2.EmplaceBack(std::move(else_pattern));
+  return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, temp_2, nullptr, else_case_body);
 }
 
 auto spp::parse::ParserSpp::parse_case_of_expression()
-    -> Unique<asts::CaseExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_case);
-    PARSE_ONCE(p2, parse_expression);
-    PARSE_ONCE(p3, parse_keyword_of);
-    PARSE_ONCE(p4, parse_token_left_curly_brace);
-    PARSE_ONE_OR_MORE(p5, parse_case_of_expression_branch, parse_newline);
-    PARSE_ONCE(p6, parse_token_right_curly_brace);
-    return CREATE_AST(asts::CaseExpressionAst, p1, p2, p3, p5);
+  -> Unique<asts::CaseExpressionAst> {
+  PARSE_ONCE(p1, parse_keyword_case);
+  PARSE_ONCE(p2, parse_expression);
+  PARSE_ONCE(p3, parse_keyword_of);
+  PARSE_ONCE(p4, parse_token_left_curly_brace);
+  PARSE_ONE_OR_MORE(p5, parse_case_of_expression_branch, parse_newline);
+  PARSE_ONCE(p6, parse_token_right_curly_brace);
+  return CREATE_AST(asts::CaseExpressionAst, p1, p2, p3, p5);
 }
 
 auto spp::parse::ParserSpp::parse_case_of_expression_branch()
-    -> Unique<asts::CaseExpressionBranchAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CaseExpressionBranchAst, parse_case_of_expression_branch_destructuring,
-        parse_case_of_expression_branch_comparing, parse_case_expression_branch_else_case,
-        parse_case_expression_branch_else);
-    return FORWARD_AST(p1);
+  -> Unique<asts::CaseExpressionBranchAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CaseExpressionBranchAst, parse_case_of_expression_branch_destructuring,
+    parse_case_of_expression_branch_comparing, parse_case_expression_branch_else_case,
+    parse_case_expression_branch_else);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_of_expression_branch_destructuring()
-    -> Unique<asts::CaseExpressionBranchAst> {
-    PARSE_ONCE(p1, parse_keyword_is);
-    PARSE_ONCE(p2, parse_case_expression_pattern_variant_destructure);
-    PARSE_OPTIONAL(p3, parse_pattern_guard)
-    PARSE_ONCE(p4, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    auto temp = Vec<decltype(p2)>(1);
-    temp[0] = std::move(p2);
-    return CREATE_AST(asts::CaseExpressionBranchAst, p1, temp, p3, p4);
+  -> Unique<asts::CaseExpressionBranchAst> {
+  PARSE_ONCE(p1, parse_keyword_is);
+  PARSE_ONCE(p2, parse_case_expression_pattern_variant_destructure);
+  PARSE_OPTIONAL(p3, parse_pattern_guard)
+  PARSE_ONCE(p4, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+  auto temp = Vec<decltype(p2)>(1);
+  temp[0] = std::move(p2);
+  return CREATE_AST(asts::CaseExpressionBranchAst, p1, temp, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_case_of_expression_branch_comparing()
-    -> Unique<asts::CaseExpressionBranchAst> {
-    PARSE_ONCE(p1, parse_boolean_comparison_op)
-    PARSE_ONE_OR_MORE(p2, parse_case_expression_pattern_variant_expression, parse_token_comma);
-    PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    return CREATE_AST(asts::CaseExpressionBranchAst, p1, p2, nullptr, p3);
+  -> Unique<asts::CaseExpressionBranchAst> {
+  PARSE_ONCE(p1, parse_boolean_comparison_op)
+  PARSE_ONE_OR_MORE(p2, parse_case_expression_pattern_variant_expression, parse_token_comma);
+  PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+  return CREATE_AST(asts::CaseExpressionBranchAst, p1, p2, nullptr, p3);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_array,
-        parse_case_expression_pattern_variant_destructure_object,
-        parse_case_expression_pattern_variant_destructure_tuple);
-    return FORWARD_AST(p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_array,
+    parse_case_expression_pattern_variant_destructure_object,
+    parse_case_expression_pattern_variant_destructure_tuple);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure_array()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ZERO_OR_MORE(p2, parse_case_expression_pattern_nested_for_destructure_array, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_square_bracket);
-    return CREATE_AST(asts::CasePatternVariantDestructureArrayAst, p1, p2, p3);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_ZERO_OR_MORE(p2, parse_case_expression_pattern_nested_for_destructure_array, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_square_bracket);
+  return CREATE_AST(asts::CasePatternVariantDestructureArrayAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure_object()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_type_expression_simple)
-    PARSE_ONCE(p2, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p3, parse_case_expression_pattern_nested_for_destructure_object, parse_token_comma);
-    PARSE_ONCE(p4, parse_token_right_parenthesis);
-    return CREATE_AST(asts::CasePatternVariantDestructureObjectAst, p1, p2, p3, p4);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_type_expression_simple)
+  PARSE_ONCE(p2, parse_token_left_parenthesis);
+  PARSE_ZERO_OR_MORE(p3, parse_case_expression_pattern_nested_for_destructure_object, parse_token_comma);
+  PARSE_ONCE(p4, parse_token_right_parenthesis);
+  return CREATE_AST(asts::CasePatternVariantDestructureObjectAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure_tuple()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p2, parse_case_expression_pattern_nested_for_destructure_tuple, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::CasePatternVariantDestructureTupleAst, p1, p2, p3);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ZERO_OR_MORE(p2, parse_case_expression_pattern_nested_for_destructure_tuple, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::CasePatternVariantDestructureTupleAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure_skip_single_argument()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_token_underscore);
-    return CREATE_AST(asts::CasePatternVariantDestructureSkipSingleArgumentAst, p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_token_underscore);
+  return CREATE_AST(asts::CasePatternVariantDestructureSkipSingleArgumentAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure_skip_multiple_arguments()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_token_double_dot);
-    PARSE_OPTIONAL(p2, parse_case_expression_pattern_variant_single_identifier);
-    return CREATE_AST(asts::CasePatternVariantDestructureSkipMultipleArgumentsAst, p1, p2);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_token_double_dot);
+  PARSE_OPTIONAL(p2, parse_case_expression_pattern_variant_single_identifier);
+  return CREATE_AST(asts::CasePatternVariantDestructureSkipMultipleArgumentsAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure_attribute_binding()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_identifier);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONCE(p3, parse_case_expression_pattern_nested_for_destructure_attribute_binding);
-    return CREATE_AST(asts::CasePatternVariantDestructureAttributeBindingAst, p1, p2, p3);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_identifier);
+  PARSE_ONCE(p2, parse_token_assign);
+  PARSE_ONCE(p3, parse_case_expression_pattern_nested_for_destructure_attribute_binding);
+  return CREATE_AST(asts::CasePatternVariantDestructureAttributeBindingAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_single_identifier_with_convention,
-        parse_case_expression_pattern_variant_single_identifier_without_convention);
-    return FORWARD_AST(p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_single_identifier_with_convention,
+    parse_case_expression_pattern_variant_single_identifier_without_convention);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier_with_convention()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_convention);
-    PARSE_ONCE(p2, parse_identifier);
-    PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
-    return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, p1, nullptr, p2, p3);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_convention);
+  PARSE_ONCE(p2, parse_identifier);
+  PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
+  return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, p1, nullptr, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier_without_convention()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_OPTIONAL(p1, parse_keyword_mut);
-    PARSE_ONCE(p2, parse_identifier);
-    PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
-    return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, nullptr, p1, p2, p3);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_OPTIONAL(p1, parse_keyword_mut);
+  PARSE_ONCE(p2, parse_identifier);
+  PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
+  return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, nullptr, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_literal()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LiteralAst, parse_literal_float, parse_literal_integer, parse_literal_char, parse_literal_string,
-        parse_literal_boolean);
-    return CREATE_AST(asts::CasePatternVariantLiteralAst, p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LiteralAst, parse_literal_float, parse_literal_integer, parse_literal_char, parse_literal_string,
+    parse_literal_boolean);
+  return CREATE_AST(asts::CasePatternVariantLiteralAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_expression()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_expression);
-    return CREATE_AST(asts::CasePatternVariantExpressionAst, p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_expression);
+  return CREATE_AST(asts::CasePatternVariantExpressionAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_else()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_keyword_else);
-    return CREATE_AST(asts::CasePatternVariantElseAst, p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_keyword_else);
+  return CREATE_AST(asts::CasePatternVariantElseAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_else_case()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ONCE(p1, parse_keyword_else);
-    PARSE_ONCE(p2, parse_case_expression);
-    return CREATE_AST(asts::CasePatternVariantElseCaseAst, p1, p2);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_keyword_else);
+  PARSE_ONCE(p2, parse_case_expression);
+  return CREATE_AST(asts::CasePatternVariantElseCaseAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure_array()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_skip_single_argument,
-        parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
-        parse_case_expression_pattern_variant_destructure_array,
-        parse_case_expression_pattern_variant_destructure_tuple,
-        parse_case_expression_pattern_variant_destructure_object,
-        parse_case_expression_pattern_variant_single_identifier,
-        parse_case_expression_pattern_variant_literal);
-    return FORWARD_AST(p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_skip_single_argument,
+    parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
+    parse_case_expression_pattern_variant_destructure_array,
+    parse_case_expression_pattern_variant_destructure_tuple,
+    parse_case_expression_pattern_variant_destructure_object,
+    parse_case_expression_pattern_variant_single_identifier,
+    parse_case_expression_pattern_variant_literal);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure_object()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_attribute_binding,
-        parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
-        parse_case_expression_pattern_variant_single_identifier);
-    return FORWARD_AST(p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_attribute_binding,
+    parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
+    parse_case_expression_pattern_variant_single_identifier);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure_tuple()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_skip_single_argument,
-        parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
-        parse_case_expression_pattern_variant_destructure_array,
-        parse_case_expression_pattern_variant_destructure_tuple,
-        parse_case_expression_pattern_variant_destructure_object,
-        parse_case_expression_pattern_variant_single_identifier,
-        parse_case_expression_pattern_variant_literal);
-    return FORWARD_AST(p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_skip_single_argument,
+    parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
+    parse_case_expression_pattern_variant_destructure_array,
+    parse_case_expression_pattern_variant_destructure_tuple,
+    parse_case_expression_pattern_variant_destructure_object,
+    parse_case_expression_pattern_variant_single_identifier,
+    parse_case_expression_pattern_variant_literal);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure_attribute_binding()
-    -> Unique<asts::CasePatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_array,
-        parse_case_expression_pattern_variant_destructure_object,
-        parse_case_expression_pattern_variant_destructure_tuple,
-        parse_case_expression_pattern_variant_literal);
-    return FORWARD_AST(p1);
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ALTERNATE(
+    p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_array,
+    parse_case_expression_pattern_variant_destructure_object,
+    parse_case_expression_pattern_variant_destructure_tuple,
+    parse_case_expression_pattern_variant_literal);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_pattern_guard()
-    -> Unique<asts::PatternGuardAst> {
-    PARSE_ONCE(p1, parse_keyword_and);
-    PARSE_ONCE(p2, parse_expression);
-    return CREATE_AST(asts::PatternGuardAst, p1, p2);
+  -> Unique<asts::PatternGuardAst> {
+  PARSE_ONCE(p1, parse_keyword_and);
+  PARSE_ONCE(p2, parse_expression);
+  return CREATE_AST(asts::PatternGuardAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_boolean_comparison_op()
-    -> Unique<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_equals, parse_token_not_equals, parse_token_less_than_equals,
-        parse_token_greater_than_equals, parse_token_less_than, parse_token_greater_than);
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ALTERNATE(
+    p1, asts::TokenAst, parse_token_equals, parse_token_not_equals, parse_token_less_than_equals,
+    parse_token_greater_than_equals, parse_token_less_than, parse_token_greater_than);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_loop_expression()
-    -> Unique<asts::LoopExpressionAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LoopExpressionAst, parse_loop_conditional_expression, parse_loop_iterable_expression);
-    return FORWARD_AST(p1);
+  -> Unique<asts::LoopExpressionAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LoopExpressionAst, parse_loop_conditional_expression, parse_loop_iterable_expression);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_loop_conditional_expression()
-    -> Unique<asts::LoopConditionalExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_loop);
-    PARSE_ONCE(p2, parse_expression);
-    PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    PARSE_OPTIONAL(p4, parse_loop_else_statement);
-    return CREATE_AST(asts::LoopConditionalExpressionAst, p1, p2, p3, p4);
+  -> Unique<asts::LoopConditionalExpressionAst> {
+  PARSE_ONCE(p1, parse_keyword_loop);
+  PARSE_ONCE(p2, parse_expression);
+  PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+  PARSE_OPTIONAL(p4, parse_loop_else_statement);
+  return CREATE_AST(asts::LoopConditionalExpressionAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_loop_iterable_expression()
-    -> Unique<asts::LoopIterableExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_loop);
-    PARSE_ONCE(p2, parse_local_variable);
-    PARSE_ONCE(p3, parse_keyword_in);
-    PARSE_ONCE(p4, parse_expression);
-    PARSE_ONCE(p5, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    PARSE_OPTIONAL(p6, parse_loop_else_statement);
-    return CREATE_AST(asts::LoopIterableExpressionAst, p1, p2, p3, p4, p5, p6);
+  -> Unique<asts::LoopIterableExpressionAst> {
+  PARSE_ONCE(p1, parse_keyword_loop);
+  PARSE_ONCE(p2, parse_local_variable);
+  PARSE_ONCE(p3, parse_keyword_in);
+  PARSE_ONCE(p4, parse_expression);
+  PARSE_ONCE(p5, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+  PARSE_OPTIONAL(p6, parse_loop_else_statement);
+  return CREATE_AST(asts::LoopIterableExpressionAst, p1, p2, p3, p4, p5, p6);
 }
 
 auto spp::parse::ParserSpp::parse_loop_else_statement()
-    -> Unique<asts::LoopElseStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_else);
-    PARSE_ONCE(p2, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    return CREATE_AST(asts::LoopElseStatementAst, p1, p2);
+  -> Unique<asts::LoopElseStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_else);
+  PARSE_ONCE(p2, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+  return CREATE_AST(asts::LoopElseStatementAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_gen_expression()
-    -> Unique<asts::GenExpressionAst> {
-    PARSE_ALTERNATE(
-        p1, asts::GenExpressionAst, parse_gen_expression_with_expression, parse_gen_expression_without_expression);
-    return FORWARD_AST(p1);
+  -> Unique<asts::GenExpressionAst> {
+  PARSE_ALTERNATE(
+    p1, asts::GenExpressionAst, parse_gen_expression_with_expression, parse_gen_expression_without_expression);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_gen_expression_with_expression()
-    -> Unique<asts::GenExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_gen);
-    PARSE_OPTIONAL(p2, parse_convention);
-    PARSE_ONCE(p3, parse_expression);
-    return CREATE_AST(asts::GenExpressionAst, p1, p2, p3);
+  -> Unique<asts::GenExpressionAst> {
+  PARSE_ONCE(p1, parse_keyword_gen);
+  PARSE_OPTIONAL(p2, parse_convention);
+  PARSE_ONCE(p3, parse_expression);
+  return CREATE_AST(asts::GenExpressionAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_gen_expression_without_expression()
-    -> Unique<asts::GenExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_gen);
-    return CREATE_AST(asts::GenExpressionAst, p1, nullptr, nullptr);
+  -> Unique<asts::GenExpressionAst> {
+  PARSE_ONCE(p1, parse_keyword_gen);
+  return CREATE_AST(asts::GenExpressionAst, p1, nullptr, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_gen_unroll_expression()
-    -> Unique<asts::GenWithExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_gen);
-    PARSE_ONCE(p2, parse_keyword_with);
-    PARSE_ONCE(p3, parse_expression);
-    return CREATE_AST(asts::GenWithExpressionAst, p1, p2, p3);
+  -> Unique<asts::GenWithExpressionAst> {
+  PARSE_ONCE(p1, parse_keyword_gen);
+  PARSE_ONCE(p2, parse_keyword_with);
+  PARSE_ONCE(p3, parse_expression);
+  return CREATE_AST(asts::GenWithExpressionAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_inner_scope(auto &&parser)
-    -> Unique<asts::InnerScopeAst<decltype(parser())>> {
-    PARSE_ONCE(p1, parse_token_left_curly_brace);
-    PARSE_ZERO_OR_MORE(p2, parser, parse_newline);
-    PARSE_ONCE(p3, parse_token_right_curly_brace);
-    return CREATE_AST(asts::InnerScopeAst<decltype(parser())>, p1, p2, p3);
+  -> Unique<asts::InnerScopeAst<decltype(parser())>> {
+  PARSE_ONCE(p1, parse_token_left_curly_brace);
+  PARSE_ZERO_OR_MORE(p2, parser, parse_newline);
+  PARSE_ONCE(p3, parse_token_right_curly_brace);
+  return CREATE_AST(asts::InnerScopeAst<decltype(parser())>, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_inner_scope_expression(auto &&parser)
-    -> Unique<asts::InnerScopeExpressionAst> {
-    PARSE_ONCE(p1, parse_token_left_curly_brace);
-    PARSE_ZERO_OR_MORE(p2, parser, parse_newline);
-    PARSE_ONCE(p3, parse_token_right_curly_brace);
-    return CREATE_AST(asts::InnerScopeExpressionAst, p1, p2, p3);
+  -> Unique<asts::InnerScopeExpressionAst> {
+  PARSE_ONCE(p1, parse_token_left_curly_brace);
+  PARSE_ZERO_OR_MORE(p2, parser, parse_newline);
+  PARSE_ONCE(p3, parse_token_right_curly_brace);
+  return CREATE_AST(asts::InnerScopeExpressionAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_statement()
-    -> Unique<asts::StatementAst> {
-    PARSE_ALTERNATE(
-        p1, asts::StatementAst, parse_use_statement, parse_use_var_statement, parse_type_statement, parse_let_statement,
-        parse_ret_statement, parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement,
-        parse_assignment_statement, parse_expression);
-    return FORWARD_AST(p1);
+  -> Unique<asts::StatementAst> {
+  PARSE_ALTERNATE(
+    p1, asts::StatementAst, parse_use_statement, parse_use_var_statement, parse_type_statement, parse_let_statement,
+    parse_ret_statement, parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement,
+    parse_assignment_statement, parse_gen_unroll_expression, parse_expression);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_assignment_statement()
-    -> Unique<asts::AssignmentStatementAst> {
-    PARSE_ONE_OR_MORE(p1, parse_assignment_target, parse_token_comma);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONE_OR_MORE(p3, parse_expression, parse_token_comma);
-    return CREATE_AST(asts::AssignmentStatementAst, p1, p2, p3);
+  -> Unique<asts::AssignmentStatementAst> {
+  PARSE_ONE_OR_MORE(p1, parse_assignment_target, parse_token_comma);
+  PARSE_ONCE(p2, parse_token_assign);
+  PARSE_ONE_OR_MORE(p3, parse_expression, parse_token_comma);
+  return CREATE_AST(asts::AssignmentStatementAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_assignment_target()
-    -> Unique<asts::ExpressionAst> {
-    // Skip binary expression on lhs of assignment.
-    PARSE_ONCE(p1, parse_assignment_target_postfix_expression);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ExpressionAst> {
+  // Skip binary expression on lhs of assignment.
+  PARSE_ONCE(p1, parse_assignment_target_postfix_expression);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ONCE(p1, parse_assignment_target_primary_expression);
-    PARSE_ZERO_OR_MORE(p2, parse_assignment_target_postfix_expression_op, parse_nothing);
-    return utils::algorithms::MoveAccumulate(
-        p2.begin(), p2.end(), std::move(p1),
-        [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
-        });
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ONCE(p1, parse_assignment_target_primary_expression);
+  PARSE_ZERO_OR_MORE(p2, parse_assignment_target_postfix_expression_op, parse_nothing);
+  return utils::algorithms::MoveAccumulate(
+    p2.begin(), p2.end(), std::move(p1),
+    [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorAst> &&x) {
+      return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
+    });
 }
 
 auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression_op()
-    -> Unique<asts::PostfixExpressionOperatorAst> {
-    PARSE_ALTERNATE(
-        p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_deref,
-        parse_postfix_expression_op_function_call, parse_postfix_expression_op_runtime_member_access,
-        parse_postfix_expression_op_static_member_access, parse_postfix_expression_op_slice,
-        parse_postfix_expression_op_index);
-    return FORWARD_AST(p1);
+  -> Unique<asts::PostfixExpressionOperatorAst> {
+  PARSE_ALTERNATE(
+    p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_deref,
+    parse_postfix_expression_op_function_call, parse_postfix_expression_op_runtime_member_access,
+    parse_postfix_expression_op_static_member_access, parse_postfix_expression_op_slice,
+    parse_postfix_expression_op_index);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_assignment_target_primary_expression()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ALTERNATE(
-        p1, asts::PrimaryExpressionAst, parse_identifier, parse_self_identifier);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ALTERNATE(
+    p1, asts::PrimaryExpressionAst, parse_identifier, parse_self_identifier);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_ret_statement()
-    -> Unique<asts::RetStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_ret);
-    PARSE_OPTIONAL(p2, parse_expression);
-    return CREATE_AST(asts::RetStatementAst, p1, p2);
+  -> Unique<asts::RetStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_ret);
+  PARSE_OPTIONAL(p2, parse_expression);
+  return CREATE_AST(asts::RetStatementAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_exit_statement()
-    -> Unique<asts::LoopControlFlowStatementAst> {
-    PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
-    PARSE_ONCE(p2, parse_keyword_skip);
-    return CREATE_AST(asts::LoopControlFlowStatementAst, p1, p2, nullptr);
+  -> Unique<asts::LoopControlFlowStatementAst> {
+  PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
+  PARSE_ONCE(p2, parse_keyword_skip);
+  return CREATE_AST(asts::LoopControlFlowStatementAst, p1, p2, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_exit_statement_with_value()
-    -> Unique<asts::LoopControlFlowStatementAst> {
-    PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
-    PARSE_OPTIONAL(p2, parse_expression)
-    return CREATE_AST(asts::LoopControlFlowStatementAst, p1, nullptr, p2);
+  -> Unique<asts::LoopControlFlowStatementAst> {
+  PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
+  PARSE_OPTIONAL(p2, parse_expression)
+  return CREATE_AST(asts::LoopControlFlowStatementAst, p1, nullptr, p2);
 }
 
 auto spp::parse::ParserSpp::parse_skip_statement()
-    -> Unique<asts::LoopControlFlowStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_skip);
-    return CREATE_AST(asts::LoopControlFlowStatementAst, NO_TOKENS, p1, nullptr);
+  -> Unique<asts::LoopControlFlowStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_skip);
+  return CREATE_AST(asts::LoopControlFlowStatementAst, NO_TOKENS, p1, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_use_statement()
-    -> Unique<asts::UseStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_use);
-    PARSE_ONCE(p2, parse_type_expression_simple)
-    return CREATE_AST(asts::UseStatementAst, NO_ANNOTATIONS, p1, p2);
+  -> Unique<asts::UseStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_use);
+  PARSE_ONCE(p2, parse_type_expression_simple)
+  return CREATE_AST(asts::UseStatementAst, NO_ANNOTATIONS, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_use_var_statement()
-    -> Unique<asts::UseStatementVariableAst> {
-    PARSE_ONCE(p1, parse_keyword_use);
-    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_one);
-    return CREATE_AST(asts::UseStatementVariableAst, NO_ANNOTATIONS, p1, p2);
+  -> Unique<asts::UseStatementVariableAst> {
+  PARSE_ONCE(p1, parse_keyword_use);
+  PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_one);
+  return CREATE_AST(asts::UseStatementVariableAst, NO_ANNOTATIONS, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_type_statement()
-    -> Unique<asts::TypeStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_type);
-    PARSE_ONCE(p2, parse_upper_identifier);
-    PARSE_OPTIONAL(p3, parse_generic_parameter_group);
-    PARSE_ONCE(p4, parse_token_assign);
-    PARSE_ONCE(p5, parse_type_expression);
-    return CREATE_AST(asts::TypeStatementAst, NO_ANNOTATIONS, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4, p5);
+  -> Unique<asts::TypeStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_type);
+  PARSE_ONCE(p2, parse_upper_identifier);
+  PARSE_OPTIONAL(p3, parse_generic_parameter_group);
+  PARSE_ONCE(p4, parse_token_assign);
+  PARSE_ONCE(p5, parse_type_expression);
+  return CREATE_AST(asts::TypeStatementAst, NO_ANNOTATIONS, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4,
+                    p5);
 }
 
 auto spp::parse::ParserSpp::parse_cmp_statement()
-    -> Unique<asts::CmpStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_cmp);
-    PARSE_ONCE(p2, parse_identifier);
-    PARSE_ONCE(p3, parse_token_colon);
-    PARSE_ONCE(p4, parse_type_expression);
-    PARSE_ONCE(p5, parse_token_assign);
-    PARSE_ONCE(p6, parse_expression); // TODO: Force this "cmp" in SA?
-    return CREATE_AST(asts::CmpStatementAst, NO_ANNOTATIONS, p1, p2, p3, p4, p5, p6);
+  -> Unique<asts::CmpStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_cmp);
+  PARSE_ONCE(p2, parse_identifier);
+  PARSE_ONCE(p3, parse_token_colon);
+  PARSE_ONCE(p4, parse_type_expression);
+  PARSE_ONCE(p5, parse_token_assign);
+  PARSE_ONCE(p6, parse_expression); // TODO: Force this "cmp" in SA?
+  return CREATE_AST(asts::CmpStatementAst, NO_ANNOTATIONS, p1, p2, p3, p4, p5, p6);
 }
 
 auto spp::parse::ParserSpp::parse_let_statement()
-    -> Unique<asts::LetStatementAst> {
-    PARSE_ALTERNATE(p1, asts::LetStatementAst, parse_let_statement_initialized, parse_let_statement_uninitialized);
-    return FORWARD_AST(p1);
+  -> Unique<asts::LetStatementAst> {
+  PARSE_ALTERNATE(p1, asts::LetStatementAst, parse_let_statement_initialized, parse_let_statement_uninitialized);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_let_statement_initialized()
-    -> Unique<asts::LetStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_let);
-    PARSE_ONCE(p2, parse_local_variable);
-    PARSE_OPTIONAL(p3, parse_let_statement_initialized_explicit_type);
-    PARSE_ONCE(p4, parse_token_assign);
-    PARSE_ONCE(p5, parse_expression);
-    return CREATE_AST(asts::LetStatementInitializedAst, p1, p2, p3, p4, p5);
+  -> Unique<asts::LetStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_let);
+  PARSE_ONCE(p2, parse_local_variable);
+  PARSE_OPTIONAL(p3, parse_let_statement_initialized_explicit_type);
+  PARSE_ONCE(p4, parse_token_assign);
+  PARSE_ONCE(p5, parse_expression);
+  return CREATE_AST(asts::LetStatementInitializedAst, p1, p2, p3, p4, p5);
 }
 
 auto spp::parse::ParserSpp::parse_let_statement_initialized_explicit_type()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_token_colon);
-    PARSE_ONCE(p2, parse_type_expression);
-    return FORWARD_AST(p2);
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_token_colon);
+  PARSE_ONCE(p2, parse_type_expression);
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_let_statement_uninitialized()
-    -> Unique<asts::LetStatementAst> {
-    PARSE_ONCE(p1, parse_keyword_let);
-    PARSE_ONCE(p2, parse_local_variable);
-    PARSE_ONCE(p3, parse_token_colon);
-    PARSE_ONCE(p4, parse_type_expression);
-    return CREATE_AST(asts::LetStatementUninitializedAst, p1, p2, p3, p4);
+  -> Unique<asts::LetStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_let);
+  PARSE_ONCE(p2, parse_local_variable);
+  PARSE_ONCE(p3, parse_token_colon);
+  PARSE_ONCE(p4, parse_type_expression);
+  return CREATE_AST(asts::LetStatementUninitializedAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_global_use_statement()
-    -> Unique<asts::UseStatementAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_use_statement);
-    p2->Annotations = std::move(p1);
-    return FORWARD_AST(p2);
+  -> Unique<asts::UseStatementAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_use_statement);
+  p2->Annotations = std::move(p1);
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_global_use_var_statement()
-    -> Unique<asts::UseStatementVariableAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_use_var_statement);
-    p2->Annotations = std::move(p1);
-    return FORWARD_AST(p2);
+  -> Unique<asts::UseStatementVariableAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_use_var_statement);
+  p2->Annotations = std::move(p1);
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_global_type_statement()
-    -> Unique<asts::TypeStatementAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_type_statement);
-    p2->Annotations = std::move(p1);
-    return FORWARD_AST(p2);
+  -> Unique<asts::TypeStatementAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_type_statement);
+  p2->Annotations = std::move(p1);
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_global_cmp_statement()
-    -> Unique<asts::CmpStatementAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
-    PARSE_ONCE(p2, parse_cmp_statement);
-    p2->Annotations = std::move(p1);
-    return FORWARD_AST(p2);
+  -> Unique<asts::CmpStatementAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_nothing);
+  PARSE_ONCE(p2, parse_cmp_statement);
+  p2->Annotations = std::move(p1);
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable()
-    -> Unique<asts::LocalVariableAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LocalVariableAst, parse_local_variable_destructure_array, parse_local_variable_destructure_tuple,
-        parse_local_variable_destructure_object, parse_local_variable_single_identifier);
-    return FORWARD_AST(p1);
+  -> Unique<asts::LocalVariableAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LocalVariableAst, parse_local_variable_destructure_array, parse_local_variable_destructure_tuple,
+    parse_local_variable_destructure_object, parse_local_variable_single_identifier);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_destructure_array()
-    -> Unique<asts::LocalVariableDestructureArrayAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ZERO_OR_MORE(p2, parse_local_variable_nested_for_destructure_array, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_square_bracket);
-    return CREATE_AST(asts::LocalVariableDestructureArrayAst, p1, p2, p3);
+  -> Unique<asts::LocalVariableDestructureArrayAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_ZERO_OR_MORE(p2, parse_local_variable_nested_for_destructure_array, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_square_bracket);
+  return CREATE_AST(asts::LocalVariableDestructureArrayAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_destructure_object()
-    -> Unique<asts::LocalVariableDestructureObjectAst> {
-    PARSE_ONCE(p1, parse_type_expression_simple);
-    PARSE_ONCE(p2, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p3, parse_local_variable_nested_for_destructure_object, parse_token_comma);
-    PARSE_ONCE(p4, parse_token_right_parenthesis);
-    return CREATE_AST(asts::LocalVariableDestructureObjectAst, p1, p2, p3, p4);
+  -> Unique<asts::LocalVariableDestructureObjectAst> {
+  PARSE_ONCE(p1, parse_type_expression_simple);
+  PARSE_ONCE(p2, parse_token_left_parenthesis);
+  PARSE_ZERO_OR_MORE(p3, parse_local_variable_nested_for_destructure_object, parse_token_comma);
+  PARSE_ONCE(p4, parse_token_right_parenthesis);
+  return CREATE_AST(asts::LocalVariableDestructureObjectAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_destructure_tuple()
-    -> Unique<asts::LocalVariableDestructureTupleAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p2, parse_local_variable_nested_for_destructure_tuple, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::LocalVariableDestructureTupleAst, p1, p2, p3);
+  -> Unique<asts::LocalVariableDestructureTupleAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ZERO_OR_MORE(p2, parse_local_variable_nested_for_destructure_tuple, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::LocalVariableDestructureTupleAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_destructure_skip_single_argument()
-    -> Unique<asts::LocalVariableDestructureSkipSingleArgumentAst> {
-    PARSE_ONCE(p1, parse_token_underscore);
-    return CREATE_AST(asts::LocalVariableDestructureSkipSingleArgumentAst, p1);
+  -> Unique<asts::LocalVariableDestructureSkipSingleArgumentAst> {
+  PARSE_ONCE(p1, parse_token_underscore);
+  return CREATE_AST(asts::LocalVariableDestructureSkipSingleArgumentAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_destructure_skip_multiple_arguments()
-    -> Unique<asts::LocalVariableDestructureSkipMultipleArgumentsAst> {
-    PARSE_ONCE(p1, parse_token_double_dot);
-    PARSE_OPTIONAL(p2, parse_local_variable_single_identifier);
-    return CREATE_AST(asts::LocalVariableDestructureSkipMultipleArgumentsAst, p1, p2);
+  -> Unique<asts::LocalVariableDestructureSkipMultipleArgumentsAst> {
+  PARSE_ONCE(p1, parse_token_double_dot);
+  PARSE_OPTIONAL(p2, parse_local_variable_single_identifier);
+  return CREATE_AST(asts::LocalVariableDestructureSkipMultipleArgumentsAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_destructure_attribute_binding()
-    -> Unique<asts::LocalVariableDestructureAttributeBindingAst> {
-    PARSE_ONCE(p1, parse_identifier);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONCE(p3, parse_local_variable_nested_for_destructure_attribute_binding);
-    return CREATE_AST(asts::LocalVariableDestructureAttributeBindingAst, p1, p2, p3);
+  -> Unique<asts::LocalVariableDestructureAttributeBindingAst> {
+  PARSE_ONCE(p1, parse_identifier);
+  PARSE_ONCE(p2, parse_token_assign);
+  PARSE_ONCE(p3, parse_local_variable_nested_for_destructure_attribute_binding);
+  return CREATE_AST(asts::LocalVariableDestructureAttributeBindingAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_single_identifier()
-    -> Unique<asts::LocalVariableSingleIdentifierAst> {
-    PARSE_OPTIONAL(p1, parse_keyword_mut);
-    PARSE_ONCE(p2, parse_identifier);
-    PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
-    return CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, p3);
+  -> Unique<asts::LocalVariableSingleIdentifierAst> {
+  PARSE_OPTIONAL(p1, parse_keyword_mut);
+  PARSE_ONCE(p2, parse_identifier);
+  PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
+  return CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_single_identifier_alias()
-    -> Unique<asts::LocalVariableSingleIdentifierAliasAst> {
-    PARSE_ONCE(p1, parse_keyword_as);
-    PARSE_ONCE(p2, parse_identifier);
-    return CREATE_AST(asts::LocalVariableSingleIdentifierAliasAst, p1, p2);
+  -> Unique<asts::LocalVariableSingleIdentifierAliasAst> {
+  PARSE_ONCE(p1, parse_keyword_as);
+  PARSE_ONCE(p2, parse_identifier);
+  return CREATE_AST(asts::LocalVariableSingleIdentifierAliasAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_array()
-    -> Unique<asts::LocalVariableAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
-        parse_local_variable_destructure_skip_multiple_arguments, parse_local_variable_destructure_array,
-        parse_local_variable_destructure_tuple, parse_local_variable_destructure_object,
-        parse_local_variable_single_identifier);
-    return FORWARD_AST(p1);
+  -> Unique<asts::LocalVariableAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
+    parse_local_variable_destructure_skip_multiple_arguments, parse_local_variable_destructure_array,
+    parse_local_variable_destructure_tuple, parse_local_variable_destructure_object,
+    parse_local_variable_single_identifier);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_object()
-    -> Unique<asts::LocalVariableAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_multiple_arguments,
-        parse_local_variable_destructure_attribute_binding, parse_local_variable_single_identifier);
-    return FORWARD_AST(p1);
+  -> Unique<asts::LocalVariableAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_multiple_arguments,
+    parse_local_variable_destructure_attribute_binding, parse_local_variable_single_identifier);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_tuple()
-    -> Unique<asts::LocalVariableAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
-        parse_local_variable_destructure_skip_multiple_arguments, parse_local_variable_destructure_array,
-        parse_local_variable_destructure_tuple, parse_local_variable_destructure_object,
-        parse_local_variable_single_identifier);
-    return FORWARD_AST(p1);
+  -> Unique<asts::LocalVariableAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
+    parse_local_variable_destructure_skip_multiple_arguments, parse_local_variable_destructure_array,
+    parse_local_variable_destructure_tuple, parse_local_variable_destructure_object,
+    parse_local_variable_single_identifier);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_attribute_binding()
-    -> Unique<asts::LocalVariableAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LocalVariableAst, parse_local_variable_destructure_array,
-        parse_local_variable_destructure_tuple, parse_local_variable_destructure_object);
-    return FORWARD_AST(p1);
+  -> Unique<asts::LocalVariableAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LocalVariableAst, parse_local_variable_destructure_array,
+    parse_local_variable_destructure_tuple, parse_local_variable_destructure_object);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_convention()
-    -> Unique<asts::ConventionAst> {
-    PARSE_ALTERNATE(p1, asts::ConventionAst, parse_convention_mut, parse_convention_ref);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ConventionAst> {
+  PARSE_ALTERNATE(p1, asts::ConventionAst, parse_convention_mut, parse_convention_ref);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_convention_ref()
-    -> Unique<asts::ConventionRefAst> {
-    PARSE_ONCE(p1, parse_token_borrow);
-    return CREATE_AST(asts::ConventionRefAst, p1);
+  -> Unique<asts::ConventionRefAst> {
+  PARSE_ONCE(p1, parse_token_borrow);
+  return CREATE_AST(asts::ConventionRefAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_convention_mut()
-    -> Unique<asts::ConventionMutAst> {
-    PARSE_ONCE(p1, parse_token_borrow);
-    PARSE_ONCE(p2, parse_keyword_mut);
-    return CREATE_AST(asts::ConventionMutAst, p1, p2);
+  -> Unique<asts::ConventionMutAst> {
+  PARSE_ONCE(p1, parse_token_borrow);
+  PARSE_ONCE(p2, parse_keyword_mut);
+  return CREATE_AST(asts::ConventionMutAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_object_initializer()
-    -> Unique<asts::ObjectInitializerAst> {
-    PARSE_ONCE(p1, parse_type_expression_simple);
-    PARSE_ONCE(p2, parse_object_initializer_argument_group);
-    return CREATE_AST(asts::ObjectInitializerAst, p1, p2);
+  -> Unique<asts::ObjectInitializerAst> {
+  PARSE_ONCE(p1, parse_type_expression_simple);
+  PARSE_ONCE(p2, parse_object_initializer_argument_group);
+  return CREATE_AST(asts::ObjectInitializerAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_object_initializer_argument_group()
-    -> Unique<asts::ObjectInitializerArgumentGroupAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p2, parse_object_initializer_argument, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::ObjectInitializerArgumentGroupAst, p1, p2, p3);
+  -> Unique<asts::ObjectInitializerArgumentGroupAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ZERO_OR_MORE(p2, parse_object_initializer_argument, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::ObjectInitializerArgumentGroupAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_object_initializer_argument()
-    -> Unique<asts::ObjectInitializerArgumentAst> {
-    PARSE_ALTERNATE(
-        p1, asts::ObjectInitializerArgumentAst, parse_object_initializer_argument_keyword,
-        parse_object_initializer_argument_shorthand);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ObjectInitializerArgumentAst> {
+  PARSE_ALTERNATE(
+    p1, asts::ObjectInitializerArgumentAst, parse_object_initializer_argument_keyword,
+    parse_object_initializer_argument_shorthand);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_object_initializer_argument_keyword()
-    -> Unique<asts::ObjectInitializerArgumentKeywordAst> {
-    PARSE_ONCE(p1, parse_identifier);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONCE(p3, parse_expression);
-    return CREATE_AST(asts::ObjectInitializerArgumentKeywordAst, p1, p2, p3);
+  -> Unique<asts::ObjectInitializerArgumentKeywordAst> {
+  PARSE_ONCE(p1, parse_identifier);
+  PARSE_ONCE(p2, parse_token_assign);
+  PARSE_ONCE(p3, parse_expression);
+  return CREATE_AST(asts::ObjectInitializerArgumentKeywordAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_object_initializer_argument_shorthand()
-    -> Unique<asts::ObjectInitializerArgumentShorthandAst> {
-    PARSE_OPTIONAL(p1, parse_token_double_dot);
-    PARSE_ONCE(p2, parse_expression);
-    return CREATE_AST(asts::ObjectInitializerArgumentShorthandAst, p1, p2);
+  -> Unique<asts::ObjectInitializerArgumentShorthandAst> {
+  PARSE_OPTIONAL(p1, parse_token_double_dot);
+  PARSE_ONCE(p2, parse_expression);
+  return CREATE_AST(asts::ObjectInitializerArgumentShorthandAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_closure_expression()
-    -> Unique<asts::ClosureExpressionAst> {
-    PARSE_OPTIONAL(p1, parse_keyword_cor);
-    PARSE_ONCE(p2, parse_closure_expression_parameter_and_capture_group);
-    PARSE_ONCE(p3, parse_expression);
-    return CREATE_AST(asts::ClosureExpressionAst, p1, p2, p3);
+  -> Unique<asts::ClosureExpressionAst> {
+  PARSE_OPTIONAL(p1, parse_keyword_cor);
+  PARSE_ONCE(p2, parse_closure_expression_parameter_and_capture_group);
+  PARSE_ONCE(p3, parse_expression);
+  return CREATE_AST(asts::ClosureExpressionAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_closure_expression_capture_group()
-    -> Unique<asts::ClosureExpressionCaptureGroupAst> {
-    PARSE_ONCE(p1, parse_keyword_caps);
-    PARSE_ONE_OR_MORE(p2, parse_closure_expression_capture, parse_token_comma);
-    return CREATE_AST(asts::ClosureExpressionCaptureGroupAst, p1, p2);
+  -> Unique<asts::ClosureExpressionCaptureGroupAst> {
+  PARSE_ONCE(p1, parse_keyword_caps);
+  PARSE_ONE_OR_MORE(p2, parse_closure_expression_capture, parse_token_comma);
+  return CREATE_AST(asts::ClosureExpressionCaptureGroupAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_closure_expression_capture()
-    -> Unique<asts::ClosureExpressionCaptureAst> {
-    PARSE_OPTIONAL(p1, parse_convention);
-    PARSE_ALTERNATE(p2, asts::IdentifierAst, parse_identifier, parse_self_identifier);
-    return CREATE_AST(asts::ClosureExpressionCaptureAst, p1, p2);
+  -> Unique<asts::ClosureExpressionCaptureAst> {
+  PARSE_OPTIONAL(p1, parse_convention);
+  PARSE_ALTERNATE(p2, asts::IdentifierAst, parse_identifier, parse_self_identifier);
+  return CREATE_AST(asts::ClosureExpressionCaptureAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_closure_expression_parameter_and_capture_group()
-    -> Unique<asts::ClosureExpressionParameterAndCaptureGroupAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ONCE(p2, parse_closure_expression_parameter_group);
-    PARSE_OPTIONAL(p3, parse_closure_expression_capture_group);
-    PARSE_ONCE(p4, parse_token_right_parenthesis);
-    return CREATE_AST(asts::ClosureExpressionParameterAndCaptureGroupAst, p1, p2, p3, p4);
+  -> Unique<asts::ClosureExpressionParameterAndCaptureGroupAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ONCE(p2, parse_closure_expression_parameter_group);
+  PARSE_OPTIONAL(p3, parse_closure_expression_capture_group);
+  PARSE_ONCE(p4, parse_token_right_parenthesis);
+  return CREATE_AST(asts::ClosureExpressionParameterAndCaptureGroupAst, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::parse_closure_expression_parameter_group()
-    -> Unique<asts::ClosureExpressionParameterGroupAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_closure_expression_parameter, parse_token_comma);
-    return CREATE_AST(asts::ClosureExpressionParameterGroupAst, nullptr, p1, nullptr);
+  -> Unique<asts::ClosureExpressionParameterGroupAst> {
+  PARSE_ZERO_OR_MORE(p1, parse_closure_expression_parameter, parse_token_comma);
+  return CREATE_AST(asts::ClosureExpressionParameterGroupAst, nullptr, p1, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_closure_expression_parameter()
-    -> Unique<asts::ClosureExpressionParameterAst> {
-    PARSE_ALTERNATE(
-        p1, asts::ClosureExpressionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
-        parse_function_parameter_required);
-    return FORWARD_AST(p1);
+  -> Unique<asts::ClosureExpressionParameterAst> {
+  PARSE_ALTERNATE(
+    p1, asts::ClosureExpressionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
+    parse_function_parameter_required);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_type_expression()
-    -> Unique<asts::TypeAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TypeAst, parse_type_never, parse_type_parenthesised_expression, parse_type_array, parse_type_tuple,
-        parse_binary_type_expression);
-    return FORWARD_AST(p1);
+  -> Unique<asts::TypeAst> {
+  PARSE_ALTERNATE(
+    p1, asts::TypeAst, parse_type_never, parse_type_parenthesised_expression, parse_type_array, parse_type_tuple,
+    parse_binary_type_expression);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_binary_type_expression(const std::uint8_t min_prec)
-    -> Unique<asts::TypeAst> {
-    using RT = lex::RawTokenType;
+  -> Unique<asts::TypeAst> {
+  using RT = lex::RawTokenType;
 
-    struct BinOpInfo {
-        Unique<asts::TokenAst> tok;
-        std::uint8_t prec;
-    };
+  struct BinOpInfo {
+    Unique<asts::TokenAst> tok;
+    std::uint8_t prec;
+  };
 
-    auto try_tok = [this](auto fn, const std::uint8_t prec) -> std::optional<BinOpInfo> {
-        const auto pos = _Pos;
-        if (auto tok = fn()) return BinOpInfo{std::move(tok), prec};
-        _Pos = pos;
-        return std::nullopt;
-    };
+  auto try_tok = [this](auto fn, const std::uint8_t prec) -> std::optional<BinOpInfo> {
+    const auto pos = _Pos;
+    if (auto tok = fn()) return BinOpInfo{std::move(tok), prec};
+    _Pos = pos;
+    return std::nullopt;
+  };
 
-    auto try_bin_op = [&]() -> BinOpInfo {
-        auto peek = _Pos;
-        while (peek < _TokensLen && (_Tokens[peek].type == RT::TK_LINE_FEED || _Tokens[peek].type == RT::TK_SPACE))
-            peek++;
-        if (peek >= _TokensLen) return {};
+  auto try_bin_op = [&]() -> BinOpInfo {
+    auto peek = _Pos;
+    while (peek < _TokensLen && (_Tokens[peek].type == RT::TK_LINE_FEED || _Tokens[peek].type == RT::TK_SPACE))
+      peek++;
+    if (peek >= _TokensLen) return {};
 
-        switch (_Tokens[peek].type) {
-            case RT::KW_OR:
-                if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
-                break;
-            case RT::KW_AND:
-                if (auto r = try_tok([this] { return parse_keyword_and(); }, 1)) return std::move(*r);
-                break;
-            default: break;
-        }
-        return {};
-    };
+    switch (_Tokens[peek].type) {
+      case RT::KW_OR:
+        if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
+        break;
+      case RT::KW_AND:
+        if (auto r = try_tok([this] { return parse_keyword_and(); }, 1)) return std::move(*r);
+        break;
+      default: break;
+    }
+    return {};
+  };
 
-    PARSE_ONCE(lhs, parse_postfix_type_expression);
+  PARSE_ONCE(lhs, parse_postfix_type_expression);
 
-    while (true) {
-        const auto saved = _Pos;
-        auto [op, prec] = try_bin_op();
+  while (true) {
+    const auto saved = _Pos;
+    auto [op, prec] = try_bin_op();
 
-        if (!op || prec < min_prec) {
-            _Pos = saved;
-            break;
-        }
-
-        auto rhs = parse_binary_type_expression(static_cast<std::uint8_t>(prec + 1));
-        if (!rhs) {
-            _Pos = saved;
-            break;
-        }
-        lhs = CREATE_AST(asts::TypeBinaryExpressionAst, lhs, op, rhs)->Convert();
+    if (!op || prec < min_prec) {
+      _Pos = saved;
+      break;
     }
 
-    return lhs;
+    auto rhs = parse_binary_type_expression(static_cast<std::uint8_t>(prec + 1));
+    if (!rhs) {
+      _Pos = saved;
+      break;
+    }
+    lhs = CREATE_AST(asts::TypeBinaryExpressionAst, lhs, op, rhs)->Convert();
+  }
+
+  return lhs;
 }
 
 auto spp::parse::ParserSpp::parse_unary_type_expression()
-    -> Unique<asts::TypeAst> {
-    PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
-    PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
-    PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(parse_type_identifier()); });
-    if (p1 != nullptr) { p2.Insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1))); }
-    return utils::algorithms::MoveAccumulate(
-        p2.rbegin(), p2.rend(), std::move(p3),
-        [](Unique<asts::TypeAst> &&acc, Unique<asts::TypeUnaryExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
-        });
+  -> Unique<asts::TypeAst> {
+  PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
+  PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
+  PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(parse_type_identifier()); });
+  if (p1 != nullptr) {
+    p2.Insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
+  }
+  return utils::algorithms::MoveAccumulate(
+    p2.rbegin(), p2.rend(), std::move(p3),
+    [](Unique<asts::TypeAst> &&acc, Unique<asts::TypeUnaryExpressionOperatorAst> &&x) {
+      return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
+    });
 }
 
 auto spp::parse::ParserSpp::parse_unary_type_expression_op()
-    -> Unique<asts::TypeUnaryExpressionOperatorAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TypeUnaryExpressionOperatorAst, parse_unary_type_expression_op_borrow,
-        parse_unary_type_expression_op_namespace);
-    return FORWARD_AST(p1);
+  -> Unique<asts::TypeUnaryExpressionOperatorAst> {
+  PARSE_ALTERNATE(
+    p1, asts::TypeUnaryExpressionOperatorAst, parse_unary_type_expression_op_borrow,
+    parse_unary_type_expression_op_namespace);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_unary_type_expression_op_borrow()
-    -> Unique<asts::TypeUnaryExpressionOperatorBorrowAst> {
-    PARSE_ONCE(p1, parse_convention);
-    return CREATE_AST(asts::TypeUnaryExpressionOperatorBorrowAst, p1);
+  -> Unique<asts::TypeUnaryExpressionOperatorBorrowAst> {
+  PARSE_ONCE(p1, parse_convention);
+  return CREATE_AST(asts::TypeUnaryExpressionOperatorBorrowAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_unary_type_expression_op_namespace()
-    -> Unique<asts::TypeUnaryExpressionOperatorNamespaceAst> {
-    PARSE_ONCE(p1, parse_identifier);
-    PARSE_ONCE(p2, parse_token_double_colon);
-    return CREATE_AST(asts::TypeUnaryExpressionOperatorNamespaceAst, p1, p2);
+  -> Unique<asts::TypeUnaryExpressionOperatorNamespaceAst> {
+  PARSE_ONCE(p1, parse_identifier);
+  PARSE_ONCE(p2, parse_token_double_colon);
+  return CREATE_AST(asts::TypeUnaryExpressionOperatorNamespaceAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_type_expression()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_unary_type_expression);
-    PARSE_ZERO_OR_MORE(p2, parse_postfix_type_expression_op, parse_nothing);
-    return utils::algorithms::MoveAccumulate(
-        p2.begin(), p2.end(), std::move(p1),
-        [](Unique<asts::TypeAst> &&acc, Unique<asts::TypePostfixExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::TypePostfixExpressionAst, std::move(acc), x);
-        });
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_unary_type_expression);
+  PARSE_ZERO_OR_MORE(p2, parse_postfix_type_expression_op, parse_nothing);
+  return utils::algorithms::MoveAccumulate(
+    p2.begin(), p2.end(), std::move(p1),
+    [](Unique<asts::TypeAst> &&acc, Unique<asts::TypePostfixExpressionOperatorAst> &&x) {
+      return CREATE_AST(asts::TypePostfixExpressionAst, std::move(acc), x);
+    });
 }
 
 auto spp::parse::ParserSpp::parse_postfix_type_expression_op()
-    -> Unique<asts::TypePostfixExpressionOperatorAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TypePostfixExpressionOperatorAst,
-        parse_postfix_type_expression_op_nested);
-    return FORWARD_AST(p1);
+  -> Unique<asts::TypePostfixExpressionOperatorAst> {
+  PARSE_ALTERNATE(
+    p1, asts::TypePostfixExpressionOperatorAst,
+    parse_postfix_type_expression_op_nested);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_type_expression_op_nested()
-    -> Unique<asts::TypePostfixExpressionOperatorNestedTypeAst> {
-    PARSE_ONCE(p1, parse_token_double_colon);
-    PARSE_ONCE(p2, parse_type_identifier);
-    return CREATE_AST(asts::TypePostfixExpressionOperatorNestedTypeAst, p1, p2);
+  -> Unique<asts::TypePostfixExpressionOperatorNestedTypeAst> {
+  PARSE_ONCE(p1, parse_token_double_colon);
+  PARSE_ONCE(p2, parse_type_identifier);
+  return CREATE_AST(asts::TypePostfixExpressionOperatorNestedTypeAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_type_parenthesised_expression()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ONCE(p2, parse_type_expression);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::TypeParenthesisedExpressionAst, p1, p2, p3)->Convert();
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ONCE(p2, parse_type_expression);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::TypeParenthesisedExpressionAst, p1, p2, p3)->Convert();
 }
 
 auto spp::parse::ParserSpp::parse_type_never()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_token_exclamation_mark);
-    return asts::AstClone(asts::generate::common_types::NeverType(p1->PosStart()));
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_token_exclamation_mark);
+  return asts::AstClone(asts::generate::common_types::NeverType(p1->PosStart()));
 }
 
 auto spp::parse::ParserSpp::parse_type_expression_simple()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_postfix_type_expression_simple)
-    return FORWARD_AST(p1);
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_postfix_type_expression_simple)
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_type_expression_simple()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_unary_type_expression_simple);
-    PARSE_ZERO_OR_MORE(p2, parse_postfix_type_expression_op, parse_nothing);
-    return utils::algorithms::MoveAccumulate(
-        p2.begin(), p2.end(), std::move(p1),
-        [](Unique<asts::TypeAst> &&acc, Unique<asts::TypePostfixExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::TypePostfixExpressionAst, std::move(acc), x);
-        });
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_unary_type_expression_simple);
+  PARSE_ZERO_OR_MORE(p2, parse_postfix_type_expression_op, parse_nothing);
+  return utils::algorithms::MoveAccumulate(
+    p2.begin(), p2.end(), std::move(p1),
+    [](Unique<asts::TypeAst> &&acc, Unique<asts::TypePostfixExpressionOperatorAst> &&x) {
+      return CREATE_AST(asts::TypePostfixExpressionAst, std::move(acc), x);
+    });
 }
 
 auto spp::parse::ParserSpp::parse_unary_type_expression_simple()
-    -> Unique<asts::TypeAst> {
-    PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
-    PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
-    PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(parse_type_identifier()); });
-    if (p1 != nullptr) { p2.Insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1))); }
-    return utils::algorithms::MoveAccumulate(
-        p2.rbegin(), p2.rend(), std::move(p3),
-        [](Unique<asts::TypeAst> &&acc, Unique<asts::TypeUnaryExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
-        });
+  -> Unique<asts::TypeAst> {
+  PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
+  PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
+  PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(parse_type_identifier()); });
+  if (p1 != nullptr) {
+    p2.Insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
+  }
+  return utils::algorithms::MoveAccumulate(
+    p2.rbegin(), p2.rend(), std::move(p3),
+    [](Unique<asts::TypeAst> &&acc, Unique<asts::TypeUnaryExpressionOperatorAst> &&x) {
+      return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
+    });
 }
 
 auto spp::parse::ParserSpp::parse_type_identifier()
-    -> Unique<asts::TypeIdentifierAst> {
-    PARSE_ONCE(p1, parse_lexeme_upper_identifier);
-    PARSE_OPTIONAL(p2, parse_generic_argument_group);
-    return CREATE_AST(asts::TypeIdentifierAst, p1->PosStart(), p1->TokenData, p2);
+  -> Unique<asts::TypeIdentifierAst> {
+  PARSE_ONCE(p1, parse_lexeme_upper_identifier);
+  PARSE_OPTIONAL(p2, parse_generic_argument_group);
+  auto t = CREATE_AST(asts::TypeIdentifierAst, p1->PosStart(), p1->TokenData, p2);
+  t->MarkSourceWritten();
+  return t;
 }
 
 auto spp::parse::ParserSpp::parse_type_array()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ONCE(p2, parse_type_expression);
-    PARSE_ONCE(p3, parse_token_semicolon);
-    PARSE_ONCE(p4, parse_expression); // TODO: Force this "cmp" in SA?
-    PARSE_ONCE(p5, parse_token_right_square_bracket);
-    return CREATE_AST(asts::TypeArrayShorthandAst, p1, p2, p3, p4, p5)->Convert();
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_ONCE(p2, parse_type_expression);
+  PARSE_ONCE(p3, parse_token_semicolon);
+  PARSE_ONCE(p4, parse_expression); // TODO: Force this "cmp" in SA?
+  PARSE_ONCE(p5, parse_token_right_square_bracket);
+  return CREATE_AST(asts::TypeArrayShorthandAst, p1, p2, p3, p4, p5)->Convert();
 }
 
 auto spp::parse::ParserSpp::parse_type_tuple()
-    -> Unique<asts::TypeAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TypeAst, parse_type_tuple_0_types, parse_type_tuple_1_types, parse_type_tuple_n_types);
-    return FORWARD_AST(p1);
+  -> Unique<asts::TypeAst> {
+  PARSE_ALTERNATE(
+    p1, asts::TypeAst, parse_type_tuple_0_types, parse_type_tuple_1_types, parse_type_tuple_n_types);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_type_tuple_0_types()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    auto p2 = Vec<Shared<asts::TypeAst>>();
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::TypeTupleShorthandAst, p1, p2, p3)->Convert();
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  auto p2 = Vec<Shared<asts::TypeAst>>();
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::TypeTupleShorthandAst, p1, p2, p3)->Convert();
 }
 
 auto spp::parse::ParserSpp::parse_type_tuple_1_types()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ONCE(p2, parse_type_expression);
-    PARSE_ONCE(p3, parse_token_comma);
-    PARSE_ONCE(p4, parse_token_right_parenthesis);
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ONCE(p2, parse_type_expression);
+  PARSE_ONCE(p3, parse_token_comma);
+  PARSE_ONCE(p4, parse_token_right_parenthesis);
 
-    auto temp = Vec<Shared<asts::TypeAst>>();
-    temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(p2)));
-    return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p4)->Convert();
+  auto temp = Vec<Shared<asts::TypeAst>>();
+  temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(p2)));
+  return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p4)->Convert();
 }
 
 auto spp::parse::ParserSpp::parse_type_tuple_n_types()
-    -> Unique<asts::TypeAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_TWO_OR_MORE(p2, parse_type_expression, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
+  -> Unique<asts::TypeAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_TWO_OR_MORE(p2, parse_type_expression, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
 
-    auto temp = Vec<Shared<asts::TypeAst>>();
-    for (auto &&x : p2) { temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(x))); }
-    return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p3)->Convert();
+  auto temp = Vec<Shared<asts::TypeAst>>();
+  for (auto &&x : p2) { temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(x))); }
+  return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p3)->Convert();
 }
 
 auto spp::parse::ParserSpp::parse_identifier()
-    -> Unique<asts::IdentifierAst> {
-    PARSE_ONCE(p1, parse_lexeme_identifier);
-    return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
+  -> Unique<asts::IdentifierAst> {
+  PARSE_ONCE(p1, parse_lexeme_identifier);
+  return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
 }
 
 auto spp::parse::ParserSpp::parse_numeric_identifier()
-    -> Unique<asts::IdentifierAst> {
-    PARSE_ONCE(p1, parse_lexeme_dec_integer);
-    return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
+  -> Unique<asts::IdentifierAst> {
+  PARSE_ONCE(p1, parse_lexeme_dec_integer);
+  return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
 }
 
 auto spp::parse::ParserSpp::parse_self_identifier()
-    -> Unique<asts::IdentifierAst> {
-    PARSE_ONCE(p1, parse_keyword_self);
-    return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
+  -> Unique<asts::IdentifierAst> {
+  PARSE_ONCE(p1, parse_keyword_self);
+  return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
 }
 
 auto spp::parse::ParserSpp::parse_upper_identifier()
-    -> Unique<asts::IdentifierAst> {
-    PARSE_ONCE(p1, parse_lexeme_upper_identifier);
-    if (p1 == nullptr) { return nullptr; }
-    return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
+  -> Unique<asts::IdentifierAst> {
+  PARSE_ONCE(p1, parse_lexeme_upper_identifier);
+  if (p1 == nullptr) { return nullptr; }
+  return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
 }
 
 auto spp::parse::ParserSpp::parse_identifier_as_expression()
-    -> Unique<asts::ExpressionAst> {
-    PARSE_ALTERNATE(p1, asts::IdentifierAst, parse_identifier, parse_self_identifier);
-    return dynamic_unique_cast<asts::ExpressionAst>(std::move(p1));
+  -> Unique<asts::ExpressionAst> {
+  PARSE_ALTERNATE(p1, asts::IdentifierAst, parse_identifier, parse_self_identifier);
+  return dynamic_unique_cast<asts::ExpressionAst>(std::move(p1));
 }
 
 auto spp::parse::ParserSpp::parse_literal()
-    -> Unique<asts::LiteralAst> {
-    PARSE_ALTERNATE(
-        p1, asts::LiteralAst, parse_literal_char, parse_literal_string, parse_literal_float, parse_literal_integer,
-        parse_literal_boolean,
-        [this] { return parse_literal_tuple([this] { return parse_expression(); }); },
-        [this] { return parse_literal_array([this] { return parse_expression(); }); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::LiteralAst> {
+  PARSE_ALTERNATE(
+    p1, asts::LiteralAst, parse_literal_char, parse_literal_string, parse_literal_float, parse_literal_integer,
+    parse_literal_boolean,
+    [this] { return parse_literal_tuple([this] { return parse_expression(); }); },
+    [this] { return parse_literal_array([this] { return parse_expression(); }); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_literal_char()
-    -> Unique<asts::CharLiteralAst> {
-    PARSE_OPTIONAL(p1, parse_byte_prefix_type)
-    PARSE_ONCE(p2, parse_lexeme_single_quote_char);
-    return CREATE_AST(asts::CharLiteralAst, p1, p2);
+  -> Unique<asts::CharLiteralAst> {
+  PARSE_OPTIONAL(p1, parse_byte_prefix_type)
+  PARSE_ONCE(p2, parse_lexeme_single_quote_char);
+  return CREATE_AST(asts::CharLiteralAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_literal_string()
-    -> Unique<asts::StringLiteralAst> {
-    PARSE_OPTIONAL(p1, parse_byte_prefix_type)
-    PARSE_ONCE(p2, parse_lexeme_double_quote_string);
-    return CREATE_AST(asts::StringLiteralAst, p1, p2);
+  -> Unique<asts::StringLiteralAst> {
+  PARSE_OPTIONAL(p1, parse_byte_prefix_type)
+  PARSE_ONCE(p2, parse_lexeme_double_quote_string);
+  return CREATE_AST(asts::StringLiteralAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_literal_float()
-    -> Unique<asts::FloatLiteralAst> {
-    PARSE_ONCE(p1, parse_literal_float_b10);
-    return FORWARD_AST(p1);
+  -> Unique<asts::FloatLiteralAst> {
+  PARSE_ONCE(p1, parse_literal_float_b10);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer()
-    -> Unique<asts::IntegerLiteralAst> {
-    PARSE_ALTERNATE(
-        p1, asts::IntegerLiteralAst, parse_literal_integer_b02, parse_literal_integer_b08, parse_literal_integer_b16,
-        parse_literal_integer_b10);
-    return FORWARD_AST(p1);
+  -> Unique<asts::IntegerLiteralAst> {
+  PARSE_ALTERNATE(
+    p1, asts::IntegerLiteralAst, parse_literal_integer_b02, parse_literal_integer_b08, parse_literal_integer_b16,
+    parse_literal_integer_b10);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_literal_boolean()
-    -> Unique<asts::BooleanLiteralAst> {
-    PARSE_ALTERNATE(p1, asts::TokenAst, parse_keyword_true, parse_keyword_false);
-    return CREATE_AST(asts::BooleanLiteralAst, p1);
+  -> Unique<asts::BooleanLiteralAst> {
+  PARSE_ALTERNATE(p1, asts::TokenAst, parse_keyword_true, parse_keyword_false);
+  return CREATE_AST(asts::BooleanLiteralAst, p1);
 }
 
 auto spp::parse::ParserSpp::parse_literal_tuple(
-    std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
-    -> Unique<asts::TupleLiteralAst> {
-    auto parser_1 = [elem_parser, this] mutable { return parse_literal_tuple_1_element(std::move(elem_parser)); };
-    auto parser_n = [elem_parser, this] mutable { return parse_literal_tuple_n_elements(std::move(elem_parser)); };
-    PARSE_ALTERNATE(p1, asts::TupleLiteralAst, parser_1, parser_n);
-    return FORWARD_AST(p1);
+  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  -> Unique<asts::TupleLiteralAst> {
+  auto parser_1 = [elem_parser, this] mutable { return parse_literal_tuple_1_element(std::move(elem_parser)); };
+  auto parser_n = [elem_parser, this] mutable { return parse_literal_tuple_n_elements(std::move(elem_parser)); };
+  PARSE_ALTERNATE(p1, asts::TupleLiteralAst, parser_1, parser_n);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_literal_array(
-    std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
-    -> Unique<asts::ArrayLiteralAst> {
-    auto parser_e = [elem_parser, this] mutable { return parse_literal_array_explicit_elements(std::move(elem_parser)); };
-    auto parser_r = [elem_parser, this] mutable { return parse_literal_array_repeated_element(std::move(elem_parser)); };
-    PARSE_ALTERNATE(p1, asts::ArrayLiteralAst, parser_e, parser_r);
-    return FORWARD_AST(p1);
+  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  -> Unique<asts::ArrayLiteralAst> {
+  auto parser_e = [elem_parser, this] mutable { return parse_literal_array_explicit_elements(std::move(elem_parser)); };
+  auto parser_r = [elem_parser, this] mutable { return parse_literal_array_repeated_element(std::move(elem_parser)); };
+  PARSE_ALTERNATE(p1, asts::ArrayLiteralAst, parser_e, parser_r);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_literal_float_b10()
-    -> Unique<asts::FloatLiteralAst> {
-    PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
-    PARSE_ONCE(p2, parse_lexeme_dec_integer);
-    PARSE_ONCE(p3, parse_token_dot);
-    PARSE_ONCE(p4, parse_lexeme_dec_integer);
-    PARSE_OPTIONAL(p5, parse_float_suffix_type);
-    return CREATE_AST(asts::FloatLiteralAst, p1, p2, p3, p4, p5 ? p5->TokenData : "");
+  -> Unique<asts::FloatLiteralAst> {
+  PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
+  PARSE_ONCE(p2, parse_lexeme_dec_integer);
+  PARSE_ONCE(p3, parse_token_dot);
+  PARSE_ONCE(p4, parse_lexeme_dec_integer);
+  PARSE_OPTIONAL(p5, parse_float_suffix_type);
+  return CREATE_AST(asts::FloatLiteralAst, p1, p2, p3, p4, p5 ? p5->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b02()
-    -> Unique<asts::IntegerLiteralAst> {
-    PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
-    PARSE_ONCE(p2, parse_lexeme_bin_integer);
-    PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+  -> Unique<asts::IntegerLiteralAst> {
+  PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
+  PARSE_ONCE(p2, parse_lexeme_bin_integer);
+  PARSE_OPTIONAL(p3, parse_integer_suffix_type);
+  return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b08()
-    -> Unique<asts::IntegerLiteralAst> {
-    PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
-    PARSE_ONCE(p2, parse_lexeme_oct_integer);
-    PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+  -> Unique<asts::IntegerLiteralAst> {
+  PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
+  PARSE_ONCE(p2, parse_lexeme_oct_integer);
+  PARSE_OPTIONAL(p3, parse_integer_suffix_type);
+  return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b10()
-    -> Unique<asts::IntegerLiteralAst> {
-    PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
-    PARSE_ONCE(p2, parse_lexeme_dec_integer);
-    PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+  -> Unique<asts::IntegerLiteralAst> {
+  PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
+  PARSE_ONCE(p2, parse_lexeme_dec_integer);
+  PARSE_OPTIONAL(p3, parse_integer_suffix_type);
+  return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_literal_integer_b16()
-    -> Unique<asts::IntegerLiteralAst> {
-    PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
-    PARSE_ONCE(p2, parse_lexeme_hex_integer);
-    PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
+  -> Unique<asts::IntegerLiteralAst> {
+  PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
+  PARSE_ONCE(p2, parse_lexeme_hex_integer);
+  PARSE_OPTIONAL(p3, parse_integer_suffix_type);
+  return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->TokenData : "");
 }
 
 auto spp::parse::ParserSpp::parse_numeric_prefix_op()
-    -> Unique<asts::TokenAst> {
-    PARSE_ALTERNATE(p1, asts::TokenAst, parse_token_add, parse_token_sub);
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ALTERNATE(p1, asts::TokenAst, parse_token_add, parse_token_sub);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_float_suffix_type()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, parse_token_underscore)
-    PARSE_ALTERNATE(
-        p2, asts::TokenAst,
-        [this] { return parse_specific_characters("f8"); },
-        [this] { return parse_specific_characters("f16"); },
-        [this] { return parse_specific_characters("f32"); },
-        [this] { return parse_specific_characters("f64"); },
-        [this] { return parse_specific_characters("f128"); },
-        [this] { return parse_specific_characters("f256"); });
-    return FORWARD_AST(p2);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, parse_token_underscore)
+  PARSE_ALTERNATE(
+    p2, asts::TokenAst,
+    [this] { return parse_specific_characters("f8"); },
+    [this] { return parse_specific_characters("f16"); },
+    [this] { return parse_specific_characters("f32"); },
+    [this] { return parse_specific_characters("f64"); },
+    [this] { return parse_specific_characters("f128"); },
+    [this] { return parse_specific_characters("f256"); });
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_integer_suffix_type()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, parse_token_underscore);
-    PARSE_ALTERNATE(
-        p2, asts::TokenAst,
-        [this] { return parse_specific_characters("s8"); },
-        [this] { return parse_specific_characters("s16"); },
-        [this] { return parse_specific_characters("s32"); },
-        [this] { return parse_specific_characters("s64"); },
-        [this] { return parse_specific_characters("s128"); },
-        [this] { return parse_specific_characters("s256"); },
-        [this] { return parse_specific_characters("sz"); },
-        [this] { return parse_specific_characters("u8"); },
-        [this] { return parse_specific_characters("u16"); },
-        [this] { return parse_specific_characters("u32"); },
-        [this] { return parse_specific_characters("u64"); },
-        [this] { return parse_specific_characters("u128"); },
-        [this] { return parse_specific_characters("u256"); },
-        [this] { return parse_specific_characters("uz"); });
-    return FORWARD_AST(p2);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, parse_token_underscore);
+  PARSE_ALTERNATE(
+    p2, asts::TokenAst,
+    [this] { return parse_specific_characters("s8"); },
+    [this] { return parse_specific_characters("s16"); },
+    [this] { return parse_specific_characters("s32"); },
+    [this] { return parse_specific_characters("s64"); },
+    [this] { return parse_specific_characters("s128"); },
+    [this] { return parse_specific_characters("s256"); },
+    [this] { return parse_specific_characters("sz"); },
+    [this] { return parse_specific_characters("u8"); },
+    [this] { return parse_specific_characters("u16"); },
+    [this] { return parse_specific_characters("u32"); },
+    [this] { return parse_specific_characters("u64"); },
+    [this] { return parse_specific_characters("u128"); },
+    [this] { return parse_specific_characters("u256"); },
+    [this] { return parse_specific_characters("uz"); });
+  return FORWARD_AST(p2);
 }
 
 auto spp::parse::ParserSpp::parse_byte_prefix_type()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_specific_character('b'); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_specific_character('b'); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_literal_tuple_1_element(
-    std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
-    -> Unique<asts::TupleLiteralAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ONCE(p2, std::move(elem_parser));
-    PARSE_ONCE(p3, parse_token_comma);
-    PARSE_ONCE(p4, parse_token_right_parenthesis);
+  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  -> Unique<asts::TupleLiteralAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_ONCE(p2, std::move(elem_parser));
+  PARSE_ONCE(p3, parse_token_comma);
+  PARSE_ONCE(p4, parse_token_right_parenthesis);
 
-    auto temp = Vec<decltype(p2)>();
-    temp.EmplaceBack(std::move(p2));
-    return CREATE_AST(asts::TupleLiteralAst, p1, temp, p3);
+  auto temp = Vec<decltype(p2)>();
+  temp.EmplaceBack(std::move(p2));
+  return CREATE_AST(asts::TupleLiteralAst, p1, temp, p3);
 }
 
 auto spp::parse::ParserSpp::parse_literal_tuple_n_elements(
-    std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
-    -> Unique<asts::TupleLiteralAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_TWO_OR_MORE(p2, elem_parser, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::TupleLiteralAst, p1, p2, p3);
+  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  -> Unique<asts::TupleLiteralAst> {
+  PARSE_ONCE(p1, parse_token_left_parenthesis);
+  PARSE_TWO_OR_MORE(p2, elem_parser, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_parenthesis);
+  return CREATE_AST(asts::TupleLiteralAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_literal_array_repeated_element(
-    std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
-    -> Unique<asts::ArrayLiteralRepeatedElementAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ONCE(p2, elem_parser);
-    PARSE_ONCE(p3, parse_token_semicolon);
-    PARSE_ONCE(p4, parse_expression); // TODO: Force this "cmp" in SA?
-    PARSE_ONCE(p5, parse_token_right_square_bracket);
-    return CREATE_AST(asts::ArrayLiteralRepeatedElementAst, p1, p2, p3, p4, p5);
+  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  -> Unique<asts::ArrayLiteralRepeatedElementAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_ONCE(p2, elem_parser);
+  PARSE_ONCE(p3, parse_token_semicolon);
+  PARSE_ONCE(p4, parse_expression); // TODO: Force this "cmp" in SA?
+  PARSE_ONCE(p5, parse_token_right_square_bracket);
+  return CREATE_AST(asts::ArrayLiteralRepeatedElementAst, p1, p2, p3, p4, p5);
 }
 
 auto spp::parse::ParserSpp::parse_literal_array_explicit_elements(
-    std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
-    -> Unique<asts::ArrayLiteralExplicitElementsAst> {
-    PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ONE_OR_MORE(p2, elem_parser, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_square_bracket);
-    return CREATE_AST(asts::ArrayLiteralExplicitElementsAst, p1, p2, p3);
+  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  -> Unique<asts::ArrayLiteralExplicitElementsAst> {
+  PARSE_ONCE(p1, parse_token_left_square_bracket);
+  PARSE_ONE_OR_MORE(p2, elem_parser, parse_token_comma);
+  PARSE_ONCE(p3, parse_token_right_square_bracket);
+  return CREATE_AST(asts::ArrayLiteralExplicitElementsAst, p1, p2, p3);
 }
 
 auto spp::parse::ParserSpp::parse_specific_characters(Str &&s)
-    -> Unique<asts::TokenAst> {
-    auto identifier = Str();
-    PARSE_ONCE(_, parse_nothing);
-    auto pos = _Pos;
+  -> Unique<asts::TokenAst> {
+  auto identifier = Str();
+  PARSE_ONCE(_, parse_nothing);
+  auto pos = _Pos;
 
-    for (auto i = 0uz; i < s.length(); ++i) {
-        PARSE_ONCE(p1, parse_lexeme_character_or_digit);
-        identifier += p1->TokenData[0];
-    }
+  for (auto i = 0uz; i < s.length(); ++i) {
+    PARSE_ONCE(p1, parse_lexeme_character_or_digit);
+    identifier += p1->TokenData[0];
+  }
 
-    return identifier != s ? nullptr : CREATE_AST(asts::TokenAst, pos, lex::SppTokenType::SP_NO_TOK, identifier);
+  return identifier != s ? nullptr : CREATE_AST(asts::TokenAst, pos, lex::SppTokenType::SP_NO_TOK, identifier);
 }
 
 auto spp::parse::ParserSpp::parse_specific_character(const char16_t c)
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    PARSE_ONCE(p1, parse_lexeme_character_or_digit)
-    if (p1->TokenData[0] != c) { return nullptr; }
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  PARSE_ONCE(p1, parse_lexeme_character_or_digit)
+  if (p1->TokenData[0] != c) { return nullptr; }
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_character()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::LX_CHARACTER, lex::SppTokenType::LX_CHARACTER); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::LX_CHARACTER, lex::SppTokenType::LX_CHARACTER); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_digit()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::LX_DIGIT, lex::SppTokenType::LX_DIGIT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::LX_DIGIT, lex::SppTokenType::LX_DIGIT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_character_or_digit()
-    -> Unique<asts::TokenAst> {
-    PARSE_ALTERNATE(p1, asts::TokenAst, parse_lexeme_character, parse_lexeme_digit);
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ALTERNATE(p1, asts::TokenAst, parse_lexeme_character, parse_lexeme_digit);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_character_or_digit_or_underscore()
-    -> Unique<asts::TokenAst> {
-    PARSE_ALTERNATE(p1, asts::TokenAst, parse_lexeme_character, parse_lexeme_digit, parse_token_underscore)
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ALTERNATE(p1, asts::TokenAst, parse_lexeme_character, parse_lexeme_digit, parse_token_underscore)
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_bin_integer()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
 
-    PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
-    out->TokenData += p1->TokenData;
+  PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
+  out->TokenData += p1->TokenData;
 
-    PARSE_ONCE(p2, [this] { return parse_specific_character('b'); });
-    out->TokenData += p2->TokenData;
+  PARSE_ONCE(p2, [this] { return parse_specific_character('b'); });
+  out->TokenData += p2->TokenData;
 
-    PARSE_ONCE(p3, parse_lexeme_digit);
-    if (p3->TokenData[0] != '0' and p3->TokenData[0] != '1') { return nullptr; }
-    out->TokenData += p3->TokenData;
+  PARSE_ONCE(p3, parse_lexeme_digit);
+  if (p3->TokenData[0] != '0' and p3->TokenData[0] != '1') { return nullptr; }
+  out->TokenData += p3->TokenData;
 
-    while (_Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
-        PARSE_ONCE(p4, parse_lexeme_digit);
-        if (p4->TokenData[0] != '0' and p4->TokenData[0] != '1') { return nullptr; }
-        out->TokenData += p4->TokenData;
-    }
+  while (_Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
+    PARSE_ONCE(p4, parse_lexeme_digit);
+    if (p4->TokenData[0] != '0' and p4->TokenData[0] != '1') { return nullptr; }
+    out->TokenData += p4->TokenData;
+  }
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_oct_integer()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
 
-    PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
-    out->TokenData += p1->TokenData;
+  PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
+  out->TokenData += p1->TokenData;
 
-    PARSE_ONCE(p2, [this] { return parse_specific_character('o'); });
-    out->TokenData += p2->TokenData;
+  PARSE_ONCE(p2, [this] { return parse_specific_character('o'); });
+  out->TokenData += p2->TokenData;
 
-    PARSE_ONCE(p3, parse_lexeme_digit);
-    if (p3->TokenData[0] < '0' or p3->TokenData[0] > '7') { return nullptr; }
-    out->TokenData += p3->TokenData;
+  PARSE_ONCE(p3, parse_lexeme_digit);
+  if (p3->TokenData[0] < '0' or p3->TokenData[0] > '7') { return nullptr; }
+  out->TokenData += p3->TokenData;
 
-    while (_Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
-        PARSE_ONCE(p4, parse_lexeme_digit);
-        if (p4->TokenData[0] < '0' or p4->TokenData[0] > '7') { return nullptr; }
-        out->TokenData += p4->TokenData;
-    }
+  while (_Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
+    PARSE_ONCE(p4, parse_lexeme_digit);
+    if (p4->TokenData[0] < '0' or p4->TokenData[0] > '7') { return nullptr; }
+    out->TokenData += p4->TokenData;
+  }
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_dec_integer()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
 
-    PARSE_ONCE(p1, parse_lexeme_digit);
-    out->TokenData += p1->TokenData;
+  PARSE_ONCE(p1, parse_lexeme_digit);
+  out->TokenData += p1->TokenData;
 
-    while (_Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
-        PARSE_ONCE(p2, parse_lexeme_digit);
-        out->TokenData += p2->TokenData;
-    }
+  while (_Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
+    PARSE_ONCE(p2, parse_lexeme_digit);
+    out->TokenData += p2->TokenData;
+  }
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_hex_integer()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_NUMBER, Str());
 
-    PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
-    out->TokenData += p1->TokenData;
+  PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
+  out->TokenData += p1->TokenData;
 
-    PARSE_ONCE(p2, [this] { return parse_specific_character('x'); });
-    out->TokenData += p2->TokenData;
+  PARSE_ONCE(p2, [this] { return parse_specific_character('x'); });
+  out->TokenData += p2->TokenData;
 
-    PARSE_ONCE(p3, parse_lexeme_character_or_digit);
-    if (kHexChars.find(p3->TokenData[0]) == Str::npos) { return nullptr; }
-    out->TokenData += p3->TokenData;
+  PARSE_ONCE(p3, parse_lexeme_character_or_digit);
+  if (kHexChars.find(p3->TokenData[0]) == Str::npos) { return nullptr; }
+  out->TokenData += p3->TokenData;
 
-    while (_Tokens[_Pos].type == lex::RawTokenType::LX_CHARACTER or _Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
-        PARSE_ONCE(p4, parse_lexeme_character_or_digit);
-        if (kHexChars.find(p4->TokenData[0]) == Str::npos) { return nullptr; }
-        out->TokenData += p4->TokenData;
-    }
+  while (_Tokens[_Pos].type == lex::RawTokenType::LX_CHARACTER or _Tokens[_Pos].type == lex::RawTokenType::LX_DIGIT) {
+    PARSE_ONCE(p4, parse_lexeme_character_or_digit);
+    if (kHexChars.find(p4->TokenData[0]) == Str::npos) { return nullptr; }
+    out->TokenData += p4->TokenData;
+  }
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_single_quote_char()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_CHAR, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_CHAR, Str());
 
-    PARSE_ONCE(p1, parse_token_single_quote);
-    out->TokenData += p1->TokenData;
+  PARSE_ONCE(p1, parse_token_single_quote);
+  out->TokenData += p1->TokenData;
 
-    while (_Tokens[_Pos].type == lex::RawTokenType::LX_CHARACTER) {
-        PARSE_ONCE(p2, parse_lexeme_character);
-        out->TokenData += p2->TokenData;
-    }
+  while (_Tokens[_Pos].type == lex::RawTokenType::LX_CHARACTER) {
+    PARSE_ONCE(p2, parse_lexeme_character);
+    out->TokenData += p2->TokenData;
+  }
 
-    PARSE_ONCE(p3, parse_token_single_quote);
-    out->TokenData += p3->TokenData;
+  PARSE_ONCE(p3, parse_token_single_quote);
+  out->TokenData += p3->TokenData;
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_double_quote_string()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_STRING, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_STRING, Str());
 
-    PARSE_ONCE(p1, parse_token_double_quote);
-    out->TokenData += p1->TokenData;
+  PARSE_ONCE(p1, parse_token_double_quote);
+  out->TokenData += p1->TokenData;
 
-    while (_Tokens[_Pos].type == lex::RawTokenType::LX_CHARACTER) {
-        PARSE_ONCE(p2, parse_lexeme_character);
-        out->TokenData += p2->TokenData;
-    }
+  while (_Tokens[_Pos].type == lex::RawTokenType::LX_CHARACTER) {
+    PARSE_ONCE(p2, parse_lexeme_character);
+    out->TokenData += p2->TokenData;
+  }
 
-    PARSE_ONCE(p3, parse_token_double_quote);
-    out->TokenData += p3->TokenData;
+  PARSE_ONCE(p3, parse_token_double_quote);
+  out->TokenData += p3->TokenData;
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_identifier()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
 
-    PARSE_OPTIONAL(p1, parse_token_dollar);
-    if (p1 != nullptr) { out->TokenData += p1->TokenData; }
+  PARSE_OPTIONAL(p1, parse_token_dollar);
+  if (p1 != nullptr) { out->TokenData += p1->TokenData; }
 
-    PARSE_ONCE(p2, parse_lexeme_character);
-    if (std::isupper(p2->TokenData[0])) { return nullptr; }
-    out->TokenData += p2->TokenData;
+  PARSE_ONCE(p2, parse_lexeme_character);
+  if (std::isupper(p2->TokenData[0])) { return nullptr; }
+  out->TokenData += p2->TokenData;
 
-    auto t = _Tokens[_Pos].type;
-    while (t == lex::RawTokenType::LX_CHARACTER or t == lex::RawTokenType::LX_DIGIT or t == lex::RawTokenType::TK_UNDERSCORE) {
-        PARSE_ONCE(p3, parse_lexeme_character_or_digit_or_underscore);
-        out->TokenData += p3->TokenData;
-        t = _Tokens[_Pos].type;
-    }
+  auto t = _Tokens[_Pos].type;
+  while (t == lex::RawTokenType::LX_CHARACTER or t == lex::RawTokenType::LX_DIGIT or t ==
+    lex::RawTokenType::TK_UNDERSCORE) {
+    PARSE_ONCE(p3, parse_lexeme_character_or_digit_or_underscore);
+    out->TokenData += p3->TokenData;
+    t = _Tokens[_Pos].type;
+  }
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_lexeme_upper_identifier()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(_, parse_nothing);
+  auto out = CREATE_AST(asts::TokenAst, _Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
 
-    PARSE_OPTIONAL(p1, parse_token_dollar);
-    if (p1 != nullptr) { out->TokenData += p1->TokenData; }
+  PARSE_OPTIONAL(p1, parse_token_dollar);
+  if (p1 != nullptr) { out->TokenData += p1->TokenData; }
 
-    PARSE_ONCE(p2, parse_lexeme_character);
-    if (std::islower(p2->TokenData[0])) { return nullptr; }
-    out->TokenData += p2->TokenData;
+  PARSE_ONCE(p2, parse_lexeme_character);
+  if (std::islower(p2->TokenData[0])) { return nullptr; }
+  out->TokenData += p2->TokenData;
 
-    auto t = _Tokens[_Pos].type;
-    while (t == lex::RawTokenType::LX_CHARACTER or t == lex::RawTokenType::LX_DIGIT) {
-        PARSE_ONCE(p3, parse_lexeme_character_or_digit);
-        out->TokenData += p3->TokenData;
-        t = _Tokens[_Pos].type;
-    }
+  auto t = _Tokens[_Pos].type;
+  while (t == lex::RawTokenType::LX_CHARACTER or t == lex::RawTokenType::LX_DIGIT) {
+    PARSE_ONCE(p3, parse_lexeme_character_or_digit);
+    out->TokenData += p3->TokenData;
+    t = _Tokens[_Pos].type;
+  }
 
-    return out;
+  return out;
 }
 
 auto spp::parse::ParserSpp::parse_nothing()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::SP_NO_TOK, lex::SppTokenType::SP_NO_TOK); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::SP_NO_TOK, lex::SppTokenType::SP_NO_TOK); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_newline()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LINE_FEED, lex::SppTokenType::TK_NEWLINE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LINE_FEED, lex::SppTokenType::TK_NEWLINE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_space()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SPACE, lex::SppTokenType::TK_SPACE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SPACE, lex::SppTokenType::TK_SPACE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_left_curly_brace()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LEFT_CURLY_BRACE, lex::SppTokenType::TK_LEFT_CURLY_BRACE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LEFT_CURLY_BRACE, lex::SppTokenType::TK_LEFT_CURLY_BRACE);
+    });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_right_curly_brace()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_RIGHT_CURLY_BRACE, lex::SppTokenType::TK_RIGHT_CURLY_BRACE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_RIGHT_CURLY_BRACE, lex::SppTokenType::TK_RIGHT_CURLY_BRACE
+    ); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_left_square_bracket()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LEFT_SQUARE_BRACKET, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LEFT_SQUARE_BRACKET, lex::SppTokenType::
+      TK_LEFT_SQUARE_BRACKET); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_left_parenthesis()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LEFT_PARENTHESIS, lex::SppTokenType::TK_LEFT_PARENTHESIS); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LEFT_PARENTHESIS, lex::SppTokenType::TK_LEFT_PARENTHESIS);
+    });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_right_parenthesis()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_RIGHT_PARENTHESIS, lex::SppTokenType::TK_RIGHT_PARENTHESIS); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_RIGHT_PARENTHESIS, lex::SppTokenType::TK_RIGHT_PARENTHESIS
+    ); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_right_square_bracket()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_RIGHT_SQUARE_BRACKET, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_RIGHT_SQUARE_BRACKET, lex::SppTokenType::
+      TK_RIGHT_SQUARE_BRACKET); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_colon()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_COLON); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_COLON); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_comma()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_COMMA, lex::SppTokenType::TK_COMMA); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_COMMA, lex::SppTokenType::TK_COMMA); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_ASSIGN); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_ASSIGN); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_at()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AT_SIGN, lex::SppTokenType::TK_AT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AT_SIGN, lex::SppTokenType::TK_AT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_underscore()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_UNDERSCORE, lex::SppTokenType::TK_UNDERSCORE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_UNDERSCORE, lex::SppTokenType::TK_UNDERSCORE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_less_than()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_LT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_LT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_greater_than()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_GT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_GT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_add()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PLUS_SIGN, lex::SppTokenType::TK_ADD); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PLUS_SIGN, lex::SppTokenType::TK_ADD); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_sub()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_SUB); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_SUB); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_mul()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_MUL); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_MUL); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_div()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SLASH, lex::SppTokenType::TK_DIV); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SLASH, lex::SppTokenType::TK_DIV); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_rem()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERCENT_SIGN, lex::SppTokenType::TK_REM); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERCENT_SIGN, lex::SppTokenType::TK_REM); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_ior()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_BIT_IOR); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_BIT_IOR); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_xor()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_CARET, lex::SppTokenType::TK_BIT_XOR); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_CARET, lex::SppTokenType::TK_BIT_XOR); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_and()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BIT_AND); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BIT_AND); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_dot()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_question_mark()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_QUESTION_MARK, lex::SppTokenType::TK_QUESTION_MARK); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_QUESTION_MARK, lex::SppTokenType::TK_QUESTION_MARK); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_exclamation_mark()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_EXCLAMATION_MARK); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_EXCLAMATION_MARK);
+    });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_deref()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AT_SIGN, lex::SppTokenType::TK_DEREF); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AT_SIGN, lex::SppTokenType::TK_DEREF); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_borrow()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BORROW); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BORROW); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_vertical_bar()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_VERTICAL_BAR); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_VERTICAL_BAR); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_semicolon()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SEMICOLON, lex::SppTokenType::TK_SEMICOLON); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SEMICOLON, lex::SppTokenType::TK_SEMICOLON); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_single_quote()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_APOSTROPHE, lex::SppTokenType::TK_APOSTROPHE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_APOSTROPHE, lex::SppTokenType::TK_APOSTROPHE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_double_quote()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_QUOTATION_MARK, lex::SppTokenType::TK_QUOTATION_MARK); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_QUOTATION_MARK, lex::SppTokenType::TK_QUOTATION_MARK); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_dollar()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_DOLLAR_SIGN, lex::SppTokenType::TK_DOLLAR); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_DOLLAR_SIGN, lex::SppTokenType::TK_DOLLAR); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_arrow_right()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_ARROW_RIGHT); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_ARROW_RIGHT); });
-    p1->TokenData = "->";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_ARROW_RIGHT); });
+  PARSE_ONCE(
+    p2, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_ARROW_RIGHT); });
+  p1->TokenData = "->";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_double_dot()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOUBLE_DOT); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOUBLE_DOT); });
-    p1->TokenData = "..";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOUBLE_DOT); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOUBLE_DOT); });
+  p1->TokenData = "..";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_double_colon()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_DOUBLE_COLON); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_DOUBLE_COLON); });
-    p1->TokenData = "::";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_DOUBLE_COLON); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_DOUBLE_COLON); });
+  p1->TokenData = "::";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_equals()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_EQ); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_EQ); });
-    p1->TokenData = "==";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_EQ); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_EQ); });
+  p1->TokenData = "==";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_not_equals()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_NE); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_NE); });
-    p1->TokenData = "!=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_NE); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_NE); });
+  p1->TokenData = "!=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_less_than_equals()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_LE); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_LE); });
-    p1->TokenData = "<=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_LE); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_LE); });
+  p1->TokenData = "<=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_greater_than_equals()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_GE); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_GE); });
-    p1->TokenData = ">=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_GE); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_GE); });
+  p1->TokenData = ">=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_add_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PLUS_SIGN, lex::SppTokenType::TK_ADD_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_ADD_ASSIGN); });
-    p1->TokenData = "+=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PLUS_SIGN, lex::SppTokenType::TK_ADD_ASSIGN); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_ADD_ASSIGN); });
+  p1->TokenData = "+=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_sub_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_SUB_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_SUB_ASSIGN); });
-    p1->TokenData = "-=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_SUB_ASSIGN); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_SUB_ASSIGN); });
+  p1->TokenData = "-=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_mul_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_MUL_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_MUL_ASSIGN); });
-    p1->TokenData = "*=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_MUL_ASSIGN); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_MUL_ASSIGN); });
+  p1->TokenData = "*=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_div_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SLASH, lex::SppTokenType::TK_DIV_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_DIV_ASSIGN); });
-    p1->TokenData = "/=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SLASH, lex::SppTokenType::TK_DIV_ASSIGN); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_DIV_ASSIGN); });
+  p1->TokenData = "/=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_rem_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERCENT_SIGN, lex::SppTokenType::TK_REM_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_REM_ASSIGN); });
-    p1->TokenData = "%=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_PERCENT_SIGN, lex::SppTokenType::TK_REM_ASSIGN); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_REM_ASSIGN); });
+  p1->TokenData = "%=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_pow()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW); });
-    p1->TokenData = "**";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW); });
+  p1->TokenData = "**";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_shl()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL); });
-    p1->TokenData = "<<";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL); });
+  p1->TokenData = "<<";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_shr()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR); });
-    p1->TokenData = ">>";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR); });
+  p1->TokenData = ">>";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_ior_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_BIT_IOR_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_IOR_ASSIGN); });
-    p1->TokenData = "|=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_BIT_IOR_ASSIGN); });
+  PARSE_ONCE(
+    p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_IOR_ASSIGN); });
+  p1->TokenData = "|=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_xor_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_CARET, lex::SppTokenType::TK_BIT_XOR_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_XOR_ASSIGN); });
-    p1->TokenData = "^=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_CARET, lex::SppTokenType::TK_BIT_XOR_ASSIGN); });
+  PARSE_ONCE(
+    p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_XOR_ASSIGN); });
+  p1->TokenData = "^=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_and_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BIT_AND_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_AND_ASSIGN); });
-    p1->TokenData = "&=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BIT_AND_ASSIGN); });
+  PARSE_ONCE(
+    p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_AND_ASSIGN); });
+  p1->TokenData = "&=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_pow_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW_ASSIGN); });
-    PARSE_ONCE(p3, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_POW_ASSIGN); });
-    p1->TokenData = "**=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW_ASSIGN); });
+  PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW_ASSIGN); });
+  PARSE_ONCE(p3, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_POW_ASSIGN); });
+  p1->TokenData = "**=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_shl_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL_ASSIGN); });
-    PARSE_ONCE(p3, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_SHL_ASSIGN); });
-    p1->TokenData = "<<=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL_ASSIGN); });
+  PARSE_ONCE(
+    p2, [this] { return parse_token_raw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL_ASSIGN); });
+  PARSE_ONCE(
+    p3, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_SHL_ASSIGN); });
+  p1->TokenData = "<<=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_bit_shr_assign()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR_ASSIGN); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR_ASSIGN); });
-    PARSE_ONCE(p3, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_SHR_ASSIGN); });
-    p1->TokenData = ">>=";
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(
+    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR_ASSIGN); });
+  PARSE_ONCE(
+    p2, [this] { return parse_token_raw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR_ASSIGN); });
+  PARSE_ONCE(
+    p3, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_BIT_SHR_ASSIGN); });
+  p1->TokenData = ">>=";
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_cls()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CLS, lex::SppTokenType::KW_CLS); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CLS, lex::SppTokenType::KW_CLS); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_fun()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_FUN, lex::SppTokenType::KW_FUN); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_FUN, lex::SppTokenType::KW_FUN); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_cor()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_COR, lex::SppTokenType::KW_COR); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_COR, lex::SppTokenType::KW_COR); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_sup()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_SUP, lex::SppTokenType::KW_SUP); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_SUP, lex::SppTokenType::KW_SUP); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_ext()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_EXT, lex::SppTokenType::KW_EXT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_EXT, lex::SppTokenType::KW_EXT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_mut()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_MUT, lex::SppTokenType::KW_MUT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_MUT, lex::SppTokenType::KW_MUT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_use()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_USE, lex::SppTokenType::KW_USE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_USE, lex::SppTokenType::KW_USE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_cmp()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CMP, lex::SppTokenType::KW_CMP); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CMP, lex::SppTokenType::KW_CMP); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_let()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_LET, lex::SppTokenType::KW_LET); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_LET, lex::SppTokenType::KW_LET); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_type()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_TYPE, lex::SppTokenType::KW_TYPE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_TYPE, lex::SppTokenType::KW_TYPE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_self()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_SELF, lex::SppTokenType::KW_SELF); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_SELF, lex::SppTokenType::KW_SELF); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_case()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CASE, lex::SppTokenType::KW_CASE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CASE, lex::SppTokenType::KW_CASE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_of()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_OF, lex::SppTokenType::KW_OF); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_OF, lex::SppTokenType::KW_OF); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_loop()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_LOOP, lex::SppTokenType::KW_LOOP); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_LOOP, lex::SppTokenType::KW_LOOP); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_in()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_IN, lex::SppTokenType::KW_IN); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_IN, lex::SppTokenType::KW_IN); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_to()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_TO, lex::SppTokenType::KW_TO); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_TO, lex::SppTokenType::KW_TO); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_else()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_ELSE, lex::SppTokenType::KW_ELSE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_ELSE, lex::SppTokenType::KW_ELSE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_gen()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_GEN, lex::SppTokenType::KW_GEN); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_GEN, lex::SppTokenType::KW_GEN); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_with()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_WITH, lex::SppTokenType::KW_WITH); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_WITH, lex::SppTokenType::KW_WITH); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_ret()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_RET, lex::SppTokenType::KW_RET); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_RET, lex::SppTokenType::KW_RET); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_exit()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_EXIT, lex::SppTokenType::KW_EXIT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_EXIT, lex::SppTokenType::KW_EXIT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_skip()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_SKIP, lex::SppTokenType::KW_SKIP); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_SKIP, lex::SppTokenType::KW_SKIP); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_is()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_IS, lex::SppTokenType::KW_IS); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_IS, lex::SppTokenType::KW_IS); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_as()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_AS, lex::SppTokenType::KW_AS); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_AS, lex::SppTokenType::KW_AS); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_or()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_OR, lex::SppTokenType::KW_OR); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_OR, lex::SppTokenType::KW_OR); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_and()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_AND, lex::SppTokenType::KW_AND); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_AND, lex::SppTokenType::KW_AND); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_not()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_NOT, lex::SppTokenType::KW_NOT); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_NOT, lex::SppTokenType::KW_NOT); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_async()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_ASYNC, lex::SppTokenType::KW_ASYNC); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_ASYNC, lex::SppTokenType::KW_ASYNC); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_true()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_TRUE, lex::SppTokenType::KW_TRUE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_TRUE, lex::SppTokenType::KW_TRUE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_false()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_FALSE, lex::SppTokenType::KW_FALSE); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_FALSE, lex::SppTokenType::KW_FALSE); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_res()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_RES, lex::SppTokenType::KW_RES); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_RES, lex::SppTokenType::KW_RES); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_keyword_caps()
-    -> Unique<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CAPS, lex::SppTokenType::KW_CAPS); });
-    return FORWARD_AST(p1);
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CAPS, lex::SppTokenType::KW_CAPS); });
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::SppTokenType mapped_tok)
-    -> Unique<asts::TokenAst> {
-    if (_Pos > _Tokens.Len()) {
-        return nullptr;
+  -> Unique<asts::TokenAst> {
+  if (_Pos > _Tokens.Len()) {
+    return nullptr;
+  }
+
+  if (tok != lex::RawTokenType::TK_LINE_FEED and tok != lex::RawTokenType::TK_SPACE) {
+    while (_Tokens[_Pos].type == lex::RawTokenType::TK_LINE_FEED or _Tokens[_Pos].type == lex::RawTokenType::TK_SPACE) {
+      _Pos++;
+    }
+  }
+
+  else if (tok == lex::RawTokenType::TK_LINE_FEED) {
+    while (_Tokens[_Pos].type == lex::RawTokenType::TK_SPACE) {
+      _Pos++;
+    }
+  }
+
+  else if (tok == lex::RawTokenType::TK_SPACE) {
+    while (_Tokens[_Pos].type == lex::RawTokenType::TK_LINE_FEED) {
+      _Pos++;
+    }
+  }
+
+  if (tok == lex::RawTokenType::SP_NO_TOK) {
+    return CREATE_AST(asts::TokenAst, _Pos, mapped_tok, Str());
+  }
+
+  if (_Tokens[_Pos].type != tok) {
+    using namespace std::string_literals;
+    if (_ErrorBuilder->Pos == _Pos) {
+      _ErrorBuilder->Tokens.insert(mapped_tok);
+      return nullptr;
     }
 
-    if (tok != lex::RawTokenType::TK_LINE_FEED and tok != lex::RawTokenType::TK_SPACE) {
-        while (_Tokens[_Pos].type == lex::RawTokenType::TK_LINE_FEED or _Tokens[_Pos].type == lex::RawTokenType::TK_SPACE) {
-            _Pos++;
-        }
+    if (m_store_error(_Pos, "Expected £, got '"s + _Tokens[_Pos].data + "'")) {
+      _ErrorBuilder->Tokens.insert(mapped_tok);
+      return nullptr;
     }
 
-    else if (tok == lex::RawTokenType::TK_LINE_FEED) {
-        while (_Tokens[_Pos].type == lex::RawTokenType::TK_SPACE) {
-            _Pos++;
-        }
-    }
+    return nullptr;
+  }
 
-    else if (tok == lex::RawTokenType::TK_SPACE) {
-        while (_Tokens[_Pos].type == lex::RawTokenType::TK_LINE_FEED) {
-            _Pos++;
-        }
-    }
-
-    if (tok == lex::RawTokenType::SP_NO_TOK) {
-        return CREATE_AST(asts::TokenAst, _Pos, mapped_tok, Str());
-    }
-
-    if (_Tokens[_Pos].type != tok) {
-        using namespace std::string_literals;
-        if (_ErrorBuilder->Pos == _Pos) {
-            _ErrorBuilder->Tokens.insert(mapped_tok);
-            return nullptr;
-        }
-
-        if (m_store_error(_Pos, "Expected £, got '"s + _Tokens[_Pos].data + "'")) {
-            _ErrorBuilder->Tokens.insert(mapped_tok);
-            return nullptr;
-        }
-
-        return nullptr;
-    }
-
-    const auto pos = _Pos;
-    ++_Pos;
-    return CREATE_AST(asts::TokenAst, pos, mapped_tok, _Tokens[_Pos - 1].data.data());
+  const auto pos = _Pos;
+  ++_Pos;
+  return CREATE_AST(asts::TokenAst, pos, mapped_tok, _Tokens[_Pos - 1].data.data());
 }
 
 auto spp::parse::ParserSpp::m_store_error(
-    const std::size_t pos,
-    Str &&err_str) const
-    -> bool {
-    if (pos > _ErrorBuilder->Pos) {
-        _ErrorBuilder->WithArgs(std::move(err_str));
-        _ErrorBuilder->Tokens.clear();
-        _ErrorBuilder->Pos = pos;
-        return true;
-    }
-    return false;
+  const std::size_t pos,
+  Str &&err_str) const
+  -> bool {
+  if (pos > _ErrorBuilder->Pos) {
+    _ErrorBuilder->WithArgs(std::move(err_str));
+    _ErrorBuilder->Tokens.clear();
+    _ErrorBuilder->Pos = pos;
+    return true;
+  }
+  return false;
 }
 
 SPP_MOD_END

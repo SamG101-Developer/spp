@@ -10,176 +10,191 @@ import spp.codegen.llvm_sym_info;
 import spp.utils.types;
 import std;
 
-
 namespace spp::asts {
-    SPP_EXP_CLS struct AnnotationAst;
-    SPP_EXP_CLS struct ClassPrototypeAst;
-    SPP_EXP_CLS struct ConventionAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeStatementAst;
+  SPP_EXP_CLS struct AnnotationAst;
+  SPP_EXP_CLS struct ClassPrototypeAst;
+  SPP_EXP_CLS struct ConventionAst;
+  SPP_EXP_CLS struct IdentifierAst;
+  SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct TypeIdentifierAst;
+  SPP_EXP_CLS struct TypeStatementAst;
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS struct Symbol;
-    SPP_EXP_CLS struct NamespaceSymbol;
-    SPP_EXP_CLS struct TypeSymbol;
-    SPP_EXP_CLS struct VariableSymbol;
+  SPP_EXP_CLS class Scope;
+  SPP_EXP_CLS struct Symbol;
+  SPP_EXP_CLS struct NamespaceSymbol;
+  SPP_EXP_CLS struct TypeSymbol;
+  SPP_EXP_CLS struct VariableSymbol;
 }
-
 
 /**
  * The base Symbol type for all symb variations to inherit from. This provides a common interface for all symbols, and
  * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
  * need for a base class.
  */
-SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
-    SPP_GCC_VTABLE_FIX_BASE
+SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
+  SPP_GCC_VTABLE_FIX_BASE
 
-    /**
-     * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
-     * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
-     * as it allows for proper cleanup of resources when a derived class is deleted.
-     */
-    virtual ~Symbol();
+  /**
+   * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
+   * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
+   * as it allows for proper cleanup of resources when a derived class is deleted.
+   */
+  virtual ~Symbol();
+
+  /**
+   * Obtain a @c Shared owning pointer to this symbol, downcast to the requested derived symbol type. Symbols are
+   * always created via @c MakeShared and stored in symbol tables, so the enclosing control block is guaranteed to
+   * exist; this mints an owning pointer lazily at the call sites that actually need shared ownership, without the
+   * ancestor-walking traversals having to copy @c Shared pointers per element.
+   * @tparam Derived The concrete symbol type to downcast to (defaults to @c Symbol for no downcast).
+   * @return A @c Shared pointer to this symbol as @c Derived.
+   */
+  template <typename Derived = Symbol>
+  SPP_ATTR_NODISCARD auto SharedFromThis() -> Shared<Derived> {
+    if constexpr (std::is_same_v<Derived, Symbol>) {
+      return shared_from_this();
+    }
+    else {
+      return std::static_pointer_cast<Derived>(shared_from_this());
+    }
+  }
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
-    SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX
 
-    Shared<asts::IdentifierAst> Name;
+  Shared<asts::IdentifierAst> Name;
 
-    Scope *LinkedScope;
+  Scope *LinkedScope;
 
-    NamespaceSymbol(
-        Shared<asts::IdentifierAst> name,
-        Scope *scope);
+  NamespaceSymbol(
+    Shared<asts::IdentifierAst> name,
+    Scope *scope);
 
-    NamespaceSymbol(
-        NamespaceSymbol const &that);
+  NamespaceSymbol(
+    NamespaceSymbol const &that);
 
-    ~NamespaceSymbol() override;
+  ~NamespaceSymbol() override;
 
-    auto operator==(
-        NamespaceSymbol const &that) const
-        -> bool;
+  auto operator==(
+    NamespaceSymbol const &that) const
+    -> bool;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
-    SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX
 
-    Shared<asts::IdentifierAst> Name;
+  Shared<asts::IdentifierAst> Name;
 
-    Shared<asts::TypeAst> Type;
+  Shared<asts::TypeAst> Type;
 
-    Scope *ScopeDefinedIn;
+  Scope *ScopeDefinedIn;
 
-    bool IsMutable = false;
+  bool IsMutable = false;
 
-    bool IsGeneric = false;
+  bool IsGeneric = false;
 
-    asts::utils::Visibility Visibility;
+  asts::utils::Visibility Visibility;
 
-    asts::AnnotationAst *VisibilityAnnotation = nullptr;
+  asts::AnnotationAst *VisibilityAnnotation = nullptr;
 
-    Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
+  Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
 
-    Unique<codegen::LlvmVarSymInfo> LlvmInfo;
+  Unique<codegen::LlvmVarSymInfo> LlvmInfo;
 
-    Unique<asts::Ast> CompTimeValue;
+  Unique<asts::Ast> CompTimeValue;
 
-    Shared<VariableSymbol> AliasSym;
+  Shared<VariableSymbol> AliasSym;
 
-    VariableSymbol(
-        Shared<asts::IdentifierAst> name,
-        Shared<asts::TypeAst> type,
-        Scope *ScopeDefinedIn,
-        bool is_mutable = false,
-        bool is_generic = false,
-        asts::utils::Visibility visibility = asts::utils::Visibility::kPublic);
+  VariableSymbol(
+    Shared<asts::IdentifierAst> name,
+    Shared<asts::TypeAst> type,
+    Scope *ScopeDefinedIn,
+    bool is_mutable = false,
+    bool is_generic = false,
+    asts::utils::Visibility visibility = asts::utils::Visibility::kPublic);
 
-    VariableSymbol(
-        VariableSymbol const &that);
+  VariableSymbol(
+    VariableSymbol const &that);
 
-    ~VariableSymbol() override;
+  ~VariableSymbol() override;
 
-    auto operator==(
-        VariableSymbol const &that) const
-        -> bool;
+  auto operator==(
+    VariableSymbol const &that) const
+    -> bool;
 
-    SPP_ATTR_NODISCARD auto FqName() const
-        -> Shared<asts::ExpressionAst>;
+  SPP_ATTR_NODISCARD auto FqName() const
+    -> Shared<asts::ExpressionAst>;
 };
-
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
-    SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX
 
-    Shared<asts::TypeIdentifierAst> Name;
+  Shared<asts::TypeIdentifierAst> Name;
 
-    asts::ClassPrototypeAst *Type;
+  asts::ClassPrototypeAst *Type;
 
-    Scope *LinkedScope;
+  Scope *LinkedScope;
 
-    Scope *ScopeDefinedIn;
+  Scope *ScopeDefinedIn;
 
-    Scope *ScopeModule;
+  Scope *ScopeModule;
 
-    bool IsGeneric = false;
+  bool IsGeneric = false;
 
-    Vec<Shared<asts::TypeAst>> GenericConstraints;
+  Vec<Shared<asts::TypeAst>> GenericConstraints;
 
-    bool IsDirectlyCopyable = false;
+  bool IsDirectlyCopyable = false;
 
-    Function<bool()> IsCopyable;
+  Function<bool()> IsCopyable;
 
-    asts::utils::Visibility Visibility;
+  asts::utils::Visibility Visibility;
 
-    Unique<asts::ConventionAst> Convention;
+  Unique<asts::ConventionAst> Convention;
 
-    TypeSymbol *GenericImpl;
+  TypeSymbol *GenericImpl;
 
-    Shared<codegen::LlvmTypeSymInfo> LlvmInfo;
+  Shared<codegen::LlvmTypeSymInfo> LlvmInfo;
 
-    Unique<asts::TypeStatementAst> AliasStmt;
+  Unique<asts::TypeStatementAst> AliasStmt;
 
-    Vec<Shared<TypeSymbol>> AliasedBySyms;
+  Vec<Shared<TypeSymbol>> AliasedBySyms;
 
-    bool IsDirectlyZeroType;
+  bool IsDirectlyZeroType;
 
-    Function<bool()> IsZeroType;
+  Function<bool()> IsZeroType;
 
-    TypeSymbol(
-        Shared<asts::TypeIdentifierAst> name,
-        asts::ClassPrototypeAst *type,
-        Scope *scope,
-        Scope *scope_defined_in,
-        Scope *scope_module = nullptr,
-        bool is_generic = false,
-        bool is_directly_copyable = false,
-        asts::utils::Visibility visibility = asts::utils::Visibility::kPublic,
-        Unique<asts::ConventionAst> &&convention = nullptr,
-        Vec<Shared<asts::TypeAst>> const &generic_constraints = {});
+  TypeSymbol(
+    Shared<asts::TypeIdentifierAst> name,
+    asts::ClassPrototypeAst *type,
+    Scope *scope,
+    Scope *scope_defined_in,
+    Scope *scope_module = nullptr,
+    bool is_generic = false,
+    bool is_directly_copyable = false,
+    asts::utils::Visibility visibility = asts::utils::Visibility::kPublic,
+    Unique<asts::ConventionAst> &&convention = nullptr,
+    Vec<Shared<asts::TypeAst>> const &generic_constraints = {});
 
-    TypeSymbol(
-        TypeSymbol const &that);
+  TypeSymbol(
+    TypeSymbol const &that);
 
-    ~TypeSymbol() override;
+  ~TypeSymbol() override;
 
-    auto operator==(
-        TypeSymbol const &that) const
-        -> bool;
+  auto operator==(
+    TypeSymbol const &that) const
+    -> bool;
 
-    SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = true) const
-        -> Shared<asts::TypeAst>;
+  SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = true) const
+    -> Shared<asts::TypeAst>;
 };
 
-
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::NamespaceSymbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::VariableSymbol)
+
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::TypeSymbol)

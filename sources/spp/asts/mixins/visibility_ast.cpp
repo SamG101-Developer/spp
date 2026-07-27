@@ -6,7 +6,7 @@ import spp.asts.utils.visibility;
 
 SPP_MOD_BEGIN
 spp::asts::mixins::VisibilityAst::VisibilityAst() :
-    Visibility(utils::Visibility::kPrivate, nullptr) {
+  Visibility(utils::Visibility::kPrivate, nullptr) {
 }
 
 spp::asts::mixins::VisibilityAst::~VisibilityAst() = default;

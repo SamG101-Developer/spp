@@ -4,5 +4,5 @@ module;
 export module tomlpp;
 
 export namespace toml {
-    using ::toml::parse_file;
+  using ::toml::parse_file;
 }

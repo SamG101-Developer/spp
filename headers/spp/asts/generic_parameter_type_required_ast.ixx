@@ -7,24 +7,23 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct GenericParameterTypeRequiredAst;
+  SPP_EXP_CLS struct GenericParameterTypeRequiredAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAst {
-    /**
-     * Construct the GenericParameterTypeRequiredAst with the arguments matching the members.
-     * @param name The name of the generic type parameter.
-     * @param constraints The optional inline constraints for the generic type parameter.
-     *
-     * @note This constructor just calls the GenericParameterTypeAst constructor with the same arguments, but is defined
-     * for uniformity with the other parameter variants.
-     */
-    GenericParameterTypeRequiredAst(
-        decltype(Name) name,
-        decltype(Constraints) &&constraints);
+  /**
+   * Construct the GenericParameterTypeRequiredAst with the arguments matching the members.
+   * @param name The name of the generic type parameter.
+   * @param constraints The optional inline constraints for the generic type parameter.
+   *
+   * @note This constructor just calls the GenericParameterTypeAst constructor with the same arguments, but is defined
+   * for uniformity with the other parameter variants.
+   */
+  GenericParameterTypeRequiredAst(
+    decltype(Name) name,
+    decltype(Constraints) &&constraints);
 
-    ~GenericParameterTypeRequiredAst() override;
+  ~GenericParameterTypeRequiredAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 };

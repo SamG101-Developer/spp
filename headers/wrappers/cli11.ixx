@@ -4,8 +4,8 @@ module;
 export module cli11;
 
 export namespace CLI {
-    using ::CLI::App;
-    using ::CLI::ConfigBase;
-    using ::CLI::Formatter;
-    using ::CLI::IsMember;
+  using ::CLI::App;
+  using ::CLI::ConfigBase;
+  using ::CLI::Formatter;
+  using ::CLI::IsMember;
 }

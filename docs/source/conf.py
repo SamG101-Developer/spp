@@ -6,21 +6,31 @@ from pygments.token import Keyword, Name, String, Number, Operator, Punctuation,
 from sphinx.application import Sphinx
 
 sys.path.insert(0, os.path.abspath("_static/style"))
-
-# -- Project information -----------------------------------------------------
+sys.path.insert(0, os.path.abspath("_ext"))
 
 project = 's++'
 copyright = '2025, Sam Gardner'
 author = 'Sam Gardner'
 release = '0.1.0'
 
-# -- General configuration ---------------------------------------------------
-
 templates_path = ['_templates']
 exclude_patterns = []
 
 extensions = [
-    "breathe"
+    "breathe",
+    "myst_parser",
+    "flatten_namespaces",
+]
+
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
+
+myst_enable_extensions = [
+    "colon_fence",
+    "deflist",
+    "html_image",
 ]
 
 breathe_projects = {
@@ -29,7 +39,10 @@ breathe_projects = {
 
 breathe_default_project = "s++"
 
-# -- Options for HTML output -------------------------------------------------
+suppress_warnings = [
+    "duplicate_declaration.cpp",
+]
+
 html_theme = "furo"
 html_theme_options = {
     "dark_css_variables": {
@@ -46,8 +59,6 @@ html_css_files = [
 ]
 
 
-# -- Custom lexer class ------------------------------------------------------
-
 class SppSphinxLexer(RegexLexer):
     name = "S++"
     aliases = ["spp", "s++"]
@@ -58,8 +69,8 @@ class SppSphinxLexer(RegexLexer):
             (r"\b(cls|fun|cor|sup|ext|mut|use|cmp|let|type|self|Self|case|of|loop|iter|in|else|gen|ret|exit|skip|is|as|or|and|not|async|true|false|res|caps|iter)\b", Keyword),
             (r"\b\d+\b", Number),
             (r"\"[^\"]*\"", String),
-            (r"[\+\-\*/%=\?<>&!]", Operator),
-            (r"[\(\)\{\}\[\]:,@\.(->)]", Punctuation),
+            (r"[\+\-\*/%=\?<>&!\|\^]", Operator),
+            (r"[\(\)\{\}\[\]:,@\.(->);]", Punctuation),
             (r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", Name),
             (r"\s+", Text),
             (r"#.*$", Comment.Singleline),
@@ -71,6 +82,6 @@ class SppSphinxLexer(RegexLexer):
 pygments_dark_style = "custom.SppSphinxStyle"
 
 
-# -- Modify the setup --------------------------------------------------------
-# def setup(app: Sphinx) -> None:
-#     app.add_lexer("S++", SppSphinxLexer)
+def setup(app: Sphinx) -> None:
+    for alias in ("spp", "s++", "S++"):
+        app.add_lexer(alias, SppSphinxLexer)

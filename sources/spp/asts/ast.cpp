@@ -12,48 +12,48 @@ spp::asts::Ast::Ast() = default;
 spp::asts::Ast::~Ast() = default;
 
 auto spp::asts::Ast::Size() const
-    -> std::size_t {
-    return PosEnd() - PosStart();
+  -> std::size_t {
+  return PosEnd() - PosStart();
 }
 
 auto spp::asts::Ast::AnkerlHash() const
-    -> std::size_t {
-    return 0uz;
+  -> std::size_t {
+  return 0uz;
 }
 
 auto spp::asts::Ast::Stage1_PreProcess(
-    Ast *ctx)
-    -> void {
-    _Ctx = ctx;
+  Ast *ctx)
+  -> void {
+  _Ctx = ctx;
 }
 
 auto spp::asts::Ast::Stage2_GenTopLvlScopes(
-    ScopeManager *sm,
-    CompilerMetaData *)
-    -> void {
-    _Scope = sm->CurrentScope;
+  ScopeManager *sm,
+  CompilerMetaData *)
+  -> void {
+  _Scope = sm->CurrentScope;
 }
 
 auto spp::asts::Ast::GetAstCtx() const
-    -> Ast* {
-    return _Ctx;
+  -> Ast* {
+  return _Ctx;
 }
 
 auto spp::asts::Ast::GetAstScope() const
-    -> analyse::scopes::Scope* {
-    return _Scope;
+  -> analyse::scopes::Scope* {
+  return _Scope;
 }
 
 auto spp::asts::Ast::SetAstCtx(
-    Ast *ctx)
-    -> void {
-    _Ctx = ctx;
+  Ast *ctx)
+  -> void {
+  _Ctx = ctx;
 }
 
 auto spp::asts::Ast::SetAstScope(
-    analyse::scopes::Scope *scope)
-    -> void {
-    _Scope = scope;
+  analyse::scopes::Scope *scope)
+  -> void {
+  _Scope = scope;
 }
 
 SPP_MOD_END

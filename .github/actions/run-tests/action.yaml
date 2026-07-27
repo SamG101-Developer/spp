@@ -1,0 +1,39 @@
+name: run-tests
+description: "Run the gtest suite through gtest-parallel and collect per-test logs."
+
+inputs:
+  output-dir:
+    description: "Directory to write per-test logs into."
+    required: false
+    default: "tests/test_output"
+  workers:
+    description: "Parallel workers; empty lets gtest-parallel pick (one per core)."
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # Cache-key versions and toolchain pins all live in ".github/versions.env".
+    - name: Load pinned versions
+      shell: bash
+      run: bash .github/scripts/lib/load-versions.sh
+
+    - name: Cache gtest-parallel
+      id: gtp-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ${{ runner.temp }}/gtest-parallel
+        key: gtest-parallel-${{ runner.os }}-v${{ env.GTEST_PARALLEL_CACHE_VERSION }}
+
+    - name: Fetch gtest-parallel (cache miss)
+      if: steps.gtp-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: git clone --depth 1 https://github.com/google/gtest-parallel.git "${RUNNER_TEMP}/gtest-parallel"
+
+    - name: Run tests
+      shell: bash
+      env:
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        WORKERS: ${{ inputs.workers }}
+      run: bash .github/scripts/run-tests/run-tests.sh

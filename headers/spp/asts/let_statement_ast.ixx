@@ -5,12 +5,11 @@ export module spp.asts.let_statement_ast;
 import spp.asts.statement_ast;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct LetStatementAst;
+  SPP_EXP_CLS struct LetStatementAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::LetStatementAst : StatementAst {
-    LetStatementAst();
+  LetStatementAst();
 
-    ~LetStatementAst() override;
+  ~LetStatementAst() override;
 };

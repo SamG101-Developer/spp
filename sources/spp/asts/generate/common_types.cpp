@@ -33,10 +33,10 @@ import genex;
     auto generics_list = UniqueVec<GenericArgumentAst>();
 
 #define ADD_TYPE_GENERIC(gn) \
-    generics_list.push_back(MakeUnique<GenericArgumentTypePositionalAst>(std::move(gn)));
+    generics_list.push_back(MakeUnique<GenericArgumentTypePositionalAst>(gn));
 
 #define ADD_COMP_GENERIC(gn) \
-    generics_list.push_back(MakeUnique<GenericArgumentCompPositionalAst>(std::move(gn)));
+    generics_list.push_back(MakeUnique<GenericArgumentCompPositionalAst>(gn));
 
 #define ADD_ALL_GENERICS()                                                                            \
     for (auto &&inner_type : inner_types) {                                                           \
@@ -47,453 +47,514 @@ import genex;
     auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_list), nullptr);
 
 auto spp::asts::generate::common_types::F8(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("F8");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("F8");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::F16(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("F16");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("F16");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::F32(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("F32");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("F32");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::F64(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("F64");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("F64");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::F128(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("F128");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("F128");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::S8(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("S8");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("S8");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::S16(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("S16");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("S16");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::S32(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("S32");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("S32");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::S64(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("S64");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("S64");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::S128(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("S128");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("S128");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::S256(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("S256");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("S256");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::SSize(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("SSize");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("SSize");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::U8(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("U8");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("U8");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::U16(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("U16");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("U16");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::U32(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("U32");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("U32");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::U64(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("U64");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("U64");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::U128(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("U128");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("U128");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::U256(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("U256");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("U256");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::USize(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("USize");
-    ADD_NAMESPACE("number");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("USize");
+  ADD_NAMESPACE("number");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::CharType(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("Char");
-    ADD_NAMESPACE("char");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("Char");
+  ADD_NAMESPACE("char");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::VoidType(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("Void");
-    ADD_NAMESPACE("void");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("Void");
+  ADD_NAMESPACE("void");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::BooleanType(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("Bool");
-    ADD_NAMESPACE("boolean");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("Bool");
+  ADD_NAMESPACE("boolean");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::StringType(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("Str");
-    ADD_NAMESPACE("string");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("Str");
+  ADD_NAMESPACE("string");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::StringViewType(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("StrView");
-    ADD_NAMESPACE("string_view");
-    ADD_NAMESPACE("std");
-    ADD_BORROW()
-    FINISH_TYPE();
+  MAKE_TYPE("StrView");
+  ADD_NAMESPACE("string_view");
+  ADD_NAMESPACE("std");
+  ADD_BORROW()
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::NeverType(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("Never");
-    ADD_NAMESPACE("never");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("Never");
+  ADD_NAMESPACE("never");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto spp::asts::generate::common_types::CopyType(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("Copy");
-    ADD_NAMESPACE("copy");
-    ADD_NAMESPACE("std");
-    FINISH_TYPE();
+  MAKE_TYPE("Copy");
+  ADD_NAMESPACE("copy");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
-auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAst> elem_type, Unique<ExpressionAst> &&size) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(elem_type)
-    ADD_COMP_GENERIC(size)
-    FINISH_GENERICS()
+auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAst> elem_type,
+  Unique<ExpressionAst> &&size) -> Shared<TypeAst> {
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(elem_type)
+  ADD_COMP_GENERIC(std::move(size))
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Arr")
-    ADD_NAMESPACE("array")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Arr")
+  ADD_NAMESPACE("array")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::ViewU8Type(const std::size_t pos) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(U8(pos))
-    FINISH_GENERICS()
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(U8(pos))
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("View")
-    ADD_NAMESPACE("view")
-    ADD_NAMESPACE("std")
-    ADD_BORROW()
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("View")
+  ADD_NAMESPACE("view")
+  ADD_NAMESPACE("std")
+  ADD_BORROW()
+  FINISH_TYPE()
 }
 
-auto spp::asts::generate::common_types::VariantType(std::size_t pos, SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_ALL_GENERICS()
-    FINISH_GENERICS()
+auto spp::asts::generate::common_types::VariantType(std::size_t pos,
+  SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst> {
+  MAKE_GENERICS()
+  ADD_ALL_GENERICS()
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Var")
-    ADD_NAMESPACE("variant")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Var")
+  ADD_NAMESPACE("variant")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
-auto spp::asts::generate::common_types::TupleType(std::size_t pos, SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_ALL_GENERICS()
-    FINISH_GENERICS()
+auto spp::asts::generate::common_types::TupleType(std::size_t pos,
+  SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst> {
+  MAKE_GENERICS()
+  ADD_ALL_GENERICS()
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Tup")
-    ADD_NAMESPACE("tuple")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Tup")
+  ADD_NAMESPACE("tuple")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
-auto spp::asts::generate::common_types::TryType(std::size_t pos, Shared<TypeAst> output_type, Shared<TypeAst> residual_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(output_type)
-    ADD_TYPE_GENERIC(residual_type)
-    FINISH_GENERICS()
+auto spp::asts::generate::common_types::TryType(std::size_t pos, Shared<TypeAst> output_type,
+  Shared<TypeAst> residual_type) -> Shared<TypeAst> {
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(output_type)
+  ADD_TYPE_GENERIC(residual_type)
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Try")
-    ADD_NAMESPACE("try")
-    ADD_NAMESPACE("ops")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Try")
+  ADD_NAMESPACE("try")
+  ADD_NAMESPACE("ops")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::FutureType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(inner_type)
-    FINISH_GENERICS()
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(inner_type)
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Fut")
-    ADD_NAMESPACE("future")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Fut")
+  ADD_NAMESPACE("future")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::OptionType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(inner_type)
-    FINISH_GENERICS()
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(inner_type)
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Opt")
-    ADD_NAMESPACE("opt")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Opt")
+  ADD_NAMESPACE("opt")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::MemoryType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(inner_type)
-    FINISH_GENERICS()
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(inner_type)
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Memory")
-    ADD_NAMESPACE("memory")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Memory")
+  ADD_NAMESPACE("memory")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::SingleType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(inner_type)
-    FINISH_GENERICS()
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(inner_type)
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Single")
-    ADD_NAMESPACE("single")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Single")
+  ADD_NAMESPACE("single")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::ViewType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(inner_type)
-    FINISH_GENERICS()
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(inner_type)
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("View")
-    ADD_NAMESPACE("view")
-    ADD_NAMESPACE("std")
-    ADD_BORROW()
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("View")
+  ADD_NAMESPACE("view")
+  ADD_NAMESPACE("std")
+  ADD_BORROW()
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::SomeType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(inner_type)
-    FINISH_GENERICS()
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(inner_type)
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Some")
-    ADD_NAMESPACE("option")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Some")
+  ADD_NAMESPACE("option")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::None(std::size_t pos) -> Shared<TypeAst> {
-    MAKE_TYPE("None")
-    ADD_NAMESPACE("option")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE("None")
+  ADD_NAMESPACE("option")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
-auto spp::asts::generate::common_types::GenType(std::size_t pos, Shared<TypeAst> yield_type, Shared<TypeAst> send_type) -> Shared<TypeAst> {
-    MAKE_GENERICS()
-    ADD_TYPE_GENERIC(yield_type)
-    ADD_TYPE_GENERIC(send_type ? send_type : VoidType(pos))
-    FINISH_GENERICS()
+auto spp::asts::generate::common_types::GenType(std::size_t pos, Shared<TypeAst> yield_type,
+  Shared<TypeAst> send_type) -> Shared<TypeAst> {
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(yield_type)
+  ADD_TYPE_GENERIC(send_type ? send_type : VoidType(pos))
+  FINISH_GENERICS()
 
-    MAKE_TYPE_WITH_GN("Gen")
-    ADD_NAMESPACE("generator")
-    ADD_NAMESPACE("std")
-    FINISH_TYPE()
+  MAKE_TYPE_WITH_GN("Gen")
+  ADD_NAMESPACE("generator")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto spp::asts::generate::common_types::GenOnceType(std::size_t pos, Shared<TypeAst> yield_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(yield_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  // Todo: MAcro these!
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(yield_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("GenOnce"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("generator")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("GenOnce"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("generator")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
 auto spp::asts::generate::common_types::IndexMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("IndexMut"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("IndexMut"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
 auto spp::asts::generate::common_types::IndexRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("IndexRef"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("IndexRef"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
 auto spp::asts::generate::common_types::SliceMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceMut"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceMut"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
 auto spp::asts::generate::common_types::SliceRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceRef"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceRef"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
-auto spp::asts::generate::common_types::FunRefType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(2);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
-    generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+auto spp::asts::generate::common_types::FunRefType(std::size_t pos, Shared<TypeAst> param_types,
+  Shared<TypeAst> ret_type) -> Shared<TypeAst> {
+  auto generics_lst = UniqueVec<GenericArgumentAst>(2);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
+  generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunRef"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunRef"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
-auto spp::asts::generate::common_types::FunMutType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(2);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
-    generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+auto spp::asts::generate::common_types::FunMutType(std::size_t pos, Shared<TypeAst> param_types,
+  Shared<TypeAst> ret_type) -> Shared<TypeAst> {
+  auto generics_lst = UniqueVec<GenericArgumentAst>(2);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
+  generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunMut"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunMut"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
-auto spp::asts::generate::common_types::FunMovType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(2);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
-    generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+auto spp::asts::generate::common_types::FunMovType(std::size_t pos, Shared<TypeAst> param_types,
+  Shared<TypeAst> ret_type) -> Shared<TypeAst> {
+  auto generics_lst = UniqueVec<GenericArgumentAst>(2);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
+  generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunMov"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunMov"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
 auto spp::asts::generate::common_types::ForwardRefType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FwdRef"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("fwd")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FwdRef"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("fwd")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
 auto spp::asts::generate::common_types::ForwardMutType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
-    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FwdMut"), std::move(generics));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("fwd")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr), std::move(type));
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FwdMut"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("fwd")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
 }
 
 auto spp::asts::generate::common_types::SelfType(std::size_t pos) -> Shared<TypeAst> {
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Self"), nullptr);
-    return type;
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Self"), nullptr);
+  return type;
 }

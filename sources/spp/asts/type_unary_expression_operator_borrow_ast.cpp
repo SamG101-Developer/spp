@@ -9,70 +9,70 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorrowAst(
-    decltype(Conv) &&conv) :
-    Conv(std::move(conv)) {
+  decltype(Conv) &&conv) :
+  Conv(std::move(conv)) {
 }
 
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::EqualsOpBorrow(
-    TypeUnaryExpressionOperatorBorrowAst const &other) const
-    -> Ordering {
-    // Equality is based on the convention.
-    return *Conv == other.Conv.get() ? Ordering::equal : Ordering::less;
+  TypeUnaryExpressionOperatorBorrowAst const &other) const
+  -> Ordering {
+  // Equality is based on the convention.
+  return *Conv == other.Conv.get() ? Ordering::equal : Ordering::less;
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::Equals(
-    TypeUnaryExpressionOperatorAst const &other) const
-    -> Ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.EqualsOpBorrow(*this);
+  TypeUnaryExpressionOperatorAst const &other) const
+  -> Ordering {
+  // Double dispatch to the appropriate equals method.
+  return other.EqualsOpBorrow(*this);
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::PosStart() const
-    -> std::size_t {
-    // Use the convention.
-    return Conv->PosStart();
+  -> std::size_t {
+  // Use the convention.
+  return Conv->PosStart();
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::PosEnd() const
-    -> std::size_t {
-    // Use the convention.
-    return Conv->PosEnd();
+  -> std::size_t {
+  // Use the convention.
+  return Conv->PosEnd();
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(
-        AstClone(Conv));
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  return MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(
+    AstClone(Conv));
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(Conv);
-    SPP_STRING_END;
+  -> Str {
+  SPP_STRING_START;
+  SPP_STRING_APPEND(Conv);
+  SPP_STRING_END;
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::NsParts() const
-    -> Vec<Shared<const IdentifierAst>> {
-    return {};
+  -> Vec<Shared<const IdentifierAst>> {
+  return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::NsParts()
-    -> Vec<Shared<IdentifierAst>> {
-    return {};
+  -> Vec<Shared<IdentifierAst>> {
+  return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> {
-    return {};
+  -> Vec<Shared<const TypeIdentifierAst>> {
+  return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> {
-    return {};
+  -> Vec<Shared<TypeIdentifierAst>> {
+  return {};
 }
 
 SPP_MOD_END

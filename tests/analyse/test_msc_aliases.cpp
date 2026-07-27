@@ -97,7 +97,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_simple, R"(
     sup S32 ext From[Str] {
-        !public fun from(that: Str) -> Self {
+        fun from(that: Str) -> Self {
             ret 0
         }
     }
@@ -115,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[ZZ] = Vec[ZZ]
 
     sup MyVec[S32] ext From[Str] {
-        !public fun from(that: Str) -> Self {
+        fun from(that: Str) -> Self {
             ret MyVec[S32]::new()
         }
     }
@@ -135,7 +135,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_number, R"(
     sup Str ext From[S32] {
-        !public fun from(that: S32) -> Self {
+        fun from(that: S32) -> Self {
             ret Str::from("test")
         }
     }
@@ -342,11 +342,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
     fun f(s: Str, t: Str) -> Void {
-        case s is Str(mut data) {
-            data = Vec[std::number::U8]::new()
+        case s is Str(mut bytes) {
+            bytes = Vec[U8]::new()
         }
-        case t is Str(mut data) {
-            data = Vec[std::number::U8]::new()
+        case t is Str(mut bytes) {
+            bytes = Vec[U8]::new()
         }
     }
 )");
@@ -354,14 +354,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = Vec[ZZ]
+    cls A[T] {
+        buffer: std::memory::raw_buf::RawBuf[U8]
+    }
+    type MyVec[ZZ] = A[ZZ]
 
     fun f(v: MyVec[U8], v2: MyVec[U8]) -> Void {
-        case v is MyVec[U8](mut buf) {
-            buf = Slice[U8]()
+        case v is MyVec[U8](mut buffer, ..) {
+            buffer = std::memory::raw_buf::RawBuf[U8]()
         }
-        case v2 is Vec[U8](mut buf) {
-            buf = Slice[U8]()
+        case v2 is A[U8](mut buffer, ..) {
+            buffer = std::memory::raw_buf::RawBuf[U8]()
         }
     }
 )");
@@ -371,16 +374,20 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_alias_number, R"(
     fun f(n: S32) -> Void {
         case n is S32() { }
-        case n is std::number::S32() { }
+        case n is S32() { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
-    fun f(s: Str) -> Void {
-        let Str(mut data) = s
-        data = Vec[std::number::U8]::new()
+    cls A {
+        bytes: Vec[U8]
+    }
+
+    fun f(s: A) -> Void {
+        let A(mut bytes) = s
+        bytes = Vec[U8]::new()
     }
 )");
 
@@ -558,7 +565,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_number, R"(
     fun f() -> Void {
         let n: S32 = S32()
-        let m: std::number::S32 = n
+        let m: S32 = n
     }
 )");
 

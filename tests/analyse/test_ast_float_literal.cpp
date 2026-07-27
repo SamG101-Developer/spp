@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_f16_lower_bound,
     SppFloatOutOfBoundsError, R"(
     fun f() -> Void {
-        let x = -65501.0_f16
+        let x = -65505.0_f16
     }
 )");
 
@@ -48,7 +48,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_f16_upper_bound,
     SppFloatOutOfBoundsError, R"(
     fun f() -> Void {
-        let x = 65501.0_f16
+        let x = 65505.0_f16
     }
 )");
 

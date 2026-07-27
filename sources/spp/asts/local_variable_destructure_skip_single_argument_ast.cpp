@@ -9,48 +9,48 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(
-    decltype(TokUnderscore) &&tok_underscore) :
-    TokUnderscore(std::move(tok_underscore)) {
+  decltype(TokUnderscore) &&tok_underscore) :
+  TokUnderscore(std::move(tok_underscore)) {
 }
 
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::~LocalVariableDestructureSkipSingleArgumentAst() = default;
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::PosStart() const
-    -> std::size_t {
-    // Use the "_" token.
-    return TokUnderscore->PosStart();
+  -> std::size_t {
+  // Use the "_" token.
+  return TokUnderscore->PosStart();
 }
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::PosEnd() const
-    -> std::size_t {
-    // Use the "_" token.
-    return TokUnderscore->PosEnd();
+  -> std::size_t {
+  // Use the "_" token.
+  return TokUnderscore->PosEnd();
 }
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<LocalVariableDestructureSkipSingleArgumentAst>(
-        AstClone(TokUnderscore));
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  return MakeUnique<LocalVariableDestructureSkipSingleArgumentAst>(
+    AstClone(TokUnderscore));
 }
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(TokUnderscore);
-    SPP_STRING_END;
+  -> Str {
+  SPP_STRING_START;
+  SPP_STRING_APPEND_RAW("_");
+  SPP_STRING_END;
 }
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> {
-    // There are no names for this "_" single skip.
-    return {};
+  -> Vec<Shared<IdentifierAst>> {
+  // There are no names for this "_" single skip.
+  return {};
 }
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractName() const
-    -> Shared<IdentifierAst> {
-    // There is no single name for this "_" single skip.
-    return analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
+  -> Shared<IdentifierAst> {
+  // There is no single name for this "_" single skip.
+  return analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
 }
 
 SPP_MOD_END

@@ -4,47 +4,45 @@ module;
 export module spp.asts.type_ast;
 import spp.asts.primary_expression_ast;
 import spp.asts.mixins.abstract_type_ast;
-import spp.utils.cache;
 import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS struct TypeSymbol;
+  SPP_EXP_CLS class Scope;
+  SPP_EXP_CLS struct TypeSymbol;
 }
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ConventionAst;
-    SPP_EXP_CLS struct GenericArgumentAst;
-    SPP_EXP_CLS struct GenericArgumentGroupAst;
-    SPP_EXP_CLS struct GenericParameterAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypePostfixExpressionAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionAst;
+  SPP_EXP_CLS struct ConventionAst;
+  SPP_EXP_CLS struct GenericArgumentAst;
+  SPP_EXP_CLS struct GenericArgumentGroupAst;
+  SPP_EXP_CLS struct GenericParameterAst;
+  SPP_EXP_CLS struct IdentifierAst;
+  SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct TypeIdentifierAst;
+  SPP_EXP_CLS struct TypePostfixExpressionAst;
+  SPP_EXP_CLS struct TypeUnaryExpressionAst;
 }
 
 /**
  * The TypeAst is a base class for all type-related AST nodes in the SPP language.
  */
-SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, EnableLocalSharedFromThis<TypeAst> {
-    SPP_GCC_VTABLE_FIX
+SPP_EXP_CLS struct spp::asts::TypeAst :
+  PrimaryExpressionAst, mixins::AbstractTypeAst, EnableLocalSharedFromThis<TypeAst> {
+  SPP_GCC_VTABLE_FIX
 
-    mutable utils::Cache<analyse::scopes::Scope const*, Weak<analyse::scopes::TypeSymbol>> CachedTypeSymbols;
+  TypeAst();
 
-    TypeAst();
+  ~TypeAst() override;
 
-    ~TypeAst() override;
+  SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept -> bool { return false; }
 
-    SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept -> bool { return false; }
-
-    SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept -> bool { return false; }
+  SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept -> bool { return false; }
 
 protected:
-    mutable Shared<TypeAst> _CachedWithoutGenerics;
+  mutable Shared<TypeAst> _CachedWithoutGenerics;
 
-    mutable Str _CachedStringification;
+  mutable Str _CachedStringification;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeAst)

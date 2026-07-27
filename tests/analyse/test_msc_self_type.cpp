@@ -1,10 +1,5 @@
 #include "../test_macros.hpp"
 
-// The `Self` type is the "implementor" type, resolving to whichever class a `sup` block is attached
-// to (including its generic arguments). These tests exercise `Self` in every position a type can be
-// used. When extending a base that uses `Self`, the implementor must also spell it `Self` (it matches
-// the base's `Self`, not the substituted implementor type) - this is stricter than Rust.
-
 // --- Self in method signatures --------------------------------------------------------------------
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(

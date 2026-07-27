@@ -1,0 +1,28 @@
+name: detect-changes
+description: "Decide whether this ref changed anything that can affect a build, test or analysis result."
+
+inputs:
+  base:
+    description: "Commit to diff from. Empty, all-zeroes or unreachable means 'assume everything changed'."
+    required: false
+    default: ""
+  head:
+    description: "Commit to diff to."
+    required: false
+    default: ${{ github.sha }}
+
+outputs:
+  code:
+    description: "'true' when a compile/test/analysis-affecting path changed."
+    value: ${{ steps.filter.outputs.code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Filter changed paths
+      id: filter
+      shell: bash
+      env:
+        BASE_SHA: ${{ inputs.base }}
+        HEAD_SHA: ${{ inputs.head }}
+      run: bash .github/scripts/detect-changes/filter-changed-paths.sh

@@ -39,36 +39,30 @@ using sys::S_ISDIR;
 #include <gtest/gtest.h>
 #include "test_boot.hpp"
 
-
 #define SPP_TEST_SHOULD_PASS_SYNTACTIC(name, code) \
     TEST(SppParser, name) {                        \
         auto ast = INJECT_CODE(code, parse);       \
     }
-
 
 #define SPP_TEST_SHOULD_FAIL_SYNTACTIC(name, code)                                  \
     TEST(SppParser, name) {                                                         \
         EXPECT_THROW(INJECT_CODE(code, parse), spp::parse::errors::SppSyntaxError); \
     }
 
-
 #define SPP_TEST_SHOULD_PASS_SEMANTIC(group, name, code) \
     TEST(group, name) {                                  \
         build_temp_project(code);                        \
     }
-
 
 #define SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(group, name, code) \
     TEST(group, name) {                                          \
         build_temp_project(code, false);                         \
     }
 
-
 #define SPP_TEST_SHOULD_FAIL_SEMANTIC(group, name, error, code)              \
     TEST(group, name) {                                                      \
         EXPECT_THROW(build_temp_project(code), spp::analyse::errors::error); \
     }
-
 
 #define SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(group, name, error, code)             \
     TEST(group, name) {                                                             \

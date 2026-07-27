@@ -6,23 +6,22 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
 namespace spp::asts::mixins {
-    SPP_EXP_CLS struct TempTypeAst;
+  SPP_EXP_CLS struct TempTypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::mixins::TempTypeAst {
-    TempTypeAst();
+  TempTypeAst();
 
-    virtual ~TempTypeAst();
+  virtual ~TempTypeAst();
 
-    /**
+  /**
      * Convert this temporary type ast into a different type ast. For example, converting the array type st, parsed from
      * @code [Type, 3_uz]@endcode to @code std::array::Arr[T=Type, n=3_uz]@endcode.
      * @return
      */
-    virtual auto Convert() -> Unique<TypeAst> = 0;
+  virtual auto Convert() -> Unique<TypeAst> = 0;
 };

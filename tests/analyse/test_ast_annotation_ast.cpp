@@ -24,7 +24,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         !abstract_method
-        fun f() -> A { }
+        fun f() -> Void { }
     }
 )");
 

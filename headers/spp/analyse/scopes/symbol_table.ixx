@@ -8,87 +8,90 @@ import ankerl;
 import std;
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS template <typename I, typename S>
-    class IndividualSymbolTable;
+  SPP_EXP_CLS
+  template <typename I, typename S>
+  class IndividualSymbolTable;
 
-    SPP_EXP_CLS class SymbolTable;
-    SPP_EXP_CLS struct NamespaceSymbol;
-    SPP_EXP_CLS struct TypeSymbol;
-    SPP_EXP_CLS struct VariableSymbol;
+  SPP_EXP_CLS class SymbolTable;
+  SPP_EXP_CLS struct NamespaceSymbol;
+  SPP_EXP_CLS struct TypeSymbol;
+  SPP_EXP_CLS struct VariableSymbol;
 
-    struct TransparentStringHash {
-        using is_transparent = void;
-        using is_avalanching = void;
+  struct TransparentStringHash {
+    using is_transparent = void;
+    using is_avalanching = void;
 
-        auto operator()(const StrView sv) const noexcept -> std::uint64_t {
-            return ankerl::unordered_dense::hash<StrView>{}(sv);
-        }
-    };
+    auto operator()(const StrView sv) const noexcept -> std::uint64_t {
+      return ankerl::unordered_dense::hash<StrView>{}(sv);
+    }
+  };
 }
 
 namespace spp::asts {
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
+  SPP_EXP_CLS struct IdentifierAst;
+  SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
-SPP_EXP_CLS template <typename I, typename S>
+SPP_EXP_CLS
+
+template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    ankerl::unordered_dense::map<Str, Shared<S>, TransparentStringHash, std::equal_to<>> _Table;
+  ankerl::unordered_dense::map<Str, Shared<S>, TransparentStringHash, std::equal_to<>> _Table;
 
 public:
-    IndividualSymbolTable();
+  IndividualSymbolTable();
 
-    /**
-     * Light copy
-     * @param that
-     */
-    IndividualSymbolTable(IndividualSymbolTable const &that);
+  /**
+   * Shallow copy.
+   * @param that
+   */
+  IndividualSymbolTable(IndividualSymbolTable const &that);
 
-    ~IndividualSymbolTable();
+  ~IndividualSymbolTable();
 
-    /**
-     * Deep copy
-     * @param that
-     * @return
-     */
-    auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
+  /**
+   * Deep copy.
+   * @param that
+   * @return
+   */
+  auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
-    SPP_ATTR_HOT
-    auto Add(Shared<I> const &sym_name, Shared<S> const &sym) -> void;
+  SPP_ATTR_HOT
+  auto Add(I const *sym_name, Shared<S> const &sym) -> void;
 
-    auto Rem(Shared<I> const &sym_name) -> Shared<S>;
+  auto Rem(I const *sym_name) -> Shared<S>;
 
-    SPP_ATTR_NODISCARD SPP_ATTR_HOT
-    auto Get(Shared<I> const &sym_name) const -> Shared<S>;
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT
+  auto Get(I const *sym_name) const -> Shared<S>;
 
-    SPP_ATTR_NODISCARD
-    auto Has(Shared<I> const &sym_name) const -> bool;
+  SPP_ATTR_NODISCARD
+  auto Has(I const *sym_name) const -> bool;
 
-    SPP_ATTR_NODISCARD
-    auto All() const -> Vec<Shared<S>>;
+  SPP_ATTR_NODISCARD
+  auto All() const -> Vec<S*>;
 };
 
 SPP_EXP_CLS class spp::analyse::scopes::SymbolTable {
 public:
-    SymbolTable();
+  SymbolTable();
 
-    /**
-     * Shallow copy
-     * @param that
-     */
-    SymbolTable(SymbolTable const &that);
+  /**
+   * Shallow copy.
+   * @param that
+   */
+  SymbolTable(SymbolTable const &that);
 
-    ~SymbolTable();
+  ~SymbolTable();
 
-    /**
-     * Deep copy
-     * @param that
-     * @return
-     */
-    auto operator=(SymbolTable const &that) -> SymbolTable&;
+  /**
+   * Deep copy.
+   * @param that
+   * @return
+   */
+  auto operator=(SymbolTable const &that) -> SymbolTable&;
 
-    IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> NsTbl;
-    IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> TypeTbl;
-    IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> VarTbl;
+  IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> NsTbl;
+  IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> TypeTbl;
+  IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> VarTbl;
 };

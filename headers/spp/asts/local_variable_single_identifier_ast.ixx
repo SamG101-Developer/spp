@@ -9,13 +9,12 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ConventionAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct LocalVariableSingleIdentifierAst;
-    SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
-    SPP_EXP_CLS struct TokenAst;
+  SPP_EXP_CLS struct ConventionAst;
+  SPP_EXP_CLS struct IdentifierAst;
+  SPP_EXP_CLS struct LocalVariableSingleIdentifierAst;
+  SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
+  SPP_EXP_CLS struct TokenAst;
 }
-
 
 /**
  * The LocalVariableSingleIdentifierAst represents a local variable that is defined by a single identifier. This is used
@@ -28,57 +27,57 @@ namespace spp::asts {
  * be introducing a symbol into the local scope.
  */
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
-    /**
-     * A convention can ONLY be attached via the @c case expression pattern matching system. This allows borrows to be
-     * introduced into an inner scope (the case branch scope), and is needed in this class as-well as
-     * @c CasePatternVariantSingleIdentifierAst, for mutability checking reasons.
-     */
-    Unique<ConventionAst> Conv;
+  /**
+   * A convention can ONLY be attached via the @c case expression pattern matching system. This allows borrows to be
+   * introduced into an inner scope (the case branch scope), and is needed in this class as-well as
+   * @c CasePatternVariantSingleIdentifierAst, for mutability checking reasons.
+   */
+  Unique<ConventionAst> Conv;
 
-    /**
-     * The optional mutability token. If the @c mut keyword was provided, then this will be given a value. Otherwise, it
-     * will be @c nullptr. This is used to indicate that the variable is mutable, and can be modified after being
-     * assigned its initial value.
-     */
-    Unique<TokenAst> TokMut;
+  /**
+   * The optional mutability token. If the @c mut keyword was provided, then this will be given a value. Otherwise, it
+   * will be @c nullptr. This is used to indicate that the variable is mutable, and can be modified after being
+   * assigned its initial value.
+   */
+  Unique<TokenAst> TokMut;
 
-    /**
-     * The name of the local variable. This is the identifier that is used to refer to the variable in the local scope.
-     * It will be saved against the symbol in the symbol table of the current scope.
-     */
-    Shared<IdentifierAst> Name;
+  /**
+   * The name of the local variable. This is the identifier that is used to refer to the variable in the local scope.
+   * It will be saved against the symbol in the symbol table of the current scope.
+   */
+  Shared<IdentifierAst> Name;
 
-    /**
-     * The optional alias for the local variable. This is used to create an alias for the variable, which can be used to
-     * refer to the variable by a different name. This is useful in destructuring, to prevent conflicting variables when
-     * types have the same name attributes: @code case my_value is Some(val as alias)@endcode.
-     */
-    Unique<LocalVariableSingleIdentifierAliasAst> Alias;
+  /**
+   * The optional alias for the local variable. This is used to create an alias for the variable, which can be used to
+   * refer to the variable by a different name. This is useful in destructuring, to prevent conflicting variables when
+   * types have the same name attributes: @code case my_value is Some(val as alias)@endcode.
+   */
+  Unique<LocalVariableSingleIdentifierAliasAst> Alias;
 
-    /**
-     * Construct the LocalVariableSingleIdentifierAst with the arguments matching the members.
-     * @param tok_mut The optional mutability token.
-     * @param name The name of the local variable.
-     * @param alias The optional alias for the local variable.
-     */
-    LocalVariableSingleIdentifierAst(
-        decltype(TokMut) &&tok_mut,
-        decltype(Name) name,
-        decltype(Alias) &&alias);
+  /**
+   * Construct the LocalVariableSingleIdentifierAst with the arguments matching the members.
+   * @param tok_mut The optional mutability token.
+   * @param name The name of the local variable.
+   * @param alias The optional alias for the local variable.
+   */
+  LocalVariableSingleIdentifierAst(
+    decltype(TokMut) &&tok_mut,
+    decltype(Name) name,
+    decltype(Alias) &&alias);
 
-    ~LocalVariableSingleIdentifierAst() override;
+  ~LocalVariableSingleIdentifierAst() override;
 
-    SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+  SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 };

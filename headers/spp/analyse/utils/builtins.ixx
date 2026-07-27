@@ -6,12 +6,12 @@ import std;
 import ankerl;
 
 namespace spp::analyse::utils::builtins {
-    struct LoweredFuncImpl {
-        // Unique<spp::utils::functions::CallableBase> llvm_fn;
-        Unique<cmp_utils::CmpFn> cmp_fn;
-    };
+  struct LoweredFuncImpl {
+    // Unique<spp::utils::functions::CallableBase> llvm_fn;
+    Unique<cmp_utils::CmpFn> cmp_fn;
+  };
 
-    auto MakeBuiltinFuncMap() -> ankerl::unordered_dense::map<Str, LoweredFuncImpl>;
+  auto MakeBuiltinFuncMap() -> ankerl::unordered_dense::map<Str, LoweredFuncImpl>;
 
-    export const auto kBuiltinFuncs = MakeBuiltinFuncMap();
+  export const auto kBuiltinFuncs = MakeBuiltinFuncMap();
 }

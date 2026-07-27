@@ -1,0 +1,171 @@
+name: setup-toolchain
+description: >-
+  Install the build toolchain for the current runner: compiler, CMake, Ninja,
+  compiler cache and the project's dependencies.
+
+inputs:
+  compiler:
+    description: "Compiler family to install: gcc, clang, msvc or clang-cl."
+    required: true
+  version:
+    description: "Major version of the compiler; empty means the runner default."
+    required: false
+    default: ""
+  compiler-cache:
+    description: >-
+      Install and restore ccache/sccache. Set to 'false' for CodeQL: a cache hit skips the real
+      compiler, so the extractor never sees the translation unit and the database comes out
+      incomplete - a green scan over code that was never analysed.
+    required: false
+    default: "true"
+  cache-key-suffix:
+    description: "Extra text folded into the compiler-cache key, so variants (sanitizers, ...) do not share a cache."
+    required: false
+    default: ""
+  dependencies:
+    description: "Install the project's third-party dependencies. Set to 'false' for jobs that never configure CMake."
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # Cache-key versions and toolchain pins all live in .github/versions.env.
+    - name: Load pinned versions
+      shell: bash
+      run: bash .github/scripts/lib/load-versions.sh
+
+    # Runner images ship an older CMake (3.31.x); the project needs the pinned one to
+    # satisfy cmake_minimum_required() in CMakeLists.txt.
+    - name: Install CMake & Ninja
+      uses: lukka/get-cmake@e6906078ebd1ccb8ce51ab4626ac46a1b5a517e3
+      with:
+        cmakeVersion: ${{ env.CMAKE_VERSION }}
+        ninjaVersion: "latest"
+
+    # Compiler
+    # Linux + GCC
+    - name: Fetch llvm.sh (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/fetch-llvm-sh.sh
+
+    - name: Install GCC (Linux)
+      if: inputs.compiler == 'gcc' && runner.os == 'Linux'
+      shell: bash
+      env:
+        GCC_VERSION: ${{ inputs.version }}
+      run: bash .github/scripts/setup-toolchain/install-gcc-linux.sh
+
+    # Linux + Clang
+    - name: Install Clang (Linux)
+      if: inputs.compiler == 'clang' && runner.os == 'Linux'
+      shell: bash
+      env:
+        CLANG_VERSION: ${{ inputs.version }}
+      run: bash .github/scripts/setup-toolchain/install-clang-linux.sh
+
+    # macOS + Clang
+    - name: Install Clang (macOS, brew)
+      if: inputs.compiler == 'clang' && runner.os == 'macOS'
+      shell: bash
+      env:
+        CLANG_VERSION: ${{ inputs.version }}
+      run: bash .github/scripts/setup-toolchain/install-clang-macos.sh
+
+    # Windows + Clang-Cl
+    - name: Set up MSVC / clang-cl (Windows)
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+
+    - name: Select Windows compiler
+      if: runner.os == 'Windows'
+      shell: bash
+      env:
+        COMPILER: ${{ inputs.compiler }}
+      run: bash .github/scripts/setup-toolchain/select-windows-compiler.sh
+
+    # Small performance gains with ccache.
+    - name: Install compiler cache
+      if: inputs.compiler-cache == 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-compiler-cache.sh
+
+    - name: Configure compiler cache
+      if: inputs.compiler-cache == 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/configure-compiler-cache.sh
+
+    - name: Cache compiler cache
+      if: inputs.compiler-cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/sccache
+        key: cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
+        restore-keys: |
+          cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
+
+    - name: Disable compiler cache
+      if: inputs.compiler-cache != 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/disable-compiler-cache.sh
+
+    # Project dependencies
+    # Boost and LLVM are the awkward two to build, so both come prebuilt.
+    - name: Install Boost (prebuilt)
+      if: inputs.dependencies == 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-boost.sh
+
+    - name: Install LLVM dev libraries (prebuilt, apt.llvm.org)
+      if: inputs.dependencies == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-llvm-linux.sh
+
+    # CMAKE_LINKER_TYPE=LLD makes GCC pass -fuse-ld=lld, and GCC only ever looks for a
+    # plain 'ld.lld' on PATH.
+    - name: Expose ld.lld (Linux)
+      if: inputs.dependencies == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/expose-lld-linux.sh
+
+    # Windows gets the official clang+llvm release tarball, which ships the
+    # static libs and lib/cmake/llvm that find_package(LLVM) needs.
+    - name: Cache LLVM dev libraries (Windows)
+      if: inputs.dependencies == 'true' && runner.os == 'Windows'
+      id: llvm-win-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        # SPP_LLVM_WIN_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
+        path: ~/llvm
+        key: llvm-win-${{ env.LLVM_LIB_FULL_VERSION }}
+
+    - name: Install LLVM dev libraries (Windows, cache miss)
+      if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-win-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-llvm-windows.sh
+
+    # The remaining libraries are header/CMake projects: clone, install, cache.
+    # The key rotates daily (CACHE_DATE) so upstream changes get picked up on
+    # their own; bump SPP_LIBS_CACHE_VERSION in .github/versions.env to force a
+    # rebuild before the next rollover.
+    - name: Cache small libraries
+      if: inputs.dependencies == 'true'
+      id: libs-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        # SPP_LOCAL_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
+        path: ~/.local
+        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ env.CACHE_DATE }}-v${{ env.SPP_LIBS_CACHE_VERSION }}
+
+    - name: Clone & install small libraries (cache miss)
+      if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-small-libs.sh
+
+    - name: Expose dependency prefixes
+      if: inputs.dependencies == 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/expose-prefixes.sh

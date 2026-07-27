@@ -7,102 +7,102 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct BinaryExpressionAst;
-    SPP_EXP_CLS struct CaseExpressionAst;
-    SPP_EXP_CLS struct IsExpressionAst;
-    SPP_EXP_CLS struct PostfixExpressionAst;
+  SPP_EXP_CLS struct BinaryExpressionAst;
+  SPP_EXP_CLS struct CaseExpressionAst;
+  SPP_EXP_CLS struct IsExpressionAst;
+  SPP_EXP_CLS struct PostfixExpressionAst;
 }
 
 namespace spp::asts::meta {
-    SPP_EXP_CLS struct CompilerMetaData;
+  SPP_EXP_CLS struct CompilerMetaData;
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS struct TypeSymbol;
+  SPP_EXP_CLS class ScopeManager;
+  SPP_EXP_CLS struct TypeSymbol;
 }
 
 namespace spp::analyse::utils::bin_utils {
-    /**
-     * The map of binary operators to their corresponding method names. This is used when converting binary expressions
-     * to function calls.
-     */
-    SPP_EXP_CLS const auto kBinMethods = std::map<lex::SppTokenType, Str>{
-        {lex::SppTokenType::KW_OR, "ior_"},
-        {lex::SppTokenType::KW_AND, "and_"},
-        {lex::SppTokenType::TK_EQ, "eq"},
-        {lex::SppTokenType::TK_NE, "ne"},
-        {lex::SppTokenType::TK_LT, "lt"},
-        {lex::SppTokenType::TK_LE, "le"},
-        {lex::SppTokenType::TK_GT, "gt"},
-        {lex::SppTokenType::TK_GE, "ge"},
-        {lex::SppTokenType::TK_BIT_IOR, "bit_ior"},
-        {lex::SppTokenType::TK_BIT_XOR, "bit_xor"},
-        {lex::SppTokenType::TK_BIT_AND, "bit_and"},
-        {lex::SppTokenType::TK_BIT_SHL, "bit_shl"},
-        {lex::SppTokenType::TK_BIT_SHR, "bit_shr"},
-        {lex::SppTokenType::TK_ADD, "add"},
-        {lex::SppTokenType::TK_SUB, "sub"},
-        {lex::SppTokenType::TK_MUL, "mul"},
-        {lex::SppTokenType::TK_DIV, "div"},
-        {lex::SppTokenType::TK_REM, "rem"},
-        {lex::SppTokenType::TK_POW, "pow"},
-        {lex::SppTokenType::TK_BIT_IOR_ASSIGN, "bit_ior_assign"},
-        {lex::SppTokenType::TK_BIT_XOR_ASSIGN, "bit_xor_assign"},
-        {lex::SppTokenType::TK_BIT_AND_ASSIGN, "bit_and_assign"},
-        {lex::SppTokenType::TK_BIT_SHL_ASSIGN, "bit_shl_assign"},
-        {lex::SppTokenType::TK_BIT_SHR_ASSIGN, "bit_shr_assign"},
-        {lex::SppTokenType::TK_ADD_ASSIGN, "add_assign"},
-        {lex::SppTokenType::TK_SUB_ASSIGN, "sub_assign"},
-        {lex::SppTokenType::TK_MUL_ASSIGN, "mul_assign"},
-        {lex::SppTokenType::TK_DIV_ASSIGN, "div_assign"},
-        {lex::SppTokenType::TK_REM_ASSIGN, "rem_assign"},
-        {lex::SppTokenType::TK_POW_ASSIGN, "pow_assign"}
-    };
+  /**
+   * The map of binary operators to their corresponding method names. This is used when converting binary expressions
+   * to function calls.
+   */
+  SPP_EXP_CLS const auto kBinMethods = std::map<lex::SppTokenType, Str>{
+    {lex::SppTokenType::KW_OR, "ior_"},
+    {lex::SppTokenType::KW_AND, "and_"},
+    {lex::SppTokenType::TK_EQ, "eq"},
+    {lex::SppTokenType::TK_NE, "ne"},
+    {lex::SppTokenType::TK_LT, "lt"},
+    {lex::SppTokenType::TK_LE, "le"},
+    {lex::SppTokenType::TK_GT, "gt"},
+    {lex::SppTokenType::TK_GE, "ge"},
+    {lex::SppTokenType::TK_BIT_IOR, "bit_ior"},
+    {lex::SppTokenType::TK_BIT_XOR, "bit_xor"},
+    {lex::SppTokenType::TK_BIT_AND, "bit_and"},
+    {lex::SppTokenType::TK_BIT_SHL, "bit_shl"},
+    {lex::SppTokenType::TK_BIT_SHR, "bit_shr"},
+    {lex::SppTokenType::TK_ADD, "add"},
+    {lex::SppTokenType::TK_SUB, "sub"},
+    {lex::SppTokenType::TK_MUL, "mul"},
+    {lex::SppTokenType::TK_DIV, "div"},
+    {lex::SppTokenType::TK_REM, "rem"},
+    {lex::SppTokenType::TK_POW, "pow"},
+    {lex::SppTokenType::TK_BIT_IOR_ASSIGN, "bit_ior_assign"},
+    {lex::SppTokenType::TK_BIT_XOR_ASSIGN, "bit_xor_assign"},
+    {lex::SppTokenType::TK_BIT_AND_ASSIGN, "bit_and_assign"},
+    {lex::SppTokenType::TK_BIT_SHL_ASSIGN, "bit_shl_assign"},
+    {lex::SppTokenType::TK_BIT_SHR_ASSIGN, "bit_shr_assign"},
+    {lex::SppTokenType::TK_ADD_ASSIGN, "add_assign"},
+    {lex::SppTokenType::TK_SUB_ASSIGN, "sub_assign"},
+    {lex::SppTokenType::TK_MUL_ASSIGN, "mul_assign"},
+    {lex::SppTokenType::TK_DIV_ASSIGN, "div_assign"},
+    {lex::SppTokenType::TK_REM_ASSIGN, "rem_assign"},
+    {lex::SppTokenType::TK_POW_ASSIGN, "pow_assign"}
+  };
 
-    /**
-     * The list of binary compound assignment operators.
-     */
-    SPP_EXP_CLS constexpr auto kBinCompoundAssignmentOps = std::array{
-        lex::SppTokenType::TK_ADD_ASSIGN,
-        lex::SppTokenType::TK_SUB_ASSIGN,
-        lex::SppTokenType::TK_MUL_ASSIGN,
-        lex::SppTokenType::TK_DIV_ASSIGN,
-        lex::SppTokenType::TK_REM_ASSIGN,
-        lex::SppTokenType::TK_BIT_AND_ASSIGN,
-        lex::SppTokenType::TK_BIT_IOR_ASSIGN,
-        lex::SppTokenType::TK_BIT_XOR_ASSIGN,
-        lex::SppTokenType::TK_BIT_SHL_ASSIGN,
-        lex::SppTokenType::TK_BIT_SHR_ASSIGN
-    };
+  /**
+   * The list of binary compound assignment operators.
+   */
+  SPP_EXP_CLS constexpr auto kBinCompoundAssignmentOps = std::array{
+    lex::SppTokenType::TK_ADD_ASSIGN,
+    lex::SppTokenType::TK_SUB_ASSIGN,
+    lex::SppTokenType::TK_MUL_ASSIGN,
+    lex::SppTokenType::TK_DIV_ASSIGN,
+    lex::SppTokenType::TK_REM_ASSIGN,
+    lex::SppTokenType::TK_BIT_AND_ASSIGN,
+    lex::SppTokenType::TK_BIT_IOR_ASSIGN,
+    lex::SppTokenType::TK_BIT_XOR_ASSIGN,
+    lex::SppTokenType::TK_BIT_SHL_ASSIGN,
+    lex::SppTokenType::TK_BIT_SHR_ASSIGN
+  };
 
-    /**
-     * The list of binary comparison operators.
-     */
-    SPP_EXP_CLS constexpr auto kBinComparisonOps = std::array{
-        lex::SppTokenType::TK_EQ,
-        lex::SppTokenType::TK_NE,
-        lex::SppTokenType::TK_LT,
-        lex::SppTokenType::TK_GT,
-        lex::SppTokenType::TK_LE,
-        lex::SppTokenType::TK_GE
-    };
+  /**
+   * The list of binary comparison operators.
+   */
+  SPP_EXP_CLS constexpr auto kBinComparisonOps = std::array{
+    lex::SppTokenType::TK_EQ,
+    lex::SppTokenType::TK_NE,
+    lex::SppTokenType::TK_LT,
+    lex::SppTokenType::TK_GT,
+    lex::SppTokenType::TK_LE,
+    lex::SppTokenType::TK_GE
+  };
 
-    SPP_EXP_FUN auto CombineCompOps(
-        asts::BinaryExpressionAst &bin_expr,
-        scopes::ScopeManager *sm,
-        asts::meta::CompilerMetaData *meta)
-        -> Unique<asts::BinaryExpressionAst>;
+  SPP_EXP_FUN auto CombineCompOps(
+    asts::BinaryExpressionAst &bin_expr,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> Unique<asts::BinaryExpressionAst>;
 
-    SPP_EXP_FUN auto ConvertBinExprToFuncCall(
-        asts::BinaryExpressionAst &bin_expr,
-        scopes::ScopeManager *sm,
-        asts::meta::CompilerMetaData *meta)
-        -> Unique<asts::PostfixExpressionAst>;
+  SPP_EXP_FUN auto ConvertBinExprToFuncCall(
+    asts::BinaryExpressionAst &bin_expr,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> Unique<asts::PostfixExpressionAst>;
 
-    SPP_EXP_FUN auto ConvertIsExprToFuncCall(
-        asts::IsExpressionAst &is_expr,
-        scopes::ScopeManager *sm,
-        asts::meta::CompilerMetaData *meta)
-        -> Unique<asts::CaseExpressionAst>;
+  SPP_EXP_FUN auto ConvertIsExprToFuncCall(
+    asts::IsExpressionAst &is_expr,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> Unique<asts::CaseExpressionAst>;
 }

@@ -359,9 +359,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryUninitialized,
     test_invalid_memory_uninitialized_symbol_in_object_initializer_argument_unnamed,
     SppUninitializedMemoryUseError, R"(
+    cls A {
+        !public bytes: Vec[U8]
+    }
+
     fun f() -> Void {
         let bytes: Vec[U8]
-        let a = Str(bytes)
+        let a = A(bytes)
     }
 )");
 
@@ -369,9 +373,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryUninitialized,
     test_invalid_memory_uninitialized_symbol_in_object_initializer_argument_named,
     SppUninitializedMemoryUseError, R"(
+    cls A {
+        !public bytes: Vec[U8]
+    }
+
     fun f() -> Void {
         let bytes_vec: Vec[U8]
-        let a = Str(bytes=bytes_vec)
+        let a = A(bytes=bytes_vec)
     }
 )");
 
@@ -392,9 +400,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryUninitialized,
     test_invalid_memory_uninitialized_symbol_in_postfix_expression_operator_member_access_attribute,
     SppUninitializedMemoryUseError, R"(
+    cls A {
+        !public bytes: Vec[U8]
+    }
+
     fun f() -> Void {
-        let elem: Str
-        elem.data
+        let elem: A
+        let x = elem.bytes
     }
 )");
 
@@ -453,7 +465,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_unary_expression_operator_async,
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
-        let elem: FunRef[(StrView,), Void]
+        let elem: FunRef[(&StrView,), Void]
         let a = async elem("hello world")
     }
 )");
@@ -463,7 +475,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_postfix_expression_operator_function_call,
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
-        let elem: FunRef[(StrView,), Void]
+        let elem: FunRef[(&StrView,), Void]
         let a = elem("hello world")
     }
 )");

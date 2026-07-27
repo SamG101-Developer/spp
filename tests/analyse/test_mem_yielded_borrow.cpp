@@ -109,7 +109,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     fun test() -> Void {
-        let object = MyType()
+        let mut object = MyType()
         let generator_mut_1 = object.custom_iter_mut()
         let generator_mut_2 = object.custom_iter_mut()
     }

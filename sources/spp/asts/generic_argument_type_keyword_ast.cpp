@@ -20,93 +20,94 @@ import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 auto spp::asts::GenericArgumentTypeKeywordAst::FromSym(
-    analyse::scopes::TypeSymbol const &sym)
-    -> Unique<GenericArgumentTypeKeywordAst> {
-    // Extract the value from the symbol's scope, if it exists.
-    auto value = sym.LinkedScope == nullptr
-        ? MakeShared<TypeIdentifierAst>(0, "Self", nullptr)
-        : sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()));
+  analyse::scopes::TypeSymbol const &sym)
+  -> Unique<GenericArgumentTypeKeywordAst> {
+  // Extract the value from the symbol's scope, if it exists.
+  auto value = sym.LinkedScope == nullptr
+    ? MakeShared<TypeIdentifierAst>(0, "Self", nullptr)
+    : sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()));
 
-    // Wrap the value into a type argument.
-    return MakeUnique<GenericArgumentTypeKeywordAst>(
-        sym.Name, nullptr, std::move(value));
+  // Wrap the value into a type argument.
+  return MakeUnique<GenericArgumentTypeKeywordAst>(
+    sym.Name, nullptr, std::move(value));
 }
 
 spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
-    decltype(Name) name,
-    decltype(TokAssign) &&tok_assign,
-    decltype(Val) val) :
-    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::kKeywordArg),
-    Name(std::move(name)),
-    TokAssign(std::move(tok_assign)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
+  decltype(Name) name,
+  decltype(TokAssign) &&tok_assign,
+  decltype(Val) val) :
+  GenericArgumentTypeAst(std::move(val), utils::OrderableTag::kKeywordArg),
+  Name(std::move(name)),
+  TokAssign(std::move(tok_assign)) {
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 spp::asts::GenericArgumentTypeKeywordAst::~GenericArgumentTypeKeywordAst() = default;
 
 auto spp::asts::GenericArgumentTypeKeywordAst::EqualsGenericArgumentTypeKeyword(
-    GenericArgumentTypeKeywordAst const &other) const
-    -> Ordering {
-    // Equality is based on the name and value of the argument.
-    return *Name == *other.Name and *Val == *other.Val ? Ordering::equal : Ordering::less;
+  GenericArgumentTypeKeywordAst const &other) const
+  -> Ordering {
+  // Equality is based on the name and value of the argument.
+  return *Name == *other.Name and *Val == *other.Val ? Ordering::equal : Ordering::less;
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Equals(
-    GenericArgumentAst const &other) const
-    -> Ordering {
-    // Reverse hook (double dispatch).
-    return other.EqualsGenericArgumentTypeKeyword(*this);
+  GenericArgumentAst const &other) const
+  -> Ordering {
+  // Reverse hook (double dispatch).
+  return other.EqualsGenericArgumentTypeKeyword(*this);
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::PosStart() const
-    -> std::size_t {
-    // Use the name.
-    return Name->PosStart();
+  -> std::size_t {
+  // Use the name.
+  return Name->PosStart();
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::PosEnd() const
-    -> std::size_t {
-    // Use the value.
-    return Source.OriginalValPosEnd;
+  -> std::size_t {
+  // Use the value.
+  return Source.OriginalValPosEnd;
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Clone() const
-    -> Unique<Ast> {
-    // Clone all the members of the ast.
-    return MakeUnique<GenericArgumentTypeKeywordAst>(
-        AstCloneShared(Name), AstClone(TokAssign), AstCloneShared(Val));
+  -> Unique<Ast> {
+  // Clone all the members of the ast.
+  return MakeUnique<GenericArgumentTypeKeywordAst>(
+    AstCloneShared(Name), AstClone(TokAssign), AstCloneShared(Val));
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::ToString() const
-    -> Str {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(Name);
-    SPP_STRING_APPEND(TokAssign);
-    SPP_STRING_APPEND(Val);
-    SPP_STRING_END;
+  -> Str {
+  SPP_STRING_START;
+  SPP_STRING_APPEND(Name);
+  SPP_STRING_APPEND(TokAssign);
+  SPP_STRING_APPEND(Val);
+  SPP_STRING_END;
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    //
-    if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
-    if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
-    Val->Stage7_AnalyseSemantics(sm, meta);
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  //
+  if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<
+    InnerScopeExpressionAst>() == nullptr) { return; }
+  if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
+  Val->Stage7_AnalyseSemantics(sm, meta);
 
-    // Analyse the name and value of the generic type argument.
-    const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val);
-    const auto tmp2 = tmp1->FqName();
-    auto tmp3 = AstClone(Val->GetConvention());
-    const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
-    Val = tmp4;
+  // Analyse the name and value of the generic type argument.
+  const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val.get());
+  const auto tmp2 = tmp1->FqName();
+  auto tmp3 = AstClone(Val->GetConvention());
+  const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
+  Val = tmp4;
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::ViewName() const
-    -> StrView {
-    // Get the name from the keyword part.
-    return Name->To<TypeIdentifierAst>()->Name;
+  -> StrView {
+  // Get the name from the keyword part.
+  return Name->ToUnchecked<TypeIdentifierAst>()->Name;
 }
 
 SPP_MOD_END

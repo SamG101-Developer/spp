@@ -8,21 +8,21 @@ import spp.asts.meta.compiler_meta_data;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantAst::CasePatternVariantAst() :
-    _MappedLet(nullptr) {
+  _MappedLet(nullptr) {
 }
 
 auto spp::asts::CasePatternVariantAst::Stage9_CompTimeResolve(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> void {
-    // No behaviour but c++ module issues require this be defined here.
+  ScopeManager *,
+  CompilerMetaData *)
+  -> void {
+  // No behaviour but c++ module issues require this be defined here.
 }
 
 auto spp::asts::CasePatternVariantAst::ConvToVar(
-    meta::CompilerMetaData *)
-    -> Unique<LocalVariableAst> {
-    // Default implementation for case pattern variants that do not create variables.
-    return nullptr;
+  meta::CompilerMetaData *)
+  -> Unique<LocalVariableAst> {
+  // Default implementation for case pattern variants that do not create variables.
+  return nullptr;
 }
 
 SPP_MOD_END

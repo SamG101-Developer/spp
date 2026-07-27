@@ -7,33 +7,47 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
+  SPP_EXP_CLS struct IdentifierAst;
+  SPP_EXP_CLS struct TypeIdentifierAst;
+  SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
+  SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
+  SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : Ast {
-    using Ast::Ast;
+  using Ast::Ast;
 
-    ~TypeUnaryExpressionOperatorAst() override;
+  ~TypeUnaryExpressionOperatorAst() override;
 
-    auto operator<=>(TypeUnaryExpressionOperatorAst const &) const -> Ordering;
+  auto operator<=>(
+    TypeUnaryExpressionOperatorAst const &) const
+    -> Ordering;
 
-    auto operator==(TypeUnaryExpressionOperatorAst const &) const -> bool;
+  auto operator==(
+    TypeUnaryExpressionOperatorAst const &) const
+    -> bool;
 
-    SPP_ATTR_NODISCARD virtual auto EqualsOpBorrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> Ordering;
+  SPP_ATTR_NODISCARD virtual auto EqualsOpBorrow(
+    TypeUnaryExpressionOperatorBorrowAst const &) const
+    -> Ordering;
 
-    SPP_ATTR_NODISCARD virtual auto EqualsOpNamespace(TypeUnaryExpressionOperatorNamespaceAst const &) const -> Ordering;
+  SPP_ATTR_NODISCARD virtual auto EqualsOpNamespace(
+    TypeUnaryExpressionOperatorNamespaceAst const &) const
+    -> Ordering;
 
-    SPP_ATTR_NODISCARD virtual auto Equals(TypeUnaryExpressionOperatorAst const &) const -> Ordering = 0;
+  SPP_ATTR_NODISCARD virtual auto Equals(
+    TypeUnaryExpressionOperatorAst const &) const
+    -> Ordering = 0;
 
-    SPP_ATTR_NODISCARD virtual auto NsParts() const -> Vec<Shared<const IdentifierAst>> = 0;
+  SPP_ATTR_NODISCARD virtual auto NsParts() const
+    -> Vec<Shared<const IdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto NsParts() -> Vec<Shared<IdentifierAst>> = 0;
+  SPP_ATTR_NODISCARD virtual auto NsParts()
+    -> Vec<Shared<IdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto TypeParts() const -> Vec<Shared<const TypeIdentifierAst>> = 0;
+  SPP_ATTR_NODISCARD virtual auto TypeParts() const
+    -> Vec<Shared<const TypeIdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto TypeParts() -> Vec<Shared<TypeIdentifierAst>> = 0;
+  SPP_ATTR_NODISCARD virtual auto TypeParts()
+    -> Vec<Shared<TypeIdentifierAst>> = 0;
 };

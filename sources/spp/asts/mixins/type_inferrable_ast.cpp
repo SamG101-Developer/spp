@@ -8,11 +8,11 @@ spp::asts::mixins::TypeInferrableAst::TypeInferrableAst() = default;
 spp::asts::mixins::TypeInferrableAst::~TypeInferrableAst() = default;
 
 auto spp::asts::mixins::TypeInferrableAst::InferTypeForDisplay(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> {
-    // Default behaviour is to use the normal inference steps.
-    return InferType(sm, meta);
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
+  -> Shared<TypeAst> {
+  // Default behaviour is to use the normal inference steps.
+  return InferType(sm, meta);
 }
 
 SPP_MOD_END
