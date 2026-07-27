@@ -99,7 +99,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   // Prepare the object initializer arguments.
   meta->Save();
   meta->ObjectInitType = Type->WithoutGenerics();
-  if (not ArgGroup->Args.IsEmpty()) { ArgGroup->Stage6_PreAnalyseSemantics(sm, meta); }
+  ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   meta->Restore();
 
   // Determine the generic inference source and target values.
@@ -126,7 +126,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
 
   meta->Save();
   meta->ObjectInitType = Type;
-  if (not ArgGroup->Args.IsEmpty()) { ArgGroup->Stage7_AnalyseSemantics(sm, meta); }
+  ArgGroup->Stage7_AnalyseSemantics(sm, meta);
   meta->Restore();
 }
 
