@@ -35,6 +35,38 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Restore source mtimes
+        uses: ./.github/actions/restore-mtimes
+
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          compiler: gcc
+          version: "16"
+          cache-key-suffix: sonar
+
+      # Shares the release variant's tree; Sonar only adds -DCMAKE_EXPORT_COMPILE_COMMANDS, which does not invalidate
+      # any objects.
+      - name: Restore build tree
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: build
+          key: build-ubuntu-latest-gcc16-release-${{ github.sha }}
+          restore-keys: |
+            build-ubuntu-latest-gcc16-release-
+
+      # Add the extra configuration flag into the cmake configuration (won't trigger a rebuild of the entire project).
+      - name: Configure
+        uses: ./.github/actions/configure-cmake
+        with:
+          build-type: ${{ inputs.build-type }}
+          extra-flags: -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      # Run the build script (won't rebuild anything, just covers the new flag being inserted). This build is needed for
+      # the `compile_commands.json` file to be generated, required for Sonar.
+      - name: Build
+        run: cmake --build build --parallel
+
       # Perform the sonar scan to address all maintenance, reliability, security, etc issues.
       - name: SonarQube scan
         uses: sonarsource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f
