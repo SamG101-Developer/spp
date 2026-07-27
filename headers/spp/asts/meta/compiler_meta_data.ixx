@@ -82,6 +82,13 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   bool AllowMoveDeref;
   llvm::BasicBlock *LlvmEndBB;
   codegen::LLvmCtx *LlvmCtx;
+
+  /**
+   * Set when the consumer ast of an expression needs the address of the storage it names (an assignment target, or a
+   * borrow being passed into a function), rather than its value. Only expressions that name storage use it.
+   */
+  bool LlvmWantAddress;
+
   llvm::Value *LlvmAssignmentTarget;
   llvm::Value *LlvmAssignmentTargetType;
   llvm::PHINode *LlvmPhi;

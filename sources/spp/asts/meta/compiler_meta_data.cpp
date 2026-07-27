@@ -45,6 +45,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   AllowMoveDeref = false;
   LlvmEndBB = nullptr;
   LlvmCtx = nullptr;
+  LlvmWantAddress = false;
   LlvmAssignmentTarget = nullptr;
   LlvmAssignmentTargetType = nullptr;
   LlvmPhi = nullptr;
@@ -97,6 +98,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.AllowMoveDeref = AllowMoveDeref;
   s.LlvmEndBB = LlvmEndBB;
   s.LlvmCtx = LlvmCtx;
+  s.LlvmWantAddress = LlvmWantAddress;
   s.LlvmAssignmentTarget = LlvmAssignmentTarget;
   s.LlvmAssignmentTargetType = LlvmAssignmentTargetType;
   s.LlvmPhi = LlvmPhi;
@@ -149,6 +151,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AllowMoveDeref = state.AllowMoveDeref;
   LlvmEndBB = state.LlvmEndBB;
   LlvmCtx = state.LlvmCtx;
+  LlvmWantAddress = state.LlvmWantAddress;
   LlvmAssignmentTarget = state.LlvmAssignmentTarget;
   LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
   LlvmPhi = state.LlvmPhi;

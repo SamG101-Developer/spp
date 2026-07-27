@@ -287,8 +287,11 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
       llvm_lhs = var_sym->LlvmInfo->Alloca;
     }
     else {
-      // "x.y = v" (attribute): the runtime member access already yields the field pointer.
+      // "x.y = v" (attribute): ask the runtime member access for the field's address rather than its value.
+      meta->Save();
+      meta->LlvmWantAddress = true;
       llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
+      meta->Restore();
     }
 
     // Store the RHS value into the resolved LHS location.
