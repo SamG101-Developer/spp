@@ -150,31 +150,42 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
+  // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
   const auto uid = "." + spp::utils::Uid(this);
   const auto tuple_type = InferType(sm, meta);
   const auto tuple_type_sym = sm->CurrentScope->GetTypeSymbol(tuple_type.get());
   const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  // Create the alloca for the tuple.
-  const auto alloca = codegen::llvm_entry_alloca(llvm_type, "tuple.alloca" + uid, ctx);
-  SPP_ASSERT(alloca != nullptr);
+  // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.
+  if (not ctx->InConstantContext) {
+    const auto alloca = codegen::llvm_entry_alloca(llvm_type, "tuple.alloca" + uid, ctx);
+    SPP_ASSERT(alloca != nullptr);
 
-  // Store each element into the tuple alloca.
-  for (std::size_t i = 0; i < Elems.Len(); ++i) {
-    const auto elem_value = Elems[i]->Stage11_CodeGen(sm, meta, ctx);
-    SPP_ASSERT(elem_value != nullptr);
+    // Store each element into the tuple alloca.
+    for (auto i = 0uz; i < Elems.Len(); ++i) {
+      const auto elem_value = Elems[i]->Stage11_CodeGen(sm, meta, ctx);
+      SPP_ASSERT(elem_value != nullptr);
 
-    const auto const_idx_0 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
-    const auto const_idx_1 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
-    const auto elem_ptr = ctx->Builder.CreateGEP(llvm_type, alloca, {const_idx_0, const_idx_1}, "tuple.elem.ptr" + uid);
-    ctx->Builder.CreateStore(elem_value, elem_ptr);
+      const auto elem_ptr = ctx->Builder.CreateStructGEP(
+        llvm_type, alloca, static_cast<std::uint32_t>(i), "tuple.elem.ptr" + uid);
+      ctx->Builder.CreateStore(elem_value, elem_ptr);
+    }
+
+    // Load the tuple value from the alloca and return it.
+    const auto tuple_value = ctx->Builder.CreateLoad(llvm_type, alloca, "tuple.val" + uid);
+    return tuple_value;
   }
 
-  // Load the tuple value from the alloca and return it.
-  const auto tuple_value = ctx->Builder.CreateLoad(llvm_type, alloca, "tuple.val" + uid);
-  return tuple_value;
+  // Constant pathway: the struct constant is built from the elements' own constants.
+  auto comp_elems = Vec<llvm::Constant*>();
+  comp_elems.Reserve(Elems.Len());
+  for (auto const &elem : Elems) {
+    const auto comp_elem = elem->Stage11_CodeGen(sm, meta, ctx);
+    SPP_ASSERT(comp_elem != nullptr);
+    comp_elems.EmplaceBack(llvm::cast<llvm::Constant>(comp_elem));
+  }
+  return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems.ToStdVector());
 }
 
 auto spp::asts::TupleLiteralAst::InferType(
