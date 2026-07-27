@@ -39,5 +39,4 @@ cmake_install https://github.com/CLIUtils/CLI11.git               -DCLI11_BUILD_
 cmake_install https://github.com/ericniebler/range-v3.git         -DRANGE_V3_TESTS=OFF -DRANGE_V3_EXAMPLES=OFF -DRANGE_V3_DOCS=OFF
 cmake_install https://github.com/SamG101-Developer/googletest.git
 cmake_install https://github.com/SamG101-Developer/ColEx.git
-cmake_install https://github.com/SamG101-Developer/OpEx.git
 cmake_install https://github.com/SamG101-Developer/GenEx.git
