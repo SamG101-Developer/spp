@@ -22,27 +22,15 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
+import boost;
 import genex;
+import sys;
 
 namespace ops {
   template <typename T>
-  struct bit_shl {
-    constexpr auto operator()(const T &x, const T &y) const -> T {
-      return static_cast<T>(x << y);
-    }
-  };
-
-  template <typename T>
-  struct bit_shr {
-    constexpr auto operator()(const T &x, const T &y) const -> T {
-      return static_cast<T>(x >> y);
-    }
-  };
-
-  template <typename T>
   struct min {
     constexpr auto operator()(const T &x, const T &y) const -> T {
-      return std::min(x, y);
+      return std::less<T>{}(x, y) ? x : y;
     }
   };
 
@@ -56,7 +44,7 @@ namespace ops {
   template <typename T>
   struct max {
     constexpr auto operator()(const T &x, const T &y) const -> T {
-      return std::max(x, y);
+      return std::greater<T>{}(x, y) ? x : y;
     }
   };
 
@@ -64,6 +52,20 @@ namespace ops {
   struct fmax {
     constexpr auto operator()(const T &x, const T &y) const -> T {
       return std::fmax(x, y);
+    }
+  };
+
+  template <typename T>
+  struct cmp {
+    constexpr auto operator()(const T &x, const T &y) const -> T {
+      return static_cast<T>(std::less<T>{}(x, y) ? -1 : std::greater<T>{}(x, y) ? 1 : 0);
+    }
+  };
+
+  template <typename T>
+  struct fcmp {
+    constexpr auto operator()(const T &x, const T &y) const -> T {
+      return static_cast<T>(std::less<T>{}(x, y) ? -1 : std::greater<T>{}(x, y) ? 1 : 0);
     }
   };
 
@@ -176,22 +178,26 @@ namespace ops {
 /*
  * COLLECTION OF "(INT, INT) -> INT" OPERATIONS FOR STANDARD CMP INTRINSICS
  */
-#define SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(Op)                       \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s8", std::int8_t)    \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s16", std::int16_t)  \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s32", std::int32_t)  \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s64", std::int64_t)  \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "sz", std::ptrdiff_t)
+#define SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(Op)                        \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s8", std::int8_t)       \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s16", std::int16_t)     \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s32", std::int32_t)     \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s64", std::int64_t)     \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s128", boost::int128_t) \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "s256", boost::int256_t) \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "sz", sys::ssize_t)
 
-#define SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_INT(Op)                     \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u8", std::uint8_t)   \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u16", std::uint16_t) \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u32", std::uint32_t) \
-  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u64", std::uint64_t) \
+#define SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_INT(Op)                       \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u8", std::uint8_t)       \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u16", std::uint16_t)     \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u32", std::uint32_t)     \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u64", std::uint64_t)     \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u128", boost::uint128_t) \
+  SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "u256", boost::uint256_t) \
   SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, "uz", std::size_t)
 
-#define SPP_STANDARD_BINARY_INT_OP_RET_INT(Op)      \
-  SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(Op)   \
+#define SPP_STANDARD_BINARY_INT_OP_RET_INT(Op)  \
+  SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(Op) \
   SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_INT(Op)
 
 /*
@@ -253,12 +259,69 @@ namespace ops {
   SPP_STANDARD_BINARY_FLOAT_OP_RETURN_BOOL_HANDLER(Op, "f64", std::float64_t)
 
 /*
+ * COLLECTION OF "(FLOAT, FLOAT) -> INT" OPERATIONS FOR STANDARD CMP INTRINSICS. Unlike the int RET_INT handler above,
+ * this casts through a signed type so a -1 result (eg from a three-way "cmp") round-trips correctly instead of
+ * wrapping to a huge unsigned value. The result is tagged with the bit-width-matched signed int type, since the
+ * float type name itself (eg "f32") is not a valid IntegerLiteralAst::Type.
+ */
+#define SPP_STANDARD_BINARY_FLOAT_OP_RETURN_INT_HANDLER(Op, Ty, CppTy, IntTy)                                     \
+  if (lhs.Type == Ty) {                                                                                         \
+    const auto result = Op<CppTy>()(lhs.CppVal<CppTy>(), rhs.CppVal<CppTy>());                                \
+    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<std::ptrdiff_t>(result))); \
+    return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), Str(IntTy));                      \
+  }
+
+#define SPP_STANDARD_BINARY_FLOAT_OP_RET_INT(Op)                                    \
+  SPP_STANDARD_BINARY_FLOAT_OP_RETURN_INT_HANDLER(Op, "f16", std::float16_t, "s16") \
+  SPP_STANDARD_BINARY_FLOAT_OP_RETURN_INT_HANDLER(Op, "f32", std::float32_t, "s32") \
+  SPP_STANDARD_BINARY_FLOAT_OP_RETURN_INT_HANDLER(Op, "f64", std::float64_t, "s64")
+
+/*
  * COLLECTION OF "FLOAT -> FLOAT" OPERATIONS FOR STANDARD CMP INTRINSICS
  */
 #define SPP_STANDARD_UNARY_FLOAT_OP(Op)                                       \
   SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f16", std::float16_t) \
   SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f32", std::float32_t) \
   SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f64", std::float64_t)
+
+/*
+ * COLLECTION OF "TYPE -> numeric_limits<TYPE>::Limit()" OPERATIONS FOR STANDARD CMP INTRINSICS. The incoming literal's
+ * value is unused; only its type tag selects which bound to fold in.
+ */
+#define SPP_STANDARD_UNARY_FLOAT_LIMIT_HANDLER(Limit, Ty, CppTy)                                                                  \
+  if (val.Type == Ty) {                                                                                                           \
+    constexpr auto result = std::numeric_limits<CppTy>::Limit();                                                                  \
+    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<double>(result))); \
+    return asts::FloatLiteralAst::FromSingleTok(nullptr, std::move(val_tok), Str(val.Type));                                      \
+  }
+
+#define SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, Ty, CppTy)                                                                         \
+  if (val.Type == Ty) {                                                                                                                \
+    constexpr auto result = std::numeric_limits<CppTy>::Limit();                                                                       \
+    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<std::size_t>(result))); \
+    return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), Str(val.Type));                                            \
+  }
+
+#define SPP_STANDARD_UNARY_FLOAT_LIMIT(Limit)                          \
+  SPP_STANDARD_UNARY_FLOAT_LIMIT_HANDLER(Limit, "f16", std::float16_t) \
+  SPP_STANDARD_UNARY_FLOAT_LIMIT_HANDLER(Limit, "f32", std::float32_t) \
+  SPP_STANDARD_UNARY_FLOAT_LIMIT_HANDLER(Limit, "f64", std::float64_t)
+
+#define SPP_STANDARD_UNARY_INT_LIMIT(Limit)                             \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "s8", std::int8_t)        \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "s16", std::int16_t)      \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "s32", std::int32_t)      \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "s64", std::int64_t)      \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "s128", boost::int128_t)  \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "s256", boost::int256_t)  \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "sz", sys::ssize_t)       \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "u8", std::uint8_t)       \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "u16", std::uint16_t)     \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "u32", std::uint32_t)     \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "u64", std::uint64_t)     \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "u128", boost::uint128_t) \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "u256", boost::uint256_t) \
+  SPP_STANDARD_UNARY_INT_LIMIT_HANDLER(Limit, "uz", std::size_t)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdangling-pointer"
@@ -579,7 +642,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform bitwise left shift on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(ops::bit_shl);
+  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::bit_shl);
   return nullptr;
 }
 
@@ -599,7 +662,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform bitwise right shift on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(ops::bit_shr);
+  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::bit_shr);
   return nullptr;
 }
 
@@ -844,6 +907,22 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_oge(
   return nullptr;
 }
 
+auto spp::analyse::utils::cmp_utils::std_intrinsics_max_val(
+  asts::IntegerLiteralAst const &val)
+  -> Unique<asts::IntegerLiteralAst> {
+  // Return the maximum value for the type of the integer literal.
+  SPP_STANDARD_UNARY_INT_LIMIT(max)
+  return nullptr;
+}
+
+auto spp::analyse::utils::cmp_utils::std_intrinsics_min_val(
+  asts::IntegerLiteralAst const &val)
+  -> Unique<asts::IntegerLiteralAst> {
+  // Return the minimum value for the type of the integer literal.
+  SPP_STANDARD_UNARY_INT_LIMIT(lowest)
+  return nullptr;
+}
+
 auto spp::analyse::utils::cmp_utils::std_intrinsics_smax(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
@@ -877,6 +956,33 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_umin(
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned minimum on two integer literals.
   SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_INT(ops::min);
+  return nullptr;
+}
+
+auto spp::analyse::utils::cmp_utils::std_intrinsics_scmp(
+  asts::IntegerLiteralAst const &lhs,
+  asts::IntegerLiteralAst const &rhs)
+  -> Unique<asts::IntegerLiteralAst> {
+  // Perform signed comparison on two integer literals.
+  SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(ops::cmp);
+  return nullptr;
+}
+
+auto spp::analyse::utils::cmp_utils::std_intrinsics_ucmp(
+  asts::IntegerLiteralAst const &lhs,
+  asts::IntegerLiteralAst const &rhs)
+  -> Unique<asts::IntegerLiteralAst> {
+  // Perform signed comparison on two integer literals.
+  SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(ops::cmp);
+  return nullptr;
+}
+
+auto spp::analyse::utils::cmp_utils::std_intrinsics_fcmp(
+  asts::FloatLiteralAst const &lhs,
+  asts::FloatLiteralAst const &rhs)
+  -> Unique<asts::IntegerLiteralAst> {
+  // Perform a three-way comparison on two float literals, folding to -1 / 0 / 1.
+  SPP_STANDARD_BINARY_FLOAT_OP_RET_INT(ops::fcmp);
   return nullptr;
 }
 
@@ -998,6 +1104,22 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fabs(
   -> Unique<asts::FloatLiteralAst> {
   // Perform absolute value on a float literal.
   SPP_STANDARD_UNARY_FLOAT_OP(ops::fabs);
+  return nullptr;
+}
+
+auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax_val(
+  asts::FloatLiteralAst const &val)
+  -> Unique<asts::FloatLiteralAst> {
+  // Get the largest finite value that this float type can hold.
+  SPP_STANDARD_UNARY_FLOAT_LIMIT(max);
+  return nullptr;
+}
+
+auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin_val(
+  asts::FloatLiteralAst const &val)
+  -> Unique<asts::FloatLiteralAst> {
+  // Get the most negative finite value that this float type can hold.
+  SPP_STANDARD_UNARY_FLOAT_LIMIT(lowest);
   return nullptr;
 }
 

@@ -334,6 +334,14 @@ namespace spp::analyse::utils::cmp_utils {
     asts::FloatLiteralAst const &rhs)
     -> Unique<asts::BooleanLiteralAst>;
 
+  SPP_EXP_FUN auto std_intrinsics_max_val(
+    asts::IntegerLiteralAst const &val)
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_intrinsics_min_val(
+    asts::IntegerLiteralAst const &val)
+    -> Unique<asts::IntegerLiteralAst>;
+
   SPP_EXP_FUN auto std_intrinsics_smax(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
@@ -352,6 +360,21 @@ namespace spp::analyse::utils::cmp_utils {
   SPP_EXP_FUN auto std_intrinsics_umin(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_intrinsics_scmp(
+    asts::IntegerLiteralAst const &lhs,
+    asts::IntegerLiteralAst const &rhs)
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_intrinsics_ucmp(
+    asts::IntegerLiteralAst const &lhs,
+    asts::IntegerLiteralAst const &rhs)
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_intrinsics_fcmp(
+    asts::FloatLiteralAst const &lhs,
+    asts::FloatLiteralAst const &rhs)
     -> Unique<asts::IntegerLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_fadd(
@@ -409,6 +432,14 @@ namespace spp::analyse::utils::cmp_utils {
     -> Unique<asts::FloatLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_fabs(
+    asts::FloatLiteralAst const &val)
+    -> Unique<asts::FloatLiteralAst>;
+
+  SPP_EXP_FUN auto std_intrinsics_fmax_val(
+    asts::FloatLiteralAst const &val)
+    -> Unique<asts::FloatLiteralAst>;
+
+  SPP_EXP_FUN auto std_intrinsics_fmin_val(
     asts::FloatLiteralAst const &val)
     -> Unique<asts::FloatLiteralAst>;
 
