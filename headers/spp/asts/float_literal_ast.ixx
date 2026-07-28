@@ -4,6 +4,7 @@ module;
 export module spp.asts.float_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.traits;
 import spp.utils.types;
 import llvm;
 import std;
@@ -88,7 +89,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  template <typename T> // requires std::floating_point<T> Todo: Clang fails on concept.
+  template <typename T> requires utils::traits::floating_point<T>
   auto CppVal() const -> T;
 };
 

@@ -6,6 +6,7 @@ import spp.asts.literal_ast;
 import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
 import spp.lex.tokens;
+import spp.utils.traits;
 import spp.utils.types;
 import llvm;
 import std;
@@ -66,7 +67,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  template <typename T> requires std::integral<T>
+  template <typename T> requires utils::traits::integral<T>
   auto CppVal() const -> T;
 };
 

@@ -2,12 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.strings;
+import spp.utils.traits;
 import spp.utils.types;
 import std;
 import boost;
 
 namespace std {
-  SPP_EXP_FUN template <typename T> requires std::floating_point<T>
+  SPP_EXP_FUN template <typename T> requires spp::utils::traits::floating_point<T>
   auto to_string(const T value) -> std::string {
     std::array<char, 128> buf;
     auto [ptr, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), value);
