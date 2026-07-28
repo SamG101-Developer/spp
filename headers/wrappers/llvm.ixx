@@ -27,6 +27,7 @@ export namespace llvm {
   using ::llvm::APFloatBase;
   using ::llvm::ArrayRef;
   using ::llvm::ArrayType;
+  using ::llvm::AtomicOrdering;
   using ::llvm::Attribute;
   using ::llvm::BasicBlock;
   using ::llvm::Constant;
