@@ -7,14 +7,28 @@ module;
 export module spp.utils.types;
 import std;
 
-#ifdef __clang__
 export namespace std {
+  template <typename T>
+  struct bit_shl {
+    constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
+      return lhs << rhs;
+    }
+  };
+
+  template <typename T>
+  struct bit_shr {
+    constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
+      return lhs >> rhs;
+    }
+  };
+
+#ifdef __clang__
   using float16_t = _Float16;
   using float32_t = _Float32;
   using float64_t = _Float64;
   using float128_t = __float128;
-}
 #endif
+}
 
 namespace spp {
   SPP_EXP_CLS
