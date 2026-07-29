@@ -1,4 +1,6 @@
 module;
+#include <llvm/CodeGen/MachineFunction.h>
+#include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
@@ -28,6 +30,7 @@ export namespace llvm {
   using ::llvm::ArrayRef;
   using ::llvm::ArrayType;
   using ::llvm::AtomicOrdering;
+  using ::llvm::AtomicRMWInst;
   using ::llvm::Attribute;
   using ::llvm::BasicBlock;
   using ::llvm::Constant;
@@ -46,12 +49,14 @@ export namespace llvm {
   using ::llvm::Instruction;
   using ::llvm::IntegerType;
   using ::llvm::LLVMContext;
+  using ::llvm::MachineFunction;
   using ::llvm::MaybeAlign;
   using ::llvm::Module;
   using ::llvm::PointerType;
   using ::llvm::PHINode;
   using ::llvm::SmallVector;
   using ::llvm::StructType;
+  using ::llvm::TargetSubtargetInfo;
   using ::llvm::Triple;
   using ::llvm::Type;
   using ::llvm::TypeSize;
