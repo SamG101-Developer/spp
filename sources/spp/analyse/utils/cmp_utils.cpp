@@ -1,3 +1,6 @@
+module;
+#include <spp/parse/macros.hpp>
+
 module spp.analyse.utils.cmp_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -20,7 +23,9 @@ import spp.asts.object_initializer_argument_shorthand_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
+import spp.lex.lexer;
 import spp.lex.tokens;
+import spp.parse.parser_spp;
 import spp.utils.strings;
 import boost;
 import genex;
@@ -426,42 +431,11 @@ auto spp::analyse::utils::cmp_utils::GetCompTimeAttrValue(
   return nullptr;
 }
 
-auto spp::analyse::utils::cmp_utils::std_boolean_bit_and(
-  asts::BooleanLiteralAst const &lhs,
-  asts::BooleanLiteralAst const &rhs)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform bitwise AND operation on two boolean literals.
-  SPP_STANDARD_BINARY_BOOL_OP(std::bit_and);
-}
-
-auto spp::analyse::utils::cmp_utils::std_boolean_bit_ior(
-  asts::BooleanLiteralAst const &lhs,
-  asts::BooleanLiteralAst const &rhs)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform bitwise OR operation on two boolean literals.
-  SPP_STANDARD_BINARY_BOOL_OP(std::bit_or);
-}
-
-auto spp::analyse::utils::cmp_utils::std_boolean_bit_xor(
-  asts::BooleanLiteralAst const &lhs,
-  asts::BooleanLiteralAst const &rhs)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform bitwise XOR operation on two boolean literals.
-  SPP_STANDARD_BINARY_BOOL_OP(std::bit_xor);
-}
-
-auto spp::analyse::utils::cmp_utils::std_boolean_bit_not(
-  asts::BooleanLiteralAst const &val)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform bitwise NOT operation on a boolean literal.
-  SPP_STANDARD_UNARY_BOOL_OP(std::bit_not);
-}
-
 auto spp::analyse::utils::cmp_utils::std_boolean_and(
   asts::BooleanLiteralAst const &lhs,
   asts::BooleanLiteralAst const &rhs)
   -> Unique<asts::BooleanLiteralAst> {
-  // Perform logical AND operation on two boolean literals.
+  // Perform bitwise AND operation on two boolean literals.
   SPP_STANDARD_BINARY_BOOL_OP(std::logical_and);
 }
 
@@ -469,24 +443,8 @@ auto spp::analyse::utils::cmp_utils::std_boolean_ior(
   asts::BooleanLiteralAst const &lhs,
   asts::BooleanLiteralAst const &rhs)
   -> Unique<asts::BooleanLiteralAst> {
-  // Perform logical OR operation on two boolean literals.
+  // Perform bitwise OR operation on two boolean literals.
   SPP_STANDARD_BINARY_BOOL_OP(std::logical_or);
-}
-
-auto spp::analyse::utils::cmp_utils::std_boolean_eq(
-  asts::BooleanLiteralAst const &lhs,
-  asts::BooleanLiteralAst const &rhs)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform equality comparison on two boolean literals.
-  SPP_STANDARD_BINARY_BOOL_OP(std::equal_to);
-}
-
-auto spp::analyse::utils::cmp_utils::std_boolean_ne(
-  asts::BooleanLiteralAst const &lhs,
-  asts::BooleanLiteralAst const &rhs)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform inequality comparison on two boolean literals.
-  SPP_STANDARD_BINARY_BOOL_OP(std::not_equal_to);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_add(
@@ -1171,6 +1129,62 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fround(
   // Perform round operation on a float literal.
   SPP_STANDARD_UNARY_FLOAT_OP(ops::round);
   return nullptr;
+}
+
+auto spp::analyse::utils::cmp_utils::std_num_float_neg_one()
+  -> Unique<asts::FloatLiteralAst> {
+  // Get "-1.0" as a constant.
+  constexpr auto value = "-1.0";
+  auto flt = INJECT_CODE(value, parse_literal_float);
+  return flt;
+}
+
+auto spp::analyse::utils::cmp_utils::std_num_float_zero()
+  -> Unique<asts::FloatLiteralAst> {
+  // Get "0.0" as a constant.
+  constexpr auto value = "0.0";
+  auto num = INJECT_CODE(value, parse_literal_float);
+  return num;
+}
+
+auto spp::analyse::utils::cmp_utils::std_num_float_one()
+  -> Unique<asts::FloatLiteralAst> {
+  // Get "1.0" as a constant.
+  constexpr auto value = "1.0";
+  auto num = INJECT_CODE(value, parse_literal_float);
+  return num;
+}
+
+auto spp::analyse::utils::cmp_utils::std_num_int_neg_one()
+  -> Unique<asts::IntegerLiteralAst> {
+  // Get "-1" as a constant.
+  constexpr auto value = "-1";
+  auto num = INJECT_CODE(value, parse_literal_integer);
+  return num;
+}
+
+auto spp::analyse::utils::cmp_utils::std_num_int_zero()
+  -> Unique<asts::IntegerLiteralAst> {
+  // Get "0" as a constant.
+  constexpr auto value = "0";
+  auto num = INJECT_CODE(value, parse_literal_integer);
+  return num;
+}
+
+auto spp::analyse::utils::cmp_utils::std_num_int_one()
+  -> Unique<asts::IntegerLiteralAst> {
+  // Get "1" as a constant.
+  constexpr auto value = "1";
+  auto num = INJECT_CODE(value, parse_literal_integer);
+  return num;
+}
+
+auto spp::analyse::utils::cmp_utils::std_num_int_two()
+  -> Unique<asts::IntegerLiteralAst> {
+  // Get "2" as a constant.
+  constexpr auto value = "2";
+  auto num = INJECT_CODE(value, parse_literal_integer);
+  return num;
 }
 
 #pragma GCC diagnostic pop

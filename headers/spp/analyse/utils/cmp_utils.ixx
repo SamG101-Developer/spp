@@ -79,41 +79,12 @@ namespace spp::analyse::utils::cmp_utils {
     return MakeUnique<CmpFnImpl<Ret, Args...>>(fn);
   }
 
-  SPP_EXP_FUN auto std_boolean_bit_and(
-    asts::BooleanLiteralAst const &lhs,
-    asts::BooleanLiteralAst const &rhs)
-    -> Unique<asts::BooleanLiteralAst>;
-
-  SPP_EXP_FUN auto std_boolean_bit_ior(
-    asts::BooleanLiteralAst const &lhs,
-    asts::BooleanLiteralAst const &rhs)
-    -> Unique<asts::BooleanLiteralAst>;
-
-  SPP_EXP_FUN auto std_boolean_bit_xor(
-    asts::BooleanLiteralAst const &lhs,
-    asts::BooleanLiteralAst const &rhs)
-    -> Unique<asts::BooleanLiteralAst>;
-
-  SPP_EXP_FUN auto std_boolean_bit_not(
-    asts::BooleanLiteralAst const &val)
-    -> Unique<asts::BooleanLiteralAst>;
-
   SPP_EXP_FUN auto std_boolean_and(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
     -> Unique<asts::BooleanLiteralAst>;
 
   SPP_EXP_FUN auto std_boolean_ior(
-    asts::BooleanLiteralAst const &lhs,
-    asts::BooleanLiteralAst const &rhs)
-    -> Unique<asts::BooleanLiteralAst>;
-
-  SPP_EXP_FUN auto std_boolean_eq(
-    asts::BooleanLiteralAst const &lhs,
-    asts::BooleanLiteralAst const &rhs)
-    -> Unique<asts::BooleanLiteralAst>;
-
-  SPP_EXP_FUN auto std_boolean_ne(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
     -> Unique<asts::BooleanLiteralAst>;
@@ -468,4 +439,25 @@ namespace spp::analyse::utils::cmp_utils {
   SPP_EXP_FUN auto std_intrinsics_fround(
     asts::FloatLiteralAst const &val)
     -> Unique<asts::FloatLiteralAst>;
+
+  SPP_EXP_FUN auto std_num_float_neg_one()
+    -> Unique<asts::FloatLiteralAst>;
+
+  SPP_EXP_FUN auto std_num_float_zero()
+    -> Unique<asts::FloatLiteralAst>;
+
+  SPP_EXP_FUN auto std_num_float_one()
+    -> Unique<asts::FloatLiteralAst>;
+
+  SPP_EXP_FUN auto std_num_int_neg_one()
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_num_int_zero()
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_num_int_one()
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_num_int_two()
+    -> Unique<asts::IntegerLiteralAst>;
 }
