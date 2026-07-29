@@ -93,13 +93,14 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   }
 
   // Ensure the functions exist for the comparisons (whichever op is used except "is").
+  // Todo: Is thick mocking okay? Conventions had to be removed from LHS, idk about RHS though.
   if (Op.get() and Op->TokenType != lex::SppTokenType::KW_IS) {
     for (auto const &p : Patterns) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();
       const auto bin_ast = MakeUnique<BinaryExpressionAst>(
-        MakeUnique<ObjectInitializerAst>(meta->CaseCondition->InferType(sm, meta), nullptr),
+        MakeUnique<ObjectInitializerAst>(AstClone(meta->CaseCondition->InferType(sm, meta)->WithoutConvention()), nullptr),
         AstClone(Op),
-        MakeUnique<ObjectInitializerAst>(pe->Expr->InferType(sm, meta), nullptr));
+        MakeUnique<ObjectInitializerAst>(AstClone(pe->Expr->InferType(sm, meta)->WithoutConvention()), nullptr));
       bin_ast->Stage7_AnalyseSemantics(sm, meta);
     }
   }
