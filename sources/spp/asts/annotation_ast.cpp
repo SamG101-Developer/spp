@@ -211,7 +211,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     if (fun_ctx) { fun_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
   }
 
-  // Mark a type symbol as being "zero type".
+  // Mark a type symbol as being "zero type" (implicitly makes it "Copy").
   else if (fq_name == A::kZeroType and _Ctx->To<ClassPrototypeAst>()) {
     const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics().get());
