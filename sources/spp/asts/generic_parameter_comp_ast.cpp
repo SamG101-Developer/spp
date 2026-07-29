@@ -68,17 +68,18 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
   meta->Save();
   meta->IgnoreCmpGeneric = Name;
 
+  // Check the type exists and qualify.
+  Type->Stage7_AnalyseSemantics(sm, meta);
+  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
+  const auto sym = sm->CurrentScope->GetVarSymbol(IdentifierAst::FromType(*Name).get());
+  sym->Type = Type;
+
   // Ensure that the convention type doesn't have a convention.
   // Todo: an we safely allow this? I don't really see why not?
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Type, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Type, *Type, "function return type"));
 
-  // Check the type exists and qualify.
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
-  const auto sym = sm->CurrentScope->GetVarSymbol(IdentifierAst::FromType(*Name).get());
-  sym->Type = Type;
   meta->Restore();
 }
 
