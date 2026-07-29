@@ -52,6 +52,11 @@ namespace spp::codegen {
   /**
    * Build the coroutine's env struct (its frame): { state, location, send_slot, yield_slot, then one field per
    * parameter and per body local }. The frame lives on the caller's stack, so there is no heap usage.
+   *
+   * A handful of "!intrinsic" coroutines that need working memory beyond their real parameters/locals (e.g.
+   * "View[T]"'s runtime-length iterators, tracking a "{current element ptr, remaining count}" pair across resumes)
+   * get two extra fields reserved right after the frame fields - see "NeedsIterScratchFields" in the implementation.
+   * Their field index is always "GenEnvField::FRAME_START + CollectCoroFrameVars(scope).Len()".
    * @param coro The coroutine prototype.
    * @param ctx The llvm context.
    * @param scope The coroutine's scope.

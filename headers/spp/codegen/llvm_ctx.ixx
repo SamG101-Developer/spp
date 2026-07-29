@@ -20,6 +20,7 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   llvm::LLVMContext *Context;
   Unique<llvm::Module> Module;
   llvm::IRBuilder<> Builder;
+  llvm::MachineFunction *MF;
   std::map<Str, llvm::Constant*> GlobalConstants;
   bool InConstantContext = false;
 

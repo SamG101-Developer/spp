@@ -159,7 +159,10 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().get());
   _AliasSym->Type = final_sym->Type;
   _AliasSym->LinkedScope = final_sym->LinkedScope;
-  _AliasSym->IsCopyable = [final_sym] { return final_sym->IsCopyable(); };
+  const auto alias_raw_s3 = _AliasSym.get();
+  _AliasSym->IsCopyable = [final_sym, alias_raw_s3] {
+    return alias_raw_s3->IsDirectlyCopyable or alias_raw_s3->IsDirectlyZeroType or final_sym->IsCopyable();
+  };
   _TrackingScope = tracking_scope;
   MappedOldType = mapped_old_type;
 

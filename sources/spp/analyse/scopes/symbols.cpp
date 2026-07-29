@@ -138,7 +138,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
   IsGeneric(is_generic),
   GenericConstraints(generic_constraints),
   IsDirectlyCopyable(is_directly_copyable),
-  IsCopyable([this] { return this->IsDirectlyCopyable; }),
+  IsCopyable([this] { return this->IsDirectlyCopyable or this->IsDirectlyZeroType; }),
   Visibility(visibility),
   Convention(std::move(convention)),
   GenericImpl(this),

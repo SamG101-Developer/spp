@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.coroutine_prototype_ast;
+import spp.asts.function_implementation_lowered_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_prototype_ast;
@@ -40,6 +41,22 @@ auto spp::codegen::CollectCoroFrameVars(
     for (auto &&sym : CollectCoroFrameVars(*child)) { out.EmplaceBack(std::move(sym)); }
   }
   return out;
+}
+
+namespace {
+  // "View[T]"'s runtime-length iterators ("iter_ref"/"iter_mut"/"reverse_iter_ref"/"reverse_iter_mut") need a
+  // persistent "{current element ptr, remaining count}" pair to track loop progress across resumes - unlike
+  // "Arr[T, n]::iter_mov" (whose length is a compile-time constant, so it can unroll into one yield per element
+  // instead), and unlike "Slot"/"StrView::slice_*" (which either borrow an address that already exists, or have a
+  // spare same-size parameter pair to repurpose as scratch storage). None of "View"'s iterators have a second
+  // parameter to reuse, so this reserves two extra fields - a pointer and a "USize" - right after the normal frame
+  // fields, for exactly these four coroutines.
+  auto NeedsIterScratchFields(spp::Str const &scope_path) -> bool {
+    return scope_path == "std.view.View.iter_ref"
+      or scope_path == "std.view.View.iter_mut"
+      or scope_path == "std.view.View.reverse_iter_ref"
+      or scope_path == "std.view.View.reverse_iter_mut";
+  }
 }
 
 auto spp::codegen::CreateCoroEnvType(
@@ -76,6 +93,15 @@ auto spp::codegen::CreateCoroEnvType(
   // Todo: is this ignoring the borrow convention?
   for (auto const &var_sym : CollectCoroFrameVars(scope)) {
     fields.EmplaceBack(GetLlvmType(*scope.GetTypeSymbol(var_sym->Type.get()), ctx));
+  }
+
+  // A handful of "!intrinsic" coroutines (see "NeedsIterScratchFields") need working memory beyond their real
+  // parameters/locals - reserve it as two extra fields, right after the frame fields, so
+  // "GenEnvField::FRAME_START + CollectCoroFrameVars(scope).Len()" is always this scratch pointer's field index.
+  const auto lowered_impl = coro->Impl->To<asts::FunctionImplementationLoweredAst>();
+  if (lowered_impl != nullptr and NeedsIterScratchFields(lowered_impl->GetScopePtr())) {
+    fields.EmplaceBack(llvm::PointerType::get(*ctx->Context, 0));
+    fields.EmplaceBack(llvm::Type::getInt64Ty(*ctx->Context));
   }
 
   const auto coro_env_type = llvm::StructType::create(
@@ -150,5 +176,53 @@ auto spp::codegen::create_async_spawn_func(
 
   internal_spawn_func->addFnAttr(llvm::Attribute::NoUnwind);
   internal_spawn_func->addFnAttr(llvm::Attribute::NoInline);
+
+  // Give the function a body: it launches a real OS thread that runs the closure concurrently with the caller. A
+  // stackless "gen fn"-style state machine (the same lowering the generators use, in "CreateCoroResFunc" above) or
+  // raw "llvm.coro.*" intrinsics only give suspend/resume on the *same* thread - they don't provide the concurrency
+  // an "async" call needs while the caller carries on, so this reuses the real pthread primitive the rest of the
+  // runtime is already built on (see "std::threading::thread::spawn", which is backed by the same "sppc" FFI).
+  const auto save_ip = ctx->Builder.saveIP();
+
+  const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", internal_spawn_func);
+  ctx->Builder.SetInsertPoint(entry_bb);
+
+  const auto closure_fn_arg = internal_spawn_func->getArg(0);
+  const auto fut_arg = internal_spawn_func->getArg(1);
+
+  // Build the closure value as this compiler's own { fn_ptr, env_ptr } fat-pointer convention (see the closure-call
+  // codegen in "PostfixExpressionOperatorFunctionCallAst"), so it can be handed straight to "sppc_pthread_create",
+  // whose "start_routine" parameter is a "FunMov[(), CVoid]" closure using that exact same layout.
+  const auto closure_ty = llvm::StructType::get(*ctx->Context, {llvm_closure_func_ptr_type, llvm_fut_ptr_type});
+  auto closure_val = static_cast<llvm::Value*>(llvm::UndefValue::get(closure_ty));
+  closure_val = ctx->Builder.CreateInsertValue(closure_val, closure_fn_arg, {0u}, "async.spawn.closure.fn");
+  closure_val = ctx->Builder.CreateInsertValue(closure_val, fut_arg, {1u}, "async.spawn.closure.env");
+
+  // Declare the two native thread primitives directly (the raw C symbols, matching the "sppc" runtime's ABI), rather
+  // than going through this compiler's own "!ffi" declaration codegen for "sppc::pthread_create"/"pthread_detach".
+  const auto handle_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
+  const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+
+  const auto pthread_create_type = llvm::FunctionType::get(i32_ty, {closure_ty, handle_ptr_type}, false);
+  const auto pthread_create_func = ctx->Module->getFunction("sppc_pthread_create") != nullptr
+    ? ctx->Module->getFunction("sppc_pthread_create")
+    : llvm::Function::Create(
+      pthread_create_type, llvm::Function::ExternalLinkage, "sppc_pthread_create", ctx->Module.get());
+
+  const auto pthread_detach_type = llvm::FunctionType::get(i32_ty, {handle_ptr_type}, false);
+  const auto pthread_detach_func = ctx->Module->getFunction("sppc_pthread_detach") != nullptr
+    ? ctx->Module->getFunction("sppc_pthread_detach")
+    : llvm::Function::Create(
+      pthread_detach_type, llvm::Function::ExternalLinkage, "sppc_pthread_detach", ctx->Module.get());
+
+  // Spawn the thread and immediately detach it: nothing joins on it directly, "Fut::await" instead spin-waits on the
+  // atomic "state" field that the spawned closure sets to COMPLETED on its way out.
+  const auto handle_alloca = ctx->Builder.CreateAlloca(llvm::Type::getInt64Ty(*ctx->Context), nullptr, "async.spawn.handle");
+  ctx->Builder.CreateStore(llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0), handle_alloca);
+  ctx->Builder.CreateCall(pthread_create_type, pthread_create_func, {closure_val, handle_alloca});
+  ctx->Builder.CreateCall(pthread_detach_type, pthread_detach_func, {handle_alloca});
+  ctx->Builder.CreateRetVoid();
+
+  ctx->Builder.restoreIP(save_ip);
   return internal_spawn_func;
 }

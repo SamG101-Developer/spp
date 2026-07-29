@@ -41,6 +41,7 @@ const spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
 const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
 const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
 const spp::Vec<spp::Str> kVarParts = {"std", "variant", "Var"};
+const spp::Vec<spp::Str> kNonNullParts = {"std", "mem", "pointer", "NonNull"};
 
 // Width of a variant's discriminant. Matches the "sizeof(std::size_t)" discriminator that "SizeOf" accounts for.
 constexpr auto kVariantTagBits = 64u;
@@ -102,6 +103,14 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "StrView" to the llvm "i8*" type.
   if (parts == kStrViewParts) {
+    cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
+    return;
+  }
+
+  // Lower S++ "NonNull[T]" to a bare llvm pointer: it declares no fields of its own (unlike "Ptr[T]", which wraps its
+  // address in an explicit "addr: USize" field), so the generic attribute-based layout below would otherwise leave it
+  // a zero-size struct - unusable as the "ptr"-sized field "View[T]"/"RawBuf[T, A]" etc. store it as.
+  if (parts == kNonNullParts) {
     cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
   }

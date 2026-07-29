@@ -26,6 +26,7 @@ namespace spp::analyse::utils::builtins {
       codegen::LLvmCtx *,
       llvm::Type *)> llvm_fn;
     Unique<cmp_utils::CmpFn> cmp_fn;
+    Str name;
   };
 
   auto MakeBuiltinFuncMap() -> ankerl::unordered_dense::map<Str, LoweredFuncImpl>;

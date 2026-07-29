@@ -993,8 +993,10 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
   const auto new_cls_scope_ptr = new_cls_scope.get();
 
   // Note: These closure captures must be copies.
-  new_cls_sym->IsCopyable = [old_cls_sym] { return old_cls_sym.IsCopyable(); };
   const auto raw_new_cls_sym = new_cls_sym.get();
+  new_cls_sym->IsCopyable = [old_cls_sym, raw_new_cls_sym] {
+    return raw_new_cls_sym->IsDirectlyCopyable or raw_new_cls_sym->IsDirectlyZeroType or old_cls_sym.IsCopyable();
+  };
   new_cls_sym->IsZeroType = [old_cls_sym, raw_new_cls_sym] {
     return raw_new_cls_sym->IsDirectlyZeroType or old_cls_sym.IsZeroType();
   };

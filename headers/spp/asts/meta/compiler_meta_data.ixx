@@ -15,6 +15,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct FunctionPrototypeAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 namespace spp::analyse::scopes {
@@ -93,8 +94,9 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   llvm::Value *LlvmAssignmentTargetType;
   llvm::PHINode *LlvmPhi;
   Vec<LlvmLoopInfo> LlvmLoopStack;
-  ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>
-                               , utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
+  ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
+  Vec<TypeAst*> CmpGnTypeArgs;
+  Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;
   bool IgnoreAccessModifierViolations;
   bool AllowAbstractType;

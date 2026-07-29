@@ -27,6 +27,7 @@ import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_argument_group_ast;
@@ -282,12 +283,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     arg->Stage9_CompTimeResolve(sm, meta);
     args.EmplaceBack(std::move(name), std::move(meta->CmpResult));
   }
-  auto arg_map = decltype(meta->CmpArgs)();
-  for (auto &&[name, val] : args) { arg_map[name] = std::move(val); }
+  auto fn_arg_map = decltype(meta->CmpArgs)();
+  auto gn_arg_type_map = decltype(meta->CmpGnTypeArgs)();
+  auto gn_arg_comp_map = decltype(meta->CmpGnCompArgs)();
+  for (auto &&[name, val] : args) { fn_arg_map[name] = std::move(val); }
+  for (auto &&gn_arg: GnArgGroup->GetTypeArgs()) { gn_arg_type_map.EmplaceBack(gn_arg->Val.get()); }
+  for (auto &&gn_arg: GnArgGroup->GetCompArgs()) { gn_arg_comp_map.EmplaceBack(gn_arg->Val.get()); }
 
   // Resolve the function with the arguments.
   meta->Save();
-  meta->CmpArgs = std::move(arg_map);
+  meta->CmpArgs = std::move(fn_arg_map);
+  meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
+  meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
   auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope());
   // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
   tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
