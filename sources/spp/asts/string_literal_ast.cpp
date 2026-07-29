@@ -105,4 +105,11 @@ auto spp::asts::StringLiteralAst::InferType(
   return type;
 }
 
+auto spp::asts::StringLiteralAst::CppVal() const -> Str {
+  auto raw_data = StrView(Val->TokenData);
+  raw_data.remove_prefix(1);
+  raw_data.remove_suffix(1);
+  return Str(raw_data);
+}
+
 SPP_MOD_END

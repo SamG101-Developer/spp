@@ -53,6 +53,8 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto CppVal() const -> Str;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::StringLiteralAst)
