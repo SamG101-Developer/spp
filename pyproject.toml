@@ -13,8 +13,9 @@ dependencies = [
 ]
 
 [tool.typos.default.extend-words]
-olt = "olt"
-Cpy = "Cpy"
+compex = "compex" # Compare exchange (atomics)
+olt = "olt"       # Ordered less than
+Cpy = "Cpy"       # Part of "MemCpy"
 
 [tool.typos.files]
 extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
