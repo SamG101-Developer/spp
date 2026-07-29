@@ -113,8 +113,9 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         fn_args->Args.Len() > fn_params->Params.Len() and not is_variadic_fn,
         {fn_scope}, ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.Len(), fn_call, fn_call.FnArgGroup->Args.Len()));
 
-      InferAllGenerics(*fn_proto, *fn_params, *gn_params, *fn_args, *gn_args, *implicit_gn_args, is_variadic_fn,
-                       fn_scope, sm, meta);
+      InferAllGenerics(
+        *fn_proto, *fn_params, *gn_params, *fn_args, *gn_args, *implicit_gn_args, is_variadic_fn,
+        fn_scope, sm, meta);
       std::tie(fn_proto, fn_scope) = PotentiallyGenerateGenericSubstitutedPrototype(
         fn_proto, fn_scope, *implicit_gn_args, *gn_args, sm, meta);
       ValidateArgsMatchParams(fn_call, *fn_proto, fn_scope, *fn_args, sm, meta);
