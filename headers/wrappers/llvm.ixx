@@ -87,6 +87,7 @@ export namespace llvm {
 
     using ::llvm::Intrinsic::memset;
     using ::llvm::Intrinsic::trap;
+    using ::llvm::Intrinsic::debugtrap;
 
     using ::llvm::Intrinsic::sadd_with_overflow;
     using ::llvm::Intrinsic::uadd_with_overflow;
