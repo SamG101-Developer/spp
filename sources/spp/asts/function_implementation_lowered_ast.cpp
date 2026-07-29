@@ -9,8 +9,11 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.builtins;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_func_impls;
+import spp.codegen.llvm_type;
 import spp.utils.traits;
 import genex;
 
@@ -31,7 +34,15 @@ auto spp::asts::FunctionImplementationLoweredAst::Clone() const
     AstCloneVec(Members),
     AstClone(TokR));
   f->SetScopePtr(_ScopePtr);
+  f->SetProtoPtr(_ProtoPtr);
   return f;
+}
+
+auto spp::asts::FunctionImplementationLoweredAst::SetProtoPtr(
+  FunctionPrototypeAst *proto)
+  -> void {
+  // Non-owning: this is a back-pointer to the prototype that owns this "Impl", not something to clone/free.
+  _ProtoPtr = proto;
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
@@ -68,6 +79,11 @@ auto spp::asts::FunctionImplementationLoweredAst::SetScopePtr(
   -> void {
   // Set the scope string for this lowered function implementation.
   _ScopePtr = scope_str;
+}
+
+auto spp::asts::FunctionImplementationLoweredAst::GetScopePtr() const
+  -> Str const& {
+  return _ScopePtr;
 }
 
 SPP_MOD_END

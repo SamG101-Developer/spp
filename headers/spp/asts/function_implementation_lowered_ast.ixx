@@ -10,11 +10,14 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct FunctionImplementationLoweredAst;
+  SPP_EXP_CLS struct FunctionPrototypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final : FunctionImplementationAst {
 private:
   Str _ScopePtr;
+
+  FunctionPrototypeAst *_ProtoPtr = nullptr;
 
 public:
   static auto NewEmpty() -> Unique<FunctionImplementationLoweredAst>;
@@ -30,4 +33,8 @@ public:
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
   auto SetScopePtr(Str const &scope_str) -> void;
+
+  SPP_ATTR_NODISCARD auto GetScopePtr() const -> Str const&;
+
+  auto SetProtoPtr(FunctionPrototypeAst *proto) -> void;
 };
