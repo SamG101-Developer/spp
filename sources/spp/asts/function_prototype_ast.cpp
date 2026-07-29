@@ -20,6 +20,8 @@ import spp.asts.class_prototype_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_implementation_lowered_ast;
 import spp.asts.function_parameter_group_ast;
@@ -33,6 +35,7 @@ import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.string_literal_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -390,32 +393,23 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   // Stage7 made it order-dependent: a comptime call site (eg `[a; 1_uz + 2_uz]` lowering to `intrinsics::add`) could be
   // resolved before the target prototype's Stage7 had run, leaving no lowered impl to evaluate.
   if (BuiltinAnnotation) {
-    auto scope_vec = sm->CurrentScope->ParentModule()->Ancestors()
-      | genex::views::transform([](auto const &x) { return x->NameAsString(); })
-      | genex::to<Vec>()
-      | genex::views::reverse
-      | genex::views::drop(1)
-      | genex::views::intersperse(Str("::"))
-      | genex::to<Vec>();
-    auto scope_str = genex::fold_left_first(scope_vec, std::plus<Str>{});
-    scope_str.append("::").append(Name->Val);
+    const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
 
     auto lowered_impl = FunctionImplementationLoweredAst::NewEmpty();
-    lowered_impl->SetScopePtr(scope_str);
+    lowered_impl->SetScopePtr(name);
+    lowered_impl->SetProtoPtr(this);
     Impl = std::move(lowered_impl);
+
+    const auto err1 = "compiler_builtin function '" + name + "' is not registered in kBuiltinFuncs";
+    RaiseIf<analyse::errors::SppInternalCompilerError>(
+      not analyse::utils::builtins::kBuiltinFuncs.contains(name),
+      {sm->CurrentScope}, ERR_ARGS(*Name, err1));
+
+    const auto err2 = "compiler_builtin function '" + name + "' missing builtin comptime implementation";
+    RaiseIf<analyse::errors::SppInternalCompilerError>(
+      TokCmp != nullptr and analyse::utils::builtins::kBuiltinFuncs.at(name).cmp_fn == nullptr,
+      {sm->CurrentScope}, ERR_ARGS(*TokCmp, err2));
   }
-
-  // if (not analyse::utils::builtins::BUILTIN_FUNCS.contains(scope_str)) {
-  //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
-  //         .with_args(*no_impl_annotation, "compiler_builtin function '" + scope_str + "' is not registered in BUILTIN_FUNCS")
-  //         .raises_from(sm->CurrentScope);
-  // }
-
-  // if (tok_cmp != nullptr and analyse::utils::builtins::BUILTIN_FUNCS.at(scope_str).cmp_fn == nullptr) {
-  //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
-  //         .with_args(*tok_cmp, "compiler_builtin function '" + scope_str + "' missing builtin comptime implementation")
-  //         .raises_from(sm->CurrentScope);
-  // }
 
   // Move out of the function scope, as it is now complete.
   sm->MoveOutOfCurrentScope();
