@@ -152,6 +152,8 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   CompilerMetaData *meta)
   -> void {
   // Load the super scopes for the class body.
+  using analyse::utils::type_utils::TypeEq;
+  using generate::common_types_precompiled::COPY;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
@@ -160,6 +162,15 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.First; }
   if (sm->CurrentScope->TySym != nullptr) {
     sm->CurrentScope->TySym->Visibility = Visibility.First;
+  }
+
+  // Mark the "Copy" class itself as copyable. Minimise TypeEq calls.
+  if (_ClsSym != nullptr and Name->LastTypePart()->Name == COPY->LastTypePart()->Name) {
+    const auto fq_name = _ClsSym->FqName();
+    if (TypeEq(*fq_name, *COPY, *sm->CurrentScope, *sm->CurrentScope)) {
+      sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())->IsDirectlyCopyable = true;
+      _ClsSym->IsDirectlyCopyable = true;
+    }
   }
 
   // Add the "Self" symbol into the scope.
