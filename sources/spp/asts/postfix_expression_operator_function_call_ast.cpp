@@ -287,8 +287,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   auto gn_arg_type_map = decltype(meta->CmpGnTypeArgs)();
   auto gn_arg_comp_map = decltype(meta->CmpGnCompArgs)();
   for (auto &&[name, val] : args) { fn_arg_map[name] = std::move(val); }
-  for (auto &&gn_arg: GnArgGroup->GetTypeArgs()) { gn_arg_type_map.EmplaceBack(gn_arg->Val.get()); }
-  for (auto &&gn_arg: GnArgGroup->GetCompArgs()) { gn_arg_comp_map.EmplaceBack(gn_arg->Val.get()); }
+  for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) { gn_arg_type_map.EmplaceBack(gn_arg->Val.get()); }
+  for (auto &&gn_arg : GnArgGroup->GetCompArgs()) { gn_arg_comp_map.EmplaceBack(gn_arg->Val.get()); }
 
   // Resolve the function with the arguments.
   meta->Save();
