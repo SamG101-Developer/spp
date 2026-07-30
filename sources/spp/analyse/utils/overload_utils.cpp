@@ -101,7 +101,8 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     auto gn_args = asts::AstClone(fn_call.GnArgGroup);
 
     // Get the implicit generic arguments for the function call.
-    auto implicit_gn_args = RetrieveImplicitGenericArgsForCall(fwd_type, std::move(sup_generic_arg_group->Args), meta);
+    auto implicit_gn_args = RetrieveImplicitGenericArgsForCall(
+      fwd_type, std::move(sup_generic_arg_group->Args), meta);
 
     // Extract the parameter names and argument names.
     const auto is_variadic_fn = fn_proto->FnParamGroup->GetVariadicParams() != nullptr;
@@ -110,8 +111,8 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       // Cannot check for "too few" arguments here because of potential "T=Void" + "x: T" removal.
       // Check if there are too many arguments (for a non-variadic function).
       RaiseIf<SppFunctionCallTooManyArgumentsError>(
-        fn_args->Args.Len() > fn_params->Params.Len() and not is_variadic_fn,
-        {fn_scope}, ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.Len(), fn_call, fn_call.FnArgGroup->Args.Len()));
+        fn_args->Args.Len() > fn_params->Params.Len() and not is_variadic_fn, {fn_scope},
+        ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.Len(), fn_call, fn_call.FnArgGroup->Args.Len()));
 
       InferAllGenerics(
         *fn_proto, *fn_params, *gn_params, *fn_args, *gn_args, *implicit_gn_args, is_variadic_fn,

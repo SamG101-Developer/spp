@@ -185,8 +185,7 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
   // If the type is generic, or the name starts with a '$', return the name as-is.
   if (IsGeneric or LinkedScope == nullptr
     or (ignore_dollar and Name->IsCompilerGeneratedType())
-    or
-    Name->Name == "Self") {
+    or Name->Name == "Self") {
     return Name;
   }
 

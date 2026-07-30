@@ -244,8 +244,9 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
   else {
     // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
     const auto sup_scopes = target_scope->AstNode->To<asts::ClassPrototypeAst>() != nullptr
-      ? target_scope->SupScopes() | genex::views::transform([](auto x) -> scopes::Scope const* { return x; }) |
-      genex::to<Vec>()
+      ? target_scope->SupScopes()
+      | genex::views::transform([](auto x) -> scopes::Scope const* { return x; })
+      | genex::to<Vec>()
       : Vec{target_scope};
 
     // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions. The TypeIdentifier
@@ -341,7 +342,8 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
     auto params_old = asts::AstCloneVec(old_fn->FnParamGroup->Params);
 
     // Remove all the required parameters on the first parameter list off of the other parameter list.
-    for (auto [p, q] : genex::views::zip(new_fn.FnParamGroup->Params | genex::views::ptr, old_fn->FnParamGroup->Params | genex::views::ptr)) {
+    for (auto [p, q] : genex::views::zip(new_fn.FnParamGroup->Params | genex::views::ptr,
+                                         old_fn->FnParamGroup->Params | genex::views::ptr)) {
       if (TypeEq(*p->Type, *q->Type, this_scope, *old_scope)) {
         params_new |= genex::actions::remove_if([pe=p->ExtractNames()](auto &&x) {
           return genex::equals(x->ExtractNames(), std::move(pe), {}, genex::meta::deref, genex::meta::deref);
