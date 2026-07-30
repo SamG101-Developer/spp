@@ -132,25 +132,26 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
     RaiseIf<SppInvalidMutationError>(
       IsIdentifier(lhs_expr) and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
-      {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization),
-                                   "immutable symbol"));
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
 
     // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
     RaiseIf<SppInvalidMutationError>(
       IsAttr(lhs_expr, sm) and not(std::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
-      {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization),
-                                   "immutable outermost symbol"));
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable outer sym"));
 
     // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
     RaiseIf<SppInvalidMutationError>(
       IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
-      {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization),
-                                   "immutable borrow"));
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
 
     // Dereference assignment (ie "x@ = y") writes through a borrow, so the borrow being dereferenced must be &mut.
     RaiseIf<SppInvalidMutationError>(
       IsDeref(lhs_expr) and lhs_deref_type->GetConvention() and *lhs_deref_type->GetConvention() != ConventionTag::MUT,
-      {sm->CurrentScope}, ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
 
     // Prevent double initializations to immutable uninitialized let statements.
     if (IsIdentifier(lhs_expr)) {
