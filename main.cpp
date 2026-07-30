@@ -2,7 +2,9 @@ import spp.cli;
 import llvm;
 import std;
 import std.compat;
+#ifdef NDEBUG
 import mimalloc;
+#endif
 
 #include <execinfo.h>
 
