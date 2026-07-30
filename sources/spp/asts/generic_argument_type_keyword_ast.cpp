@@ -22,10 +22,13 @@ SPP_MOD_BEGIN
 auto spp::asts::GenericArgumentTypeKeywordAst::FromSym(
   analyse::scopes::TypeSymbol const &sym)
   -> Unique<GenericArgumentTypeKeywordAst> {
-  // Extract the value from the symbol's scope, if it exists.
-  auto value = sym.LinkedScope == nullptr
-    ? MakeShared<TypeIdentifierAst>(0, "Self", nullptr)
-    : sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()));
+  // Extract the value from the symbol's scope, if it exists. Without a scope, fall back to the recorded generic value
+  // (the value is an unresolved generic parameter, so it names itself rather than a scope).
+  auto value = sym.LinkedScope != nullptr
+    ? sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()))
+    : sym.GenericVal != nullptr
+    ? AstCloneShared(sym.GenericVal)
+    : MakeShared<TypeIdentifierAst>(0, "Self", nullptr);
 
   // Wrap the value into a type argument.
   return MakeUnique<GenericArgumentTypeKeywordAst>(

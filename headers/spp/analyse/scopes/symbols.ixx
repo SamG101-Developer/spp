@@ -146,6 +146,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   Vec<Shared<asts::TypeAst>> GenericConstraints;
 
+  /**
+   * For a symbol created from a generic argument ("Yield=T"), the argument's value type ("T"). The binding is
+   * normally recoverable from @c LinkedScope, but when the value is itself an unresolved generic parameter there is
+   * no scope to link to, and the mapping would otherwise be lost.
+   */
+  Shared<asts::TypeAst> GenericVal;
+
   bool IsDirectlyCopyable = false;
 
   Function<bool()> IsCopyable;

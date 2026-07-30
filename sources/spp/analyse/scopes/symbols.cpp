@@ -155,6 +155,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   ScopeModule(that.ScopeModule),
   IsGeneric(that.IsGeneric),
   GenericConstraints(that.GenericConstraints),
+  GenericVal(that.GenericVal),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsCopyable(that.IsCopyable),
   Visibility(that.Visibility),

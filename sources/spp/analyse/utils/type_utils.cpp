@@ -1210,6 +1210,9 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
     sym->GenericConstraints = true_val_sym->GenericConstraints;
     sym->IsDirectlyZeroType = true_val_sym->IsDirectlyZeroType;
 
+    // Record what the parameter was bound to. When the value is another (unresolved) generic parameter there is no
+    // linked scope to recover the binding from later, so the value type is the only record of it.
+    sym->GenericVal = asts::AstCloneShared(type_arg->Val);
     return sym;
   }
 

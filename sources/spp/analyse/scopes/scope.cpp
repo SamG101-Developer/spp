@@ -170,7 +170,10 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
       | genex::to<Vec>();
 
     for (auto const &t : all_type_syms) {
-      if (t->LinkedScope == nullptr) { continue; } // unresolved or Self - no concrete value to pre-seed
+      // Self (and anything else with neither a scope nor a recorded value) has no concrete value to pre-seed. A symbol
+      // bound to another generic parameter has no scope either, but its recorded value still names the binding, and
+      // dropping it would leave the parameter unsubstituted downstream.
+      if (t->LinkedScope == nullptr and t->GenericVal == nullptr) { continue; }
       if (genex::contains(type_names, *t->Name, genex::meta::deref)) { continue; }
       syms.EmplaceBack(asts::GenericArgumentTypeKeywordAst::FromSym(*t));
       type_names.EmplaceBack(t->Name);
