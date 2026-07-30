@@ -186,13 +186,6 @@ auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
   ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
 
   // Generate the value and assign it to the variable symbol's compile-time value.
-  std::cout << std::endl << ToString() << " " << this << std::endl << std::endl;
-  if (this == reinterpret_cast<CmpStatementAst *>(0x4cefcd0)) {
-    auto _ = 123;
-  }
-  if (ToString().contains("cmp max")) {
-    auto _ = 123;
-  }
   if (not Type->IsCompilerGeneratedType()) {
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
     var_sym->CompTimeValue = AstClone(Value);
