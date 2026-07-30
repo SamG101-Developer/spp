@@ -817,9 +817,9 @@ auto spp::codegen::func_impls::simple_coro_view_iter(
   // Initialize the scratch state: forwards starts at the first element; backwards starts at the last.
   const auto init_ptr = reverse
     ? ctx->Builder.CreateGEP(
-        elem_ty, self_data_ptr,
-        {ctx->Builder.CreateSub(self_length, llvm::ConstantInt::get(usize_ty, 1), "view.iter.last_index")},
-        "view.iter.init_ptr")
+      elem_ty, self_data_ptr,
+      {ctx->Builder.CreateSub(self_length, llvm::ConstantInt::get(usize_ty, 1), "view.iter.last_index")},
+      "view.iter.init_ptr")
     : self_data_ptr;
   ctx->Builder.CreateStore(init_ptr, scratch_ptr_field);
   ctx->Builder.CreateStore(self_length, scratch_count_field);
@@ -1978,29 +1978,25 @@ auto spp::codegen::func_impls::std_vector_fwd_mut(
 }
 
 auto spp::codegen::func_impls::std_generator_send(
-  analyse::scopes::ScopeManager const *sm,
-  asts::FunctionPrototypeAst const *proto,
+  analyse::scopes::ScopeManager const *,
+  asts::FunctionPrototypeAst const *,
   LLvmCtx *ctx,
-  llvm::Type *ty)
+  llvm::Type *)
   -> void {
-  // TODO
-  (void)sm;
-  (void)proto;
-  (void)ctx;
-  (void)ty;
+  // Dummy function for analysis. Still needs terminating. The .res() operator handles the lowering for generators
+  // there.
+  ctx->Builder.CreateUnreachable();
 }
 
 auto spp::codegen::func_impls::std_generator_once_send(
-  analyse::scopes::ScopeManager const *sm,
-  asts::FunctionPrototypeAst const *proto,
+  analyse::scopes::ScopeManager const *,
+  asts::FunctionPrototypeAst const *,
   LLvmCtx *ctx,
-  llvm::Type *ty)
+  llvm::Type *)
   -> void {
-  // TODO
-  (void)sm;
-  (void)proto;
-  (void)ctx;
-  (void)ty;
+  // Dummy function for analysis. Still needs terminating. The .res() operator handles the lowering for generators
+  // there.
+  ctx->Builder.CreateUnreachable();
 }
 
 auto spp::codegen::func_impls::std_future_fut_await(
