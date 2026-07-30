@@ -423,7 +423,7 @@ auto spp::analyse::utils::type_utils::IsTypeBool(
   -> bool {
   // Check the type against "std::bool::Bool".
   using asts::generate::common_types_precompiled::BOOL;
-  return TypeEq(*type.WithoutGenerics(), *BOOL, scope, scope);
+  return TypeEq(type, *BOOL, scope, scope);
 }
 
 auto spp::analyse::utils::type_utils::IsTypeVoid(
@@ -432,7 +432,7 @@ auto spp::analyse::utils::type_utils::IsTypeVoid(
   -> bool {
   // Check the type against "std::void::Void".
   using asts::generate::common_types_precompiled::VOID;
-  return TypeEq(*type.WithoutGenerics(), *VOID, scope, scope);
+  return TypeEq(type, *VOID, scope, scope);
 }
 
 auto spp::analyse::utils::type_utils::IsTypeNever(
@@ -441,7 +441,7 @@ auto spp::analyse::utils::type_utils::IsTypeNever(
   -> bool {
   // Check the type against "std::void::Void".
   using asts::generate::common_types_precompiled::NEVER;
-  return TypeEq(*type.WithoutGenerics(), *NEVER, scope, scope);
+  return TypeEq(type, *NEVER, scope, scope);
 }
 
 auto spp::analyse::utils::type_utils::IsTypeGen(
