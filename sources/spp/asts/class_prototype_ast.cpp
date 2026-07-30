@@ -327,7 +327,6 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
       AstClone(Name->TypeParts()[0]), this, sm->CurrentScope, sm->CurrentScope,
       sm->CurrentScope->ParentModule(), false, is_dollar_type);
     symbol_2->GenericImpl = symbol_1.get();
-    sm->CurrentScope->TySym = symbol_2;
     const auto ret_sym = symbol_2.get();
     sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_2);
     return ret_sym;
