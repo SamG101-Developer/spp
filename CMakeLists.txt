@@ -145,7 +145,7 @@ target_link_libraries(
   LLVMScalarOpts
   LLVMTransformUtils
   Threads::Threads
-  mimalloc
+  $<$<NOT:$<CONFIG:Debug>>:mimalloc>
   unordered_dense::unordered_dense
   tomlplusplus::tomlplusplus
   nlohmann_json::nlohmann_json
