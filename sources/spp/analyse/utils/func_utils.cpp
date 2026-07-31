@@ -787,12 +787,12 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
   meta.Restore();
 }
 
-// Run RelaxedTypeEq on one (source, target) pair and distribute results by param kind.
 static auto CollectDirectInferences(
   spp::Shared<spp::asts::TypeAst> const &source_type,
   spp::Shared<spp::asts::TypeAst> const &target_type,
   spp::Shared<spp::asts::IdentifierAst> const &target_name,
   spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &type_p_names,
+  spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &variadic_type_p_names,
   spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &comp_p_names,
   spp::Shared<spp::asts::IdentifierAst> const &variadic_fn_param_name,
   spp::analyse::scopes::Scope const &owner_scope,
@@ -807,14 +807,16 @@ static auto CollectDirectInferences(
     *target_type->WithoutConvention(),
     *sm.CurrentScope, owner_scope, temp_gs, true);
 
+  const auto is_variadic_param_slot =
+    variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name;
+
   //
   for (auto const &[inferred_name, inferred_val] : temp_gs) {
     if (genex::contains(type_p_names, *inferred_name, genex::meta::deref)) {
       auto *typed = inferred_val->To<spp::asts::TypeAst>();
       if (typed == nullptr) { continue; }
       auto shared = typed->shared_from_this();
-      // Variadic unwrap: inferred value is Tup[T]; extract the inner type.
-      if (variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name) {
+      if (is_variadic_param_slot and not genex::contains(variadic_type_p_names, *inferred_name, genex::meta::deref)) {
         auto const &inner = shared->LastTypePart()->GnArgGroup->Args[0];
         shared = inner->ToUnchecked<spp::asts::GenericArgumentTypeAst>()->Val;
       }
@@ -854,6 +856,10 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
   auto type_p_names = type_params
     | genex::views::transform([](auto *x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
     | genex::to<Vec>();
+  auto variadic_type_p_names = type_params
+    | genex::views::filter([](auto *x) { return x->template To<asts::GenericParameterTypeVariadicAst>() != nullptr; })
+    | genex::views::transform([](auto *x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
+    | genex::to<Vec>();
   auto comp_p_names = comp_params
     | genex::views::transform([](auto *x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
     | genex::to<Vec>();
@@ -886,8 +892,8 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
   for (auto const &[target_name, target_type] : infer_target) {
     if (not infer_source.contains(target_name)) { continue; }
     CollectDirectInferences(
-      infer_source.at(target_name), target_type, target_name, type_p_names, comp_p_names, variadic_fn_param_name,
-      owner_scope, sm, type_inferred, comp_inferred);
+      infer_source.at(target_name), target_type, target_name, type_p_names, variadic_type_p_names, comp_p_names,
+      variadic_fn_param_name, owner_scope, sm, type_inferred, comp_inferred);
   }
 
   // Next is constraint based inference, where for example [U, F: FunRef[(), U]] can infer U from the return type of

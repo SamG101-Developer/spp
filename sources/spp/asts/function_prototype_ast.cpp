@@ -135,9 +135,10 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, ctx);
 
   if (not is_generic) {
-    // Create the LLVM function type.
-    const auto is_var_arg = FnParamGroup->GetVariadicParams() != nullptr;
-    const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types.ToStdVector(), is_var_arg);
+    // Create the LLVM function type. A "..a: T" parameter is never true C-ABI varargs - the call site (NameFnArgs)
+    // always collapses the trailing arguments into a single tuple value ahead of time, so the callee is an ordinary
+    // fixed-arity function whose last parameter happens to have a tuple type.
+    const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types.ToStdVector(), false);
 
     // Create the LLVM function and add it to the context.
     const auto created_llvm_func = llvm::Function::Create(

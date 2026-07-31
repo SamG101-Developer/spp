@@ -507,11 +507,27 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
     auto a_type = arg->InferType(sm, meta);
     auto temp = type_utils::GenericInferenceMap();
 
-    // Special case for variadic parameters (updates p_type so don't follow with "else if").
-    if (param->To<asts::FunctionParameterVariadicAst>()) {
-      auto ts = Vec<Shared<asts::TypeAst>>(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
-      p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
-      p_type->Stage7_AnalyseSemantics(sm, meta);
+    // Special case for variadic parameters (updates p_type so don't follow with "else if"). If the parameter's own
+    // declared type is a bare reference to the function's variadic generic parameter (eg "..varargs: V" where the
+    // function declares "[..V]"), generic substitution (PotentiallyGenerateGenericSubstitutedPrototype) has already
+    // resolved "p_type" to the full collapsed tuple, so it's used as-is. Otherwise (a fixed type, eg "..a: S32", or
+    // an ordinary generic standing for one homogeneous element, eg "..b: U") "p_type" is the per-element type, so
+    // wrap N copies of it into a tuple to match the collapsed argument tuple.
+    if (const auto variadic_param = param->To<asts::FunctionParameterVariadicAst>(); variadic_param != nullptr) {
+      // A substituted/monomorphized prototype's own "GnParamGroup" has its params cleared (it's no longer generic),
+      // so the variadic generic parameter (if any) has to be looked up on the original, pre-substitution
+      // declaration via "GetNonGenericImpl" - which points back to itself when "fn_proto" isn't a substitution.
+      const auto variadic_gn_param = fn_proto.GetNonGenericImpl()->GnParamGroup->GetVariadicParams();
+      const auto orig_name = dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_param->Source.OriginalType);
+      const auto is_variadic_generic_type = variadic_gn_param != nullptr
+        and orig_name != nullptr
+        and *orig_name == *dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_gn_param->Name);
+
+      if (not is_variadic_generic_type) {
+        auto ts = Vec<Shared<asts::TypeAst>>(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
+        p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
+        p_type->Stage7_AnalyseSemantics(sm, meta);
+      }
     }
 
     // Special case for "self" parameters.
