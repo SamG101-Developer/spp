@@ -61,6 +61,22 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
+    test_valid_value_before_and_after_bound_multi_skip, R"(
+    fun f(p: Arr[Str, 5_uz]) -> Void {
+        case p is [a, ..b, c] { }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CasePatternVariantDestructureArrayAst,
+    test_valid_literal_before_and_after_bound_multi_skip, R"(
+    fun f(p: Arr[S32, 5_uz]) -> Void {
+        case p is [1, ..b, 99] { }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CasePatternVariantDestructureArrayAst,
     test_valid_multiple_branches, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p of {

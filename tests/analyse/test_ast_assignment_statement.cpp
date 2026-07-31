@@ -229,6 +229,27 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
+    test_valid_assign_multi_swap, R"(
+    fun f() -> Void {
+        let mut a = 1
+        let mut b = 2
+        a, b = b, a
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AssignmentStatementAst,
+    test_valid_assign_multi_rotate, R"(
+    fun f() -> Void {
+        let mut a = 1
+        let mut b = 2
+        let mut c = 3
+        a, b, c = b, c, a
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AssignmentStatementAst,
     test_valid_assign_with_mutable_deref, R"(
     fun f(x: &mut S32) -> Void {
         x@ = 123

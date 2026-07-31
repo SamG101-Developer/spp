@@ -61,6 +61,24 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureTupleAst,
+    test_valid_value_before_and_after_bound_multi_skip, R"(
+    fun f(p: (S32, Str, Str, Str, Bool)) -> Void {
+        case p is (a, ..b, c) {
+            let x: Bool = c
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CasePatternVariantDestructureTupleAst,
+    test_valid_literal_before_and_after_bound_multi_skip, R"(
+    fun f(p: (S32, Str, Str, Str, Bool)) -> Void {
+        case p is (1, ..b, true) { }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CasePatternVariantDestructureTupleAst,
     test_valid_multiple_branches, R"(
     fun f(p: (Str, Str)) -> Void {
         case p of {
