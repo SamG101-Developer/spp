@@ -168,7 +168,8 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
 
   // Create the LLVM constant float value from the normalised value string.
   const auto ap_float = llvm::APFloat(semantics, mapped_val.str());
-  return llvm::ConstantFP::get(*ctx->Context, ap_float);
+  const auto co_float = llvm::ConstantFP::get(*ctx->Context, ap_float);
+  return co_float;
 }
 
 auto spp::asts::FloatLiteralAst::InferType(

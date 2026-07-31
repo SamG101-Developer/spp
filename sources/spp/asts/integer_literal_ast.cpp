@@ -165,7 +165,8 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
 
   // Create the LLVM constant integer value from the normalised decimal string (APInt handles the sign).
   const auto ap_int = llvm::APInt(bit_width, mapped_val.str(), 10);
-  return llvm::ConstantInt::get(*ctx->Context, ap_int);
+  const auto co_int = llvm::ConstantInt::get(*ctx->Context, ap_int);
+  return co_int;
 }
 
 auto spp::asts::IntegerLiteralAst::InferType(
