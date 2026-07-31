@@ -205,7 +205,15 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Forward the code generation to the mapped function.
+  // Forward the code generation to the mapped function. The common
+  // expressions like "1 + 2" follow these steps:
+  // |- 1 + 2
+  // |- 1.add(2)
+  // |- S32::add(self=1, that=2) [inlined]
+  //    |- std::intrinsics::add(1, 2) [inlined]
+  //    |- ctx->Builder.CreateAdd(a, b)
+  // This allows the optimal instruction to be used, whilst maintaining
+  // the uniform function processing for all operations in s++.
   return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
 }
 
@@ -214,10 +222,6 @@ auto spp::asts::BinaryExpressionAst::InferType(
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the type from the function mapping of the binary expression.
-  // if (_MappedFunc == nullptr) {
-  //     // Todo: Needed?
-  //     Stage7_AnalyseSemantics(sm, meta);
-  // }
   return _MappedFunc->InferType(sm, meta);
 }
 
