@@ -225,7 +225,8 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   const auto llvm_global_var = new llvm::GlobalVariable(
-    *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
+    *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage,
+    llvm::cast<llvm::Constant>(val),
     codegen::mangle::mangle_cmp_name(*sm->CurrentScope, *this));
 
   // Register in the llvm info.
