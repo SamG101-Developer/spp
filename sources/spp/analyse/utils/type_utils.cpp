@@ -499,6 +499,26 @@ auto spp::analyse::utils::type_utils::IsTypeFunc(
     TypeEq(*type.WithoutGenerics(), *FUN_REF, scope, scope);
 }
 
+auto spp::analyse::utils::type_utils::IsTypeFatPointerFamily(
+  asts::TypeAst const &type,
+  scopes::Scope const &scope)
+  -> bool {
+  return IsTypeGen(type, scope) or IsTypeFunc(type, scope);
+}
+
+auto spp::analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount(
+  asts::TypeAst const &type,
+  scopes::Scope const &scope)
+  -> std::size_t {
+  const auto type_sym = scope.GetTypeSymbol(&type);
+  if (type_sym == nullptr or type_sym->LinkedScope == nullptr) { return 0uz; }
+
+  const auto superimposes_fat_pointer = genex::any_of(
+    type_sym->LinkedScope->SupTypes(),
+    [&](auto const &sup_type) { return IsTypeFatPointerFamily(*sup_type, *type_sym->LinkedScope); });
+  return superimposes_fat_pointer ? 2uz : 0uz;
+}
+
 auto spp::analyse::utils::type_utils::IsTypeRecursive(
   asts::ClassPrototypeAst const &type,
   scopes::ScopeManager const &sm)
@@ -1520,17 +1540,22 @@ auto spp::analyse::utils::type_utils::GetFieldIndexInType(
   asts::IdentifierAst const &field_name,
   scopes::ScopeManager const &sm)
   -> std::size_t {
+  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that interface's fat-pointer fields prepended ahead of
+  // its own declared attributes (see "ClassPrototypeAst::_FillLlvmLayout"), so an attribute's declared index has
+  // to be shifted past them.
+  const auto base = GetSuperimposedFatPointerFieldCount(type_sym, *sm.CurrentScope);
+
   // Get all the attributes on the type.
   const auto all_attrs = GetAllAttrs(type_sym, sm);
 
   // Find the field index.
   for (auto index = 0uz; index < all_attrs.Len(); ++index) {
     if (*std::get<0>(all_attrs[index]) == field_name) {
-      return index;
+      return base + index;
     }
   }
 
-  return all_attrs.Len();
+  return base + all_attrs.Len();
 
   // return genex::position(all_attrs, genex::operations::eq_fixed(field_name), [](auto &&attr) -> decltype(auto) { return *attr.first->Name; });
 }

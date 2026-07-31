@@ -213,6 +213,34 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope const &scope)
     -> bool;
 
+  /**
+   * Checks whether @p type is one of the compiler's "fat pointer" interface types: "Gen"/"GenOnce", or a "FunXXX"
+   * closure type. A class can superimpose one of these to gain its calling convention, sharing its exact
+   * { fn_ptr, env_ptr } layout (eg "Iterator[T]" over "Gen[T]"). This is the single source of truth for "is this
+   * type part of that family", shared by the LLVM layout code (which decides the fat pointer's field prefix) and
+   * attribute indexing/construction (which has to offset around that prefix on a superimposing class).
+   * @param type The type to test.
+   * @param scope The scope to resolve @p type against.
+   * @return True if @p type is "Gen", "GenOnce", or a "FunXXX" type.
+   */
+  SPP_EXP_FUN auto IsTypeFatPointerFamily(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> bool;
+
+  /**
+   * The number of synthetic fat-pointer fields ("resume_fn"/"env_ptr", or "fn_ptr"/"env_ptr") prepended ahead of
+   * @p type's own declared attributes, because @p type superimposes one of the "IsTypeFatPointerFamily" types.
+   * Zero if it doesn't superimpose one. See "IsTypeFatPointerFamily".
+   * @param type The type to test.
+   * @param scope The scope to resolve @p type against.
+   * @return The fat pointer prefix's field count (0 or 2).
+   */
+  SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> std::size_t;
+
   SPP_EXP_FUN auto IsTypeRecursive(
     asts::ClassPrototypeAst const &type,
     scopes::ScopeManager const &sm)
