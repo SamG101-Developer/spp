@@ -65,6 +65,15 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Shared<TypeAst> LetStatementExplicitType;
   ExpressionAst *LetStatementValue;
   bool LetStatementFromUninitialized;
+
+  /**
+   * When set, a local variable's initializer is this already-generated llvm value rather than the result of
+   * code-generating @c LetStatementValue. Used to bind a function/closure parameter directly to its incoming
+   * @c llvm::Argument, since there is no expression AST to codegen for it (see
+   * @c FunctionParameterGroupAst::Stage11_CodeGen).
+   */
+  llvm::Value *LetStatementPrecomputedValue;
+
   bool LoopDoubleCheckActive;
   std::size_t LoopCurrentDepth;
   LoopExpressionAst *LoopCurrentAst;

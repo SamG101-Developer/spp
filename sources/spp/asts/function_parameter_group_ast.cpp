@@ -16,8 +16,10 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import genex;
+import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
@@ -132,8 +134,17 @@ auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Code generate each parameter.
-  for (auto const &param : Params) { param->Stage11_CodeGen(sm, meta, ctx); }
+  // Bind each parameter's storage to its actual incoming
+  // llvm::Argument, in declaration order. For closures, the
+  // 0th argument is the closure env (skip it).
+  const auto llvm_fn = ctx->Builder.GetInsertBlock()->getParent();
+  auto arg_index = ctx->CurrentClosureType != nullptr ? 1u : 0u;
+  for (auto const &param : Params) {
+    meta->LetStatementPrecomputedValue = llvm_fn->getArg(arg_index);
+    param->Stage11_CodeGen(sm, meta, ctx);
+    meta->LetStatementPrecomputedValue = nullptr;
+    ++arg_index;
+  }
   return nullptr;
 }
 
