@@ -34,11 +34,6 @@ const spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
 const spp::Vec<spp::Str> kSizedIntegerParts = {"std", "num", "sized_integer", "SizedInteger"};
 const spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
 const spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
-const spp::Vec<spp::Str> kFunRefParts = {"std", "function", "FunRef"};
-const spp::Vec<spp::Str> kFunMutParts = {"std", "function", "FunMut"};
-const spp::Vec<spp::Str> kFunMovParts = {"std", "function", "FunMov"};
-const spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
-const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
 const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
 const spp::Vec<spp::Str> kVarParts = {"std", "variant", "Var"};
 const spp::Vec<spp::Str> kNonNullParts = {"std", "mem", "pointer", "NonNull"};
@@ -60,6 +55,22 @@ static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics
     default: std::unreachable();
   }
   std::unreachable();
+}
+
+auto spp::codegen::GetFatPointerFields(
+  asts::TypeAst const &type,
+  analyse::scopes::Scope const &scope,
+  LLvmCtx const *ctx)
+  -> std::optional<Vec<llvm::Type*>> {
+  //
+  using analyse::utils::type_utils::IsTypeFatPointerFamily;
+
+  // "IsTypeFatPointerFamily" is the single source of truth for
+  // "is this Gen/GenOnce/a FunXXX" - this function only adds the
+  // LLVM-specific field materialization on top.
+  if (not IsTypeFatPointerFamily(type, scope)) { return std::nullopt; }
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  return Vec<llvm::Type*>{ptr_ty, ptr_ty};
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
@@ -151,20 +162,20 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower the function types to a { fn_ptr, env_ptr } pair (a "fat pointer": the function code plus a pointer to its
-  // captured environment; the env pointer is null for capture-less functions). All three share this layout, so plain
-  // functions and closures are interchangeable.
-  if (parts == kFunMovParts or parts == kFunMutParts or parts == kFunRefParts) {
+  // "Generated[Yield]" ("send"'s return type) shares the { ptr, ptr }
+  // shape too, but it is a private, compiler-internal type nothing
+  // ever superimposes, so it's handled directly here by name rather
+  // than through "GetFatPointerFields".
+  if (parts == kGeneratedParts) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
     return;
   }
 
-  // Lower the generator types to a { resume_fn_ptr, env_ptr } pair (a "fat pointer": the coroutine resume function
-  // plus a pointer to its frame/environment, which lives on the caller's stack - no heap allocation).
-  if (parts == kGenParts or parts == kGenOnceParts or parts == kGeneratedParts) {
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+  // Lower the "Fun*"/"Gen*" family to a { fn_ptr, env_ptr } /
+  // { resume_fn_ptr, env_ptr } fat pointer.
+  if (const auto fields = GetFatPointerFields(*cls_sym->FqName(), *scope, ctx); fields.has_value()) {
+    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, fields->ToStdVector());
     return;
   }
 

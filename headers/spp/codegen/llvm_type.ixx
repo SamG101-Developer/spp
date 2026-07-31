@@ -30,6 +30,23 @@ namespace spp::codegen {
     -> llvm::Type*;
 
   /**
+   * The "Fun*"/"Gen*" family of compiler-known types always lower to the same { fn_ptr, env_ptr } fat pointer,
+   * whether @p type IS one of them, or a class superimposes one of them as an interface (eg "Iterator[T]" over
+   * "Gen[T]"). This is the single source of truth for that shape, so "RegisterLlvmTypeInfo" (lowering the type
+   * itself) and "ClassPrototypeAst::_FillLlvmLayout" (prepending the shape onto a superimposing class) can't drift
+   * apart.
+   * @param type The type to test.
+   * @param scope The scope to resolve @p type against.
+   * @param ctx The LLVM context containing all codegen info.
+   * @return The fat pointer's fields, or nothing if @p type is not one of the fat-pointer family.
+   */
+  SPP_EXP_FUN auto GetFatPointerFields(
+    asts::TypeAst const &type,
+    analyse::scopes::Scope const &scope,
+    LLvmCtx const *ctx)
+    -> std::optional<Vec<llvm::Type*>>;
+
+  /**
    * Get the type of the tag on variant lowered struct: the integer type (64-bit).
    * @param ctx The LLVM context containing all codegen info.
    * @return The integer type used for every variant's discriminant.
