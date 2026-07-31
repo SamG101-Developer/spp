@@ -16,6 +16,7 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import genex;
