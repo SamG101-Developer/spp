@@ -192,56 +192,78 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Get the generator environment (the env pointer bound as the resume function's first argument) and its struct type
-  // (for GEPs into the frame).
+  // Get the generator environment (the env pointer bound as the
+  // resume function's first argument) and its struct type (for
+  // GEPs into the frame).
   const auto coro = meta->EnclosingFunctionScope->AstNode->To<CoroutinePrototypeAst>();
   const auto llvm_gen_env = coro->LlvmCoroGenEnv;
-  const auto env_type = coro->LlvmCoroGenEnvType;
-  SPP_ASSERT(llvm_gen_env != nullptr and env_type != nullptr);
+  const auto llvm_gen_env_type = coro->LlvmCoroGenEnvType;
+  SPP_ASSERT(llvm_gen_env != nullptr and llvm_gen_env_type != nullptr);
 
   const auto uid = "." + spp::utils::Uid(this);
 
-  // Mark the coroutine as suspended-with-a-value (state: YIELDED) and record the location to resume at. This "gen" is
-  // the i-th yield, and the resume switch maps location i+1 to its continuation block.
-  const auto location = ctx->YieldContinuations.Len() + 1;
-  ctx->Builder.CreateStore(
-    llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), std::to_underlying(codegen::CoroutineState::YIELDED)),
-    ctx->Builder.CreateStructGEP(
-      env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::STATE), "gen.state" + uid));
-  ctx->Builder.CreateStore(
-    llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), location),
-    ctx->Builder.CreateStructGEP(
-      env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::LOCATION), "gen.loc" + uid));
+  // Mark the coroutine as suspended-with-a-value (state: YIELDED)
+  // and record the location to resume at. This "gen" is the i-th
+  // yield, and the resume switch maps location i+1 to its continuation
+  // block.
+  const auto llvm_gen_state_yielded = llvm::ConstantInt::get(
+    llvm::Type::getInt8Ty(*ctx->Context),
+    std::to_underlying(codegen::CoroutineState::YIELDED));
 
-  // Store the yielded value into the yield slot (if an expression is given). A borrowed yield expression puts the
-  // address of what is borrowed into the slot, because the slot holds a "&T" or "&mut T".
+  const auto llvm_location = llvm::ConstantInt::get(
+    llvm::Type::getInt32Ty(*ctx->Context),
+    ctx->YieldContinuations.Len() + 1);
+
+  const auto llvm_gen_env_state_ptr = ctx->Builder.CreateStructGEP(
+    llvm_gen_env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::STATE),
+    "gen.state" + uid);
+
+  const auto llvm_gen_env_location_ptr = ctx->Builder.CreateStructGEP(
+    llvm_gen_env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::LOCATION),
+    "gen.loc" + uid);
+
+  ctx->Builder.CreateStore(llvm_gen_state_yielded, llvm_gen_env_state_ptr);
+  ctx->Builder.CreateStore(llvm_location, llvm_gen_env_location_ptr);
+
+  // Store the yielded value into the yield slot (if an expression
+  // is given). A borrowed yield expression puts the address of what
+  // is borrowed into the slot, because the slot holds a "&T" or "&mut T".
   if (Expr != nullptr) {
-    const auto yield_val = Conv != nullptr
+    const auto llvm_yield_val = Conv != nullptr
       ? codegen::llvm_addr_of(*Expr, sm, meta, ctx)
       : Expr->Stage11_CodeGen(sm, meta, ctx);
 
-    ctx->Builder.CreateStore(
-      yield_val,
-      ctx->Builder.CreateStructGEP(
-        env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::YIELD_SLOT), "gen.yield.slot" + uid));
+    const auto llvm_yield_slot_ptr = ctx->Builder.CreateStructGEP(
+      llvm_gen_env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::YIELD_SLOT),
+      "gen.yield.slot" + uid);
+
+    ctx->Builder.CreateStore(llvm_yield_val, llvm_yield_slot_ptr);
   }
 
   // To suspend, return control to the caller.
   ctx->Builder.CreateRetVoid();
 
-  // The continuation block: where the resume switch jumps to on the next ".res()". Register it so the coroutine
-  // prototype can add its switch case.
+  // The continuation block: where the resume switch jumps to on the
+  // next ".res()". Register it so the coroutine prototype can add
+  // its switch case.
   const auto cont_bb = llvm::BasicBlock::Create(
     *ctx->Context, "gen.cont" + uid,
     ctx->Builder.GetInsertBlock()->getParent());
   ctx->YieldContinuations.push_back(cont_bb);
   ctx->Builder.SetInsertPoint(cont_bb);
 
-  // The value of the "gen" expression is whatever was sent in via ".res(x)", so read it back off the send slot.
-  const auto send_slot_ty = env_type->getElementType(std::to_underlying(codegen::GenEnvField::SEND_SLOT));
-  const auto send_slot_ptr = ctx->Builder.CreateStructGEP(
-    env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::SEND_SLOT), "gen.send.slot" + uid);
-  return ctx->Builder.CreateLoad(send_slot_ty, send_slot_ptr, "gen.send.val" + uid);
+  // The value of the "gen" expression is whatever was sent in via
+  // ".res(x)", so read it back off the send slot.
+  const auto llvm_send_slot_ty = llvm_gen_env_type->getElementType(
+    std::to_underlying(codegen::GenEnvField::SEND_SLOT));
+
+  const auto llvm_send_slot_ptr = ctx->Builder.CreateStructGEP(
+    llvm_gen_env_type, llvm_gen_env, std::to_underlying(codegen::GenEnvField::SEND_SLOT),
+    "gen.send.slot" + uid);
+
+  return ctx->Builder.CreateLoad(
+    llvm_send_slot_ty, llvm_send_slot_ptr,
+    "gen.send.val" + uid);
 }
 
 auto spp::asts::GenExpressionAst::InferType(
