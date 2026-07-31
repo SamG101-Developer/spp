@@ -263,44 +263,64 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   using analyse::utils::assignment_utils::IsDeref;
   using analyse::utils::assignment_utils::IsIdentifier;
 
-  // Generate code for each assignment in sequence.
-  for (auto i = 0uz; i < Lhs.Len(); ++i) {
-    // Set the meta information for generating with values.
+  // Use a 2-pass system to ensure that "a, b = b, a" is supported
+  // and doesn't clobber the values being reused. Firstly generate
+  // all the right-hand-side values into llvm ir.
+  auto llvm_rhs_vals = Vec<llvm::Value*>{};
+  llvm_rhs_vals.Reserve(Rhs.Len());
+  for (auto i = 0uz; i < Rhs.Len(); ++i) {
     meta->Save();
     meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
     meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
-
-    // Generate the RHS value.
     const auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();
+    llvm_rhs_vals.EmplaceBack(llvm_rhs);
+  }
 
-    // Determine the LHS store location.
+  // Resolve every LHS store location, still before any stores happen.
+  // This finalizes the expression swapping support.
+  auto llvm_lhs_locs = Vec<llvm::Value*>{};
+  llvm_lhs_locs.Reserve(Lhs.Len());
+  for (auto i = 0uz; i < Lhs.Len(); ++i) {
     auto llvm_lhs = static_cast<llvm::Value*>(nullptr);
+
+    // The statement "x@ = v" writes through a borrow: the target is
+    // the borrow pointer itself.
     if (IsDeref(Lhs[i].get())) {
-      // "x@ = v" writes through a borrow: the target is the borrow pointer itself.
       const auto inner = Lhs[i]->To<PostfixExpressionAst>()->Lhs.get();
       llvm_lhs = inner->Stage11_CodeGen(sm, meta, ctx);
     }
+
+    // The statement "a = v" targets the variable's allocation directly
+    // (loading it would yield the rvalue).
     else if (IsIdentifier(Lhs[i].get())) {
-      // "a = v" targets the variable's allocation directly (loading it would yield the rvalue).
-      const auto var_sym = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>());
+      const auto var_sym = sm->CurrentScope->GetVarSymbol(
+        Lhs[i]->To<IdentifierAst>());
       SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
       llvm_lhs = var_sym->LlvmInfo->Alloca;
     }
+
+    // The statement "x.y = v" (attribute): ask the runtime member
+    // access for the field's address rather than its value.
     else {
-      // "x.y = v" (attribute): ask the runtime member access for the field's address rather than its value.
       meta->Save();
       meta->LlvmWantAddress = true;
       llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
       meta->Restore();
     }
 
-    // Store the RHS value into the resolved LHS location.
-    SPP_ASSERT(llvm_lhs != nullptr and llvm_rhs != nullptr);
-    ctx->Builder.CreateStore(llvm_rhs, llvm_lhs);
+    llvm_lhs_locs.EmplaceBack(llvm_lhs);
   }
 
-  // Statements are always generated into a builder so no need to return anything.
+  // Now that every value and location has been computed off the
+  // (pre-assignment) state, commit the stores.
+  for (auto i = 0uz; i < Lhs.Len(); ++i) {
+    SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
+    ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);
+  }
+
+  // Statements are always generated into a builder so no need
+  // to return anything.
   return nullptr;
 }
 
