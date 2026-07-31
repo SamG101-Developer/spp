@@ -57,7 +57,9 @@ auto spp::asts::CasePatternVariantElseAst::Stage11_CodeGen(
   CompilerMetaData *,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // The "else" pattern always matches, so return "true".
+  // The "else" pattern always matches, so return "true". However,
+  // should a previous branch match before this one is reached,
+  // then that one will be selected.
   return llvm::ConstantInt::getTrue(*ctx->Context);
 }
 

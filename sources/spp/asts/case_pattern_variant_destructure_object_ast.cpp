@@ -180,50 +180,65 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
 
-  // Generate the "let" statement to introduce all the symbols.
-  if (_MappedLet == nullptr) {
-    auto var = ConvToVar(meta);
-    _MappedLet = MakeUnique<LetStatementInitializedAst>(
-      nullptr, std::move(var), nullptr, nullptr, AstClone(meta->CaseCondition));
-    _MappedLet->Stage7_AnalyseSemantics(sm, meta);
-  }
-
-  // A flow symbol only exists for a variant condition, whose members live behind the discriminant, so the narrowed
-  // bindings index from the payload buffer rather than from the variant's base address.
+  // A flow symbol only exists for a variant condition, whose
+  // members live behind the discriminant, so the narrowed
+  // bindings index from the payload buffer rather than from
+  // the variant's base address.
   const auto uid = "." + spp::utils::Uid(this);
   auto llvm_tag_check = static_cast<llvm::Value*>(nullptr);
   if (_FlowSym and _CondSym) {
     SPP_ASSERT(_CondSym->LlvmInfo->Alloca != nullptr);
-    const auto variant_llvm_type = sm->CurrentScope->GetTypeSymbol(_CondSym->Type.get())->LlvmInfo->LlvmType;
-    SPP_ASSERT(variant_llvm_type != nullptr);
+    const auto llvm_variant_ty = sm->CurrentScope->GetTypeSymbol(
+      _CondSym->Type.get())->LlvmInfo->LlvmType;
+    SPP_ASSERT(llvm_variant_ty != nullptr);
 
-    // Comparing the discriminant is what decides whether this pattern matches.
-    const auto tag = codegen::GetVariantTag(*_CondSym->Type, *Type->WithoutConvention(), *sm->CurrentScope);
+    // Find the index in the variant's member types, of the
+    // member type being flowed into.
+    const auto tag = codegen::GetVariantIndexOfMember(
+      *_CondSym->Type, *Type->WithoutConvention(), *sm->CurrentScope);
     SPP_ASSERT(tag.has_value());
-    const auto llvm_tag = codegen::LoadVariantTag(
-      _CondSym->LlvmInfo->Alloca, variant_llvm_type, "case.pattern.tag" + uid, ctx);
-    llvm_tag_check = ctx->Builder.CreateICmpEQ(
-      llvm_tag, llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag), "case.pattern.is" + uid);
 
-    // Set the alloca into the flow symbol (more precisely typed).
+    // Next, get the actual tag value from the variant that is
+    // telling us which member type is active in the variant.
+    const auto llvm_tag = codegen::LoadVariantTag(
+      _CondSym->LlvmInfo->Alloca, llvm_variant_ty,
+      "case.pattern.tag" + uid, ctx);
+
+    // Comparing the discriminant is what decides whether this
+    // pattern matches.
+    llvm_tag_check = ctx->Builder.CreateICmpEQ(
+      llvm_tag, llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag),
+      "case.pattern.is" + uid);
+
+    // Set the alloca into the flow symbol (more precisely
+    // typed).
     _FlowSym->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
-      _CondSym->LlvmInfo->Alloca, variant_llvm_type, "case.pattern.payload" + uid, ctx);
+      _CondSym->LlvmInfo->Alloca, llvm_variant_ty,
+      "case.pattern.payload" + uid, ctx);
   }
+
+  // Run the codegen on the transformed "let" ast to introduce
+  // symbols into the llvm function.
   _MappedLet->Stage11_CodeGen(sm, meta, ctx);
 
-  // Combine all the generated transforms into a single "AND"ed statement.
+  // Combine all the generated transforms into a single "AND"ed
+  // expression.
   auto llvm_transforms = CreateAndAnalysePatternEqFuncsLlvm(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
-  const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->Builder.CreateAnd(a, b); };
-  auto llvm_master_transform = llvm_transforms.IsEmpty()
-    ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->Context))
-    : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
-  // Combine the potential variant check, should it exist, into the type check.
+  const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
+  auto llvm_master_transform = llvm_transforms.IsEmpty()
+    ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
+    : genex::fold_left_first(llvm_transforms, std::move(AND));
+
+  // Combine the potential variant check, should it exist, into
+  // the type check. Place the tag check first (short-circuits on
+  // the type check and prevents bad value comparisons).
   if (llvm_tag_check != nullptr) {
     llvm_master_transform = ctx->Builder.CreateAnd(
       llvm_tag_check, llvm_master_transform, "case.pattern.match" + uid);
   }
+
   return llvm_master_transform;
 }
 

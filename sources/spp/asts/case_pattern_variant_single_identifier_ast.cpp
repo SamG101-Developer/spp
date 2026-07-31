@@ -89,7 +89,8 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Emit the binding, then report a constant "true" match so the branch is always taken.
+  // Emit the binding, then report a constant "true" match so
+  // the branch is always taken.
   _MappedLet->Stage11_CodeGen(sm, meta, ctx);
   return llvm::ConstantInt::getTrue(*ctx->Context);
 }
