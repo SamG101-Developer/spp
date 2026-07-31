@@ -34,8 +34,9 @@ auto spp::codegen::CollectCoroFrameVars(
     out.EmplaceBack(sym->SharedFromThis<analyse::scopes::VariableSymbol>());
   }
 
-  // Get all the child scopes' variables too. Closure scopes are auto avoided because of how they are parent-linked to
-  // the module scope.
+  // Get all the child scopes' variables too. Closure scopes are
+  // auto avoided because of how they are parent-linked to the
+  // module scope.
   for (auto const &child : scope.Children) {
     if (child->NameAsString().starts_with("<closure-outer")) { continue; } // Todo: Likely remove
     for (auto &&sym : CollectCoroFrameVars(*child)) { out.EmplaceBack(std::move(sym)); }
@@ -65,21 +66,37 @@ auto spp::codegen::CreateCoroEnvType(
   analyse::scopes::Scope const &scope)
   -> llvm::StructType* {
   //
+  using analyse::utils::type_utils::GetGenAndYieldTypes;
   using analyse::utils::type_utils::IsTypeVoid;
+  using asts::generate::common_types_precompiled::VOID;
 
   // Get the type being yielded and the type being sent back in.
-  const auto [generator_type, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
+  // If a coroutine yields into `GenOnce`, there is never a `Send`
+  // type (always Void).
+  const auto [generator_type, yield_type, is_once] = GetGenAndYieldTypes(
     *coro->ReturnType, scope, *coro->ReturnType, "coroutine prototype");
-  const auto send_type = generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
+  const auto send_type = not is_once
+    ? generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val
+    : VOID;
 
-  // Fixed header fields: state (i8), location (i32), the send slot and the yield slot.
+  // Build the switch for determining value vs borrow semantics,
+  // translating into the correct LLVM type.
+  const auto llvm_type_of = [&](asts::TypeAst const &type) -> llvm::Type* {
+    return type.GetConvention() != nullptr
+      ? llvm::PointerType::get(*ctx->Context, 0)
+      : GetLlvmType(*scope.GetTypeSymbol(&type), ctx);
+  };
+
+  // Fixed header fields: state (i8), location (i32), the send
+  // slot and the yield slot.
   const auto llvm_state_type = llvm::Type::getInt8Ty(*ctx->Context);
   const auto llvm_location_type = llvm::Type::getInt32Ty(*ctx->Context);
-  const auto llvm_yield_type = GetLlvmType(*scope.GetTypeSymbol(yield_type.get()), ctx);
+  const auto llvm_yield_type = llvm_type_of(*yield_type);
 
-  // For Send != Void, the send slot carries the resumed value (dummy i8 otherwise, to keep field order stable).
+  // For Send != Void, the send slot carries the resumed value
+  // (dummy i8 otherwise, to keep field order stable).
   const auto llvm_send_type = not IsTypeVoid(*send_type, scope)
-    ? GetLlvmType(*scope.GetTypeSymbol(send_type.get()), ctx)
+    ? llvm_type_of(*send_type)
     : llvm::Type::getInt8Ty(*ctx->Context);
 
   // Non-generically substituted guard.
@@ -92,7 +109,8 @@ auto spp::codegen::CreateCoroEnvType(
   // One field per frame variable (parameters and body locals), starting at GenEnvField::FRAME_START.
   // Todo: is this ignoring the borrow convention?
   for (auto const &var_sym : CollectCoroFrameVars(scope)) {
-    fields.EmplaceBack(GetLlvmType(*scope.GetTypeSymbol(var_sym->Type.get()), ctx));
+    const auto type_sym = scope.GetTypeSymbol(var_sym->Type.get());
+    fields.EmplaceBack(GetLlvmType(*type_sym, ctx));
   }
 
   // A handful of "!intrinsic" coroutines (see "NeedsIterScratchFields") need working memory beyond their real
@@ -217,7 +235,9 @@ auto spp::codegen::create_async_spawn_func(
 
   // Spawn the thread and immediately detach it: nothing joins on it directly, "Fut::await" instead spin-waits on the
   // atomic "state" field that the spawned closure sets to COMPLETED on its way out.
-  const auto handle_alloca = ctx->Builder.CreateAlloca(llvm::Type::getInt64Ty(*ctx->Context), nullptr, "async.spawn.handle");
+  const auto handle_alloca = ctx->Builder.CreateAlloca(
+    llvm::Type::getInt64Ty(*ctx->Context), nullptr,
+    "async.spawn.handle");
   ctx->Builder.CreateStore(llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0), handle_alloca);
   ctx->Builder.CreateCall(pthread_create_type, pthread_create_func, {closure_val, handle_alloca});
   ctx->Builder.CreateCall(pthread_detach_type, pthread_detach_func, {handle_alloca});
