@@ -150,8 +150,10 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     not missing_attributes.IsEmpty() and multi_arg_skips.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
 
-  // Bind the value to a hidden temporary, and index that from every element, so the value is analysed and evaluated
-  // once for the whole pattern.  Effectively, materialize the rhs and index on it.
+  // Bind the value to a hidden temporary, and index that from
+  // every element, so the value is analysed and evaluated once
+  // for the whole pattern. Effectively, materialize the rhs
+  // and index on it.
   Shared<IdentifierAst> uid_name = nullptr;
   const ExpressionAst *effective_val = val;
   if (not IsDestructurePlaceExpression(*val)
@@ -176,7 +178,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     effective_val = uid_name.get();
   }
 
-  // Create expanded "let" statements for each part of the destructure.
+  // Create expanded "let" statements for each part of the
+  // destructure.
   for (const auto elem : Elems | genex::views::ptr) {
     // Skip any conversion for unbound multi argument skipping.
     if (elem->To<LocalVariableDestructureSkipMultipleArgumentsAst>() != nullptr) {
@@ -214,13 +217,16 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // The hidden temporary holds the only analysis of the value, so the value is checked (and its scopes walked) here.
+  // The hidden temporary holds the only analysis of the
+  // value, so the value is checked (and its scopes walked)
+  // here.
   using analyse::utils::destructure_utils::DestructureTempStage8;
   if (_TmpName != nullptr) {
     DestructureTempStage8(*this, *_TmpName, *sm, meta);
   }
 
-  // Check the flow-typing variable's memory next if flow typing introduced one.
+  // Check the flow-typing variable's memory next if flow
+  // typing introduced one.
   if (_CondLet) { _CondLet->Stage8_CheckMemory(sm, meta); }
   // Check the memory state of the elements.
   for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
@@ -230,14 +236,17 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Hand the already-resolved value to the hidden temporary, so anything indexing it can resolve.
+  // Hand the already-resolved value to the hidden temporary,
+  // so anything indexing it can resolve.
   using analyse::utils::destructure_utils::DestructureTempStage9;
   if (_TmpName != nullptr) {
     DestructureTempStage9(_TmpName, *sm, meta);
   }
 
-  // Comptime resolve the flow-typing variable next if flow typing introduced one.
+  // Comptime resolve the flow-typing variable next if flow
+  // typing introduced one.
   if (_CondLet) { _CondLet->Stage9_CompTimeResolve(sm, meta); }
+
   // Comptime resolve each element.
   for (auto const &x : _NewAsts) { x->Stage9_CompTimeResolve(sm, meta); }
 }
@@ -247,18 +256,21 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Generate the value into the hidden temporary once, before anything indexes it.
+  // Generate the value into the hidden temporary once, before
+  // anything indexes it.
   using analyse::utils::destructure_utils::DestructureTempStage11;
   if (_TmpName != nullptr) {
     DestructureTempStage11(_TmpName, *sm, meta, ctx);
   }
 
-  // If flow typing introduced a temp variable, generate it. _FlowSym replaced _CondSym in
-  // the symbol table (same scope, same string key), so LocalVariableSingleIdentifierAst::Stage11
-  // inside _CondLet already sets _FlowSym->LlvmInfo->Alloca — no copy needed.
+  // If flow typing introduced a temp variable, generate it. _FlowSym
+  // replaced _CondSym in the symbol table (same scope, same string
+  // key), so LocalVariableSingleIdentifierAst::Stage11 inside _CondLet
+  // already sets _FlowSym->LlvmInfo->Alloca, so no copy needed.
   if (_CondLet) {
     _CondLet->Stage11_CodeGen(sm, meta, ctx);
   }
+
   // Generate the "let" statements for each element.
   for (auto const &ast : _NewAsts) { ast->Stage11_CodeGen(sm, meta, ctx); }
   return nullptr;

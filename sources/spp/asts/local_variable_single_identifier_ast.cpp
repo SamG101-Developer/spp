@@ -67,8 +67,13 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   // Get the value and its type from the "meta" information.
-  const auto val = meta->LetStatementFromUninitialized ? nullptr : meta->LetStatementValue;
-  const auto val_type = meta->LetStatementValue != nullptr ? meta->LetStatementValue->InferType(sm, meta) : nullptr;
+  const auto val = meta->LetStatementFromUninitialized
+    ? nullptr
+    : meta->LetStatementValue;
+
+  const auto val_type = meta->LetStatementValue != nullptr
+    ? meta->LetStatementValue->InferType(sm, meta)
+    : nullptr;
 
   // Create a variable symbol for this identifier and value.
   auto sym = MakeShared<analyse::scopes::VariableSymbol>(
@@ -85,7 +90,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   sym->MemInfo->AstInitialization = {Name.get(), sm->CurrentScope};
   sym->MemInfo->AstInitializationOrigin = {Name.get(), sm->CurrentScope};
 
-  // Increment the initialization counter for initialized statements.
+  // Increment the initialization counter for initialized
+  // statements.
   if (val != nullptr) {
     sym->MemInfo->InitializationCounter = 1;
 
@@ -158,12 +164,17 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
   auto alloca = var_sym->LlvmInfo->Alloca;
   if (alloca == nullptr) {
-    alloca = codegen::llvm_entry_alloca(llvm_type, "local.alloca" + uid, ctx);
+    alloca = codegen::LlvmEntryAlloca(llvm_type, "local.alloca" + uid, ctx);
     var_sym->LlvmInfo->Alloca = alloca;
   }
 
-  // Generate the initializer expression.
-  if (not meta->LetStatementFromUninitialized) {
+  // Generate the initializer expression. A function/closure parameter has no initializer expression to codegen -
+  // its value is an already-generated llvm::Argument (see FunctionParameterGroupAst::Stage11_CodeGen) - so that
+  // takes priority over evaluating "LetStatementValue".
+  if (meta->LetStatementPrecomputedValue != nullptr) {
+    ctx->Builder.CreateStore(meta->LetStatementPrecomputedValue, alloca);
+  }
+  else if (not meta->LetStatementFromUninitialized) {
     meta->Save();
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
     const auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
