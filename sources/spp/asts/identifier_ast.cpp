@@ -123,13 +123,18 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
   using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
 
-  // Check there is a symbol with the same name in the current scope.
+  // Check there is a symbol with the same name in the
+  // current scope. Also check for invalid "self" (just
+  // a custom error for "self" in a non-method context).
   if (not sm->CurrentScope->HasVarSymbol(this) and not sm->CurrentScope->HasNsSymbol(this)) {
     RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
     RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
   }
 
-  // Enforce module-level visibility on the accessed symbol.
+  // Enforce module-level visibility on the accessed
+  // symbol. Todo: Change above HasSymbol to GetSymbol
+  // and reuse it here - halves the number of symbol
+  // lookups.
   if (const auto sym = sm->CurrentScope->GetVarSymbol(this)) {
     if (sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
       CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
@@ -144,15 +149,21 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
   //
   using analyse::errors::SppCompileTimeConstantError;
 
-  // Extract the value from the symbol table and return it.
+  // Extract the value from the symbol table and return
+  // it.
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
   auto tm = analyse::scopes::ScopeManager(
     sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
 
+  // If there is no comptime value on this symbol, then
+  // it's an error (not sure this ever triggers? - a non
+  // cmp function call triggers an error i think).
   RaiseIf<SppCompileTimeConstantError>(
     var_sym != nullptr and var_sym->CompTimeValue == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*this));
 
+  // Call the inner resolution on the provided value for
+  // "walking" the comptime resolution.
   var_sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
 }
 
@@ -164,50 +175,62 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   //
   using analyse::errors::SppInternalCompilerError;
 
-  // Get the allocation for the variable from the current scope.
+  // Get the allocation for the variable from the current
+  // scope. The "alloca" will have been filled from wherever
+  // this identifier was introduced ("let", param, etc).
   const auto uid = "." + spp::utils::Uid(this);
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
 
   // Handle local variable allocation extraction + load.
+  // This is from normal "let" statements via their local
+  // variable asts.
   if (llvm::isa<llvm::AllocaInst>(var_sym->LlvmInfo->Alloca)) {
     const auto alloca = llvm::cast<llvm::AllocaInst>(var_sym->LlvmInfo->Alloca);
     return ctx->Builder.CreateLoad(alloca->getAllocatedType(), alloca, "load.local" + uid);
   }
 
-  // Handle global variable (load from global).
+  // Handle global constants. These values aren't created
+  // with the normal stack alloca instruction, rather with
+  // llvm's "ConstantXXX" method, wrapped into a global.
   if (llvm::isa<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca)) {
     const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
     return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
   }
 
   // Handle any other address the symbol was pointed at, such as the payload a variant's flow-typed symbol is narrowed
-  // onto by a case pattern. Such an address carries no llvm type of its own under opaque pointers, so the load goes
-  // through the symbol's own type instead of through the instruction that produced the address.
+  // onto by a case pattern. These carry no llvm type of its own under opaque pointers, so the load goes through the
+  // symbol's own type instead of through the instruction that produced the address.
   if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
     const auto llvm_type = sm->CurrentScope->GetTypeSymbol(var_sym->Type.get())->LlvmInfo->LlvmType;
     SPP_ASSERT(llvm_type != nullptr);
     return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
   }
 
-  // If the variable is neither local nor global, this is an internal compiler error.
+  // If the variable is neither local nor global, this is an
+  // internal compiler error.
   Raise<SppInternalCompilerError>(
     {sm->CurrentScope},
-    ERR_ARGS(*this, "Target identifier ie neither local or global"));
+    ERR_ARGS(*this, "Target identifier ie neither local nor global"));
 }
 
 auto spp::asts::IdentifierAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *)
   -> Shared<TypeAst> {
-  // Extract the symbol from the current scope, as a variable symbol.
+  // Extract the symbol from the current scope, as a variable
+  // symbol.
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
   return var_sym ? var_sym->Type : nullptr;
 }
 
 auto spp::asts::IdentifierAst::ToFuncIdentifier() const
   -> Unique<IdentifierAst> {
-  return MakeUnique<IdentifierAst>(_Pos, "$" + spp::utils::strings::SnakeToPascal(Val));
+  // Convert the identifier into pascal case and wrap it with
+  // the compiler-type "$" token; for example, "func_name"
+  // becomes "$FuncName".
+  return MakeUnique<IdentifierAst>(
+    _Pos, "$" + spp::utils::strings::SnakeToPascal(Val));
 }
 
 auto spp::asts::IdentifierAst::AnkerlHash() const
