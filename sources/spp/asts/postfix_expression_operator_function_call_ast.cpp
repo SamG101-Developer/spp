@@ -213,6 +213,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     transformed_op->FnArgGroup = AstClone(FnArgGroup);
     transformed_op->_OverloadInfo = _OverloadInfo;
     transformed_op->_IsAsync = _IsAsync;
+    transformed_op->_IsCoroAndAutoResume = _IsCoroAndAutoResume;
     transformed_op->_FoldedAsts = AstCloneVec(_FoldedAsts);
     transformed_op->_ClosureDummyArg = AstClone(_ClosureDummyArg);
   }
@@ -310,7 +311,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx) -> llvm::Value* {
-  // For folding, generate the code for the folded transformations and combine into single block.
+  // For folding, generate the code for the folded
+  // transformations and combine into single block.
   if (Fold != nullptr) {
     const auto merge = InnerScopeExpressionAst::NewEmpty();
     merge->Members = _FoldedAsts
@@ -372,7 +374,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // allocated on the caller's stack (no heap alloc), the arguments are stored into it, and a { resume_fn, env } fat
   // pointer is returned. Resuming (".res()", or an immediate auto-resume for GenOnce) drives the state machine.
   if (_OverloadInfo->Proto->IsCoroutine()) {
-    const auto coro = _OverloadInfo->Proto->To<CoroutinePrototypeAst>();
+    const auto coro = _OverloadInfo->Proto->ToUnchecked<CoroutinePrototypeAst>();
     const auto coro_uid = "." + spp::utils::Uid(this);
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto coro_scope = coro->GetAstScope();
