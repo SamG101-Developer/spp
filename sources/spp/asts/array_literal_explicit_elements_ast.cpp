@@ -184,48 +184,79 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   // Alias the common utils functions and types.
   using spp::utils::Uid;
 
-  // Runtime allocation. Todo: Can this be removed for comp only?
+  // Runtime allocation. This pathway generates each element and
+  // then uses alloca into the entry block of the function.
   if (not ctx->InConstantContext) {
-    // Collect the generated versions of the elements.
-    auto vals = Vec<llvm::Value*>{};
-    vals.Reserve(Elems.Len());
-    for (auto const &elem : Elems) {
-      vals.EmplaceBack(elem->Stage11_CodeGen(sm, meta, ctx));
+    // Collect the llvm generated versions of the elements, ensuring
+    // the validity of each element (debug only).
+    auto llvm_rt_elems = Vec<llvm::Value*>{};
+    llvm_rt_elems.Reserve(Elems.Len());
+    for (auto const &spp_elem : Elems) {
+      const auto llvm_rt_elem = spp_elem->Stage11_CodeGen(sm, meta, ctx);
+      SPP_ASSERT(llvm_rt_elem != nullptr);
+      llvm_rt_elems.EmplaceBack(llvm_rt_elem);
     }
 
-    // Create the array type and allocation.
-    const auto uid = "." + Uid(this);
-    const auto elem_ty = vals[0]->getType();
-    const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.Len());
-    SPP_ASSERT(arr_ty != nullptr);
-    const auto arr_alloc = codegen::llvm_entry_alloca(arr_ty, "array.explicit.alloca" + uid, ctx);
+    // Create the array type. The array type wraps the llvm determined
+    // element type, and the length is also provided. This lowers to
+    // the llvm special array [T * n] type.
+    const auto llvm_rt_elem_ty = llvm_rt_elems[0]->getType();
+    const auto llvm_rt_arr_ty = llvm::ArrayType::get(
+      llvm_rt_elem_ty, llvm_rt_elems.Len());
+    SPP_ASSERT(llvm_rt_arr_ty != nullptr);
 
-    // Store the elements in the array allocation.
-    for (auto i = 0uz; i < vals.Len(); ++i) {
+    // Allocate the array into the enclosing function using the uniform
+    // entry alloca function.
+    const auto uid = "." + Uid(this);
+    const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
+      llvm_rt_arr_ty, "array.explicit.alloca" + uid, ctx);
+
+    // Finally, place the runtime generated elements in the array
+    // allocation, using the GEP and store commands.
+    for (auto i = 0uz; i < llvm_rt_elems.Len(); ++i) {
       const auto idx0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
       const auto idx1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
-      const auto elem_ptr = ctx->Builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
+      const auto llvm_rt_elem_ptr = ctx->Builder.CreateGEP(
+        llvm_rt_arr_ty, llvm_rt_arr_alloc, {idx0, idx1});
 
-      SPP_ASSERT(vals[i] != nullptr and elem_ptr != nullptr);
-      ctx->Builder.CreateStore(vals[i], elem_ptr);
+      SPP_ASSERT(llvm_rt_elem_ptr != nullptr);
+      ctx->Builder.CreateStore(llvm_rt_elems[i], llvm_rt_elem_ptr);
     }
 
-    // Return the array by value.
-    return ctx->Builder.CreateLoad(arr_ty, arr_alloc, "array.explicit.result" + uid);
+    // Return the array by value. The "llvm_rt_arr_alloc" is by pointer
+    // on the stack where the array is located.
+    return ctx->Builder.CreateLoad(
+      llvm_rt_arr_ty, llvm_rt_arr_alloc, "array.explicit.result" + uid);
   }
 
-  // Constant array creation.
-  auto comp_vals = Vec<llvm::Constant*>{};
-  comp_vals.Reserve(Elems.Len());
-  for (auto const &elem : Elems) {
-    const auto comp_val = llvm::cast<llvm::Constant>(elem->Stage11_CodeGen(sm, meta, ctx));
-    SPP_ASSERT(comp_val != nullptr);
-    comp_vals.EmplaceBack(comp_val);
+  // Comptime array creation. This pathway generated an array using
+  // "constant" values (comptime-known values).
+  {
+    // Collect the llvm generated versions of the elements, ensuring
+    // the validity of each element after a constant cast (debug only).
+    auto llvm_ct_elems = Vec<llvm::Constant*>{};
+    llvm_ct_elems.Reserve(Elems.Len());
+    for (auto const &spp_elem : Elems) {
+      const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
+        spp_elem->Stage11_CodeGen(sm, meta, ctx));
+      SPP_ASSERT(llvm_ct_elem != nullptr);
+      llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+    }
+
+    // Create the array type. The array type wraps the llvm determined
+    // element type, and the length is also provided. This lowers to
+    // the llvm special array [T * n] type.
+    const auto llvm_ct_elem_ty = llvm_ct_elems[0]->getType();
+    const auto llvm_ct_arr_ty = llvm::ArrayType::get(
+      llvm_ct_elem_ty, llvm_ct_elems.Len());
+    SPP_ASSERT(llvm_ct_arr_ty != nullptr);
+
+    // Allocate the array into the enclosing function using the llvm
+    // constant array creation.
+    const auto arr_alloc = llvm::ConstantArray::get(
+      llvm_ct_arr_ty, llvm_ct_elems.ToStdVector());
+    return arr_alloc;
   }
-  const auto elem_ty = comp_vals[0]->getType();
-  const auto arr_ty = llvm::ArrayType::get(elem_ty, comp_vals.Len());
-  const auto arr_alloc = llvm::ConstantArray::get(arr_ty, comp_vals.ToStdVector());
-  return arr_alloc;
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
