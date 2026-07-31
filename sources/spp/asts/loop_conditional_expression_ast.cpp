@@ -163,28 +163,37 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   // Move into the loop scope.
   sm->MoveToNextScope();
 
-  // Determine if this loop will be yielding an expression. A "Void" loop (used as a statement) and a "Never" loop
-  // ("loop true" with no "exit"s) have no value to merge, so no phi node.
+  // Determine if this loop will be yielding an expression.
+  // A "Void" loop (used as a statement) and a "Never" loop
+  // ("loop true" with no "exit"s) have no value to merge,
+  // so no phi node.
   const auto uid = "." + spp::utils::Uid(this);
   const auto ret_type = InferType(sm, meta);
   const auto is_expr = meta->AssignmentTarget != nullptr
     and not IsTypeVoid(*ret_type, *sm->CurrentScope)
     and not IsTypeNever(*ret_type, *sm->CurrentScope);
 
-  // Create the key blocks, and as the "else" block is optional, the "not taken" branch either points to the "else"
-  // block, or otherwise the end block.
+  // Create the key required blocks: the condition entry
+  // point, the body entry point, and the end of the loop
+  // ie where to go once the loop is done.
   const auto func = ctx->Builder.GetInsertBlock()->getParent();
   const auto loop_cond_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.cond" + uid, func);
   const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.body" + uid, func);
   const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.end" + uid, func);
+
+  // As the "else" block is optional, the "not taken" branch
+  // either points to the "else" block, or otherwise the end
+  // block.
   const auto loop_else_bb = ElseBlock != nullptr
     ? llvm::BasicBlock::Create(*ctx->Context, "loop.else" + uid, func)
     : nullptr;
+
   const auto loop_not_taken_bb = ElseBlock != nullptr
     ? llvm::BasicBlock::Create(*ctx->Context, "loop.not_taken" + uid, func)
     : loop_end_bb;
 
-  // The "else" block runs only when the loop never took an iteration, so track whether the body has been entered.
+  // The "else" block runs only when the loop never took an
+  // iteration, so track whether the body has been entered.
   auto entered_flag = static_cast<llvm::Value*>(nullptr);
   if (ElseBlock != nullptr) {
     const auto i1_type = llvm::Type::getInt1Ty(*ctx->Context);
