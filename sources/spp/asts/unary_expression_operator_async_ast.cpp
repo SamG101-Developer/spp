@@ -85,7 +85,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
 
   // Allocate the future on the caller's stack and set the initial (pending) state. No other thread can observe this
   // alloca yet (nothing has been spawned), so a plain store is fine here.
-  const auto fut_alloca = codegen::llvm_entry_alloca(llvm_fut_type, "async.fut.alloca" + uid, ctx);
+  const auto fut_alloca = codegen::LlvmEntryAlloca(llvm_fut_type, "async.fut.alloca" + uid, ctx);
   const auto fut_state_ptr = ctx->Builder.CreateStructGEP(llvm_fut_type, fut_alloca, 0, "async.fut.state_ptr" + uid);
   const auto fut_state_pending = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), 0);
   ctx->Builder.CreateStore(fut_state_pending, fut_state_ptr);
