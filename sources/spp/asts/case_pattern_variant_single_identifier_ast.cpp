@@ -33,14 +33,14 @@ spp::asts::CasePatternVariantSingleIdentifierAst::~CasePatternVariantSingleIdent
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::PosStart() const
   -> std::size_t {
-  // Use the "mut" token.
-  return TokMut->PosStart();
+  // Use the "mut" token, or the name if there is no "mut" (matches LocalVariableSingleIdentifierAst).
+  return TokMut ? TokMut->PosStart() : Name->PosStart();
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::PosEnd() const
   -> std::size_t {
-  // Use the alias.
-  return Alias->PosEnd();
+  // Use the alias, or the name if there is no alias (matches LocalVariableSingleIdentifierAst).
+  return Alias ? Alias->PosEnd() : Name->PosEnd();
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Clone() const
