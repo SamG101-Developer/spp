@@ -92,7 +92,8 @@ auto spp::asts::CharLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *,
   CompilerMetaData *meta)
   -> void {
-  // Clone and return the char literal as is for compile-time resolution.
+  // Clone and return the char literal as is for compile-time
+  // resolution.
   meta->CmpResult = AstClone(this);
 }
 
@@ -101,18 +102,24 @@ auto spp::asts::CharLiteralAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Decode the char literal token (which includes its surrounding single quotes) into its code point.
+  // Decode the char literal token (which includes its
+  // surrounding single quotes) into its code point.
   const auto code_point = spp::utils::strings::DecodeCharLiteral(Val->TokenData);
 
-  // Resolve the llvm type from the inferred spp type (U8 for a byte-prefixed literal, else Char).
+  // Resolve the llvm type from the inferred spp type (U8
+  // for a byte-prefixed literal, else Char).
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-  // "b'a'" lowers to a raw U8 byte; a plain "'a'" lowers to the Char aggregate (a struct wrapping a U32
-  // unicode scalar), so build a constant struct with the code point as its single field.
+  // "b'a'" lowers to a raw U8 byte; a plain "'a'" lowers
+  // to the Char aggregate (a struct wrapping a U32 unicode
+  // scalar).
   if (BytePrefix != nullptr) {
     return llvm::ConstantInt::get(llvm_type, code_point & 0xFFu);
   }
+
+  // Build a constant struct with the code point as its
+  // single field.
   const auto struct_type = llvm::cast<llvm::StructType>(llvm_type);
   const auto inner = llvm::ConstantInt::get(struct_type->getElementType(0), code_point);
   return llvm::ConstantStruct::get(struct_type, {inner});
