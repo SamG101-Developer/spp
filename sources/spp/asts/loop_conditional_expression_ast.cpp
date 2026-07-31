@@ -188,7 +188,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   auto entered_flag = static_cast<llvm::Value*>(nullptr);
   if (ElseBlock != nullptr) {
     const auto i1_type = llvm::Type::getInt1Ty(*ctx->Context);
-    entered_flag = codegen::llvm_entry_alloca(i1_type, "loop.entered" + uid, ctx);
+    entered_flag = codegen::LlvmEntryAlloca(i1_type, "loop.entered" + uid, ctx);
     ctx->Builder.CreateStore(llvm::ConstantInt::getFalse(i1_type), entered_flag);
   }
   ctx->Builder.CreateBr(loop_cond_bb);
