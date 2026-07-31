@@ -1,7 +1,10 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.char_literal_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -67,6 +70,22 @@ auto spp::asts::CharLiteralAst::ToString() const
   SPP_STRING_APPEND(BytePrefix);
   SPP_STRING_APPEND(Val);
   SPP_STRING_END;
+}
+
+auto spp::asts::CharLiteralAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm,
+  CompilerMetaData *)
+  -> void {
+  // A byte-prefixed literal ("b'...'") must decode to a single
+  // to prevent truncation by the codegen mask, instead of being
+  // rejected here.
+  using analyse::errors::SppCharLiteralOutOfBoundsError;
+  if (BytePrefix != nullptr) {
+    const auto code_point = spp::utils::strings::DecodeCharLiteral(Val->TokenData);
+    RaiseIf<SppCharLiteralOutOfBoundsError>(
+      code_point > 0xFFu,
+      {sm->CurrentScope}, ERR_ARGS(*this, code_point));
+  }
 }
 
 auto spp::asts::CharLiteralAst::Stage9_CompTimeResolve(

@@ -106,10 +106,9 @@ auto spp::asts::StringLiteralAst::InferType(
 }
 
 auto spp::asts::StringLiteralAst::CppVal() const -> Str {
-  auto raw_data = StrView(Val->TokenData);
-  raw_data.remove_prefix(1);
-  raw_data.remove_suffix(1);
-  return Str(raw_data);
+  // Reuse the same decoding Stage11_CodeGen uses, so this matches the literal's actual (escape-resolved) value
+  // instead of the raw source text (which would still contain unresolved escapes like "\n" as two characters).
+  return spp::utils::strings::DecodeStringLiteral(Val->TokenData);
 }
 
 SPP_MOD_END
