@@ -231,7 +231,7 @@ auto spp::codegen::GetVariantTagType(
   return llvm::Type::getIntNTy(*ctx->Context, kVariantTagBits);
 }
 
-auto spp::codegen::GetVariantTag(
+auto spp::codegen::GetVariantIndexOfMember(
   asts::TypeAst const &variant_type,
   asts::TypeAst const &member_type,
   analyse::scopes::Scope const &scope)
@@ -283,7 +283,7 @@ auto spp::codegen::BuildVariant(
   // zeroed, because the member rarely fills the whole payload, and the whole struct is loaded back out at the end: the
   // bytes past the member would otherwise be stale stack data, undef to the optimiser and a disclosure hazard the
   // moment a variant is ever copied out of the program. Everything the "stores" below cover is dead-store-eliminated.
-  const auto slot = llvm_entry_alloca(variant_llvm_type, name + ".slot", ctx);
+  const auto slot = LlvmEntryAlloca(variant_llvm_type, name + ".slot", ctx);
   ctx->Builder.CreateStore(llvm::Constant::getNullValue(variant_llvm_type), slot);
   const auto tag_ptr = ctx->Builder.CreateStructGEP(variant_llvm_type, slot, 0, name + ".tag.ptr");
   ctx->Builder.CreateStore(llvm::ConstantInt::get(GetVariantTagType(ctx), tag), tag_ptr);
@@ -318,7 +318,7 @@ auto spp::codegen::CoerceToVariant(
 
   // A member value (source) is wrapped: tagged and copied into the payload.
   if (not IsTypeVariant(source_type, scope)) {
-    const auto tag = GetVariantTag(target_type, source_type, scope);
+    const auto tag = GetVariantIndexOfMember(target_type, source_type, scope);
     if (not tag.has_value()) { return llvm_val; }
     return BuildVariant(llvm_val, target_llvm_type, *tag, name, ctx);
   }
@@ -332,14 +332,14 @@ auto spp::codegen::CoerceToVariant(
   auto is_identity_map = true;
   const auto source_members = DedupVariableInnerTypes(source_type, scope);
   for (auto const &[i, member] : source_members | genex::views::enumerate) {
-    const auto target_tag = GetVariantTag(target_type, *member, scope);
+    const auto target_tag = GetVariantIndexOfMember(target_type, *member, scope);
     if (not target_tag.has_value()) { return llvm_val; }
     is_identity_map = is_identity_map and *target_tag == static_cast<std::uint64_t>(i);
     tag_map.EmplaceBack(*target_tag);
   }
 
   // Spill the source to memory, because the payload is copied through a pointer rather than by value.
-  const auto source_slot = llvm_entry_alloca(source_llvm_type, name + ".from.slot", ctx);
+  const auto source_slot = LlvmEntryAlloca(source_llvm_type, name + ".from.slot", ctx);
   ctx->Builder.CreateStore(llvm_val, source_slot);
   const auto source_tag = LoadVariantTag(source_slot, source_llvm_type, name + ".from.tag", ctx);
 
@@ -360,7 +360,7 @@ auto spp::codegen::CoerceToVariant(
   // Write the translated discriminant and move the payload over. The target's members are a superset of the source's,
   // so its payload buffer is always at least as large, and the source's size is the amount worth copying. That leaves
   // the target's wider tail uncopied, so zero the slot first.
-  const auto target_slot = llvm_entry_alloca(target_llvm_type, name + ".to.slot", ctx);
+  const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".to.slot", ctx);
   ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
   ctx->Builder.CreateStore(
     target_tag, ctx->Builder.CreateStructGEP(target_llvm_type, target_slot, 0, name + ".to.tag.ptr"));

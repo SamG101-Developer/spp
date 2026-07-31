@@ -45,7 +45,7 @@ namespace spp::codegen {
    * @param scope The scope to resolve both types against.
    * @return The member's discriminant, or nothing if the type is not a member of the variant.
    */
-  SPP_EXP_FUN auto GetVariantTag(
+  SPP_EXP_FUN auto GetVariantIndexOfMember(
     asts::TypeAst const &variant_type,
     asts::TypeAst const &member_type,
     analyse::scopes::Scope const &scope)

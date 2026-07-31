@@ -2451,7 +2451,7 @@ auto spp::codegen::func_impls::std_raw_buf_take_at(
   const auto undef_some = llvm::UndefValue::get(some_struct_ty);
   const auto some_struct_val = ctx->Builder.CreateInsertValue(undef_some, elem_val, {0}, "raw_buf.take_at.some");
 
-  const auto tag = GetVariantTag(*proto->ReturnType, *some_ty_ast, *sm->CurrentScope);
+  const auto tag = GetVariantIndexOfMember(*proto->ReturnType, *some_ty_ast, *sm->CurrentScope);
   SPP_ASSERT(tag.has_value());
   const auto result = BuildVariant(some_struct_val, ty, *tag, "raw_buf.take_at.result", ctx);
   ctx->Builder.CreateRet(result);
