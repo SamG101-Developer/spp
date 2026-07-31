@@ -199,8 +199,8 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
     // Infer the generic arguments from information given from object initialisation.
     InferGnArgs(
-      *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget, type_sym->FqName(), *type_sym->LinkedScope,
-      nullptr, is_tuple, *sm, *meta);
+      *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget,
+      type_sym->FqName(), *type_sym->LinkedScope, nullptr, is_tuple, *sm, *meta);
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
   }
   else {
