@@ -25,6 +25,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -114,43 +115,43 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // The left-hand side is a generator value: the { resume_fn, env } fat pointer. Resuming advances the state machine
-  // that "env" points at.
-  const auto uid = "." + spp::utils::Uid(this);
-  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto llvm_gen = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+  // The three-step operation for the "res" operation is to
+  // store the potential argument into the send slot of the
+  // env, resume the coroutine, then use the yielded value.
 
-  // Extract the resume function pointer and the env pointer. The lhs is the fat pointer value directly, or a
-  // borrowed generator, so read the two fields accordingly.
-  auto resume_fn = static_cast<llvm::Value*>(nullptr);
-  auto env_ptr = static_cast<llvm::Value*>(nullptr);
-  if (llvm_gen->getType()->isPointerTy()) {
-    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
-    const auto gen_ty = llvm::cast<llvm::StructType>(
-      codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty.get()), ctx));
-    resume_fn = ctx->Builder.CreateLoad(
-      ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 0), "gen.resume.fn" + uid);
-    env_ptr = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 1), "gen.env" + uid);
-  }
-  else {
-    resume_fn = ctx->Builder.CreateExtractValue(llvm_gen, {0u}, "gen.resume.fn" + uid);
-    env_ptr = ctx->Builder.CreateExtractValue(llvm_gen, {1u}, "gen.env" + uid);
-  }
+  // Get the indexes for the fields into the generator state
+  // object stored on the "meta" context.
+  const auto idx_0 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0uz);
+  const auto idx_y = llvm::ConstantInt::get(
+    codegen::GetLlvmGeneratorStateYieldSlotType(ctx),
+    std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT));
+  const auto idx_s = llvm::ConstantInt::get(
+    codegen::GetLlvmGeneratorStateSendSlotType(ctx),
+    std::to_underlying(codegen::LlvmGeneratorStateStructFields::SEND_SLOT));
 
-  // The send value, if any. When there is no ".res(x)" argument (Send == Void), the env's send slot is a dummy i8,
-  // so pass a matching zero.
-  const auto llvm_send_value = FnArgGroup != nullptr and not FnArgGroup->Args.IsEmpty()
-    ? FnArgGroup->Args[0]->Stage11_CodeGen(sm, meta, ctx)
-    : static_cast<llvm::Value*>(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), 0));
+  // Step 1: Place the value of the argument (if it exists),
+  // into the "send" slot on the generator state struct.
+  const auto llvm_send_slot = ctx->Builder.CreateGEP(
+    codegen::GetLlvmGeneratorStateSendSlotType(ctx), meta->LlvmGeneratorState, {idx_0, idx_s}, "gen.send.slot");
+  const auto llvm_send_value = FnArgGroup->Args.IsEmpty()
+    ? llvm::Constant::getNullValue(llvm::Type::getVoidTy(*ctx->Context))
+    : FnArgGroup->Args[0]->Stage11_CodeGen(sm, meta, ctx);
+  ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
 
-  // Call the resume function "(env*, send) -> void" through the pointer.
-  ctx->Builder.CreateCall(
-    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty, llvm_send_value->getType()}, false),
-    resume_fn, {env_ptr, llvm_send_value});
+  // Step 2: Invoke the llvm coroutine intrinsic, allowing
+  // program to resume the coroutine execution, to get the
+  // next value.
+  ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_resume, {}, {meta->LlvmGenerator->Handle},
+    {}, "gen.coro.resume");
 
-  // Return the generator value (unchanged fat pointer; its env has now advanced). Reading the yielded value is a
-  // separate access off the yield slot.
-  return llvm_gen;
+  // Step 3: Get the yielded value from the generator state,
+  // and pass return it as the result of this operation.
+  const auto llvm_yield_slot = ctx->Builder.CreateGEP(
+    codegen::GetLlvmGeneratorStateYieldSlotType(ctx), meta->LlvmGeneratorState, {idx_0, idx_y}, "gen.yield.slot");
+  const auto llvm_yielded_val = ctx->Builder.CreateLoad(
+    codegen::GetLlvmGeneratorStateYieldSlotType(ctx), llvm_yield_slot, "gen.yield.value");
+  return llvm_yielded_val;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(

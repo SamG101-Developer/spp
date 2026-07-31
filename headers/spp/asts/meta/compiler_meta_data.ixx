@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_coros;
 import spp.utils.ptr;
 import spp.utils.types;
 import ankerl;
@@ -103,12 +104,15 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   llvm::Value *LlvmAssignmentTargetType;
   llvm::PHINode *LlvmPhi;
   Vec<LlvmLoopInfo> LlvmLoopStack;
-  ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
+  ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>
+                               , utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
   Vec<TypeAst*> CmpGnTypeArgs;
   Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;
   bool IgnoreAccessModifierViolations;
   bool AllowAbstractType;
+  Unique<codegen::LlvmGenerator> LlvmGenerator;
+  llvm::Value* LlvmGeneratorState;
 };
 
 /**

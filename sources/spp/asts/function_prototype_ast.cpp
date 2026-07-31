@@ -507,11 +507,14 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // Build the function body.
+  // Todo: Move all to the subroutine prototype. Given coroutine
+  //  ast overrides this.
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Add the entry block to the function.
-  const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", GetLlvmFunc()->Target);
+  const auto entry_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "entry", GetLlvmFunc()->Target);
   ctx->Builder.SetInsertPoint(entry_bb);
 
   // Generate the parameters as variables.
@@ -520,7 +523,8 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
   }
 
-  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
+  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
+    ReturnType.get());
   meta->Save();
   meta->EnclosingFunctionFlavour = TokFun.get();
   meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
