@@ -3,7 +3,7 @@ import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
 
-auto spp::codegen::llvm_entry_alloca(
+auto spp::codegen::LlvmEntryAlloca(
   llvm::Type *const type,
   Str const &name,
   LLvmCtx const *ctx)

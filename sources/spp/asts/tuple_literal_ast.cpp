@@ -159,7 +159,7 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
 
   // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.
   if (not ctx->InConstantContext) {
-    const auto alloca = codegen::llvm_entry_alloca(llvm_type, "tuple.alloca" + uid, ctx);
+    const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "tuple.alloca" + uid, ctx);
     SPP_ASSERT(alloca != nullptr);
 
     // Store each element into the tuple alloca.

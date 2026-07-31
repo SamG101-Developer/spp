@@ -118,7 +118,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  const auto alloca = codegen::llvm_entry_alloca(llvm_type, "destructure.alloca" + uid, ctx);
+  const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "destructure.alloca" + uid, ctx);
   sym->LlvmInfo->Alloca = alloca;
 
   // Generate the value exactly once, into the temporary. The expanded "let" statements then index the temporary.

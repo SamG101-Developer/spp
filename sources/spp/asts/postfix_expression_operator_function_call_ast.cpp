@@ -391,7 +391,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     SPP_ASSERT(env_type != nullptr and coro->LlvmCoroResumeFunc != nullptr);
 
     // Allocate the env (frame) on the caller's stack, at the top of the caller's function.
-    const auto env_ptr = codegen::llvm_entry_alloca(env_type, "coro.env" + coro_uid, ctx);
+    const auto env_ptr = codegen::LlvmEntryAlloca(env_type, "coro.env" + coro_uid, ctx);
 
     // Initialise the header: READY, location 0 (start).
     ctx->Builder.CreateStore(

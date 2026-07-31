@@ -189,7 +189,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   // Runtime pathway.
   if (not ctx->InConstantContext) {
     // Set each field value in the aggregate.
-    const auto aggregate = codegen::llvm_entry_alloca(llvm_type, "obj_init.aggregate" + uid, ctx);
+    const auto aggregate = codegen::LlvmEntryAlloca(
+      llvm_type, "obj_init.aggregate" + uid, ctx);
     for (auto const &arg : ArgGroup->Args) {
       const auto attr_ptr = ctx->Builder.CreateStructGEP(llvm_type, aggregate, field_index(*arg->Name), arg->Name->Val);
       const auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
