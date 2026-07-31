@@ -51,6 +51,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -333,22 +334,29 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto closure_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
 
+    // The lhs' static type determines the physical field indices of "{ fn_ptr, env_ptr }": a plain "FunXXX" has no
+    // extra fields, but a class that superimposes one (see "GetFatPointerFields") may declare its own attributes
+    // too, and the "Spp" layout can reorder any of them - "GetPhysicalFieldIndex" maps back from the fixed
+    // declared prefix (0, 1) to wherever they actually ended up.
+    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_ty.get());
+    const auto fn_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
+    const auto env_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 1);
+
     // The lhs is the { fn_ptr, env_ptr } value directly, or for a borrowed closure, a pointer to it, so read the
     // fields accordingly.
     auto fn_ptr = static_cast<llvm::Value*>(nullptr);
     auto env_ptr = static_cast<llvm::Value*>(nullptr);
     if (closure_val->getType()->isPointerTy()) {
-      const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
-      const auto closure_ty = llvm::cast<llvm::StructType>(
-        codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty.get()), ctx));
+      const auto closure_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*lhs_type_sym, ctx));
       fn_ptr = ctx->Builder.CreateLoad(
-        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, 0), "closure.fn_ptr" + closure_uid);
+        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, fn_ptr_idx), "closure.fn_ptr" + closure_uid);
       env_ptr = ctx->Builder.CreateLoad(
-        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, 1), "closure.env_ptr" + closure_uid);
+        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, env_ptr_idx), "closure.env_ptr" + closure_uid);
     }
     else {
-      fn_ptr = ctx->Builder.CreateExtractValue(closure_val, {0u}, "closure.fn_ptr" + closure_uid);
-      env_ptr = ctx->Builder.CreateExtractValue(closure_val, {1u}, "closure.env_ptr" + closure_uid);
+      fn_ptr = ctx->Builder.CreateExtractValue(closure_val, {fn_ptr_idx}, "closure.fn_ptr" + closure_uid);
+      env_ptr = ctx->Builder.CreateExtractValue(closure_val, {env_ptr_idx}, "closure.env_ptr" + closure_uid);
     }
 
     // Generate the argument values, prepending the environment pointer.
@@ -376,7 +384,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   if (_OverloadInfo->Proto->IsCoroutine()) {
     const auto coro = _OverloadInfo->Proto->ToUnchecked<CoroutinePrototypeAst>();
     const auto coro_uid = "." + spp::utils::Uid(this);
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto coro_scope = coro->GetAstScope();
 
     // Ensure the env type and resume function exist; the coroutine's own Stage11 may not have run yet. Creating the
@@ -420,13 +427,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       ctx->Builder.CreateStore(arg_val, ctx->Builder.CreateStructGEP(env_type, env_ptr, field, "coro.arg" + coro_uid));
     }
 
-    // Build the { resume_fn, env } fat pointer (the same literal { ptr, ptr } the Gen types lower to).
-    const auto gen_ty = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
-    auto fat = static_cast<llvm::Value*>(llvm::UndefValue::get(gen_ty));
-    fat = ctx->Builder.CreateInsertValue(fat, coro->LlvmCoroResumeFunc, {0u}, "coro.fat.fn" + coro_uid);
-    fat = ctx->Builder.CreateInsertValue(fat, env_ptr, {1u}, "coro.fat.env" + coro_uid);
-
-    // For GenOnce, auto-resume once and yield the produced value directly.
+    // For GenOnce, auto-resume once and yield the produced value directly. This must be checked before building the
+    // fat pointer below: "InferType" reports the unwrapped yield type in this case (not a struct at all, eg
+    // "&View[BigInt]" lowers to a bare "ptr"), so resolving the fat pointer's struct type only makes sense once
+    // this branch is ruled out.
     if (_IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume) {
       const auto send_ty = env_type->getElementType(std::to_underlying(codegen::GenEnvField::SEND_SLOT));
       ctx->Builder.CreateCall(coro->LlvmCoroResumeFunc, {env_ptr, llvm::Constant::getNullValue(send_ty)});
@@ -436,6 +440,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         "coro.yield.slot" + coro_uid);
       return ctx->Builder.CreateLoad(yield_ty, yield_slot, "coro.yield.val" + coro_uid);
     }
+
+    // Build the { resume_fn, env } fat pointer at the call's actual return type - a plain "Gen"/"GenOnce", or a
+    // class that superimposes one and may carry its own extra fields (see "GetFatPointerFields") - rather than a
+    // bare anonymous { ptr, ptr }, so eg an "Iterator[T]" call gets back a value of its own struct type, with the
+    // fat pointer fields at whatever physical indices the "Spp" layout assigned them.
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get());
+    const auto gen_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*ret_type_sym, ctx));
+    const auto resume_fn_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
+    const auto env_ptr_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 1);
+    auto fat = static_cast<llvm::Value*>(llvm::UndefValue::get(gen_ty));
+    fat = ctx->Builder.CreateInsertValue(fat, coro->LlvmCoroResumeFunc, {resume_fn_idx}, "coro.fat.fn" + coro_uid);
+    fat = ctx->Builder.CreateInsertValue(fat, env_ptr, {env_ptr_idx}, "coro.fat.env" + coro_uid);
     return fat;
   }
 
