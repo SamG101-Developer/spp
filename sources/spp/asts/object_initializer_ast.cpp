@@ -165,7 +165,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   using analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount;
 
   // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr); // todo : could be from stage10 cmp, so generate here

@@ -1,4 +1,5 @@
 module spp.codegen.llvm_coros;
+import spp.codegen.llvm_ctx;
 
 auto spp::codegen::CreateLlvmGeneratorStateType(
   LLvmCtx const *ctx)
