@@ -412,8 +412,8 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
   if (is_tuple) {
     const auto elems = type_sym->FqName()->LastTypePart()->GnArgGroup->GetTypeArgs();
     types = elems
-      | genex::views::transform([&](auto const &elem) { return *sm->CurrentScope->GetTypeSymbol(elem->Val.get()); })
-      | genex::views::transform([&](auto const &type) { return codegen::GetLlvmType(type, ctx); })
+      | genex::views::transform([&](auto const &elem) { return sm->CurrentScope->GetTypeSymbol(elem->Val.get()); })
+      | genex::views::transform([&](auto const &type) { return type ? codegen::GetLlvmType(*type, ctx) : nullptr; })
       | genex::to<Vec>();
   }
 
@@ -421,7 +421,7 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
   else {
     types = GetAllAttrs(*type_sym->FqName(), *sm)
       | genex::views::transform([&](auto const &pair) { return std::get<1>(pair); })
-      | genex::views::transform([&](auto const &elem) { return codegen::GetLlvmType(*elem, ctx); })
+      | genex::views::transform([&](auto const &type) { return type ? codegen::GetLlvmType(*type, ctx) : nullptr; })
       | genex::to<Vec>();
   }
 

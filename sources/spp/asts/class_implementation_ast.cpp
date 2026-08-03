@@ -120,7 +120,9 @@ auto spp::asts::ClassImplementationAst::Stage11_CodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for each member.
-  for (auto const &m : Members) { m->Stage11_CodeGen(sm, meta, ctx); }
+  for (auto const &m : Members) {
+    m->Stage11_CodeGen(sm, meta, ctx);
+  }
   return nullptr;
 }
 
