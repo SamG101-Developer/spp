@@ -16,6 +16,10 @@ namespace spp::asts {
   SPP_EXP_CLS struct TypeAst;
 }
 
+namespace spp::asts::meta {
+  SPP_EXP_CLS struct CompilerMetaData;
+}
+
 namespace spp::codegen {
   SPP_EXP_CLS struct LLvmCtx;
 }
@@ -192,15 +196,7 @@ export namespace spp::codegen::func_impls {
    * @param ctx The llvm context.
    * @param reverse If true, yields from the last element to the first; otherwise first to last.
    */
-  auto simple_coro_array_iter_mov(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, bool reverse) -> void;
-
-  /**
-   * Shared codegen for "Slot[T]::get_ref"/"get_mut": both just suspend once, yielding the address of the slot's own
-   * "val" field. Unlike "Arr"'s "View" forwarding, there's no scratch storage to materialize - the borrow's target
-   * already lives on the caller's side (the "Slot[T]" instance "self" points at), so this only needs a single-shot
-   * "gen"-style suspend/resume, matching "GenOnce".
-   */
-  auto simple_coro_slot_get(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
+  auto simple_coro_iter(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, bool reverse, bool borrow) -> void;
 
   /**
    * Shared codegen for "NonNull[T]::fwd_ref"/"fwd_mut": "(&self) -> GenOnce[&T]" (or "&mut T"). "NonNull[T]" lowers to
@@ -210,19 +206,6 @@ export namespace spp::codegen::func_impls {
    * "gen"-style suspend/resume, matching "GenOnce".
    */
   auto simple_coro_non_null_fwd(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
-
-  /**
-   * Shared codegen for "Vol[T]::read"/"write"/"replace": resolves a "&Vol[T]"/"&mut Vol[T]"-typed symbol (typically
-   * "self") down to the address of its sole "val" field, the same "load the borrow, then GEP" idiom as
-   * "simple_coro_slot_get" uses for "Slot[T]". Every "Vol[T]" access - read, write, or the read-then-write of
-   * "replace" - goes through this one field address, with "isVolatile" set on the actual load/store instructions to
-   * get the non-reorderable, non-eliminable semantics "Vol" promises.
-   */
-  auto simple_vol_val_ptr(
-    analyse::scopes::ScopeManager const *sm,
-    Shared<analyse::scopes::VariableSymbol> const &self_sym,
-    LLvmCtx *ctx)
-    -> llvm::Value*;
 
   /**
    * Shared codegen for "StrView::slice_ref"/"slice_mut": "(&self, from: USize, into: USize) -> GenOnce[&StrView]"
@@ -237,21 +220,7 @@ export namespace spp::codegen::func_impls {
    * thing they're ever used for), then that same memory is overwritten with the freshly computed "{ptr, length}"
    * and yielded by address - safe because "GenOnce" only ever yields once, so neither slot is read again afterward.
    */
-  auto simple_coro_strview_slice(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
-
-  /**
-   * Resolve "T"'s concrete LLVM type from a "&X[T, ...]"/"&mut X[T, ...]"-typed symbol (typically "self"), for any
-   * "X" whose own fields don't carry "T" at the LLVM level (eg "View[T]", whose "ptr" is opaque, or "RawBuf[T, A]").
-   * Read back off the AST instead: strip the reference convention, then pull the "T" generic argument out of the
-   * type's own generic argument group - the same "GnArgGroup->TypeAt(name)" pattern @c GenExpressionAst::InferType
-   * uses to read a generator's "Send" type. Relies on "T" being the generic parameter's actual name, true of every
-   * current caller.
-   */
-  auto self_generic_t_llvm_type(
-    analyse::scopes::ScopeManager const *sm,
-    Shared<analyse::scopes::VariableSymbol> const &self_sym,
-    LLvmCtx *ctx)
-    -> llvm::Type*;
+  auto simple_coro_view_slice(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
 
   /**
    * Shared codegen for "View[T]::index_ref"/"index_mut": "(&self, index: USize) -> Indexed[&T]" (or "&mut T").
@@ -261,51 +230,6 @@ export namespace spp::codegen::func_impls {
    * once. No scratch storage needed - the yielded address already lives inside "self"'s own buffer.
    */
   auto simple_coro_view_index(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
-
-  /**
-   * Shared codegen for "View[T]::slice_ref"/"slice_mut": "(&self, from: USize, upto: USize) -> GenOnce[&View[T]]"
-   * (or "&mut View[T]"). Identical in shape to "simple_coro_strview_slice" - reuses "from"/"upto"'s own adjacent
-   * frame slots as the materialized "{ptr, length}" - except the pointer arithmetic steps by "T"'s actual element
-   * size (via "self_generic_t_llvm_type") rather than a fixed byte stride.
-   */
-  auto simple_coro_view_slice(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
-
-  /**
-   * Shared codegen for "View[T]::iter_ref"/"iter_mut"/"reverse_iter_ref"/"reverse_iter_mut": "(&self) -> Iterator[&T]"
-   * (or "&mut T"). Unlike "Arr[T, n]::iter_mov", "self.length" is a runtime value here, not a compile-time constant,
-   * so this can't unroll into one yield per element - it builds a real loop instead, tracking a persistent
-   * "{current element ptr, remaining count}" pair in the two scratch fields "CreateCoroEnvType" reserves for these
-   * four coroutines specifically (see "NeedsIterScratchFields" in llvm_coros.cpp). There is exactly one "gen"-style
-   * suspend point (registered once in "ctx->YieldContinuations"), reached on every resume via a continuation that
-   * jumps straight back to the loop's bounds check, since the scratch state is always advanced before suspending.
-   * @param reverse If true, iterates from the last element to the first; otherwise first to last.
-   */
-  auto simple_coro_view_iter(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, bool reverse) -> void;
-
-  /**
-   * Resolve a "&RawBuf[T, A]"/"&mut RawBuf[T, A]"-typed symbol (typically "self") down to the buffer's base address.
-   * "ptr" (declaration index 0) is itself a bare "ptr" - it lowers to "NonNull[T]", which is a bare pointer (see
-   * "kNonNullParts" in llvm_type.cpp) - so, as with "View[T].ptr" in "simple_coro_view_index", one load past the
-   * dereferenced borrow reaches the buffer's address directly, with no further indirection. Declaration index is
-   * translated to the actual physical field index via "GetPhysicalFieldIndex", since the "Spp" layout may reorder
-   * "RawBuf[T, A]"'s three fields ("ptr", "capacity", "alloc") to minimize padding.
-   */
-  auto raw_buf_data_ptr(
-    analyse::scopes::ScopeManager const *sm,
-    Shared<analyse::scopes::VariableSymbol> const &self_sym,
-    LLvmCtx *ctx)
-    -> llvm::Value*;
-
-  /**
-   * Shared codegen for "RawBuf[T, A]::index_ref"/"index_mut": "(&self, index: USize) -> Indexed[&T or None]" (or
-   * "&mut T or None"). Unlike "View::index_ref" (which traps out of bounds), "RawBuf" is capacity-aware but not
-   * length-aware, so out-of-bounds here just yields "None" rather than trapping - there is no other failure mode
-   * "RawBuf" itself can detect. Builds the "&T or None" variant with "BuildVariant" directly (tag 0 for the
-   * reference, tag 1 for "None") rather than resolving the tags through "GetVariantTag": both "Indexed[&T or None]"
-   * and "Indexed[&mut T or None]" are STL-internal, two-member variants that always declare the reference member
-   * first, so the positional tag is already the answer "GetVariantTag" would compute.
-   */
-  auto simple_coro_raw_buf_index(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
 
   // =====================================================================================================
   // Layer 3: individual builtin implementations, grouped by which Layer 2 builder (if any) they use.
@@ -482,9 +406,6 @@ export namespace spp::codegen::func_impls {
 
   auto std_generator_send(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_generator_once_send(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-
-  auto std_future_fut_await(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_future_fut_await_all(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto std_slot_get_ref(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_slot_get_mut(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
