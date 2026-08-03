@@ -39,9 +39,6 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC("std.generator.Gen.send", std_generator_send);
   SPP_DEFINE_BUILTIN_FUNC("std.generator.GenOnce.send", std_generator_once_send);
 
-  SPP_DEFINE_BUILTIN_FUNC("std.future.Fut.await", std_future_fut_await);
-  SPP_DEFINE_BUILTIN_FUNC("std.future.Fut.await_all", std_future_fut_await_all);
-
   SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.get_ref", std_slot_get_ref);
   SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.get_mut", std_slot_get_mut);
   SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.replace", std_slot_replace);
