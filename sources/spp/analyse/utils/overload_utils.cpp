@@ -184,6 +184,7 @@ auto spp::analyse::utils::overload_utils::PropagateMethodToFunction(
   fn_call.FnArgGroup = asts::AstClone(transformed_fn_call->FnArgGroup);
 
   // Create a mock postfix based on the transformation.
+  transformed_lhs->Stage7_AnalyseSemantics(sm, meta);
   auto pf = MakeUnique<asts::PostfixExpressionAst>(
     std::move(transformed_lhs), std::move(transformed_fn_call));
   return std::make_tuple(std::move(overload_info), is_closure, std::move(pf));
