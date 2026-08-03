@@ -513,10 +513,14 @@ auto spp::analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount(
   const auto type_sym = scope.GetTypeSymbol(&type);
   if (type_sym == nullptr or type_sym->LinkedScope == nullptr) { return 0uz; }
 
-  const auto superimposes_fat_pointer = genex::any_of(
-    type_sym->LinkedScope->SupTypes(),
-    [&](auto const &sup_type) { return IsTypeFatPointerFamily(*sup_type, *type_sym->LinkedScope); });
-  return superimposes_fat_pointer ? 2uz : 0uz;
+  // "Gen"/"GenOnce" lower to a single opaque llvm coroutine handle (the "llvm.coro.begin" result) rather than a true
+  // 2-pointer fat pointer - only the "FunXXX" closure family is a genuine { fn_ptr, env_ptr } pair. Both still share
+  // "IsTypeFatPointerFamily" as the "does this need field(s) prepended at all" check; this is just the field count.
+  for (auto const &sup_type : type_sym->LinkedScope->SupTypes()) {
+    if (IsTypeGen(*sup_type, *type_sym->LinkedScope)) { return 1uz; }
+    if (IsTypeFunc(*sup_type, *type_sym->LinkedScope)) { return 2uz; }
+  }
+  return 0uz;
 }
 
 auto spp::analyse::utils::type_utils::IsTypeRecursive(
@@ -1227,8 +1231,8 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
       true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true,
       true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
       asts::AstClone(type_arg->Val->GetConvention()));
-    sym->GenericConstraints = true_val_sym->GenericConstraints;
-    sym->IsDirectlyZeroType = true_val_sym->IsDirectlyZeroType;
+    sym->GenericConstraints = true_val_sym ? true_val_sym->GenericConstraints : decltype(true_val_sym->GenericConstraints){};
+    sym->IsDirectlyZeroType = true_val_sym ? true_val_sym->IsDirectlyZeroType : false;
 
     // Record what the parameter was bound to. When the value is another (unresolved) generic parameter there is no
     // linked scope to recover the binding from later, so the value type is the only record of it.

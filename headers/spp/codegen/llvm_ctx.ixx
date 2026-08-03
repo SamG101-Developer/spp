@@ -2,12 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_ctx;
+import spp.codegen.llvm_coros;
 import spp.utils.types;
 import llvm;
 import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
+  SPP_EXP_CLS struct VariableSymbol;
 }
 
 namespace spp::codegen {
@@ -25,7 +27,7 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   bool InConstantContext = false;
 
   // Coroutine information.
-  Vec<llvm::BasicBlock*> YieldContinuations;
+  std::map<analyse::scopes::VariableSymbol*, Unique<LlvmGenerator>> LlvmGenerators;
 
   // Closure tracking information.
   llvm::Type *CurrentClosureType = nullptr;
@@ -39,7 +41,8 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   LLvmCtx() :
     Context(global_context),
     Module(nullptr),
-    Builder(*Context) {
+    Builder(*Context),
+    MF(nullptr) {
   }
 
   static auto NewCtx(Str const &module_name) -> Unique<LLvmCtx> {

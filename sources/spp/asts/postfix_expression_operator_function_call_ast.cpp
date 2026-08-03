@@ -382,77 +382,17 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // allocated on the caller's stack (no heap alloc), the arguments are stored into it, and a { resume_fn, env } fat
   // pointer is returned. Resuming (".res()", or an immediate auto-resume for GenOnce) drives the state machine.
   if (_OverloadInfo->Proto->IsCoroutine()) {
-    const auto coro = _OverloadInfo->Proto->ToUnchecked<CoroutinePrototypeAst>();
-    const auto coro_uid = "." + spp::utils::Uid(this);
-    const auto coro_scope = coro->GetAstScope();
+    // Add the generator environment object that contains
+    // the yield and send slot, allowing the "gen" and
+    // "res" operators to interact with it (load/store/GEP).
+    const auto uid = "." + spp::utils::Uid();
+    const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
+    const auto llvm_gen_state = ctx->Builder.CreateAlloca(
+      llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
 
-    // Ensure the env type and resume function exist; the coroutine's own Stage11 may not have run yet. Creating the
-    // resume function repositions the builder, so save and restore the call site's insert point.
-    if (coro->LlvmCoroGenEnvType == nullptr) {
-      const auto saved_ip = ctx->Builder.saveIP();
-      codegen::CreateCoroEnvType(coro, ctx, *coro_scope);
-      codegen::CreateCoroResFunc(coro, ctx, *coro_scope);
-      ctx->Builder.restoreIP(saved_ip);
-    }
-    const auto env_type = coro->LlvmCoroGenEnvType;
-    SPP_ASSERT(env_type != nullptr and coro->LlvmCoroResumeFunc != nullptr);
-
-    // Allocate the env (frame) on the caller's stack, at the top of the caller's function.
-    const auto env_ptr = codegen::LlvmEntryAlloca(env_type, "coro.env" + coro_uid, ctx);
-
-    // Initialise the header: READY, location 0 (start).
-    ctx->Builder.CreateStore(
-      llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), std::to_underlying(codegen::CoroutineState::READY)),
-      ctx->Builder.CreateStructGEP(
-        env_type, env_ptr, std::to_underlying(codegen::GenEnvField::STATE), "coro.state" + coro_uid));
-    ctx->Builder.CreateStore(
-      llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0),
-      ctx->Builder.CreateStructGEP(
-        env_type, env_ptr, std::to_underlying(codegen::GenEnvField::LOCATION), "coro.loc" + coro_uid));
-
-    // Store each argument into its frame field. Parameters occupy frame slots, matched to fields by symbol identity
-    // (so the order agrees with the env-type and resume-prologue collection).
-    const auto frame_vars = codegen::CollectCoroFrameVars(*coro_scope);
-    const auto params = coro->FnParamGroup->GetAllParams();
-    for (const auto [i, arg] : FnArgGroup->Args | genex::views::ptr | genex::views::enumerate) {
-      const auto param_sym = coro_scope->GetVarSymbol(params[i]->ExtractName().get());
-      auto field = std::to_underlying(codegen::GenEnvField::FRAME_START);
-      for (auto const &[fi, fv] : frame_vars | genex::views::enumerate) {
-        if (fv.get() == param_sym.get()) {
-          field += static_cast<std::uint8_t>(fi);
-          break;
-        }
-      }
-      const auto arg_val = arg->Stage11_CodeGen(sm, meta, ctx);
-      ctx->Builder.CreateStore(arg_val, ctx->Builder.CreateStructGEP(env_type, env_ptr, field, "coro.arg" + coro_uid));
-    }
-
-    // For GenOnce, auto-resume once and yield the produced value directly. This must be checked before building the
-    // fat pointer below: "InferType" reports the unwrapped yield type in this case (not a struct at all, eg
-    // "&View[BigInt]" lowers to a bare "ptr"), so resolving the fat pointer's struct type only makes sense once
-    // this branch is ruled out.
-    if (_IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume) {
-      const auto send_ty = env_type->getElementType(std::to_underlying(codegen::GenEnvField::SEND_SLOT));
-      ctx->Builder.CreateCall(coro->LlvmCoroResumeFunc, {env_ptr, llvm::Constant::getNullValue(send_ty)});
-      const auto yield_ty = env_type->getElementType(std::to_underlying(codegen::GenEnvField::YIELD_SLOT));
-      const auto yield_slot = ctx->Builder.CreateStructGEP(
-        env_type, env_ptr, std::to_underlying(codegen::GenEnvField::YIELD_SLOT),
-        "coro.yield.slot" + coro_uid);
-      return ctx->Builder.CreateLoad(yield_ty, yield_slot, "coro.yield.val" + coro_uid);
-    }
-
-    // Build the { resume_fn, env } fat pointer at the call's actual return type - a plain "Gen"/"GenOnce", or a
-    // class that superimposes one and may carry its own extra fields (see "GetFatPointerFields") - rather than a
-    // bare anonymous { ptr, ptr }, so eg an "Iterator[T]" call gets back a value of its own struct type, with the
-    // fat pointer fields at whatever physical indices the "Spp" layout assigned them.
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get());
-    const auto gen_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*ret_type_sym, ctx));
-    const auto resume_fn_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
-    const auto env_ptr_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 1);
-    auto fat = static_cast<llvm::Value*>(llvm::UndefValue::get(gen_ty));
-    fat = ctx->Builder.CreateInsertValue(fat, coro->LlvmCoroResumeFunc, {resume_fn_idx}, "coro.fat.fn" + coro_uid);
-    fat = ctx->Builder.CreateInsertValue(fat, env_ptr, {env_ptr_idx}, "coro.fat.env" + coro_uid);
-    return fat;
+    const auto llvm_lhs = sm->CurrentScope->GetVarSymbol(meta->AssignmentTarget->To<IdentifierAst>()).get();
+    ctx->LlvmGenerators[llvm_lhs] = MakeUnique<codegen::LlvmGenerator>();
+    ctx->LlvmGenerators[llvm_lhs]->State = llvm_gen_state;
   }
 
   // For generically converted function prototypes, generate their llvm func once.

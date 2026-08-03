@@ -93,7 +93,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   using analyse::utils::type_utils::IsIndexWithinBound;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
 
-  // Already rewritten against a forwarded-to value by an earlier pass, which analysed the rewrite as it built it.
+  // Already rewritten against a forwarded-to value by an earlier
+  // pass, which analysed the rewrite as it built it.
   if (_MappedFwd != nullptr) { return; }
 
   // Prevent types on the left-hand-side of a runtime member access.

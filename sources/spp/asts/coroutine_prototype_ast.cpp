@@ -42,10 +42,7 @@ spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
   FunctionPrototypeAst(
     std::move(annotations), std::move(tok_cmp), std::move(tok_fun), std::move(name),
     std::move(generic_param_group), std::move(param_group), std::move(tok_arrow),
-    std::move(return_type), std::move(impl)),
-  LlvmCoroGenEnv(nullptr),
-  LlvmCoroGenEnvType(nullptr),
-  LlvmCoroResumeFunc(nullptr) {
+    std::move(return_type), std::move(impl)) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_COR, "cor");
 }
 
@@ -78,8 +75,6 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
   ast->InlineAnnotation = InlineAnnotation;
   ast->Visibility = Visibility;
   ast->_LlvmFunc = _LlvmFunc;
-  ast->LlvmCoroGenEnv = LlvmCoroGenEnv;
-  ast->LlvmCoroResumeFunc = LlvmCoroResumeFunc;
   for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
   return ast;
 }
