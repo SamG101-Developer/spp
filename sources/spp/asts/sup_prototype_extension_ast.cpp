@@ -434,8 +434,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
   // Check if this block is purely generic.
   const auto is_generic_scope =
     genex::any_of(sm->CurrentScope->AllTypeSymbols(true), [](auto const &x) { return x->IsGeneric; }) or
-    genex::any_of(sm->CurrentScope->AllVarSymbols(true),
-                  [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
+    genex::any_of(sm->CurrentScope->AllVarSymbols(true), [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
 
   // Generate the implementation if not a generic scope.
   if (not is_generic_scope) {

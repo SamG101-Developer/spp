@@ -122,8 +122,8 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     return;
   }
 
-  // Check the memory of the lhs.
-  Lhs->Stage8_CheckMemory(sm, meta);
+  // Check the memory of the lhs. Async can move this LHS.
+  if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
   meta->Save();
   meta->PostfixExpressionLhs = Lhs.get();
   if (Lhs->To<IdentifierAst>() != nullptr) {

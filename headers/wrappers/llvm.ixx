@@ -15,6 +15,7 @@ export namespace llvm {
   using ::llvm::dyn_cast;
   using ::llvm::dyn_cast_or_null;
   using ::llvm::errs;
+  using ::llvm::outs;
   using ::llvm::isa;
   using ::llvm::install_fatal_error_handler;
   using ::llvm::verifyFunction;
