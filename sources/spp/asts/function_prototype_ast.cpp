@@ -128,11 +128,11 @@ auto spp::asts::FunctionPrototypeAst::ToString() const
 
 auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *,
+  CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> Shared<codegen::LlvmFuncWrapper> {
   // Generate the return and parameter types.
-  auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, ctx);
+  auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, meta, ctx);
 
   if (not is_generic) {
     // Create the LLVM function type. A "..a: T" parameter is never true C-ABI varargs - the call site (NameFnArgs)
@@ -551,11 +551,10 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
 
     // The body is an expression scope, so it never emits its own terminator. Return with void if there is no return
     // statement, otherwise we have already returned to emit an "unreachable" instruction.
-    if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
-      GetLlvmFunc()->Target->getReturnType()->isVoidTy()
-        ? static_cast<llvm::Instruction*>(ctx->Builder.CreateRetVoid())
-        : static_cast<llvm::Instruction*>(ctx->Builder.CreateUnreachable());
+    if (not ctx->Builder.GetInsertBlock()->empty() and not ctx->Builder.GetInsertBlock()->back().isTerminator()) {
+        ctx->Builder.CreateRetVoid();
     }
+    VALIDATE_LLVM
   }
   else {
     // Skip the scope, linker will provide implementation for ffi.
@@ -685,7 +684,8 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 }
 
 auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
-  analyse::scopes::ScopeManager const *sm,
+  analyse::scopes::ScopeManager *sm,
+  CompilerMetaData *meta,
   codegen::LLvmCtx const *ctx) const
   -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
   // Convert the return and parameter types to LLVM types.
