@@ -63,14 +63,16 @@ auto spp::codegen::GetFatPointerFields(
   LLvmCtx const *ctx)
   -> std::optional<Vec<llvm::Type*>> {
   //
-  using analyse::utils::type_utils::IsTypeFatPointerFamily;
+  using analyse::utils::type_utils::IsTypeFunc;
 
-  // "IsTypeFatPointerFamily" is the single source of truth for
-  // "is this Gen/GenOnce/a FunXXX" - this function only adds the
-  // LLVM-specific field materialization on top.
-  if (not IsTypeFatPointerFamily(type, scope)) { return std::nullopt; }
+  // "FunXXX" closures are represented by a { fn_ptr, env_ptr }
+  // pair. The total field count (for example a stateful type
+  // superimposing a FunXXX type, is mirrored in the function
+  // "GetSuperimposedFatPointerFieldCount"; this function only
+  // adds the LLVM-specific type materialization on top.
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  return Vec<llvm::Type*>{ptr_ty, ptr_ty};
+  if (IsTypeFunc(type, scope)) { return Vec<llvm::Type*>{ptr_ty, ptr_ty}; }
+  return std::nullopt;
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
