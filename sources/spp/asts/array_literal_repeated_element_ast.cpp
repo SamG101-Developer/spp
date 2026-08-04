@@ -160,6 +160,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
   -> void {
   // Convert the inner element to a compile-time value.
   Elem->Stage9_CompTimeResolve(sm, meta);
+  Elem = AstClone(meta->CmpResult);
 
   // Wrap the compile-time array value.
   meta->CmpResult = MakeUnique<ArrayLiteralRepeatedElementAst>(

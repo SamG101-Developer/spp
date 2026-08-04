@@ -166,8 +166,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
   -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = UniqueVec<ExpressionAst>();
-  for (auto const &elem : Elems) {
+  for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
+    Elems[i] = AstClone(meta->CmpResult);
     cmp_elems.EmplaceBack(std::move(meta->CmpResult));
   }
 
