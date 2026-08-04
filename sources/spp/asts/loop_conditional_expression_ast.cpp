@@ -236,7 +236,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   meta->LlvmAssignmentTarget = nullptr;
   Body->Stage11_CodeGen(sm, meta, ctx);
   meta->Restore();
-  if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
     ctx->Builder.CreateBr(loop_cond_bb);
   }
 
@@ -252,7 +252,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
     ctx->Builder.SetInsertPoint(loop_else_bb);
     const auto else_val = ElseBlock->Stage11_CodeGen(sm, meta, ctx);
     const auto else_end_bb = ctx->Builder.GetInsertBlock();
-    if (else_end_bb->getTerminator() == nullptr) {
+    if (not else_end_bb->hasTerminator()) {
       if (phi != nullptr) { phi->addIncoming(else_val, else_end_bb); }
       ctx->Builder.CreateBr(loop_end_bb);
     }

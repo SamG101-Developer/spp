@@ -261,7 +261,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   // block reached when no pattern matched (the end block), so it
   // needs a terminator. Semantic analysis guarantees that for expr
   // assignments, one branch will be taken ("else" pattern is used).
-  if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
     if (is_expr) { ctx->Builder.CreateUnreachable(); }
     else { ctx->Builder.CreateBr(case_end_bb); }
   }

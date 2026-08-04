@@ -226,7 +226,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 
   // Terminate the closure function with a return of the body's
   // value (closures return their body implicitly).
-  if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
     if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
     else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
     else { ctx->Builder.CreateUnreachable(); }
