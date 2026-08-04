@@ -303,6 +303,7 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
   const auto annotation_scope = const_cast<analyse::scopes::Scope*>(
     sm->CurrentScope->ConvertPostfixToNestedScope(annotation_scope_name.get()));
   auto tm = ScopeManager(sm->GlobalScope, annotation_scope);
+  annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);
   annotation_info->Definition->FnArgGroup->At("target")->Val->Stage9_CompTimeResolve(&tm, meta);
   const auto result = std::move(meta->CmpResult);
   const auto allowed_ctx = result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
