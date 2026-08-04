@@ -69,13 +69,13 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
   ScopeManager *sm,
-  CompilerMetaData *,
+  CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // Use the builtin to build the llvm custom lowered code.
   analyse::utils::builtins::kBuiltinFuncs
     .at(_ScopePtr)
-    .llvm_fn(sm, _ProtoPtr, ctx, codegen::GetLlvmType(
+    .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmType(
       *sm->CurrentScope->GetTypeSymbol(_ProtoPtr->ReturnType.get()), ctx));
   return nullptr;
 }
