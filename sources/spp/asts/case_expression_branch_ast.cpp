@@ -236,11 +236,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   // parent "case" AST. Given the branch doesn't terminate (return),
   // we branch back to the "end" block of the "case" expression.
   if (not incoming_bb->hasTerminator()) {
-    if (meta->LlvmPhi != nullptr) {
-      llvm::errs() << "phi: "; meta->LlvmPhi->getType()->print(llvm::errs());
-      llvm::errs() << "\nval: "; llvm_val->getType()->print(llvm::errs()); llvm::errs() << "\n";
-      meta->LlvmPhi->addIncoming(llvm_val, incoming_bb);
-    }
+    if (meta->LlvmPhi != nullptr) { meta->LlvmPhi->addIncoming(llvm_val, incoming_bb); }
     ctx->Builder.CreateBr(meta->LlvmEndBB);
   }
 
