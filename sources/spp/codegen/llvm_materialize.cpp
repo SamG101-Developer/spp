@@ -52,10 +52,10 @@ auto spp::codegen::llvm_addr_of(
   LLvmCtx *ctx)
   -> llvm::Value* {
   // An expression that is already a borrow evaluates to the address of what it borrows, so it is its own address:
-  // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one.
+  // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one. Note: we
+  // don't enforce the borrow on the llvm type, because Gen[&XXX] is valid, but not a borrow.
   if (const auto type = ast.InferType(sm, meta); type != nullptr and type->GetConvention() != nullptr) {
     const auto borrow_val = ast.Stage11_CodeGen(sm, meta, ctx);
-    SPP_ASSERT(borrow_val->getType()->isPointerTy());
     return borrow_val;
   }
 
