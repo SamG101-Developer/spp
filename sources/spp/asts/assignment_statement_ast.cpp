@@ -272,6 +272,10 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     meta->Save();
     meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
     meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
+    if (IsIdentifier(Lhs[i].get())) {
+      meta->LlvmAssignmentTarget = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
+    }
+
     const auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
     meta->Restore();
     llvm_rhs_vals.EmplaceBack(llvm_rhs);

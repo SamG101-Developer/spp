@@ -177,6 +177,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   else if (not meta->LetStatementFromUninitialized) {
     meta->Save();
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
+    meta->LlvmAssignmentTarget = alloca;
     const auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
     ctx->Builder.CreateStore(llvm_val, alloca);
     meta->Restore();
