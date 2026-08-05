@@ -45,7 +45,7 @@ set(CMAKE_LINKER_TYPE LLD)
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 23 REQUIRED CONFIG)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
 find_package(unordered_dense CONFIG REQUIRED)
@@ -144,6 +144,10 @@ target_link_libraries(
   LLVMCodeGen
   LLVMScalarOpts
   LLVMTransformUtils
+  LLVMAnalysis
+  LLVMCoroutines
+  LLVMipo
+  LLVMPasses
   Threads::Threads
   $<$<NOT:$<CONFIG:Debug>>:mimalloc>
   unordered_dense::unordered_dense
