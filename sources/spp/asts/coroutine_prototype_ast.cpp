@@ -121,9 +121,12 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // Create the entry block for this function. The first
   // instructions contained in this function will be the
   // coroutine boot intrinsics.
+  const auto llvm_func = GetLlvmFunc();
+  const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
+
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(
-    *ctx->Context, "entry", GetLlvmFunc()->Target);
+    *ctx->Context, "entry", llvm_func_target);
   ctx->Builder.SetInsertPoint(entry_bb);
 
   // Firstly, emit the llvm coroutine intrinsics for the
@@ -143,7 +146,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // Generate the function's parameters and generic
   // parameters into the coroutine. This will add the
   // param alloca instructions into the coroutine.
-  if (GetLlvmFunc()->Target != nullptr) {
+  if (llvm_func_target != nullptr) {
     FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
     GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
   }
@@ -172,7 +175,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // Skip generic bases, and implement the non-abstract
   // coroutines. There are no ffi coroutines.
   const auto is_extern = AbstractAnnotation;
-  if (GetLlvmFunc()->Target == nullptr) {
+  if (llvm_func_target == nullptr) {
     // Generic base function so not generating for it.
     // Manual scope skipping.
     const auto final_scope = sm->CurrentScope->FinalChildScope();
