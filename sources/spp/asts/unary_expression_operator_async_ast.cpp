@@ -111,7 +111,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // Analyse the object initializer for safety in codegen, and ensure
   // that all private fields are generated.
   _TransformedFunc = std::move(mapped);
-  // TODO : _TransformedFunc->Stage7_AnalyseSemantics(sm, meta);
+  _TransformedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
