@@ -134,9 +134,10 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
 
-  // Run the codegen on the transformed "let" ast to introduce
-  // symbols into the llvm function.
-  _MappedLet->Stage11_CodeGen(sm, meta, ctx);
+  // Run the codegen on the transformed "let" ast to introduce symbols into the llvm function.
+  if (_MappedLet != nullptr) {
+    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
+  }
 
   // Combine all the generated transforms into a single "AND"ed
   // expression.
