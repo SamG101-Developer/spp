@@ -124,6 +124,16 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   const auto llvm_func = GetLlvmFunc();
   const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
 
+  // Unlike the subroutine case, nothing below this point can run without a real function to emit into. The entry
+  // block would have no parent, and "IRBuilder::CreateIntrinsic" reaches the module through the block's parent
+  // function, so emitting the coroutine boot intrinsics would dereference null inside llvm's intrinsic lookup.
+  // Skip the body scopes (as the null-target branch further down used to) and leave.
+  if (llvm_func_target == nullptr) {
+    const auto final_scope = sm->CurrentScope->FinalChildScope();
+    while (sm->CurrentScope != final_scope) { sm->MoveToNextScope(false); }
+    return nullptr;
+  }
+
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(
     *ctx->Context, "entry", llvm_func_target);
@@ -146,10 +156,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // Generate the function's parameters and generic
   // parameters into the coroutine. This will add the
   // param alloca instructions into the coroutine.
-  if (llvm_func_target != nullptr) {
-    FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
-    GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
-  }
+  FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
+  GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
 
   // Add the generator environment object that contains
   // the yield and send slot, allowing the "gen" and
@@ -171,17 +179,11 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
   meta->EnclosingFunctionScope = sm->CurrentScope;
 
-  // If there is an implementation, generate its code.
-  // Skip generic bases, and implement the non-abstract
-  // coroutines. There are no ffi coroutines.
+  // If there is an implementation, generate its code. Generic
+  // bases have already returned above. There are no ffi
+  // coroutines.
   const auto is_extern = AbstractAnnotation;
-  if (llvm_func_target == nullptr) {
-    // Generic base function so not generating for it.
-    // Manual scope skipping.
-    const auto final_scope = sm->CurrentScope->FinalChildScope();
-    while (sm->CurrentScope != final_scope) { sm->MoveToNextScope(false); }
-  }
-  else if (not is_extern) {
+  if (not is_extern) {
     // Generate the coroutine implementation. Add a safety
     // return void at the end.
     Impl->Stage11_CodeGen(sm, meta, ctx);
@@ -191,6 +193,9 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_end, {}, {coro_handle, ctx->Builder.getFalse()}, {}, "coro.end" + uid);
   ctx->Builder.CreateRet(coro_handle);
+
+  meta->Restore();
+  sm->MoveOutOfCurrentScope();
   return nullptr;
 }
 
