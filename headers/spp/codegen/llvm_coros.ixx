@@ -29,4 +29,6 @@ namespace spp::codegen {
 SPP_EXP_CLS struct spp::codegen::LlvmGenerator {
   llvm::Value *Handle;
   llvm::Value *State;
+  llvm::BasicBlock *CleanupBlock;
+  llvm::BasicBlock *SuspendBlock;
 };

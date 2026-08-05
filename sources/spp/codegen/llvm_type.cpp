@@ -35,6 +35,8 @@ const spp::Vec<spp::Str> kSizedIntegerParts = {"std", "num", "sized_integer", "S
 const spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
 const spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
 const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
+const spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
+const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
 const spp::Vec<spp::Str> kVarParts = {"std", "variant", "Var"};
 const spp::Vec<spp::Str> kNonNullParts = {"std", "mem", "pointer", "NonNull"};
 
@@ -174,8 +176,17 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower the "Fun*"/"Gen*" family to a { fn_ptr, env_ptr } /
-  // { resume_fn_ptr, env_ptr } fat pointer.
+  // A generator is the bare "llvm.coro.begin" handle, one pointer wide - not a fat pointer. Its frame belongs to the
+  // llvm coroutine intrinsics, and the yield/send slots are reached through the handle as the coroutine's promise
+  // rather than by carrying an environment pointer next to it. Declared with no attributes, it would otherwise lower
+  // to an empty struct, which is neither what "SizeOf" reports for it nor what a coroutine's ramp actually returns.
+  // This matches the single field "GetSuperimposedFatPointerFieldCount" prepends for a type superimposing it.
+  if (parts == kGenParts or parts == kGenOnceParts) {
+    cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
+    return;
+  }
+
+  // Lower the "Fun*" family to a { fn_ptr, env_ptr } fat pointer.
   if (const auto fields = GetFatPointerFields(*cls_sym->FqName(), *scope, ctx); fields.has_value()) {
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, fields->ToStdVector());
     return;

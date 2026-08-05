@@ -110,15 +110,23 @@ namespace spp::codegen {
       return ScalarLayout(sizeof(void*));
     }
 
-    // Functions and generators are fat pointers: the code (or resume function) paired with the environment it closes
-    // over, so they are two pointers wide, not one.
+    // A function value is a fat pointer: the code paired with
+    // the environment it closes over, so it is two pointers wide,
+    // not one. A "$" mock is a function used as a value, so it
+    // shares that shape.
     if (TypeEq(*type.WithoutGenerics(), *FUN_MOV, *sm.CurrentScope, *sm.CurrentScope) or
       TypeEq(*type.WithoutGenerics(), *FUN_MUT, *sm.CurrentScope, *sm.CurrentScope) or
       TypeEq(*type.WithoutGenerics(), *FUN_REF, *sm.CurrentScope, *sm.CurrentScope) or
-      TypeEq(*type.WithoutGenerics(), *GEN, *sm.CurrentScope, *sm.CurrentScope) or
-      TypeEq(*type.WithoutGenerics(), *GEN_ONCE, *sm.CurrentScope, *sm.CurrentScope) or
       type.IsCompilerGeneratedType()) {
       return Layout{.Size = 2 * sizeof(void*), .Align = alignof(void*)};
+    }
+
+    // A generator is *not* a fat pointer: it is the bare
+    // "llvm.coro.begin" handle, one pointer wide. The frame it refers
+    // to belongs to the llvm coroutine intrinsics.
+    if (TypeEq(*type.WithoutGenerics(), *GEN, *sm.CurrentScope, *sm.CurrentScope) or
+      TypeEq(*type.WithoutGenerics(), *GEN_ONCE, *sm.CurrentScope, *sm.CurrentScope)) {
+      return ScalarLayout(sizeof(void*));
     }
 
     // An array holds its elements end to end, each padded up to the element alignment, and is aligned like one element.

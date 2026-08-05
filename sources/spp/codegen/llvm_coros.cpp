@@ -9,11 +9,9 @@ auto spp::codegen::CreateLlvmGeneratorStateType(
   // load/store from the "gen" expression and the "res"
   // postfix operator interact with this, + the "suspend"
   // and "resume" intrinsics.
-  const auto llvm_struct = llvm::StructType::create(*ctx->Context);
   const auto llvm_yield_slot_type = GetLlvmGeneratorStateYieldSlotType(ctx);
   const auto llvm_send_slot_type = GetLlvmGeneratorStateSendSlotType(ctx);
-  llvm_struct->setBody({llvm_yield_slot_type, llvm_send_slot_type});
-  return llvm_struct;
+  return llvm::StructType::get(*ctx->Context, {llvm_yield_slot_type, llvm_send_slot_type});
 }
 
 auto spp::codegen::GetLlvmGeneratorStateYieldSlotType(

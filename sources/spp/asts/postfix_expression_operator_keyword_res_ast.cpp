@@ -26,6 +26,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_layout;
+import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -119,42 +120,47 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // store the potential argument into the send slot of the
   // env, resume the coroutine, then use the yielded value.
 
-  // Get the indexes for the fields into the generator state
-  // object stored on the "meta" context.
-  const auto idx_0 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0uz);
-  const auto idx_y = llvm::ConstantInt::get(
-    codegen::GetLlvmGeneratorStateYieldSlotType(ctx),
-    std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT));
-  const auto idx_s = llvm::ConstantInt::get(
-    codegen::GetLlvmGeneratorStateSendSlotType(ctx),
-    std::to_underlying(codegen::LlvmGeneratorStateStructFields::SEND_SLOT));
+  // The slots are fields of the generator state *struct*, so
+  // reaching one is a struct GEP: the source element type has
+  // to be the struct, and the field index an "i32".
+  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
 
   // Step 0: Retrieve the correct generator environment from
-  // the llvm context.
-  const auto &llvm_generator_env =
-    ctx->LlvmGenerators[sm->CurrentScope->GetVarSymbol(meta->PostfixExpressionLhs->To<IdentifierAst>()).get()];
+  // the llvm context, keyed by the address of the generator's
+  // storage. The left-hand-side is not necessarily a bare
+  // identifier - it can be a field, an element, or a temporary -
+  // so it is resolved to an address rather than to a symbol.
+  const auto llvm_generator_addr = codegen::llvm_addr_of(*meta->PostfixExpressionLhs, sm, meta, ctx);
+  const auto &llvm_generator_env = ctx->LlvmGenerators[llvm_generator_addr];
 
   // Step 1: Place the value of the argument (if it exists),
-  // into the "send" slot on the generator state struct.
-  const auto llvm_send_slot = ctx->Builder.CreateGEP(
-    codegen::GetLlvmGeneratorStateSendSlotType(ctx), llvm_generator_env->State, {idx_0, idx_s}, "gen.send.slot");
+  // into the "send" slot on the generator state struct. A bare
+  // "res()" sends nothing, so there is simply no store to make:
+  // there is no such thing as a void value to write into the
+  // slot, and asking for one ("getNullValue" of a void type)
+  // is itself invalid.
   const auto &args_group = _MappedFunc->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>()->FnArgGroup;
-  const auto llvm_send_value = args_group->Args.IsEmpty()
-    ? llvm::Constant::getNullValue(llvm::Type::getVoidTy(*ctx->Context))
-    : args_group->Args[0]->Stage11_CodeGen(sm, meta, ctx);
-  ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
+  if (not args_group->Args.IsEmpty()) {
+    const auto llvm_send_slot = ctx->Builder.CreateStructGEP(
+      llvm_gen_state_ty, llvm_generator_env->State,
+      std::to_underlying(codegen::LlvmGeneratorStateStructFields::SEND_SLOT), "gen.send.slot");
+    const auto llvm_send_value = args_group->Args[0]->Stage11_CodeGen(sm, meta, ctx);
+    ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
+  }
 
   // Step 2: Invoke the llvm coroutine intrinsic, allowing
   // program to resume the coroutine execution, to get the
   // next value.
+  // "llvm.coro.resume" is "[] (ptr)" - it returns void, so the call must not be given a name. llvm forbids naming a
+  // void value, and the name ends up corrupting the callee instead.
   ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle},
-    {}, "gen.coro.resume");
+    llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle}, {}, "");
 
   // Step 3: Get the yielded value from the generator state,
   // and pass return it as the result of this operation.
-  const auto llvm_yield_slot = ctx->Builder.CreateGEP(
-    codegen::GetLlvmGeneratorStateYieldSlotType(ctx), llvm_generator_env->State, {idx_0, idx_y}, "gen.yield.slot");
+  const auto llvm_yield_slot = ctx->Builder.CreateStructGEP(
+    llvm_gen_state_ty, llvm_generator_env->State,
+    std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT), "gen.yield.slot");
   const auto llvm_yielded_val = ctx->Builder.CreateLoad(
     codegen::GetLlvmGeneratorStateYieldSlotType(ctx), llvm_yield_slot, "gen.yield.value");
   return llvm_yielded_val;

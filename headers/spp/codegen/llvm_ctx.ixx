@@ -9,7 +9,6 @@ import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct VariableSymbol;
 }
 
 namespace spp::codegen {
@@ -27,7 +26,7 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   bool InConstantContext = false;
 
   // Coroutine information.
-  std::map<analyse::scopes::VariableSymbol*, Unique<LlvmGenerator>> LlvmGenerators;
+  std::map<llvm::Value*, Unique<LlvmGenerator>> LlvmGenerators;
 
   // Closure tracking information.
   llvm::Type *CurrentClosureType = nullptr;

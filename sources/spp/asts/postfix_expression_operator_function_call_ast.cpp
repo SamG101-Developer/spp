@@ -56,6 +56,7 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
+import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
@@ -378,22 +379,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       : ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args.ToStdVector(), "closure.call" + closure_uid);
   }
 
-  // Coroutine calls: calling a coroutine does not run its body, it constructs a generator. The env (its frame) is
-  // allocated on the caller's stack (no heap alloc), the arguments are stored into it, and a { resume_fn, env } fat
-  // pointer is returned. Resuming (".res()", or an immediate auto-resume for GenOnce) drives the state machine.
-  if (_OverloadInfo->Proto->IsCoroutine()) {
-    // Add the generator environment object that contains
-    // the yield and send slot, allowing the "gen" and
-    // "res" operators to interact with it (load/store/GEP).
-    const auto uid = "." + spp::utils::Uid();
-    const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
-    const auto llvm_gen_state = ctx->Builder.CreateAlloca(
-      llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
-
-    const auto llvm_lhs = sm->CurrentScope->GetVarSymbol(meta->AssignmentTarget->To<IdentifierAst>()).get();
-    ctx->LlvmGenerators[llvm_lhs] = MakeUnique<codegen::LlvmGenerator>();
-    ctx->LlvmGenerators[llvm_lhs]->State = llvm_gen_state;
-  }
+  // Coroutine calls: calling a coroutine does not run its body, it
+  // constructs a generator. The frame is owned by the llvm coroutine
+  // intrinsics, and the value handed back is nothing but the
+  // "llvm.coro.begin" handle.
+  const auto is_coroutine_call = _OverloadInfo->Proto->IsCoroutine();
 
   // For generically converted function prototypes, generate
   // their llvm declaration in-walk if it is still missing.
@@ -421,7 +411,23 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   if (llvm_func->getReturnType()->isVoidTy()) {
     return ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector());
   }
-  return ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
+  const auto llvm_call = ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
+
+  // Todo: Document this.
+  if (is_coroutine_call and meta->LlvmAssignmentTarget != nullptr) {
+    const auto llvm_promise_align = llvm::ConstantInt::get(
+      llvm::Type::getInt32Ty(*ctx->Context), alignof(std::max_align_t));
+    const auto llvm_gen_state = ctx->Builder.CreateIntrinsic(
+      llvm::Intrinsic::coro_promise, {}, {llvm_call, llvm_promise_align, ctx->Builder.getFalse()}, {},
+      "coro.gen.state" + uid);
+
+    auto generator = MakeUnique<codegen::LlvmGenerator>();
+    generator->Handle = llvm_call;
+    generator->State = llvm_gen_state;
+    ctx->LlvmGenerators[meta->LlvmAssignmentTarget] = std::move(generator);
+  }
+
+  return llvm_call;
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(

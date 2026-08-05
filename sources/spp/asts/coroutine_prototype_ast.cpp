@@ -124,15 +124,12 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   const auto llvm_func = GetLlvmFunc();
   const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
 
-  // Unlike the subroutine case, nothing below this point can run without a real function to emit into. The entry
-  // block would have no parent, and "IRBuilder::CreateIntrinsic" reaches the module through the block's parent
-  // function, so emitting the coroutine boot intrinsics would dereference null inside llvm's intrinsic lookup.
-  // Skip the body scopes (as the null-target branch further down used to) and leave.
   if (llvm_func_target == nullptr) {
     const auto final_scope = sm->CurrentScope->FinalChildScope();
     while (sm->CurrentScope != final_scope) { sm->MoveToNextScope(false); }
     return nullptr;
   }
+  llvm_func_target->setPresplitCoroutine();
 
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(
@@ -142,37 +139,57 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // Firstly, emit the llvm coroutine intrinsics for the
   // coroutine id, size and begin. These form the "boot"
   // instructions for the coroutine.
-  const auto llvm_u8_ty = llvm::Type::getInt32Ty(*ctx->Context);
-  const auto llvm_coro_align = llvm::ConstantInt::get(llvm_u8_ty, alignof(std::max_align_t));
+  const auto llvm_i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+  const auto llvm_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto llvm_coro_align = llvm::ConstantInt::get(llvm_i32_ty, alignof(std::max_align_t));
+
+  // The generator environment holding the yield and send
+  // slots, which "gen" and "res" load/store/GEP through.
+  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
+  const auto llvm_gen_state = ctx->Builder.CreateAlloca(
+    llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
+  llvm_gen_state->setAlignment(llvm::Align(alignof(std::max_align_t)));
+
+  // "llvm.coro.id" is "[token] (i32, ptr, ptr, ptr)". The
+  // trailing two pointer operands (coroaddr, fnaddrs) are
+  // unused here, but they are still operands: they have to
+  // be null pointer *constants*.
+  const auto llvm_null_ptr = llvm::ConstantPointerNull::get(llvm_ptr_ty);
   const auto coro_id = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_id, {}, {llvm_coro_align, nullptr, nullptr, nullptr}, {}, "coro.id" + uid);
+    llvm::Intrinsic::coro_id, {}, {llvm_coro_align, llvm_gen_state, llvm_null_ptr, llvm_null_ptr}, {},
+    "coro.id" + uid);
+
   const auto coro_size = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_size, {}, {}, {}, "coro.size" + uid);
+    llvm::Intrinsic::coro_size, {llvm::Type::getInt64Ty(*ctx->Context)}, {}, {}, "coro.size" + uid);
   const auto coro_mem = ctx->Builder.CreateAlloca(
     llvm::Type::getInt8Ty(*ctx->Context), coro_size, "coro.mem" + uid);
   const auto coro_handle = ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_begin, {}, {coro_id, coro_mem}, {}, "coro.begin" + uid);
 
-  // Generate the function's parameters and generic
-  // parameters into the coroutine. This will add the
-  // param alloca instructions into the coroutine.
+  // Generate the function's parameters and generic parameters
+  // into the coroutine. This will add the param alloca instructions
+  // into the coroutine.
   FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
   GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
-
-  // Add the generator environment object that contains
-  // the yield and send slot, allowing the "gen" and
-  // "res" operators to interact with it (load/store/GEP).
-  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
-  const auto llvm_gen_state = ctx->Builder.CreateAlloca(
-    llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
 
   // Load the return type type symbol and the other
   // meta information values that the children asts
   // in the coroutine body might need to use.
   const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
     ReturnType.get());
+
+  // Create the two blocks that every suspend point branches to.
+  // They are made up-front (detached, and inserted by the epilogue
+  // below) because a "gen" expression in the body needs them as
+  // targets of its suspend switch long before this function gets
+  // to emit them.
+  const auto cleanup_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.cleanup" + uid);
+  const auto suspend_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.suspend" + uid);
+
   meta->Save();
   meta->LlvmGenerator = MakeUnique<codegen::LlvmGenerator>(coro_handle);
+  meta->LlvmGenerator->CleanupBlock = cleanup_bb;
+  meta->LlvmGenerator->SuspendBlock = suspend_bb;
   meta->LlvmGeneratorState = llvm_gen_state;
   meta->EnclosingFunctionFlavour = TokFun.get();
   meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
@@ -189,9 +206,27 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     Impl->Stage11_CodeGen(sm, meta, ctx);
   }
 
-  // Add the exit intrinsics to the coroutine.
+  // Running off the end of the body is the same as being destroyed, so fall through into the cleanup edge (unless
+  // the body already terminated its block, eg with a return).
+  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+    ctx->Builder.CreateBr(cleanup_bb);
+  }
+
+  // Cleanup: the destroy edge of every suspend switch. The coroutine frame is an alloca on the caller's frame rather
+  // than a heap allocation (see "llvm.coro.begin" above), so there is nothing to release here and no matching
+  // "llvm.coro.free" - the block exists to give the destroy edge somewhere to go before the final suspend.
+  cleanup_bb->insertInto(llvm_func_target);
+  ctx->Builder.SetInsertPoint(cleanup_bb);
+  ctx->Builder.CreateBr(suspend_bb);
+
+  // Final suspend: end the coroutine and return the handle.
+  // "llvm.coro.end" is "[i1] (ptr, i1, token)" - the trailing token operand selects the unwind bundle and is
+  // "none" for an ordinary (non-async, non-retcon) coroutine. Omitting it leaves the call one operand short.
+  suspend_bb->insertInto(llvm_func_target);
+  ctx->Builder.SetInsertPoint(suspend_bb);
   ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_end, {}, {coro_handle, ctx->Builder.getFalse()}, {}, "coro.end" + uid);
+    llvm::Intrinsic::coro_end, {},
+    {coro_handle, ctx->Builder.getFalse(), llvm::ConstantTokenNone::get(*ctx->Context)}, {}, "coro.end" + uid);
   ctx->Builder.CreateRet(coro_handle);
 
   meta->Restore();
