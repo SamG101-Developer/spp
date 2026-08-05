@@ -194,7 +194,11 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Name, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
-  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName();
+
+  // A "$Func" mock keeps its bare name here. This is a declaration
+  // site, always in the same module as the mock class it names. Keep
+  // it as the original identifier in terms of namespacing.
+  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true);
 
   // Register the superimposition against the base symbol.
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());

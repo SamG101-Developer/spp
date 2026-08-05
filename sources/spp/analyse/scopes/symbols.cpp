@@ -185,10 +185,13 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
     return AliasStmt->MappedOldType;
   }
 
-  // If the type is generic, or the name starts with a '$', return the name as-is.
-  if (IsGeneric or LinkedScope == nullptr
-    or (ignore_dollar and Name->IsCompilerGeneratedType())
-    or Name->Name == "Self") {
+  // If the type is generic, or is "Self", return the name as-is.
+  if (IsGeneric or LinkedScope == nullptr or Name->Name == "Self") {
+    return Name;
+  }
+
+  if (Name->IsCompilerGeneratedType()
+    and (ignore_dollar or LinkedScope->Parent != LinkedScope->ParentModule())) {
     return Name;
   }
 

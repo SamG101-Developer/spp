@@ -315,8 +315,20 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
 
   // Consider if we need to create a generic substituted function prototype.
   if (not combined_generics->Args.IsEmpty()) {
+    // Reuse the instantiation for these exact arguments if one already exists. Overload resolution runs repeatedly
+    // against the same prototype - once per call site, again for every Stage11 re-analysis, and again for attempts
+    // that fail and are caught - and minting a fresh substitution each time leaves the instantiation with no stable
+    // identity. The declaration generated for one object would then be unreachable from the call site holding
+    // another, which is what the shared llvm slot used to disguise (by handing back some other instantiation's
+    // function entirely).
+    if (auto [existing_scope, existing_proto] = fn_proto->FindGenericSubstitution(*combined_generics);
+      existing_proto != nullptr) {
+      return std::make_tuple(existing_proto, existing_scope);
+    }
+
     auto new_fn_proto = asts::AstClone(fn_proto);
     new_fn_proto->SetNonGenericImpl(fn_proto);
+    new_fn_proto->DetachLlvmFuncSlot();
 
     // Create the new function scope for the generic implementation.
     const auto generic_syms = sm->CurrentScope->GetExtendedGenericSymbols(combined_generics->GetAllArgs());
@@ -350,7 +362,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
 
     // Save the generic implementation against the base function, and update the active scope and prototype.
     const auto new_fn_proto_ptr = new_fn_proto.get();
-    generic_sub_slot.Second = std::move(new_fn_proto);
+    generic_sub_slot.Proto = std::move(new_fn_proto);
     return std::make_tuple(new_fn_proto_ptr, new_fn_scope);
   }
 

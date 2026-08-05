@@ -17,6 +17,7 @@ import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_parameter_comp_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
@@ -185,6 +186,7 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
 
     for (auto const &v : all_var_syms) {
       if (genex::contains(comp_names, *v->Name, genex::meta::deref)) { continue; }
+      if (v->MemInfo->AstCompTime->To<asts::GenericParameterCompAst>() != nullptr) { continue; }
       syms.EmplaceBack(asts::GenericArgumentCompKeywordAst::FromSym(*v));
       comp_names.EmplaceBack(v->Name);
     }

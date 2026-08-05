@@ -131,7 +131,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   Type->Stage4_QualifyTypes(sm, meta);
   Type->Stage7_AnalyseSemantics(sm, meta);
 
-  if (not _FromUseStatement and not Type->IsCompilerGeneratedType() and not Type->IsSelfType()) {
+  if (not _FromUseStatement and not Type->IsSelfType()) {
     Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
     _AliasSym->Type = Type;
   }

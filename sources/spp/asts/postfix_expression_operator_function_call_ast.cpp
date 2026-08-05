@@ -395,19 +395,20 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     ctx->LlvmGenerators[llvm_lhs]->State = llvm_gen_state;
   }
 
-  // For generically converted function prototypes, generate their llvm func once.
-  // Todo: Is this even needed?
+  // For generically converted function prototypes, generate
+  // their llvm declaration in-walk if it is still missing.
   if (_OverloadInfo->Proto->GetLlvmFunc() == nullptr) {
     auto tm = ScopeManager(sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
     tm.Reset(tm.CurrentScope);
-    _OverloadInfo->Proto->Stage10_PreCodeGen(&tm, meta, ctx);
+    _OverloadInfo->Proto->GenerateLlvmDeclaration(&tm, meta, ctx);
   }
 
   // SPP_ASSERT(not ctx->Builder.GetInsertBlock()->getTerminator());
   const auto uid = "." + spp::utils::Uid(this);
-  auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
+  const auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
 
   // Get the llvm function target, and generate the argument values.
+  SPP_ASSERT(_OverloadInfo->Proto->GetLlvmFunc() != nullptr);
   const auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
   auto llvm_func_args = FnArgGroup->Args

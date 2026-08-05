@@ -180,7 +180,13 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   // this identifier was introduced ("let", param, etc).
   const auto uid = "." + spp::utils::Uid(this);
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
-  SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
+
+  // A symbol with no address by this point is an internal
+  // error. Report it as one rather than asserting, so the
+  // failure names the identifier.
+  RaiseIf<SppInternalCompilerError>(
+    var_sym->LlvmInfo->Alloca == nullptr, {sm->CurrentScope},
+    ERR_ARGS(*this, "Target identifier has no allocation"));
 
   // Handle local variable allocation extraction + load.
   // This is from normal "let" statements via their local

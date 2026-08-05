@@ -1123,7 +1123,9 @@ auto spp::analyse::utils::type_utils::CreateGenericFunScope(
   auto new_fun_scope = MakeUnique<scopes::Scope>(old_fun_scope);
   const auto new_fun_scope_ptr = new_fun_scope.get();
   const auto old_fn_proto = asts::AstBody(old_fun_scope.AstNode)[0]->To<asts::FunctionPrototypeAst>();
-  old_fn_proto->RegisterGenericSubstitution(std::move(new_fun_scope), nullptr);
+  old_fn_proto->RegisterGenericSubstitution(
+    std::move(new_fun_scope), nullptr,
+    MakeUnique<asts::GenericArgumentGroupAst>(nullptr, asts::AstCloneVec(generic_args.Args), nullptr));
 
   auto tm = scopes::ScopeManager(sm->GlobalScope, new_fun_scope_ptr);
   RegisterGenericSyms(external_generic_syms, generic_args.Args, new_fun_scope_ptr, &tm, meta);

@@ -194,7 +194,14 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     TypeSymbol const &that) const
     -> bool;
 
-  SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = true) const
+  /**
+   * The fully qualified name of the type, as a type AST that re-resolves to this symbol from any scope.
+   * @param ignore_dollar Leave a compiler-generated ("$Func") mock as a bare, module-local name. Defaults to
+   * qualifying it like any other type: the name has to survive crossing a module boundary, because a function value
+   * bound to a generic ("mod_a::a(b)" binding "F = mod_b::$B") is resolved in the caller's scope during inference,
+   * before any generic substitution runs. Only opt out where a bare name is genuinely wanted.
+   */
+  SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = false) const
     -> Shared<asts::TypeAst>;
 };
 
