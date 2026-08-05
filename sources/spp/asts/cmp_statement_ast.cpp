@@ -185,8 +185,15 @@ auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
   Value->Stage8_CheckMemory(sm, meta);
   ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
 
-  // Generate the value and assign it to the variable symbol's compile-time value.
-  if (not Type->IsCompilerGeneratedType()) {
+  // Refresh the symbol's comptime value from the analysed "Value". A "$" mock is included: its value is the object
+  // initializer synthesised in "FunctionPrototypeAst::Stage1_PreProcess", which names the mock with its bare,
+  // unqualified name, and only "Value" gets qualified (by "ObjectInitializerAst::Stage7_AnalyseSemantics"). Leaving
+  // the symbol on the Stage2 clone means "Stage10_PreCodeGen" generates a bare "$Func" that does not resolve from
+  // whichever module scope the constant is being generated in.
+  //
+  // A "use"-generated constant is skipped instead of refreshed: its symbol lookup follows "AliasSym" through to the
+  // defining module's symbol, so writing here would clobber the definition's own value with the alias expression.
+  if (not _FromUseStatement) {
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
     var_sym->CompTimeValue = AstClone(Value);
   }
@@ -213,7 +220,7 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // No generation for $ types.
-  if (Type->IsCompilerGeneratedType()) { return nullptr; }
+  // if (Type->IsCompilerGeneratedType()) { return nullptr; }
 
   // Generate the value in a constant context.
   ctx->InConstantContext = true;
