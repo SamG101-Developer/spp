@@ -15,6 +15,7 @@ import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.token_ast;
@@ -72,6 +73,14 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
   using analyse::errors::SppInvalidPrimaryExpressionError;
 
+  if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
+    meta->Save();
+    meta->PostfixExpressionLhs = Lhs.get();
+    Op->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
+    return;
+  }
+
   // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
   // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
   meta->Save();
@@ -110,6 +119,14 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
   if (func != nullptr and func->GetTransformedAst() != nullptr) {
     func->GetTransformedAst()->Stage8_CheckMemory(sm, meta);
+    return;
+  }
+
+  if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
+    meta->Save();
+    meta->PostfixExpressionLhs = Lhs.get();
+    Op->Stage8_CheckMemory(sm, meta);
+    meta->Restore();
     return;
   }
 
