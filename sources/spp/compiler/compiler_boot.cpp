@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 
 module spp.compiler.compiler_boot;
 import spp.analyse.errors.semantic_error;
@@ -15,6 +16,7 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
@@ -31,7 +33,7 @@ import genex;
 #define PREP_SCOPE_MANAGER \
   auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
 
-#define PREP_SCOPE_MANAGER_AND_META(s)                                    \
+#define PREP_SCOPE_MANAGER_AND_META(s)                                  \
   PREP_SCOPE_MANAGER;                                                   \
   spp::compiler::CompilerBoot::_MoveScopeManagerToNs(sm, *mod_in_tree); \
   auto meta = spp::asts::meta::CompilerMetaData();                      \
@@ -272,6 +274,12 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     if (llvm::verifyModule(*ctx->Module, &llvm::errs())) {
       llvm::errs() << "Invalid module: " << ctx->Module->getName() << "\n";
+      std::abort();
+    }
+
+    codegen::RunCoroLoweringPipeline(ctx->Module.get());
+    if (llvm::verifyModule(*ctx->Module, &llvm::errs())) {
+      llvm::errs() << "Invalid module after lowering: " << ctx->Module->getName() << "\n";
       std::abort();
     }
 

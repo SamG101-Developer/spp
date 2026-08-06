@@ -159,12 +159,26 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     llvm::Intrinsic::coro_id, {}, {llvm_coro_align, llvm_gen_state, llvm_null_ptr, llvm_null_ptr}, {},
     "coro.id" + uid);
 
-  const auto coro_size = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_size, {llvm::Type::getInt64Ty(*ctx->Context)}, {}, {}, "coro.size" + uid);
-  const auto coro_mem = ctx->Builder.CreateAlloca(
-    llvm::Type::getInt8Ty(*ctx->Context), coro_size, "coro.mem" + uid);
+  // Guard the frame allocation with "llvm.coro.alloc".
+  const auto coro_need_alloc = ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_alloc, {}, {coro_id}, {}, "coro.need.alloc" + uid);
+
+  const auto alloc_trap_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.alloc.trap" + uid, llvm_func_target);
+  const auto begin_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.begin.block" + uid, llvm_func_target);
+  ctx->Builder.CreateCondBr(coro_need_alloc, alloc_trap_bb, begin_bb);
+
+  // Elision declined, so the frame would have to be heap allocated - which this language does not do for coroutines.
+  // Reaching here means a generator outlived the frame that owns it, which the analyser is meant to have rejected, so
+  // trap rather than quietly allocating.
+  ctx->Builder.SetInsertPoint(alloc_trap_bb);
+  ctx->Builder.CreateIntrinsic(llvm::Intrinsic::trap, {}, {}, {}, "");
+  ctx->Builder.CreateUnreachable();
+
+  // The frame is provided from outside, so "llvm.coro.begin" is handed a null pointer: there is exactly one live
+  // predecessor here (the trap block does not fall through), so no phi is needed to merge an allocated one in.
+  ctx->Builder.SetInsertPoint(begin_bb);
   const auto coro_handle = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_begin, {}, {coro_id, coro_mem}, {}, "coro.begin" + uid);
+    llvm::Intrinsic::coro_begin, {}, {coro_id, llvm_null_ptr}, {}, "coro.begin" + uid);
 
   // Generate the function's parameters and generic parameters
   // into the coroutine. This will add the param alloca instructions
@@ -187,7 +201,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   const auto suspend_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.suspend" + uid);
 
   meta->Save();
-  meta->LlvmGenerator = MakeUnique<codegen::LlvmGenerator>(coro_handle);
+  meta->LlvmGenerator = MakeShared<codegen::LlvmGenerator>(coro_handle);
   meta->LlvmGenerator->CleanupBlock = cleanup_bb;
   meta->LlvmGenerator->SuspendBlock = suspend_bb;
   meta->LlvmGeneratorState = llvm_gen_state;
@@ -212,21 +226,18 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     ctx->Builder.CreateBr(cleanup_bb);
   }
 
-  // Cleanup: the destroy edge of every suspend switch. The coroutine frame is an alloca on the caller's frame rather
-  // than a heap allocation (see "llvm.coro.begin" above), so there is nothing to release here and no matching
-  // "llvm.coro.free" - the block exists to give the destroy edge somewhere to go before the final suspend.
+  // Cleanup: the destroy edge of every suspend switch. There is no matching "llvm.coro.free" because nothing was ever
+  // allocated - the frame belongs to the caller, and is released with the caller's own frame. The block exists to give
+  // the destroy edge somewhere to go before the final suspend.
   cleanup_bb->insertInto(llvm_func_target);
   ctx->Builder.SetInsertPoint(cleanup_bb);
   ctx->Builder.CreateBr(suspend_bb);
 
   // Final suspend: end the coroutine and return the handle.
-  // "llvm.coro.end" is "[i1] (ptr, i1, token)" - the trailing token operand selects the unwind bundle and is
-  // "none" for an ordinary (non-async, non-retcon) coroutine. Omitting it leaves the call one operand short.
-  suspend_bb->insertInto(llvm_func_target);
   ctx->Builder.SetInsertPoint(suspend_bb);
   ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_end, {},
-    {coro_handle, ctx->Builder.getFalse(), llvm::ConstantTokenNone::get(*ctx->Context)}, {}, "coro.end" + uid);
+    {coro_handle, ctx->Builder.getFalse(), llvm::ConstantTokenNone::get(*ctx->Context)}, {}, "");
   ctx->Builder.CreateRet(coro_handle);
 
   meta->Restore();
