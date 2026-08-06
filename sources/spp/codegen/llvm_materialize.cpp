@@ -32,8 +32,9 @@ auto spp::codegen::llvm_materialize(
 
   // Analyse semantics and generate code for the let statement.
   meta->Save();
-  meta->LetStatementFromUninitialized = true; // Prevent double analysis of the expression.
   meta->LetStatementExplicitType = ast.InferType(sm, meta);
+  meta->LetStatementFromUninitialized = true;
+  meta->LetStatementValue = nullptr;
   var->Stage7_AnalyseSemantics(sm, meta);
 
   // Set the lhs to the variable name.
