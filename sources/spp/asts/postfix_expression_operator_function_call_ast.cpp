@@ -399,7 +399,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
   const auto o = "Call target has no llvm declaration: " + _OverloadInfo->Proto->PrintSignature("");
   RaiseIf<analyse::errors::SppInternalCompilerError>(
-    true, {sm->CurrentScope}, ERR_ARGS(*this, o));
+    _OverloadInfo->Proto->GetLlvmFunc() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));
 
   const auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
