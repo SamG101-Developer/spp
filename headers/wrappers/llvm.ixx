@@ -7,7 +7,6 @@ module;
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
-#include <llvm/Passes/PassBuilder.h>
 
 export module llvm;
 
@@ -23,14 +22,6 @@ export namespace llvm {
   using ::llvm::verifyModule;
   using ::llvm::raw_fd_ostream;
   using ::llvm::fltSemantics;
-
-  using ::llvm::CGSCCAnalysisManager;
-  using ::llvm::FunctionAnalysisManager;
-  using ::llvm::LoopAnalysisManager;
-  using ::llvm::ModuleAnalysisManager;
-  using ::llvm::ModulePassManager;
-  using ::llvm::OptimizationLevel;
-  using ::llvm::PassBuilder;
 
   using ::llvm::Align;
   using ::llvm::AllocaInst;
@@ -111,6 +102,7 @@ export namespace llvm {
     using ::llvm::Intrinsic::ssub_with_overflow;
     using ::llvm::Intrinsic::usub_with_overflow;
 
+    using ::llvm::Intrinsic::coro_alloc;
     using ::llvm::Intrinsic::coro_begin;
     using ::llvm::Intrinsic::coro_destroy;
     using ::llvm::Intrinsic::coro_done;
