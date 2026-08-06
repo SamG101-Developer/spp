@@ -397,8 +397,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   const auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
 
-  // Get the llvm function target, and generate the argument values.
-  SPP_ASSERT(_OverloadInfo->Proto->GetLlvmFunc() != nullptr);
+  const auto o = "Call target has no llvm declaration: " + _OverloadInfo->Proto->PrintSignature("");
+  RaiseIf<analyse::errors::SppInternalCompilerError>(
+    true, {sm->CurrentScope}, ERR_ARGS(*this, o));
+
   const auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
   auto llvm_func_args = FnArgGroup->Args
@@ -414,6 +416,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   const auto llvm_call = ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
 
   // Todo: Document this.
+  if (is_coroutine_call) {
+    llvm_call->addFnAttr(llvm::Attribute::CoroElideSafe);
+  }
+
   if (is_coroutine_call and meta->LlvmAssignmentTarget != nullptr) {
     const auto llvm_promise_align = llvm::ConstantInt::get(
       llvm::Type::getInt32Ty(*ctx->Context), alignof(std::max_align_t));
