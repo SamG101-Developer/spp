@@ -570,14 +570,22 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
   const auto all_args = a_group.GetAllArgs();
   const auto type_args = a_group.GetTypeArgs();
 
-  // Define the cloned constraint groups.
-  auto p_con_groups_cloned = Vec<Vec<Shared<asts::TypeAst>>>();
-  p_con_groups_cloned.reserve(p_names.Len());
+  // Check that each argument satisfies its constraints.
+  for (auto [i, p_name] : p_names | genex::views::enumerate) {
+    auto matching = type_args
+      | genex::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
+      | genex::to<Vec>();
+    if (matching.IsEmpty()) { continue; }
 
-  // Cross apply inferred into constraints firstly.
-  for (auto const &p_con_group : p_con_groups) {
-    auto con_group_cloned = Vec<Shared<asts::TypeAst>>();
-    for (auto p_con : p_con_group) {
+    const auto arg_sym = sm.CurrentScope->GetTypeSymbol(matching[0]->Val.get());
+    auto *const con_scope = arg_sym != nullptr and arg_sym->LinkedScope != nullptr
+      ? arg_sym->LinkedScope
+      : sm.CurrentScope;
+    auto con_sm = scopes::ScopeManager(sm.GlobalScope, con_scope);
+
+    // Cross apply the inferred arguments into this parameter's constraints.
+    auto p_cons = Vec<Shared<asts::TypeAst>>();
+    for (auto p_con : p_con_groups[i]) {
       auto def_type_raw = p_con->WithoutGenerics();
       if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_val_type_sym != nullptr and meta.
         CurrentStage > 4) {
@@ -586,23 +594,13 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
         p_con = std::move(temp);
       }
 
-      const auto sub = p_con->SubstituteGenerics(all_args);
+      auto sub = p_con->SubstituteGenerics(all_args);
       meta.Save();
       meta.AllowAbstractType = true;
-      sub->Stage7_AnalyseSemantics(&sm, &meta);
+      sub->Stage7_AnalyseSemantics(&con_sm, &meta);
       meta.Restore();
-      con_group_cloned.push_back(sub);
+      p_cons.push_back(std::move(sub));
     }
-    p_con_groups_cloned.push_back(std::move(con_group_cloned));
-  }
-
-  // Now check that each argument satisfied its constraints.
-  for (auto [i, p_name] : p_names | genex::views::enumerate) {
-    const auto p_cons = p_con_groups_cloned[i];
-    auto matching = type_args
-      | genex::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
-      | genex::to<Vec>();
-    if (matching.IsEmpty()) { continue; }
 
     // Raise an error if any constraint of this argument is not satisfied.
     const auto unsatisfied = type_utils::EnforceGenericConstraintsOneArg(
@@ -811,38 +809,16 @@ static auto CollectDirectInferences(
     variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name;
 
   // "RelaxedTypeEq" above has already done the reverse inference: it walked the argument type against the parameter
-  // type and reported every binding that fell out. Deciding which of those to keep by declaration site - "is this one
-  // of the function's own generic parameters" - silently discards a generic that is free in the parameter type but was
-  // declared elsewhere, which is the whole of the "n" in "sup [T, cmp n: USize, A] Vec[T, A] ext From[Arr[T, n]]":
-  // "Vec[Bool]" pins "T" and "A" down because both are readable off the superimposed type, but nothing pins "n" down
-  // except the argument. So keep a binding when its name is either declared locally or still a free generic in the
-  // owner scope. A name that resolves to something concrete, or to a generic already bound elsewhere, is left alone.
-  const auto is_free_generic_type = [&owner_scope, &sm](auto const &name) {
-    const auto sym = owner_scope.GetTypeSymbol(name.get());
-    if (sym == nullptr or not sym->IsGeneric or sym->LinkedScope != nullptr) { return false; }
-    const auto caller_sym = sm.CurrentScope->GetTypeSymbol(name.get());
-    return caller_sym == nullptr or not caller_sym->IsGeneric;
-  };
-  const auto is_free_generic_comp = [&owner_scope, &sm](auto const &name) {
-    const auto as_id = spp::asts::IdentifierAst::FromType(*name);
-    const auto sym = owner_scope.GetVarSymbol(as_id.get());
-    if (sym == nullptr or not sym->IsGeneric) { return false; }
-    const auto caller_sym = sm.CurrentScope->GetVarSymbol(as_id.get());
-    return caller_sym == nullptr or not caller_sym->IsGeneric;
-  };
-
+  // type and reported every binding that fell out. Only the ones naming a generic parameter of this owner are kept -
+  // a generic left free in the parameter type by an enclosing "sup" block ("n" in "sup [T, cmp n: USize, A] Vec[T, A]
+  // ext From[Arr[T, n]]") is one of those, because "FunctionPrototypeAst::Stage1_PreProcess" inherits the block's
+  // parameters onto every function it contains.
   for (auto const &[inferred_name, inferred_val] : temp_gs) {
     auto *typed = inferred_val->To<spp::asts::TypeAst>();
     const auto declared_type = genex::contains(type_p_names, *inferred_name, genex::meta::deref);
     const auto declared_comp = genex::contains(comp_p_names, *inferred_name, genex::meta::deref);
 
-    // Only consult the scope for names no local parameter claims, so declared parameters keep their exact behaviour.
-    const auto free_type = not declared_type and not declared_comp and typed != nullptr
-      and is_free_generic_type(inferred_name);
-    const auto free_comp = not declared_type and not declared_comp and not free_type
-      and is_free_generic_comp(inferred_name);
-
-    if (declared_type or free_type) {
+    if (declared_type) {
       if (typed == nullptr) { continue; }
       auto shared = typed->shared_from_this();
       if (is_variadic_param_slot and not genex::contains(variadic_type_p_names, *inferred_name, genex::meta::deref)) {
@@ -851,7 +827,7 @@ static auto CollectDirectInferences(
       }
       type_inferred[inferred_name].EmplaceBack(std::move(shared));
     }
-    else if (declared_comp or free_comp) {
+    else if (declared_comp) {
       comp_inferred[inferred_name].EmplaceBack(inferred_val);
     }
   }
@@ -876,23 +852,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
   meta.InferSource = {};
   meta.InferTarget = {};
 
-  // An empty parameter group no longer implies there is nothing to infer: the owner scope can still hold a generic
-  // left free by its own instantiation (a "sup" block generic named only by the extended trait), and "CollectDirect-
-  // Inferences" can now bind that from the arguments. Only such generics count here - one that is also generic in the
-  // caller is rigid for this call, exactly as in "CollectDirectInferences" - so the original fast path still applies
-  // to an ordinary non-generic call, and to a generic body calling its own enclosing generics.
-  const auto has_inferable_free_generics =
-    genex::any_of(owner_scope.AllTypeSymbols(), [&sm](auto const &s) {
-      if (not s->IsGeneric or s->LinkedScope != nullptr) { return false; }
-      const auto caller_sym = sm.CurrentScope->GetTypeSymbol(s->Name.get());
-      return caller_sym == nullptr or not caller_sym->IsGeneric;
-    }) or
-    genex::any_of(owner_scope.AllVarSymbols(), [&sm](auto const &s) {
-      if (not s->IsGeneric) { return false; }
-      const auto caller_sym = sm.CurrentScope->GetVarSymbol(s->Name.get());
-      return caller_sym == nullptr or not caller_sym->IsGeneric;
-    });
-  if (is_tuple_owner or (p_group.Params.IsEmpty() and not has_inferable_free_generics)) { return; }
+  if (is_tuple_owner or p_group.Params.IsEmpty()) { return; }
 
   // Separate param lists and extract names and constraint groups.
   const auto type_params = p_group.GetTypeParams();

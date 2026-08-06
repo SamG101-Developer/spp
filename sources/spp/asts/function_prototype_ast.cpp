@@ -25,11 +25,13 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_implementation_lowered_ast;
+import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
@@ -47,7 +49,9 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.compiler_stages;
+import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -221,6 +225,33 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
   auto sup_ext_impl_members = Vec<Unique<Ast>>();
   auto clone = AstClone(this);
   // clone->Name = MakeShared<IdentifierAst>(Name->PosStart(), function_call_name);
+
+  // Modify generic pulls. Todo: Document this.
+  const auto sup_fn_ctx = ctx->To<SupPrototypeFunctionsAst>();
+  const auto sup_ext_ctx = ctx->To<SupPrototypeExtensionAst>();
+  if (const auto sup_gn_params = sup_fn_ctx != nullptr
+    ? sup_fn_ctx->GnParamGroup.get()
+    : sup_ext_ctx != nullptr
+    ? sup_ext_ctx->GnParamGroup.get()
+    : nullptr; sup_gn_params != nullptr) {
+    auto inherited = sup_gn_params->OptToReq();
+    auto &own = clone->GnParamGroup->Params;
+
+    // A function is free to shadow one of the block's parameters - "sup [T, E] Res[T, E] { fun ior_[E](self, that:
+    // Res[T, E]) }" reads "E" as the function's own everywhere in its body and signature, and the block's "E" is not
+    // nameable from inside it at all. Its own declaration therefore wins, and inheriting the shadowed name as well
+    // would only declare it twice in one group.
+    inherited->Params |= genex::actions::remove_if([&own](auto const &p) {
+      return genex::any_of(own, [&p](auto const &o) { return *o->Name == *p->Name; });
+    });
+
+    auto at = 0uz;
+    while (at < own.Len() and own[at]->GetOrderTag() == utils::OrderableTag::kRequiredParam) { ++at; }
+    own.Insert(
+      own.begin() + static_cast<std::ptrdiff_t>(at),
+      std::make_move_iterator(inherited->Params.begin()),
+      std::make_move_iterator(inherited->Params.end()));
+  }
 
   for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.get()); }
   sup_ext_impl_members.EmplaceBack(std::move(clone));

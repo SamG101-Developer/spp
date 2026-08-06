@@ -233,7 +233,10 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   ctx->Builder.SetInsertPoint(cleanup_bb);
   ctx->Builder.CreateBr(suspend_bb);
 
-  // Final suspend: end the coroutine and return the handle.
+  // Final suspend: end the coroutine and return the handle. Like the cleanup block, this was created detached so a
+  // "gen" in the body could name it as a suspend-switch target before it existed here, so it has to be attached
+  // before anything is built into it - a parentless block has no module, and "CreateIntrinsic" needs one.
+  suspend_bb->insertInto(llvm_func_target);
   ctx->Builder.SetInsertPoint(suspend_bb);
   ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_end, {},
