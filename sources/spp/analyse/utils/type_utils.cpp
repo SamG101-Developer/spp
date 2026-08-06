@@ -805,28 +805,37 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   using errors::SppTypeMismatchError;
   using asts::generate::common_types_precompiled::NEVER;
 
-  // Collect type information for each branch, pairing the branch with its inferred type.
+  // Collect type information for each branch, pairing the
+  // branch with its inferred type.
   auto branches_type_info = branches
     | genex::views::transform([&sm, meta](auto *x) { return MakePair(x, x->InferType(&sm, meta)); })
     | genex::to<Vec>();
 
-  // Filter the branch types down to variant types for custom analysis.
-  auto variant_branches_type_info = branches_type_info
+  // The valued branches are branches that are non-terminating.
+  // This is because "ret" from a branch doesn't pass a value
+  // back to the binding, so shouldn't be considered for type
+  // checking.
+  auto valued_branches_type_info = branches_type_info
+    | genex::views::remove_if([](auto const &x) { return x.First->Body->Terminates(); })
+    | genex::to<Vec>();
+  if (valued_branches_type_info.IsEmpty()) { valued_branches_type_info = branches_type_info; }
+
+  // Filter the branch types down to variant types for custom
+  // analysis.
+  auto variant_branches_type_info = valued_branches_type_info
     | genex::views::filter([&sm](auto &&x) { return type_utils::IsTypeVariant(*x.Second, *sm.CurrentScope); })
     | genex::to<Vec>();
 
-  // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently
-  // changed.
-  auto master_branch_type_info = not branches.IsEmpty()
-    ? MakePair(branches_type_info[0].First, branches_type_info[0].Second)
+  // Set the master branch type to the first branch's type, if
+  // it exists. This is the default and may be subsequently
+  // changed. Override it if an assignment type is given.
+  auto master_branch_type_info = not valued_branches_type_info.IsEmpty()
+    ? MakePair(valued_branches_type_info[0].First, valued_branches_type_info[0].Second)
     : MakePair<asts::CaseExpressionBranchAst*, Shared<asts::TypeAst>>(nullptr, nullptr);
+  if (meta->AssignmentTargetType != nullptr) { master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType); }
 
-  // Override the master type if a pre-provided type (for assignment) has been given.
-  if (meta->AssignmentTargetType != nullptr) {
-    master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType);
-  }
-
-  // Otherwise, if there are variant branches, use the most variant type as the master branch type.
+  // Otherwise, if there are variant branches, use the most
+  // variant type as the master branch type.
   else if (not variant_branches_type_info.IsEmpty()) {
     auto most_inner_types = 0uz;
     for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
@@ -838,9 +847,10 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
     }
   }
 
-  // Remove the master branch pointer from the list of remaining branch types and check all types match.
+  // Remove the master branch pointer from the list of remaining
+  // branch types and check all types match.
   // Todo: Shouldn't need to auto-remove "!" type, because TypeEq handles it?
-  auto mismatch_branches_type_info = branches_type_info
+  auto mismatch_branches_type_info = valued_branches_type_info
     | genex::views::remove_if([&](auto const &x) {
       return TypeEq(*NEVER, *x.Second, *sm.CurrentScope, *sm.CurrentScope);
     })
@@ -859,15 +869,17 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
       ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
   }
 
-  // `master_branch_type_info.First` is deliberately null when an assignment target type drove the master type
-  // (see above); calling `To<>()` through that null pointer is UB, so guard it and keep the null.
+  // The `master_branch_type_info.First` is deliberately null when an
+  // assignment target type drove the master type (see above); calling
+  // `To<>()` through that null pointer is UB, so guard it and keep
+  // the null.
   auto cast_master_branch_type_info = MakePair(
-    master_branch_type_info.First ? master_branch_type_info.First->template To<asts::Ast>() : nullptr,
+    master_branch_type_info.First ? master_branch_type_info.First->template ToUnchecked<asts::Ast>() : nullptr,
     master_branch_type_info.Second);
 
   // Cast to common AST nodes and return with the types.
   auto cast_branches_type_info = branches_type_info
-    | genex::views::transform([](auto &&x) { return MakePair(x.First->template To<asts::Ast>(), x.Second); })
+    | genex::views::transform([](auto &&x) { return MakePair(x.First->template ToUnchecked<asts::Ast>(), x.Second); })
     | genex::to<Vec>();
   return std::make_tuple(cast_master_branch_type_info, cast_branches_type_info);
 }
