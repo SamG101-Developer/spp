@@ -810,10 +810,39 @@ static auto CollectDirectInferences(
   const auto is_variadic_param_slot =
     variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name;
 
-  //
+  // "RelaxedTypeEq" above has already done the reverse inference: it walked the argument type against the parameter
+  // type and reported every binding that fell out. Deciding which of those to keep by declaration site - "is this one
+  // of the function's own generic parameters" - silently discards a generic that is free in the parameter type but was
+  // declared elsewhere, which is the whole of the "n" in "sup [T, cmp n: USize, A] Vec[T, A] ext From[Arr[T, n]]":
+  // "Vec[Bool]" pins "T" and "A" down because both are readable off the superimposed type, but nothing pins "n" down
+  // except the argument. So keep a binding when its name is either declared locally or still a free generic in the
+  // owner scope. A name that resolves to something concrete, or to a generic already bound elsewhere, is left alone.
+  const auto is_free_generic_type = [&owner_scope, &sm](auto const &name) {
+    const auto sym = owner_scope.GetTypeSymbol(name.get());
+    if (sym == nullptr or not sym->IsGeneric or sym->LinkedScope != nullptr) { return false; }
+    const auto caller_sym = sm.CurrentScope->GetTypeSymbol(name.get());
+    return caller_sym == nullptr or not caller_sym->IsGeneric;
+  };
+  const auto is_free_generic_comp = [&owner_scope, &sm](auto const &name) {
+    const auto as_id = spp::asts::IdentifierAst::FromType(*name);
+    const auto sym = owner_scope.GetVarSymbol(as_id.get());
+    if (sym == nullptr or not sym->IsGeneric) { return false; }
+    const auto caller_sym = sm.CurrentScope->GetVarSymbol(as_id.get());
+    return caller_sym == nullptr or not caller_sym->IsGeneric;
+  };
+
   for (auto const &[inferred_name, inferred_val] : temp_gs) {
-    if (genex::contains(type_p_names, *inferred_name, genex::meta::deref)) {
-      auto *typed = inferred_val->To<spp::asts::TypeAst>();
+    auto *typed = inferred_val->To<spp::asts::TypeAst>();
+    const auto declared_type = genex::contains(type_p_names, *inferred_name, genex::meta::deref);
+    const auto declared_comp = genex::contains(comp_p_names, *inferred_name, genex::meta::deref);
+
+    // Only consult the scope for names no local parameter claims, so declared parameters keep their exact behaviour.
+    const auto free_type = not declared_type and not declared_comp and typed != nullptr
+      and is_free_generic_type(inferred_name);
+    const auto free_comp = not declared_type and not declared_comp and not free_type
+      and is_free_generic_comp(inferred_name);
+
+    if (declared_type or free_type) {
       if (typed == nullptr) { continue; }
       auto shared = typed->shared_from_this();
       if (is_variadic_param_slot and not genex::contains(variadic_type_p_names, *inferred_name, genex::meta::deref)) {
@@ -822,7 +851,7 @@ static auto CollectDirectInferences(
       }
       type_inferred[inferred_name].EmplaceBack(std::move(shared));
     }
-    else if (genex::contains(comp_p_names, *inferred_name, genex::meta::deref)) {
+    else if (declared_comp or free_comp) {
       comp_inferred[inferred_name].EmplaceBack(inferred_val);
     }
   }
@@ -847,7 +876,23 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
   meta.InferSource = {};
   meta.InferTarget = {};
 
-  if (is_tuple_owner or p_group.Params.IsEmpty()) { return; }
+  // An empty parameter group no longer implies there is nothing to infer: the owner scope can still hold a generic
+  // left free by its own instantiation (a "sup" block generic named only by the extended trait), and "CollectDirect-
+  // Inferences" can now bind that from the arguments. Only such generics count here - one that is also generic in the
+  // caller is rigid for this call, exactly as in "CollectDirectInferences" - so the original fast path still applies
+  // to an ordinary non-generic call, and to a generic body calling its own enclosing generics.
+  const auto has_inferable_free_generics =
+    genex::any_of(owner_scope.AllTypeSymbols(), [&sm](auto const &s) {
+      if (not s->IsGeneric or s->LinkedScope != nullptr) { return false; }
+      const auto caller_sym = sm.CurrentScope->GetTypeSymbol(s->Name.get());
+      return caller_sym == nullptr or not caller_sym->IsGeneric;
+    }) or
+    genex::any_of(owner_scope.AllVarSymbols(), [&sm](auto const &s) {
+      if (not s->IsGeneric) { return false; }
+      const auto caller_sym = sm.CurrentScope->GetVarSymbol(s->Name.get());
+      return caller_sym == nullptr or not caller_sym->IsGeneric;
+    });
+  if (is_tuple_owner or (p_group.Params.IsEmpty() and not has_inferable_free_generics)) { return; }
 
   // Separate param lists and extract names and constraint groups.
   const auto type_params = p_group.GetTypeParams();
