@@ -34,13 +34,11 @@ const spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
 const spp::Vec<spp::Str> kSizedIntegerParts = {"std", "num", "sized_integer", "SizedInteger"};
 const spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
 const spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
-const spp::Vec<spp::Str> kFunRefParts = {"std", "function", "FunRef"};
-const spp::Vec<spp::Str> kFunMutParts = {"std", "function", "FunMut"};
-const spp::Vec<spp::Str> kFunMovParts = {"std", "function", "FunMov"};
+const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
 const spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
 const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
-const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
 const spp::Vec<spp::Str> kVarParts = {"std", "variant", "Var"};
+const spp::Vec<spp::Str> kNonNullParts = {"std", "mem", "pointer", "NonNull"};
 
 // Width of a variant's discriminant. Matches the "sizeof(std::size_t)" discriminator that "SizeOf" accounts for.
 constexpr auto kVariantTagBits = 64u;
@@ -59,6 +57,24 @@ static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics
     default: std::unreachable();
   }
   std::unreachable();
+}
+
+auto spp::codegen::GetFatPointerFields(
+  asts::TypeAst const &type,
+  analyse::scopes::Scope const &scope,
+  LLvmCtx const *ctx)
+  -> std::optional<Vec<llvm::Type*>> {
+  //
+  using analyse::utils::type_utils::IsTypeFunc;
+
+  // "FunXXX" closures are represented by a { fn_ptr, env_ptr }
+  // pair. The total field count (for example a stateful type
+  // superimposing a FunXXX type, is mirrored in the function
+  // "GetSuperimposedFatPointerFieldCount"; this function only
+  // adds the LLVM-specific type materialization on top.
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  if (IsTypeFunc(type, scope)) { return Vec<llvm::Type*>{ptr_ty, ptr_ty}; }
+  return std::nullopt;
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
@@ -106,6 +122,14 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
+  // Lower S++ "NonNull[T]" to a bare llvm pointer: it declares no fields of its own (unlike "Ptr[T]", which wraps its
+  // address in an explicit "addr: USize" field), so the generic attribute-based layout below would otherwise leave it
+  // a zero-size struct - unusable as the "ptr"-sized field "View[T]"/"RawBuf[T, A]" etc. store it as.
+  if (parts == kNonNullParts) {
+    cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
+    return;
+  }
+
   // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
   if (parts == kSizedIntegerParts) {
     const auto bit_width_ast = scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<
@@ -142,20 +166,29 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower the function types to a { fn_ptr, env_ptr } pair (a "fat pointer": the function code plus a pointer to its
-  // captured environment; the env pointer is null for capture-less functions). All three share this layout, so plain
-  // functions and closures are interchangeable.
-  if (parts == kFunMovParts or parts == kFunMutParts or parts == kFunRefParts) {
+  // "Generated[Yield]" ("send"'s return type) shares the { ptr, ptr }
+  // shape too, but it is a private, compiler-internal type nothing
+  // ever superimposes, so it's handled directly here by name rather
+  // than through "GetFatPointerFields".
+  if (parts == kGeneratedParts) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
     return;
   }
 
-  // Lower the generator types to a { resume_fn_ptr, env_ptr } pair (a "fat pointer": the coroutine resume function
-  // plus a pointer to its frame/environment, which lives on the caller's stack - no heap allocation).
-  if (parts == kGenParts or parts == kGenOnceParts or parts == kGeneratedParts) {
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+  // A generator is the bare "llvm.coro.begin" handle, one pointer wide - not a fat pointer. Its frame belongs to the
+  // llvm coroutine intrinsics, and the yield/send slots are reached through the handle as the coroutine's promise
+  // rather than by carrying an environment pointer next to it. Declared with no attributes, it would otherwise lower
+  // to an empty struct, which is neither what "SizeOf" reports for it nor what a coroutine's ramp actually returns.
+  // This matches the single field "GetSuperimposedFatPointerFieldCount" prepends for a type superimposing it.
+  if (parts == kGenParts or parts == kGenOnceParts) {
+    cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
+    return;
+  }
+
+  // Lower the "Fun*" family to a { fn_ptr, env_ptr } fat pointer.
+  if (const auto fields = GetFatPointerFields(*cls_sym->FqName(), *scope, ctx); fields.has_value()) {
+    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, fields->ToStdVector());
     return;
   }
 
@@ -222,7 +255,7 @@ auto spp::codegen::GetVariantTagType(
   return llvm::Type::getIntNTy(*ctx->Context, kVariantTagBits);
 }
 
-auto spp::codegen::GetVariantTag(
+auto spp::codegen::GetVariantIndexOfMember(
   asts::TypeAst const &variant_type,
   asts::TypeAst const &member_type,
   analyse::scopes::Scope const &scope)
@@ -274,7 +307,7 @@ auto spp::codegen::BuildVariant(
   // zeroed, because the member rarely fills the whole payload, and the whole struct is loaded back out at the end: the
   // bytes past the member would otherwise be stale stack data, undef to the optimiser and a disclosure hazard the
   // moment a variant is ever copied out of the program. Everything the "stores" below cover is dead-store-eliminated.
-  const auto slot = llvm_entry_alloca(variant_llvm_type, name + ".slot", ctx);
+  const auto slot = LlvmEntryAlloca(variant_llvm_type, name + ".slot", ctx);
   ctx->Builder.CreateStore(llvm::Constant::getNullValue(variant_llvm_type), slot);
   const auto tag_ptr = ctx->Builder.CreateStructGEP(variant_llvm_type, slot, 0, name + ".tag.ptr");
   ctx->Builder.CreateStore(llvm::ConstantInt::get(GetVariantTagType(ctx), tag), tag_ptr);
@@ -309,7 +342,7 @@ auto spp::codegen::CoerceToVariant(
 
   // A member value (source) is wrapped: tagged and copied into the payload.
   if (not IsTypeVariant(source_type, scope)) {
-    const auto tag = GetVariantTag(target_type, source_type, scope);
+    const auto tag = GetVariantIndexOfMember(target_type, source_type, scope);
     if (not tag.has_value()) { return llvm_val; }
     return BuildVariant(llvm_val, target_llvm_type, *tag, name, ctx);
   }
@@ -323,14 +356,14 @@ auto spp::codegen::CoerceToVariant(
   auto is_identity_map = true;
   const auto source_members = DedupVariableInnerTypes(source_type, scope);
   for (auto const &[i, member] : source_members | genex::views::enumerate) {
-    const auto target_tag = GetVariantTag(target_type, *member, scope);
+    const auto target_tag = GetVariantIndexOfMember(target_type, *member, scope);
     if (not target_tag.has_value()) { return llvm_val; }
     is_identity_map = is_identity_map and *target_tag == static_cast<std::uint64_t>(i);
     tag_map.EmplaceBack(*target_tag);
   }
 
   // Spill the source to memory, because the payload is copied through a pointer rather than by value.
-  const auto source_slot = llvm_entry_alloca(source_llvm_type, name + ".from.slot", ctx);
+  const auto source_slot = LlvmEntryAlloca(source_llvm_type, name + ".from.slot", ctx);
   ctx->Builder.CreateStore(llvm_val, source_slot);
   const auto source_tag = LoadVariantTag(source_slot, source_llvm_type, name + ".from.tag", ctx);
 
@@ -351,7 +384,7 @@ auto spp::codegen::CoerceToVariant(
   // Write the translated discriminant and move the payload over. The target's members are a superset of the source's,
   // so its payload buffer is always at least as large, and the source's size is the amount worth copying. That leaves
   // the target's wider tail uncopied, so zero the slot first.
-  const auto target_slot = llvm_entry_alloca(target_llvm_type, name + ".to.slot", ctx);
+  const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".to.slot", ctx);
   ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
   ctx->Builder.CreateStore(
     target_tag, ctx->Builder.CreateStructGEP(target_llvm_type, target_slot, 0, name + ".to.tag.ptr"));

@@ -101,7 +101,8 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     auto gn_args = asts::AstClone(fn_call.GnArgGroup);
 
     // Get the implicit generic arguments for the function call.
-    auto implicit_gn_args = RetrieveImplicitGenericArgsForCall(fwd_type, std::move(sup_generic_arg_group->Args), meta);
+    auto implicit_gn_args = RetrieveImplicitGenericArgsForCall(
+      fwd_type, std::move(sup_generic_arg_group->Args), meta);
 
     // Extract the parameter names and argument names.
     const auto is_variadic_fn = fn_proto->FnParamGroup->GetVariadicParams() != nullptr;
@@ -110,11 +111,12 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       // Cannot check for "too few" arguments here because of potential "T=Void" + "x: T" removal.
       // Check if there are too many arguments (for a non-variadic function).
       RaiseIf<SppFunctionCallTooManyArgumentsError>(
-        fn_args->Args.Len() > fn_params->Params.Len() and not is_variadic_fn,
-        {fn_scope}, ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.Len(), fn_call, fn_call.FnArgGroup->Args.Len()));
+        fn_args->Args.Len() > fn_params->Params.Len() and not is_variadic_fn, {fn_scope},
+        ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.Len(), fn_call, fn_call.FnArgGroup->Args.Len()));
 
-      InferAllGenerics(*fn_proto, *fn_params, *gn_params, *fn_args, *gn_args, *implicit_gn_args, is_variadic_fn,
-                       fn_scope, sm, meta);
+      InferAllGenerics(
+        *fn_proto, *fn_params, *gn_params, *fn_args, *gn_args, *implicit_gn_args, is_variadic_fn,
+        fn_scope, sm, meta);
       std::tie(fn_proto, fn_scope) = PotentiallyGenerateGenericSubstitutedPrototype(
         fn_proto, fn_scope, *implicit_gn_args, *gn_args, sm, meta);
       ValidateArgsMatchParams(fn_call, *fn_proto, fn_scope, *fn_args, sm, meta);
@@ -182,6 +184,7 @@ auto spp::analyse::utils::overload_utils::PropagateMethodToFunction(
   fn_call.FnArgGroup = asts::AstClone(transformed_fn_call->FnArgGroup);
 
   // Create a mock postfix based on the transformation.
+  transformed_lhs->Stage7_AnalyseSemantics(sm, meta);
   auto pf = MakeUnique<asts::PostfixExpressionAst>(
     std::move(transformed_lhs), std::move(transformed_fn_call));
   return std::make_tuple(std::move(overload_info), is_closure, std::move(pf));
@@ -312,8 +315,20 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
 
   // Consider if we need to create a generic substituted function prototype.
   if (not combined_generics->Args.IsEmpty()) {
+    // Reuse the instantiation for these exact arguments if one already exists. Overload resolution runs repeatedly
+    // against the same prototype - once per call site, again for every Stage11 re-analysis, and again for attempts
+    // that fail and are caught - and minting a fresh substitution each time leaves the instantiation with no stable
+    // identity. The declaration generated for one object would then be unreachable from the call site holding
+    // another, which is what the shared llvm slot used to disguise (by handing back some other instantiation's
+    // function entirely).
+    if (auto [existing_scope, existing_proto] = fn_proto->FindGenericSubstitution(*combined_generics);
+      existing_proto != nullptr) {
+      return std::make_tuple(existing_proto, existing_scope);
+    }
+
     auto new_fn_proto = asts::AstClone(fn_proto);
     new_fn_proto->SetNonGenericImpl(fn_proto);
+    new_fn_proto->DetachLlvmFuncSlot();
 
     // Create the new function scope for the generic implementation.
     const auto generic_syms = sm->CurrentScope->GetExtendedGenericSymbols(combined_generics->GetAllArgs());
@@ -347,7 +362,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
 
     // Save the generic implementation against the base function, and update the active scope and prototype.
     const auto new_fn_proto_ptr = new_fn_proto.get();
-    generic_sub_slot.Second = std::move(new_fn_proto);
+    generic_sub_slot.Proto = std::move(new_fn_proto);
     return std::make_tuple(new_fn_proto_ptr, new_fn_scope);
   }
 
@@ -505,11 +520,27 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
     auto a_type = arg->InferType(sm, meta);
     auto temp = type_utils::GenericInferenceMap();
 
-    // Special case for variadic parameters (updates p_type so don't follow with "else if").
-    if (param->To<asts::FunctionParameterVariadicAst>()) {
-      auto ts = Vec<Shared<asts::TypeAst>>(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
-      p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
-      p_type->Stage7_AnalyseSemantics(sm, meta);
+    // Special case for variadic parameters (updates p_type so don't follow with "else if"). If the parameter's own
+    // declared type is a bare reference to the function's variadic generic parameter (eg "..varargs: V" where the
+    // function declares "[..V]"), generic substitution (PotentiallyGenerateGenericSubstitutedPrototype) has already
+    // resolved "p_type" to the full collapsed tuple, so it's used as-is. Otherwise (a fixed type, eg "..a: S32", or
+    // an ordinary generic standing for one homogeneous element, eg "..b: U") "p_type" is the per-element type, so
+    // wrap N copies of it into a tuple to match the collapsed argument tuple.
+    if (const auto variadic_param = param->To<asts::FunctionParameterVariadicAst>(); variadic_param != nullptr) {
+      // A substituted/monomorphized prototype's own "GnParamGroup" has its params cleared (it's no longer generic),
+      // so the variadic generic parameter (if any) has to be looked up on the original, pre-substitution
+      // declaration via "GetNonGenericImpl" - which points back to itself when "fn_proto" isn't a substitution.
+      const auto variadic_gn_param = fn_proto.GetNonGenericImpl()->GnParamGroup->GetVariadicParams();
+      const auto orig_name = dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_param->Source.OriginalType);
+      const auto is_variadic_generic_type = variadic_gn_param != nullptr
+        and orig_name != nullptr
+        and *orig_name == *dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_gn_param->Name);
+
+      if (not is_variadic_generic_type) {
+        auto ts = Vec<Shared<asts::TypeAst>>(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
+        p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
+        p_type->Stage7_AnalyseSemantics(sm, meta);
+      }
     }
 
     // Special case for "self" parameters.

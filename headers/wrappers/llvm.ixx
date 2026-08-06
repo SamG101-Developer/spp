@@ -15,6 +15,7 @@ export namespace llvm {
   using ::llvm::dyn_cast;
   using ::llvm::dyn_cast_or_null;
   using ::llvm::errs;
+  using ::llvm::outs;
   using ::llvm::isa;
   using ::llvm::install_fatal_error_handler;
   using ::llvm::verifyFunction;
@@ -101,11 +102,16 @@ export namespace llvm {
     using ::llvm::Intrinsic::ssub_with_overflow;
     using ::llvm::Intrinsic::usub_with_overflow;
 
+    using ::llvm::Intrinsic::coro_alloc;
     using ::llvm::Intrinsic::coro_begin;
     using ::llvm::Intrinsic::coro_destroy;
     using ::llvm::Intrinsic::coro_done;
+    using ::llvm::Intrinsic::coro_end;
+    using ::llvm::Intrinsic::coro_free;
     using ::llvm::Intrinsic::coro_id;
+    using ::llvm::Intrinsic::coro_promise;
     using ::llvm::Intrinsic::coro_resume;
+    using ::llvm::Intrinsic::coro_size;
     using ::llvm::Intrinsic::coro_suspend;
   }
 }

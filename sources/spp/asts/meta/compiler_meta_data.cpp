@@ -29,6 +29,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
+  LetStatementPrecomputedValue = nullptr;
   LoopDoubleCheckActive = false;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
@@ -53,6 +54,8 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   CmpResult = nullptr;
   IgnoreAccessModifierViolations = false;
   AllowAbstractType = false;
+  LlvmGenerator = nullptr;
+  LlvmGeneratorState = nullptr;
 }
 
 auto spp::asts::meta::CompilerMetaData::Save() -> void {
@@ -83,6 +86,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
+  s.LetStatementPrecomputedValue = LetStatementPrecomputedValue;
   s.LoopDoubleCheckActive = LoopDoubleCheckActive;
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
@@ -104,8 +108,12 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LlvmPhi = LlvmPhi;
   s.LlvmLoopStack = LlvmLoopStack;
   s.CmpArgs = std::move(CmpArgs);
+  s.CmpGnTypeArgs = std::move(CmpGnTypeArgs);
+  s.CmpGnCompArgs = std::move(CmpGnCompArgs);
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.AllowAbstractType = AllowAbstractType;
+  s.LlvmGenerator = LlvmGenerator;
+  s.LlvmGeneratorState = LlvmGeneratorState;
 }
 
 auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
@@ -136,6 +144,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
+  LetStatementPrecomputedValue = state.LetStatementPrecomputedValue;
   LoopDoubleCheckActive = state.LoopDoubleCheckActive;
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;
@@ -157,9 +166,13 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
   CmpArgs = std::move(state.CmpArgs);
-  // CmpResult = std::move(state.CmpResult);
+  CmpGnTypeArgs = std::move(state.CmpGnTypeArgs);
+  CmpGnCompArgs = std::move(state.CmpGnCompArgs);
+  // Note: CmpResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   AllowAbstractType = state.AllowAbstractType;
+  LlvmGenerator = state.LlvmGenerator;
+  LlvmGeneratorState = state.LlvmGeneratorState;
 }
 
 auto spp::asts::meta::CompilerMetaData::Depth() const

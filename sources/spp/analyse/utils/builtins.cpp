@@ -9,13 +9,16 @@ import ankerl;
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name)
 #define SPP_DEFINE_BUILTIN_FUNC(scoped_name, func_name) \
     map.emplace(scoped_name, LoweredFuncImpl{           \
-        .llvm_fn=codegen::func_impls::func_name, .cmp_fn=nullptr})
+        .llvm_fn=codegen::func_impls::func_name,        \
+        .cmp_fn=nullptr,                                \
+        .name=scoped_name})
 
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name),
-#define SPP_DEFINE_BUILTIN_FUNC_CMP(scoped_name, func_name) \
-    map.emplace(scoped_name, LoweredFuncImpl{               \
-        .llvm_fn=codegen::func_impls::func_name,            \
-        .cmp_fn=cmp_utils::make_cmp_fn(cmp_utils::func_name)})
+#define SPP_DEFINE_BUILTIN_FUNC_CMP(scoped_name, func_name, ...) \
+    map.emplace(scoped_name, LoweredFuncImpl{                    \
+        .llvm_fn=codegen::func_impls::func_name,                 \
+        .cmp_fn=cmp_utils::make_cmp_fn __VA_OPT__(<__VA_ARGS__>) (cmp_utils::func_name),    \
+        .name=scoped_name})
 
 auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   -> ankerl::unordered_dense::map<Str, LoweredFuncImpl> {
@@ -36,8 +39,6 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC("std.generator.Gen.send", std_generator_send);
   SPP_DEFINE_BUILTIN_FUNC("std.generator.GenOnce.send", std_generator_once_send);
 
-  SPP_DEFINE_BUILTIN_FUNC("std.future.Fut.await", std_future_fut_await);
-  SPP_DEFINE_BUILTIN_FUNC("std.future.Fut.await_all", std_future_fut_await_all);
   SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.get_ref", std_slot_get_ref);
   SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.get_mut", std_slot_get_mut);
   SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.replace", std_slot_replace);
@@ -45,11 +46,40 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC("std.string_view.StrView.slice_ref", std_string_view_slice_ref);
   SPP_DEFINE_BUILTIN_FUNC("std.string_view.StrView.slice_mut", std_string_view_slice_mut);
 
-  // SPP_DEFINE_BUILTIN_FUNC("std.memory.clear", std_memory_clear);
-  // SPP_DEFINE_BUILTIN_FUNC("std.memory.place_element", std_memory_place_element);
-  // SPP_DEFINE_BUILTIN_FUNC("std.memory.take_element", std_memory_take_element);
-  // SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.sizeof", std_memops_sizeof);
-  // SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.sizeof_value", std_memops_sizeof_value);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.index_ref", std_view_index_ref);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.index_mut", std_view_index_mut);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.slice_ref", std_view_slice_ref);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.slice_mut", std_view_slice_mut);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.iter_ref", std_view_iter_ref);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.iter_mut", std_view_iter_mut);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.reverse_iter_ref", std_view_reverse_iter_ref);
+  SPP_DEFINE_BUILTIN_FUNC("std.view.View.reverse_iter_mut", std_view_reverse_iter_mut);
+
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.read", std_non_null_read);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.write", std_non_null_write);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.raw", std_non_null_raw);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.cast", std_non_null_cast);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.from_ptr_inner", std_non_null_from_ptr_inner);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.fwd_mut", std_non_null_fwd_mut);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.fwd_ref", std_non_null_fwd_ref);
+
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.volatile.Vol.read", std_vol_read);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.volatile.Vol.write", std_vol_write);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.volatile.Vol.swap", std_vol_replace);
+
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.raw_buf.RawBuf.index_ref", std_raw_buf_index_ref);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.raw_buf.RawBuf.index_mut", std_raw_buf_index_mut);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.raw_buf.RawBuf.take_at", std_raw_buf_take_at);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.raw_buf.RawBuf.place_at", std_raw_buf_place_at);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.raw_buf.RawBuf.shift", std_raw_buf_shift);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.raw_buf.RawBuf.clear_range", std_raw_buf_clear_range);
+
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.mem.ops.size_of", std_mem_ops_size_of, true);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.size_of_val", std_mem_ops_size_of_val);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.mem.ops.align_of", std_mem_ops_align_of, true);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.align_of_val", std_mem_ops_align_of_val);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.replace", std_mem_ops_replace);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.drop_in_place", std_mem_ops_drop_in_place);
 
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.add", std_intrinsics_add);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.add_assign", std_intrinsics_add_assign);

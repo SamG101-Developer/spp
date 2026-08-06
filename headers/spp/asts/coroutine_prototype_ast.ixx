@@ -17,16 +17,6 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
-  /**
-   * The generator environment that this coroutine yields into, using the GenExpressionAst nodes. This is only set for
-   * coroutine prototypes.
-   */
-  llvm::Value *LlvmCoroGenEnv;
-
-  llvm::StructType *LlvmCoroGenEnvType;
-
-  llvm::Function *LlvmCoroResumeFunc;
-
   CoroutinePrototypeAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,

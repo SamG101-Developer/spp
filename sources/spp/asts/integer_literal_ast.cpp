@@ -147,7 +147,9 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-  // If come from stage10 cmp statement, do the int type immediately.
+  // If come from stage10 cmp statement, register the int
+  // type here, in case it hasn't been reached yet by the
+  // class prototypes.
   if (llvm_type == nullptr) {
     codegen::RegisterLlvmTypeInfo(type_sym->Type, ctx);
     llvm_type = codegen::GetLlvmType(*type_sym, ctx);
@@ -155,7 +157,8 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
 
   const auto bit_width = llvm_type->getIntegerBitWidth();
 
-  // Normalise the literal exactly as Stage7 does, then apply the optional sign.
+  // Normalise the literal exactly as Stage7 does, then
+  // apply the optional sign.
   auto data = Val->TokenData;
   data |= genex::actions::replace('o', '0');
   auto mapped_val = boost::BigInt(NormaliseIntegerString(data));
@@ -163,9 +166,11 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
     mapped_val.backend().negate();
   }
 
-  // Create the LLVM constant integer value from the normalised decimal string (APInt handles the sign).
+  // Create the LLVM constant integer value from the
+  // normalised decimal string (APInt handles the sign).
   const auto ap_int = llvm::APInt(bit_width, mapped_val.str(), 10);
-  return llvm::ConstantInt::get(*ctx->Context, ap_int);
+  const auto co_int = llvm::ConstantInt::get(*ctx->Context, ap_int);
+  return co_int;
 }
 
 auto spp::asts::IntegerLiteralAst::InferType(

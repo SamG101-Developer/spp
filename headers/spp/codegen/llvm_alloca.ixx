@@ -17,7 +17,7 @@ namespace spp::codegen {
    * @param[in] ctx The llvm context whose builder identifies the function being generated into.
    * @return The allocation instruction, placed at the top of the function's entry block.
    */
-  SPP_EXP_FUN auto llvm_entry_alloca(
+  SPP_EXP_FUN auto LlvmEntryAlloca(
     llvm::Type *type,
     Str const &name,
     LLvmCtx const *ctx)

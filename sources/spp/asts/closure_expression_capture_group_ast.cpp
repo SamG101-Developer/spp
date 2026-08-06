@@ -142,7 +142,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
       *sm->CurrentScope->GetTypeSymbol(cap_ty.get()), ctx);
 
     // Create the alloca for the variable.
-    const auto alloca = codegen::llvm_entry_alloca(cap_llvm_type, "capture.alloca." + uid, ctx);
+    const auto alloca = codegen::LlvmEntryAlloca(
+      cap_llvm_type, "capture.alloca." + uid, ctx);
 
     const auto gep = ctx->Builder.CreateInBoundsGEP(
       ctx->CurrentClosureType,

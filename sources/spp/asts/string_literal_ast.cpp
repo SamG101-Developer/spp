@@ -82,9 +82,13 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
   CompilerMetaData *,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Decode the token (which includes its surrounding double quotes) into the raw bytes, resolving escape
-  // sequences, then emit a global string for it.
-  const auto bytes = spp::utils::strings::DecodeStringLiteral(Val->TokenData);
+  //
+  using spp::utils::strings::DecodeStringLiteral;
+
+  // Decode the token (which includes its surrounding double
+  // quotes) into the raw bytes, resolving escape sequences,
+  // then emit a global string for it.
+  const auto bytes = DecodeStringLiteral(Val->TokenData);
   const auto str_alloc = ctx->Builder.CreateGlobalString(
     bytes, "string_literal", 0, ctx->Module.get(), false);
   return str_alloc;
@@ -106,10 +110,9 @@ auto spp::asts::StringLiteralAst::InferType(
 }
 
 auto spp::asts::StringLiteralAst::CppVal() const -> Str {
-  auto raw_data = StrView(Val->TokenData);
-  raw_data.remove_prefix(1);
-  raw_data.remove_suffix(1);
-  return Str(raw_data);
+  // Reuse the same decoding Stage11_CodeGen uses, so this matches the literal's actual (escape-resolved) value
+  // instead of the raw source text (which would still contain unresolved escapes like "\n" as two characters).
+  return spp::utils::strings::DecodeStringLiteral(Val->TokenData);
 }
 
 SPP_MOD_END

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_coros;
 import spp.utils.ptr;
 import spp.utils.types;
 import ankerl;
@@ -15,6 +16,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct FunctionPrototypeAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 namespace spp::analyse::scopes {
@@ -64,6 +66,15 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Shared<TypeAst> LetStatementExplicitType;
   ExpressionAst *LetStatementValue;
   bool LetStatementFromUninitialized;
+
+  /**
+   * When set, a local variable's initializer is this already-generated llvm value rather than the result of
+   * code-generating @c LetStatementValue. Used to bind a function/closure parameter directly to its incoming
+   * @c llvm::Argument, since there is no expression AST to codegen for it (see
+   * @c FunctionParameterGroupAst::Stage11_CodeGen).
+   */
+  llvm::Value *LetStatementPrecomputedValue;
+
   bool LoopDoubleCheckActive;
   std::size_t LoopCurrentDepth;
   LoopExpressionAst *LoopCurrentAst;
@@ -95,9 +106,19 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Vec<LlvmLoopInfo> LlvmLoopStack;
   ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>
                                , utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
+  Vec<TypeAst*> CmpGnTypeArgs;
+  Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;
   bool IgnoreAccessModifierViolations;
   bool AllowAbstractType;
+  /**
+   * The coroutine currently being generated into, for "gen" and "res" to reach. Shared rather than uniquely owned so
+   * that @c CompilerMetaData::Save can copy it into the snapshot like every other field: a @c Unique could only be
+   * moved, which left this null for the whole duration of the saved scope, and so nullptr for any "gen" nested inside
+   * one - a "gen" in a case branch, a loop body, and so on.
+   */
+  Shared<codegen::LlvmGenerator> LlvmGenerator;
+  llvm::Value *LlvmGeneratorState;
 };
 
 /**

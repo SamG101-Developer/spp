@@ -170,6 +170,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CaseExpressionAst,
+    test_valid_pattern_guard_with_variant_narrowing, R"(
+    fun f(p: Opt[Str]) -> Void {
+        case p of {
+            is Some[Str](val) and val == Str::from("x") { }
+            else { }
+        }
+    }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CaseExpressionAst,
     test_invalid_pattern_guard_non_boolean,

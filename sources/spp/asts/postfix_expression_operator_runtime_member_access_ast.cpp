@@ -93,7 +93,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   using analyse::utils::type_utils::IsIndexWithinBound;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
 
-  // Already rewritten against a forwarded-to value by an earlier pass, which analysed the rewrite as it built it.
+  // Already rewritten against a forwarded-to value by an earlier
+  // pass, which analysed the rewrite as it built it.
   if (_MappedFwd != nullptr) { return; }
 
   // Prevent types on the left-hand-side of a runtime member access.
@@ -307,7 +308,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
   // Materialize the lhs expression into a temporary, to have an address to index through.
   else {
     const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
-    const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
+    const auto temp = codegen::LlvmEntryAlloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
     ctx->Builder.CreateStore(lhs_val, temp);
     base_ptr = temp;
   }

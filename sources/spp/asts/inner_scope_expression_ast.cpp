@@ -106,6 +106,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 
   // Move into the next scope.
   sm->MoveToNextScope();
+  SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Check the memory of each member.
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }

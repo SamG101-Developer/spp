@@ -152,6 +152,8 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   CompilerMetaData *meta)
   -> void {
   // Load the super scopes for the class body.
+  using analyse::utils::type_utils::TypeEq;
+  using generate::common_types_precompiled::COPY;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
@@ -160,6 +162,15 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.First; }
   if (sm->CurrentScope->TySym != nullptr) {
     sm->CurrentScope->TySym->Visibility = Visibility.First;
+  }
+
+  // Mark the "Copy" class itself as copyable. Minimise TypeEq calls.
+  if (_ClsSym != nullptr and Name->LastTypePart()->Name == COPY->LastTypePart()->Name) {
+    const auto fq_name = _ClsSym->FqName();
+    if (TypeEq(*fq_name, *COPY, *sm->CurrentScope, *sm->CurrentScope)) {
+      sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())->IsDirectlyCopyable = true;
+      _ClsSym->IsDirectlyCopyable = true;
+    }
   }
 
   // Add the "Self" symbol into the scope.
@@ -327,7 +338,6 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
       AstClone(Name->TypeParts()[0]), this, sm->CurrentScope, sm->CurrentScope,
       sm->CurrentScope->ParentModule(), false, is_dollar_type);
     symbol_2->GenericImpl = symbol_1.get();
-    sm->CurrentScope->TySym = symbol_2;
     const auto ret_sym = symbol_2.get();
     sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_2);
     return ret_sym;
@@ -346,6 +356,8 @@ static auto ApplyStructLayout(
   switch (layout) {
     case spp::codegen::StructLayout::C: {
       // Keep declaration order, with natural alignment padding.
+      // This mirrors the C language / specifications. Seen in the
+      // FFI structs.
       struct_type->setBody(field_types.ToStdVector(), false);
       sym_info->FieldIndexMap.clear();
       break;
@@ -357,8 +369,9 @@ static auto ApplyStructLayout(
       break;
     }
     case spp::codegen::StructLayout::Spp: {
-      // Re-order the fields to minimize padding, and record where each declared attribute ended up, so that
-      // codegen can map a declaration index to its physical field index.
+      // Re-order the fields to minimize padding, and record where
+      // each declared attribute ended up, so that codegen can map
+      // a declaration index to its physical field index.
       auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
       struct_type->setBody(sorted_types.ToStdVector(), false);
       sym_info->FieldIndexMap = std::move(index_map);
@@ -377,40 +390,65 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
   -> void {
   // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
   using analyse::utils::type_utils::IsTypeTup;
+  using analyse::utils::type_utils::GetAllAttrs;
+  using analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount;
 
-  // Non-struct types are compiler known special types, so don't have any field generation.
+  // Non-struct types are compiler known special types, so
+  // don't have any field generation. Things like numbers,
+  // booleans, functions etc.
   const auto lt = codegen::GetLlvmType(*type_sym, ctx);
   if (lt == nullptr or not llvm::isa<llvm::StructType>(lt)) {
     return;
   }
 
-  const auto is_tuple = IsTypeTup(*type_sym->FqName(), *sm->CurrentScope);
+  // Next we need to handle tuples (anonymous index-attribute
+  // based classes) vs standard struct classes.
+  const auto is_tuple = IsTypeTup(
+    *type_sym->FqName(), *sm->CurrentScope);
   auto types = Vec<llvm::Type*>();
 
-  // Tuple fields are positional based off of the types found in the generic arguments.
+  // Tuple fields are positional based off of the types found
+  // in the generic arguments.
   if (is_tuple) {
     const auto elems = type_sym->FqName()->LastTypePart()->GnArgGroup->GetTypeArgs();
-    for (auto const &elem : elems) {
-      const auto elem_sym = sm->CurrentScope->GetTypeSymbol(elem->Val.get());
-      types.EmplaceBack(elem_sym != nullptr ? codegen::GetLlvmType(*elem_sym, ctx) : nullptr);
-    }
+    types = elems
+      | genex::views::transform([&](auto const &elem) { return sm->CurrentScope->GetTypeSymbol(elem->Val.get()); })
+      | genex::views::transform([&](auto const &type) { return type ? codegen::GetLlvmType(*type, ctx) : nullptr; })
+      | genex::to<Vec>();
   }
 
   // Class attributes are read from the attribute types.
   else {
-    types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), *sm)
-      | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*std::get<1>(pair), ctx); })
+    types = GetAllAttrs(*type_sym->FqName(), *sm)
+      | genex::views::transform([&](auto const &pair) { return std::get<1>(pair); })
+      | genex::views::transform([&](auto const &type) { return type ? codegen::GetLlvmType(*type, ctx) : nullptr; })
       | genex::to<Vec>();
   }
 
-  // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
+  // A class that superimposes one of the "Fun*"/"Gen*" family (eg
+  // "Iterator[T]" over "Gen[T]") shares its exact runtime shape too.
+  // The fat pointer's fields go ahead of whatever fields this class
+  // declares of its own.
+  const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
+    *type_sym->FqName(), *sm->CurrentScope);
+  if (fat_pointer_field_count > 0) {
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    auto prefixed = Vec<llvm::Type*>(fat_pointer_field_count, ptr_ty);
+    prefixed.AppendRange(types);
+    types = std::move(prefixed);
+  }
+
+  // If there are any generic types present (llvm_type is nullptr), skip
+  // the layout generation. Tuples use "C" layout so they keep the order
+  // of types based on the type arguments (standard tuple design).
   if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
     const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
     const auto layout = is_tuple ? codegen::StructLayout::C : codegen::StructLayout::Spp;
     ApplyStructLayout(struct_type, types, layout, type_sym->LlvmInfo.get(), ctx);
   }
 
-  // Pass this layout to aliases too (the field re-ordering as well as the type itself).
+  // Pass this layout to aliases too (the field re-ordering as well as
+  // the type itself).
   for (auto const &alias : type_sym->AliasedBySyms) {
     alias->LlvmInfo->LlvmType = lt;
     alias->LlvmInfo->FieldIndexMap = type_sym->LlvmInfo->FieldIndexMap;

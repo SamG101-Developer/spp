@@ -415,6 +415,67 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_variadic_mixed_generic_type_no_leading_param, R"(
+    fun h[..Ts](..a: Ts) -> Void {
+        ret
+    }
+
+    fun f() -> Void {
+        h(1, true, "world")
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_variadic_ordinary_generic_with_leading_param, R"(
+    fun g[U](a: &StrView, ..b: U) -> Void {
+        ret
+    }
+
+    fun f() -> Void {
+        g("hello", false, false, true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_variadic_generic_two_leading_params_single_arg, R"(
+    fun g[..V](a: S32, b: S32, ..c: V) -> S32 {
+        ret a
+    }
+
+    fun f() -> Void {
+        g(1, 2, 3)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_variadic_generic_single_arg_no_leading_param, R"(
+    fun g[..Ts](..a: Ts) -> Void {
+        ret
+    }
+
+    fun f() -> Void {
+        g(1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_variadic_generic_used_and_returned, R"(
+    fun pass_through[..Ts](..a: Ts) -> Ts {
+        ret a
+    }
+
+    fun f() -> Void {
+        let mut x = pass_through(1, true, "hi")
+        x = (0, false, "bye")
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_given_no_args, R"(
     fun g(a: &StrView, ..b: Bool) -> Void {
         ret
@@ -422,6 +483,31 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         g("hello")
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_variadic_generic_given_no_args, R"(
+    fun g[..Ts](a: &StrView, ..b: Ts) -> Void {
+        ret
+    }
+
+    fun f() -> Void {
+        g("hello")
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_variadic_generic_given_no_args_resolves_to_empty_tuple, R"(
+    fun g[..Ts](a: &StrView, ..b: Ts) -> Ts {
+        ret b
+    }
+
+    fun f() -> Void {
+        let mut x = g("hello")
+        x = ()
     }
 )");
 

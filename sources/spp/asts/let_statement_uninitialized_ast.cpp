@@ -105,11 +105,18 @@ auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Delegate the code generation to the variable, after setting up the meta.
+  // Setup a lot of meta information for the local variable to
+  // correctly generate the value.
   meta->Save();
   meta->LetStatementValue = nullptr;
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
+
+  // Delegate the code generation to the variable, after setting
+  // up the meta. Note that the "alloca" is returned even though
+  // this isn't an expression, for parent nodes that might need it.
+  // It's a hacky solution that should live on "meta" but no harm
+  // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
   meta->Restore();
   return alloca;

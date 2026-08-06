@@ -327,4 +327,21 @@ auto spp::asts::FunctionCallArgumentGroupAst::At(
   return nullptr;
 }
 
+auto spp::asts::FunctionCallArgumentGroupAst::ConvertToPositional() const
+  -> Unique<FunctionCallArgumentGroupAst> {
+  auto positional_args = Vec<Unique<FunctionCallArgumentAst>>();
+  for (auto const &arg : Args) {
+    if (arg->To<FunctionCallArgumentPositionalAst>()) {
+      positional_args.EmplaceBack(AstClone(arg.get()));
+    }
+    else {
+      auto positional_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
+        AstClone(arg->Conv), nullptr, AstClone(arg->Val));
+      positional_args.EmplaceBack(std::move(positional_arg));
+    }
+  }
+  return MakeUnique<FunctionCallArgumentGroupAst>(
+    AstClone(TokL), std::move(positional_args), AstClone(TokR));
+}
+
 SPP_MOD_END

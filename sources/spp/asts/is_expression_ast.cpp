@@ -112,7 +112,8 @@ auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
+  // If the lhs was an identifier, the "is" causes it to get
+  // flow typed, so we need to promote the original "alloca"
   // into the flow typed symbol.
   if (_LhsAsId) {
     const auto flow_typed_lhs_sym = sm->CurrentScope->GetVarSymbol(_LhsAsId.get(), true);

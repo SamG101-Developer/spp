@@ -27,6 +27,7 @@ import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_argument_group_ast;
@@ -50,10 +51,12 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
+import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
@@ -212,6 +215,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     transformed_op->FnArgGroup = AstClone(FnArgGroup);
     transformed_op->_OverloadInfo = _OverloadInfo;
     transformed_op->_IsAsync = _IsAsync;
+    transformed_op->_IsCoroAndAutoResume = _IsCoroAndAutoResume;
     transformed_op->_FoldedAsts = AstCloneVec(_FoldedAsts);
     transformed_op->_ClosureDummyArg = AstClone(_ClosureDummyArg);
   }
@@ -282,12 +286,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     arg->Stage9_CompTimeResolve(sm, meta);
     args.EmplaceBack(std::move(name), std::move(meta->CmpResult));
   }
-  auto arg_map = decltype(meta->CmpArgs)();
-  for (auto &&[name, val] : args) { arg_map[name] = std::move(val); }
+  auto fn_arg_map = decltype(meta->CmpArgs)();
+  auto gn_arg_type_map = decltype(meta->CmpGnTypeArgs)();
+  auto gn_arg_comp_map = decltype(meta->CmpGnCompArgs)();
+  for (auto &&[name, val] : args) { fn_arg_map[name] = std::move(val); }
+  for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) { gn_arg_type_map.EmplaceBack(gn_arg->Val.get()); }
+  for (auto &&gn_arg : GnArgGroup->GetCompArgs()) { gn_arg_comp_map.EmplaceBack(gn_arg->Val.get()); }
 
   // Resolve the function with the arguments.
   meta->Save();
-  meta->CmpArgs = std::move(arg_map);
+  meta->CmpArgs = std::move(fn_arg_map);
+  meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
+  meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
   auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope());
   // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
   tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
@@ -303,7 +313,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx) -> llvm::Value* {
-  // For folding, generate the code for the folded transformations and combine into single block.
+  // For folding, generate the code for the folded
+  // transformations and combine into single block.
   if (Fold != nullptr) {
     const auto merge = InnerScopeExpressionAst::NewEmpty();
     merge->Members = _FoldedAsts
@@ -324,22 +335,29 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto closure_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
 
+    // The lhs' static type determines the physical field indices of "{ fn_ptr, env_ptr }": a plain "FunXXX" has no
+    // extra fields, but a class that superimposes one (see "GetFatPointerFields") may declare its own attributes
+    // too, and the "Spp" layout can reorder any of them - "GetPhysicalFieldIndex" maps back from the fixed
+    // declared prefix (0, 1) to wherever they actually ended up.
+    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_ty.get());
+    const auto fn_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
+    const auto env_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 1);
+
     // The lhs is the { fn_ptr, env_ptr } value directly, or for a borrowed closure, a pointer to it, so read the
     // fields accordingly.
     auto fn_ptr = static_cast<llvm::Value*>(nullptr);
     auto env_ptr = static_cast<llvm::Value*>(nullptr);
     if (closure_val->getType()->isPointerTy()) {
-      const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
-      const auto closure_ty = llvm::cast<llvm::StructType>(
-        codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty.get()), ctx));
+      const auto closure_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*lhs_type_sym, ctx));
       fn_ptr = ctx->Builder.CreateLoad(
-        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, 0), "closure.fn_ptr" + closure_uid);
+        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, fn_ptr_idx), "closure.fn_ptr" + closure_uid);
       env_ptr = ctx->Builder.CreateLoad(
-        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, 1), "closure.env_ptr" + closure_uid);
+        ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, env_ptr_idx), "closure.env_ptr" + closure_uid);
     }
     else {
-      fn_ptr = ctx->Builder.CreateExtractValue(closure_val, {0u}, "closure.fn_ptr" + closure_uid);
-      env_ptr = ctx->Builder.CreateExtractValue(closure_val, {1u}, "closure.env_ptr" + closure_uid);
+      fn_ptr = ctx->Builder.CreateExtractValue(closure_val, {fn_ptr_idx}, "closure.fn_ptr" + closure_uid);
+      env_ptr = ctx->Builder.CreateExtractValue(closure_val, {env_ptr_idx}, "closure.env_ptr" + closure_uid);
     }
 
     // Generate the argument values, prepending the environment pointer.
@@ -361,88 +379,28 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       : ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args.ToStdVector(), "closure.call" + closure_uid);
   }
 
-  // Coroutine calls: calling a coroutine does not run its body, it constructs a generator. The env (its frame) is
-  // allocated on the caller's stack (no heap alloc), the arguments are stored into it, and a { resume_fn, env } fat
-  // pointer is returned. Resuming (".res()", or an immediate auto-resume for GenOnce) drives the state machine.
-  if (_OverloadInfo->Proto->IsCoroutine()) {
-    const auto coro = _OverloadInfo->Proto->To<CoroutinePrototypeAst>();
-    const auto coro_uid = "." + spp::utils::Uid(this);
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto coro_scope = coro->GetAstScope();
+  // Coroutine calls: calling a coroutine does not run its body, it
+  // constructs a generator. The frame is owned by the llvm coroutine
+  // intrinsics, and the value handed back is nothing but the
+  // "llvm.coro.begin" handle.
+  const auto is_coroutine_call = _OverloadInfo->Proto->IsCoroutine();
 
-    // Ensure the env type and resume function exist; the coroutine's own Stage11 may not have run yet. Creating the
-    // resume function repositions the builder, so save and restore the call site's insert point.
-    if (coro->LlvmCoroGenEnvType == nullptr) {
-      const auto saved_ip = ctx->Builder.saveIP();
-      codegen::CreateCoroEnvType(coro, ctx, *coro_scope);
-      codegen::CreateCoroResFunc(coro, ctx, *coro_scope);
-      ctx->Builder.restoreIP(saved_ip);
-    }
-    const auto env_type = coro->LlvmCoroGenEnvType;
-    SPP_ASSERT(env_type != nullptr and coro->LlvmCoroResumeFunc != nullptr);
-
-    // Allocate the env (frame) on the caller's stack, at the top of the caller's function.
-    const auto env_ptr = codegen::llvm_entry_alloca(env_type, "coro.env" + coro_uid, ctx);
-
-    // Initialise the header: READY, location 0 (start).
-    ctx->Builder.CreateStore(
-      llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), std::to_underlying(codegen::CoroutineState::READY)),
-      ctx->Builder.CreateStructGEP(
-        env_type, env_ptr, std::to_underlying(codegen::GenEnvField::STATE), "coro.state" + coro_uid));
-    ctx->Builder.CreateStore(
-      llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0),
-      ctx->Builder.CreateStructGEP(
-        env_type, env_ptr, std::to_underlying(codegen::GenEnvField::LOCATION), "coro.loc" + coro_uid));
-
-    // Store each argument into its frame field. Parameters occupy frame slots, matched to fields by symbol identity
-    // (so the order agrees with the env-type and resume-prologue collection).
-    const auto frame_vars = codegen::CollectCoroFrameVars(*coro_scope);
-    const auto params = coro->FnParamGroup->GetAllParams();
-    for (const auto [i, arg] : FnArgGroup->Args | genex::views::ptr | genex::views::enumerate) {
-      const auto param_sym = coro_scope->GetVarSymbol(params[i]->ExtractName().get());
-      auto field = std::to_underlying(codegen::GenEnvField::FRAME_START);
-      for (auto const &[fi, fv] : frame_vars | genex::views::enumerate) {
-        if (fv.get() == param_sym.get()) {
-          field += static_cast<std::uint8_t>(fi);
-          break;
-        }
-      }
-      const auto arg_val = arg->Stage11_CodeGen(sm, meta, ctx);
-      ctx->Builder.CreateStore(arg_val, ctx->Builder.CreateStructGEP(env_type, env_ptr, field, "coro.arg" + coro_uid));
-    }
-
-    // Build the { resume_fn, env } fat pointer (the same literal { ptr, ptr } the Gen types lower to).
-    const auto gen_ty = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
-    auto fat = static_cast<llvm::Value*>(llvm::UndefValue::get(gen_ty));
-    fat = ctx->Builder.CreateInsertValue(fat, coro->LlvmCoroResumeFunc, {0u}, "coro.fat.fn" + coro_uid);
-    fat = ctx->Builder.CreateInsertValue(fat, env_ptr, {1u}, "coro.fat.env" + coro_uid);
-
-    // For GenOnce, auto-resume once and yield the produced value directly.
-    if (_IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume) {
-      const auto send_ty = env_type->getElementType(std::to_underlying(codegen::GenEnvField::SEND_SLOT));
-      ctx->Builder.CreateCall(coro->LlvmCoroResumeFunc, {env_ptr, llvm::Constant::getNullValue(send_ty)});
-      const auto yield_ty = env_type->getElementType(std::to_underlying(codegen::GenEnvField::YIELD_SLOT));
-      const auto yield_slot = ctx->Builder.CreateStructGEP(
-        env_type, env_ptr, std::to_underlying(codegen::GenEnvField::YIELD_SLOT),
-        "coro.yield.slot" + coro_uid);
-      return ctx->Builder.CreateLoad(yield_ty, yield_slot, "coro.yield.val" + coro_uid);
-    }
-    return fat;
-  }
-
-  // For generically converted function prototypes, generate their llvm func once.
-  // Todo: Is this even needed?
+  // For generically converted function prototypes, generate
+  // their llvm declaration in-walk if it is still missing.
   if (_OverloadInfo->Proto->GetLlvmFunc() == nullptr) {
     auto tm = ScopeManager(sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
     tm.Reset(tm.CurrentScope);
-    _OverloadInfo->Proto->Stage10_PreCodeGen(&tm, meta, ctx);
+    _OverloadInfo->Proto->GenerateLlvmDeclaration(&tm, meta, ctx);
   }
 
   // SPP_ASSERT(not ctx->Builder.GetInsertBlock()->getTerminator());
   const auto uid = "." + spp::utils::Uid(this);
-  auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
+  const auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
 
-  // Get the llvm function target, and generate the argument values.
+  const auto o = "Call target has no llvm declaration: " + _OverloadInfo->Proto->PrintSignature("");
+  RaiseIf<analyse::errors::SppInternalCompilerError>(
+    _OverloadInfo->Proto->GetLlvmFunc() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));
+
   const auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
   auto llvm_func_args = FnArgGroup->Args
@@ -455,7 +413,27 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   if (llvm_func->getReturnType()->isVoidTy()) {
     return ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector());
   }
-  return ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
+  const auto llvm_call = ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
+
+  // Todo: Document this.
+  if (is_coroutine_call) {
+    llvm_call->addFnAttr(llvm::Attribute::CoroElideSafe);
+  }
+
+  if (is_coroutine_call and meta->LlvmAssignmentTarget != nullptr) {
+    const auto llvm_promise_align = llvm::ConstantInt::get(
+      llvm::Type::getInt32Ty(*ctx->Context), alignof(std::max_align_t));
+    const auto llvm_gen_state = ctx->Builder.CreateIntrinsic(
+      llvm::Intrinsic::coro_promise, {}, {llvm_call, llvm_promise_align, ctx->Builder.getFalse()}, {},
+      "coro.gen.state" + uid);
+
+    auto generator = MakeUnique<codegen::LlvmGenerator>();
+    generator->Handle = llvm_call;
+    generator->State = llvm_gen_state;
+    ctx->LlvmGenerators[meta->LlvmAssignmentTarget] = std::move(generator);
+  }
+
+  return llvm_call;
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
@@ -516,6 +494,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
     generic_group->Args.PushBack(std::move(generic));
     ret_type = ret_type->SubstituteGenerics(generic_group->GetAllArgs());
   }
+
+  // Generic instantiations embedded in the return type (eg "Var[Tup[Pass[Str], Fail[Utf8Err]]]" from a "Res[...]"
+  // alias) are only registered in the scope of whichever module first analysed them (see CreateGenericClsScope), and
+  // that scope isn't guaranteed to be reachable from this call site's scope. Rather than relying on lookup finding a
+  // registration made elsewhere, re-analyse a fresh clone here so the instantiation is guaranteed to exist (and be
+  // reachable) from this scope too before anything downstream tries to look up its symbol.
+  ret_type = AstCloneShared(ret_type);
+  ret_type->Stage7_AnalyseSemantics(sm, meta);
 
   // Return the type.
   return ret_type;

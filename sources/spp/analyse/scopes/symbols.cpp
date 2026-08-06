@@ -74,7 +74,9 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   Visibility(that.Visibility),
   VisibilityAnnotation(that.VisibilityAnnotation),
   MemInfo(that.MemInfo->Clone()),
-  LlvmInfo(MakeUnique<codegen::LlvmVarSymInfo>()) {
+  LlvmInfo(MakeUnique<codegen::LlvmVarSymInfo>()),
+  CompTimeValue(asts::AstClone(that.CompTimeValue)),
+  AliasSym(that.AliasSym) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
 }
 
@@ -138,7 +140,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
   IsGeneric(is_generic),
   GenericConstraints(generic_constraints),
   IsDirectlyCopyable(is_directly_copyable),
-  IsCopyable([this] { return this->IsDirectlyCopyable; }),
+  IsCopyable([this] { return this->IsDirectlyCopyable or this->IsDirectlyZeroType; }),
   Visibility(visibility),
   Convention(std::move(convention)),
   GenericImpl(this),
@@ -155,6 +157,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   ScopeModule(that.ScopeModule),
   IsGeneric(that.IsGeneric),
   GenericConstraints(that.GenericConstraints),
+  GenericVal(that.GenericVal),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsCopyable(that.IsCopyable),
   Visibility(that.Visibility),
@@ -182,11 +185,13 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
     return AliasStmt->MappedOldType;
   }
 
-  // If the type is generic, or the name starts with a '$', return the name as-is.
-  if (IsGeneric or LinkedScope == nullptr
-    or (ignore_dollar and Name->IsCompilerGeneratedType())
-    or
-    Name->Name == "Self") {
+  // If the type is generic, or is "Self", return the name as-is.
+  if (IsGeneric or LinkedScope == nullptr or Name->Name == "Self") {
+    return Name;
+  }
+
+  if (Name->IsCompilerGeneratedType()
+    and (ignore_dollar or LinkedScope->Parent != LinkedScope->ParentModule())) {
     return Name;
   }
 

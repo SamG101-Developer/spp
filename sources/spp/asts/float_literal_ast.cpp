@@ -157,18 +157,29 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   // Get the type of the float literal.
   const auto type_ast = InferType(sm, meta);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-  // Normalise the literal exactly as Stage7 does, then apply the optional sign.
+  // If come from stage10 cmp statement, register the float
+  // type here, in case it hasn't been reached yet by the
+  // class prototypes.
+  if (llvm_type == nullptr) {
+    codegen::RegisterLlvmTypeInfo(type_sym->Type, ctx);
+    llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  }
+
+  // Normalise the literal exactly as Stage7 does, then
+  // apply the optional sign.
   auto const &semantics = llvm_type->getFltSemantics();
   auto mapped_val = boost::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
     mapped_val = -mapped_val;
   }
 
-  // Create the LLVM constant float value from the normalised value string.
+  // Create the LLVM constant float value from the
+  // normalised decimal string (APFloat handled the sign).
   const auto ap_float = llvm::APFloat(semantics, mapped_val.str());
-  return llvm::ConstantFP::get(*ctx->Context, ap_float);
+  const auto co_float = llvm::ConstantFP::get(*ctx->Context, ap_float);
+  return co_float;
 }
 
 auto spp::asts::FloatLiteralAst::InferType(

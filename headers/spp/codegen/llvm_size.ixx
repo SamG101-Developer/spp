@@ -16,6 +16,11 @@ namespace spp::asts {
 namespace spp::codegen {
   SPP_EXP_FUN auto SizeOf(
     analyse::scopes::ScopeManager const &sm,
-    Shared<asts::TypeAst> const &type)
+    asts::TypeAst const &type)
+    -> std::size_t;
+
+  SPP_EXP_FUN auto AlignOf(
+    analyse::scopes::ScopeManager const &sm,
+    asts::TypeAst const &type)
     -> std::size_t;
 }

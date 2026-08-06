@@ -104,6 +104,7 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppMovingComptimeConstantMemoryError;
   SPP_EXP_CLS struct SppHigherOrderGenericsNotSupportedError;
   SPP_EXP_CLS struct SppGeneratedCodeError;
+  SPP_EXP_CLS struct SppCharLiteralOutOfBoundsError;
 }
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
@@ -530,4 +531,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppHigherOrderGenericsNotSupportedError
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGeneratedCodeError final : SemanticError {
   explicit SppGeneratedCodeError(asts::Ast const &ast, Str &&wrapped_error);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCharLiteralOutOfBoundsError final : SemanticError {
+  explicit SppCharLiteralOutOfBoundsError(asts::Ast const &literal, std::uint32_t code_point);
 };

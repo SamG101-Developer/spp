@@ -17,6 +17,7 @@ import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_parameter_comp_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
@@ -170,7 +171,10 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
       | genex::to<Vec>();
 
     for (auto const &t : all_type_syms) {
-      if (t->LinkedScope == nullptr) { continue; } // unresolved or Self - no concrete value to pre-seed
+      // Self (and anything else with neither a scope nor a recorded value) has no concrete value to pre-seed. A symbol
+      // bound to another generic parameter has no scope either, but its recorded value still names the binding, and
+      // dropping it would leave the parameter unsubstituted downstream.
+      if (t->LinkedScope == nullptr and t->GenericVal == nullptr) { continue; }
       if (genex::contains(type_names, *t->Name, genex::meta::deref)) { continue; }
       syms.EmplaceBack(asts::GenericArgumentTypeKeywordAst::FromSym(*t));
       type_names.EmplaceBack(t->Name);
@@ -182,6 +186,7 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
 
     for (auto const &v : all_var_syms) {
       if (genex::contains(comp_names, *v->Name, genex::meta::deref)) { continue; }
+      if (v->MemInfo->AstCompTime->To<asts::GenericParameterCompAst>() != nullptr) { continue; }
       syms.EmplaceBack(asts::GenericArgumentCompKeywordAst::FromSym(*v));
       comp_names.EmplaceBack(v->Name);
     }
@@ -518,8 +523,8 @@ auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
 
   if (is_valid_postfix_expression_static(&expr)) {
     // This is possible with a left-hand-side type or namespace.
-    const auto postfix_expr = expr.To<asts::PostfixExpressionAst>();
-    const auto postfix_op = postfix_expr->Op->To<asts::PostfixExpressionOperatorStaticMemberAccessAst>();
+    const auto postfix_expr = expr.ToUnchecked<asts::PostfixExpressionAst>();
+    const auto postfix_op = postfix_expr->Op->ToUnchecked<asts::PostfixExpressionOperatorStaticMemberAccessAst>();
 
     // Type based left-hand-side, such as "some_namespace::Type::static_member()"
     if (const auto type_lhs = postfix_expr->Lhs->To<asts::TypeAst>()) {
@@ -631,10 +636,22 @@ auto spp::analyse::scopes::Scope::GetEnclosingTypeScope(
 auto spp::analyse::scopes::Scope::GetEnclosingSelfType(
   asts::meta::CompilerMetaData const &meta) const
   -> Shared<asts::TypeAst> {
-  // If we are already in a module scope, there is no self type.
+  // If we are already in a module scope, there is no self
+  // type.
   auto current_scope = this;
   if (std::holds_alternative<ScopeIdentifierName>(current_scope->Name)) {
     return nullptr;
+  }
+
+  // Escape closure scopes for the Self type. Prefer using
+  // the "Self" symbol type first.
+  if (current_scope->NameAsString().starts_with("<closure-outer")) {
+    current_scope = meta.OverriddenScopeForClosure;
+  }
+  const auto self_name = MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr);
+  if (const auto self_sym = current_scope->GetTypeSymbol(self_name.get());
+    self_sym != nullptr and self_sym->LinkedScope != nullptr and self_sym->LinkedScope->TySym != nullptr) {
+    return self_sym->LinkedScope->TySym->FqName();
   }
 
   while (true) {

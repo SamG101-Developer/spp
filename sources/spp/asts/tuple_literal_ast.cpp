@@ -135,8 +135,9 @@ auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
   -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
-  for (auto const &elem : Elems) {
+  for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
+    Elems[i] = AstClone(meta->CmpResult);
     cmp_elems.EmplaceBack(std::move(meta->CmpResult));
   }
 
@@ -159,7 +160,7 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
 
   // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.
   if (not ctx->InConstantContext) {
-    const auto alloca = codegen::llvm_entry_alloca(llvm_type, "tuple.alloca" + uid, ctx);
+    const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "tuple.alloca" + uid, ctx);
     SPP_ASSERT(alloca != nullptr);
 
     // Store each element into the tuple alloca.

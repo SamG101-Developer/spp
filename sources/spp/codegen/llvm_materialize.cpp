@@ -32,8 +32,9 @@ auto spp::codegen::llvm_materialize(
 
   // Analyse semantics and generate code for the let statement.
   meta->Save();
-  meta->LetStatementFromUninitialized = true; // Prevent double analysis of the expression.
   meta->LetStatementExplicitType = ast.InferType(sm, meta);
+  meta->LetStatementFromUninitialized = true;
+  meta->LetStatementValue = nullptr;
   var->Stage7_AnalyseSemantics(sm, meta);
 
   // Set the lhs to the variable name.
@@ -52,10 +53,10 @@ auto spp::codegen::llvm_addr_of(
   LLvmCtx *ctx)
   -> llvm::Value* {
   // An expression that is already a borrow evaluates to the address of what it borrows, so it is its own address:
-  // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one.
+  // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one. Note: we
+  // don't enforce the borrow on the llvm type, because Gen[&XXX] is valid, but not a borrow.
   if (const auto type = ast.InferType(sm, meta); type != nullptr and type->GetConvention() != nullptr) {
     const auto borrow_val = ast.Stage11_CodeGen(sm, meta, ctx);
-    SPP_ASSERT(borrow_val->getType()->isPointerTy());
     return borrow_val;
   }
 

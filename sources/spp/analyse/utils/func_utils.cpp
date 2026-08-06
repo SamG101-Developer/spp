@@ -244,8 +244,9 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
   else {
     // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
     const auto sup_scopes = target_scope->AstNode->To<asts::ClassPrototypeAst>() != nullptr
-      ? target_scope->SupScopes() | genex::views::transform([](auto x) -> scopes::Scope const* { return x; }) |
-      genex::to<Vec>()
+      ? target_scope->SupScopes()
+      | genex::views::transform([](auto x) -> scopes::Scope const* { return x; })
+      | genex::to<Vec>()
       : Vec{target_scope};
 
     // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions. The TypeIdentifier
@@ -341,7 +342,8 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
     auto params_old = asts::AstCloneVec(old_fn->FnParamGroup->Params);
 
     // Remove all the required parameters on the first parameter list off of the other parameter list.
-    for (auto [p, q] : genex::views::zip(new_fn.FnParamGroup->Params | genex::views::ptr, old_fn->FnParamGroup->Params | genex::views::ptr)) {
+    for (auto [p, q] : genex::views::zip(new_fn.FnParamGroup->Params | genex::views::ptr,
+                                         old_fn->FnParamGroup->Params | genex::views::ptr)) {
       if (TypeEq(*p->Type, *q->Type, this_scope, *old_scope)) {
         params_new |= genex::actions::remove_if([pe=p->ExtractNames()](auto &&x) {
           return genex::equals(x->ExtractNames(), std::move(pe), {}, genex::meta::deref, genex::meta::deref);
@@ -568,14 +570,22 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
   const auto all_args = a_group.GetAllArgs();
   const auto type_args = a_group.GetTypeArgs();
 
-  // Define the cloned constraint groups.
-  auto p_con_groups_cloned = Vec<Vec<Shared<asts::TypeAst>>>();
-  p_con_groups_cloned.reserve(p_names.Len());
+  // Check that each argument satisfies its constraints.
+  for (auto [i, p_name] : p_names | genex::views::enumerate) {
+    auto matching = type_args
+      | genex::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
+      | genex::to<Vec>();
+    if (matching.IsEmpty()) { continue; }
 
-  // Cross apply inferred into constraints firstly.
-  for (auto const &p_con_group : p_con_groups) {
-    auto con_group_cloned = Vec<Shared<asts::TypeAst>>();
-    for (auto p_con : p_con_group) {
+    const auto arg_sym = sm.CurrentScope->GetTypeSymbol(matching[0]->Val.get());
+    auto *const con_scope = arg_sym != nullptr and arg_sym->LinkedScope != nullptr
+      ? arg_sym->LinkedScope
+      : sm.CurrentScope;
+    auto con_sm = scopes::ScopeManager(sm.GlobalScope, con_scope);
+
+    // Cross apply the inferred arguments into this parameter's constraints.
+    auto p_cons = Vec<Shared<asts::TypeAst>>();
+    for (auto p_con : p_con_groups[i]) {
       auto def_type_raw = p_con->WithoutGenerics();
       if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_val_type_sym != nullptr and meta.
         CurrentStage > 4) {
@@ -584,23 +594,13 @@ auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
         p_con = std::move(temp);
       }
 
-      const auto sub = p_con->SubstituteGenerics(all_args);
+      auto sub = p_con->SubstituteGenerics(all_args);
       meta.Save();
       meta.AllowAbstractType = true;
-      sub->Stage7_AnalyseSemantics(&sm, &meta);
+      sub->Stage7_AnalyseSemantics(&con_sm, &meta);
       meta.Restore();
-      con_group_cloned.push_back(sub);
+      p_cons.push_back(std::move(sub));
     }
-    p_con_groups_cloned.push_back(std::move(con_group_cloned));
-  }
-
-  // Now check that each argument satisfied its constraints.
-  for (auto [i, p_name] : p_names | genex::views::enumerate) {
-    const auto p_cons = p_con_groups_cloned[i];
-    auto matching = type_args
-      | genex::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
-      | genex::to<Vec>();
-    if (matching.IsEmpty()) { continue; }
 
     // Raise an error if any constraint of this argument is not satisfied.
     const auto unsatisfied = type_utils::EnforceGenericConstraintsOneArg(
@@ -785,12 +785,12 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
   meta.Restore();
 }
 
-// Run RelaxedTypeEq on one (source, target) pair and distribute results by param kind.
 static auto CollectDirectInferences(
   spp::Shared<spp::asts::TypeAst> const &source_type,
   spp::Shared<spp::asts::TypeAst> const &target_type,
   spp::Shared<spp::asts::IdentifierAst> const &target_name,
   spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &type_p_names,
+  spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &variadic_type_p_names,
   spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &comp_p_names,
   spp::Shared<spp::asts::IdentifierAst> const &variadic_fn_param_name,
   spp::analyse::scopes::Scope const &owner_scope,
@@ -805,20 +805,29 @@ static auto CollectDirectInferences(
     *target_type->WithoutConvention(),
     *sm.CurrentScope, owner_scope, temp_gs, true);
 
-  //
+  const auto is_variadic_param_slot =
+    variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name;
+
+  // "RelaxedTypeEq" above has already done the reverse inference: it walked the argument type against the parameter
+  // type and reported every binding that fell out. Only the ones naming a generic parameter of this owner are kept -
+  // a generic left free in the parameter type by an enclosing "sup" block ("n" in "sup [T, cmp n: USize, A] Vec[T, A]
+  // ext From[Arr[T, n]]") is one of those, because "FunctionPrototypeAst::Stage1_PreProcess" inherits the block's
+  // parameters onto every function it contains.
   for (auto const &[inferred_name, inferred_val] : temp_gs) {
-    if (genex::contains(type_p_names, *inferred_name, genex::meta::deref)) {
-      auto *typed = inferred_val->To<spp::asts::TypeAst>();
+    auto *typed = inferred_val->To<spp::asts::TypeAst>();
+    const auto declared_type = genex::contains(type_p_names, *inferred_name, genex::meta::deref);
+    const auto declared_comp = genex::contains(comp_p_names, *inferred_name, genex::meta::deref);
+
+    if (declared_type) {
       if (typed == nullptr) { continue; }
       auto shared = typed->shared_from_this();
-      // Variadic unwrap: inferred value is Tup[T]; extract the inner type.
-      if (variadic_fn_param_name != nullptr and target_name != nullptr and *target_name == *variadic_fn_param_name) {
+      if (is_variadic_param_slot and not genex::contains(variadic_type_p_names, *inferred_name, genex::meta::deref)) {
         auto const &inner = shared->LastTypePart()->GnArgGroup->Args[0];
         shared = inner->ToUnchecked<spp::asts::GenericArgumentTypeAst>()->Val;
       }
       type_inferred[inferred_name].EmplaceBack(std::move(shared));
     }
-    else if (genex::contains(comp_p_names, *inferred_name, genex::meta::deref)) {
+    else if (declared_comp) {
       comp_inferred[inferred_name].EmplaceBack(inferred_val);
     }
   }
@@ -850,6 +859,10 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
   const auto comp_params = p_group.GetCompParams();
 
   auto type_p_names = type_params
+    | genex::views::transform([](auto *x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
+    | genex::to<Vec>();
+  auto variadic_type_p_names = type_params
+    | genex::views::filter([](auto *x) { return x->template To<asts::GenericParameterTypeVariadicAst>() != nullptr; })
     | genex::views::transform([](auto *x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
     | genex::to<Vec>();
   auto comp_p_names = comp_params
@@ -884,8 +897,8 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
   for (auto const &[target_name, target_type] : infer_target) {
     if (not infer_source.contains(target_name)) { continue; }
     CollectDirectInferences(
-      infer_source.at(target_name), target_type, target_name, type_p_names, comp_p_names, variadic_fn_param_name,
-      owner_scope, sm, type_inferred, comp_inferred);
+      infer_source.at(target_name), target_type, target_name, type_p_names, variadic_type_p_names, comp_p_names,
+      variadic_fn_param_name, owner_scope, sm, type_inferred, comp_inferred);
   }
 
   // Next is constraint based inference, where for example [U, F: FunRef[(), U]] can infer U from the return type of

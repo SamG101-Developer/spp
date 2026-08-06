@@ -147,6 +147,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   using analyse::errors::SemanticError;
   using analyse::errors::SppAbstractTypeUseError;
   using analyse::errors::SppHigherOrderGenericsNotSupportedError;
+  using generate::common_types::SelfType;
   using generate::common_types_precompiled::TUP;
 
   if (_HasAnalysed) { return; }
@@ -198,8 +199,8 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
     // Infer the generic arguments from information given from object initialisation.
     InferGnArgs(
-      *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget, type_sym->FqName(), *type_sym->LinkedScope,
-      nullptr, is_tuple, *sm, *meta);
+      *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget,
+      type_sym->FqName(), *type_sym->LinkedScope, nullptr, is_tuple, *sm, *meta);
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
   }
   else {
@@ -248,8 +249,14 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
       // Stack "if" first, not "RaiseIf", because we need scope access from it.
       if (not unimplemented.IsEmpty()) {
-        Raise<SppAbstractTypeUseError>(
-          {sm->CurrentScope, unimplemented[0]->GetAstScope()}, ERR_ARGS(*this, *unimplemented[0]));
+        // Only allow an abstract self if we are in the abstract class itself. For example, `Clone::clone_from` must be
+        // allowed to use `Clone::clone` as the default, which returns "Self", but will never be used from `Clone`, but
+        // rather the implementation type.
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(SelfType(0).get());
+        if (self_sym == nullptr or self_sym->LinkedScope != resolved_sym->LinkedScope) {
+          Raise<SppAbstractTypeUseError>(
+            {sm->CurrentScope, unimplemented[0]->GetAstScope()}, ERR_ARGS(*this, *unimplemented[0]));
+        }
       }
     }
   }

@@ -23,6 +23,7 @@ import spp.asts.object_initializer_argument_shorthand_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_size;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
@@ -1185,6 +1186,26 @@ auto spp::analyse::utils::cmp_utils::std_num_int_two()
   constexpr auto value = "2";
   auto num = INJECT_CODE(value, parse_literal_integer);
   return num;
+}
+
+auto spp::analyse::utils::cmp_utils::std_mem_ops_size_of(
+  scopes::ScopeManager const &sm,
+  Vec<asts::TypeAst*> const &types)
+  -> Unique<asts::IntegerLiteralAst> {
+  // Get the size of a type as an integer literal.
+  const auto size = codegen::SizeOf(sm, *types[0]);
+  auto tok = MakeUnique<asts::TokenAst>(0, lex::SppTokenType::LX_NUMBER, std::to_string(size));
+  return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(tok), "uz");
+}
+
+auto spp::analyse::utils::cmp_utils::std_mem_ops_align_of(
+  scopes::ScopeManager const &sm,
+  Vec<asts::TypeAst*> const &types)
+  -> Unique<asts::IntegerLiteralAst> {
+  // Get the alignment of a type as an integer literal.
+  const auto size = codegen::AlignOf(sm, *types[0]);
+  auto tok = MakeUnique<asts::TokenAst>(0, lex::SppTokenType::LX_NUMBER, std::to_string(size));
+  return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(tok), "uz");
 }
 
 #pragma GCC diagnostic pop

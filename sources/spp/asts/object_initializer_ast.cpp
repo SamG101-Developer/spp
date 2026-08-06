@@ -162,9 +162,10 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   -> llvm::Value* {
   //
   using analyse::utils::type_utils::GetAllAttrs;
+  using analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount;
 
   // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid(this);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr); // todo : could be from stage10 cmp, so generate here
@@ -178,18 +179,27 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   // the recursive default initialization.
   if (attr_names.IsEmpty()) { return llvm::Constant::getNullValue(llvm_type); }
 
+  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that interface's fat-pointer fields prepended ahead of
+  // its own declared attributes (see "ClassPrototypeAst::_FillLlvmLayout") - an object initializer only ever
+  // fills in the class's own attributes, never those synthesized fields, so every declared index has to be
+  // shifted past them.
+  const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
+    *type_sym->FqName(), *sm->CurrentScope);
+
   // The physical field order isn't the declaration order, because the S++ layout re-orders the fields to minimize
   // padding, so every attribute's index has to be resolved through the type's field index map.
   const auto field_index = [&](IdentifierAst const &name) {
     const auto decl_index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
     SPP_ASSERT(decl_index >= 0);
-    return codegen::GetPhysicalFieldIndex(*type_sym->LlvmInfo, static_cast<std::size_t>(decl_index));
+    return codegen::GetPhysicalFieldIndex(
+      *type_sym->LlvmInfo, fat_pointer_field_count + static_cast<std::size_t>(decl_index));
   };
 
   // Runtime pathway.
   if (not ctx->InConstantContext) {
     // Set each field value in the aggregate.
-    const auto aggregate = codegen::llvm_entry_alloca(llvm_type, "obj_init.aggregate" + uid, ctx);
+    const auto aggregate = codegen::LlvmEntryAlloca(
+      llvm_type, "obj_init.aggregate" + uid, ctx);
     for (auto const &arg : ArgGroup->Args) {
       const auto attr_ptr = ctx->Builder.CreateStructGEP(llvm_type, aggregate, field_index(*arg->Name), arg->Name->Val);
       const auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);

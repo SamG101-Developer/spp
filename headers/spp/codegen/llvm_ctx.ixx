@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_ctx;
+import spp.codegen.llvm_coros;
 import spp.utils.types;
 import llvm;
 import std;
@@ -20,11 +21,12 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   llvm::LLVMContext *Context;
   Unique<llvm::Module> Module;
   llvm::IRBuilder<> Builder;
+  llvm::MachineFunction *MF;
   std::map<Str, llvm::Constant*> GlobalConstants;
   bool InConstantContext = false;
 
   // Coroutine information.
-  Vec<llvm::BasicBlock*> YieldContinuations;
+  std::map<llvm::Value*, Unique<LlvmGenerator>> LlvmGenerators;
 
   // Closure tracking information.
   llvm::Type *CurrentClosureType = nullptr;
@@ -38,7 +40,8 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   LLvmCtx() :
     Context(global_context),
     Module(nullptr),
-    Builder(*Context) {
+    Builder(*Context),
+    MF(nullptr) {
   }
 
   static auto NewCtx(Str const &module_name) -> Unique<LLvmCtx> {

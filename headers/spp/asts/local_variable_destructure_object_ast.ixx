@@ -84,4 +84,6 @@ private:
   Shared<analyse::scopes::VariableSymbol> _CondSym;
   Shared<analyse::scopes::VariableSymbol> _FlowSym;
   Unique<LetStatementInitializedAst> _CondLet;
+
+  Shared<IdentifierAst> _TmpName;
 };

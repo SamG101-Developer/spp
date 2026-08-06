@@ -1172,4 +1172,15 @@ spp::analyse::errors::SppGeneratedCodeError::SppGeneratedCodeError(
     "Refer to the wrapped error.");
 }
 
+spp::analyse::errors::SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsError(
+  asts::Ast const &literal,
+  const std::uint32_t code_point) {
+  AddHeaders(97, "Char Literal Out Of Bounds Error");
+  AddErr(&literal, "Byte-prefixed char literal introduced here with code point " + INLINE_INFO(std::to_string(code_point)));
+  AddFooter(
+    "A byte-prefixed char literal (" + INLINE_NOTE("b'...'") + ") must decode to a single byte, but this one decodes "
+    "to a Unicode code point outside " + INLINE_NOTE("0..255") + ".",
+    "Remove the " + INLINE_HELP("b") + " byte-prefix, or use a character whose code point fits in a single byte.");
+}
+
 SPP_MOD_END

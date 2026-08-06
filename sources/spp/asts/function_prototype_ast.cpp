@@ -1,6 +1,7 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/codegen/macros.hpp>
 
 module spp.asts.function_prototype_ast;
 import spp.analyse.errors.semantic_error;
@@ -24,11 +25,13 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_implementation_lowered_ast;
+import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
@@ -46,7 +49,9 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.compiler_stages;
+import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -128,16 +133,17 @@ auto spp::asts::FunctionPrototypeAst::ToString() const
 
 auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *,
+  CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> Shared<codegen::LlvmFuncWrapper> {
   // Generate the return and parameter types.
-  auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, ctx);
+  auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, meta, ctx);
 
   if (not is_generic) {
-    // Create the LLVM function type.
-    const auto is_var_arg = FnParamGroup->GetVariadicParams() != nullptr;
-    const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types.ToStdVector(), is_var_arg);
+    // Create the LLVM function type. A "..a: T" parameter is never true C-ABI varargs - the call site (NameFnArgs)
+    // always collapses the trailing arguments into a single tuple value ahead of time, so the callee is an ordinary
+    // fixed-arity function whose last parameter happens to have a tuple type.
+    const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types.ToStdVector(), false);
 
     // Create the LLVM function and add it to the context.
     const auto created_llvm_func = llvm::Function::Create(
@@ -219,6 +225,33 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
   auto sup_ext_impl_members = Vec<Unique<Ast>>();
   auto clone = AstClone(this);
   // clone->Name = MakeShared<IdentifierAst>(Name->PosStart(), function_call_name);
+
+  // Modify generic pulls. Todo: Document this.
+  const auto sup_fn_ctx = ctx->To<SupPrototypeFunctionsAst>();
+  const auto sup_ext_ctx = ctx->To<SupPrototypeExtensionAst>();
+  if (const auto sup_gn_params = sup_fn_ctx != nullptr
+    ? sup_fn_ctx->GnParamGroup.get()
+    : sup_ext_ctx != nullptr
+    ? sup_ext_ctx->GnParamGroup.get()
+    : nullptr; sup_gn_params != nullptr) {
+    auto inherited = sup_gn_params->OptToReq();
+    auto &own = clone->GnParamGroup->Params;
+
+    // A function is free to shadow one of the block's parameters - "sup [T, E] Res[T, E] { fun ior_[E](self, that:
+    // Res[T, E]) }" reads "E" as the function's own everywhere in its body and signature, and the block's "E" is not
+    // nameable from inside it at all. Its own declaration therefore wins, and inheriting the shadowed name as well
+    // would only declare it twice in one group.
+    inherited->Params |= genex::actions::remove_if([&own](auto const &p) {
+      return genex::any_of(own, [&p](auto const &o) { return *o->Name == *p->Name; });
+    });
+
+    auto at = 0uz;
+    while (at < own.Len() and own[at]->GetOrderTag() == utils::OrderableTag::kRequiredParam) { ++at; }
+    own.Insert(
+      own.begin() + static_cast<std::ptrdiff_t>(at),
+      std::make_move_iterator(inherited->Params.begin()),
+      std::make_move_iterator(inherited->Params.end()));
+  }
 
   for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.get()); }
   sup_ext_impl_members.EmplaceBack(std::move(clone));
@@ -486,7 +519,8 @@ auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
   GenerateLlvmDeclaration(sm, meta, ctx);
 
   // Handle generic substitutions of a function.
-  for (auto const &[generic_scope, generic_ast] : _GenericSubstitutions) {
+  for (auto const &[generic_scope, generic_ast, generic_args] : _GenericSubstitutions) {
+    if (generic_ast == nullptr) { continue; }
     auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
     generic_ast->GenerateLlvmDeclaration(&tm, meta, ctx);
   }
@@ -506,20 +540,31 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // Build the function body.
+  // Todo: Move all to the subroutine prototype. Given coroutine
+  //  ast overrides this.
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
+  // A pure generic prototype never had a declaration generated (see "_IsPureGeneric"), and "GenerateLlvmDeclaration"
+  // leaves the slot holding a null wrapper rather than a wrapper with a null target - so every use below has to
+  // tolerate both. The body is skipped either way; the instantiations that do get generated are handled by the
+  // "_GenericSubstitutions" walk at the end of this function, which must still run.
+  const auto llvm_func = GetLlvmFunc();
+  const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
+
   // Add the entry block to the function.
-  const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", GetLlvmFunc()->Target);
+  const auto entry_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "entry", llvm_func_target);
   ctx->Builder.SetInsertPoint(entry_bb);
 
   // Generate the parameters as variables.
-  if (GetLlvmFunc()->Target != nullptr) {
+  if (llvm_func_target != nullptr) {
     FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
     GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
   }
 
-  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
+  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
+    ReturnType.get());
   meta->Save();
   meta->EnclosingFunctionFlavour = TokFun.get();
   meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
@@ -528,8 +573,9 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
 
   // If there is an implementation, generate its code.
   const auto is_extern = FfiAnnotation || AbstractAnnotation;
-  if (GetLlvmFunc()->Target == nullptr) {
-    // Generic base function so not generating for it.
+  if (llvm_func_target == nullptr) {
+    // A template ("_IsPureGeneric" declined to declare it) or an uninstantiable signature, so there is no body to
+    // generate - only instantiations are ever meant to run.
     // Manual scope skipping.
     const auto final_scope = sm->CurrentScope->FinalChildScope();
     while (sm->CurrentScope != final_scope) {
@@ -546,11 +592,10 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
 
     // The body is an expression scope, so it never emits its own terminator. Return with void if there is no return
     // statement, otherwise we have already returned to emit an "unreachable" instruction.
-    if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
-      GetLlvmFunc()->Target->getReturnType()->isVoidTy()
-        ? static_cast<llvm::Instruction*>(ctx->Builder.CreateRetVoid())
-        : static_cast<llvm::Instruction*>(ctx->Builder.CreateUnreachable());
+    if (not ctx->Builder.GetInsertBlock()->empty() and not ctx->Builder.GetInsertBlock()->back().isTerminator()) {
+      ctx->Builder.CreateRetVoid();
     }
+    VALIDATE_LLVM
   }
   else {
     // Skip the scope, linker will provide implementation for ffi.
@@ -563,9 +608,9 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   // Analyse to make a new scope in the correct place.
   // TODO: Remove this? func_call() generates generic target when needed,
   //  Do same with generic classes & object instantiation?
-  for (auto const &[generic_scope, generic_proto] : _GenericSubstitutions) {
+  for (auto const &[generic_scope, generic_proto, _] : _GenericSubstitutions) {
     auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
-    if (std::get<0>(generic_proto->_IsPureGeneric(&tm, ctx))) { continue; }
+    if (std::get<0>(generic_proto->_IsPureGeneric(&tm, meta, ctx))) { continue; }
 
     auto cloned_scope_set = MakeUnique<analyse::scopes::Scope>(*_Scope->Children[0]);
     generic_scope->Children[0]->Children.push_back(std::move(cloned_scope_set));
@@ -590,6 +635,12 @@ auto spp::asts::FunctionPrototypeAst::GetLlvmFunc() const
   return *_LlvmFunc;
 }
 
+auto spp::asts::FunctionPrototypeAst::DetachLlvmFuncSlot()
+  -> void {
+  // Break the slot shared with the prototype this was cloned from, so this function gets its own llvm target.
+  _LlvmFunc = MakeShared<Shared<codegen::LlvmFuncWrapper>>(nullptr);
+}
+
 auto spp::asts::FunctionPrototypeAst::PrintSignature(
   Str const &) const
   -> Str {
@@ -603,21 +654,37 @@ auto spp::asts::FunctionPrototypeAst::PrintSignature(
 
 auto spp::asts::FunctionPrototypeAst::RegisterGenericSubstitution(
   Unique<analyse::scopes::Scope> &&scope,
-  Unique<FunctionPrototypeAst> &&new_ast)
+  Unique<FunctionPrototypeAst> &&new_ast,
+  Unique<GenericArgumentGroupAst> &&gn_args)
   -> void {
-  // Store the scope for object persistence (and codegen).
-  _GenericSubstitutions.emplace_back(std::move(scope), std::move(new_ast));
+  // Store the scope for object persistence (and codegen), keyed by the arguments that produced it.
+  _GenericSubstitutions.emplace_back(
+    GenericSubstitution{std::move(scope), std::move(new_ast), std::move(gn_args)});
+}
+
+auto spp::asts::FunctionPrototypeAst::FindGenericSubstitution(
+  GenericArgumentGroupAst const &gn_args) const
+  -> Pair<analyse::scopes::Scope*, FunctionPrototypeAst*> {
+  // Both argument groups are emitted in parameter-declaration order by "InferGnArgs", so the element-wise compare in
+  // "GenericArgumentGroupAst::operator==" lines the same parameters up against each other.
+  for (auto const &sub : _GenericSubstitutions) {
+    // A slot whose prototype is still empty is a substitution that threw part-way through being built, so it is not a
+    // reusable instantiation.
+    if (sub.Proto == nullptr or sub.GnArgs == nullptr) { continue; }
+    if (*sub.GnArgs == gn_args) { return MakePair(sub.OwnedScope.get(), sub.Proto.get()); }
+  }
+  return MakePair(static_cast<analyse::scopes::Scope*>(nullptr), static_cast<FunctionPrototypeAst*>(nullptr));
 }
 
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions() const
   -> std::list<Pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
   return _GenericSubstitutions
-    | genex::views::transform([](auto const &x) { return MakePair(x.First.get(), x.Second.get()); })
+    | genex::views::transform([](auto const &x) { return MakePair(x.OwnedScope.get(), x.Proto.get()); })
     | genex::to<std::list>();
 }
 
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions()
-  -> std::list<Pair<Unique<analyse::scopes::Scope>, Unique<FunctionPrototypeAst>>>& {
+  -> std::list<GenericSubstitution>& {
   return _GenericSubstitutions;
 }
 
@@ -680,22 +747,36 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 }
 
 auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
-  analyse::scopes::ScopeManager const *sm,
+  analyse::scopes::ScopeManager *sm,
+  CompilerMetaData *meta,
   codegen::LLvmCtx const *ctx) const
   -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
   // Convert the return and parameter types to LLVM types.
-  const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ReturnType.get()), ctx);
-  const auto llvm_param_types = FnParamGroup->GetNonSelfParams()
+  const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+    *ReturnType, *sm->CurrentScope, *sm, *meta);
+  const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ret_type.get()), ctx);
+
+  auto llvm_param_types = FnParamGroup->GetNonSelfParams()
     | genex::views::transform([&](auto const &x) {
-      return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(x->Type.get()), ctx);
+      const auto param_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+        *x->Type, *sm->CurrentScope, *sm, *meta);
+      return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(param_type.get()), ctx);
     })
     | genex::to<Vec>();
 
   // Check if any of the types failed to convert.
-  const auto is_generic = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) {
+  const auto all_types_converted = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) {
     return x != nullptr;
   });
-  return std::make_tuple(not is_generic, llvm_ret_type, llvm_param_types);
+
+  const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted;
+
+  const auto self_param = FnParamGroup->GetSelfParam();
+  if (self_param != nullptr) {
+    const auto self_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
+    llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
+  }
+  return std::make_tuple(is_pure_generic, llvm_ret_type, llvm_param_types);
 }
 
 SPP_MOD_END

@@ -146,6 +146,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   Vec<Shared<asts::TypeAst>> GenericConstraints;
 
+  /**
+   * For a symbol created from a generic argument ("Yield=T"), the argument's value type ("T"). The binding is
+   * normally recoverable from @c LinkedScope, but when the value is itself an unresolved generic parameter there is
+   * no scope to link to, and the mapping would otherwise be lost.
+   */
+  Shared<asts::TypeAst> GenericVal;
+
   bool IsDirectlyCopyable = false;
 
   Function<bool()> IsCopyable;
@@ -187,7 +194,14 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     TypeSymbol const &that) const
     -> bool;
 
-  SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = true) const
+  /**
+   * The fully qualified name of the type, as a type AST that re-resolves to this symbol from any scope.
+   * @param ignore_dollar Leave a compiler-generated ("$Func") mock as a bare, module-local name. Defaults to
+   * qualifying it like any other type: the name has to survive crossing a module boundary, because a function value
+   * bound to a generic ("mod_a::a(b)" binding "F = mod_b::$B") is resolved in the caller's scope during inference,
+   * before any generic substitution runs. Only opt out where a bare name is genuinely wanted.
+   */
+  SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = false) const
     -> Shared<asts::TypeAst>;
 };
 

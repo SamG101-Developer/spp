@@ -46,7 +46,7 @@ auto spp::asts::FunctionImplementationLoweredAst::SetProtoPtr(
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
-  ScopeManager *,
+  ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
   if (analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
@@ -56,9 +56,11 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   auto &lowered_cmp_code = *analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn;
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
   for (auto &&[_, arg] : std::move(meta->CmpArgs)) {
-    extracted_args.push_back(std::move(arg));
+    extracted_args.EmplaceBack(std::move(arg));
   }
-  meta->CmpResult = lowered_cmp_code.invoke(std::move(extracted_args));
+  meta->CmpResult = lowered_cmp_code
+    .preload_generics(sm, meta->CmpGnTypeArgs, meta->CmpGnCompArgs)
+    .invoke(std::move(extracted_args));
 
   // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
   //     .with_args(*this)
@@ -66,11 +68,15 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
-  ScopeManager *,
-  CompilerMetaData *,
-  codegen::LLvmCtx *)
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Todo: inject raw llvm somehow. Maybe read from annotation args.
+  // Use the builtin to build the llvm custom lowered code.
+  analyse::utils::builtins::kBuiltinFuncs
+    .at(_ScopePtr)
+    .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmType(
+      *sm->CurrentScope->GetTypeSymbol(_ProtoPtr->ReturnType.get()), ctx));
   return nullptr;
 }
 

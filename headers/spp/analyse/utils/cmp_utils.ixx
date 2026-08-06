@@ -1,12 +1,26 @@
 module;
 #include <spp/macros.hpp>
 
+#define INVOKE_PATTERN(...)                                                                           \
+  if constexpr (std::is_same_v<Ret, void>) {                                                          \
+    fn(__VA_OPT__(__VA_ARGS__, ) dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...);          \
+    return nullptr;                                                                                   \
+  }                                                                                                   \
+  else {                                                                                              \
+    auto v = fn(__VA_OPT__(__VA_ARGS__, ) dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...); \
+    return v;                                                                                         \
+  }
+
 export module spp.analyse.utils.cmp_utils;
+import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
+import genex;
 import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class ScopeManager;
+  SPP_EXP_CLS struct TypeSymbol;
+  SPP_EXP_CLS struct VariableSymbol;
 }
 
 namespace spp::asts {
@@ -17,22 +31,77 @@ namespace spp::asts {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct IntegerLiteralAst;
   SPP_EXP_CLS struct ObjectInitializerAst;
+  SPP_EXP_CLS struct TypeAst;
+}
+
+namespace spp {
+  template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
+  struct DetermineCmpFuncSig_ {
+    using Type = void;
+  };
+
+  template <typename Ret, typename... Args>
+  struct DetermineCmpFuncSig_<true, false, Ret, Args...> {
+    using Type = Ret(*)(
+      spp::analyse::scopes::ScopeManager const &,
+      decltype(spp::asts::meta::CompilerMetaData::CmpGnTypeArgs) const &,
+      std::remove_reference_t<Args> &...);
+  };
+
+  template <typename Ret, typename... Args>
+  struct DetermineCmpFuncSig_<false, true, Ret, Args...> {
+    using Type = Ret(*)(
+      spp::analyse::scopes::ScopeManager const &,
+      decltype(spp::asts::meta::CompilerMetaData::CmpGnCompArgs) const &,
+      std::remove_reference_t<Args> &...);
+  };
+
+  template <typename Ret, typename... Args>
+  struct DetermineCmpFuncSig_<true, true, Ret, Args...> {
+    using Type = Ret(*)(
+      spp::analyse::scopes::ScopeManager const &,
+      decltype(spp::asts::meta::CompilerMetaData::CmpGnTypeArgs) const &,
+      decltype(spp::asts::meta::CompilerMetaData::CmpGnCompArgs) const &,
+      std::remove_reference_t<Args> &...);
+  };
+
+  template <typename Ret, typename... Args>
+  struct DetermineCmpFuncSig_<false, false, Ret, Args...> {
+    using Type = Ret(*)(
+      std::remove_reference_t<Args> &...);
+  };
+
+  template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
+  using DetermineCmpFuncSig = DetermineCmpFuncSig_<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>::Type;
 }
 
 namespace spp::analyse::utils::cmp_utils {
   SPP_EXP_CLS struct CmpFn {
+    decltype(asts::meta::CompilerMetaData::CmpGnTypeArgs) GnTypeArgs;
+    decltype(asts::meta::CompilerMetaData::CmpGnCompArgs) GnCompArgs;
+    scopes::ScopeManager *ScopeManager;
+
     virtual ~CmpFn() = default;
 
     virtual auto invoke(
       Vec<Unique<asts::ExpressionAst>> const &args)
       -> Unique<asts::ExpressionAst> = 0;
+
+    auto preload_generics(
+      scopes::ScopeManager *sm,
+      decltype(asts::meta::CompilerMetaData::CmpGnTypeArgs) gn_type_args,
+      decltype(asts::meta::CompilerMetaData::CmpGnCompArgs) gn_comp_args)
+      -> CmpFn& {
+      ScopeManager = sm;
+      GnTypeArgs = std::move(gn_type_args);
+      GnCompArgs = std::move(gn_comp_args);
+      return *this;
+    }
   };
 
-  SPP_EXP_CLS
-
-  template <typename Ret, typename... Args>
+  SPP_EXP_CLS template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
   struct CmpFnImpl final : CmpFn {
-    using FnPtr = Ret(*)(Args...);
+    using FnPtr = DetermineCmpFuncSig<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>;
     FnPtr fn;
 
     explicit CmpFnImpl(FnPtr f) : fn(std::move(f)) {
@@ -50,12 +119,17 @@ namespace spp::analyse::utils::cmp_utils {
       Vec<Unique<asts::ExpressionAst>> const &args,
       std::index_sequence<I...>)
       -> Unique<asts::ExpressionAst> {
-      if constexpr (std::is_same_v<Ret, void>) {
-        fn(dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...);
-        return nullptr;
+      if constexpr (HasGnTypeArgs and HasGnCompArgs) {
+        INVOKE_PATTERN(*ScopeManager, GnTypeArgs, GnCompArgs);
+      }
+      else if constexpr (HasGnTypeArgs) {
+        INVOKE_PATTERN(*ScopeManager, GnTypeArgs);
+      }
+      else if constexpr (HasGnCompArgs) {
+        INVOKE_PATTERN(*ScopeManager, GnCompArgs);
       }
       else {
-        return fn(dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...);
+        INVOKE_PATTERN()
       }
     }
   };
@@ -72,11 +146,44 @@ namespace spp::analyse::utils::cmp_utils {
     asts::IdentifierAst const *attribute)
     -> Unique<asts::ExpressionAst>;
 
-  SPP_EXP_FUN
-
-  template <typename Ret, typename... Args>
+  SPP_EXP_FUN template <bool HasGnTypeArgs = false, bool HasGnCompArgs = false, typename Ret, typename... Args>
+    requires (not HasGnTypeArgs and not HasGnCompArgs)
   auto make_cmp_fn(Ret (*fn)(Args...)) -> Unique<CmpFn> {
-    return MakeUnique<CmpFnImpl<Ret, Args...>>(fn);
+    return MakeUnique<CmpFnImpl<false, false, Ret, Args...>>(fn);
+  }
+
+  SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
+    requires (HasGnTypeArgs and not HasGnCompArgs)
+  auto make_cmp_fn(
+    Ret (*fn)(
+      scopes::ScopeManager const &,
+      decltype(asts::meta::CompilerMetaData::CmpGnTypeArgs) const &,
+      Args...))
+    -> Unique<CmpFn> {
+    return MakeUnique<CmpFnImpl<true, false, Ret, Args...>>(fn);
+  }
+
+  SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
+    requires (not HasGnTypeArgs and HasGnCompArgs)
+  auto make_cmp_fn(
+    Ret (*fn)(
+      scopes::ScopeManager const &,
+      decltype(asts::meta::CompilerMetaData::CmpGnCompArgs) const &,
+      Args...))
+    -> Unique<CmpFn> {
+    return MakeUnique<CmpFnImpl<false, true, Ret, Args...>>(fn);
+  }
+
+  SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
+    requires (HasGnTypeArgs and HasGnCompArgs)
+  auto make_cmp_fn(
+    Ret (*fn)(
+      scopes::ScopeManager const &,
+      decltype(asts::meta::CompilerMetaData::CmpGnTypeArgs) const &,
+      decltype(asts::meta::CompilerMetaData::CmpGnCompArgs) const &,
+      Args...))
+    -> Unique<CmpFn> {
+    return MakeUnique<CmpFnImpl<true, true, Ret, Args...>>(fn);
   }
 
   SPP_EXP_FUN auto std_boolean_and(
@@ -459,5 +566,15 @@ namespace spp::analyse::utils::cmp_utils {
     -> Unique<asts::IntegerLiteralAst>;
 
   SPP_EXP_FUN auto std_num_int_two()
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_mem_ops_size_of(
+    scopes::ScopeManager const &sm,
+    Vec<asts::TypeAst*> const &types)
+    -> Unique<asts::IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto std_mem_ops_align_of(
+    scopes::ScopeManager const &sm,
+    Vec<asts::TypeAst*> const &types)
     -> Unique<asts::IntegerLiteralAst>;
 }

@@ -111,9 +111,9 @@ auto spp::asts::CmpStatementAst::Stage2_GenTopLvlScopes(
   // Create a symbol for this constant declaration, pin to prevent moving.
   _AliasSym = MakeShared<analyse::scopes::VariableSymbol>(
     Name, Type, sm->CurrentScope, false, false, Visibility.First);
-  // _AliasSym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
   _AliasSym->MemInfo->AstCompTime = AstClone(this);
   _AliasSym->MemInfo->InitializedBy(*this, sm->CurrentScope);
+  _AliasSym->CompTimeValue = AstClone(Value);
   sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSym);
 }
 
@@ -131,7 +131,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   Type->Stage4_QualifyTypes(sm, meta);
   Type->Stage7_AnalyseSemantics(sm, meta);
 
-  if (not _FromUseStatement and not Type->IsCompilerGeneratedType() and not Type->IsSelfType()) {
+  if (not _FromUseStatement and not Type->IsSelfType()) {
     Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
     _AliasSym->Type = Type;
   }
@@ -185,8 +185,15 @@ auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
   Value->Stage8_CheckMemory(sm, meta);
   ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
 
-  // Generate the value and assign it to the variable symbol's compile-time value.
-  if (not Type->IsCompilerGeneratedType()) {
+  // Refresh the symbol's comptime value from the analysed "Value". A "$" mock is included: its value is the object
+  // initializer synthesised in "FunctionPrototypeAst::Stage1_PreProcess", which names the mock with its bare,
+  // unqualified name, and only "Value" gets qualified (by "ObjectInitializerAst::Stage7_AnalyseSemantics"). Leaving
+  // the symbol on the Stage2 clone means "Stage10_PreCodeGen" generates a bare "$Func" that does not resolve from
+  // whichever module scope the constant is being generated in.
+  //
+  // A "use"-generated constant is skipped instead of refreshed: its symbol lookup follows "AliasSym" through to the
+  // defining module's symbol, so writing here would clobber the definition's own value with the alias expression.
+  if (not _FromUseStatement) {
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
     var_sym->CompTimeValue = AstClone(Value);
   }
@@ -213,7 +220,7 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // No generation for $ types.
-  if (Type->IsCompilerGeneratedType()) { return nullptr; }
+  // if (Type->IsCompilerGeneratedType()) { return nullptr; }
 
   // Generate the value in a constant context.
   ctx->InConstantContext = true;
@@ -225,7 +232,8 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   const auto llvm_global_var = new llvm::GlobalVariable(
-    *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
+    *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage,
+    llvm::cast<llvm::Constant>(val),
     codegen::mangle::mangle_cmp_name(*sm->CurrentScope, *this));
 
   // Register in the llvm info.

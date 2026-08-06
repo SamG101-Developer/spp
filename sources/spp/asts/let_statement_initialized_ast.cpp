@@ -105,7 +105,8 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
 
   meta->AssignmentTarget = Var->ExtractName();
 
-  // Ensure the value's type matches the type (if given), including variant matching.
+  // Ensure the value's type matches the type (if given),
+  // including variant matching.
   if (Type != nullptr) {
     meta->AssignmentTargetType = Type;
     const auto val_type = Val->InferType(sm, meta);
@@ -124,7 +125,8 @@ auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
+  // Check the variable's memory (which in turn checks the
+  // values memory - must be done this way for destructuring).
   meta->Save();
   meta->AssignmentTarget = Var->ExtractName();
   meta->LetStatementExplicitType = Type;
@@ -154,12 +156,19 @@ auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Delegate the code generation to the variable, after setting up the meta.
+  // Setup a lot of meta information for the local variable to
+  // correctly generate the value.
   meta->Save();
   meta->AssignmentTarget = Var->ExtractName();
   meta->AssignmentTargetType = Type ? Type : Val->InferType(sm, meta);
   meta->LetStatementExplicitType = Type ? Type : Val->InferType(sm, meta);
   meta->LetStatementValue = Val.get();
+
+  // Delegate the code generation to the variable, after setting
+  // up the meta. Note that the "alloca" is returned even though
+  // this isn't an expression, for parent nodes that might need it.
+  // It's a hacky solution that should live on "meta" but no harm
+  // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
   meta->Restore();
   return alloca;

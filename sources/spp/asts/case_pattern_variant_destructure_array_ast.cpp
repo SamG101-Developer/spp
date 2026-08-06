@@ -85,7 +85,8 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage7_AnalyseSemantics(
   // Create the new variable from the pattern in the patterns scope.
   auto var = ConvToVar(meta);
   _MappedLet = MakeUnique<LetStatementInitializedAst>(
-    nullptr, std::move(var), nullptr, nullptr, AstClone(meta->CaseCondition));
+    nullptr, std::move(var), nullptr, nullptr,
+    AstClone(meta->CaseCondition));
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
 
   // Note there is no nested analysis of "elems", because the "let" statement handles it.
@@ -120,7 +121,9 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
 
   // Based on the result, return the corresponding comptime value.
   const auto p = PosStart();
-  meta->CmpResult = all_true ? BooleanLiteralAst::True(p) : BooleanLiteralAst::False(p);
+  meta->CmpResult = all_true
+    ? BooleanLiteralAst::True(p)
+    : BooleanLiteralAst::False(p);
 }
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
@@ -131,23 +134,23 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
 
-  // Generate the "let" statement to introduce all the symbols.
-  if (_MappedLet == nullptr) {
-    _MappedLet = MakeUnique<LetStatementInitializedAst>(nullptr, ConvToVar(meta), nullptr, nullptr,
-                                                        AstClone(meta->CaseCondition));
-    _MappedLet->Stage7_AnalyseSemantics(sm, meta);
+  // Run the codegen on the transformed "let" ast to introduce symbols into the llvm function.
+  if (_MappedLet != nullptr) {
+    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
   }
-  _MappedLet->Stage11_CodeGen(sm, meta, ctx);
 
-  // Combine all the generated transforms into a single "AND"ed statement.
+  // Combine all the generated transforms into a single "AND"ed
+  // expression.
   auto llvm_transforms = CreateAndAnalysePatternEqFuncsLlvm(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
-  const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->Builder.CreateAnd(a, b); };
-  const auto llvm_master_transform = llvm_transforms.IsEmpty()
-    ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->Context))
-    : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
-  // Return the combined statement.
+  const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
+  const auto llvm_master_transform = llvm_transforms.IsEmpty()
+    ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
+    : genex::fold_left_first(llvm_transforms, std::move(AND));
+
+  // Return the combined expression back to the branch who owns
+  // this pattern.
   return llvm_master_transform;
 }
 

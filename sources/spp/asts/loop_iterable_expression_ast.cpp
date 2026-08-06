@@ -85,6 +85,10 @@ auto spp::asts::LoopIterableExpressionAst::Clone() const
 auto spp::asts::LoopIterableExpressionAst::ToString() const
   -> Str {
   SPP_STRING_START;
+  if (_TransformedLoop != nullptr) {
+    SPP_STRING_APPEND(_TransformedLoop);
+    SPP_STRING_END;
+  }
   SPP_STRING_APPEND(TokLoop).append(" ");
   SPP_STRING_APPEND(Var).append(" ");
   SPP_STRING_APPEND(TokIn).append(" ");
