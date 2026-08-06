@@ -1,6 +1,7 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/codegen/macros.hpp>
 
 module spp.asts.function_prototype_ast;
 import spp.analyse.errors.semantic_error;
@@ -487,7 +488,8 @@ auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
   GenerateLlvmDeclaration(sm, meta, ctx);
 
   // Handle generic substitutions of a function.
-  for (auto const &[generic_scope, generic_ast] : _GenericSubstitutions) {
+  for (auto const &[generic_scope, generic_ast, generic_args] : _GenericSubstitutions) {
+    if (generic_ast == nullptr) { continue; }
     auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
     generic_ast->GenerateLlvmDeclaration(&tm, meta, ctx);
   }
@@ -512,13 +514,20 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
+  // A pure generic prototype never had a declaration generated (see "_IsPureGeneric"), and "GenerateLlvmDeclaration"
+  // leaves the slot holding a null wrapper rather than a wrapper with a null target - so every use below has to
+  // tolerate both. The body is skipped either way; the instantiations that do get generated are handled by the
+  // "_GenericSubstitutions" walk at the end of this function, which must still run.
+  const auto llvm_func = GetLlvmFunc();
+  const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
+
   // Add the entry block to the function.
   const auto entry_bb = llvm::BasicBlock::Create(
-    *ctx->Context, "entry", GetLlvmFunc()->Target);
+    *ctx->Context, "entry", llvm_func_target);
   ctx->Builder.SetInsertPoint(entry_bb);
 
   // Generate the parameters as variables.
-  if (GetLlvmFunc()->Target != nullptr) {
+  if (llvm_func_target != nullptr) {
     FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
     GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
   }
@@ -533,8 +542,9 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
 
   // If there is an implementation, generate its code.
   const auto is_extern = FfiAnnotation || AbstractAnnotation;
-  if (GetLlvmFunc()->Target == nullptr) {
-    // Generic base function so not generating for it.
+  if (llvm_func_target == nullptr) {
+    // A template ("_IsPureGeneric" declined to declare it) or an uninstantiable signature, so there is no body to
+    // generate - only instantiations are ever meant to run.
     // Manual scope skipping.
     const auto final_scope = sm->CurrentScope->FinalChildScope();
     while (sm->CurrentScope != final_scope) {
@@ -552,7 +562,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     // The body is an expression scope, so it never emits its own terminator. Return with void if there is no return
     // statement, otherwise we have already returned to emit an "unreachable" instruction.
     if (not ctx->Builder.GetInsertBlock()->empty() and not ctx->Builder.GetInsertBlock()->back().isTerminator()) {
-        ctx->Builder.CreateRetVoid();
+      ctx->Builder.CreateRetVoid();
     }
     VALIDATE_LLVM
   }
@@ -567,9 +577,9 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   // Analyse to make a new scope in the correct place.
   // TODO: Remove this? func_call() generates generic target when needed,
   //  Do same with generic classes & object instantiation?
-  for (auto const &[generic_scope, generic_proto] : _GenericSubstitutions) {
+  for (auto const &[generic_scope, generic_proto, _] : _GenericSubstitutions) {
     auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
-    if (std::get<0>(generic_proto->_IsPureGeneric(&tm, ctx))) { continue; }
+    if (std::get<0>(generic_proto->_IsPureGeneric(&tm, meta, ctx))) { continue; }
 
     auto cloned_scope_set = MakeUnique<analyse::scopes::Scope>(*_Scope->Children[0]);
     generic_scope->Children[0]->Children.push_back(std::move(cloned_scope_set));
@@ -594,6 +604,12 @@ auto spp::asts::FunctionPrototypeAst::GetLlvmFunc() const
   return *_LlvmFunc;
 }
 
+auto spp::asts::FunctionPrototypeAst::DetachLlvmFuncSlot()
+  -> void {
+  // Break the slot shared with the prototype this was cloned from, so this function gets its own llvm target.
+  _LlvmFunc = MakeShared<Shared<codegen::LlvmFuncWrapper>>(nullptr);
+}
+
 auto spp::asts::FunctionPrototypeAst::PrintSignature(
   Str const &) const
   -> Str {
@@ -607,21 +623,37 @@ auto spp::asts::FunctionPrototypeAst::PrintSignature(
 
 auto spp::asts::FunctionPrototypeAst::RegisterGenericSubstitution(
   Unique<analyse::scopes::Scope> &&scope,
-  Unique<FunctionPrototypeAst> &&new_ast)
+  Unique<FunctionPrototypeAst> &&new_ast,
+  Unique<GenericArgumentGroupAst> &&gn_args)
   -> void {
-  // Store the scope for object persistence (and codegen).
-  _GenericSubstitutions.emplace_back(std::move(scope), std::move(new_ast));
+  // Store the scope for object persistence (and codegen), keyed by the arguments that produced it.
+  _GenericSubstitutions.emplace_back(
+    GenericSubstitution{std::move(scope), std::move(new_ast), std::move(gn_args)});
+}
+
+auto spp::asts::FunctionPrototypeAst::FindGenericSubstitution(
+  GenericArgumentGroupAst const &gn_args) const
+  -> Pair<analyse::scopes::Scope*, FunctionPrototypeAst*> {
+  // Both argument groups are emitted in parameter-declaration order by "InferGnArgs", so the element-wise compare in
+  // "GenericArgumentGroupAst::operator==" lines the same parameters up against each other.
+  for (auto const &sub : _GenericSubstitutions) {
+    // A slot whose prototype is still empty is a substitution that threw part-way through being built, so it is not a
+    // reusable instantiation.
+    if (sub.Proto == nullptr or sub.GnArgs == nullptr) { continue; }
+    if (*sub.GnArgs == gn_args) { return MakePair(sub.OwnedScope.get(), sub.Proto.get()); }
+  }
+  return MakePair(static_cast<analyse::scopes::Scope*>(nullptr), static_cast<FunctionPrototypeAst*>(nullptr));
 }
 
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions() const
   -> std::list<Pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
   return _GenericSubstitutions
-    | genex::views::transform([](auto const &x) { return MakePair(x.First.get(), x.Second.get()); })
+    | genex::views::transform([](auto const &x) { return MakePair(x.OwnedScope.get(), x.Proto.get()); })
     | genex::to<std::list>();
 }
 
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions()
-  -> std::list<Pair<Unique<analyse::scopes::Scope>, Unique<FunctionPrototypeAst>>>& {
+  -> std::list<GenericSubstitution>& {
   return _GenericSubstitutions;
 }
 
@@ -689,18 +721,31 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
   codegen::LLvmCtx const *ctx) const
   -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
   // Convert the return and parameter types to LLVM types.
-  const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ReturnType.get()), ctx);
-  const auto llvm_param_types = FnParamGroup->GetNonSelfParams()
+  const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+    *ReturnType, *sm->CurrentScope, *sm, *meta);
+  const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ret_type.get()), ctx);
+
+  auto llvm_param_types = FnParamGroup->GetNonSelfParams()
     | genex::views::transform([&](auto const &x) {
-      return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(x->Type.get()), ctx);
+      const auto param_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+        *x->Type, *sm->CurrentScope, *sm, *meta);
+      return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(param_type.get()), ctx);
     })
     | genex::to<Vec>();
 
   // Check if any of the types failed to convert.
-  const auto is_generic = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) {
+  const auto all_types_converted = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) {
     return x != nullptr;
   });
-  return std::make_tuple(not is_generic, llvm_ret_type, llvm_param_types);
+
+  const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted;
+
+  const auto self_param = FnParamGroup->GetSelfParam();
+  if (self_param != nullptr) {
+    const auto self_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
+    llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
+  }
+  return std::make_tuple(is_pure_generic, llvm_ret_type, llvm_param_types);
 }
 
 SPP_MOD_END

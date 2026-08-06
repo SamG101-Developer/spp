@@ -19,6 +19,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct FunctionParameterGroupAst;
   SPP_EXP_CLS struct FunctionPrototypeAst;
   SPP_EXP_CLS struct GenExpressionAst;
+  SPP_EXP_CLS struct GenericArgumentGroupAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
@@ -190,19 +191,44 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const
     -> Shared<codegen::LlvmFuncWrapper>;
 
+  auto DetachLlvmFuncSlot()
+    -> void;
+
   SPP_ATTR_NODISCARD auto PrintSignature(
     Str const &owner) const
     -> Str;
 
+  /**
+   * One generic instantiation of this prototype: the scope it lives in, the substituted prototype itself, and the
+   * generic arguments it was built from. The arguments are what give the instantiation a stable identity - without
+   * them every resolution of the same call would mint a fresh, indistinguishable substitution, and the declaration
+   * generated for one would not be findable from another.
+   */
+  struct GenericSubstitution {
+    Unique<analyse::scopes::Scope> OwnedScope;
+    Unique<FunctionPrototypeAst> Proto;
+    Unique<GenericArgumentGroupAst> GnArgs;
+  };
+
   auto RegisterGenericSubstitution(
     Unique<analyse::scopes::Scope> &&scope,
-    Unique<FunctionPrototypeAst> &&new_ast) -> void;
+    Unique<FunctionPrototypeAst> &&new_ast,
+    Unique<GenericArgumentGroupAst> &&gn_args) -> void;
+
+  /**
+   * Find the instantiation of this prototype built from exactly these generic arguments, or @c {nullptr, nullptr} if
+   * there is not one yet. Reusing the match is what keeps a call site and the Stage10 declaration walk pointing at a
+   * single prototype object for a given instantiation.
+   */
+  SPP_ATTR_NODISCARD auto FindGenericSubstitution(
+    GenericArgumentGroupAst const &gn_args) const
+    -> Pair<analyse::scopes::Scope*, FunctionPrototypeAst*>;
 
   SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions() const
     -> std::list<Pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
 
   SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions()
-    -> std::list<Pair<Unique<analyse::scopes::Scope>, Unique<FunctionPrototypeAst>>>&;
+    -> std::list<GenericSubstitution>&;
 
   auto SetNonGenericImpl(
     FunctionPrototypeAst *impl)
@@ -230,7 +256,7 @@ protected:
   /**
    * Using a list because there are times that the collection is iterated whilst being appended to.
    */
-  std::list<Pair<Unique<analyse::scopes::Scope>, Unique<FunctionPrototypeAst>>> _GenericSubstitutions;
+  std::list<GenericSubstitution> _GenericSubstitutions;
 
   FunctionPrototypeAst *_NonGenericImpl;
 

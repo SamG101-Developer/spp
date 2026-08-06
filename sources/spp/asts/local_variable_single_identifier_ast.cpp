@@ -154,8 +154,9 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   -> llvm::Value* {
   // Create the alloca for the variable.
   const auto uid = "." + spp::utils::Uid(this);
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType.get());
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto llvm_type = meta->LetStatementPrecomputedValue != nullptr
+    ? meta->LetStatementPrecomputedValue->getType()
+    : codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType.get()), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // The storage for this variable. Normally a fresh alloca at the top of the function, but inside a coroutine the
