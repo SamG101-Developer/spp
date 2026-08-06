@@ -111,8 +111,14 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Unique<ExpressionAst> CmpResult;
   bool IgnoreAccessModifierViolations;
   bool AllowAbstractType;
-  Unique<codegen::LlvmGenerator> LlvmGenerator;
-  llvm::Value* LlvmGeneratorState;
+  /**
+   * The coroutine currently being generated into, for "gen" and "res" to reach. Shared rather than uniquely owned so
+   * that @c CompilerMetaData::Save can copy it into the snapshot like every other field: a @c Unique could only be
+   * moved, which left this null for the whole duration of the saved scope, and so nullptr for any "gen" nested inside
+   * one - a "gen" in a case branch, a loop body, and so on.
+   */
+  Shared<codegen::LlvmGenerator> LlvmGenerator;
+  llvm::Value *LlvmGeneratorState;
 };
 
 /**
