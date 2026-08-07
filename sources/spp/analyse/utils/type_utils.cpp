@@ -839,7 +839,9 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   auto master_branch_type_info = not valued_branches_type_info.IsEmpty()
     ? MakePair(valued_branches_type_info[0].First, valued_branches_type_info[0].Second)
     : MakePair<asts::CaseExpressionBranchAst*, Shared<asts::TypeAst>>(nullptr, nullptr);
-  if (meta->AssignmentTargetType != nullptr) { master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType); }
+  if (meta->AssignmentTargetType != nullptr) {
+    master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType);
+  }
 
   // Otherwise, if there are variant branches, use the most
   // variant type as the master branch type.
@@ -1252,8 +1254,12 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
       true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true,
       true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
       asts::AstClone(type_arg->Val->GetConvention()));
-    sym->GenericConstraints = true_val_sym ? true_val_sym->GenericConstraints : decltype(true_val_sym->GenericConstraints){};
-    sym->IsDirectlyZeroType = true_val_sym ? true_val_sym->IsDirectlyZeroType : false;
+    sym->GenericConstraints = true_val_sym
+      ? true_val_sym->GenericConstraints
+      : decltype(true_val_sym->GenericConstraints){};
+    sym->IsDirectlyZeroType = true_val_sym
+      ? true_val_sym->IsDirectlyZeroType
+      : false;
 
     // Record what the parameter was bound to. When the value is another (unresolved) generic parameter there is no
     // linked scope to recover the binding from later, so the value type is the only record of it.
@@ -1406,7 +1412,6 @@ auto spp::analyse::utils::type_utils::DedupVariableInnerTypes(
   auto variants_arg = type.LastTypePart()->GnArgGroup->TypeAt("Variants");
   auto resolved_type = Shared<asts::TypeAst>(nullptr);
   if (variants_arg == nullptr) {
-
     // Truly non-variant: return the empty list (no variant members).
     const auto type_sym = scope.GetTypeSymbol(&type);
     if (type_sym == nullptr) { return out; }
