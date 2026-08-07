@@ -188,20 +188,22 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   // Subroutine return type check.
   if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*meta->EnclosingFunctionRetType[0], *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
+      not TypeEq(
+        *meta->EnclosingFunctionRetType.Back(), *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
       {meta->EnclosingFunctionScope, sm->CurrentScope},
       ERR_ARGS(
-        *meta->EnclosingFunctionSourceRetType[0], *meta->EnclosingFunctionRetType[0], *analysed_lhs, *residual_type));
+        *meta->EnclosingFunctionSourceRetType.Back(), *meta->EnclosingFunctionRetType.Back(),
+        *analysed_lhs, *residual_type));
   }
 
   // Coroutine return type check.
   else {
     auto [_, yield_type, _] = GetGenAndYieldTypes(
-      *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *analysed_lhs, "early return");
+      *meta->EnclosingFunctionRetType.Back(), *sm->CurrentScope, *analysed_lhs, "early return");
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*yield_type, *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
       {meta->EnclosingFunctionScope, sm->CurrentScope},
-      ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *yield_type, *analysed_lhs, *residual_type));
+      ERR_ARGS(*meta->EnclosingFunctionSourceRetType.Back(), *yield_type, *analysed_lhs, *residual_type));
   }
 }
 
