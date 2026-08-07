@@ -182,7 +182,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   // has been through stage 7, and an expression that has not cannot be asked for its type - a function call has no
   // overload picked yet, so "_OverloadInfo" is still empty.
   const auto lhs_type = analysed_lhs->InferType(sm, meta);
-  const auto try_type = GetTryType(*lhs_type, *analysed_lhs, *sm);
+  const auto try_type = GetTryType(*lhs_type, *analysed_lhs, *sm, "early return");
   const auto residual_type = try_type->LastTypePart()->GnArgGroup->TypeAt("Residual")->Val;
 
   // Subroutine return type check.
@@ -255,7 +255,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
   // an operand that some other path has already analysed.
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
-  const auto try_type = GetTryType(*lhs_type, *lhs, *sm);
+  const auto try_type = GetTryType(*lhs_type, *lhs, *sm, "early return");
   return try_type->LastTypePart()->GnArgGroup->TypeAt("Value")->Val;
 }
 

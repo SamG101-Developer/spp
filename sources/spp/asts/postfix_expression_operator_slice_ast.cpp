@@ -95,7 +95,6 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   // Already analysed => return early.
-  using analyse::errors::SppExpressionAmbiguousIndexableError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_utils::TypeEq;

@@ -255,7 +255,9 @@ namespace spp::analyse::utils::type_utils {
   SPP_EXP_FUN auto GetTryType(
     asts::TypeAst const &type,
     asts::ExpressionAst const &expr,
-    scopes::ScopeManager const &sm)
+    scopes::ScopeManager const &sm,
+    StrView what,
+    bool raise = true)
     -> Shared<const asts::TypeAst>;
 
   SPP_EXP_FUN auto GetFwdTypes(

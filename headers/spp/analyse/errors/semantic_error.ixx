@@ -53,8 +53,9 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppVariableObjectDestructureWithBoundRestPatternError;
   SPP_EXP_CLS struct SppExpressionNotBooleanError;
   SPP_EXP_CLS struct SppExpressionNotGeneratorError;
+  SPP_EXP_CLS struct SppExpressionNotTryError;
   SPP_EXP_CLS struct SppExpressionAmbiguousGeneratorError;
-  SPP_EXP_CLS struct SppExpressionAmbiguousIndexableError;
+  SPP_EXP_CLS struct SppExpressionAmbiguousTryError;
   SPP_EXP_CLS struct SppLoopTooManyControlFlowStatementsError;
   SPP_EXP_CLS struct SppObjectInitializerMultipleAutofillArgumentsError;
   SPP_EXP_CLS struct SppObjectInitializerInvalidArgumentError;
@@ -63,7 +64,6 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppAbstractTypeUseError;
   SPP_EXP_CLS struct SppArgumentNameInvalidError;
   SPP_EXP_CLS struct SppArgumentMissingError;
-  SPP_EXP_CLS struct SppEarlyReturnRequiresTryTypeError;
   SPP_EXP_CLS struct SppFunctionCallAbstractFunctionError;
   SPP_EXP_CLS struct SppFunctionCallTooManyArgumentsError;
   SPP_EXP_CLS struct SppFunctionCallNoValidSignaturesError;
@@ -306,12 +306,16 @@ SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotGeneratorError final : 
   explicit SppExpressionNotGeneratorError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
 };
 
+SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotTryError final : SemanticError {
+  explicit SppExpressionNotTryError(asts::Ast const &expr, asts::Ast const &type);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousGeneratorError final : SemanticError {
   explicit SppExpressionAmbiguousGeneratorError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousIndexableError final : SemanticError {
-  explicit SppExpressionAmbiguousIndexableError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
+SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousTryError final : SemanticError {
+  explicit SppExpressionAmbiguousTryError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppLoopTooManyControlFlowStatementsError final : SemanticError {
@@ -347,10 +351,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppArgumentNameInvalidError final : Sem
 SPP_EXP_CLS struct spp::analyse::errors::SppArgumentMissingError final : SemanticError {
   explicit SppArgumentMissingError(asts::Ast const &target, StrView target_what, asts::Ast const &source,
     StrView source_what);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppEarlyReturnRequiresTryTypeError final : SemanticError {
-  explicit SppEarlyReturnRequiresTryTypeError(asts::Ast const &expr, asts::Ast const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallAbstractFunctionError final : SemanticError {

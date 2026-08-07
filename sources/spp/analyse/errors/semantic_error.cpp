@@ -575,11 +575,22 @@ spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorE
   asts::Ast const &expr,
   asts::Ast const &expr_type,
   const StrView what) {
-  AddHeaders(37, "SPP Expression Not Generator Error");
+  AddHeaders(37, "Expression Not Generator Error");
   AddErr(&expr, "Expression inferred as " + INLINE_INFO(expr_type.ToString()));
   AddFooter(
     "This expression must be of generator type to be used in a " + INLINE_NOTE(what) + " context.",
     "Change the expression/type to a generator or a type that superimposes it.");
+}
+
+
+spp::analyse::errors::SppExpressionNotTryError::SppExpressionNotTryError(
+  asts::Ast const &expr,
+  asts::Ast const &type) {
+  AddHeaders(48, "Expression Not Try Error");
+  AddErr(&expr, "Expression inferred as " + INLINE_INFO(type.ToString()));
+  AddFooter(
+    "This expression is used in an early return context, but its type is not a try type.",
+    "Change the expression to have a try type.");
 }
 
 spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguousGeneratorError(
@@ -593,15 +604,15 @@ spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguo
     "Ensure the expression has a clear and unambiguous generator type (only superimpose one).");
 }
 
-spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguousIndexableError(
+spp::analyse::errors::SppExpressionAmbiguousTryError::SppExpressionAmbiguousTryError(
   asts::Ast const &expr,
   asts::Ast const &expr_type,
   const StrView what) {
-  AddHeaders(39, "Expression Ambiguous Indexable Error");
+  AddHeaders(38, "SPP Expression Ambiguous Generator Error");
   AddErr(&expr, "Expression inferred as " + INLINE_INFO(expr_type.ToString()));
   AddFooter(
-    "This expression has an ambiguous indexable type in a " + INLINE_NOTE(what) + " context.",
-    "Ensure the expression has a clear and unambiguous indexable type (only superimpose one).");
+    "This expression has an ambiguous generator type in a " + INLINE_NOTE(what) + " context.",
+    "Ensure the expression has a clear and unambiguous generator type (only superimpose one).");
 }
 
 spp::analyse::errors::SppLoopTooManyControlFlowStatementsError::SppLoopTooManyControlFlowStatementsError(
@@ -698,16 +709,6 @@ spp::analyse::errors::SppArgumentMissingError::SppArgumentMissingError(
   AddFooter(
     "A required argument is missing in the current context.",
     "Provide the missing argument.");
-}
-
-spp::analyse::errors::SppEarlyReturnRequiresTryTypeError::SppEarlyReturnRequiresTryTypeError(
-  asts::Ast const &expr,
-  asts::Ast const &type) {
-  AddHeaders(48, "Early Return Requires Try Type Error");
-  AddErr(&expr, "Expression inferred as " + INLINE_INFO(type.ToString()));
-  AddFooter(
-    "This expression is used in an early return context, but its type is not a try type.",
-    "Change the expression to have a try type.");
 }
 
 spp::analyse::errors::SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(

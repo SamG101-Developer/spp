@@ -772,27 +772,34 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
   sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 
   // Search through the supertypes for a direct generator type.
+  // Simple comparison check against the Gen and GenOnce types.
   const auto generator_type_candidates = sup_types
     | genex::views::filter([&](auto const &sup_type) { return IsTypeGen(*sup_type, scope); })
     | genex::to<Vec>();
 
+  // If there are no Gen or GenOnce super types, then the
+  // generator and yield type cannot be obtained, so either
+  // throw an error or return nullptr.
   if (generator_type_candidates.IsEmpty()) {
     RaiseIf<SppExpressionNotGeneratorError>(
       raise, {&scope}, ERR_ARGS(expr, type, what));
     return {nullptr, nullptr, false};
   }
 
+  // If there are more than 1 Gen or GenOnce super types, then
+  // the generator and yield types would be ambiguous, so either
+  // throw an error or return nullptr.
   if (generator_type_candidates.Len() > 1) {
     RaiseIf<SppExpressionAmbiguousGeneratorError>(
       raise, {&scope}, ERR_ARGS(expr, type, what));
     return {nullptr, nullptr, false};
   }
 
-  // Extract the generator and yield type.
+  // Extract the generator and yield type from the candidates.
+  // Accessing [0] is safe as we have already done the validation
+  // beforehand.
   auto generator_type = generator_type_candidates[0];
   auto yield_type = generator_type->LastTypePart()->GnArgGroup->TypeAt("Yield")->Val;
-
-  // Extract the multiplicity, optionality and fallibility from the generator type.
   auto is_once = TypeEq(
     *GEN_ONCE, *generator_type->WithoutGenerics(), scope, scope);
 
@@ -803,9 +810,13 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
 auto spp::analyse::utils::type_utils::GetTryType(
   asts::TypeAst const &type,
   asts::ExpressionAst const &expr,
-  scopes::ScopeManager const &sm)
+  scopes::ScopeManager const &sm,
+  StrView what,
+  const bool raise)
   -> Shared<const asts::TypeAst> {
   // Generic types are not Try types, so return nullptr.
+  // Todo: Like Copy, can we rely on constraints here? Add
+  //  unit tests.
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
   if (type_sym->IsGeneric) { return nullptr; }
 
@@ -813,13 +824,28 @@ auto spp::analyse::utils::type_utils::GetTryType(
   auto sup_types = Vec{type.shared_from_this()};
   sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 
-  // Search through the supertypes for a direct Try type.
+  // Search through the supertypes for a direct try type.
+  // Simple comparison check against the Try types.
   const auto try_type_candidates = sup_types
     | genex::views::filter([&sm](auto &&sup_type) { return IsTypeTry(*sup_type, *sm.CurrentScope); })
     | genex::to<Vec>();
 
-  RaiseIf<errors::SppEarlyReturnRequiresTryTypeError>(
-    try_type_candidates.IsEmpty(), {sm.CurrentScope}, ERR_ARGS(expr, type));
+  // If there are no Try super types, then the try type cannot
+  // be obtained, so either throw an error or return nullptr.
+  if (try_type_candidates.IsEmpty()) {
+    RaiseIf<errors::SppExpressionNotTryError>(
+      raise, {sm.CurrentScope}, ERR_ARGS(expr, type));
+    return nullptr;
+  }
+
+  // If there are more than 1 Try super types, then the Try
+  // type would be ambiguous, so either throw an error or
+  // return nullptr.
+  if (try_type_candidates.Len() > 1) {
+    RaiseIf<errors::SppExpressionAmbiguousTryError>(
+      raise, {sm.CurrentScope}, ERR_ARGS(expr, type, what));
+    return nullptr;
+  }
 
   // Extract the Try type and return it.
   return try_type_candidates[0];
