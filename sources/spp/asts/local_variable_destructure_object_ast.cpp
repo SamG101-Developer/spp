@@ -164,6 +164,9 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _TmpName = BindDestructureTemporary(*this, val, val_type, *sm);
     effective_val = _TmpName.get();
   }
+  else {
+    _TmpName = nullptr; // Clear from clone.
+  }
 
   // Handle nested flow typing, like seen in the case pattern handler for object destructure. This narrows whatever the
   // elements index, so it is layered on top of the temporary rather than on the value.

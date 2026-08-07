@@ -123,6 +123,9 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     _TmpName = BindDestructureTemporary(*this, val, val_type, *sm);
     effective_val = _TmpName.get();
   }
+  else {
+    _TmpName = nullptr; // Clear from clone.
+  }
 
   // For a bound ".." destructure, ie "let [a, ..b, c] = t",
   // create an intermediary type.
