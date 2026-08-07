@@ -6,6 +6,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.type_utils;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -20,6 +21,7 @@ import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
@@ -231,11 +233,23 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
       "case.branch.variant" + uid, ctx);
   }
 
+  // Add a special case for the "!" type being used as the
+  // returning type of one of the branches.
+  meta->Save();
+  meta->IgnoreMissingElseBranchForInference = true;
+  const auto body_is_never = analyse::utils::type_utils::TypeEq(
+    *Body->InferType(sm, meta), *generate::common_types_precompiled::NEVER,
+    *sm->CurrentScope, *sm->CurrentScope);
+  meta->Restore();
+
   // Add the value generated from the branch's body into the PHI
   // node of the "meta" context. This will then be pulled by the
   // parent "case" AST. Given the branch doesn't terminate (return),
   // we branch back to the "end" block of the "case" expression.
-  if (not incoming_bb->hasTerminator()) {
+  if (not incoming_bb->hasTerminator() and body_is_never) {
+    ctx->Builder.CreateUnreachable();
+  }
+  else if (not incoming_bb->hasTerminator()) {
     if (meta->LlvmPhi != nullptr) { meta->LlvmPhi->addIncoming(llvm_val, incoming_bb); }
     ctx->Builder.CreateBr(meta->LlvmEndBB);
   }
