@@ -231,9 +231,4 @@ namespace spp::analyse::utils::func_utils {
   SPP_EXP_FUN auto CreateCallablePrototype(
     asts::TypeAst const &expr_type)
     -> Unique<asts::FunctionPrototypeAst>;
-
-  SPP_EXP_FUN auto GetOverloadTypes(
-    asts::TypeAst const &overload_set_type,
-    scopes::Scope const &scope)
-    -> Vec<Shared<asts::TypeAst>>;
 }

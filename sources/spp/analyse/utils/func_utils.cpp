@@ -1151,16 +1151,6 @@ auto spp::analyse::utils::func_utils::CreateCallablePrototype(
   return dummy_overload;
 }
 
-auto spp::analyse::utils::func_utils::GetOverloadTypes(
-  asts::TypeAst const &overload_set_type,
-  scopes::Scope const &scope)
-  -> Vec<Shared<asts::TypeAst>> {
-  // Extract the overload types from the overload set type and are functional.
-  return scope.GetTypeSymbol(&overload_set_type)->LinkedScope->SupTypes()
-    | genex::views::filter([&](auto &&t) { return type_utils::IsTypeFunc(*t, scope); })
-    | genex::to<Vec>();
-}
-
 template auto spp::analyse::utils::func_utils::NameGnArgsImpl<
   spp::asts::GenericArgumentCompAst,
   spp::asts::GenericParameterCompAst,

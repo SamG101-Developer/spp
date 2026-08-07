@@ -512,7 +512,7 @@ auto spp::analyse::utils::type_utils::IsTypeGen(
   scopes::Scope const &scope)
   -> bool {
   // Check the type against "std::generator::Gen[T]" or
-  // "std::generator::GenOnce[T]", This only considers the
+  // "std::generator::GenOnce[T]". This only considers the
   // type directly, not any supertypes.
   using asts::generate::common_types_precompiled::GEN;
   using asts::generate::common_types_precompiled::GEN_ONCE;
@@ -542,7 +542,9 @@ auto spp::analyse::utils::type_utils::IsTypeFunc(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::function::FunMov[Ret, Args]/FunMut[Ret, Args]/FunRef[Ret, Args]".
+  // Check the type against one of the following three targets:
+  // `std::function::FunRef|FunMut|FunMov[Args, Out]`. This only
+  // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::FUN_MOV;
   using asts::generate::common_types_precompiled::FUN_MUT;
   using asts::generate::common_types_precompiled::FUN_REF;
@@ -552,13 +554,6 @@ auto spp::analyse::utils::type_utils::IsTypeFunc(
     TypeEq(*type.WithoutGenerics(), *FUN_REF, scope, scope);
 }
 
-auto spp::analyse::utils::type_utils::IsTypeFatPointerFamily(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope)
-  -> bool {
-  return IsTypeGen(type, scope) or IsTypeFunc(type, scope);
-}
-
 auto spp::analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
@@ -566,9 +561,9 @@ auto spp::analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount(
   const auto type_sym = scope.GetTypeSymbol(&type);
   if (type_sym == nullptr or type_sym->LinkedScope == nullptr) { return 0uz; }
 
-  // "Gen"/"GenOnce" lower to a single opaque llvm coroutine handle (the "llvm.coro.begin" result) rather than a true
-  // 2-pointer fat pointer - only the "FunXXX" closure family is a genuine { fn_ptr, env_ptr } pair. Both still share
-  // "IsTypeFatPointerFamily" as the "does this need field(s) prepended at all" check; this is just the field count.
+  // "Gen"/"GenOnce" lower to a single opaque llvm coroutine handle
+  // (the "llvm.coro.begin" result) rather than a true 2-pointer fat
+  // pointer - only the "FunXXX" family is a { fn_ptr, env_ptr } pair.
   for (auto const &sup_type : type_sym->LinkedScope->SupTypes()) {
     if (IsTypeGen(*sup_type, *type_sym->LinkedScope)) { return 1uz; }
     if (IsTypeFunc(*sup_type, *type_sym->LinkedScope)) { return 2uz; }
@@ -580,8 +575,9 @@ auto spp::analyse::utils::type_utils::IsTypeRecursive(
   asts::ClassPrototypeAst const &type,
   scopes::ScopeManager const &sm)
   -> Shared<asts::TypeAst> {
-  // Get the attribute types recursively from the class prototype, and check for a match with the class prototype.
-  // Use the source type as this is used for error reporting.
+  // Get the attribute types recursively from the class prototype,
+  // and check for a match with the class prototype. Use the source
+  // type as this function is used for error reporting exclusively.
   auto attr_info = Vec<Pair<Shared<scopes::TypeSymbol>, asts::ClassAttributeAst*>>{};
   GetAttrTypes(&type, sm.CurrentScope, attr_info);
   for (auto const &[attr_type_sym, attr_ast] : attr_info) {
@@ -589,8 +585,6 @@ auto spp::analyse::utils::type_utils::IsTypeRecursive(
       return attr_ast->Source.OriginalType;
     }
   }
-
-  // No recursive type was found, so return nullptr.
   return nullptr;
 }
 
