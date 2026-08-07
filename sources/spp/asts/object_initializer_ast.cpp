@@ -79,7 +79,6 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppObjectInitializerGeneratorError;
   using analyse::utils::type_utils::IsTypeBorrowed;
   using analyse::utils::type_utils::IsTypeVariant;
-  using analyse::utils::type_utils::IsTypeGen;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Get the base class symbol (no generics) and check it exists.
