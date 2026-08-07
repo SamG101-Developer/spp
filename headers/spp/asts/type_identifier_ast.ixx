@@ -3,7 +3,9 @@ module;
 
 export module spp.asts.type_identifier_ast;
 import spp.asts.type_ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -74,6 +76,8 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 

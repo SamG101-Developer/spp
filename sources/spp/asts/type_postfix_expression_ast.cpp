@@ -13,6 +13,8 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.type_postfix_expression_operator_nested_type_ast;
 import spp.asts.type_unary_expression_ast;
@@ -149,6 +151,16 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   meta->TypeAnalysisTypeScope = lhs_type_scope;
   op_nested->Name->Stage7_AnalyseSemantics(sm, meta);
   meta->Restore();
+}
+
+auto spp::asts::TypePostfixExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LLvmCtx *ctx)
+  -> llvm::Value* {
+  // These are always "zero_type", so return init.
+  const auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(this), nullptr);
+  return mock_init->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto spp::asts::TypePostfixExpressionAst::InferType(

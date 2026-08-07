@@ -23,6 +23,8 @@ import spp.asts.generic_argument_type_positional_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
@@ -197,6 +199,31 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     meta->TypeAnalysisTypeScope = nullptr;
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
 
+    // A comp argument written as a plain name means whatever that name is bound to where the type is written, not the
+    // name itself: "SizedIntegerUnsigned[w]::from(that)" sitting in an instantiation of the enclosing "sup [cmp w:
+    // U32]" block names a concrete width. "CreateGenericSym" leaves that binding on the symbol's comp-time ast, so
+    // resolve through it - otherwise the type stays "SizedInteger[w=w, signed=false]" and reaches codegen with no
+    // layout to generate. A type argument already behaves this way, because a bound type generic's symbol carries the
+    // concrete type it was bound to.
+    //
+    // Guarded, because this rewrites the argument in place and most asts reaching here are shared with a template: an
+    // instantiated "sup" scope keeps the template's ast node (see "CreateGenericSupScope"), and re-analysis through
+    // "ResetCache" would bake one instantiation's bindings into the signature every other caller resolves against.
+    // Only an instantiation's own body is a private clone, so only that analysis sets the flag.
+    if (meta->ResolveBoundCompGenerics) {
+      for (auto *comp_arg : GnArgGroup->Args
+           | genex::views::ptr
+           | genex::views::cast_dynamic<GenericArgumentCompAst*>()) {
+        const auto *as_id = comp_arg->Val->To<IdentifierAst>();
+        if (as_id == nullptr) { continue; }
+        const auto sym = sm->CurrentScope->GetVarSymbol(as_id);
+        if (sym == nullptr or not sym->IsGeneric or sym->MemInfo->AstCompTime == nullptr) { continue; }
+        if (const auto *bound = sym->MemInfo->AstCompTime->To<GenericArgumentCompKeywordAst>(); bound != nullptr) {
+          comp_arg->Val = AstClone(bound->Val);
+        }
+      }
+    }
+
     // Infer the generic arguments from information given from object initialisation.
     InferGnArgs(
       *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget,
@@ -263,6 +290,16 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
   _HasAnalysed = true;
   _CachedStringification.clear();
+}
+
+auto spp::asts::TypeIdentifierAst::Stage11_CodeGen(
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LLvmCtx *ctx)
+  -> llvm::Value* {
+  // These are always "zero_type", so return init.
+  const auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(this), nullptr);
+  return mock_init->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto spp::asts::TypeIdentifierAst::Iterator() const
