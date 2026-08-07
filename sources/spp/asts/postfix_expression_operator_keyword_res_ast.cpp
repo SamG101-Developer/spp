@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.analyse.errors.semantic_error;
@@ -47,13 +48,13 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKey
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosStart() const
   -> std::size_t {
   // Use the "." token.
-  return TokDot != nullptr ? TokDot->PosStart() : FnArgGroup->PosStart();
+  return TokDot != nullptr ? TokDot->PosStart() : 0;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosEnd() const
   -> std::size_t {
   // Use the argument group if it exists, otherwise use the "res" token.
-  return FnArgGroup->PosEnd();
+  return FnArgGroup != nullptr ? FnArgGroup->PosEnd() : TokRes != nullptr ? TokRes->PosEnd() : 0;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const
@@ -131,7 +132,14 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // identifier - it can be a field, an element, or a temporary -
   // so it is resolved to an address rather than to a symbol.
   const auto llvm_generator_addr = codegen::llvm_addr_of(*meta->PostfixExpressionLhs, sm, meta, ctx);
-  const auto &llvm_generator_env = ctx->LlvmGenerators[llvm_generator_addr];
+  const auto llvm_generator_it = ctx->LlvmGenerators.find(llvm_generator_addr);
+
+  const auto no_env_msg = Str(
+    "No generator environment was registered for this resumption. The resumed value is generator-typed but was not "
+    "produced by a coroutine call, so there is nothing to resume");
+  RaiseIf<analyse::errors::SppInternalCompilerError>(
+    llvm_generator_it == ctx->LlvmGenerators.end(), {sm->CurrentScope}, ERR_ARGS(*this, no_env_msg));
+  const auto &llvm_generator_env = llvm_generator_it->second;
 
   // Step 1: Place the value of the argument (if it exists),
   // into the "send" slot on the generator state struct. A bare
@@ -151,8 +159,6 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // Step 2: Invoke the llvm coroutine intrinsic, allowing
   // program to resume the coroutine execution, to get the
   // next value.
-  // "llvm.coro.resume" is "[] (ptr)" - it returns void, so the call must not be given a name. llvm forbids naming a
-  // void value, and the name ends up corrupting the callee instead.
   ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle}, {}, "");
 
