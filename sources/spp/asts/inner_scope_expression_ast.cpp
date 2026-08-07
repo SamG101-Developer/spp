@@ -37,6 +37,8 @@ spp::asts::InnerScopeExpressionAst::InnerScopeExpressionAst(
   TokL(std::move(tok_l)),
   Members(std::move(members)),
   TokR(std::move(tok_r)) {
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_CURLY_BRACE, "{");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
 spp::asts::InnerScopeExpressionAst::~InnerScopeExpressionAst() = default;
