@@ -105,7 +105,9 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 
     // For case conditions, we need an assignment target in case of variants. Closures have no declared return
     // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
-    meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+    meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty()
+      ? nullptr
+      : meta->EnclosingFunctionRetType.Back();
     if (meta->AssignmentTargetType != nullptr) {
       meta->AssignmentTargetType = ResolveAndSubstituteSelfType(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
@@ -188,7 +190,7 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   const auto ret_type = _RetType != nullptr
     ? _RetType
-    : meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+    : meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType.Back();
 
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
