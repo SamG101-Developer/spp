@@ -650,6 +650,18 @@ spp::analyse::errors::SppObjectInitializerVariantError::SppObjectInitializerVari
     "Use the layout: " + INLINE_HELP("let x: VariantType = InnerType()") + ".");
 }
 
+spp::analyse::errors::SppObjectInitializerGeneratorError::SppObjectInitializerGeneratorError(
+  asts::Ast const &type,
+  asts::Ast const &generator_type) {
+  AddHeaders(98, "Object Initializer Generator Error");
+  AddCtxForErr(&type, "Generator initialized here");
+  AddFooter(
+    "A generator cannot be initialized, because it superimposes " + INLINE_NOTE(generator_type.ToString()) + ". The "
+    "value a generator names is the suspended state of a coroutine, and an object initializer has no such state to "
+    "give, so the result could never be resumed.",
+    "Produce this type from a " + INLINE_HELP("cor") + " that yields the values, rather than constructing it.");
+}
+
 spp::analyse::errors::SppAbstractTypeUseError::SppAbstractTypeUseError(
   asts::Ast const &type,
   asts::Ast const &unimplemented) {

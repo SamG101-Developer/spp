@@ -76,8 +76,11 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppObjectInitializerVariantError;
+  using analyse::errors::SppObjectInitializerGeneratorError;
   using analyse::utils::type_utils::IsTypeBorrowed;
   using analyse::utils::type_utils::IsTypeVariant;
+  using analyse::utils::type_utils::IsTypeGen;
+  using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Get the base class symbol (no generics) and check it exists.
   meta->Save();
@@ -123,6 +126,13 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   Type->Stage7_AnalyseSemantics(sm, meta);
   Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
   meta->Restore();
+
+  // A generator cannot be initialized either.
+  const auto [gen_type, _, _] = GetGenAndYieldTypes(
+    *Type, *sm->CurrentScope, *Source.OriginalType, "object initializer", false);
+  RaiseIf<SppObjectInitializerGeneratorError>(
+    gen_type != nullptr, {sm->CurrentScope},
+    ERR_ARGS(*Source.OriginalType, *gen_type));
 
   meta->Save();
   meta->ObjectInitType = Type;
