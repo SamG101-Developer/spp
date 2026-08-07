@@ -1,7 +1,10 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.destructure_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -114,6 +117,14 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   // Give the temporary its own stack slot.
   const auto uid = "." + spp::utils::Uid(tmp_name.get());
   const auto sym = sm.CurrentScope->GetVarSymbol(tmp_name.get());
+
+  const auto no_tmp_msg = Str(
+    "The hidden temporary for this destructure has no symbol in the scope being generated. Its binding was introduced "
+    "during semantic analysis, so the destructure is being generated against a different scope to the one it was "
+    "analysed in");
+  RaiseIf<errors::SppInternalCompilerError>(
+    sym == nullptr, {sm.CurrentScope}, ERR_ARGS(*tmp_name, no_tmp_msg));
+
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym->Type.get());
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
