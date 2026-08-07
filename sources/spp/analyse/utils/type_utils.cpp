@@ -672,7 +672,8 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
   asts::TypeAst const &type,
   scopes::Scope const &scope,
   asts::ExpressionAst const &expr,
-  StrView what)
+  StrView what,
+  const bool raise)
   -> std::tuple<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool> {
   //
   using asts::generate::common_types_precompiled::GEN_ONCE;
@@ -691,11 +692,17 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
     | genex::views::filter([&](auto const &sup_type) { return IsTypeGen(*sup_type, scope); })
     | genex::to<Vec>();
 
-  RaiseIf<SppExpressionNotGeneratorError>(
-    generator_type_candidates.IsEmpty(), {&scope}, ERR_ARGS(expr, type, what));
+  if (generator_type_candidates.IsEmpty()) {
+    RaiseIf<SppExpressionNotGeneratorError>(
+      raise, {&scope}, ERR_ARGS(expr, type, what));
+    return {nullptr, nullptr, false};
+  }
 
-  RaiseIf<SppExpressionAmbiguousGeneratorError>(
-    generator_type_candidates.Len() > 1, {&scope}, ERR_ARGS(expr, type, what));
+  if (generator_type_candidates.Len() > 1) {
+    RaiseIf<SppExpressionAmbiguousGeneratorError>(
+      raise, {&scope}, ERR_ARGS(expr, type, what));
+    return {nullptr, nullptr, false};
+  }
 
   // Extract the generator and yield type.
   auto generator_type = generator_type_candidates[0];

@@ -284,7 +284,8 @@ namespace spp::analyse::utils::type_utils {
     asts::TypeAst const &type,
     scopes::Scope const &scope,
     asts::ExpressionAst const &expr,
-    StrView what)
+    StrView what,
+    bool raise = true)
     -> std::tuple<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool>;
 
   SPP_EXP_FUN auto GetTryType(
