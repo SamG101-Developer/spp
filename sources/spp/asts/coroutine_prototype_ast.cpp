@@ -84,7 +84,6 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::type_utils::IsTypeGen;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Perform default function prototype semantic analysis
