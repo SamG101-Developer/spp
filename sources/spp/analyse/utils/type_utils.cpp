@@ -61,6 +61,54 @@ import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
 
+namespace {
+  auto IsTypeGen(
+    spp::asts::TypeAst const &type,
+    spp::analyse::scopes::Scope const &scope)
+    -> bool {
+    // Check the type against "std::generator::Gen[T]" or
+    // "std::generator::GenOnce[T]". This only considers the
+    // type directly, not any supertypes.
+    using spp::asts::generate::common_types_precompiled::GEN;
+    using spp::asts::generate::common_types_precompiled::GEN_ONCE;
+    using spp::analyse::utils::type_utils::TypeEq;
+
+    return
+      TypeEq(*type.WithoutGenerics(), *GEN, scope, scope) or
+      TypeEq(*type.WithoutGenerics(), *GEN_ONCE, scope, scope);
+  }
+
+  auto IsTypeTry(
+    spp::asts::TypeAst const &type,
+    spp::analyse::scopes::Scope const &scope)
+    -> bool {
+    // Check the type against "std::try::Try[Ok, Err]".
+    using spp::asts::generate::common_types_precompiled::TRY;
+    using spp::analyse::utils::type_utils::TypeEq;
+
+    return TypeEq(*type.WithoutGenerics(), *TRY, scope, scope);
+  }
+
+  auto GetAttrTypes(
+    const spp::asts::ClassPrototypeAst *cls_proto,
+    const spp::analyse::scopes::Scope *cls_scope,
+    spp::Vec<spp::Pair<spp::Shared<spp::analyse::scopes::TypeSymbol>, spp::asts::ClassAttributeAst*>> &attr_symbols)
+    -> void {
+    // Get all attribute types, without recursion errors (this will
+    // be handled elsewhere, so assume it has been checked already).
+    for (auto const &member : cls_proto->Impl->Members
+         | genex::views::ptr
+         | genex::views::cast_dynamic<spp::asts::ClassAttributeAst*>) {
+      auto type_sym = cls_scope->GetTypeSymbol(member->Type.get());
+      if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.First; })) { continue; }
+      if (type_sym->IsGeneric) { continue; }
+
+      attr_symbols.EmplaceBack(type_sym, member);
+      GetAttrTypes(type_sym->Type, type_sym->LinkedScope, attr_symbols);
+    }
+  }
+}
+
 auto spp::analyse::utils::type_utils::ConventionEq(
   asts::TypeAst const &lhs_type,
   asts::TypeAst const &rhs_type)
@@ -507,35 +555,12 @@ auto spp::analyse::utils::type_utils::IsTypeNever(
   return TypeEq(type, *NEVER, scope, scope);
 }
 
-auto spp::analyse::utils::type_utils::IsTypeGen(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope)
-  -> bool {
-  // Check the type against "std::generator::Gen[T]" or
-  // "std::generator::GenOnce[T]". This only considers the
-  // type directly, not any supertypes.
-  using asts::generate::common_types_precompiled::GEN;
-  using asts::generate::common_types_precompiled::GEN_ONCE;
-  return
-    TypeEq(*type.WithoutGenerics(), *GEN, scope, scope) or
-    TypeEq(*type.WithoutGenerics(), *GEN_ONCE, scope, scope);
-}
-
 auto spp::analyse::utils::type_utils::IsTypeSelf(
   asts::TypeAst const &type)
   -> bool {
   // Check for a string match to "Self".
   const auto type_identifier = type.To<asts::TypeIdentifierAst>();
   return type_identifier != nullptr and type_identifier->Name == "Self";
-}
-
-auto spp::analyse::utils::type_utils::IsTypeTry(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope)
-  -> bool {
-  // Check the type against "std::try::Try[Ok, Err]".
-  using asts::generate::common_types_precompiled::TRY;
-  return TypeEq(*type.WithoutGenerics(), *TRY, scope, scope);
 }
 
 auto spp::analyse::utils::type_utils::IsTypeFunc(
@@ -593,18 +618,24 @@ auto spp::analyse::utils::type_utils::IsTypeBorrowed(
   scopes::ScopeManager const &sm,
   const bool deep)
   -> bool {
-  // Check that either this type, or any inner types for variants, are "&" or "&mut".
+  // Check that either this type, or any inner types for variants,
+  // are "&" or "&mut". Start with short-circuits on the type given,
+  // which might contain an "&"/"&mut" unary operator.
   using asts::generate::common_types_precompiled::VAR;
   if (type.GetConvention() != nullptr) { return true; }
   if (type.IsSelfType()) { return false; }
-  // if (type.IsCompilerGeneratedType()) { return false; }
 
-  // Check the inner types for variant types.
+  // Check the inner types for variant types. Reuse this function
+  // recursively to reach any depth type, and check for a possible
+  // borrow.
   if (deep and TypeEq(*type.WithoutGenerics(), *VAR, *sm.CurrentScope, *sm.CurrentScope, false)) {
     for (auto const &inner_type : DedupVariableInnerTypes(type, *sm.CurrentScope)) {
       if (IsTypeBorrowed(*inner_type, sm)) { return true; }
     }
   }
+
+  // No borrowing of any nature discovered => non borrowable type.
+  // Checked all depths.
   return false;
 }
 
@@ -612,43 +643,37 @@ auto spp::analyse::utils::type_utils::IsTypeCopyable(
   asts::TypeAst const &type,
   scopes::ScopeManager const &sm)
   -> bool {
+  // Check that either this type, or any super-types for this type,
+  // are copyable. A copyable type superimposes the Copy marker
+  // trait type, so check all super scopes recursively for a match.
+  using asts::generate::common_types_precompiled::COPY;
+  if (&type == COPY.get()) { return true; }
+
   // Generic types are not Copy types, so return nullptr.
+  // Todo: This is wrong - might be constrained by Copy; remove?
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
   if (type_sym->IsGeneric) { return false; }
 
-  // Discover the supertypes and add the current type to it.
+  // Discover the supertypes and add the current type to it. Define
+  // the inner check as a direct comparison to the Copy type.
+  // Todo: Can we move this to just checking sym->IsDirectCopyable?
   auto sup_types = Vec{type.shared_from_this()};
   sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-
   auto inner_copy_check = [&](auto &&t) {
-    return TypeEq(*t.WithoutGenerics(), *asts::generate::common_types_precompiled::COPY, *sm.CurrentScope,
-                  *sm.CurrentScope, false);
+    return TypeEq(*t.WithoutGenerics(), *COPY, *sm.CurrentScope, *sm.CurrentScope, false);
   };
 
-  // Search through the supertypes for a direct Copy type.
+  // Search through the supertypes for a direct Copy type. One match
+  // means the type can be copied.
+  // Todo: Is this correct? Surely we only want to check the direct
+  //  super scopes? Not any depth?
   const auto copy_type_candidates = sup_types
     | genex::views::filter([&](auto &&sup_type) { return inner_copy_check(*sup_type); })
     | genex::to<Vec>();
 
-  // If there is an explicit Copy type, return true, otherwise return false.
+  // If there is an explicit Copy type, return true, otherwise
+  // return false.
   return not copy_type_candidates.IsEmpty();
-}
-
-auto spp::analyse::utils::type_utils::GetAttrTypes(
-  const asts::ClassPrototypeAst *cls_proto,
-  const scopes::Scope *cls_scope,
-  Vec<Pair<Shared<scopes::TypeSymbol>, asts::ClassAttributeAst*>> &attr_symbols)
-  -> void {
-  // Get all attribute types, without recursion errors (this will be handled elsewhere).
-  for (auto const &member : cls_proto->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<
-         asts::ClassAttributeAst*>) {
-    auto type_sym = cls_scope->GetTypeSymbol(member->Type.get());
-    if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.First; })) { continue; }
-    if (type_sym->IsGeneric) { continue; }
-
-    attr_symbols.EmplaceBack(type_sym, member);
-    GetAttrTypes(type_sym->Type, type_sym->LinkedScope, attr_symbols);
-  }
 }
 
 auto spp::analyse::utils::type_utils::IsIndexWithinBound(
@@ -656,14 +681,18 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> Pair<bool, std::size_t> {
-  // For tuples, count the number of generic arguments.
+  // For tuples, count the number of generic arguments. This is the
+  // number of arguments in the tuple. amd the upper bound.
+  // Todo: What about variadic tuples? Per-proto analysis catches this?
+  //  Add some unit tests to check.
   using errors::SppInternalCompilerError;
   if (IsTypeTup(type, scope)) {
     auto elems = type.LastTypePart()->GnArgGroup->Args.Len();
     return MakePair(index < elems, elems);
   }
 
-  // For arrays, check the size argument.
+  // For arrays, check the size argument. This is the compile time
+  // generic argument "n" that is always known / resolved.
   if (IsTypeArr(type, scope)) {
     const auto size_arg = type.LastTypePart()->GnArgGroup->CompAt("n");
     const auto size_arg_cast = size_arg->Val->To<asts::IntegerLiteralAst>();
@@ -671,9 +700,11 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
     return MakePair(index < elems, elems);
   }
 
+  // Cause an ICE if we reach this state. Should be impossible but
+  // just a failsafe.
+  constexpr auto err_msg = "Non indexable type used in index check";
   Raise<SppInternalCompilerError>(
-    {&scope},
-    ERR_ARGS(type, "Non indexable type used in index check"));
+    {&scope}, ERR_ARGS(type, err_msg));
 }
 
 auto spp::analyse::utils::type_utils::GetNthTypeOfIndexableType(
@@ -681,20 +712,24 @@ auto spp::analyse::utils::type_utils::GetNthTypeOfIndexableType(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> Shared<asts::TypeAst> {
-  // For tuples, return the nth generic argument.
+  // For tuples, return the nth generic argument. This can be
+  // different per element.
   using errors::SppInternalCompilerError;
   if (IsTypeTup(type, scope)) {
     return type.LastTypePart()->GnArgGroup->GetTypeArgs()[index]->Val;
   }
 
-  // For arrays, return the element type.
+  // For arrays, return the element type. This is always the same
+  // per element.
   if (IsTypeArr(type, scope)) {
     return type.LastTypePart()->GnArgGroup->GetTypeArgs()[0]->Val;
   }
 
+  // Cause an ICE if we reach this state. Should be impossible but
+  // just a failsafe.
+  constexpr auto err_msg = "Non indexable type used in index check";
   Raise<SppInternalCompilerError>(
-    {&scope},
-    ERR_ARGS(type, "Non indexable type used in index access"));
+    {&scope}, ERR_ARGS(type, err_msg));
 }
 
 auto spp::analyse::utils::type_utils::GetFunctionalType(
@@ -728,9 +763,11 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
   using errors::SppExpressionAmbiguousGeneratorError;
 
   // Generic types are not generators, so raise an error.
+  // Todo: Like Copy, can we rely on constraints here? Add
+  //  unit tests.
   const auto type_sym = scope.GetTypeSymbol(&type);
 
-  // Discover the supertypes and add the current type to it.=.
+  // Discover the supertypes and add the current type to it.
   auto sup_types = Vec{type.shared_from_this()};
   sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 

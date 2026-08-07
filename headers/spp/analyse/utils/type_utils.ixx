@@ -193,16 +193,6 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope const &scope)
     -> bool;
 
-  SPP_EXP_FUN auto IsTypeGen(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
-
-  SPP_EXP_FUN auto IsTypeTry(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
-
   SPP_EXP_FUN auto IsTypeFunc(
     asts::TypeAst const &type,
     scopes::Scope const &scope)
@@ -236,12 +226,6 @@ namespace spp::analyse::utils::type_utils {
     asts::TypeAst const &type,
     scopes::ScopeManager const &sm)
     -> bool;
-
-  SPP_EXP_FUN auto GetAttrTypes(
-    const asts::ClassPrototypeAst *cls_proto,
-    const scopes::Scope *cls_scope,
-    Vec<Pair<Shared<scopes::TypeSymbol>, asts::ClassAttributeAst*>> &attr_symbols)
-    -> void;
 
   SPP_EXP_FUN auto IsIndexWithinBound(
     std::size_t index,
