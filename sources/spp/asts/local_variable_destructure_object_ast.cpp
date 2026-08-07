@@ -179,6 +179,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _CondLet->Stage7_AnalyseSemantics(sm, meta);
     _CondSym = sm->CurrentScope->GetVarSymbol(uid_name.get());
     _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
+    _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
     _FlowSym->Type = Type;
     sm->CurrentScope->AddVarSymbol(_FlowSym);
     effective_val = uid_name.get();

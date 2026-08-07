@@ -125,6 +125,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
       not TypeEq(*_CondSym->Type, *Type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*meta->CaseCondition, *_CondSym->Type, *Source.OriginalType, *Type));
     _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
+    _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
     _FlowSym->Type = Type;
     sm->CurrentScope->AddVarSymbol(_FlowSym);
   }

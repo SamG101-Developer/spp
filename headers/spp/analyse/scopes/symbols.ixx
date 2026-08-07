@@ -102,7 +102,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
   Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
 
-  Unique<codegen::LlvmVarSymInfo> LlvmInfo;
+  Shared<codegen::LlvmVarSymInfo> LlvmInfo;
 
   Unique<asts::Ast> CompTimeValue;
 

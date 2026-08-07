@@ -60,7 +60,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   IsGeneric(is_generic),
   Visibility(visibility),
   MemInfo(MakeUnique<utils::mem_info_utils::MemoryInfo>()) {
-  LlvmInfo = MakeUnique<codegen::LlvmVarSymInfo>();
+  LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
   CompTimeValue = nullptr;
 }
 
@@ -74,7 +74,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   Visibility(that.Visibility),
   VisibilityAnnotation(that.VisibilityAnnotation),
   MemInfo(that.MemInfo->Clone()),
-  LlvmInfo(MakeUnique<codegen::LlvmVarSymInfo>()),
+  LlvmInfo(MakeShared<codegen::LlvmVarSymInfo>()),
   CompTimeValue(asts::AstClone(that.CompTimeValue)),
   AliasSym(that.AliasSym) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
