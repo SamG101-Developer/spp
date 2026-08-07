@@ -228,8 +228,11 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Forward to the lowered form.
-  return _TransformedExpr->Stage11_CodeGen(sm, meta, ctx);
+  meta->Save();
+  meta->AssignmentTargetType = nullptr;
+  const auto llvm_val = _TransformedExpr->Stage11_CodeGen(sm, meta, ctx);
+  meta->Restore();
+  return llvm_val;
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
