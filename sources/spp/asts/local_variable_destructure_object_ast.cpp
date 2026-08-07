@@ -66,11 +66,14 @@ auto spp::asts::LocalVariableDestructureObjectAst::PosEnd() const
 auto spp::asts::LocalVariableDestructureObjectAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<LocalVariableDestructureObjectAst>(
+  auto c = MakeUnique<LocalVariableDestructureObjectAst>(
     AstCloneShared(Type),
     AstClone(TokL),
     AstCloneVec(Elems),
     AstClone(TokR));
+  c->_NewAsts = AstCloneVec(_NewAsts);
+  c->_TmpName = AstCloneShared(_TmpName);
+  return c;
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::ToString() const

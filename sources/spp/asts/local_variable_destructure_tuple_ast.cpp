@@ -56,10 +56,13 @@ auto spp::asts::LocalVariableDestructureTupleAst::PosEnd() const
 auto spp::asts::LocalVariableDestructureTupleAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<LocalVariableDestructureTupleAst>(
+  auto c = MakeUnique<LocalVariableDestructureTupleAst>(
     AstClone(TokL),
     AstCloneVec(Elems),
     AstClone(TokR));
+  c->_NewAsts = AstCloneVec(_NewAsts);
+  c->_TmpName = AstCloneShared(_TmpName);
+  return c;
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::ToString() const
