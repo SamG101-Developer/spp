@@ -65,22 +65,30 @@ auto spp::analyse::utils::type_utils::ConventionEq(
   asts::TypeAst const &lhs_type,
   asts::TypeAst const &rhs_type)
   -> bool {
-  // Extract the conventions.
+  // Extract the conventions from the two types. These are
+  // the asts that will get compared.
   const auto lhs_conv = lhs_type.GetConvention();
   const auto rhs_conv = rhs_type.GetConvention();
 
-  // Quick exits based on existence of conventions.
+  // Quick exits based on existence of conventions. Only 2
+  // no-conventions are a match, otherwise one existing and
+  // the other not existing is a mismatch.
   if (lhs_conv == nullptr and rhs_conv == nullptr) { return true; }
   if (lhs_conv == nullptr and rhs_conv != nullptr) { return false; }
   if (lhs_conv != nullptr and rhs_conv == nullptr) { return false; }
 
-  // If the conventions are not equal, return false - but allow "&mut" (rhs) to coerce to "&" (lhs)
+  // If the conventions are not equal, return false, but
+  // allow "&mut" (rhs) to coerce to "&" (lhs). This allows for
+  // mutable references to be moved to functions that accept
+  // immutable references, without re-borrowing.
   if (*lhs_conv != rhs_conv) {
     const auto is_lhs_mut = *lhs_conv == asts::ConventionTag::MUT;
     const auto is_rhs_ref = *rhs_conv == asts::ConventionTag::REF;
     return not(is_lhs_mut and is_rhs_ref);
   }
 
+  // No other conditions have been met, so the conventions
+  // must match at this point.
   return true;
 }
 
@@ -90,12 +98,16 @@ auto spp::analyse::utils::type_utils::ConstraintEq(
   scopes::Scope const &constraint_scope,
   scopes::Scope const &type_scope)
   -> bool {
-  //
+  // If there are no constraints, then the match is default true,
+  // because there are no restrictions on the "type" that can
+  // possibly be checked for.
   if (constraints.IsEmpty()) { return true; }
 
-  // Check that all the constraints are satisfied. Use the non-throwing variant: this is called from TypeEq, so paying
-  // for exception machinery on every mismatch is horrible for performance.
-  return EnforceGenericConstraintsOneArg(constraints, type, constraint_scope, type_scope) == nullptr;
+  // Check that all the constraints are satisfied. Wraps the call
+  // to the generic constraint enforcement (this function mainly
+  // exists for the naming uniformity in type equality).
+  return EnforceGenericConstraintsOneArg(
+    constraints, type, constraint_scope, type_scope) == nullptr;
 }
 
 auto spp::analyse::utils::type_utils::TypeEq(
@@ -105,44 +117,58 @@ auto spp::analyse::utils::type_utils::TypeEq(
   scopes::Scope const &rhs_scope,
   const bool check_variant)
   -> bool {
-  // Identity fast path: the same type node is equal to itself, skipping the strip + triple symbol lookup.
+  // Use an identity fast path: the same type node is equal to
+  // itself, skipping the strip + triple symbol lookup.
   if (&lhs_type == &rhs_type) { return true; }
 
-  // Special case for the "!" never type.
+  // Special case for the "!" and "Self" type; the "!" type on
+  // the rhs is always considered a match, where-as if it's on
+  // the lhs, the rhs must also be "!". Self types match based
+  // on same, for implementation vs base matching on override
+  // signature-type checking.
   if (rhs_type.IsNeverType()) { return true; }
   if (lhs_type.IsNeverType()) { return rhs_type.IsNeverType(); }
   if (lhs_type.IsSelfType() and rhs_type.IsSelfType()) { return true; }
 
-  // Strip the generics from the types.
+  // Strip the generics from the types. This allows for the base
+  // types to be retrieved and compared in their respective scopes.
   const auto stripped_lhs = lhs_type.WithoutGenerics();
   const auto stripped_rhs = rhs_type.WithoutGenerics();
 
-  // Get the non-generic symbols.
+  // Get the non-generic symbols. For the "Self" types, we reverse
+  // the scopes, so that we get "Self" in the opposite scope, and
+  // compare it to the type from that scope.
   const auto stripped_lhs_sym = (lhs_type.IsSelfType() ? rhs_scope : lhs_scope).
     GetTypeSymbol(stripped_lhs.get(), false);
   const auto stripped_rhs_sym = (rhs_type.IsSelfType() ? lhs_scope : rhs_scope).
     GetTypeSymbol(stripped_rhs.get(), false);
   const auto lhs_sym = lhs_scope.GetTypeSymbol(&lhs_type);
 
-  // If the left-hand-side is a "Variant" type, check the member types first.
-  // - "Str or Bool" should accept "Str".
-  // - "Str or Bool or S32" should accept "Str or S32".
+  // If the left-hand-side is a "Variant" type, check the member
+  // types first; "Str or Bool" should accept "Str", and also
+  // "Str or Bool or S32" should accept "Str or S32" (subset).
   if (check_variant and TypeVariantEq(lhs_type, rhs_type, lhs_scope, rhs_scope)) { return true; }
-
   if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
-  // If the stripped types are not equal, check function-mock and forwarding compatibility before returning
-  // false. A "$" mock type is a function value: match it structurally against the target function type via
-  // its superimposed overload types ($ types are only ever generated for this purpose).
+  // If the stripped types are not equal, check function-mock and
+  // forwarding compatibility before returning false. A "$" mock type
+  // is a function value: match it structurally against the target
+  // function type via its superimposed overload types ($ types are
+  // only ever generated for this purpose).
   if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) {
     if (lhs_type.IsCompilerGeneratedType()) { return TypeFuncEq(lhs_type, rhs_type, lhs_scope, rhs_scope); }
     if (rhs_type.IsCompilerGeneratedType()) { return TypeFuncEq(rhs_type, lhs_type, rhs_scope, lhs_scope); }
     return TypeFwdEq(rhs_type, lhs_type, rhs_scope, lhs_scope);
   }
+
+  // Next the generics must be handled. Firstly get the generics
+  // for both types, and then do a special variadic length check.
   auto &lhs_generics = lhs_type.LastTypePart()->GnArgGroup->Args;
   auto &rhs_generics = rhs_type.LastTypePart()->GnArgGroup->Args;
 
-  // Special case for variadic parameter types.
+  // Special case for variadic parameter types. Their lengths must
+  // be the same before comparisons are considered, so a longer
+  // arg-list doesn't get cut off and assumed equal.
   const auto temp_type_proto = lhs_sym->Type;
   if (temp_type_proto and not temp_type_proto->GnParamGroup->Params.IsEmpty()) {
     if (temp_type_proto->GnParamGroup->Params.Back()->To<asts::FunctionParameterVariadicAst>() != nullptr) {
@@ -152,9 +178,10 @@ auto spp::analyse::utils::type_utils::TypeEq(
     }
   }
 
-  // Ensure each generic argument is symbolically equal to the other.
-  // Todo: why genex broke here?
-  // Todo: different lengths?
+  // Ensure each generic argument is symbolically equal to the
+  // other. Split on the type/comp argument type, and we can
+  // do it positionally because analysis orders the args against
+  // the params. Todo: different lengths?
   for (auto const &[lhs_generic, rhs_generic] : std::views::zip(lhs_generics, rhs_generics)) {
     if (lhs_generic->To<asts::GenericArgumentTypeAst>()) {
       const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentTypeAst>();
@@ -168,7 +195,8 @@ auto spp::analyse::utils::type_utils::TypeEq(
     }
   }
 
-  // If all the generic arguments are symbolically equal, return true.
+  // If all the generic arguments are symbolically equal, return
+  // true.
   return true;
 }
 
@@ -178,7 +206,9 @@ auto spp::analyse::utils::type_utils::TypeEq(
   scopes::Scope const &,
   scopes::Scope const &)
   -> bool {
-  // Simple equality between the expressions.
+  // Simple equality between the expressions. As there are
+  // references, not pointers, the inner values of the asts
+  // get compared (see the ExpressionAst equality methods).
   return lhs_expr == rhs_expr;
 }
 
@@ -188,15 +218,16 @@ auto spp::analyse::utils::type_utils::TypeVariantEq(
   scopes::Scope const &variant_scope,
   scopes::Scope const &type_scope)
   -> bool {
-  // Ask for the members rather than testing whether this is a variant: an empty list is the same answer, and going
-  // through the one lookup keeps a structural test from disagreeing with what the members turn out to be. The lookup
-  // resolves an alias spelling ("Res[Str, Err1]") to the variant it names, so either form can be asked.
+  // Get the members of the variant. If there are no members.
+  // ie Var has no generics (shouldn't be possible), then
+  // return false - impossible to match against.
   const auto variant_member_types = DedupVariableInnerTypes(variant_type, variant_scope);
   if (variant_member_types.IsEmpty()) { return false; }
 
-  // A variant fits when every one of its members fits, so that the wider one has room for whichever member the
-  // narrower one is holding. Compare the members without the variant fallback, to match them against each other
-  // rather than against the variant either belongs to.
+  // When comparing two variants, the wider one must be able
+  // to accept all the types of the narrower one. For example,
+  // "Str or Bool or S32" accepts "Str or Bool", but not the
+  // other way around - "Bool" wouldn't be accepted.
   const auto type_member_types = DedupVariableInnerTypes(type, type_scope);
   if (not type_member_types.IsEmpty()) {
     return genex::all_of(type_member_types, [&](auto &&type_member_type) {
@@ -206,7 +237,8 @@ auto spp::analyse::utils::type_utils::TypeVariantEq(
     });
   }
 
-  // Otherwise this is a single value, which fits when it is one of the members.
+  // Otherwise, it's a single type being compared, which matches
+  // when it is one of the members.
   return genex::any_of(variant_member_types, [&](auto &&variant_member_type) {
     return TypeEq(*variant_member_type, type, variant_scope, type_scope);
   });
@@ -218,16 +250,22 @@ auto spp::analyse::utils::type_utils::TypeFwdEq(
   scopes::Scope const &arg_scope,
   scopes::Scope const &param_scope)
   -> bool {
-  //
+  // The type-forwarding matcher allows for a param of "&StrView"
+  // to be matched with an argument type of "&Str", because "Str"
+  // forwards to "&StrView" under "FwdRef[T=StrView]".
   using asts::generate::common_types_precompiled::FWD_REF;
   using asts::generate::common_types_precompiled::FWD_MUT;
 
-  // Ensure that the conventions match between the two types.
+  // Ensure that the conventions match between the two types
+  // exactly (ie "Str" -> "&StrView" doesn't work, where-as "&Str"
+  // -> "&StrView" is fine. First part checks for a no-convention.
   const auto arg_conv = arg_type.GetConvention();
   const auto param_conv = param_type.GetConvention();
   if (arg_conv == nullptr or param_conv == nullptr) { return false; }
 
-  // Determine if we are targeting a forward ref or mut variation.
+  // Determine if we are targeting a forwarding ref or mut variation.
+  // This is the second part of the convention check and ensures that
+  // either both are an immutable or a mutable borrow.
   const auto is_both_ref = (*arg_conv == asts::ConventionTag::REF) and (*param_conv == asts::ConventionTag::REF);
   const auto is_both_mut = (*arg_conv == asts::ConventionTag::MUT) and (*param_conv == asts::ConventionTag::MUT);
   if (not is_both_ref and not is_both_mut) { return false; }
@@ -239,11 +277,13 @@ auto spp::analyse::utils::type_utils::TypeFwdEq(
   const auto arg_bare_sym = arg_scope.GetTypeSymbol(arg_bare.get());
   if (arg_bare_sym->IsGeneric) { return false; }
 
-  // Get all the super types that we want to consider.
+  // Get all the super types that we want to consider. This is
+  // what we will search in for the `FwdXXX` types.
   auto sup_types = Vec{arg_bare};
   sup_types.AppendRange(arg_bare_sym->LinkedScope->SupTypes());
 
-  // Check for a matching forwarding type, and compare to the inner type of it (the forwarding target).
+  // Check for a matching forwarding type, and compare to the
+  // inner type of it (the forwarding target).
   // Todo: ensure only 1 forwarding superimposition is present for a given type.
   // Todo: probably ensure that the ref & mut both forward to the same type?
   for (auto const &sup_type : sup_types) {
@@ -253,7 +293,7 @@ auto spp::analyse::utils::type_utils::TypeFwdEq(
     if (TypeEq(*inner_type, param_type, param_scope, param_scope)) { return true; }
   }
 
-  // Otherwise, there is no forwarding match.
+  // Otherwise, there is no forwarding match, so return false.
   return false;
 }
 
@@ -263,9 +303,11 @@ auto spp::analyse::utils::type_utils::TypeFuncEq(
   scopes::Scope const &mock_scope,
   scopes::Scope const &func_scope)
   -> bool {
-  // A "$" mock type is generated per function and superimposes a function type for each of its overloads
-  // (and, because super types are transitive, the whole FunMov/FunMut/FunRef hierarchy above each). It
-  // matches the target function type if any of those superimposed function types is equal to the target.
+  // A "$" mock type is generated per function and superimposes
+  // a function type for each of its overloads (and, because super
+  // types are transitive, the whole FunMov/FunMut/FunRef hierarchy
+  // above each). It matches the target function type if any of
+  // those superimposed function types is equal to the target.
   const auto mock_sym = mock_scope.GetTypeSymbol(mock_type.WithoutConvention().get());
   if (mock_sym == nullptr) { return false; }
 
@@ -285,15 +327,17 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
   GenericInferenceMap &generic_args,
   const bool check_variant,
   const bool check_constraints) -> bool {
-  // Strip the generics from the right-hand-side type (possible generic).
+  // Strip the generics from the types. This allows for the base
+  // types to be retrieved and compared in their respective scopes.
   using asts::generate::common_types_precompiled::VAR;
   const auto stripped_lhs = mut_shared_cast(lhs_type.WithoutGenerics()->WithoutConvention());
   const auto stripped_rhs = mut_shared_cast(rhs_type.WithoutGenerics()->WithoutConvention());
 
-  // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
+  // If the right-hand-side is directly generic, then return a
+  // match: "sup[T] T { ... }" matches all types. Record the generic
+  // in the map too.
   const auto stripped_rhs_sym = rhs_scope.GetTypeSymbol(stripped_rhs.get());
   if (stripped_rhs_sym->IsGeneric) {
-    // A generic (stripped) type is always a bare type identifier, so the downcast is known-safe.
     const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
     generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
     if (check_constraints and not ConstraintEq(stripped_rhs_sym->GenericConstraints, lhs_type, rhs_scope, lhs_scope)) {
@@ -302,13 +346,14 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     return true;
   }
 
-  // TODO: Deliberately inverted for the param/arg checker. This will be removed once that type check is actually done
-  //  properly.
+  // TODO: Deliberately inverted for the param/arg checker. This will be
+  //  removed once that type check is actually done properly.
   if (not ConventionEq(rhs_type, lhs_type)) { return false; }
 
+  // The same as above, but for the left-hand-side: auto match on a
+  // direct generic and record the mapping.
   const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs.get());
   if (stripped_lhs_sym->IsGeneric) {
-    // A generic (stripped) type is always a bare type identifier, so the downcast is known-safe.
     const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
     generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
     if (check_constraints and not ConstraintEq(stripped_lhs_sym->GenericConstraints, rhs_type, lhs_scope, rhs_scope)) {
@@ -317,8 +362,11 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     return true;
   }
 
-  // If the right-hand-side is a "Variant" type, check the composite types first.
+  // If the right-hand-side is a "Variant" type, check the member
+  // types first; "Str or Bool" should accept "Str", and also
+  // "Str or Bool or S32" should accept "Str or S32" (subset).
   // Todo: on the failure of a variant match in "any_of", does the generic map need rolling back?
+  // Todo: more advanced check like TypeEq?
   if (check_variant and TypeEq(*VAR, *stripped_rhs_sym->FqName()->WithoutGenerics(), rhs_scope, rhs_scope)) {
     auto rhs_composite_types = DedupVariableInnerTypes(*rhs_scope.GetTypeSymbol(&rhs_type)->FqName(), rhs_scope);
     if (genex::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) {
@@ -328,14 +376,15 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     }
   }
 
-  // If the stripped types aren't equal, then return false.
+  // Next the generics must be handled. Firstly get the generics
+  // for both types, and then do a special variadic length check.
   if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) { return false; }
   auto &lhs_generics = lhs_type.LastTypePart()->GnArgGroup->Args;
   auto &rhs_generics = rhs_type.LastTypePart()->GnArgGroup->Args;
 
-  // Special case for variadic parameter types. Reuse the stripped symbol's prototype (equal to the rhs's, checked
-  // above) rather than a fresh generic-inclusive GetTypeSymbol(&lhs_type): the last generic parameter's variadic-ness
-  // is a structural property of the class prototype, invariant under generic instantiation.
+  // Special case for variadic parameter types. Their lengths must
+  // be the same before comparisons are considered, so a longer
+  // arg-list doesn't get cut off and assumed equal.
   const auto temp_type_proto = stripped_lhs_sym->Type;
   if (temp_type_proto and not temp_type_proto->GnParamGroup->Params.IsEmpty()) {
     if (temp_type_proto->GnParamGroup->Params.Back()->To<asts::FunctionParameterVariadicAst>() != nullptr) {
@@ -343,7 +392,10 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     }
   }
 
-  // Ensure each generic argument is symbolically equal to the other. Todo: why genex broke here?
+  // Ensure each generic argument is symbolically equal to the
+  // other. Split on the type/comp argument type, and we can
+  // do it positionally because analysis orders the args against
+  // the params. Todo: different lengths?
   for (auto [lhs_generic, rhs_generic] : std::views::zip(lhs_generics, rhs_generics)) {
     if (const auto rhs_generic_part_t = rhs_generic->To<asts::GenericArgumentTypeAst>()) {
       const auto rhs_generic_part = rhs_generic_part_t;
@@ -355,13 +407,15 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     else {
       const auto lhs_generic_part = lhs_generic->ToUnchecked<asts::GenericArgumentCompAst>();
       const auto rhs_generic_part = rhs_generic->ToUnchecked<asts::GenericArgumentCompAst>();
-      if (not RelaxedTypeEq(*lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args)) {
+      if (not RelaxedTypeEq(
+        *lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args)) {
         return false;
       }
     }
   }
 
-  // If all the generic arguments are symbolically equal, return true.
+  // If all the generic arguments are symbolically equal, return
+  // true.
   return true;
 }
 
@@ -373,6 +427,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
   GenericInferenceMap &generic_args)
   -> bool {
   // Simple equality between the expressions, with generic matching.
+  // Save generic mapping for identifier expressions on one side.
   if (const auto rhs_expr_as_identifier = rhs_expr.To<asts::IdentifierAst>()) {
     generic_args[asts::TypeIdentifierAst::FromIdentifier(*rhs_expr_as_identifier)] =
       const_cast<asts::ExpressionAst*>(&lhs_expr);
@@ -385,7 +440,8 @@ auto spp::analyse::utils::type_utils::IsTypeCompTimeIndexable(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Test for the tuple or array type.
+  // The only two types that can be indexed at compile time are the
+  // tuple type, and the array type.
   return
     IsTypeTup(*type.WithoutGenerics(), scope) or IsTypeArr(*type.WithoutGenerics(), scope);
 }
@@ -394,7 +450,8 @@ auto spp::analyse::utils::type_utils::IsTypeArr(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::array::Arr[T, n]".
+  // Check the type against "std::array::Arr[T, n]". This only
+  // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::ARR;
   return TypeEq(*type.WithoutGenerics(), *ARR, scope, scope);
 }
@@ -403,7 +460,8 @@ auto spp::analyse::utils::type_utils::IsTypeTup(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::tuple::Tup[Ts...]".
+  // Check the type against "std::tuple::Tup[Ts...]". This only
+  // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::TUP;
   return TypeEq(*type.WithoutGenerics(), *TUP, scope, scope);
 }
@@ -412,7 +470,9 @@ auto spp::analyse::utils::type_utils::IsTypeVariant(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::variant::Variant[Ts...]".
+  // Check the type against "std::variant::Variant[Ts...]". This
+  // only considers the type directly, not any supertypes. It does
+  // a "remove convention" first. Todo: Conv for others?
   using asts::generate::common_types_precompiled::VAR;
   return TypeEq(*type.WithoutConvention()->WithoutGenerics(), *VAR, scope, scope);
 }
@@ -421,7 +481,8 @@ auto spp::analyse::utils::type_utils::IsTypeBool(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::bool::Bool".
+  // Check the type against "std::bool::Bool". This only
+  // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::BOOL;
   return TypeEq(type, *BOOL, scope, scope);
 }
@@ -430,7 +491,8 @@ auto spp::analyse::utils::type_utils::IsTypeVoid(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::void::Void".
+  // Check the type against "std::void::Void". This only
+  // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::VOID;
   return TypeEq(type, *VOID, scope, scope);
 }
@@ -439,7 +501,8 @@ auto spp::analyse::utils::type_utils::IsTypeNever(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::void::Void".
+  // Check the type against "std::never::Never". This only
+  // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::NEVER;
   return TypeEq(type, *NEVER, scope, scope);
 }
@@ -448,7 +511,9 @@ auto spp::analyse::utils::type_utils::IsTypeGen(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::generator::Gen[T]/GenOpt[T]/GenRes[T, E]".
+  // Check the type against "std::generator::Gen[T]" or
+  // "std::generator::GenOnce[T]", This only considers the
+  // type directly, not any supertypes.
   using asts::generate::common_types_precompiled::GEN;
   using asts::generate::common_types_precompiled::GEN_ONCE;
   return
@@ -462,18 +527,6 @@ auto spp::analyse::utils::type_utils::IsTypeSelf(
   // Check for a string match to "Self".
   const auto type_identifier = type.To<asts::TypeIdentifierAst>();
   return type_identifier != nullptr and type_identifier->Name == "Self";
-}
-
-auto spp::analyse::utils::type_utils::IsTypeRuntimeIndexable(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope)
-  -> bool {
-  // Test for the type against "std::iter::IndexRef[T]/IndexMut[T]".
-  using asts::generate::common_types_precompiled::INDEX_REF;
-  using asts::generate::common_types_precompiled::INDEX_MUT;
-  return
-    TypeEq(*type.WithoutGenerics(), *INDEX_REF, scope, scope) or
-    TypeEq(*type.WithoutGenerics(), *INDEX_MUT, scope, scope);
 }
 
 auto spp::analyse::utils::type_utils::IsTypeTry(
