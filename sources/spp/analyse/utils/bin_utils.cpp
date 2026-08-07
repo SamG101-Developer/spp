@@ -7,6 +7,9 @@ import spp.asts.binary_expression_ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.asts.statement_ast;
+import spp.asts.case_pattern_variant_else_ast;
+import spp.asts.boolean_literal_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
@@ -34,7 +37,8 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> Unique<asts::BinaryExpressionAst> {
-  // Check the left-hand-side is a binary expression with a comparison operator.
+  // Check the left-hand-side is a binary expression with
+  // a comparison operator.
   const auto bin_lhs = bin_expr.Lhs->To<asts::BinaryExpressionAst>();
   if (
     bin_lhs == nullptr or
@@ -46,7 +50,8 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
       std::move(bin_expr.Rhs));
   }
 
-  // Non-symbolic value being reused -> put it into a variable first.
+  // Non-symbolic value being reused -> put it into a variable
+  // first. Todo: Standardize materialization?
   if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).First == nullptr) {
     const auto temp_var_name = ( {
       const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
@@ -62,7 +67,8 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
     bin_lhs->Rhs = asts::AstClone(temp_var_name);
   }
 
-  // Otherwise, re-arrange the ASTs, with an "and" combinator binary expression.
+  // Otherwise, re-arrange the ASTs, with an "and" combinator
+  // binary expression.
   auto lhs = asts::AstClone(bin_lhs->Rhs);
   auto rhs = std::move(bin_expr.Rhs);
   auto op_pos = bin_expr.TokOp->PosStart();
@@ -108,16 +114,36 @@ auto spp::analyse::utils::bin_utils::ConvertIsExprToFuncCall(
   scopes::ScopeManager *,
   asts::meta::CompilerMetaData *)
   -> Unique<asts::CaseExpressionAst> {
-  // Construct the expression-pattern based on the right-hand-side of the "x is Type".
+  // Construct the expression-pattern based on the
+  // right-hand-side of the "x is Type".
   auto pattern = std::move(is_expr.Rhs);
   auto patterns = Vec<Unique<asts::CasePatternVariantAst>>();
   patterns.EmplaceBack(std::move(pattern));
 
-  // Construct the case expression branch that contains the pattern.
+  // Construct the case expression branch that contains the
+  // pattern, yielding "true", and an "else" branch yielding
+  // "false".
+  const auto pos = is_expr.PosStart();
+  auto match_members = Vec<Unique<asts::StatementAst>>();
+  match_members.EmplaceBack(asts::BooleanLiteralAst::True(pos));
+  auto match_body = MakeUnique<asts::InnerScopeExpressionAst>(
+    nullptr, std::move(match_members), nullptr);
+
+  auto no_match_members = Vec<Unique<asts::StatementAst>>();
+  no_match_members.EmplaceBack(asts::BooleanLiteralAst::False(pos));
+  auto no_match_body = MakeUnique<asts::InnerScopeExpressionAst>(
+    nullptr, std::move(no_match_members), nullptr);
+
+  auto else_patterns = Vec<Unique<asts::CasePatternVariantAst>>();
+  else_patterns.EmplaceBack(MakeUnique<asts::CasePatternVariantElseAst>(nullptr));
+
   auto branch = MakeUnique<asts::CaseExpressionBranchAst>(
-    std::move(is_expr.TokOp), std::move(patterns), nullptr, nullptr);
+    std::move(is_expr.TokOp), std::move(patterns), nullptr, std::move(match_body));
+  auto else_branch = MakeUnique<asts::CaseExpressionBranchAst>(
+    nullptr, std::move(else_patterns), nullptr, std::move(no_match_body));
   auto branches = Vec<Unique<asts::CaseExpressionBranchAst>>();
   branches.EmplaceBack(std::move(branch));
+  branches.EmplaceBack(std::move(else_branch));
 
   // Construct and return the case expression AST.
   auto case_expr = MakeUnique<asts::CaseExpressionAst>(
