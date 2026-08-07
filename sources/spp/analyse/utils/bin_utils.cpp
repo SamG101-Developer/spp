@@ -37,8 +37,9 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> Unique<asts::BinaryExpressionAst> {
-  // Check the left-hand-side is a binary expression with
-  // a comparison operator.
+  // Check the left-hand-side is a binary expression with a
+  // comparison operator. If there isn't a chaining combination
+  // to do, return a new bin expression copying the old one.
   const auto bin_lhs = bin_expr.Lhs->To<asts::BinaryExpressionAst>();
   if (
     bin_lhs == nullptr or
@@ -55,12 +56,15 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
   if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).First == nullptr) {
     const auto temp_var_name = ( {
       const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
-      MakeShared<asts::IdentifierAst>(bin_lhs->Rhs->PosStart(), uid);
+      MakeShared<asts::IdentifierAst>(
+        bin_lhs->Rhs->PosStart(), uid);
     });
 
     const auto temp_let = ( {
-      auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
-      MakeUnique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
+      auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(
+        nullptr, temp_var_name, nullptr);
+      MakeUnique<asts::LetStatementInitializedAst>(
+        nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
     });
 
     temp_let->Stage7_AnalyseSemantics(sm, meta);
@@ -72,8 +76,10 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
   auto lhs = asts::AstClone(bin_lhs->Rhs);
   auto rhs = std::move(bin_expr.Rhs);
   auto op_pos = bin_expr.TokOp->PosStart();
-  bin_expr.Rhs = MakeUnique<asts::BinaryExpressionAst>(std::move(lhs), std::move(bin_expr.TokOp), std::move(rhs));
-  bin_expr.TokOp = MakeUnique<asts::TokenAst>(op_pos, lex::SppTokenType::KW_AND, "and");
+  bin_expr.Rhs = MakeUnique<asts::BinaryExpressionAst>(
+    std::move(lhs), std::move(bin_expr.TokOp), std::move(rhs));
+  bin_expr.TokOp = MakeUnique<asts::TokenAst>(
+    op_pos, lex::SppTokenType::KW_AND, "and");
 
   return CombineCompOps(bin_expr, sm, meta);
 }
@@ -83,29 +89,42 @@ auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> Unique<asts::PostfixExpressionAst> {
-  // Call other utility methods that may modify the binary expression AST.
+  // Before converting into a function check if we can chain
+  // comparison operators.
   const auto new_bin_expr = CombineCompOps(bin_expr, sm, meta);
 
-  // Get the method names based on the operator token.
+  // Get the method names based on the operator token. For
+  // example, `1 + 2` is the same as `1.add(2)` (which after
+  // further processing is `S32::add(1, 2)`).
   auto method_name = kBinMethods.at(new_bin_expr->TokOp->TokenType);
   auto method_name_wrapped = asts::IdentifierAst::MappedFromTok(
     *new_bin_expr->TokOp, std::move(method_name));
 
-  // Construct the function call AST.
+  // Construct the field access ast using the previously
+  // determined name, and then wrap the function call operator,
+  // ready for argument injection from the operands.
   auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, std::move(method_name_wrapped));
-  auto field_access = MakeUnique<asts::PostfixExpressionAst>(std::move(new_bin_expr->Lhs), std::move(field));
-  auto fn_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+  auto field_access = MakeUnique<asts::PostfixExpressionAst>(
+    std::move(new_bin_expr->Lhs), std::move(field));
+  auto fn_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(
+    nullptr, nullptr, nullptr);
 
-  // Set the arguments for the function call, and return the AST.
+  // Inject the arguments for the function call, applying the
+  // conventions in the standard way enforced by the operator
+  // classes.
   auto conv = genex::contains(kBinComparisonOps, new_bin_expr->TokOp->TokenType)
     ? MakeUnique<asts::ConventionRefAst>(nullptr)
     : nullptr;
-  auto arg = MakeUnique<
-    asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->Rhs));
+  auto arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(
+    std::move(conv), nullptr, std::move(new_bin_expr->Rhs));
   fn_call->FnArgGroup->Args.EmplaceBack(std::move(arg));
   fn_call->Source.OriginalExpr = &bin_expr;
-  auto new_ast = MakeUnique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
+
+  // Finally combine the function call ast with the field access
+  // ast into a postfix expression.
+  auto new_ast = MakeUnique<asts::PostfixExpressionAst>(
+    std::move(field_access), std::move(fn_call));
   return new_ast;
 }
 
