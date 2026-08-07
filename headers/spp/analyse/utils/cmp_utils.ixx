@@ -450,11 +450,6 @@ namespace spp::analyse::utils::cmp_utils {
     asts::IntegerLiteralAst const &rhs)
     -> Unique<asts::IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fcmp(
-    asts::FloatLiteralAst const &lhs,
-    asts::FloatLiteralAst const &rhs)
-    -> Unique<asts::IntegerLiteralAst>;
-
   SPP_EXP_FUN auto std_intrinsics_fadd(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)

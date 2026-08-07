@@ -936,15 +936,6 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_ucmp(
   return nullptr;
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fcmp(
-  asts::FloatLiteralAst const &lhs,
-  asts::FloatLiteralAst const &rhs)
-  -> Unique<asts::IntegerLiteralAst> {
-  // Perform a three-way comparison on two float literals, folding to -1 / 0 / 1.
-  SPP_STANDARD_BINARY_FLOAT_OP_RET_INT(ops::fcmp);
-  return nullptr;
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
   asts::FloatLiteralAst const &lhs,
   asts::FloatLiteralAst const &rhs)
