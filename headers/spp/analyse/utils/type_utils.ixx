@@ -321,47 +321,6 @@ namespace spp::analyse::utils::type_utils {
     scopes::ScopeManager const &sm)
     -> Vec<asts::ClassAttributeAst*>;
 
-  SPP_EXP_FUN auto CreateGenericClsScope(
-    asts::TypeIdentifierAst &type_part,
-    scopes::TypeSymbol const &old_cls_sym,
-    SharedVec<scopes::Symbol> const &external_generic_syms,
-    bool is_tuple,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> scopes::Scope*;
-
-  SPP_EXP_FUN auto CreateGenericFunScope(
-    scopes::Scope const &old_fun_scope,
-    asts::GenericArgumentGroupAst const &generic_args,
-    SharedVec<scopes::Symbol> const &external_generic_syms,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> scopes::Scope*;
-
-  SPP_EXP_FUN auto CreateGenericSupScope(
-    scopes::Scope &old_sup_scope,
-    scopes::Scope &new_cls_scope,
-    asts::GenericArgumentGroupAst const &generic_args,
-    SharedVec<scopes::Symbol> const &external_generic_syms,
-    scopes::ScopeManager const *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> std::tuple<scopes::Scope*, scopes::Scope*>;
-
-  SPP_EXP_FUN auto CreateGenericSym(
-    asts::GenericArgumentAst const &generic,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta,
-    scopes::ScopeManager *tm = nullptr)
-    -> Shared<scopes::Symbol>;
-
-  SPP_EXP_FUN auto RegisterGenericSyms(
-    SharedVec<scopes::Symbol> const &external_generic_syms,
-    UniqueVec<asts::GenericArgumentAst> const &generic_args,
-    scopes::Scope *scope,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
-
   SPP_EXP_FUN auto GetTypeSymOrError(
     scopes::Scope const &scope,
     asts::TypeIdentifierAst const &type_part,
@@ -392,11 +351,6 @@ namespace spp::analyse::utils::type_utils {
     asts::TypeAst const &type,
     scopes::Scope const &scope)
     -> SharedVec<asts::TypeAst>;
-
-  SPP_EXP_FUN auto SubstituteSupScopeName(
-    Str const &old_sup_scope_name,
-    asts::GenericArgumentGroupAst const &generic_args)
-    -> Str;
 
   SPP_EXP_FUN auto RecursiveAliasSearch(
     asts::TypeStatementAst const &alias_stmt,

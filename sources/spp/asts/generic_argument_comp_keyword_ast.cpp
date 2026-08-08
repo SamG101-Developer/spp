@@ -24,16 +24,15 @@ SPP_MOD_BEGIN
 auto spp::asts::GenericArgumentCompKeywordAst::FromSym(
   analyse::scopes::VariableSymbol const &sym)
   -> Unique<GenericArgumentCompKeywordAst> {
-  // Get the comptime value from the symbol's memory info.
-  const auto c = sym.MemInfo->AstCompTime.get();
+  // A bound parameter contributes the value it was bound to; an unbound one contributes its own name, which is what
+  // keeps a template's signature written in terms of its parameters.
   Unique<ExpressionAst> value = nullptr;
-
-  // Depending on that the comptime AST is, get the value.
-  if (const auto comptime_param = c->To<GenericParameterCompAst>(); comptime_param != nullptr) {
-    value = AstClone(comptime_param->Name->To<ExpressionAst>());
+  if (const auto *bound = sym.BoundCompValue(); bound != nullptr) {
+    value = AstClone(bound);
   }
-  else if (const auto comptime_arg = c->To<GenericArgumentCompAst>(); comptime_arg != nullptr) {
-    value = AstClone(comptime_arg->Val);
+  else if (const auto comptime_param = sym.MemInfo->AstCompTime->To<GenericParameterCompAst>();
+    comptime_param != nullptr) {
+    value = AstClone(comptime_param->Name->To<ExpressionAst>());
   }
   if (const auto value_as_type = value->To<TypeIdentifierAst>(); value_as_type != nullptr) {
     value = IdentifierAst::FromType(*AstCloneShared(value_as_type));

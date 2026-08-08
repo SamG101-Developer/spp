@@ -127,6 +127,16 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
   SPP_ATTR_NODISCARD auto FqName() const
     -> Shared<asts::ExpressionAst>;
+
+  /**
+   * The value this symbol's generic parameter was bound to, for a comp generic that has been given an argument. A
+   * bound type generic's binding is reachable from its symbol's @c TypeSymbol::FqName; a comp generic's lives on the
+   * comp-time ast @c type_utils::CreateGenericSym left behind, encoded as the argument itself for an instantiation
+   * and as the parameter for a template. This is the one place that knows that encoding.
+   * @return The bound value, or @c nullptr if this symbol is not a comp generic, or is one that is still unbound.
+   */
+  SPP_ATTR_NODISCARD auto BoundCompValue() const
+    -> asts::ExpressionAst*;
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
@@ -155,7 +165,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   bool IsDirectlyCopyable = false;
 
-  Function<bool()> IsCopyable;
+  /**
+   * The symbol this one derives its copyability from, if it is not directly copyable itself: the template a generic
+   * substitution was made from, or the type an alias resolves to. Held as a symbol rather than as a closure over one
+   * so that copying a @c TypeSymbol copies what it means - a closure capturing the symbol it describes would go on
+   * describing the symbol it was copied from, which is what stops a symbol table from being deep-copied.
+   */
+  Shared<TypeSymbol> CopyableBaseSym;
 
   asts::utils::Visibility Visibility;
 
@@ -171,7 +187,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   bool IsDirectlyZeroType;
 
-  Function<bool()> IsZeroType;
+  /**
+   * The symbol this one derives its zero-type-ness from. See @c CopyableBaseSym.
+   */
+  Shared<TypeSymbol> ZeroTypeBaseSym;
 
   TypeSymbol(
     Shared<asts::TypeIdentifierAst> name,
@@ -189,6 +208,18 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     TypeSymbol const &that);
 
   ~TypeSymbol() override;
+
+  /**
+   * Whether a value of this type is copied rather than moved.
+   * @return Whether this type, or the type it derives copyability from, is copyable.
+   */
+  SPP_ATTR_NODISCARD auto IsCopyable() const -> bool;
+
+  /**
+   * Whether this type has no runtime representation.
+   * @return Whether this type, or the type it derives it from, is a zero type.
+   */
+  SPP_ATTR_NODISCARD auto IsZeroType() const -> bool;
 
   auto operator==(
     TypeSymbol const &that) const

@@ -159,10 +159,7 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().get());
   _AliasSym->Type = final_sym->Type;
   _AliasSym->LinkedScope = final_sym->LinkedScope;
-  const auto alias_raw_s3 = _AliasSym.get();
-  _AliasSym->IsCopyable = [final_sym, alias_raw_s3] {
-    return alias_raw_s3->IsDirectlyCopyable or alias_raw_s3->IsDirectlyZeroType or final_sym->IsCopyable();
-  };
+  _AliasSym->CopyableBaseSym = final_sym;
   _TrackingScope = tracking_scope;
   MappedOldType = mapped_old_type;
 
@@ -200,10 +197,7 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType.get());
     _AliasSym->Type = old_sym->Type;
     _AliasSym->LinkedScope = old_sym->LinkedScope;
-    const auto alias_raw_s4 = _AliasSym.get();
-    _AliasSym->IsZeroType = [old_sym, alias_raw_s4] {
-      return alias_raw_s4->IsDirectlyZeroType or old_sym->IsZeroType();
-    };
+    _AliasSym->ZeroTypeBaseSym = old_sym;
     old_sym->AliasedBySyms.EmplaceBack(_AliasSym);
   }
   MappedOldType = OldType;

@@ -10,7 +10,6 @@ import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.gen_expression_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
@@ -307,15 +306,14 @@ static auto read_atomic_ordering(
   -> llvm::AtomicOrdering {
   const auto param_name = spp::asts::IdentifierAst(0uz, name);
   const auto order_sym = sm->CurrentScope->GetVarSymbol(&param_name);
-  SPP_ASSERT(order_sym != nullptr and order_sym->MemInfo->AstCompTime != nullptr);
+  SPP_ASSERT(order_sym != nullptr);
 
-  // An instantiation records what the parameter was bound to as the argument itself; the template records the
-  // parameter, but a template never reaches code generation.
-  const auto bound = order_sym->MemInfo->AstCompTime->To<spp::asts::GenericArgumentCompKeywordAst>();
+  // A template never reaches code generation, so the parameter is always bound by the time this runs.
+  const auto bound = order_sym->BoundCompValue();
   SPP_ASSERT(bound != nullptr);
 
   ctx->InConstantContext = true;
-  const auto order_val = bound->Val->Stage11_CodeGen(sm, meta, ctx);
+  const auto order_val = bound->Stage11_CodeGen(sm, meta, ctx);
   ctx->InConstantContext = false;
   return static_cast<llvm::AtomicOrdering>(llvm::cast<llvm::ConstantInt>(order_val)->getZExtValue());
 }

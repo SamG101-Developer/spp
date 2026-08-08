@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
@@ -88,6 +89,29 @@ auto spp::analyse::scopes::VariableSymbol::operator==(
   return this == &that;
 }
 
+auto spp::analyse::scopes::TypeSymbol::IsCopyable() const
+  -> bool {
+  // A zero type is copyable by definition - there is nothing to move.
+  return IsDirectlyCopyable or IsDirectlyZeroType
+    or (CopyableBaseSym != nullptr and CopyableBaseSym->IsCopyable());
+}
+
+auto spp::analyse::scopes::TypeSymbol::IsZeroType() const
+  -> bool {
+  return IsDirectlyZeroType or (ZeroTypeBaseSym != nullptr and ZeroTypeBaseSym->IsZeroType());
+}
+
+auto spp::analyse::scopes::VariableSymbol::BoundCompValue() const
+  -> asts::ExpressionAst* {
+  // Only a comp generic carries a binding, and only once an argument has been given for it.
+  if (not IsGeneric or MemInfo == nullptr or MemInfo->AstCompTime == nullptr) { return nullptr; }
+
+  // An instantiation records the argument the parameter was bound to; a template records the parameter itself, which
+  // is a declaration rather than a value, so it is not a binding.
+  const auto bound = MemInfo->AstCompTime->To<asts::GenericArgumentCompAst>();
+  return bound != nullptr ? bound->Val.get() : nullptr;
+}
+
 auto spp::analyse::scopes::VariableSymbol::FqName() const
   -> Shared<asts::ExpressionAst> {
   if (IsGeneric) { return Name; }
@@ -140,13 +164,11 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
   IsGeneric(is_generic),
   GenericConstraints(generic_constraints),
   IsDirectlyCopyable(is_directly_copyable),
-  IsCopyable([this] { return this->IsDirectlyCopyable or this->IsDirectlyZeroType; }),
   Visibility(visibility),
   Convention(std::move(convention)),
   GenericImpl(this),
   LlvmInfo(MakeShared<codegen::LlvmTypeSymInfo>()),
-  IsDirectlyZeroType(false),
-  IsZeroType([this] { return this->IsDirectlyZeroType; }) {
+  IsDirectlyZeroType(false) {
 }
 
 spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
@@ -159,12 +181,12 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   GenericConstraints(that.GenericConstraints),
   GenericVal(that.GenericVal),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
-  IsCopyable(that.IsCopyable),
+  CopyableBaseSym(that.CopyableBaseSym),
   Visibility(that.Visibility),
   Convention(asts::AstClone(that.Convention)),
   GenericImpl(that.GenericImpl),
   IsDirectlyZeroType(that.IsDirectlyZeroType),
-  IsZeroType(that.IsZeroType) {
+  ZeroTypeBaseSym(that.ZeroTypeBaseSym) {
   AliasStmt = asts::AstClone(that.AliasStmt);
   LlvmInfo = that.LlvmInfo;
 }

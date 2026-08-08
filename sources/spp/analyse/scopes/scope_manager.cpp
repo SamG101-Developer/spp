@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.monomorphization_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
@@ -197,7 +198,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
   Vec<DeferredSupConstraint> *deferred) const
   -> void {
   //
-  using utils::type_utils::CreateGenericSupScope;
+  using utils::monomorphization_utils::CreateGenericSupScope;
   using utils::type_utils::RelaxedTypeEq;
   using utils::type_utils::GenericInferenceMap;
   if (sup_scopes.IsEmpty()) { return; }
