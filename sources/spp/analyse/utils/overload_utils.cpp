@@ -5,6 +5,7 @@ module spp.analyse.utils.overload_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.monomorphization_utils;
 import spp.analyse.utils.type_utils;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -23,7 +24,10 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
@@ -38,9 +42,9 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import genex;
+import std;
 import sys;
 
-// The variadic arg is the different exception types that need to get "caught".
 #define SPP_FN_RES_ERR_WRAPPER(error_type, message)                    \
   catch (error_type const &e) {                                        \
     fail_overloads.EmplaceBack(fn_scope, fn_proto, e.what(), message); \
@@ -52,16 +56,17 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> Pair<PassOverloadInfo, bool> {
-  // Extract metadata about the target function's overloads (owner, scope, etc).
+  //
   using scopes::ScopeManager;
   using errors::SppFunctionCallTooManyArgumentsError;
   using type_utils::TypeEq;
   using type_utils::ResolveAndSubstituteSelfType;
   using func_utils::GetFuncOwnerTypeAndFuncName;
+
   auto lhs = meta->PostfixExpressionLhs;
 
-  // Todo: Workaround for aliased variable symbols being used as function targets, due
-  //  to scope lookup.
+  // Todo: Workaround for aliased variable symbols being used
+  //  as function targets, due to scope lookup.
   auto temp = Shared<asts::ExpressionAst>(nullptr);
   if (const auto id = lhs->To<asts::IdentifierAst>()) {
     const auto x = sm->CurrentScope->GetVarSymbol(id);
@@ -71,14 +76,18 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     }
   }
 
+  // Extract metadata about the target function's overloads
+  // such as the function's owner and scope.
   const auto [fn_owner_type, fn_owner_scope, fn_name] = GetFuncOwnerTypeAndFuncName(
     *lhs, *sm, meta);
 
-  // If we are resolving a method, then use the free function equivalent.
+  // If we are resolving a method, then use the free function
+  // equivalent. For example, convert 1.add(2) to S32::add(1, 2).
   const auto is_postfix = meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>();
   const auto is_runtime = is_postfix
     ? is_postfix->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
     : nullptr;
+
   if (is_runtime != nullptr) {
     auto [overload_info, is_closure, pf] = PropagateMethodToFunction(
       fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
@@ -86,8 +95,10 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     return MakePair(std::move(overload_info), is_closure);
   }
 
-  // Get all the overloads to deal with, and handle closure mechanics.
-  auto [is_closure, closure_proto, all_overloads] = RetrieveAllOverloads(fn_name.get(), *fn_owner_scope, sm, meta);
+  // Get all the overloads to deal with, and handle closure
+  // mechanics.
+  auto [is_closure, closure_proto, all_overloads] = RetrieveAllOverloads(
+    fn_name.get(), *fn_owner_scope, sm, meta);
   auto pass_overloads = Vec<PassOverloadInfo>{};
   auto fail_overloads = Vec<FailOverloadInfo>{};
   auto original_meta_depth = meta->Depth();
@@ -313,6 +324,27 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
   combined_generics->MergeGenerics(std::move(explicit_generic_args.Args));
   combined_generics->MergeGenerics(std::move(implicit_generic_args.Args));
 
+  // An argument that binds a name to itself is not a binding, it is the parameter unchanged. Inference produces these
+  // whenever a generic body calls something that shares one of its generics: "BigUInt::from(that)" written inside
+  // "sup [cmp w: U32] BigInt ext From[SizedIntegerUnsigned[w]]" pins "w" to "w", because "that" is declared in terms of
+  // the very parameter being inferred. Left in, they make the group non-empty and mint a "substitution" that is really
+  // the base with its parameter list emptied (below) - and an empty parameter list is exactly what tells
+  // "_IsPureGeneric" the prototype is an instantiation rather than a template, so a declaration gets emitted for it and
+  // a body generated out of types that are still symbolic. A type argument that is symbolic but *differently* named
+  // ("U=T" from a generic body calling "g[U](x: U)" with its own "T") is a real, if not yet concrete, binding, and is
+  // still caught downstream by "_IsPureGeneric" failing to convert "T" to an llvm type. A comp argument has no such
+  // backstop, because a type parameterised by an unbound comp generic can still hand back a layout.
+  combined_generics->Args |= genex::actions::remove_if([](auto const &a) {
+    if (const auto *type_arg = a->template To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
+      return type_arg->Val->ToString() == a->ViewName();
+    }
+    if (const auto *comp_arg = a->template To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
+      return comp_arg->Val->ToString() == a->ViewName();
+    }
+    return false;
+  });
+
+
   // Consider if we need to create a generic substituted function prototype.
   if (not combined_generics->Args.IsEmpty()) {
     // Reuse the instantiation for these exact arguments if one already exists. Overload resolution runs repeatedly
@@ -332,11 +364,20 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
 
     // Create the new function scope for the generic implementation.
     const auto generic_syms = sm->CurrentScope->GetExtendedGenericSymbols(combined_generics->GetAllArgs());
-    const auto new_fn_scope = type_utils::CreateGenericFunScope(
+    const auto new_fn_scope = monomorphization_utils::CreateGenericFunScope(
       *fn_scope, asts::GenericArgumentGroupAst(nullptr, AstCloneVec(combined_generics->Args), nullptr),
       generic_syms, sm, meta);
     auto tm = scopes::ScopeManager(sm->GlobalScope, new_fn_scope);
-    new_fn_proto->GnParamGroup->Params = decltype(new_fn_proto->GnParamGroup->Params){};
+    // Drop only the parameters this substitution actually bound. Clearing the group wholesale made a *partial*
+    // instantiation - "Self::one()" written where the block's "signed" is pinned but its "w" is still the enclosing
+    // template's own parameter - stop reading as a template, even though its types still name the unbound parameter
+    // and so never lower to llvm. It then got no declaration while the call site pointed straight at it. Keeping the
+    // unbound parameters means "_IsPureGeneric" still recognises it as the template it partly is.
+    new_fn_proto->GnParamGroup->Params |= genex::actions::remove_if([&](auto const &param) {
+      return genex::any_of(combined_generics->Args, [&](auto const &arg) {
+        return arg->ViewName() == param->Name->ToString();
+      });
+    });
 
     // Capture the placeholder slot that "CreateGenericFunScope" just registered. It must be captured now (rather than
     // via ".back()" at fill-time) because the parameter/return-type analysis below can trigger nested overload
@@ -447,6 +488,29 @@ namespace {
     const auto sym = caller_scope.GetTypeSymbol(stripped.get());
     return sym != nullptr and sym->IsGeneric;
   }
+
+  /**
+   * Whether a name that @c RelaxedTypeEq had to bind in order to match is one the caller cannot choose. The same
+   * rigidity test as @c IsRigidGenericAtCaller, applied to the bindings the relaxed match produced rather than to the
+   * parameter's head type, so that a generic appearing *inside* a parameter type is covered too: the "w" of
+   * @code that: &SizedInteger[w=w, signed=false]@endcode is fixed by whoever instantiated the enclosing block, even
+   * though @c SizedInteger itself is not generic and the head-type test therefore says nothing about it.
+   *
+   * A generic that is genuinely free for the call - the callee's own parameter, or a superclass generic in a sup-ext
+   * block that is not visible from the caller - is not found as a generic here, so the relaxed match keeps working
+   * for the cases it exists to serve.
+   */
+  auto IsRigidBindingAtCaller(
+    spp::asts::TypeIdentifierAst const &bound_name,
+    spp::analyse::scopes::Scope const &caller_scope)
+    -> bool {
+    if (const auto type_sym = caller_scope.GetTypeSymbol(&bound_name); type_sym != nullptr) {
+      return type_sym->IsGeneric;
+    }
+    const auto as_id = spp::asts::IdentifierAst::FromType(bound_name);
+    const auto comp_sym = caller_scope.GetVarSymbol(as_id.get());
+    return comp_sym != nullptr and comp_sym->IsGeneric;
+  }
 }
 
 auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
@@ -556,8 +620,21 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
       // If the parameter's type is a generic that is rigid at the call site (defined in a scope
       // enclosing the caller, so already fixed), the argument must match it exactly.
       const auto param_is_rigid_generic = IsRigidGenericAtCaller(*p_type, *sm->CurrentScope);
+      const auto relaxed_matched = not param_is_rigid_generic
+        and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp);
+
+      // A relaxed match that only held because it bound a generic the caller cannot choose is not a match. Reading
+      // "temp != 0_u32" inside "sup [cmp w: U32] BigUInt ext From[SizedIntegerUnsigned[w]]", the relaxed pass matches
+      // "&SizedInteger[w=w, signed=false]" against "&SizedInteger[w=32_u32, signed=false]" by binding "w" to 32 - but
+      // "w" belongs to the enclosing block, so the body is only ever valid at one width, and the binding is thrown
+      // away rather than recorded. Left alone the mismatch stays invisible until an instantiation pins "w" to
+      // something else, surfacing it during codegen of a body whose own analysis passed.
+      const auto relaxed_bound_rigid = relaxed_matched and genex::any_of(temp, [&](auto const &binding) {
+        return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
+      });
+
       RaiseIf<SppTypeMismatchError>(
-        param_is_rigid_generic or not RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp),
+        not relaxed_matched or relaxed_bound_rigid,
         {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
     }
 
