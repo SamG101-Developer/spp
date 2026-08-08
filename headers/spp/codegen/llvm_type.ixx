@@ -19,8 +19,22 @@ namespace spp::asts {
 }
 
 namespace spp::codegen {
+  /**
+   * Lower the type from the class prototype ast into the @c llvm::Type* inside the llvm system.
+   */
   SPP_EXP_FUN auto RegisterLlvmTypeInfo(
     asts::ClassPrototypeAst const *cls_proto,
+    LLvmCtx const *ctx)
+    -> void;
+
+  /**
+   * Lower the type owned by @p scope , filling @c scope->TySym 's llvm type. Taking the scope rather than a class
+   * prototype matters for a generic instantiation: its symbol's @c Type still names the *template* it instantiates
+   * (see @c CreateGenericClsScope ), so deriving the target from the prototype fills the generic symbol and leaves the
+   * instantiation's empty. Callers that hold the instantiation's scope should come through here.
+   */
+  SPP_EXP_FUN auto RegisterLlvmTypeInfo(
+    analyse::scopes::Scope const *scope,
     LLvmCtx const *ctx)
     -> void;
 

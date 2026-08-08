@@ -49,7 +49,7 @@ constexpr auto kMaxVariantPayloadAlign = 16uz;
 
 static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
   switch (bit_width) {
-    case 8: { return llvm::APFloatBase::Float8E4M3(); }
+    case 8: { return llvm::APFloatBase::IEEEhalf(); }
     case 16: { return llvm::APFloatBase::IEEEhalf(); }
     case 32: { return llvm::APFloatBase::IEEEsingle(); }
     case 64: { return llvm::APFloatBase::IEEEdouble(); }
@@ -81,11 +81,10 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   asts::ClassPrototypeAst const *cls_proto,
   LLvmCtx const *ctx)
   -> void {
-  // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
-
-  // $ types are function "mock" types (a $-type generated per function that superimposes n FunXXXs over itself). A
-  // function used as a value is one of these mocks, so it lowers to the same { fn_ptr, env_ptr } pair as the function
-  // type it extends, making it interchangeable with closures.
+  // $ types are function "mock" types (a $-type generated per
+  // function that superimposes n FunXXXs over itself). A function
+  // used as a value is one of these mocks, so it lowers to the
+  // same { fn_ptr, env_ptr } pair as the function type it extends.
   if (cls_proto->Name->IsCompilerGeneratedType()) {
     const auto mock_sym = cls_proto->GetClsSym();
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -93,8 +92,17 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Get the class symbol from the current scope.
-  const auto scope = cls_proto->GetAstScope();
+  // Push the scope into the the registration function that accepts
+  // a scope and context.
+  RegisterLlvmTypeInfo(cls_proto->GetAstScope(), ctx);
+}
+
+auto spp::codegen::RegisterLlvmTypeInfo(
+  analyse::scopes::Scope const *scope,
+  LLvmCtx const *ctx)
+  -> void {
+  // Get the class symbol from the scope that owns it. This pulls
+  // the correct generic instantiation for struct types.
   const auto cls_sym = scope->TySym;
 
   // For compiler known types, specialize the llvm type symbols.
@@ -122,9 +130,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower S++ "NonNull[T]" to a bare llvm pointer: it declares no fields of its own (unlike "Ptr[T]", which wraps its
-  // address in an explicit "addr: USize" field), so the generic attribute-based layout below would otherwise leave it
-  // a zero-size struct - unusable as the "ptr"-sized field "View[T]"/"RawBuf[T, A]" etc. store it as.
+  // Lower S++ "NonNull[T]" to a bare llvm pointer.
   if (parts == kNonNullParts) {
     cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
@@ -176,17 +182,16 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // A generator is the bare "llvm.coro.begin" handle, one pointer wide - not a fat pointer. Its frame belongs to the
-  // llvm coroutine intrinsics, and the yield/send slots are reached through the handle as the coroutine's promise
-  // rather than by carrying an environment pointer next to it. Declared with no attributes, it would otherwise lower
-  // to an empty struct, which is neither what "SizeOf" reports for it nor what a coroutine's ramp actually returns.
-  // This matches the single field "GetSuperimposedFatPointerFieldCount" prepends for a type superimposing it.
+  // A generator is the bare "llvm.coro.begin" handle, one pointer
+  // wide.
   if (parts == kGenParts or parts == kGenOnceParts) {
     cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
   }
 
   // Lower the "Fun*" family to a { fn_ptr, env_ptr } fat pointer.
+  // Allows for compatibility with closures too; one uniform system
+  // for all function type storage.
   if (const auto fields = GetFatPointerFields(*cls_sym->FqName(), *scope, ctx); fields.has_value()) {
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, fields->ToStdVector());
     return;
@@ -199,7 +204,9 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower S++ "Var" (the "A or B" variant type) to a { tag, payload } pair.
+  // Lower S++ "Var" (the "A or B" variant type) to a
+  // { tag, payload } pair. This includes all sorts of
+  // internal processing for tag setup.
   if (parts == kVarParts) {
     const auto struct_type = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
     cls_sym->LlvmInfo->LlvmType = struct_type;
@@ -212,20 +219,25 @@ auto spp::codegen::RegisterLlvmTypeInfo(
       const auto member_sym = scope->GetTypeSymbol(member.get());
       if (member_sym == nullptr) { continue; }
 
-      // A variant can be registered before its members are, so lower any member still missing its llvm type.
+      // A variant can be registered before its members
+      // are, so lower any member still missing its llvm
+      // type.
       if (member_sym->LlvmInfo->LlvmType == nullptr and member_sym->Type != nullptr) {
         RegisterLlvmTypeInfo(member_sym->Type, ctx);
       }
 
-      // Get the size and alignment, and upgrade the maximum if necessary.
+      // Get the size and alignment, and upgrade the maximum
+      // if necessary.
       const auto member_llvm_type = GetLlvmType(*member_sym, ctx);
       if (member_llvm_type == nullptr or not member_llvm_type->isSized()) { continue; }
       max_size = std::max(max_size, dl.getTypeAllocSize(member_llvm_type).getFixedValue());
       max_align = std::max(max_align, dl.getABITypeAlign(member_llvm_type).value());
     }
 
-    // Build the payload out of the widest integer any member needs to be aligned to, rather than out of bytes: a
-    // "[n x i8]" buffer is only ever byte aligned, so storing a member into it would be under-aligned.
+    // Build the payload out of the widest integer any member
+    // needs to be aligned to, rather than out of bytes: a
+    // "[n x i8]" buffer is only ever byte aligned, so storing
+    // a member into it would be under-aligned.
     const auto payload_elem_type = llvm::Type::getIntNTy(
       *ctx->Context, static_cast<unsigned>(std::min(max_align, kMaxVariantPayloadAlign) * 8));
     const auto payload_elem_size = dl.getTypeAllocSize(payload_elem_type).getFixedValue();
@@ -236,22 +248,26 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Empty struct, will fill in stage_10 when all attributes' types have been generated.
-  cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
+  // Empty struct, will fill in stage_10 when all attributes'
+  // types have been generated.
+  cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(
+    *ctx->Context, mangle::mangle_type_name(*cls_sym));
 }
 
 auto spp::codegen::GetLlvmType(
   analyse::scopes::TypeSymbol const &type_sym,
   LLvmCtx const *ctx)
   -> llvm::Type* {
-  // Either return the llvm type bound to the symbol, or a pointer for borrows.
+  // Either return the llvm type bound to the symbol, or a
+  // pointer for borrows.
   return type_sym.Convention != nullptr ? llvm::PointerType::get(*ctx->Context, 0) : type_sym.LlvmInfo->LlvmType;
 }
 
 auto spp::codegen::GetVariantTagType(
   LLvmCtx const *ctx)
   -> llvm::IntegerType* {
-  // Every variant discriminates its members with the same integer width (64 bits).
+  // Every variant discriminates its members with the same
+  // integer width (64 bits).
   return llvm::Type::getIntNTy(*ctx->Context, kVariantTagBits);
 }
 
@@ -264,8 +280,9 @@ auto spp::codegen::GetVariantIndexOfMember(
   using analyse::utils::type_utils::DedupVariableInnerTypes;
   using analyse::utils::type_utils::TypeEq;
 
-  // Index the type in the list of member types of the variant. Bind the list to a named local first, rather than
-  // piping the returned temporary straight into a view over it.
+  // Index the type in the list of member types of the variant.
+  // Bind the list to a named local first, rather than piping
+  // the returned temporary straight into a view over it.
   const auto members = DedupVariableInnerTypes(variant_type, scope);
   for (auto const &[i, member] : members | genex::views::enumerate) {
     if (TypeEq(*member, member_type, scope, scope, false)) {
@@ -303,16 +320,24 @@ auto spp::codegen::BuildVariant(
   Str const &name,
   LLvmCtx *ctx)
   -> llvm::Value* {
-  // Build into a stack slot, because the payload is written through a pointer rather than by value. The slot starts
-  // zeroed, because the member rarely fills the whole payload, and the whole struct is loaded back out at the end: the
-  // bytes past the member would otherwise be stale stack data, undef to the optimiser and a disclosure hazard the
-  // moment a variant is ever copied out of the program. Everything the "stores" below cover is dead-store-eliminated.
+  // Build into a stack slot, because the payload is written
+  // through a pointer rather than by value. The slot starts
+  // zeroed, because the member rarely fills the whole payload,
+  // and the whole struct is loaded back out at the end: the
+  // bytes past the member would otherwise be stale stack data,
+  // undef to the optimiser and a disclosure hazard the moment a
+  // variant is ever copied out of the program. Everything the
+  // "stores" below cover is dead-store-eliminated.
   const auto slot = LlvmEntryAlloca(variant_llvm_type, name + ".slot", ctx);
-  ctx->Builder.CreateStore(llvm::Constant::getNullValue(variant_llvm_type), slot);
-  const auto tag_ptr = ctx->Builder.CreateStructGEP(variant_llvm_type, slot, 0, name + ".tag.ptr");
-  ctx->Builder.CreateStore(llvm::ConstantInt::get(GetVariantTagType(ctx), tag), tag_ptr);
+  ctx->Builder.CreateStore(
+    llvm::Constant::getNullValue(variant_llvm_type), slot);
 
-  // A member that lowers to nothing (such as the attribute-less "None") has no payload; the tag knows the type though.
+  const auto tag_ptr = ctx->Builder.CreateStructGEP(variant_llvm_type, slot, 0, name + ".tag.ptr");
+  ctx->Builder.CreateStore(
+    llvm::ConstantInt::get(GetVariantTagType(ctx), tag), tag_ptr);
+
+  // A member that lowers to nothing (such as the stateless "None")
+  // has no payload; the tag knows the type though.
   if (member_val != nullptr and not member_val->getType()->isVoidTy()) {
     ctx->Builder.CreateStore(member_val, GetVariantPayloadPtr(slot, variant_llvm_type, name + ".payload.ptr", ctx));
   }
@@ -333,22 +358,25 @@ auto spp::codegen::CoerceToVariant(
   using analyse::utils::type_utils::IsTypeVariant;
   using analyse::utils::type_utils::TypeEq;
 
-  // Only a variant target ever needs a coercion, and a value already of the target type is one.
+  // Only a variant target ever needs a coercion, and a value already
+  // of the target type is one.
   if (llvm_val == nullptr or not IsTypeVariant(target_type, scope)) { return llvm_val; }
   if (TypeEq(target_type, source_type, scope, scope, false)) { return llvm_val; }
 
   const auto target_llvm_type = scope.GetTypeSymbol(&target_type)->LlvmInfo->LlvmType;
   SPP_ASSERT(target_llvm_type != nullptr);
 
-  // A member value (source) is wrapped: tagged and copied into the payload.
+  // A member value (source) is wrapped: tagged and copied into the
+  // payload.
   if (not IsTypeVariant(source_type, scope)) {
     const auto tag = GetVariantIndexOfMember(target_type, source_type, scope);
     if (not tag.has_value()) { return llvm_val; }
     return BuildVariant(llvm_val, target_llvm_type, *tag, name, ctx);
   }
 
-  // Otherwise, we need to widen one variant into another, like "Str or Bool" into "Str or Bool or S32". As the order is
-  // not guaranteed to match, a mapping is needed.
+  // Otherwise, we need to widen one variant into another, like
+  // "Str or Bool" into "Str or Bool or S32". As the order is not
+  // guaranteed to match, a mapping is needed.
   const auto source_llvm_type = scope.GetTypeSymbol(&source_type)->LlvmInfo->LlvmType;
   SPP_ASSERT(source_llvm_type != nullptr);
 
@@ -362,13 +390,16 @@ auto spp::codegen::CoerceToVariant(
     tag_map.EmplaceBack(*target_tag);
   }
 
-  // Spill the source to memory, because the payload is copied through a pointer rather than by value.
+  // Spill the source to memory, because the payload is copied
+  // through a pointer rather than by value.
   const auto source_slot = LlvmEntryAlloca(source_llvm_type, name + ".from.slot", ctx);
   ctx->Builder.CreateStore(llvm_val, source_slot);
   const auto source_tag = LoadVariantTag(source_slot, source_llvm_type, name + ".from.tag", ctx);
 
-  // Translate the discriminant with a chain of selects, innermost first. Variants have few members, so this stays
-  // smaller than a lookup table, and it folds away entirely when the two numberings happen to agree.
+  // Translate the discriminant with a chain of selects, innermost
+  // first. Variants have few members, so this stays smaller than a
+  // lookup table, and it folds away entirely when the two numberings
+  // happen to agree.
   const auto tag_type = GetVariantTagType(ctx);
   auto target_tag = static_cast<llvm::Value*>(source_tag);
   if (not is_identity_map) {
@@ -381,9 +412,11 @@ auto spp::codegen::CoerceToVariant(
     }
   }
 
-  // Write the translated discriminant and move the payload over. The target's members are a superset of the source's,
-  // so its payload buffer is always at least as large, and the source's size is the amount worth copying. That leaves
-  // the target's wider tail uncopied, so zero the slot first.
+  // Write the translated discriminant and move the payload over. The
+  // target's members are a superset of the source's, so its payload
+  // buffer is always at least as large, and the source's size is the
+  // amount worth copying. That leaves the target's wider tail uncopied,
+  // so zero the slot first.
   const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".to.slot", ctx);
   ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
   ctx->Builder.CreateStore(
