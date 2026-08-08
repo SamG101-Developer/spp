@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.monomorphization_utils;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.class_prototype_ast;
@@ -141,7 +142,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
   using analyse::utils::func_utils::InferGnArgs;
   using analyse::utils::func_utils::NameGnArgs;
-  using analyse::utils::type_utils::CreateGenericClsScope;
+  using analyse::utils::monomorphization_utils::CreateGenericClsScope;
   using analyse::utils::type_utils::GetTypeSymOrError;
   using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
   using analyse::utils::type_utils::TypeEq;
@@ -199,17 +200,17 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     meta->TypeAnalysisTypeScope = nullptr;
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
 
-    // A comp argument written as a plain name means whatever that name is bound to where the type is written, not the
-    // name itself: "SizedIntegerUnsigned[w]::from(that)" sitting in an instantiation of the enclosing "sup [cmp w:
-    // U32]" block names a concrete width. "CreateGenericSym" leaves that binding on the symbol's comp-time ast, so
-    // resolve through it - otherwise the type stays "SizedInteger[w=w, signed=false]" and reaches codegen with no
-    // layout to generate. A type argument already behaves this way, because a bound type generic's symbol carries the
-    // concrete type it was bound to.
-    //
-    // Guarded, because this rewrites the argument in place and most asts reaching here are shared with a template: an
-    // instantiated "sup" scope keeps the template's ast node (see "CreateGenericSupScope"), and re-analysis through
-    // "ResetCache" would bake one instantiation's bindings into the signature every other caller resolves against.
-    // Only an instantiation's own body is a private clone, so only that analysis sets the flag.
+    // A comp argument written as a plain name means whatever that name is bound to where the type is written, not
+    // the name itself: "SizedIntegerUnsigned[w]::from(that)" sitting in an instantiation of the enclosing "sup [cmp w:
+    // U32]" block names a concrete width. Otherwise the type stays "SizedInteger[w=w, signed=false]" and reaches
+    // codegen with no layout to generate. A type argument is resolved the same way, in
+    // "GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics", where the binding to follow is the symbol's fully
+    // qualified name rather than the argument it was given; an unbound parameter has no binding, so a template's
+    // signature stays written in terms of its own parameters.
+    // Still guarded: "CreateGenericSupScope" now gives a substituted "sup" block its own ast, but that is not the
+    // only route by which a signature is shared - the mock "sup" blocks stage 1 lowers functions into live on the
+    // module, and a function's own substituted ast is not made until stage 11 - so resolving unconditionally still
+    // reaches asts that other callers resolve against. Only an instantiation's own body is private for certain.
     if (meta->ResolveBoundCompGenerics) {
       for (auto *comp_arg : GnArgGroup->Args
            | genex::views::ptr
@@ -217,9 +218,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
         const auto *as_id = comp_arg->Val->To<IdentifierAst>();
         if (as_id == nullptr) { continue; }
         const auto sym = sm->CurrentScope->GetVarSymbol(as_id);
-        if (sym == nullptr or not sym->IsGeneric or sym->MemInfo->AstCompTime == nullptr) { continue; }
-        if (const auto *bound = sym->MemInfo->AstCompTime->To<GenericArgumentCompKeywordAst>(); bound != nullptr) {
-          comp_arg->Val = AstClone(bound->Val);
+        if (sym == nullptr) { continue; }
+        if (const auto *bound = sym->BoundCompValue(); bound != nullptr) {
+          comp_arg->Val = AstClone(bound);
         }
       }
     }
@@ -256,7 +257,8 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   if (not scope->HasTypeSymbol(this)) {
     const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(
       GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
-    CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
+    CreateGenericClsScope(
+      *this, type_sym->SharedFromThis<analyse::scopes::TypeSymbol>(), external_generics, is_tuple, sm, meta);
   }
 
   // Enforce generic constraints from the pre-analysis stage (CurrentStage >= 8) onwards, not just the main analysis
