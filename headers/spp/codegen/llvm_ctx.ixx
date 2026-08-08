@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_ctx;
-import spp.codegen.llvm_coros;
 import spp.utils.types;
 import llvm;
 import std;
@@ -13,6 +12,7 @@ namespace spp::analyse::scopes {
 
 namespace spp::codegen {
   SPP_EXP_CLS struct LLvmCtx;
+  SPP_EXP_CLS struct LlvmGenerator;
   auto global_context = new llvm::LLVMContext();
 }
 
@@ -37,17 +37,7 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   auto operator=(LLvmCtx const &) -> LLvmCtx& = delete;
   auto operator=(LLvmCtx &&) noexcept -> LLvmCtx& = delete;
 
-  LLvmCtx() :
-    Context(global_context),
-    Module(nullptr),
-    Builder(*Context),
-    MF(nullptr) {
-  }
-
-  static auto NewCtx(Str const &module_name) -> Unique<LLvmCtx> {
-    auto ctx = MakeUnique<LLvmCtx>();
-    ctx->Module = MakeUnique<llvm::Module>(module_name, *ctx->Context);
-    ctx->Module->setTargetTriple(llvm::Triple("x86_64-pc-linux-gnu"));
-    return ctx;
-  }
+  LLvmCtx();
+  ~LLvmCtx();
+  static auto NewCtx(Str const &module_name) -> Unique<LLvmCtx>;
 };
