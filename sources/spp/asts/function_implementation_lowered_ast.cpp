@@ -72,11 +72,20 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // Use the builtin to build the llvm custom lowered code.
+  // Use the builtin to build the llvm custom lowered code. The
+  // lowering reads the prototype's own scope, so it runs before
+  // the scope walk below moves the cursor off it.
   analyse::utils::builtins::kBuiltinFuncs
     .at(_ScopePtr)
     .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmType(
       *sm->CurrentScope->GetTypeSymbol(_ProtoPtr->ReturnType.get()), ctx));
+
+  // Skip scopes to get back to the parent scope (skipping inner
+  // scopes on the lowered function - `!intrinsic` etc).
+  const auto final_scope = sm->CurrentScope->FinalChildScope();
+  while (sm->CurrentScope != final_scope) {
+    sm->MoveToNextScope(false);
+  }
   return nullptr;
 }
 
