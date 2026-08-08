@@ -126,7 +126,14 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
     sym == nullptr, {sm.CurrentScope}, ERR_ARGS(*tmp_name, no_tmp_msg));
 
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym->Type.get());
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+
+  // Lower the type if the walk over class prototypes has
+  // not reached it.
+  if (llvm_type == nullptr and type_sym->LinkedScope != nullptr) {
+    codegen::RegisterLlvmTypeInfo(type_sym->LinkedScope, ctx);
+    llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  }
   SPP_ASSERT(llvm_type != nullptr);
 
   const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "destructure.alloca" + uid, ctx);
