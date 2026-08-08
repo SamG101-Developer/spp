@@ -10,6 +10,7 @@ import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.gen_expression_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
@@ -285,6 +286,40 @@ auto spp::codegen::func_impls::apply_atomic_rmw_op(
   return llvm::AtomicRMWInst::Xchg;
 }
 
+/**
+ * Read the value a "cmp" generic parameter of the enclosing function was bound to on this instantiation, as an atomic
+ * ordering. Llvm fixes the ordering of an atomic operation when the instruction is built - there is no atomic
+ * instruction that takes a runtime ordering - so the orderings are generic parameters of the atomic intrinsics rather
+ * than function parameters, and their values are read from the instantiation's symbol. Reading them off the
+ * "llvm::Function"'s arguments cannot work: an "llvm::Argument" is never an "llvm::ConstantInt", whatever the caller
+ * passed.
+ * @param sm The scope manager, positioned on the instantiated function's scope.
+ * @param meta The compiler meta data.
+ * @param ctx The llvm context to generate the bound value into.
+ * @param name The name of the generic parameter holding the ordering.
+ * @return The atomic ordering this instantiation was created for.
+ */
+static auto read_atomic_ordering(
+  spp::analyse::scopes::ScopeManager *const sm,
+  spp::asts::meta::CompilerMetaData *const meta,
+  spp::codegen::LLvmCtx *const ctx,
+  spp::Str const &name)
+  -> llvm::AtomicOrdering {
+  const auto param_name = spp::asts::IdentifierAst(0uz, name);
+  const auto order_sym = sm->CurrentScope->GetVarSymbol(&param_name);
+  SPP_ASSERT(order_sym != nullptr and order_sym->MemInfo->AstCompTime != nullptr);
+
+  // An instantiation records what the parameter was bound to as the argument itself; the template records the
+  // parameter, but a template never reaches code generation.
+  const auto bound = order_sym->MemInfo->AstCompTime->To<spp::asts::GenericArgumentCompKeywordAst>();
+  SPP_ASSERT(bound != nullptr);
+
+  ctx->InConstantContext = true;
+  const auto order_val = bound->Val->Stage11_CodeGen(sm, meta, ctx);
+  ctx->InConstantContext = false;
+  return static_cast<llvm::AtomicOrdering>(llvm::cast<llvm::ConstantInt>(order_val)->getZExtValue());
+}
+
 auto spp::codegen::func_impls::simple_atomic_fetch_rmw(
   SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, const AtomicRmwOp op) -> void {
   // "(&self, val: T, order: U8) -> T": a plain method (not a coroutine, and not a free "_inner" function), so its
@@ -303,21 +338,15 @@ auto spp::codegen::func_impls::simple_atomic_fetch_rmw(
   const auto val_field_ptr = ctx->Builder.CreateStructGEP(atom_ty, self_ptr, 0, "atomic.fetch.val_ptr");
   const auto val_ty = atom_ty->getElementType(0);
 
-  // "val" and "order" are the two non-"self" parameters.
+  // "val" is the only non-"self" parameter; the ordering is a generic parameter.
   const auto val_param = proto->FnParamGroup->GetAllParams()[0];
   const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
   const auto val_arg = ctx->Builder.CreateLoad(val_ty, val_sym->LlvmInfo->Alloca, "atomic.fetch.operand");
 
-  const auto order_param = proto->FnParamGroup->GetAllParams()[1];
-  const auto order_sym = sm->CurrentScope->GetVarSymbol(order_param->ExtractName().get());
-  const auto order_ty = llvm::Type::getInt8Ty(*ctx->Context);
-  const auto order_arg = llvm::cast<llvm::ConstantInt>(
-    ctx->Builder.CreateLoad(order_ty, order_sym->LlvmInfo->Alloca, "atomic.fetch.order"));
-
   auto const &dl = ctx->Module->getDataLayout();
   const auto rmw_inst = ctx->Builder.CreateAtomicRMW(
     apply_atomic_rmw_op(op), val_field_ptr, val_arg, dl.getABITypeAlign(val_ty),
-    static_cast<llvm::AtomicOrdering>(order_arg->getZExtValue()));
+    read_atomic_ordering(sm, meta, ctx, "order"));
   ctx->Builder.CreateRet(rmw_inst);
 }
 
@@ -2083,12 +2112,10 @@ auto spp::codegen::func_impls::std_threading_atomic_fence_inner(
   SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
   // Create the fence function.
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-  const auto order_ty = llvm::Type::getInt8Ty(*ctx->Context);
-  const auto fn = simple_create_fn(sm, proto, meta, ctx, void_ty, Vec<llvm::Type*>{order_ty});
+  simple_create_fn(sm, proto, meta, ctx, void_ty, Vec<llvm::Type*>{});
 
   // Build the function body.
-  const auto order_arg = llvm::cast<llvm::ConstantInt>(fn->arg_begin());
-  ctx->Builder.CreateFence(static_cast<llvm::AtomicOrdering>(order_arg->getZExtValue()));
+  ctx->Builder.CreateFence(read_atomic_ordering(sm, meta, ctx, "order"));
   ctx->Builder.CreateRetVoid();
 }
 
@@ -2097,14 +2124,12 @@ auto spp::codegen::func_impls::std_threading_atomic_load_inner(
   //
   const auto uid = "." + utils::Uid();
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
-  const auto order_ty = llvm::cast<llvm::Type>(llvm::Type::getInt8Ty(*ctx->Context));
-  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ptr_ty, order_ty});
+  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ptr_ty});
 
   const auto ptr_arg = fn->arg_begin();
-  const auto order_arg = llvm::cast<llvm::ConstantInt>(fn->arg_begin() + 1);
 
   const auto load_inst = ctx->Builder.CreateLoad(ty, ptr_arg, "atomic.load" + uid);
-  load_inst->setAtomic(static_cast<llvm::AtomicOrdering>(order_arg->getZExtValue()));
+  load_inst->setAtomic(read_atomic_ordering(sm, meta, ctx, "order"));
   ctx->Builder.CreateRet(load_inst);
 }
 
@@ -2117,15 +2142,13 @@ auto spp::codegen::func_impls::std_threading_atomic_store_inner(
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
-  const auto order_ty = llvm::cast<llvm::Type>(llvm::Type::getInt8Ty(*ctx->Context));
-  const auto fn = simple_create_fn(sm, proto, meta, ctx, void_ty, Vec{ptr_ty, val_ty, order_ty});
+  const auto fn = simple_create_fn(sm, proto, meta, ctx, void_ty, Vec{ptr_ty, val_ty});
 
   const auto ptr_arg = fn->arg_begin();
   const auto val_arg = fn->arg_begin() + 1;
-  const auto order_arg = llvm::cast<llvm::ConstantInt>(fn->arg_begin() + 2);
 
   const auto store_inst = ctx->Builder.CreateStore(val_arg, ptr_arg);
-  store_inst->setAtomic(static_cast<llvm::AtomicOrdering>(order_arg->getZExtValue()));
+  store_inst->setAtomic(read_atomic_ordering(sm, meta, ctx, "order"));
   ctx->Builder.CreateRetVoid();
 }
 
@@ -2135,21 +2158,18 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_inner(
   const auto ret_ty = llvm::cast<llvm::StructType>(ty);
   const auto elem_ty = ret_ty->getElementType(0);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto order_ty = llvm::Type::getInt8Ty(*ctx->Context);
   const auto fn = simple_create_fn(
-    sm, proto, meta, ctx, ret_ty, Vec<llvm::Type*>{ptr_ty, elem_ty, elem_ty, order_ty, order_ty});
+    sm, proto, meta, ctx, ret_ty, Vec<llvm::Type*>{ptr_ty, elem_ty, elem_ty});
 
   const auto ptr_arg = fn->arg_begin();
   const auto old_arg = fn->arg_begin() + 1;
   const auto new_arg = fn->arg_begin() + 2;
-  const auto success_order_arg = llvm::cast<llvm::ConstantInt>(fn->arg_begin() + 3);
-  const auto failure_order_arg = llvm::cast<llvm::ConstantInt>(fn->arg_begin() + 4);
 
   auto const &dl = ctx->Module->getDataLayout();
   const auto cmpxchg_inst = ctx->Builder.CreateAtomicCmpXchg(
     ptr_arg, old_arg, new_arg, dl.getABITypeAlign(elem_ty),
-    static_cast<llvm::AtomicOrdering>(success_order_arg->getZExtValue()),
-    static_cast<llvm::AtomicOrdering>(failure_order_arg->getZExtValue()));
+    read_atomic_ordering(sm, meta, ctx, "success_order"),
+    read_atomic_ordering(sm, meta, ctx, "failure_order"));
   ctx->Builder.CreateRet(cmpxchg_inst);
 }
 
@@ -2159,21 +2179,18 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_weak_inner(
   const auto ret_ty = llvm::cast<llvm::StructType>(ty);
   const auto elem_ty = ret_ty->getElementType(0);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto order_ty = llvm::Type::getInt8Ty(*ctx->Context);
   const auto fn = simple_create_fn(
-    sm, proto, meta, ctx, ret_ty, Vec<llvm::Type*>{ptr_ty, elem_ty, elem_ty, order_ty, order_ty});
+    sm, proto, meta, ctx, ret_ty, Vec<llvm::Type*>{ptr_ty, elem_ty, elem_ty});
 
   const auto ptr_arg = fn->arg_begin();
   const auto old_arg = fn->arg_begin() + 1;
   const auto new_arg = fn->arg_begin() + 2;
-  const auto success_order_arg = llvm::cast<llvm::ConstantInt>(fn->arg_begin() + 3);
-  const auto failure_order_arg = llvm::cast<llvm::ConstantInt>(fn->arg_begin() + 4);
 
   auto const &dl = ctx->Module->getDataLayout();
   const auto cmpxchg_inst = ctx->Builder.CreateAtomicCmpXchg(
     ptr_arg, old_arg, new_arg, dl.getABITypeAlign(elem_ty),
-    static_cast<llvm::AtomicOrdering>(success_order_arg->getZExtValue()),
-    static_cast<llvm::AtomicOrdering>(failure_order_arg->getZExtValue()));
+    read_atomic_ordering(sm, meta, ctx, "success_order"),
+    read_atomic_ordering(sm, meta, ctx, "failure_order"));
   cmpxchg_inst->setWeak(true);
   ctx->Builder.CreateRet(cmpxchg_inst);
 }
@@ -2222,16 +2239,10 @@ auto spp::codegen::func_impls::std_threading_atomic_fetch_not(
   const auto val_ty = atom_ty->getElementType(0);
   const auto val_arg = llvm::ConstantInt::getBool(*ctx->Context, true);
 
-  const auto order_param = proto->FnParamGroup->GetAllParams()[0];
-  const auto order_sym = sm->CurrentScope->GetVarSymbol(order_param->ExtractName().get());
-  const auto order_ty = llvm::Type::getInt8Ty(*ctx->Context);
-  const auto order_arg = llvm::cast<llvm::ConstantInt>(
-    ctx->Builder.CreateLoad(order_ty, order_sym->LlvmInfo->Alloca, "atomic.fetch_not.order"));
-
   auto const &dl = ctx->Module->getDataLayout();
   const auto rmw_inst = ctx->Builder.CreateAtomicRMW(
     apply_atomic_rmw_op(AtomicRmwOp::Xor), val_field_ptr, val_arg, dl.getABITypeAlign(val_ty),
-    static_cast<llvm::AtomicOrdering>(order_arg->getZExtValue()));
+    read_atomic_ordering(sm, meta, ctx, "order"));
   ctx->Builder.CreateRet(rmw_inst);
 }
 
