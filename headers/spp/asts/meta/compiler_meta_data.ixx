@@ -5,7 +5,6 @@ export module spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_coros;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl;
 import llvm;
 import std;
 
@@ -78,13 +77,14 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   bool LoopDoubleCheckActive;
   std::size_t LoopCurrentDepth;
   LoopExpressionAst *LoopCurrentAst;
-  Shared<ankerl::unordered_dense::map<std::size_t, std::tuple< // Todo: struct
-                                        ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
+  Shared<Map<std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
   Shared<TypeAst> ObjectInitType;
-  ankerl::unordered_dense::map<Shared<IdentifierAst>, Shared<TypeAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>,
-                               utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferSource; // Todo: struct
-  ankerl::unordered_dense::map<Shared<IdentifierAst>, Shared<TypeAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>,
-                               utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferTarget; // Todo: struct
+  Map<
+    Shared<IdentifierAst>, Shared<TypeAst>,
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferSource; // Todo: struct
+  Map<
+    Shared<IdentifierAst>, Shared<TypeAst>,
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferTarget; // Todo: struct
   ExpressionAst *PostfixExpressionLhs;
   ExpressionAst *UnaryExpressionRhs;
   bool SkipTypeAnalysisGenericChecks;
@@ -104,8 +104,9 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   llvm::Value *LlvmAssignmentTargetType;
   llvm::PHINode *LlvmPhi;
   Vec<LlvmLoopInfo> LlvmLoopStack;
-  ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>
-                               , utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
+  Map<
+    Shared<IdentifierAst>, Unique<ExpressionAst>,
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
   Vec<TypeAst*> CmpGnTypeArgs;
   Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;

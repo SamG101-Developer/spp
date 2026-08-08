@@ -5,7 +5,6 @@ export module spp.codegen.llvm_layout;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_sym_info;
 import spp.utils.types;
-import ankerl;
 import llvm;
 import std;
 
@@ -27,7 +26,7 @@ namespace spp::codegen {
   SPP_EXP_FUN auto SortMembersForSppLayout(
     Vec<llvm::Type*> const &field_types,
     spp::codegen::LLvmCtx const *ctx)
-    -> Pair<Vec<llvm::Type*>, ankerl::unordered_dense::map<std::size_t, std::size_t>>;
+    -> Pair<Vec<llvm::Type*>, Map<std::size_t, std::size_t>>;
 
   /**
    * Translate an attribute's declaration index (its position in @c GetAllAttrs) into the physical field index of the

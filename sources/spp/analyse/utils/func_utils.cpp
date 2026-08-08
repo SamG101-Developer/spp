@@ -84,7 +84,6 @@ import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.types;
 import spp.utils.uid;
-import ankerl;
 import genex;
 
 auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
@@ -699,7 +698,7 @@ auto spp::analyse::utils::func_utils::NameGnArgs(
   std::ranges::move(type_args->Args, std::back_inserter(a_group.Args));
 
   // Build index map once for O(n).
-  auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
+  auto param_index = Map<StrView, std::size_t>();
   for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
     param_index[p->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name] = i;
   }
@@ -1042,7 +1041,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
   }
 
   // Emit the final arg list sorted into parameter declaration order.
-  auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
+  auto param_index = Map<StrView, std::size_t>();
   for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
     param_index[p->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name] = i;
   }
@@ -1077,7 +1076,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     auto all_final_group = asts::GenericArgumentGroupAst::FromMap(all_final_unified);
     auto all_final_args = all_final_group->GetAllArgs();
 
-    auto comp_p_name_index = ankerl::unordered_dense::map<StrView, std::size_t>();
+    auto comp_p_name_index = Map<StrView, std::size_t>();
     for (auto [i, p] : comp_p_names | genex::views::enumerate) { comp_p_name_index[p->Name] = i; }
 
     auto sorted_comp = comp_formatted | genex::to<Vec>();

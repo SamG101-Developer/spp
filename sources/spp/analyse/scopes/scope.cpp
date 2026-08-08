@@ -36,7 +36,6 @@ import spp.utils.error_formatter;
 import spp.utils.functions;
 import spp.utils.algorithms;
 import spp.utils.ptr;
-import ankerl;
 import genex;
 
 SPP_MOD_BEGIN

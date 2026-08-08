@@ -7,7 +7,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
 import spp.utils.functions;
 import spp.utils.types;
-import ankerl;
 import llvm;
 import std;
 
@@ -31,7 +30,7 @@ namespace spp::analyse::utils::builtins {
     Str name;
   };
 
-  auto MakeBuiltinFuncMap() -> ankerl::unordered_dense::map<Str, LoweredFuncImpl>;
+  auto MakeBuiltinFuncMap() -> Map<Str, LoweredFuncImpl>;
 
   export const auto kBuiltinFuncs = MakeBuiltinFuncMap();
 }

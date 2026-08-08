@@ -17,7 +17,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.strings;
 import spp.utils.uid;
-import ankerl;
 import genex;
 import llvm;
 
@@ -241,7 +240,7 @@ auto spp::asts::IdentifierAst::ToFuncIdentifier() const
 
 auto spp::asts::IdentifierAst::AnkerlHash() const
   -> std::size_t {
-  return ankerl::unordered_dense::hash<Str>()(Val);
+  return Hash<Str>()(Val);
 }
 
 auto spp::asts::IdentifierAst::ExprParts() const

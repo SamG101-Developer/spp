@@ -28,7 +28,6 @@ import spp.asts.tuple_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
-import ankerl;
 import genex;
 
 auto spp::analyse::utils::mem_utils::MemRegionOverlap(
@@ -184,7 +183,7 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
   -> void {
   // Define a simple alias for a list of symbols and their memory.
   using SymbolMemoryList = Vec<Pair<asts::CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
-  using SymbolMemoryMap = ankerl::unordered_dense::map<scopes::VariableSymbol*, mem_info_utils::MemoryInfoSnapshot>;
+  using SymbolMemoryMap = Map<scopes::VariableSymbol*, mem_info_utils::MemoryInfoSnapshot>;
 
   // Create a map of the symbols' memory  information before any branches are analysed.
   auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();

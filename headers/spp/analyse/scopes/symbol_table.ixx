@@ -4,7 +4,6 @@ module;
 export module spp.analyse.scopes.symbol_table;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl;
 import std;
 
 namespace spp::analyse::scopes {
@@ -22,7 +21,7 @@ namespace spp::analyse::scopes {
     using is_avalanching = void;
 
     auto operator()(const StrView sv) const noexcept -> std::uint64_t {
-      return ankerl::unordered_dense::hash<StrView>{}(sv);
+      return Hash<StrView>{}(sv);
     }
   };
 }
@@ -37,7 +36,7 @@ SPP_EXP_CLS
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-  ankerl::unordered_dense::map<Str, Shared<S>, TransparentStringHash, std::equal_to<>> _Table;
+  Map<Str, Shared<S>, TransparentStringHash, std::equal_to<>> _Table;
 
 public:
   IndividualSymbolTable();

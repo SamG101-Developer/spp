@@ -5,7 +5,6 @@ export module spp.analyse.utils.type_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl;
 import std;
 
 namespace spp::asts {
@@ -36,7 +35,7 @@ namespace spp::analyse::scopes {
 
 namespace spp::analyse::utils::type_utils {
   SPP_EXP_CLS
-  using GenericInferenceMap = ankerl::unordered_dense::map<
+  using GenericInferenceMap = Map<
     Shared<asts::TypeIdentifierAst>, asts::ExpressionAst*,
     spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;

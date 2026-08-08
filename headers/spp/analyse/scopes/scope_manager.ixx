@@ -7,7 +7,6 @@ import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope_range;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
-import ankerl;
 import std;
 
 namespace spp::asts {
@@ -52,7 +51,7 @@ public:
    * created @c ScopeManager instances will share it. This allows any @c ScopeManager to analyse types and inject the
    * sup block logic into the manager.
    */
-  inline static ankerl::unordered_dense::map<TypeSymbol*, Vec<Scope*>> normal_sup_blocks = {};
+  inline static Map<TypeSymbol*, Vec<Scope*>> normal_sup_blocks = {};
 
   /**
    * This list contains the pure generic sup blocks, such as

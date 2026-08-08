@@ -5,7 +5,6 @@ export module spp.analyse.utils.func_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
-import ankerl;
 import llvm;
 import std;
 
@@ -41,37 +40,37 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::func_utils {
-  using InferenceSourceMap = ankerl::unordered_dense::map<
+  using InferenceSourceMap = Map<
     Shared<asts::IdentifierAst>,
     Shared<asts::TypeAst>,
     spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
-  using InferenceTargetMap = ankerl::unordered_dense::map<
+  using InferenceTargetMap = Map<
     Shared<asts::IdentifierAst>,
     Shared<asts::TypeAst>,
     spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
-  using InferenceResultCompMap = ankerl::unordered_dense::map<
+  using InferenceResultCompMap = Map<
     Shared<asts::TypeIdentifierAst>,
     Vec<asts::ExpressionAst*>,
     spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
-  using InferenceResultTypeMap = ankerl::unordered_dense::map<
+  using InferenceResultTypeMap = Map<
     Shared<asts::TypeIdentifierAst>,
     Vec<Shared<asts::TypeAst>>,
     spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
-  SPP_EXP_CLS using InferenceFinalCompMap = ankerl::unordered_dense::map<
+  SPP_EXP_CLS using InferenceFinalCompMap = Map<
     Shared<asts::TypeIdentifierAst>,
     asts::ExpressionAst*,
     spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
-  SPP_EXP_CLS using InferenceFinalTypeMap = ankerl::unordered_dense::map<
+  SPP_EXP_CLS using InferenceFinalTypeMap = Map<
     Shared<asts::TypeIdentifierAst>,
     Shared<asts::TypeAst>,
     spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,

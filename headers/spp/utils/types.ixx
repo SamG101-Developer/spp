@@ -5,6 +5,7 @@ module;
 #endif
 
 export module spp.utils.types;
+import ankerl;
 import std;
 
 export namespace std {
@@ -31,21 +32,26 @@ export namespace std {
 }
 
 namespace spp {
-  SPP_EXP_CLS
-  template <typename T>
+  SPP_EXP_CLS template <typename T>
   using Shared = std::shared_ptr<T>;
 
-  SPP_EXP_CLS
-  template <typename T>
+  SPP_EXP_CLS template <typename T>
   using Weak = std::weak_ptr<T>;
 
-  SPP_EXP_CLS
-  template <typename T>
+  SPP_EXP_CLS template <typename T>
   using Unique = std::unique_ptr<T>;
 
-  SPP_EXP_CLS
-  template <typename T, typename A = std::allocator<T>>
+  SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
   class Vec;
+
+  SPP_EXP_CLS template <typename T, typename Enable = void>
+  using Hash = ankerl::unordered_dense::hash<T, Enable>;
+
+  SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>>
+  using Map = ankerl::unordered_dense::map<K, V, H, Eq>;
+
+  SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>>
+  using Set = ankerl::unordered_dense::set<K, V, H, Eq>;
 
   SPP_EXP_CLS
   using Str = std::string; // stringzilla::string;
@@ -53,23 +59,18 @@ namespace spp {
   SPP_EXP_CLS
   using StrView = std::string_view; // stringzilla::string_view;
 
-  SPP_EXP_CLS
-  template <typename T, typename A = std::allocator<Shared<T>>>
+  SPP_EXP_CLS template <typename T, typename A = std::allocator<Shared<T>>>
   using SharedVec = Vec<Shared<T>, A>;
 
-  SPP_EXP_CLS
-  template <typename T, typename A = std::allocator<Unique<T>>>
+  SPP_EXP_CLS template <typename T, typename A = std::allocator<Unique<T>>>
   using UniqueVec = Vec<Unique<T>, A>;
 
-  SPP_EXP_CLS
-  using Ordering = std::strong_ordering;
+  SPP_EXP_CLS using Ordering = std::strong_ordering;
 
-  SPP_EXP_CLS
-  template <typename K, typename V>
+  SPP_EXP_CLS template <typename K, typename V>
   struct Pair;
 
-  SPP_EXP_CLS
-  template <typename T>
+  SPP_EXP_CLS template <typename T>
   using EnableLocalSharedFromThis = std::enable_shared_from_this<T>;
 
   template <typename Sig>
@@ -81,45 +82,41 @@ namespace spp {
   template <typename Sig>
   concept IsFunctionSignature = _IsFunctionSignature<Sig>::value;
 
-  SPP_EXP_CLS
-  template <typename Sig>
-    requires IsFunctionSignature<Sig>
+  SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
   using Function = std::function<Sig>;
 
-  SPP_EXP_CLS
-  template <typename Sig>
-    requires IsFunctionSignature<Sig>
+  SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
   using FunctionRef = std::function_ref<Sig>;
 
-  SPP_EXP_FUN
-
-  template <typename T, typename... Args>
+  SPP_EXP_FUN template <typename T, typename... Args> requires std::constructible_from<T, Args...>
   SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeShared(Args &&... args) -> Shared<T> {
     return std::make_shared<T>(std::forward<Args>(args)...);
   }
 
-  SPP_EXP_FUN
-
-  template <typename T, typename... Args>
+  SPP_EXP_FUN template <typename T, typename... Args> requires std::constructible_from<T, Args...>
   SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeUnique(Args &&... args) -> Unique<T> {
     return std::make_unique<T>(std::forward<Args>(args)...);
   }
 
-  SPP_EXP_FUN
+  SPP_EXP_FUN template <typename T, typename... Args> requires std::constructible_from<T, Args...>
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeUniqueAndRaw(Args &&... args) -> Pair<Unique<T>, T*> {
+    auto unique = MakeUnique<T>(std::forward<Args>(args)...);
+    return {std::move(unique), unique.get()};
+  }
 
-  template <typename K, typename V>
-  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakePair(K &&key,
-    V &&value) -> Pair<std::decay_t<K>, std::decay_t<V>> {
+  SPP_EXP_FUN template <typename K, typename V>
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakePair(
+    K &&key, V &&value) -> Pair<std::decay_t<K>, std::decay_t<V>> {
     return Pair<std::decay_t<K>, std::decay_t<V>>(std::forward<K>(key), std::forward<V>(value));
   }
 
-  SPP_EXP_FUN
-  SPP_ATTR_ALWAYS_INLINE inline auto operator""_str(const char *str, const std::size_t len) -> Str {
+  SPP_EXP_FUN SPP_ATTR_ALWAYS_INLINE
+  inline auto operator""_str(const char *str, const std::size_t len) -> Str {
     return Str(str, len);
   }
 
-  SPP_EXP_FUN
-  SPP_ATTR_ALWAYS_INLINE inline auto operator""_str_view(const char *str, const std::size_t len) -> StrView {
+  SPP_EXP_FUN SPP_ATTR_ALWAYS_INLINE
+  inline auto operator""_str_view(const char *str, const std::size_t len) -> StrView {
     return StrView(str, len);
   }
 
@@ -132,9 +129,7 @@ namespace spp {
   Vec(std::initializer_list<T>, A const & = A()) -> Vec<T, A>;
 }
 
-SPP_EXP_CLS
-
-template <typename T, typename A>
+SPP_EXP_CLS template <typename T, typename A>
 class spp::Vec {
 public:
   friend auto operator==(const Vec &a, const Vec &b) -> bool { return a._Vec == b._Vec; }
@@ -384,9 +379,7 @@ private:
   underlying_type _Vec;
 };
 
-SPP_EXP_CLS
-
-template <typename K, typename V>
+SPP_EXP_CLS template <typename K, typename V>
 struct spp::Pair {
   K First;
   V Second;

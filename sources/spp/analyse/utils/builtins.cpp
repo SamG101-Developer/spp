@@ -4,7 +4,6 @@ import spp.asts.boolean_literal_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.integer_literal_ast;
 import spp.codegen.llvm_func_impls;
-import ankerl;
 
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name)
 #define SPP_DEFINE_BUILTIN_FUNC(scoped_name, func_name) \
@@ -21,8 +20,8 @@ import ankerl;
         .name=scoped_name})
 
 auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
-  -> ankerl::unordered_dense::map<Str, LoweredFuncImpl> {
-  auto map = ankerl::unordered_dense::map<Str, LoweredFuncImpl>{};
+  -> Map<Str, LoweredFuncImpl> {
+  auto map = Map<Str, LoweredFuncImpl>{};
 
   SPP_DEFINE_BUILTIN_FUNC("std.array.Arr.new", std_array_new);
   SPP_DEFINE_BUILTIN_FUNC("std.array.Arr.iter_mov", std_array_iter_mov);

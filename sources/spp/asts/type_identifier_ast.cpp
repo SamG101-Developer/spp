@@ -35,7 +35,6 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
-import ankerl;
 import genex;
 
 SPP_MOD_BEGIN
@@ -511,7 +510,7 @@ auto spp::asts::TypeIdentifierAst::InferType(
 auto spp::asts::TypeIdentifierAst::AnkerlHash() const
   -> std::size_t {
   // Hash based on the name only.
-  return ankerl::unordered_dense::hash<Str>()(Name);
+  return Hash<Str>()(Name);
 }
 
 auto spp::asts::TypeIdentifierAst::ToView() const

@@ -5,7 +5,6 @@ module spp.asts.meta.compiler_meta_data;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
-import ankerl;
 
 SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
@@ -33,8 +32,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LoopDoubleCheckActive = false;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
-  LoopReturnTypes = MakeShared<ankerl::unordered_dense::map<
-    std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
+  LoopReturnTypes = MakeShared<Map<std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
   ObjectInitType = nullptr;
   InferSource = {};
   InferTarget = {};
