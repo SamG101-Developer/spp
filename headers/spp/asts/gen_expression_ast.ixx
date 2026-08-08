@@ -63,4 +63,5 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 
 private:
   Shared<TypeAst> _GenType;
+  bool _IsOnce;
 };

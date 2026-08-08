@@ -30,6 +30,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_materialize;
 import spp.lex.tokens;
+import spp.utils.ptr;
 import spp.utils.uid;
 import llvm;
 
@@ -40,7 +41,8 @@ spp::asts::GenExpressionAst::GenExpressionAst(
   decltype(Expr) &&expr) :
   TokGen(std::move(tok_gen)),
   Conv(std::move(conv)),
-  Expr(std::move(expr)) {
+  Expr(std::move(expr)),
+  _IsOnce(false) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokGen, lex::SppTokenType::KW_GEN, "gen");
 }
 
@@ -61,10 +63,13 @@ auto spp::asts::GenExpressionAst::PosEnd() const
 auto spp::asts::GenExpressionAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<GenExpressionAst>(
+  auto g = MakeUnique<GenExpressionAst>(
     AstClone(TokGen),
     AstClone(Conv),
     AstClone(Expr));
+  g->_GenType = AstClone(_GenType);
+  g->_IsOnce = _IsOnce;
+  return g;
 }
 
 auto spp::asts::GenExpressionAst::ToString() const
@@ -139,9 +144,11 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
   }
 
   // Determine the "Yield" type of the enclosing function (to type check the expression against).
-  auto [_, yield_type, _] = GetGenAndYieldTypes(*_GenType, *sm->CurrentScope, *_GenType, "coroutine");
+  auto [gen_type, yield_type, is_once] = GetGenAndYieldTypes(*_GenType, *sm->CurrentScope, *_GenType, "coroutine");
   const auto direct_match = TypeEq(
     *yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
+  _GenType = mut_shared_cast(gen_type);
+  _IsOnce = is_once;
 
   // Todo: Known issue with the "yield_type" ast position being wrong.
   RaiseIf<SppYieldedTypeMismatchError>(
@@ -245,8 +252,11 @@ auto spp::asts::GenExpressionAst::InferType(
   CompilerMetaData *)
   -> Shared<TypeAst> {
   // Get the "Send" generic type parameter from the generator type.
-  auto send_type = _GenType->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
-  return send_type;
+  // As there is no "Send" on "GenOnce", use "Void" in this case.
+  using generate::common_types_precompiled::VOID;
+  return not _IsOnce
+    ? _GenType->LastTypePart()->GnArgGroup->TypeAt("Send")->Val
+    : VOID;
 }
 
 SPP_MOD_END
