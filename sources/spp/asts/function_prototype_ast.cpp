@@ -612,8 +612,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
     if (std::get<0>(generic_proto->_IsPureGeneric(&tm, meta, ctx))) { continue; }
 
-    auto cloned_scope_set = MakeUnique<analyse::scopes::Scope>(*_Scope->Children[0]);
-    generic_scope->Children[0]->Children.push_back(std::move(cloned_scope_set));
+    generic_scope->Children[0]->Children.Clear();
     generic_scope->FixChildrenToParentPointer();
 
     tm.Reset(tm.CurrentScope);
@@ -621,9 +620,15 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     const auto current_iter = tm.CurrentIterator();
 
     generic_proto->Impl = std::move(generic_proto->Source.OriginalImpl);
+    meta->Save();
+    meta->ResolveBoundCompGenerics = true;
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
     generic_proto->Stage7_AnalyseSemantics(&tm, meta);
+    meta->Restore();
 
     tm.Reset(current_scope, current_iter);
+    GnParamGroup->Stage11_CodeGen(&tm, meta, ctx);
     generic_proto->Stage11_CodeGen(&tm, meta, ctx);
   }
 
