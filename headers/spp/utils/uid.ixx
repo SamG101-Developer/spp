@@ -10,7 +10,9 @@ namespace spp::asts {
 }
 
 namespace spp::utils {
-  SPP_EXP_FUN auto Uid(asts::Ast const *) -> Str;
+  SPP_EXP_FUN SPP_ATTR_HOT
+  auto Uid(asts::Ast const *) -> Str;
 
-  SPP_EXP_FUN auto Uid() -> Str;
+  SPP_EXP_FUN SPP_ATTR_HOT
+  auto Uid() -> Str;
 }
