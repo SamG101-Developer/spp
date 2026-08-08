@@ -30,7 +30,8 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOper
   decltype(TokDblColon) &&tok_dbl_colon,
   decltype(Name) &&name) :
   TokDblColon(std::move(tok_dbl_colon)),
-  Name(std::move(name)) {
+  Name(std::move(name)),
+  _LhsTypeSym(nullptr) {
 }
 
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
@@ -50,9 +51,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosEnd() const
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
+  auto p = MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
     AstClone(TokDblColon),
     AstClone(Name));
+  p->_LhsTypeSym = _LhsTypeSym;
+  return p;
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
@@ -77,28 +80,38 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
   // Handle types on the left-hand-side of a static member access.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
+    _LhsTypeSym = lhs_type_sym.get();
 
     // Check the target field exists on the type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
-      // Todo: Need to filter these candidates to function groups who contain a static overload.
-      auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
-        | genex::views::filter([](auto const &sym) { return sym->Type->IsCompilerGeneratedType(); })
-        | genex::to<Vec>();
-      RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
+      auto [fwd_ref_type, fwd_mut_type] = analyse::utils::type_utils::GetFwdTypes(*lhs_type_sym->FqName(), *sm);
+      const auto temp = fwd_ref_type ? fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val.get() : nullptr;
+      const auto lhs_fwd_ref_type_sym = temp ? sm->CurrentScope->GetTypeSymbol(temp) : nullptr;
+      const auto found = lhs_fwd_ref_type_sym ? lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true) : false;
+      if (fwd_ref_type == nullptr or (fwd_ref_type != nullptr and not found)) {
+        // Todo: Need to filter these candidates to function groups who contain a static overload.
+        // Todo: Add fwd-ref type member candidates
+
+        auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
+          | genex::views::filter([](auto const &sym) { return sym->Type->IsCompilerGeneratedType(); })
+          | genex::to<Vec>();
+        RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
+      }
+      _LhsTypeSym = lhs_fwd_ref_type_sym.get();
     }
 
     // Check there is only 1 target field on the type at the highest level.
-    if (lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true)->Type->IsCompilerGeneratedType()) {
+    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Type->IsCompilerGeneratedType()) {
       return;
     }
 
-    auto scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope}, lhs_type_sym->LinkedScope->SupScopes())
+    auto scopes_and_syms = (genex::views::concat(Vec{_LhsTypeSym->LinkedScope}, _LhsTypeSym->LinkedScope->SupScopes())
         | genex::to<Vec>())
       | genex::views::transform([name=Name.get()](auto &&x) { return MakePair(x, x->GetVarSymbol(name, true)); })
       | genex::to<Vec>()
       | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
       | genex::views::transform([&](auto &&x) {
-        return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second);
+        return std::make_tuple(_LhsTypeSym->LinkedScope->DepthDiff(x.First), x.First, x.Second);
       })
       | genex::to<Vec>();
 
@@ -153,10 +166,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeR
   CompilerMetaData *meta)
   -> void {
   // Handle accessing a symbol on a type.
-  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
-    const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
-    auto tm = ScopeManager(sm->GlobalScope, lhs_type_sym->LinkedScope);
+  if (_LhsTypeSym != nullptr) {
+    const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
+    auto tm = ScopeManager(sm->GlobalScope, _LhsTypeSym->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CmpResult = AstClone(meta->CmpResult);
     return;
@@ -178,9 +190,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
 
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
-  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
-    const auto var_sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
+  if (_LhsTypeSym != nullptr) {
+    const auto var_sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
     SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
     const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
@@ -202,9 +213,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   -> Shared<TypeAst> {
   //
   using analyse::utils::type_utils::GetFwdTypes;
+  // Todo: use the stored symbol? that if it's null? is that possible ie if used before analysis? shouldn't be.
 
   // Get the left-hand-side type's member's type.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+    // todo: const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
     const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
     if (sym != nullptr) { return sym->Type; }
