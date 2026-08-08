@@ -25,13 +25,15 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
   scopes::ScopeManager const &sm,
   PrimaryExpressionOptions &&options)
   -> bool {
-  // Only allow types if types are explicitly allowed, or are zero type.
+  // Only allow types if types are explicitly allowed, or
+  // are zero type.
   if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
     const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<asts::TypeAst>());
     return type_sym->IsZeroType();
   }
 
-  // Only allow tokens when they're explicit allowed, like "5 + .."
+  // Only allow tokens when they're explicit allowed,
+  // like "5 + .."
   if (not options.AllowTokenAst and expr.To<asts::TokenAst>() != nullptr) { return false; }
   return true;
 }
@@ -43,7 +45,8 @@ auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
   //
   using errors::SppUnreachableCodeError;
 
-  // Check for statements after a terminating statement has been reached.
+  // Check for statements after a terminating statement
+  // has been reached.
   for (auto const &[i, member] : members | genex::views::enumerate) {
     const auto ret_stmt = member->To<asts::RetStatementAst>();
     const auto loop_flow_stmt = member->To<asts::LoopControlFlowStatementAst>();
