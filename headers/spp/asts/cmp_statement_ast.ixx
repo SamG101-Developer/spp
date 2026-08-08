@@ -93,7 +93,7 @@ SPP_EXP_CLS struct
   CmpStatementAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,
-    decltype(Name) &&name,
+    decltype(Name) name,
     decltype(TokColon) &&tok_colon,
     decltype(Type) type,
     decltype(TokAssign) &&tok_assign,

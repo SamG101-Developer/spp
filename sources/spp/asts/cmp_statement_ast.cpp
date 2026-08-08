@@ -28,7 +28,7 @@ SPP_MOD_BEGIN
 spp::asts::CmpStatementAst::CmpStatementAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
-  decltype(Name) &&name,
+  decltype(Name) name,
   decltype(TokColon) &&tok_colon,
   decltype(Type) type,
   decltype(TokAssign) &&tok_assign,
@@ -210,6 +210,7 @@ auto spp::asts::CmpStatementAst::Stage9_CompTimeResolve(
   if (not Type->IsCompilerGeneratedType()) {
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
     Value->Stage9_CompTimeResolve(sm, meta);
+    Value = AstClone(meta->CmpResult);
     var_sym->CompTimeValue = std::move(meta->CmpResult);
   }
 }
@@ -220,17 +221,20 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
   // No generation for $ types.
-  // if (Type->IsCompilerGeneratedType()) { return nullptr; }
+  const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
+  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-  // Generate the value in a constant context.
+  // Generate the value in a constant context. Can be nullptr from
+  // "cmp" generic parameter placeholder -> use the null value for
+  // the type.
   ctx->InConstantContext = true;
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
-  const auto val = var_sym->CompTimeValue->Stage11_CodeGen(sm, meta, ctx);
+  const auto val = Value != nullptr
+    ? var_sym->CompTimeValue->Stage11_CodeGen(sm, meta, ctx)
+    : llvm::Constant::getNullValue(llvm_type);
   ctx->InConstantContext = false;
 
   // Create the global variable for the constant.
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   const auto llvm_global_var = new llvm::GlobalVariable(
     *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage,
     llvm::cast<llvm::Constant>(val),

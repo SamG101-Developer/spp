@@ -10,6 +10,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
+import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.identifier_ast;
@@ -71,7 +73,8 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
   // Check the type exists and qualify.
   Type->Stage7_AnalyseSemantics(sm, meta);
   Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
-  const auto sym = sm->CurrentScope->GetVarSymbol(IdentifierAst::FromType(*Name).get());
+  const auto sym = sm->CurrentScope->GetVarSymbol(
+    IdentifierAst::FromType(*Name).get());
   sym->Type = Type;
 
   // Ensure that the convention type doesn't have a convention.
@@ -104,20 +107,15 @@ auto spp::asts::GenericParameterCompAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LLvmCtx *ctx)
   -> llvm::Value* {
-  // The compile time constants' symbols need to be allocated into the function.
-  // Todo: need to be done as a "constant" (see GlobalConstantAst)
+  // The compile time constants' symbols need to be allocated into
+  // the function. Start with "nullptr" value, to generate the alloca.
+  // Generic instantiations of these functions will then inject in
+  // the generic argument translations.
   auto cast_name = IdentifierAst::FromType(*Name);
-  const auto is_opt = To<GenericParameterCompOptionalAst>();
-
-  meta->Save();
-  meta->LetStatementExplicitType = Type;
-  meta->LetStatementFromUninitialized = not is_opt;
-  meta->LetStatementValue = is_opt ? is_opt->DefaultVal.get() : nullptr;
-  const auto var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cast_name), nullptr);
-  const auto alloca = var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
-
-  return alloca;
+  const auto cmp = MakeUnique<CmpStatementAst>(
+    SPP_NO_ANNOTATIONS, nullptr, std::move(cast_name), nullptr, Type, nullptr, nullptr);
+  cmp->Stage10_PreCodeGen(sm, meta, ctx);
+  return nullptr;
 }
 
 SPP_MOD_END
