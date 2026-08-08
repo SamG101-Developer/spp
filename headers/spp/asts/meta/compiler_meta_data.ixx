@@ -111,6 +111,16 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Unique<ExpressionAst> CmpResult;
   bool IgnoreAccessModifierViolations;
   bool AllowAbstractType;
+
+  /**
+   * Whether a comp generic argument written as a plain name should resolve to what that name is bound to in the
+   * current scope. Only set while re-analysing a generic function instantiation's own body, which is a private clone
+   * of the template's, because the resolution rewrites the argument in place: every other analysis can be looking at
+   * an ast shared with the template (an instantiated "sup" scope keeps the template's ast node), where baking one
+   * instantiation's bindings in would corrupt the template for every other caller.
+   */
+  bool ResolveBoundCompGenerics;
+
   /**
    * The coroutine currently being generated into, for "gen" and "res" to reach. Shared rather than uniquely owned so
    * that @c CompilerMetaData::Save can copy it into the snapshot like every other field: a @c Unique could only be
