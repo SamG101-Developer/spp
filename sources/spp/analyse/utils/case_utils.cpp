@@ -5,17 +5,21 @@ import spp.asts.ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
+import spp.analyse.utils.type_utils;
 import spp.asts.case_pattern_variant_destructure_array_ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.case_pattern_variant_destructure_tuple_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.integer_literal_ast;
 import spp.asts.literal_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -24,6 +28,7 @@ import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
 import genex;
@@ -47,11 +52,43 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsCore(
     return transformed;
   }
 
+  // A bound-or-unbound multi-argument skip ("..") absorbs a number
+  // of real array/tuple slots that isn't known until the real (rhs)
+  // length is known, so any positionally-addressed element after it
+  // ("cond.<i>") cannot use its raw position within "elems" - that
+  // would under-count by the width of the skip and read one slot too
+  // early.
+  auto skip_index = std::optional<std::size_t>{};
+  for (auto const &[i, part] : elems | genex::views::enumerate) {
+    if (part->To<asts::CasePatternVariantDestructureSkipMultipleArgumentsAst>() != nullptr) {
+      skip_index = i;
+      break;
+    }
+  }
+
+  // Todo: move "max length" into type_utils function, and route the
+  //  "is in bounds" through that too.
+  auto num_rhs_elems = std::optional<std::size_t>{};
+  const auto real_index = [&](const std::size_t i) -> std::size_t {
+    if (not skip_index.has_value() or i <= *skip_index) { return i; }
+    if (not num_rhs_elems.has_value()) {
+      const auto cond_type = meta->CaseCondition->InferType(sm, meta);
+      const auto &gn_arg_group = cond_type->LastTypePart()->GnArgGroup;
+      num_rhs_elems = type_utils::IsTypeArr(*cond_type, *sm->CurrentScope)
+        ? std::stoull(
+          gn_arg_group->Args[1]->template ToUnchecked<
+            asts::GenericArgumentCompAst>()->Val->ToUnchecked<
+            asts::IntegerLiteralAst>()->Val->TokenData)
+        : gn_arg_group->Args.Len();
+    }
+    return *num_rhs_elems - (elems.Len() - i);
+  };
+
   for (auto const &[i, part] : elems | genex::views::enumerate) {
     // For literals and expressions, generate the equality checks.
     if (part->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
       // Generate the extraction on the condition for this part, like "cond.0".
-      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(i));
+      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
       auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
       auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
 
@@ -126,7 +163,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsCore(
       part->To<asts::CasePatternVariantDestructureTupleAst>() != nullptr or
       part->To<asts::CasePatternVariantDestructureObjectAst>() != nullptr) {
       // Generate the extraction on the condition for this part, like "cond.0".
-      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(i));
+      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
       auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
       auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
 
