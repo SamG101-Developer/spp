@@ -40,36 +40,264 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+namespace spp::analyse::utils::monomorphization_utils {
+  namespace {
+    /**
+     * Give a scope its own copy of the symbols it was cloned from. A clone starts out sharing the template's symbol
+     * objects (see @c Scope 's copy constructor), so it must be handed its own before anything substitutes a binding
+     * into one, or it would rewrite the template's symbol and leave the template - and every other instantiation -
+     * seeing this instantiation's types.
+     * @param dst The cloned scope being given its own symbols.
+     * @param src The template scope it was cloned from.
+     * @param recurse Whether to do the same for the cloned subtree, or only for @p dst itself.
+     */
+    auto GiveScopeOwnSyms(
+      scopes::Scope &dst,
+      scopes::Scope const &src,
+      const bool recurse)
+      -> void {
+      dst.InternalTable.DeepCopyFrom(src.InternalTable);
+      if (not recurse) { return; }
+      for (auto i = 0uz; i < dst.Children.Len() and i < src.Children.Len(); ++i) {
+        GiveScopeOwnSyms(*dst.Children[i], *src.Children[i], true);
+      }
+    }
+
+    /**
+     * Create the symbol that binds one generic parameter to the argument given for it: a type symbol naming the bound
+     * type, or a variable symbol carrying the bound comp-time value.
+     * @param generic The generic argument being bound.
+     * @param sm The scope manager whose current scope the argument is resolved against.
+     * @param meta The compiler meta data.
+     * @param tm An alternative scope manager to infer a comp-time argument's type through.
+     * @return The symbol for the binding.
+     */
+    auto CreateGenericSym(
+      asts::GenericArgumentAst const &generic,
+      scopes::ScopeManager &sm,
+      asts::meta::CompilerMetaData *meta,
+      scopes::ScopeManager *tm = nullptr)
+      -> Shared<scopes::Symbol> {
+      //
+      using errors::SppInternalCompilerError;
+
+      // Handle the generic type argument => creates a type symbol.
+      if (const auto type_arg = generic.To<asts::GenericArgumentTypeKeywordAst>(); type_arg != nullptr) {
+        // "Self" should not be looked up and changed.
+        if (type_arg->Val->IsSelfType()) {
+          return MakeShared<scopes::TypeSymbol>(
+            type_arg->Name->TypeParts().Back(), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
+            true);
+        }
+
+        const auto true_val_sym = sm.CurrentScope->GetTypeSymbol(type_arg->Val.get());
+
+        // Build the type symbol for the generic type argument.
+        auto sym = MakeShared<scopes::TypeSymbol>(
+          type_arg->Name->TypeParts().Back(), true_val_sym ? true_val_sym->Type : nullptr,
+          true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true,
+          true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
+          asts::AstClone(type_arg->Val->GetConvention()));
+        sym->GenericConstraints = true_val_sym
+          ? true_val_sym->GenericConstraints
+          : decltype(true_val_sym->GenericConstraints){};
+        sym->IsDirectlyZeroType = true_val_sym
+          ? true_val_sym->IsDirectlyZeroType
+          : false;
+
+        // Record what the parameter was bound to. When the value is another (unresolved) generic parameter there is no
+        // linked scope to recover the binding from later, so the value type is the only record of it.
+        sym->GenericVal = asts::AstCloneShared(type_arg->Val);
+        return sym;
+      }
+
+      // Handle the generic comp argument => creates a variable symbol.
+      if (const auto comp_arg = generic.To<asts::GenericArgumentCompKeywordAst>(); comp_arg != nullptr) {
+        auto sym = MakeShared<scopes::VariableSymbol>(
+          asts::IdentifierAst::FromType(*comp_arg->Name),
+          comp_arg->Val->InferType(tm ? tm : &sm, meta),
+          sm.CurrentScope,
+          false, true, asts::utils::Visibility::kPublic);
+        sym->MemInfo->AstCompTime = asts::AstClone(comp_arg);
+        return sym;
+      }
+
+      Raise<SppInternalCompilerError>(
+        {sm.CurrentScope},
+        ERR_ARGS(generic, "Unknown generic argument ast type"));
+    }
+
+    /**
+     * Bind the generic parameters of an instantiation: register a symbol per generic argument into the instantiation's
+     * scope, along with the generic symbols carried in from the scope the instantiation was named in.
+     * @param external_generic_syms Generic symbols reachable from the scope the instantiation was named in.
+     * @param generic_args The arguments the generic parameters are being bound to.
+     * @param scope The instantiation's scope to register the symbols into.
+     * @param sm The scope manager the arguments are resolved against. A class resolves them where the instantiation was
+     * written, because that is where its argument types are named; a "sup" block or function resolves them against the
+     * instantiation itself, so that an argument naming a generic carried in from an enclosing template resolves to the
+     * symbol just registered for it.
+     * @param meta The compiler meta data.
+     */
+    auto RegisterGenericSyms(
+      SharedVec<scopes::Symbol> const &external_generic_syms,
+      UniqueVec<asts::GenericArgumentAst> const &generic_args,
+      scopes::Scope *scope,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta)
+      -> void {
+      // Register the symbols carried in from the enclosing template.
+      for (auto const &e : external_generic_syms | spp::views::cast_shared<scopes::TypeSymbol>()) {
+        scope->AddTypeSymbol(e);
+      }
+      for (auto const &e : external_generic_syms | spp::views::cast_shared<scopes::VariableSymbol>()) {
+        scope->AddVarSymbol(e);
+      }
+
+      // Convert the generic arguments into symbols.
+      auto generic_syms = generic_args
+        | genex::views::transform([&](auto const &g) { return CreateGenericSym(*g, *sm, meta); })
+        | genex::to<Vec>();
+
+      // Register the bindings, replacing the template's own (unbound) parameter symbols of the same names. A type
+      // parameter's constraints are written on the template, so they are carried over onto the binding.
+      for (auto const &e : generic_syms | spp::views::cast_shared<scopes::TypeSymbol>()) {
+        const auto old = scope->RemTypeSymbol(e->Name.get());
+        if (old) { e->GenericConstraints = asts::AstCloneVecShared(old->GenericConstraints); }
+        scope->AddTypeSymbol(e);
+      }
+      for (auto const &e : generic_syms | spp::views::cast_shared<scopes::VariableSymbol>()) {
+        scope->RemVarSymbol(e->Name.get());
+        scope->AddVarSymbol(e);
+      }
+    }
+
+    /**
+     * Analyse a type a substitution has just produced. These types are reached out of the order the writer's own types
+     * are, so the checks that assume that order are relaxed for them: an instantiation may name an abstract type before
+     * the implementation that satisfies it is attached, and a "sup" block's super class is as visible from the
+     * instantiation as it was from the template. The relaxations only ever loosen what the caller already allows.
+     * @param type The substituted type to analyse.
+     * @param tm The scope manager to analyse it through.
+     * @param meta The compiler meta data.
+     * @param allow_abstract Whether naming an abstract type is permitted.
+     * @param ignore_access Whether access modifiers are ignored.
+     */
+    auto AnalyseSubstitutedType(
+      asts::TypeAst &type,
+      scopes::ScopeManager *tm,
+      asts::meta::CompilerMetaData *meta,
+      const bool allow_abstract,
+      const bool ignore_access)
+      -> void {
+      meta->Save();
+      meta->AllowAbstractType = meta->AllowAbstractType or allow_abstract;
+      meta->IgnoreAccessModifierViolations = meta->IgnoreAccessModifierViolations or ignore_access;
+      type.Stage7_AnalyseSemantics(tm, meta);
+      meta->Restore();
+    }
+
+    /**
+     * Substitute the generic bindings into the types the instantiation's variable symbols carry. Nothing else
+     * re-derives them: a symbol's type is what @c InferType hands back verbatim, so a "that: SizedIntegerUnsigned[w]"
+     * left holding the template's own "w" makes the instantiated body infer "w" from "w" and resolve back against the
+     * template instead of the instantiation.
+     * @param scope The instantiation's scope whose own variable symbols are being substituted.
+     * @param generic_args The arguments the generic parameters were bound to.
+     * @param tm The scope manager to analyse the substituted types through.
+     * @param meta The compiler meta data.
+     */
+    auto SubstituteVarSymTypes(
+      scopes::Scope const &scope,
+      Vec<asts::GenericArgumentAst*> const &generic_args,
+      scopes::ScopeManager *tm,
+      asts::meta::CompilerMetaData *meta)
+      -> void {
+      for (auto const &scoped_sym : scope.AllVarSymbols(true)) {
+        if (scoped_sym->Type == nullptr) { continue; }
+        scoped_sym->Type = scoped_sym->Type->SubstituteGenerics(generic_args);
+        if (meta->CurrentStage > 5) {
+          AnalyseSubstitutedType(*scoped_sym->Type, tm, meta, true, false);
+        }
+      }
+    }
+
+    /**
+     * Register the "Self" type of an instantiation, which names the class the instantiation belongs to rather than the
+     * template's own.
+     * @param scope The instantiation's scope to register the symbol into.
+     * @param cls_scope The scope of the class "Self" names.
+     * @param sm The scope manager, for the shared "Self" class prototype.
+     */
+    auto AddSelfTypeSym(
+      scopes::Scope &scope,
+      scopes::Scope *cls_scope,
+      scopes::ScopeManager const &sm)
+      -> void {
+      scope.AddTypeSymbol(MakeShared<scopes::TypeSymbol>(
+        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm.SelfProto(), cls_scope, &scope));
+    }
+
+    /**
+     * Rewrite a "sup" block's scope name for an instantiation, so that the substituted block is named after the
+     * arguments it was created for rather than the template's parameters.
+     * @param old_sup_scope_name The template block's scope name.
+     * @param generic_args The arguments the generic parameters are being bound to.
+     * @return The instantiation's scope name.
+     */
+    auto SubstituteSupScopeName(
+      Str const &old_sup_scope_name,
+      asts::GenericArgumentGroupAst const &generic_args)
+      -> Str {
+      const auto parts = old_sup_scope_name
+        | genex::views::split('#')
+        | genex::to<Vec>()
+        | genex::views::transform([](auto &&x) { return Str(x.begin(), x.end()); })
+        | genex::to<Vec>();
+
+      // A "sup-functions" block names one type; a "sup-extension" block names the type and its super class.
+      if (not parts[1].contains(" ext ")) {
+        const auto t = INJECT_CODE(parts[1], parse_type_expression)->SubstituteGenerics(generic_args.GetAllArgs());
+        return parts[0] + "#" + t->ToString() + "#" + parts[2];
+      }
+
+      const auto t = INJECT_CODE(parts[1].substr(0, parts[1].find(" ext ")), parse_type_expression)
+        ->SubstituteGenerics(generic_args.GetAllArgs());
+      const auto u = INJECT_CODE(parts[1].substr(parts[1].find(" ext ") + 5), parse_type_expression)
+        ->SubstituteGenerics(generic_args.GetAllArgs());
+      return parts[0] + "#" + t->ToString() + " ext " + u->ToString() + "#" + parts[2];
+    }
+  }
+}
+
 auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   asts::TypeIdentifierAst &type_part,
   Shared<scopes::TypeSymbol> const &old_cls_sym,
-  Vec<Shared<scopes::Symbol>> const &external_generic_syms,
+  SharedVec<scopes::Symbol> const &external_generic_syms,
   const bool is_tuple,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> scopes::Scope* {
-  // Determine the old class scope, and create a new scope
-  // for the generic substituted type. Same scope parent and
-  // scope node.
+  // 1. Clone the template's scope. A class is the one construct whose instantiation gets a fresh scope rather than a
+  // copy: its name is the instantiated type, not the template's, so only the symbols are carried over.
   const auto old_cls_scope = old_cls_sym->LinkedScope ? : old_cls_sym->ScopeDefinedIn;
   const auto name_clone = asts::AstCloneShared(&type_part);
   auto [new_cls_scope, new_cls_scope_ptr] = MakeUniqueAndRaw<scopes::Scope>(
     scopes::ScopeTypeIdentifierName(name_clone),
     old_cls_scope->Parent, old_cls_scope->AstNode);
+  GiveScopeOwnSyms(*new_cls_scope_ptr, *old_cls_scope, false);
+  new_cls_scope_ptr->NonGenericScope = old_cls_scope;
 
-  // Create a new class symbol, based on the new class scope,
-  // and copy over important information.
+  // Create a new class symbol, based on the new class scope, and copy over important information. The instantiation is
+  // copyable, and a zero type, exactly when the template it substitutes is.
   const auto new_cls_sym = MakeShared<scopes::TypeSymbol>(
     name_clone, new_cls_scope->AstNode->To<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->CurrentScope,
     old_cls_scope->Parent, old_cls_sym->IsGeneric, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
-
-  // The instantiation is copyable if the template it
-  // substitutes is. Also copy over the "zero-type" info.
   new_cls_sym->CopyableBaseSym = old_cls_sym;
   new_cls_sym->ZeroTypeBaseSym = old_cls_sym;
+  new_cls_scope_ptr->TySym = new_cls_sym;
 
-  // Handle the possible "alias" logic. If there is an
-  // alias statement, clone it for modification.
+  // Handle the possible "alias" logic. If there is an alias statement, clone it for modification.
   auto new_alias_stmt = asts::AstClone(old_cls_sym->AliasStmt);
   if (new_alias_stmt) {
     new_alias_stmt->MappedOldType = new_alias_stmt->MappedOldType->SubstituteGenerics(
@@ -78,71 +306,57 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
     new_alias_stmt->OldType->Stage7_AnalyseSemantics(sm, meta);
     // TODO: Remove generic parameters that have been given arguments (not always all generic args).
     //  Move the argument filter out of the recursive alias searcher and reuse it here.
+  }
 
-    const auto target_scope = new_alias_stmt->GetAstScope()->Parent;
-    target_scope->AddTypeSymbol(new_cls_sym);
+  // 2. Attach the instantiation to the scope tree. An aliased type is attached where the alias was written, so that the
+  // alias and the type it maps to are reachable from each other; anything else sits beside its own template.
+  if (new_alias_stmt) {
+    new_alias_stmt->GetAstScope()->Parent->AddTypeSymbol(new_cls_sym);
     new_alias_stmt->_TrackingScope->AddTypeSymbol(new_cls_sym);
     new_alias_stmt->_TrackingScope->Children.EmplaceBack(std::move(new_cls_scope));
     new_cls_sym->AliasStmt = std::move(new_alias_stmt);
   }
-
-  // Configure the new scope based on the base (old) scope.
   else {
-    new_cls_scope->Parent->AddTypeSymbol(new_cls_sym);
-    new_cls_scope->Parent->Children.EmplaceBack(std::move(new_cls_scope));
+    new_cls_scope_ptr->Parent->AddTypeSymbol(new_cls_sym);
+    new_cls_scope_ptr->Parent->Children.EmplaceBack(std::move(new_cls_scope));
   }
-  new_cls_scope_ptr->TySym = new_cls_sym;
-  new_cls_scope_ptr->InternalTable = old_cls_scope->InternalTable;
-  new_cls_scope_ptr->NonGenericScope = old_cls_scope;
 
   if (meta->CurrentStage > 7) {
     sm->AttachSpecificSuperScopes(*new_cls_scope_ptr, meta);
   }
 
-  // No more checks for tuples. This is needed to prevent
-  // recursive checks on the generics (variadics would become
-  // tuples, infinitely).
-  auto new_ast = asts::AstClone(
-    old_cls_scope->AstNode->To<asts::ClassPrototypeAst>());
+  // Register the instantiation's own ast against the template. Its parameter list is emptied, which is what marks it as
+  // an instantiation rather than the template it was cloned from.
+  auto new_ast = asts::AstClone(old_cls_scope->AstNode->To<asts::ClassPrototypeAst>());
   new_ast->SetAstScope(new_cls_scope_ptr);
   new_ast->GnParamGroup->Params.Clear();
   const auto new_ast_ptr = new_ast.get();
+  old_cls_sym->Type->RegisterGenericSubstitution(new_cls_scope_ptr, std::move(new_ast));
 
-  old_cls_sym->Type->RegisterGenericSubstitution(
-    new_cls_scope_ptr, std::move(new_ast));
+  // No more work for tuples. This is needed to prevent recursive checks on the generics (variadics would become tuples,
+  // infinitely).
   if (is_tuple) {
     return new_cls_scope_ptr;
   }
 
-  // Register the generic symbols.
+  // 3. Bind the generic parameters. A class resolves its arguments where the instantiation was written, so the outer
+  // scope manager is the one that reads them.
   RegisterGenericSyms(
-    external_generic_syms, type_part.GnArgGroup->Args,
-    new_cls_scope_ptr, sm, meta);
+    external_generic_syms, type_part.GnArgGroup->Args, new_cls_scope_ptr, sm, meta);
+  AddSelfTypeSym(*new_cls_scope_ptr, new_cls_scope_ptr, *sm);
 
-  // Run generic substitution on the symbols in the scope.
+  // 4. Substitute the bindings into what the clone inherited: the attribute symbols, and the attribute asts they came
+  // from. The instantiation's own fully qualified name contributes as well, because an alias binds parameters that the
+  // written type does not name.
   const auto fq_type = new_cls_sym->FqName();
   auto substitution_generics = fq_type->LastTypePart()->GnArgGroup->GetAllArgs();
   substitution_generics.AppendRange(type_part.GnArgGroup->GetAllArgs());
 
-  // Substitute the "Self" sym.
-  const auto self_type = asts::AstName(old_cls_scope->AstNode)->SubstituteGenerics(type_part.GnArgGroup->GetAllArgs());
-  const auto new_self_sym = MakeShared<scopes::TypeSymbol>(
-    MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm->SelfProto(), new_cls_scope_ptr,
-    new_cls_scope_ptr);
-  new_cls_scope_ptr->AddTypeSymbol(new_self_sym);
-
-  auto tm = scopes::ScopeManager(
-    sm->GlobalScope,
-    new_alias_stmt ? sm->CurrentScope->GetTypeSymbol(new_alias_stmt->OldType.get())->LinkedScope : new_cls_scope_ptr);
-  for (auto const &scoped_sym : new_cls_scope_ptr->AllVarSymbols(true)) {
-    scoped_sym->Type = scoped_sym->Type->SubstituteGenerics(substitution_generics);
-    if (meta->CurrentStage > 5) {
-      meta->Save();
-      meta->AllowAbstractType = true;
-      scoped_sym->Type->Stage7_AnalyseSemantics(&tm, meta);
-      meta->Restore();
-    }
-  }
+  // Todo: an aliased instantiation arguably wants its substituted types read through the scope the alias maps onto,
+  //  rather than its own. The branch that did that was dead (it tested a unique_ptr that had already been moved into
+  //  the symbol), so it is left out here rather than silently switched on.
+  auto tm = scopes::ScopeManager(sm->GlobalScope, new_cls_scope_ptr);
+  SubstituteVarSymTypes(*new_cls_scope_ptr, substitution_generics, &tm, meta);
 
   for (auto *attr : new_ast_ptr->Impl->Members
        | genex::views::ptr
@@ -153,64 +367,49 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
       attr->Stage7_AnalyseSemantics(&tm, meta);
     }
 
-    // Remove void attributes from the class.
+    // Remove void attributes from the class, so that a generic attribute given "Void" takes no space in the layout.
     if (type_utils::IsTypeVoid(*attr->Type, *new_cls_scope_ptr)) {
       new_cls_scope_ptr->RemVarSymbol(attr->Name.get());
       new_ast_ptr->Impl->Members |= genex::actions::remove_if([&](auto &&x) { return x.get() == attr; });
     }
   }
 
-  // Return the new class scope.
   return new_cls_scope_ptr;
 }
 
 auto spp::analyse::utils::monomorphization_utils::CreateGenericFunScope(
   scopes::Scope const &old_fun_scope,
   asts::GenericArgumentGroupAst const &generic_args,
-  Vec<Shared<scopes::Symbol>> const &external_generic_syms,
+  SharedVec<scopes::Symbol> const &external_generic_syms,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> scopes::Scope* {
-  // Create a new scope and symbol for the generic substituted
-  // function.
+  // 1. Clone the template's scope. The whole subtree is cloned, because a function's parameters and locals live below
+  // the scope handed in here (which is the mock "sup" scope stage 1 lowers the function into), and all of them carry
+  // types written in terms of the template's parameters.
   auto [new_fun_scope, new_fun_scope_ptr] = MakeUniqueAndRaw<scopes::Scope>(old_fun_scope);
+  GiveScopeOwnSyms(*new_fun_scope_ptr, old_fun_scope, true);
+
+  // 2. Register the instantiation against the template, which takes ownership of its scope. Only the slot is reserved
+  // here: the caller fills in the substituted prototype once it has substituted the signature.
   const auto old_fn_proto = asts::AstBody(old_fun_scope.AstNode)[0]->To<asts::FunctionPrototypeAst>();
   old_fn_proto->RegisterGenericSubstitution(
     std::move(new_fun_scope), nullptr,
     MakeUnique<asts::GenericArgumentGroupAst>(nullptr, asts::AstCloneVec(generic_args.Args), nullptr));
 
-  // "Scope"'s copy constructor copies symbol tables shallowly, so the clone and the template share their symbol
-  // objects outright. Deep-copy them across the cloned subtree before anything mutates one, or substituting a
-  // parameter's type below would rewrite the template's own symbol and leave every other instantiation - and the
-  // template itself - seeing this instantiation's types.
-  const auto deep_copy_scope_syms = [](auto const &self, scopes::Scope *dst, scopes::Scope const *src) -> void {
-    dst->InternalTable = src->InternalTable;
-    for (auto i = 0uz; i < dst->Children.Len() and i < src->Children.Len(); ++i) {
-      self(self, dst->Children[i].get(), src->Children[i].get());
-    }
-  };
-  deep_copy_scope_syms(deep_copy_scope_syms, new_fun_scope_ptr, &old_fun_scope);
-
+  // 3. Bind the generic parameters, against the instantiation itself.
   auto tm = scopes::ScopeManager(sm->GlobalScope, new_fun_scope_ptr);
   RegisterGenericSyms(external_generic_syms, generic_args.Args, new_fun_scope_ptr, &tm, meta);
 
-  // The scope was cloned from the template, so its symbols still hold the template's types: "that" in "fun from(that:
-  // SizedIntegerUnsigned[w])" keeps a type naming "w" as a parameter rather than the value bound here. Nothing else
-  // re-derives them - the caller substitutes the prototype's parameter ASTs, but a symbol's type is what "InferType"
-  // hands back verbatim, so a call in the instantiated body infers "w" from "w" and resolves against the template
-  // instead of this instantiation. "CreateGenericClsScope" does the same for class attributes.
-  //
-  // Applied to the whole cloned subtree, not just the root: the scope handed in here is the mock "sup" scope wrapping
-  // the function (its ast node is the "sup" block, whose first member is the prototype - see the caller), so the
-  // parameter symbols live one level down, and the body's own locals another level below that.
+  // 4. Substitute the bindings into what the clone inherited, over the whole subtree.
   const auto substitution_generics = generic_args.GetAllArgs();
-  const auto substitute_scope_syms = [&](auto const &self, scopes::Scope *scope, const bool is_root) -> void {
-    // "RegisterGenericSyms" bound the generics on the root, but a function written inside a generic "sup" block
-    // declares that block's parameters as its own (see "FunctionPrototypeAst::Stage1_PreProcess"), so the function
-    // scope one level down holds unbound symbols of the very same names. A lookup from the body reaches those first
-    // and never sees the binding, leaving "SizedIntegerUnsigned[w]" symbolic in an instantiation that knows exactly
-    // what "w" is. Drop the shadowing copies so the names resolve to what this instantiation bound them to; the
-    // subtree is private to it, and the declaration itself still lives on the prototype.
+  const auto substitute_subtree = [&](auto const &self, scopes::Scope *scope, const bool is_root) -> void {
+    // The bindings were registered on the root, but a function written inside a generic "sup" block declares that
+    // block's parameters as its own (see "FunctionPrototypeAst::Stage1_PreProcess"), so the function scope one level
+    // down holds unbound symbols of the very same names. A lookup from the body reaches those first and never sees the
+    // binding, leaving "SizedIntegerUnsigned[w]" symbolic in an instantiation that knows exactly what "w" is. Drop the
+    // shadowing copies so the names resolve to what this instantiation bound them to; the subtree is private to it, and
+    // the declaration itself still lives on the prototype.
     if (not is_root) {
       for (auto const &g : generic_args.Args) {
         if (const auto *type_arg = g->To<asts::GenericArgumentTypeKeywordAst>(); type_arg != nullptr) {
@@ -223,21 +422,11 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericFunScope(
     }
 
     auto stm = scopes::ScopeManager(sm->GlobalScope, scope);
-    for (auto const &scoped_sym : scope->AllVarSymbols(true)) {
-      if (scoped_sym->Type == nullptr) { continue; }
-      scoped_sym->Type = scoped_sym->Type->SubstituteGenerics(substitution_generics);
-      if (meta->CurrentStage > 5) {
-        meta->Save();
-        meta->AllowAbstractType = true;
-        scoped_sym->Type->Stage7_AnalyseSemantics(&stm, meta);
-        meta->Restore();
-      }
-    }
+    SubstituteVarSymTypes(*scope, substitution_generics, &stm, meta);
     for (auto const &child : scope->Children) { self(self, child.get(), false); }
   };
-  substitute_scope_syms(substitute_scope_syms, new_fun_scope_ptr, true);
+  substitute_subtree(substitute_subtree, new_fun_scope_ptr, true);
 
-  // Return the new function scope.
   return new_fun_scope_ptr;
 }
 
@@ -245,196 +434,69 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
   scopes::Scope &old_sup_scope,
   scopes::Scope &new_cls_scope,
   asts::GenericArgumentGroupAst const &generic_args,
-  Vec<Shared<scopes::Symbol>> const &external_generic_syms,
+  SharedVec<scopes::Symbol> const &external_generic_syms,
   scopes::ScopeManager const *sm,
   asts::meta::CompilerMetaData *meta)
   -> std::tuple<scopes::Scope*, scopes::Scope*> {
-  // Create a new scope for the generic substituted super scope.
-  const auto self_type = asts::AstName(old_sup_scope.AstNode)->SubstituteGenerics(generic_args.GetAllArgs());
+  // 1. Clone the template's scope. Only the block's own symbols are copied, not its subtree: the members below it are
+  // functions, and each is instantiated in its own right by "CreateGenericFunScope" when it is called.
   auto new_sup_scope = MakeUnique<scopes::Scope>(old_sup_scope);
   auto new_sup_scope_ptr = new_sup_scope.get();
-  new_sup_scope_ptr->InternalTable = old_sup_scope.InternalTable;
-  old_sup_scope.Parent->Children.EmplaceBack(std::move(new_sup_scope));
-
+  GiveScopeOwnSyms(*new_sup_scope_ptr, old_sup_scope, false);
   std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).Name =
     SubstituteSupScopeName(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).Name, generic_args);
 
-  // Register the generic symbols.
-  auto tm = scopes::ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
-  RegisterGenericSyms(external_generic_syms, generic_args.Args, new_sup_scope_ptr, &tm, meta);
-
-  meta->Save();
-  meta->IgnoreAccessModifierViolations = true;
-  self_type->Stage7_AnalyseSemantics(&tm, meta);
-  meta->Restore();
-  const auto new_self_sym = MakeShared<scopes::TypeSymbol>(
-    MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm->SelfProto(), &new_cls_scope,
-    new_sup_scope_ptr);
-  new_sup_scope_ptr->AddTypeSymbol(new_self_sym);
-
-  // Run generic substitution on the aliases in the new scope.
-  for (auto const &scoped_sym : new_sup_scope_ptr->AllTypeSymbols(true)) {
-    if (scoped_sym->AliasStmt != nullptr) {
-      auto old_type_sub = scoped_sym->AliasStmt->OldType->SubstituteGenerics(generic_args.GetAllArgs());
-      // old_type_sub->Stage7_AnalyseSemantics(&tm, meta);  // Todo: Why is this commented?
-      const auto old_type_sub_sym = new_sup_scope_ptr->GetTypeSymbol(old_type_sub.get());
-
-      scoped_sym->AliasStmt->OldType = std::move(old_type_sub);
-      scoped_sym->AliasStmt->MappedOldType = scoped_sym->AliasStmt->OldType;
-      if (scoped_sym->AliasStmt->GetAstScope()) {
-        // Self doesn't have a scope on it
-        scoped_sym->AliasStmt->GetAstScope()->Parent = new_sup_scope_ptr;
-      }
-
-      if (old_type_sub_sym != nullptr) {
-        old_type_sub_sym->AliasedBySyms.PushBack(scoped_sym->SharedFromThis<scopes::TypeSymbol>());
-        scoped_sym->Type = old_type_sub_sym->Type;
-        scoped_sym->LinkedScope = old_type_sub_sym->LinkedScope;
-      }
-    }
-  }
-
-  // Run generic substitution on the constants in the new scope.
+  // A "cmp" on a generic "sup" block mangles to "<module>#<name>": "mangle_mod_name" drops every "<...>" scope, so
+  // neither the block nor its generic arguments reach the name, and one written constant is one global however many
+  // instantiations name it. The copy above therefore has to be undone for the llvm record specifically, or stage 10 -
+  // which only ever walks the template - would give storage to a symbol that "Atom[Bool]::mo_release" never resolves
+  // to. Point both symbols at the one record, so the global emitted for the template is the one an instantiation loads.
   for (auto const &scoped_sym : new_sup_scope_ptr->AllVarSymbols(true)) {
-    auto old_type_sub = scoped_sym->Type->SubstituteGenerics(generic_args.GetAllArgs());
-    scoped_sym->Type = std::move(old_type_sub);
-
-    // A "cmp" on a generic "sup" block mangles to "<module>#<name>": "mangle_mod_name" drops every "<...>" scope, so
-    // neither the block nor its generic arguments reach the name, and one written constant is one global however many
-    // instantiations name it. The symbol table copied above is a deep copy, so this instantiation holds its own symbol
-    // with an empty llvm record, and stage 10 only ever walks the template - "Atom[Bool]::mo_release" would resolve to
-    // a symbol nothing ever gives storage to. Point both symbols at the one record instead, so the global stage 10
-    // emits for the template is the one an instantiation loads.
     if (const auto old_sym = old_sup_scope.GetVarSymbol(scoped_sym->Name.get(), true); old_sym != nullptr) {
       scoped_sym->LlvmInfo = old_sym->LlvmInfo;
     }
   }
 
+  // 2. Attach the instantiation to the scope tree, beside the template it was cloned from.
+  old_sup_scope.Parent->Children.EmplaceBack(std::move(new_sup_scope));
+
+  // 3. Bind the generic parameters, against the instantiation itself.
+  auto tm = scopes::ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
+  RegisterGenericSyms(external_generic_syms, generic_args.Args, new_sup_scope_ptr, &tm, meta);
+
+  const auto self_type = asts::AstName(old_sup_scope.AstNode)->SubstituteGenerics(generic_args.GetAllArgs());
+  AnalyseSubstitutedType(*self_type, &tm, meta, false, true);
+  AddSelfTypeSym(*new_sup_scope_ptr, &new_cls_scope, *sm);
+
+  // 4. Substitute the bindings into what the clone inherited: the block's "type" aliases and its "cmp" constants.
+  for (auto const &scoped_sym : new_sup_scope_ptr->AllTypeSymbols(true)) {
+    if (scoped_sym->AliasStmt == nullptr) { continue; }
+    auto old_type_sub = scoped_sym->AliasStmt->OldType->SubstituteGenerics(generic_args.GetAllArgs());
+    // old_type_sub->Stage7_AnalyseSemantics(&tm, meta);  // Todo: Why is this commented?
+    const auto old_type_sub_sym = new_sup_scope_ptr->GetTypeSymbol(old_type_sub.get());
+
+    scoped_sym->AliasStmt->OldType = std::move(old_type_sub);
+    scoped_sym->AliasStmt->MappedOldType = scoped_sym->AliasStmt->OldType;
+    if (scoped_sym->AliasStmt->GetAstScope()) {
+      // "Self" doesn't have a scope on it.
+      scoped_sym->AliasStmt->GetAstScope()->Parent = new_sup_scope_ptr;
+    }
+
+    if (old_type_sub_sym != nullptr) {
+      old_type_sub_sym->AliasedBySyms.PushBack(scoped_sym->SharedFromThis<scopes::TypeSymbol>());
+      scoped_sym->Type = old_type_sub_sym->Type;
+      scoped_sym->LinkedScope = old_type_sub_sym->LinkedScope;
+    }
+  }
+  SubstituteVarSymTypes(*new_sup_scope_ptr, generic_args.GetAllArgs(), &tm, meta);
+
   // Create the scope for the new super class type. This will handle recursive sup-scope creation.
   auto super_cls_scope = static_cast<scopes::Scope*>(nullptr);
   if (const auto ext_ast = old_sup_scope.AstNode->To<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
     const auto new_fq_super_type = ext_ast->SuperClass->SubstituteGenerics(generic_args.GetAllArgs());
-    meta->Save();
-    meta->AllowAbstractType = true;
-    meta->IgnoreAccessModifierViolations = true;
-    new_fq_super_type->Stage7_AnalyseSemantics(&tm, meta);
-    meta->Restore();
+    AnalyseSubstitutedType(*new_fq_super_type, &tm, meta, true, true);
     super_cls_scope = new_cls_scope.GetTypeSymbol(new_fq_super_type.get())->LinkedScope;
   }
 
   return std::make_tuple(new_sup_scope_ptr, super_cls_scope);
-}
-
-auto spp::analyse::utils::monomorphization_utils::CreateGenericSym(
-  asts::GenericArgumentAst const &generic,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta,
-  scopes::ScopeManager *tm)
-  -> Shared<scopes::Symbol> {
-  //
-  using errors::SppInternalCompilerError;
-
-  // Handle the generic type argument => creates a type symbol.
-  if (const auto type_arg = generic.To<asts::GenericArgumentTypeKeywordAst>(); type_arg != nullptr) {
-    // "Self" should not be looked up and changed.
-    if (type_arg->Val->IsSelfType()) {
-      return MakeShared<scopes::TypeSymbol>(
-        type_arg->Name->TypeParts().Back(), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true);
-    }
-
-    const auto true_val_sym = sm.CurrentScope->GetTypeSymbol(type_arg->Val.get());
-
-    // Build the type symbol for the generic type argument.
-    auto sym = MakeShared<scopes::TypeSymbol>(
-      type_arg->Name->TypeParts().Back(), true_val_sym ? true_val_sym->Type : nullptr,
-      true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true,
-      true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
-      asts::AstClone(type_arg->Val->GetConvention()));
-    sym->GenericConstraints = true_val_sym
-      ? true_val_sym->GenericConstraints
-      : decltype(true_val_sym->GenericConstraints){};
-    sym->IsDirectlyZeroType = true_val_sym
-      ? true_val_sym->IsDirectlyZeroType
-      : false;
-
-    // Record what the parameter was bound to. When the value is another (unresolved) generic parameter there is no
-    // linked scope to recover the binding from later, so the value type is the only record of it.
-    sym->GenericVal = asts::AstCloneShared(type_arg->Val);
-    return sym;
-  }
-
-  // Handle the generic comp argument => creates a variable symbol.
-  if (const auto comp_arg = generic.To<asts::GenericArgumentCompKeywordAst>(); comp_arg != nullptr) {
-    auto sym = MakeShared<scopes::VariableSymbol>(
-      asts::IdentifierAst::FromType(*comp_arg->Name),
-      comp_arg->Val->InferType(tm ? tm : &sm, meta),
-      sm.CurrentScope, // or tm?
-      false, true, asts::utils::Visibility::kPublic);
-    sym->MemInfo->AstCompTime = asts::AstClone(comp_arg);
-    return sym;
-  }
-
-  Raise<SppInternalCompilerError>(
-    {sm.CurrentScope},
-    ERR_ARGS(generic, "Unknown generic argument ast type"));
-}
-
-auto spp::analyse::utils::monomorphization_utils::RegisterGenericSyms(
-  Vec<Shared<scopes::Symbol>> const &external_generic_syms,
-  Vec<Unique<asts::GenericArgumentAst>> const &generic_args,
-  scopes::Scope *scope,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> void {
-  // Register the type symbols to the scope.
-  for (auto const &e : external_generic_syms | spp::views::cast_shared<scopes::TypeSymbol>()) {
-    scope->AddTypeSymbol(e);
-  }
-
-  // Register the variable symbols to the scope.
-  for (auto const &e : external_generic_syms | spp::views::cast_shared<scopes::VariableSymbol>()) {
-    scope->AddVarSymbol(e);
-  }
-
-  // Convert the generic arguments into symbols.
-  auto generic_syms = generic_args
-    | genex::views::transform([&](auto const &g) { return CreateGenericSym(*g, *sm, meta); })
-    | genex::to<Vec>();
-
-  // Register the created generic symbols to the scope.
-  for (auto const &e : generic_syms | spp::views::cast_shared<scopes::TypeSymbol>()) {
-    const auto old = scope->RemTypeSymbol(e->Name.get());
-    if (old) { e->GenericConstraints = asts::AstCloneVecShared(old->GenericConstraints); }
-    scope->AddTypeSymbol(e);
-  }
-
-  // Register the created generic symbols to the scope.
-  for (auto const &e : generic_syms | spp::views::cast_shared<scopes::VariableSymbol>()) {
-    scope->RemVarSymbol(e->Name.get());
-    scope->AddVarSymbol(e);
-  }
-}
-
-auto spp::analyse::utils::monomorphization_utils::SubstituteSupScopeName(
-  Str const &old_sup_scope_name,
-  asts::GenericArgumentGroupAst const &generic_args)
-  -> Str {
-  const auto parts = old_sup_scope_name
-    | genex::views::split('#')
-    | genex::to<Vec>()
-    | genex::views::transform([](auto &&x) { return Str(x.begin(), x.end()); })
-    | genex::to<Vec>();
-
-  if (not parts[1].contains(" ext ")) {
-    const auto t = INJECT_CODE(parts[1], parse_type_expression)->SubstituteGenerics(generic_args.GetAllArgs());
-    const auto o = parts[0] + "#" + t->ToString() + "#" + parts[2];
-    return o;
-  }
-  const auto t = INJECT_CODE(parts[1].substr(0, parts[1].find(" ext ")), parse_type_expression)->SubstituteGenerics(
-    generic_args.GetAllArgs());
-  const auto u = INJECT_CODE(parts[1].substr(parts[1].find(" ext ") + 5), parse_type_expression)->SubstituteGenerics(
-    generic_args.GetAllArgs());
-  const auto o = parts[0] + "#" + t->ToString() + " ext " + u->ToString() + "#" + parts[2];
-
-  return o;
 }
