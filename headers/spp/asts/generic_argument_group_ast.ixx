@@ -2,8 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
-import spp.analyse.utils.func_utils; // Todo: refactor typedefs
-import spp.analyse.utils.type_utils; // Todo: refactor typedefs
+import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -52,10 +51,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
   static auto FromMap(
     analyse::utils::type_utils::GenericInferenceMap const &map)
-    -> Unique<GenericArgumentGroupAst>;
-
-  static auto FromMap(
-    analyse::utils::func_utils::InferenceFinalTypeMap const &map)
     -> Unique<GenericArgumentGroupAst>;
 
   /**

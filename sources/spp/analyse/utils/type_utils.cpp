@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.generic_bindings;
 import spp.analyse.utils.mem_utils;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
@@ -1261,7 +1262,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   asts::meta::CompilerMetaData *meta)
   -> std::tuple<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*> {
   //
-  using func_utils::NameGnArgs;
+  using generic_bindings::NameGnArgs;
 
   // How to extract generic parameters from a type symbol: alias, then type, otherwise none (generic).
   const auto NO_PARAMS = asts::GenericParameterGroupAst::NewEmpty();

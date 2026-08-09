@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.generic_bindings;
 import spp.analyse.utils.monomorphization_utils;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
@@ -140,7 +141,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   // Todo: Add higher order generic checks into the unit tests (self and generic type).
   using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
   using analyse::utils::func_utils::InferGnArgs;
-  using analyse::utils::func_utils::NameGnArgs;
+  using analyse::utils::generic_bindings::NameGnArgs;
   using analyse::utils::monomorphization_utils::CreateGenericClsScope;
   using analyse::utils::type_utils::GetTypeSymOrError;
   using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
@@ -206,10 +207,14 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // "GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics", where the binding to follow is the symbol's fully
     // qualified name rather than the argument it was given; an unbound parameter has no binding, so a template's
     // signature stays written in terms of its own parameters.
-    // Still guarded: "CreateGenericSupScope" now gives a substituted "sup" block its own ast, but that is not the
-    // only route by which a signature is shared - the mock "sup" blocks stage 1 lowers functions into live on the
-    // module, and a function's own substituted ast is not made until stage 11 - so resolving unconditionally still
-    // reaches asts that other callers resolve against. Only an instantiation's own body is private for certain.
+    //
+    // The type side gets to do that unconditionally because "TypeSymbol::FqName" hands back the parameter's own name
+    // when it is unbound, so resolving in a template's scope writes back what was already there. The comp side has no
+    // such property: it replaces an identifier with a value, and the ast it writes into can be shared with the
+    // template. Keeping the written expression alongside the resolved one was tried, so that a later analysis in a
+    // template's scope could restore it - it fails identically, because nothing guarantees that restoring analysis
+    // happens before another caller reads the resolved value. The fix is to stop sharing the ast, or to resolve on
+    // read rather than by rewriting; until then this stays scoped to an instantiation's own private body.
     if (meta->ResolveBoundCompGenerics) {
       for (auto *comp_arg : GnArgGroup->Args
            | genex::views::ptr

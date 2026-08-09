@@ -2,6 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.overload_utils;
+import spp.analyse.utils.func_utils;
+import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
 import std;
 
@@ -27,34 +29,36 @@ namespace spp::asts {
   SPP_EXP_CLS struct TypeAst;
 }
 
-namespace spp::asts::meta {
-  SPP_EXP_CLS struct CompilerMetaData;
-}
-
 namespace spp::analyse::utils::overload_utils {
-  using OverloadInfo = std::tuple<
-    scopes::Scope const*,
-    asts::FunctionPrototypeAst*,
-    Unique<asts::GenericArgumentGroupAst>,
-    Shared<asts::TypeAst>>;
+  SPP_EXP_CLS struct PassedOverload {
+    scopes::Scope const *FnScope;
+    asts::FunctionPrototypeAst *Proto;
+    Unique<asts::FunctionCallArgumentGroupAst> FnArgs;
+  };
 
-  using PassOverloadInfo = std::tuple<
-    scopes::Scope const*,
-    asts::FunctionPrototypeAst*,
-    Unique<asts::FunctionCallArgumentGroupAst>,
-    Vec<asts::GenericArgumentAst*>>;
+  SPP_EXP_CLS struct FailedOverload {
+    asts::FunctionPrototypeAst *Proto;
+    Str Error;
+    Str Reason;
+  };
 
-  using FailOverloadInfo = std::tuple<
-    scopes::Scope const*,
-    asts::FunctionPrototypeAst*,
-    Str,
-    Str>;
+  SPP_EXP_CLS struct OverloadCandidates {
+    bool IsClosure;
+    Unique<asts::FunctionPrototypeAst> ClosureProto;
+    Vec<func_utils::FunctionOverload> Overloads;
+  };
+
+  SPP_EXP_CLS struct PropagatedMethodCall {
+    PassedOverload Overload;
+    bool IsClosure;
+    Unique<asts::PostfixExpressionAst> TransformedAst;
+  };
 
   SPP_EXP_FUN auto DetermineOverload(
     asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> Pair<PassOverloadInfo, bool>;
+    -> Pair<PassedOverload, bool>;
 
   SPP_EXP_FUN auto PropagateMethodToFunction(
     asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
@@ -63,28 +67,25 @@ namespace spp::analyse::utils::overload_utils {
     asts::PostfixExpressionAst const &cast_lhs,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<PassOverloadInfo, bool, Unique<asts::PostfixExpressionAst>>;
+    -> PropagatedMethodCall;
 
   SPP_EXP_FUN auto RetrieveAllOverloads(
     asts::IdentifierAst const *fn_name,
     scopes::Scope const &fn_owner_scope,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<bool, Unique<asts::FunctionPrototypeAst>, Vec<OverloadInfo>>;
+    -> OverloadCandidates;
 
-  SPP_EXP_FUN auto RetrieveImplicitGenericArgsForCall(
+  SPP_EXP_FUN auto RetrieveOwnerGenericArgs(
     Shared<asts::TypeAst> const &fwd_type,
-    Vec<Unique<asts::GenericArgumentAst>> &&sup_gn_args,
     asts::meta::CompilerMetaData const *meta)
-    -> Unique<asts::GenericArgumentGroupAst>;
+    -> Vec<Unique<asts::GenericArgumentAst>>;
 
   SPP_EXP_FUN auto InferAllGenerics(
     asts::FunctionPrototypeAst const &fn_proto,
     asts::FunctionParameterGroupAst const &fn_params,
-    asts::GenericParameterGroupAst const &gn_params,
     asts::FunctionCallArgumentGroupAst &fn_args,
-    asts::GenericArgumentGroupAst &explicit_gn_args,
-    asts::GenericArgumentGroupAst const &implicit_gn_args,
+    asts::GenericArgumentGroupAst &gn_args,
     bool is_variadic_fn,
     scopes::Scope const *fn_scope,
     scopes::ScopeManager *sm,
@@ -94,8 +95,7 @@ namespace spp::analyse::utils::overload_utils {
   SPP_EXP_FUN auto PotentiallyGenerateGenericSubstitutedPrototype(
     asts::FunctionPrototypeAst *fn_proto,
     scopes::Scope const *fn_scope,
-    asts::GenericArgumentGroupAst &implicit_generic_args,
-    asts::GenericArgumentGroupAst &explicit_generic_args,
+    asts::GenericArgumentGroupAst &generic_args,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<asts::FunctionPrototypeAst*, scopes::Scope const*>;
@@ -111,8 +111,8 @@ namespace spp::analyse::utils::overload_utils {
 
   SPP_EXP_FUN auto ManageMatchedOverloads(
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-    Vec<PassOverloadInfo> const &pass_overloads,
-    Vec<FailOverloadInfo> const &fail_overloads,
+    Vec<PassedOverload> const &pass_overloads,
+    Vec<FailedOverload> const &fail_overloads,
     asts::FunctionCallArgumentGroupAst const &arg_group,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)

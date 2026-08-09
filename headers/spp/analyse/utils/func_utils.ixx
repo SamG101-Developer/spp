@@ -52,35 +52,12 @@ namespace spp::analyse::utils::func_utils {
     spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
-  using InferenceResultCompMap = Map<
-    Shared<asts::TypeIdentifierAst>,
-    Vec<asts::ExpressionAst*>,
-    spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
-
-  using InferenceResultTypeMap = Map<
-    Shared<asts::TypeIdentifierAst>,
-    Vec<Shared<asts::TypeAst>>,
-    spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
-
-  SPP_EXP_CLS using InferenceFinalCompMap = Map<
-    Shared<asts::TypeIdentifierAst>,
-    asts::ExpressionAst*,
-    spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
-
-  SPP_EXP_CLS using InferenceFinalTypeMap = Map<
-    Shared<asts::TypeIdentifierAst>,
-    Shared<asts::TypeAst>,
-    spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
-
-  SPP_EXP_CLS using FunctionScopeList = Vec<std::tuple<
-    scopes::Scope const*,
-    asts::FunctionPrototypeAst*,
-    Unique<asts::GenericArgumentGroupAst>,
-    Shared<asts::TypeAst>>>;
+  SPP_EXP_CLS struct FunctionOverload {
+    scopes::Scope const *FnScope;
+    asts::FunctionPrototypeAst *Proto;
+    Unique<asts::GenericArgumentGroupAst> SupGenerics;
+    Shared<asts::TypeAst> FwdType;
+  };
 
   /**
    * Get the function owner type, scope and name from an expression AST. This is used to determine information related
@@ -120,7 +97,7 @@ namespace spp::analyse::utils::func_utils {
     scopes::Scope const *target_scope,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> FunctionScopeList;
+    -> Vec<FunctionOverload>;
 
   SPP_EXP_FUN auto CheckForConflictingOverload(
     scopes::Scope const &this_scope,
@@ -152,21 +129,6 @@ namespace spp::analyse::utils::func_utils {
     scopes::ScopeManager &sm)
     -> void;
 
-  SPP_EXP_FUN
-  template <typename GenericArgType, typename GenericParamType>
-  auto EnforceNoInvalidGnArgs(
-    Vec<asts::GenericParameterAst*> const &params,
-    Vec<asts::GenericArgumentAst*> const &named_args,
-    scopes::ScopeManager &sm)
-    -> void;
-
-  SPP_EXP_FUN
-  template <typename InferenceResultMap>
-  auto EnforceNoConflictingInferredGnArgs(
-    InferenceResultMap const &inferred,
-    scopes::ScopeManager &sm)
-    -> void;
-
   SPP_EXP_FUN auto EnforceNoUninferredGnArgs(
     Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
     Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
@@ -187,25 +149,6 @@ namespace spp::analyse::utils::func_utils {
     asts::FunctionCallArgumentGroupAst &a_group,
     asts::FunctionParameterGroupAst const &p_group,
     scopes::ScopeManager &sm)
-    -> void;
-
-  SPP_EXP_FUN auto NameGnArgs(
-    asts::GenericArgumentGroupAst &a_group,
-    asts::GenericParameterGroupAst const &p_group,
-    asts::Ast const &owner,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta,
-    bool is_tuple_owner = false)
-    -> void;
-
-  SPP_EXP_FUN
-  template <typename GenericArgType, typename GenericParamType, typename GenericParamVariadicType>
-  auto NameGnArgsImpl(
-    asts::GenericArgumentGroupAst &a_group,
-    Vec<asts::GenericParameterAst*> const &params,
-    asts::Ast const &owner,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta)
     -> void;
 
   SPP_EXP_FUN auto InferGnArgs(

@@ -185,13 +185,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 
   // Set the overload to the only pass overload.
   _OverloadInfo = _OInfo{
-    .OverloadScope = std::get<0>(overload),
-    .Proto = std::get<1>(overload)
+    .OverloadScope = overload.FnScope,
+    .Proto = overload.Proto
   };
   if (const auto self_param = _OverloadInfo->Proto->FnParamGroup->GetSelfParam()) {
     FnArgGroup->Args[0]->Conv = AstClone(self_param->Conv);
   }
-  FnArgGroup->Args = std::move(std::get<2>(overload)->Args);
+  FnArgGroup->Args = std::move(overload.FnArgs->Args);
 
   // Check that if we are in a cmp context, that the overload is also cmp.
   RaiseIf<SppInvalidComptimeOperationError>(
@@ -304,7 +304,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
   meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
   auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope());
-  // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
   tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
   fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
   meta->Restore();
