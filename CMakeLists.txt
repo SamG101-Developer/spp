@@ -45,10 +45,7 @@ set(CMAKE_LINKER_TYPE LLD)
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
-find_package(LLVM 23 QUIET CONFIG)
-if (NOT LLVM_FOUND)
-  find_package(LLVM 22.1.8 REQUIRED CONFIG) # Workflow runner version
-endif ()
+find_package(LLVM 23 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
 find_package(unordered_dense CONFIG REQUIRED)
