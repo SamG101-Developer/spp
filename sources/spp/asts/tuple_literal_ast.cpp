@@ -42,7 +42,7 @@ auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
   // Ensure each element of the two array literals are equal.
   if (genex::all_of(
     genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr) | genex::to<Vec>(),
-    [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+    [](auto const &pair) { return *spp::get<0>(pair) == *spp::get<1>(pair); })) {
     return Ordering::equal;
   }
   return Ordering::less;

@@ -53,7 +53,7 @@ auto spp::analyse::utils::bin_utils::CombineCompOps(
 
   // Non-symbolic value being reused -> put it into a variable
   // first. Todo: Standardize materialization?
-  if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).First == nullptr) {
+  if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
     const auto temp_var_name = ( {
       const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
       MakeShared<asts::IdentifierAst>(

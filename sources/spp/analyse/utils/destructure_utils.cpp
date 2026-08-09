@@ -123,7 +123,8 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
     "during semantic analysis, so the destructure is being generated against a different scope to the one it was "
     "analysed in");
   RaiseIf<errors::SppInternalCompilerError>(
-    sym == nullptr, {sm.CurrentScope}, ERR_ARGS(*tmp_name, no_tmp_msg));
+    sym == nullptr, {sm.CurrentScope},
+    ERR_ARGS(*tmp_name, no_tmp_msg));
 
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym->Type.get());
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);

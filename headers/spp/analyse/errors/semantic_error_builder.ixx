@@ -23,8 +23,8 @@ namespace spp::asts {
 
 namespace spp {
   SPP_EXP_FUN template <typename... Args>
-  auto MakeErrArgs(Args &&... args) -> std::tuple<Args...> {
-    return std::tuple<Args...>(std::forward<Args>(args)...);
+  auto MakeErrArgs(Args &&... args) -> Tup<Args...> {
+    return {std::forward<Args>(args)...};
   }
 
   SPP_EXP_FUN template <typename E, typename A>
@@ -107,25 +107,25 @@ private:
 
   static auto _StringifyErrorInformation(
     spp::utils::errors::ErrorFormatter *formatter,
-    std::tuple<asts::Ast const*, SemanticError::ErrorInformationType, Str, Str> const &info)
+    ErrorInformation const &info)
     -> Str {
     using namespace std::string_literals;
 
-    switch (auto [ast, type, tag, msg] = info; type) {
-      case SemanticError::ErrorInformationType::ERROR: {
+    switch (auto [ast, kind, tag, msg] = info; kind) {
+      case ErrorInformationKind::ERROR: {
         return formatter->ErrorAst(ast, std::move(msg), std::move(tag));
       }
-      case SemanticError::ErrorInformationType::CONTEXT: {
+      case ErrorInformationKind::CONTEXT: {
         return formatter->ErrorAstMinimal(ast, std::move(tag));
       }
-      case SemanticError::ErrorInformationType::HEADER: {
+      case ErrorInformationKind::HEADER: {
         return (colex::fg_bright_white & colex::st_bold) + std::move(msg) + ": "s + std::move(tag) + "\n"s;
       }
-      case SemanticError::ErrorInformationType::FOOTER: {
+      case ErrorInformationKind::FOOTER: {
         return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(tag) + "\n"s +
           (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(msg) + "\n"s;
       }
-      case SemanticError::ErrorInformationType::WRAPPED: {
+      case ErrorInformationKind::WRAPPED: {
         return std::move(tag);
       }
       default:

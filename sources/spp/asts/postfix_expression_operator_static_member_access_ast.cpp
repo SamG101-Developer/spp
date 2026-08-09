@@ -109,31 +109,31 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
         | genex::to<Vec>())
       | genex::views::transform([name=Name.get()](auto &&x) { return MakePair(x, x->GetVarSymbol(name, true)); })
       | genex::to<Vec>()
-      | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
+      | genex::views::filter([](auto &&x) { return x.second != nullptr; })
       | genex::views::transform([&](auto &&x) {
-        return std::make_tuple(_LhsTypeSym->LinkedScope->DepthDiff(x.First), x.First, x.Second);
+        return MakeTuple(_LhsTypeSym->LinkedScope->DepthDiff(x.first), x.first, x.second);
       })
       | genex::to<Vec>();
 
     auto min_depth = genex::min_element(scopes_and_syms
-      | genex::views::transform([](auto &&x) { return std::get<0>(x); })
+      | genex::views::transform([](auto &&x) { return spp::get<0>(x); })
       | genex::to<Vec>());
 
     auto closest = scopes_and_syms
-      | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
-      | genex::views::transform([](auto &&x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+      | genex::views::filter([min_depth](auto &&x) { return spp::get<0>(x) == min_depth; })
+      | genex::views::transform([](auto &&x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
       | genex::to<Vec>();
 
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
-      const auto scope = closest[0].First->NonGenericScope;
+      const auto scope = closest[0].first->NonGenericScope;
       CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get()), *Name, *scope, *sm, *meta);
     }
 
     if (closest.Len() <= 1) { return; }
     Raise<SppAmbiguousMemberAccessError>(
-      {closest[0].First, closest[1].First, sm->CurrentScope},
-      ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *Name));
+      {closest[0].first, closest[1].first, sm->CurrentScope},
+      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *Name));
   }
 
   // Otherwise, we are handling a namespace left-hand-side.

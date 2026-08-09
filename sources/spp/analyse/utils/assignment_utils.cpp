@@ -28,7 +28,7 @@ auto spp::analyse::utils::assignment_utils::IsAttr(
 
   // Perform validation on the actual attribute too.
   auto const var_symbol_outermost = sm->CurrentScope->GetVarSymbolOutermost(*expr);
-  return var_symbol_outermost.First != nullptr;
+  return var_symbol_outermost.first != nullptr;
 }
 
 auto spp::analyse::utils::assignment_utils::IsDeref(

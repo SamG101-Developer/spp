@@ -126,16 +126,16 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // scope.
   for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
     auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows
-      | genex::views::filter([&](auto const &x) { return std::get<2>(x) == sm->CurrentScope; })
+      | genex::views::filter([&](auto const &x) { return spp::get<2>(x) == sm->CurrentScope; })
       | genex::to<Vec>();
 
     for (auto const &ceb : contained_escaping_borrows) {
       sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
-      const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
+      const auto b = AstCloneShared(spp::get<0>(ceb)->To<IdentifierAst>());
       if (b == nullptr) { continue; }
       sm->CurrentScope->GetVarSymbol(b.get())->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
         [&](auto info) {
-          return *std::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
+          return *spp::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
         });
     }
   }

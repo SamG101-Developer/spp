@@ -216,7 +216,7 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
   // symbol keeps the symbol-constructor default (public), making every alias publicly accessible regardless of its
   // annotation (or lack of one: unannotated statements are private).
   if (_AliasSym != nullptr) {
-    _AliasSym->Visibility = Visibility.First;
+    _AliasSym->Visibility = Visibility.first;
   }
 
   sm->MoveOutOfCurrentScope();

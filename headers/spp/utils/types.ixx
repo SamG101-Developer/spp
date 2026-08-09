@@ -67,10 +67,14 @@ namespace spp {
   SPP_EXP_CLS template <typename T, typename A = std::allocator<Unique<T>>>
   using UniqueVec = Vec<Unique<T>, A>;
 
-  SPP_EXP_CLS using Ordering = std::strong_ordering;
+  SPP_EXP_CLS
+  using Ordering = std::strong_ordering;
 
-  SPP_EXP_CLS template <typename K, typename V>
-  struct Pair;
+  export template <typename... Ts>
+  using Tup = std::tuple<Ts...>;
+
+  export template <typename K, typename V>
+  using Pair = std::pair<K, V>;
 
   SPP_EXP_CLS template <typename T>
   using EnableLocalSharedFromThis = std::enable_shared_from_this<T>;
@@ -90,6 +94,23 @@ namespace spp {
   SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
   using FunctionRef = std::function_ref<Sig>;
 
+  SPP_EXP_FUN template <std::size_t N, typename... Ts>
+  auto get(Tup<Ts...> const &tup) -> decltype(auto) {
+    return std::get<N>(tup);
+  }
+
+  SPP_EXP_FUN template <typename K, typename V>
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakePair(
+    K &&key, V &&value) -> Pair<std::decay_t<K>, std::decay_t<V>> {
+    return Pair<std::decay_t<K>, std::decay_t<V>>(std::forward<K>(key), std::forward<V>(value));
+  }
+
+  SPP_EXP_FUN template <typename... Args>
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeTuple(
+    Args &&... args) -> Tup<std::decay_t<Args>...> {
+    return Tup<std::decay_t<Args>...>(std::forward<Args>(args)...);
+  }
+
   SPP_EXP_FUN template <typename T, typename... Args> requires std::constructible_from<T, Args...>
   SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeShared(Args &&... args) -> Shared<T> {
     return std::make_shared<T>(std::forward<Args>(args)...);
@@ -104,12 +125,6 @@ namespace spp {
   SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeUniqueAndRaw(Args &&... args) -> Pair<Unique<T>, T*> {
     auto unique = MakeUnique<T>(std::forward<Args>(args)...);
     return {std::move(unique), unique.get()};
-  }
-
-  SPP_EXP_FUN template <typename K, typename V>
-  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakePair(
-    K &&key, V &&value) -> Pair<std::decay_t<K>, std::decay_t<V>> {
-    return Pair<std::decay_t<K>, std::decay_t<V>>(std::forward<K>(key), std::forward<V>(value));
   }
 
   SPP_EXP_FUN SPP_ATTR_ALWAYS_INLINE
@@ -166,7 +181,11 @@ public:
   template <typename I> requires std::input_iterator<I>
   Vec(I first, I last, A const &allocator = A()) : _Vec(first, last, allocator) {}
 
-  Vec(Vec const &other, A const &allocator = A()) : _Vec(other._Vec, allocator) {}
+  Vec(Vec const &other)
+    : _Vec(other._Vec)
+  {}
+
+  Vec(Vec const &other, A const &allocator) : _Vec(other._Vec, allocator) {}
   Vec(Vec &&other, A const &allocator = A()) noexcept : _Vec(std::move(other._Vec), allocator) {}
   ~Vec() = default;
 
@@ -292,13 +311,13 @@ public:
   auto Insert(const_iterator pos, I first, I last) { _Vec.insert(pos, first, last); }
 
   template <typename... Args>
-  SPP_ATTR_ALWAYS_INLINE
   // requires std::constructible_from<T, Args...>
+  SPP_ATTR_ALWAYS_INLINE
   auto Emplace(const_iterator pos, Args &&... args) { _Vec.emplace(pos, std::forward<Args>(args)...); }
 
   template <typename... Args>
-  SPP_ATTR_ALWAYS_INLINE
   // requires std::constructible_from<T, Args...>
+  SPP_ATTR_ALWAYS_INLINE
   auto EmplaceBack(Args &&... args) { _Vec.emplace_back(std::forward<Args>(args)...); }
 
   SPP_ATTR_ALWAYS_INLINE
@@ -379,70 +398,4 @@ public:
 
 private:
   underlying_type _Vec;
-};
-
-SPP_EXP_CLS template <typename K, typename V>
-struct spp::Pair {
-  K First;
-  V Second;
-
-  Pair() = default;
-  Pair(Pair const &) = default;
-  Pair(Pair &&) noexcept = default;
-  auto operator=(Pair const &) -> Pair& = default;
-  auto operator=(Pair &&) noexcept -> Pair& = default;
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
-  explicit Pair(Pair<K2, V2> const &other)
-    noexcept(std::is_nothrow_constructible_v<K, K2 const&> && std::is_nothrow_constructible_v<V, V2 const&>) :
-    First(other.First), Second(other.Second) {}
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
-  explicit Pair(Pair<K2, V2> &&other)
-    noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
-    First(std::move(other.First)), Second(std::move(other.Second)) {}
-
-  template <typename K2, typename V2>
-    requires std::assignable_from<K&, K2 const&> && std::assignable_from<V&, V2 const&>
-  auto operator=(Pair<K2, V2> const &other)
-    noexcept(std::is_nothrow_assignable_v<K, K2 const&> && std::is_nothrow_assignable_v<V, V2 const&>) -> Pair& {
-    First = other.First;
-    Second = other.Second;
-    return *this;
-  }
-
-  template <typename K2, typename V2>
-    requires std::assignable_from<K&, K2&&> && std::assignable_from<V&, V2&&>
-  auto operator=(Pair<K2, V2> &&other)
-    noexcept(std::is_nothrow_assignable_v<K, K2&&> && std::is_nothrow_assignable_v<V, V2&&>) -> Pair& {
-    First = std::move(other.First);
-    Second = std::move(other.Second);
-    return *this;
-  }
-
-  template <typename K2, typename V2>
-    requires std::convertible_to<K2, K> && std::convertible_to<V2, V>
-  Pair(K2 &&key, V2 &&value)
-    noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
-    First(std::forward<K2>(key)), Second(std::forward<V2>(value)) {}
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
-  operator std::pair<K2, V2>() const
-    noexcept(std::is_nothrow_constructible_v<K2, K const&> && std::is_nothrow_constructible_v<V2, V const&>) {
-    return std::pair<K2, V2>(First, Second);
-  }
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
-  operator std::pair<K2, V2>() && noexcept(std::is_nothrow_constructible_v<K2, K&&> && std::is_nothrow_constructible_v<
-    V2, V&&>) {
-    return std::pair<K2, V2>(std::move(First), std::move(Second));
-  }
-
-  auto operator==(Pair const &other) const -> bool {
-    return First == other.First && Second == other.Second;
-  }
 };

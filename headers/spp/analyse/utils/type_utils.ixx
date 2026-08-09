@@ -244,7 +244,7 @@ namespace spp::analyse::utils::type_utils {
     asts::ExpressionAst const &expr,
     StrView what,
     bool raise = true)
-    -> std::tuple<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool>;
+    -> Tup<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool>;
 
   SPP_EXP_FUN auto GetTryType(
     asts::TypeAst const &type,
@@ -282,12 +282,12 @@ namespace spp::analyse::utils::type_utils {
     Vec<asts::CaseExpressionBranchAst*> const &branches,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>>;
+    -> Tup<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>>;
 
   SPP_EXP_FUN auto GetAllAttrs(
     asts::TypeAst const &type,
     scopes::ScopeManager const &sm)
-    -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>;
+    -> Vec<Tup<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>;
 
   /**
    * Collect the methods that are visible on a type but left unimplemented, that is, the methods declared with the
@@ -352,7 +352,7 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope *tracking_scope,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*>;
+    -> Tup<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*>;
 
   SPP_EXP_FUN auto GetFieldIndexInType(
     asts::TypeAst const &type_sym,

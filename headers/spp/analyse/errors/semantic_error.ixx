@@ -106,6 +106,18 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppHigherOrderGenericsNotSupportedError;
   SPP_EXP_CLS struct SppGeneratedCodeError;
   SPP_EXP_CLS struct SppCharLiteralOutOfBoundsError;
+
+  SPP_EXP_CLS enum class ErrorInformationKind {
+    HEADER, ERROR, CONTEXT, FOOTER,
+    WRAPPED
+  };
+
+  SPP_EXP_CLS struct ErrorInformation {
+    asts::Ast const *Ast;
+    ErrorInformationKind Kind;
+    Str Tag;
+    Str Msg;
+  };
 }
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
@@ -114,12 +126,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
 
   ~SemanticError() override = default;
 
-  enum class ErrorInformationType {
-    HEADER, ERROR, CONTEXT, FOOTER,
-    WRAPPED
-  };
-
-  Vec<std::tuple<asts::Ast const*, ErrorInformationType, Str, Str>> ErrorInfo;
+  Vec<ErrorInformation> ErrorInfo;
 
   auto AddHeaders(std::size_t err_code, Str &&msg) -> void;
 

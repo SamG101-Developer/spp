@@ -77,7 +77,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   bool LoopDoubleCheckActive;
   std::size_t LoopCurrentDepth;
   LoopExpressionAst *LoopCurrentAst;
-  Shared<Map<std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
+  Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
   Shared<TypeAst> ObjectInitType;
   Map<
     Shared<IdentifierAst>, Shared<TypeAst>,

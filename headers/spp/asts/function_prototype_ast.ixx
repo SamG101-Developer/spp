@@ -276,7 +276,7 @@ protected:
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx const *ctx) const
-    -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
+    -> Tup<bool, llvm::Type*, Vec<llvm::Type*>>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)

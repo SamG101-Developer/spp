@@ -101,7 +101,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   // Any borrowed captures need pinning and marking as extended borrows.
   auto ass_sym = Shared<analyse::scopes::VariableSymbol>(nullptr);
   if (meta->AssignmentTarget != nullptr) {
-    ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).First;
+    ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).first;
   }
   for (auto const &cap : Captures) {
     if (cap->Conv != nullptr) {

@@ -123,27 +123,27 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
       return MakePair(x, x->GetTypeSymbol(name, true));
     })
     | genex::to<Vec>()
-    | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
+    | genex::views::filter([](auto &&x) { return x.second != nullptr; })
     | genex::views::transform([&](auto &&x) {
-      return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second);
+      return MakeTuple(lhs_type_sym->LinkedScope->DepthDiff(x.first), x.first, x.second);
     })
     | genex::to<Vec>();
 
   auto min_depth = scopes_and_syms.IsEmpty()
     ? 0
     : genex::min_element(
-      scopes_and_syms | genex::views::transform([](auto &&x) { return std::get<0>(x); }) | genex::to<Vec>());
+      scopes_and_syms | genex::views::transform([](auto &&x) { return spp::get<0>(x); }) | genex::to<Vec>());
 
   auto closest = scopes_and_syms
-    | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
-    | genex::views::transform([](auto &&x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+    | genex::views::filter([min_depth](auto &&x) { return spp::get<0>(x) == min_depth; })
+    | genex::views::transform([](auto &&x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
     | genex::to<Vec>();
 
   // Can't use raise_if because closest[1] may be out of bounds.
   if (closest.Len() > 1) {
     Raise<SppAmbiguousMemberAccessError>(
-      {closest[0].First, closest[1].First, sm->CurrentScope},
-      ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *op_nested->Name));
+      {closest[0].first, closest[1].first, sm->CurrentScope},
+      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *op_nested->Name));
   }
 
   // Ensure the type exists on the "lhs" part.

@@ -25,7 +25,8 @@ auto spp::codegen::llvm_materialize(
   asts::meta::CompilerMetaData *meta,
   LLvmCtx *ctx)
   -> asts::IdentifierAst* {
-  // Materialise an expression by assigning it to a temporary variable.
+  // Materialise an expression by assigning it to a temporary
+  // variable.
   const auto uid = "." + spp::utils::Uid(&ast);
   auto var_name = MakeShared<asts::IdentifierAst>(ast.PosStart(), "$temp" + std::move(uid));
   const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
@@ -72,7 +73,7 @@ auto spp::codegen::llvm_addr_of(
   }
 
   // A symbolic expression (a variable, or a static member of a type or namespace) is already allocated somewhere.
-  if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(ast).First; sym != nullptr) {
+  if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(ast).first; sym != nullptr) {
     const auto llvm_alloca = sym->LlvmInfo->Alloca;
     SPP_ASSERT(llvm_alloca != nullptr and llvm_alloca->getType()->isPointerTy());
     return llvm_alloca;

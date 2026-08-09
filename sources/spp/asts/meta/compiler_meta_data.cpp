@@ -32,7 +32,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LoopDoubleCheckActive = false;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
-  LoopReturnTypes = MakeShared<Map<std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
+  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
   ObjectInitType = nullptr;
   InferSource = {};
   InferTarget = {};

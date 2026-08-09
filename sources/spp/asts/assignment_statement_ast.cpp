@@ -133,19 +133,19 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     RaiseIf<SppInvalidMutationError>(
       IsIdentifier(lhs_expr) and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
       {sm->CurrentScope},
-      ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
 
     // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
     RaiseIf<SppInvalidMutationError>(
-      IsAttr(lhs_expr, sm) and not(std::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
+      IsAttr(lhs_expr, sm) and not(spp::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
       {sm->CurrentScope},
-      ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable outer sym"));
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable outer sym"));
 
     // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
     RaiseIf<SppInvalidMutationError>(
       IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
       {sm->CurrentScope},
-      ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
 
     // Dereference assignment (ie "x@ = y") writes through a borrow, so the borrow being dereferenced must be &mut.
     RaiseIf<SppInvalidMutationError>(
@@ -213,8 +213,8 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     }
 
     // Ensure a borrow is not increasing its lifetime.
-    const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).First;
-    const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).First;
+    const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).first;
+    const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).first;
     PreventBorrowLifetimeExtension(
       *rhs_expr, lhs_outermost.get(), rhs_outermost.get(), this, *sm);
   }
@@ -232,7 +232,7 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
   // Wrap the rhs value and move it into the value of the variable symbol.
   for (auto i = 0uz; i < Lhs.Len(); ++i) {
     Rhs[i]->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_sym = sm->CurrentScope->GetVarSymbolOutermost(*Lhs[i]).First;
+    const auto lhs_sym = sm->CurrentScope->GetVarSymbolOutermost(*Lhs[i]).first;
 
     // Assign to a full identifier.
     if (IsIdentifier(Lhs[i].get())) {

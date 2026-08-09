@@ -25,7 +25,7 @@ namespace spp::codegen {
    */
   SPP_EXP_FUN auto SortMembersForSppLayout(
     Vec<llvm::Type*> const &field_types,
-    spp::codegen::LLvmCtx const *ctx)
+    LLvmCtx const *ctx)
     -> Pair<Vec<llvm::Type*>, Map<std::size_t, std::size_t>>;
 
   /**

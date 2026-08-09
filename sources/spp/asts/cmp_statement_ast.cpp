@@ -110,7 +110,7 @@ auto spp::asts::CmpStatementAst::Stage2_GenTopLvlScopes(
 
   // Create a symbol for this constant declaration, pin to prevent moving.
   _AliasSym = MakeShared<analyse::scopes::VariableSymbol>(
-    Name, Type, sm->CurrentScope, false, false, Visibility.First);
+    Name, Type, sm->CurrentScope, false, false, Visibility.first);
   _AliasSym->MemInfo->AstCompTime = AstClone(this);
   _AliasSym->MemInfo->InitializedBy(*this, sm->CurrentScope);
   _AliasSym->CompTimeValue = AstClone(Value);
@@ -147,8 +147,8 @@ auto spp::asts::CmpStatementAst::Stage5_LoadSupScopes(
   // type->Stage7_AnalyseSemantics(sm, meta);
 
   if (_AliasSym != nullptr and not Type->IsCompilerGeneratedType()) {
-    _AliasSym->Visibility = Visibility.First;
-    _AliasSym->VisibilityAnnotation = Visibility.Second;
+    _AliasSym->Visibility = Visibility.first;
+    _AliasSym->VisibilityAnnotation = Visibility.second;
   }
 }
 

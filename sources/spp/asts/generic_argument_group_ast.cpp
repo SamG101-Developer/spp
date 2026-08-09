@@ -213,7 +213,7 @@ auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
 
   RaiseIf<SppOrderInvalidError>(
     not unordered_args.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(unordered_args[0].First, *unordered_args[0].Second, unordered_args[1].First, *unordered_args[1].Second));
+    ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
 
   // Analyse the arguments.
   for (auto const &x : Args) { x->Stage7_AnalyseSemantics(sm, meta); }

@@ -25,6 +25,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
+import spp.utils.algorithms;
 import spp.utils.uid;
 import llvm;
 import genex;
@@ -106,7 +107,9 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
 
   // Determine the generic inference source and target values.
   auto generic_infer_source = ArgGroup->Args
-    | genex::views::transform([sm, meta](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
+    | genex::views::transform([sm, meta](auto const &x) {
+      return MakePair(x->Name, x->Val->InferType(sm, meta));
+    })
     | genex::to<Vec>();
 
   auto generic_infer_target = not base_cls_sym->IsGeneric
@@ -117,7 +120,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
       return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type.get())->FqName());
     })
     | genex::to<Vec>()
-    : spp::Vec<Pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
+    : spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
 
   meta->Save();
   meta->InferSource = {generic_infer_source.begin(), generic_infer_source.end()};
@@ -180,7 +183,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   SPP_ASSERT(llvm_type != nullptr); // todo : could be from stage10 cmp, so generate here
 
   const auto attr_names = GetAllAttrs(*type_sym->FqName(), *sm)
-    | genex::views::tuple_nth<0>
+    | spp::views::tuple_nth<0>
     | genex::to<Vec>();
 
   // Types with no attributes have nothing to fill in, so they initialize to their zero value. This covers the

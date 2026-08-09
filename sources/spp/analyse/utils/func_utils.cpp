@@ -77,7 +77,7 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
   asts::ExpressionAst const &lhs,
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *meta)
-  -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>> {
+  -> Tup<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>> {
   //
   using expr_utils::RaiseMissingIdentifierAndClosestOptions;
 
@@ -146,7 +146,7 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
     fn_owner_scope = nullptr;
   }
 
-  return std::make_tuple(fn_owner_type, fn_owner_scope, fn_name);
+  return {fn_owner_type, fn_owner_scope, fn_name};
 }
 
 auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
@@ -199,7 +199,7 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
   new_fn_call->Source.OriginalExpr = fn_call.Source.OriginalExpr;
 
   // Return the new ASTs.
-  return MakePair(std::move(field_access), std::move(new_fn_call));
+  return {std::move(field_access), std::move(new_fn_call)};
 }
 
 auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
@@ -430,14 +430,14 @@ auto spp::analyse::utils::func_utils::SameSignature(
   // All parameters must have the same names.
   if (genex::any_of(
     genex::views::zip(params_a, params_b) | genex::to<Vec>(),
-    [&](auto pq) { return not param_names_eq(std::get<0>(pq)->ExtractNames(), std::get<1>(pq)->ExtractNames()); })) {
+    [&](auto pq) { return not param_names_eq(spp::get<0>(pq)->ExtractNames(), spp::get<1>(pq)->ExtractNames()); })) {
     return false;
   }
 
   // All parameters must have the same types.
   if (genex::any_of(
     genex::views::zip(params_a, params_b) | genex::to<Vec>(),
-    [&](auto pq) { return not TypeEq(*std::get<0>(pq)->Type, *std::get<1>(pq)->Type, scope_a, scope_b, false); })) {
+    [&](auto pq) { return not TypeEq(*spp::get<0>(pq)->Type, *spp::get<1>(pq)->Type, scope_a, scope_b, false); })) {
     return false;
   }
 

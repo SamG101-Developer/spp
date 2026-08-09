@@ -291,8 +291,9 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(
     not unordered_params.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(unordered_params[0].First, *unordered_params[0].Second, unordered_params[1].First,
-             *unordered_params[1].Second));
+    ERR_ARGS(
+      unordered_params[0].first, *unordered_params[0].second,
+      unordered_params[1].first, *unordered_params[1].second));
 
   // Run the semantic analysis steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage7_AnalyseSemantics(sm, meta); }

@@ -81,7 +81,7 @@ namespace spp::analyse::utils::func_utils {
     asts::ExpressionAst const &lhs,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>>;
+    -> Tup<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>>;
 
   SPP_EXP_FUN auto ConvertMethodToFuncForm(
     asts::TypeAst const &function_owner_type,

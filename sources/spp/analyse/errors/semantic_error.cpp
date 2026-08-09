@@ -69,7 +69,9 @@ auto spp::analyse::errors::SemanticError::AddHeaders(
   Str &&msg)
   -> void {
   // Add a header to the error.
-  ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::HEADER, std::move(msg), "E" + std::to_string(err_code));
+  ErrorInfo.PushBack({
+    static_cast<asts::Ast const*>(nullptr), ErrorInformationKind::HEADER,
+    std::move(msg), "E" + std::to_string(err_code)});
 }
 
 static auto UnwrapFunctionCallAst(spp::asts::Ast const *ast) -> spp::asts::Ast const* {
@@ -90,7 +92,9 @@ auto spp::analyse::errors::SemanticError::AddErr(
   Str &&tag)
   -> void {
   // Add an error information entry for the given AST and tag.
-  ErrorInfo.EmplaceBack(UnwrapFunctionCallAst(ast), ErrorInformationType::ERROR, std::move(tag), "");
+  ErrorInfo.PushBack({
+    UnwrapFunctionCallAst(ast), ErrorInformationKind::ERROR,
+    std::move(tag), ""_str});
 }
 
 auto spp::analyse::errors::SemanticError::AddCtxForErr(
@@ -98,7 +102,9 @@ auto spp::analyse::errors::SemanticError::AddCtxForErr(
   Str &&tag)
   -> void {
   // Add a context information entry for the given AST and tag.
-  ErrorInfo.EmplaceBack(UnwrapFunctionCallAst(ast), ErrorInformationType::CONTEXT, std::move(tag), "");
+  ErrorInfo.PushBack({
+    UnwrapFunctionCallAst(ast), ErrorInformationKind::CONTEXT,
+    std::move(tag), ""_str});
 }
 
 auto spp::analyse::errors::SemanticError::AddFooter(
@@ -106,14 +112,18 @@ auto spp::analyse::errors::SemanticError::AddFooter(
   Str &&help)
   -> void {
   // Add a footer to the error with the given note and help message.
-  ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::FOOTER, std::move(note), std::move(help));
+  ErrorInfo.PushBack({
+    static_cast<asts::Ast const*>(nullptr), ErrorInformationKind::FOOTER,
+    std::move(note), std::move(help)});
 }
 
 auto spp::analyse::errors::SemanticError::AddWrapped(
   Str &&msg)
   -> void {
   // Add a wrapped error information entry.
-  ErrorInfo.EmplaceBack(nullptr, ErrorInformationType::WRAPPED, std::move(msg), "");
+  ErrorInfo.PushBack({
+    static_cast<asts::Ast const*>(nullptr), ErrorInformationKind::WRAPPED,
+    std::move(msg), ""_str});
 }
 
 auto spp::analyse::errors::SemanticError::Clone() const
@@ -581,7 +591,6 @@ spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorE
     "This expression must be of generator type to be used in a " + INLINE_NOTE(what) + " context.",
     "Change the expression/type to a generator or a type that superimposes it.");
 }
-
 
 spp::analyse::errors::SppExpressionNotTryError::SppExpressionNotTryError(
   asts::Ast const &expr,
@@ -1189,7 +1198,8 @@ spp::analyse::errors::SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsE
   asts::Ast const &literal,
   const std::uint32_t code_point) {
   AddHeaders(88, "Char Literal Out Of Bounds Error");
-  AddErr(&literal, "Byte-prefixed char literal introduced here with code point " + INLINE_INFO(std::to_string(code_point)));
+  AddErr(&literal,
+         "Byte-prefixed char literal introduced here with code point " + INLINE_INFO(std::to_string(code_point)));
   AddFooter(
     "A byte-prefixed char literal (" + INLINE_NOTE("b'...'") + ") must decode to a single byte, but this one decodes "
     "to a Unicode code point outside " + INLINE_NOTE("0..255") + ".",

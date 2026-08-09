@@ -52,7 +52,6 @@ import sys;
     while (meta->Depth() > original_meta_depth) { meta->Restore(); }         \
   }
 
-
 namespace {
   /**
    * Determine whether a (stripped) parameter type refers to a generic that is "rigid" at the call site: ie a
@@ -140,7 +139,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     auto propagated = PropagateMethodToFunction(
       fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
     fn_call.SetTransformedAst(std::move(propagated.TransformedAst));
-    return MakePair(std::move(propagated.Overload), propagated.IsClosure);
+    return {std::move(propagated.Overload), propagated.IsClosure};
   }
 
   // Get all the overloads to deal with, and handle closure
@@ -233,7 +232,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   if (candidates.ClosureProto) {
     fn_call.SetClosureDummyProto(std::move(candidates.ClosureProto));
   }
-  return MakePair(std::move(pass_overloads[0]), candidates.IsClosure);
+  return {std::move(pass_overloads[0]), candidates.IsClosure};
 }
 
 auto spp::analyse::utils::overload_utils::PropagateMethodToFunction(
@@ -354,7 +353,7 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
   // "self")
   auto generic_infer_source = fn_args.GetKeywordArgs()
     | genex::views::remove_if([](auto const &a) { return a->Name->Val == "self"; })
-    | genex::views::transform([sm, meta](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
+    | genex::views::transform([&](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
     | genex::to<Vec>();
 
   // The inference target is all of the function parameters (except
@@ -384,7 +383,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
   asts::GenericArgumentGroupAst &generic_args,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
-  -> std::tuple<asts::FunctionPrototypeAst*, scopes::Scope const*> {
+  -> Tup<asts::FunctionPrototypeAst*, scopes::Scope const*> {
   //
   using errors::SppSecondClassBorrowViolationError;
   using monomorphization_utils::CreateGenericFunScope;
@@ -408,7 +407,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
     // already exists.
     if (auto [existing_scope, existing_proto] = fn_proto->FindGenericSubstitution(combined_generics);
       existing_proto != nullptr) {
-      return std::make_tuple(existing_proto, existing_scope);
+      return {existing_proto, existing_scope};
     }
 
     auto new_fn_proto = asts::AstClone(fn_proto);
@@ -451,10 +450,10 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
     // and update the active scope and prototype.
     const auto new_fn_proto_ptr = new_fn_proto.get();
     generic_sub_slot.Proto = std::move(new_fn_proto);
-    return std::make_tuple(new_fn_proto_ptr, new_fn_scope);
+    return {new_fn_proto_ptr, new_fn_scope};
   }
 
-  return std::make_tuple(fn_proto, fn_scope);
+  return {fn_proto, fn_scope};
 }
 
 auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(

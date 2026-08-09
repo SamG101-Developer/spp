@@ -437,7 +437,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
   SharedVec<scopes::Symbol> const &external_generic_syms,
   scopes::ScopeManager const *sm,
   asts::meta::CompilerMetaData *meta)
-  -> std::tuple<scopes::Scope*, scopes::Scope*> {
+  -> Tup<scopes::Scope*, scopes::Scope*> {
   // 1. Clone the template's scope. Only the block's own symbols are copied, not its subtree: the members below it are
   // functions, and each is instantiated in its own right by "CreateGenericFunScope" when it is called.
   auto new_sup_scope = MakeUnique<scopes::Scope>(old_sup_scope);
@@ -498,5 +498,5 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
     super_cls_scope = new_cls_scope.GetTypeSymbol(new_fq_super_type.get())->LinkedScope;
   }
 
-  return std::make_tuple(new_sup_scope_ptr, super_cls_scope);
+  return {new_sup_scope_ptr, super_cls_scope};
 }

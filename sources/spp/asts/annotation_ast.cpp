@@ -116,7 +116,7 @@ auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
   CompilerMetaData *)
   -> void {
   // Special annotation handling.
-  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).First;
+  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).first;
   if (sym == nullptr) { return; }
 
   const auto fq_name = sym->FqName()->ToString();
@@ -157,7 +157,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   }
   meta->Restore();
 
-  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).First;
+  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).first;
   const auto fq_name = sym->FqName()->ToString();
 
   // For the known builtin annotations, they will attempt to modify their contextual objects if possible, for required
@@ -171,25 +171,25 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   // Mark a visibility-enabled ast as having "public" visibility.
   else if (fq_name == A::kPublic) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPublic, this}; }
   }
 
   // Mark a visibility-enabled ast as having "package" visibility.
   else if (fq_name == A::kPackage) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPackage, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPackage, this}; }
   }
 
   // Mark a visibility-enabled ast as having "protected" visibility.
   else if (fq_name == A::kProtected) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kProtected, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kProtected, this}; }
   }
 
   // Mark a visibility-enabled ast as having "private" visibility.
   else if (fq_name == A::kPrivate) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPrivate, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPrivate, this}; }
   }
 
   // Mark a method ast as being "virtual", enabling overriding.
@@ -208,7 +208,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   else if (fq_name == A::kFfi) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
     if (fun_ctx) { fun_ctx->FfiAnnotation = this; }
-    if (fun_ctx) { fun_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
+    if (fun_ctx) { fun_ctx->Visibility = {utils::Visibility::kPublic, this}; }
   }
 
   // Mark a type symbol as being "zero type" (implicitly makes it "Copy").

@@ -3,7 +3,7 @@ import genex;
 
 auto spp::codegen::SortMembersForSppLayout(
   Vec<llvm::Type*> const &field_types,
-  spp::codegen::LLvmCtx const *ctx)
+  LLvmCtx const *ctx)
   -> Pair<Vec<llvm::Type*>, Map<std::size_t, std::size_t>> {
   // Based on the ABI detected size of each type, re-order for minimal total object size (minimize padding). Return
   // the re-ordered fields and the field index mapping.
@@ -29,7 +29,7 @@ auto spp::codegen::SortMembersForSppLayout(
     index_map[order[new_idx]] = new_idx;
   }
 
-  return MakePair(std::move(sorted_types), std::move(index_map));
+  return {std::move(sorted_types), std::move(index_map)};
 }
 
 auto spp::codegen::GetPhysicalFieldIndex(

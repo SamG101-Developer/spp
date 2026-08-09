@@ -28,18 +28,18 @@ auto spp::analyse::utils::order_utils::DoOrder(
 
   // Sort the arguments based on the correct order.
   auto args_sorted = genex::sorted(tagged_args, [&](auto &&arg_a, auto &&arg_b) {
-    auto a = genex::position(order, [&](auto x) { return x == arg_a.First; });
-    auto b = genex::position(order, [&](auto x) { return x == arg_b.First; });
+    auto a = genex::position(order, [&](auto x) { return x == arg_a.first; });
+    auto b = genex::position(order, [&](auto x) { return x == arg_b.first; });
     return a < b;
   });
 
   // Return arguments that are out of order.
   auto out_of_order = genex::views::zip(tagged_args, args_sorted)
     | genex::to<Vec>()
-    | genex::views::filter([](auto &&x) { return std::get<0>(x) != std::get<1>(x); })
-    | genex::views::transform([](auto &&x) { return std::get<1>(x); })
+    | genex::views::filter([](auto &&x) { return spp::get<0>(x) != spp::get<1>(x); })
+    | genex::views::transform([](auto &&x) { return spp::get<1>(x); })
     | genex::views::transform([](auto &&x) {
-      return MakePair(Str(magic_enum::enum_name(x.First)), dynamic_cast<asts::Ast*>(x.Second));
+      return MakePair(Str(magic_enum::enum_name(x.first)), dynamic_cast<asts::Ast*>(x.second));
     })
     | genex::to<Vec>();
   return out_of_order;

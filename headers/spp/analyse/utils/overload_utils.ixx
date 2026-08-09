@@ -98,7 +98,7 @@ namespace spp::analyse::utils::overload_utils {
     asts::GenericArgumentGroupAst &generic_args,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<asts::FunctionPrototypeAst*, scopes::Scope const*>;
+    -> Tup<asts::FunctionPrototypeAst*, scopes::Scope const*>;
 
   SPP_EXP_FUN auto ValidateArgsMatchParams(
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,

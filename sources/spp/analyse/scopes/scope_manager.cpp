@@ -145,11 +145,11 @@ auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
     // All concrete generic implementations (not Vec::Vec[T]).
     // Todo: don't generate when one of the generics is "comp->identifier" or "type->generic"
     for (auto const &generic_sub : cls_proto->GetRegisteredGenericSubstitutions()) {
-      codegen::RegisterLlvmTypeInfo(generic_sub.Second, ctx);
+      codegen::RegisterLlvmTypeInfo(generic_sub.second, ctx);
 
       // All generic aliases need llvm type info propagated from their aliased types.
-      const auto llvm_type = codegen::GetLlvmType(*generic_sub.Second->GetAstScope()->TySym, ctx);
-      for (auto const &alias_sym : generic_sub.Second->GetAstScope()->TySym->AliasedBySyms) {
+      const auto llvm_type = codegen::GetLlvmType(*generic_sub.second->GetAstScope()->TySym, ctx);
+      for (auto const &alias_sym : generic_sub.second->GetAstScope()->TySym->AliasedBySyms) {
         alias_sym->LlvmInfo->LlvmType = llvm_type;
       }
     }

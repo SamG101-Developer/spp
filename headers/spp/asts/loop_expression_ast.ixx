@@ -20,7 +20,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::LoopExpressionAst : PrimaryExpressionAst {
 protected:
-  std::optional<std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
+  std::optional<Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
 
 public:
   /**

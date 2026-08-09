@@ -171,7 +171,7 @@ namespace spp::codegen {
     // first, then largest, which is what minimizes the padding between them.
     auto attr_layouts = Vec<Layout>();
     for (auto const &attr : analyse::utils::type_utils::GetAllAttrs(type, sm)) {
-      attr_layouts.EmplaceBack(LayoutOf(sm, *std::get<1>(attr)->FqName()));
+      attr_layouts.EmplaceBack(LayoutOf(sm, *spp::get<1>(attr)->FqName()));
     }
     attr_layouts |= genex::actions::stable_sort([](auto const &a, auto const &b) {
       return a.Align != b.Align ? a.Align > b.Align : a.Size > b.Size;

@@ -37,7 +37,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::DeepCopyFrom(
   // so that neither table can be changed through the other,
   // and share the rest - most of a template's symbols mean
   // the same thing from inside every instantiation of it.
-  _Table.clear();
+  _Table = {};
   _Table.reserve(that._Table.size());
   for (auto const &[k, v] : that._Table) {
     _Table.emplace(k, v->NeedsDeepCopy() ? MakeShared<S>(*v) : v);
@@ -82,6 +82,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Get(
   // Get a symbol from the table. Use string_view to avoid
   // a string copy per lookup.
   if (sym_name == nullptr) { return nullptr; }
+  if (_Table.empty()) { return nullptr; }
   auto ptr = _Table.find(sym_name->ToView());
   return ptr != _Table.end() ? ptr->second : nullptr;
 }
@@ -92,6 +93,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Has(
   -> bool {
   // Check if a symbol exists in the table.
   if (sym_name == nullptr) { return false; }
+  if (_Table.empty()) { return false; }
   auto ptr = _Table.find(sym_name->ToView());
   return ptr != _Table.end();
 }

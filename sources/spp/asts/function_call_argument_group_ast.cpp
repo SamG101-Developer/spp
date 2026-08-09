@@ -145,7 +145,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
   RaiseIf<SppOrderInvalidError>(
     not unordered_args.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(unordered_args[1].First, *unordered_args[1].Second, unordered_args[0].First, *unordered_args[0].Second));
+    ERR_ARGS(unordered_args[1].first, *unordered_args[1].second, unordered_args[0].first, *unordered_args[0].second));
 
   // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
   // Must use "materialize" because the list gets updates from within the loop.
@@ -209,7 +209,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
 
   // Get potential handle to bind escaping borrows to.
   const auto handle = meta->AssignmentTarget;
-  const auto handle_sym = handle ? sm->CurrentScope->GetVarSymbolOutermost(*handle).First : nullptr;
+  const auto handle_sym = handle ? sm->CurrentScope->GetVarSymbolOutermost(*handle).first : nullptr;
 
   for (auto const &arg : Args) {
     // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
@@ -271,8 +271,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // Save any escaping borrows into the handle's memory info.
       if (handle and pins_required) {
         // TODO: Test suite needs to take handle/lack of handle into account
-        handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), false, sm->CurrentScope);
-        sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
+        handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack({arg->Val.get(), false, sm->CurrentScope});
+        sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});
       }
 
       // Add the immutable borrow to the immutable borrow set.
@@ -286,13 +286,13 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // Immutable symbols cannot be mutably borrowed. This also catches "&mut self" method calls.
       RaiseIf<SppInvalidMutationError>(
         not is_sym_mutable, {sm->CurrentScope},
-        ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
+        ERR_ARGS(*sym->Name, *arg->Conv, *spp::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
 
       // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed.
       RaiseIf<SppInvalidMutationError>(
-        std::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
+        spp::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
         {sm->CurrentScope},
-        ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
+        ERR_ARGS(*sym->Name, *arg->Conv, *spp::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
 
       // Generate the list of overlapping borrows for mutable borrows.
       auto overlaps = genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
@@ -307,8 +307,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // Save any escaping borrows into the handle's memory info.
       if (handle and pins_required) {
         // TODO: Test suite needs to take handle/lack of handle into account
-        handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), true, sm->CurrentScope);
-        sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
+        handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack({arg->Val.get(), true, sm->CurrentScope});
+        sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});
       }
 
       // Add the mutable borrow to the mutable borrow set.

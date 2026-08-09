@@ -19,7 +19,7 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
   std::size_t ast_start_pos,
   std::size_t ast_size,
   Str &&tag_message)
-  -> std::tuple<Str, Str, Str, Str, Str> {
+  -> Tup<Str, Str, Str, Str, Str> {
   using lex::RawTokenType;
   using namespace std::literals;
 
@@ -29,9 +29,10 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
   // Synthetic/generated ASTs have no real source position (pos == 0 is the lexer's
   // prepended newline sentinel). Show a placeholder rather than pointing at the wrong line.
   if (ast_start_pos == 0) {
-    return std::make_tuple(
+    return {
       _FilePath, "?"_str, "<generated code>"_str, ""_str,
-      " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message);
+      " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
+    };
   }
 
   // Find the start of the error line: the token immediately after the last newline before this one.
@@ -92,9 +93,8 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
   auto carets = Str(char_span, '^');
   carets.insert(0, Str(char_offset + 1, ' '));
   carets += (colex::fg_bright_white & colex::st_bold) + " <- "s + tag_message;
-  auto left_padding = Str(error_line_number.length(), ' ');
-
-  return std::make_tuple(_FilePath, error_line_number, error_line_as_string, left_padding, carets);
+  const auto left_padding = Str(error_line_number.length(), ' ');
+  return {_FilePath, error_line_number, error_line_as_string, left_padding, carets};
 }
 
 auto spp::utils::errors::ErrorFormatter::ErrorRawPos(

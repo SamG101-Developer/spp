@@ -93,7 +93,7 @@ auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
 
   // Create a variable symbol for this attribute in the current scope (class scope).
   auto sym = MakeShared<analyse::scopes::VariableSymbol>(
-    Name, Type, sm->CurrentScope, false, false, Visibility.First);
+    Name, Type, sm->CurrentScope, false, false, Visibility.first);
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
@@ -116,8 +116,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
 
   // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
   const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
-  sym->Visibility = Visibility.First;
-  sym->VisibilityAnnotation = Visibility.Second;
+  sym->Visibility = Visibility.first;
+  sym->VisibilityAnnotation = Visibility.second;
 
   // Check the type is valid before scopes are attached.
   Type->Stage7_AnalyseSemantics(sm, meta);

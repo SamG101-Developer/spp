@@ -1,6 +1,5 @@
 module;
 #include <spp/analyse/macros.hpp>
-#include <spp/parse/macros.hpp>
 
 module spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
@@ -101,7 +100,7 @@ namespace {
          | genex::views::ptr
          | genex::views::cast_dynamic<spp::asts::ClassAttributeAst*>) {
       auto type_sym = cls_scope->GetTypeSymbol(member->Type.get());
-      if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.First; })) { continue; }
+      if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.first; })) { continue; }
       if (type_sym->IsGeneric) { continue; }
 
       attr_symbols.EmplaceBack(type_sym, member);
@@ -509,7 +508,7 @@ auto spp::analyse::utils::type_utils::IsTypeTup(
   asts::TypeAst const &type,
   scopes::Scope const &scope)
   -> bool {
-  // Check the type against "std::tuple::Tup[Ts...]". This only
+  // Check the type against "Tup::Tup[Ts...]". This only
   // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::TUP;
   return TypeEq(*type.WithoutGenerics(), *TUP, scope, scope);
@@ -651,8 +650,8 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
   //  Add some unit tests to check.
   using errors::SppInternalCompilerError;
   if (IsTypeTup(type, scope)) {
-    auto elems = type.LastTypePart()->GnArgGroup->Args.Len();
-    return MakePair(index < elems, elems);
+    const auto elems = type.LastTypePart()->GnArgGroup->Args.Len();
+    return {index < elems, elems};
   }
 
   // For arrays, check the size argument. This is the compile time
@@ -661,7 +660,7 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
     const auto size_arg = type.LastTypePart()->GnArgGroup->CompAt("n");
     const auto size_arg_cast = size_arg->Val->To<asts::IntegerLiteralAst>();
     const auto elems = std::stoul(size_arg_cast->Val->TokenData);
-    return MakePair(index < elems, elems);
+    return {index < elems, elems};
   }
 
   // Cause an ICE if we reach this state. Should be impossible but
@@ -720,7 +719,7 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
   asts::ExpressionAst const &expr,
   StrView what,
   const bool raise)
-  -> std::tuple<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool> {
+  -> Tup<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool> {
   //
   using asts::generate::common_types_precompiled::GEN_ONCE;
   using errors::SppExpressionNotGeneratorError;
@@ -768,7 +767,7 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
     *GEN_ONCE, *generator_type->WithoutGenerics(), scope, scope);
 
   // Return all the information about the generator type.
-  return std::make_tuple(generator_type, yield_type, is_once);
+  return {generator_type, yield_type, is_once};
 }
 
 auto spp::analyse::utils::type_utils::GetTryType(
@@ -847,7 +846,7 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
     consider(sup_type);
   }
 
-  return MakePair(fwd_ref_type, fwd_mut_type);
+  return {fwd_ref_type, fwd_mut_type};
 }
 
 auto spp::analyse::utils::type_utils::BuildFwdCall(
@@ -881,7 +880,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   Vec<asts::CaseExpressionBranchAst*> const &branches,
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *meta)
-  -> std::tuple<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>> {
+  -> Tup<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>> {
   //
   using errors::SppTypeMismatchError;
   using asts::generate::common_types_precompiled::NEVER;
@@ -897,21 +896,21 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   // back to the binding, so shouldn't be considered for type
   // checking.
   auto valued_branches_type_info = branches_type_info
-    | genex::views::remove_if([](auto const &x) { return x.First->Body->Terminates(); })
+    | genex::views::remove_if([](auto const &x) { return x.first->Body->Terminates(); })
     | genex::to<Vec>();
   if (valued_branches_type_info.IsEmpty()) { valued_branches_type_info = branches_type_info; }
 
   // Filter the branch types down to variant types for custom
   // analysis.
   auto variant_branches_type_info = valued_branches_type_info
-    | genex::views::filter([&sm](auto &&x) { return type_utils::IsTypeVariant(*x.Second, *sm.CurrentScope); })
+    | genex::views::filter([&sm](auto &&x) { return type_utils::IsTypeVariant(*x.second, *sm.CurrentScope); })
     | genex::to<Vec>();
 
   // Set the master branch type to the first branch's type, if
   // it exists. This is the default and may be subsequently
   // changed. Override it if an assignment type is given.
   auto master_branch_type_info = not valued_branches_type_info.IsEmpty()
-    ? MakePair(valued_branches_type_info[0].First, valued_branches_type_info[0].Second)
+    ? MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second)
     : MakePair<asts::CaseExpressionBranchAst*, Shared<asts::TypeAst>>(nullptr, nullptr);
   if (meta->AssignmentTargetType != nullptr) {
     master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType);
@@ -924,7 +923,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
     for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
       const auto variant_size = DedupVariableInnerTypes(*variant_type, *sm.CurrentScope).Len();
       if (variant_size > most_inner_types) {
-        master_branch_type_info = MakePair(variant_branch, variant_type);
+        master_branch_type_info = {variant_branch, variant_type};
         most_inner_types = variant_size;
       }
     }
@@ -935,11 +934,13 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
   // Todo: Shouldn't need to auto-remove "!" type, because TypeEq handles it?
   auto mismatch_branches_type_info = valued_branches_type_info
     | genex::views::remove_if([&](auto const &x) {
-      return TypeEq(*NEVER, *x.Second, *sm.CurrentScope, *sm.CurrentScope);
+      return TypeEq(*NEVER, *x.second, *sm.CurrentScope, *sm.CurrentScope);
     })
-    | genex::views::remove_if([&](auto const &x) { return x.First == master_branch_type_info.First; })
     | genex::views::remove_if([&](auto const &x) {
-      return TypeEq(*master_branch_type_info.Second, *x.Second, *sm.CurrentScope, *sm.CurrentScope);
+      return x.first == master_branch_type_info.first;
+    })
+    | genex::views::remove_if([&](auto const &x) {
+      return TypeEq(*master_branch_type_info.second, *x.second, *sm.CurrentScope, *sm.CurrentScope);
     })
     | genex::to<Vec>();
 
@@ -952,25 +953,27 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
       ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
   }
 
-  // The `master_branch_type_info.First` is deliberately null when an
+  // The `master_branch_type_info.first` is deliberately null when an
   // assignment target type drove the master type (see above); calling
   // `To<>()` through that null pointer is UB, so guard it and keep
   // the null.
-  auto cast_master_branch_type_info = MakePair(
-    master_branch_type_info.First ? master_branch_type_info.First->template ToUnchecked<asts::Ast>() : nullptr,
-    master_branch_type_info.Second);
+  const auto cast_master_branch_type_info = MakePair(
+    master_branch_type_info.first ? master_branch_type_info.first->template ToUnchecked<asts::Ast>() : nullptr,
+    master_branch_type_info.second);
 
   // Cast to common AST nodes and return with the types.
-  auto cast_branches_type_info = branches_type_info
-    | genex::views::transform([](auto &&x) { return MakePair(x.First->template ToUnchecked<asts::Ast>(), x.Second); })
+  const auto cast_branches_type_info = branches_type_info
+    | genex::views::transform([](auto &&x) {
+      return MakePair(x.first->template ToUnchecked<asts::Ast>(), x.second);
+    })
     | genex::to<Vec>();
-  return std::make_tuple(cast_master_branch_type_info, cast_branches_type_info);
+  return {cast_master_branch_type_info, cast_branches_type_info};
 }
 
 auto spp::analyse::utils::type_utils::GetAllAttrs(
   asts::TypeAst const &type,
   scopes::ScopeManager const &sm)
-  -> Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>> {
+  -> Vec<Tup<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>> {
   // Get the symbol of the class type.
   const auto cls_sym = sm.CurrentScope->GetTypeSymbol(&type);
 
@@ -982,15 +985,17 @@ auto spp::analyse::utils::type_utils::GetAllAttrs(
     | genex::views::filter([](auto &&sup_scope) {
       return sup_scope->AstNode->template To<asts::ClassPrototypeAst>() != nullptr;
     })
-    | genex::views::transform([](auto &&sup_scope) { return MakePair(sup_scope, sup_scope->AllVarSymbols(true)); })
+    | genex::views::transform([](auto &&sup_scope) {
+      return MakePair(sup_scope, sup_scope->AllVarSymbols(true));
+    })
     | genex::to<Vec>();
 
-  auto extended_syms = Vec<std::tuple<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>{};
+  auto extended_syms = Vec<Tup<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>{};
   for (auto const &[sup_scope, syms] : all_syms) {
     for (auto const &sym : syms) {
       if (sym->IsGeneric) { continue; }
       const auto sym_type = sup_scope->GetTypeSymbol(sym->Type.get());
-      extended_syms.EmplaceBack(sym->Name, sym_type, sup_scope);
+      extended_syms.PushBack({sym->Name, sym_type, sup_scope});
     }
   }
 
@@ -1055,8 +1060,8 @@ auto spp::analyse::utils::type_utils::GetUnimplementedAbstractMethods(
   for (auto const &[abs_scope, abs_fn] : methods) {
     if (abs_fn->AbstractAnnotation == nullptr) { continue; }
     const auto is_implemented = genex::any_of(methods, [&](auto const &other) {
-      return other.Second->AbstractAnnotation == nullptr
-        and SameSignature(*other.Second, *other.First, *abs_fn, *abs_scope);
+      return other.second->AbstractAnnotation == nullptr
+        and SameSignature(*other.second, *other.first, *abs_fn, *abs_scope);
     });
 
     if (not is_implemented) { unimplemented.EmplaceBack(abs_fn); }
@@ -1223,7 +1228,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   scopes::Scope *tracking_scope,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
-  -> std::tuple<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*> {
+  -> Tup<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*> {
   //
   using generic_bindings::NameGnArgs;
 
@@ -1309,7 +1314,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   NameGnArgs(
     temp, *extract_params(*old_sym), *old_type, *sm, *meta, false);
   old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
-  return std::make_tuple(old_type, final_generic_params, tracking_scope);
+  return {old_type, final_generic_params, tracking_scope};
 }
 
 auto spp::analyse::utils::type_utils::GetFieldIndexInType(
@@ -1327,7 +1332,7 @@ auto spp::analyse::utils::type_utils::GetFieldIndexInType(
 
   // Find the field index.
   for (auto index = 0uz; index < all_attrs.Len(); ++index) {
-    if (*std::get<0>(all_attrs[index]) == field_name) {
+    if (*spp::get<0>(all_attrs[index]) == field_name) {
       return base + index;
     }
   }

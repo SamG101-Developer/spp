@@ -351,10 +351,10 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
           // Enforce that all overloads have the same
           // visibility.
           RaiseIf<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
-            mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.First,
-            {sm->CurrentScope}, ERR_ARGS(*mock_sym->VisibilityAnnotation, *this, *Visibility.Second));
-          mock_sym->Visibility = Visibility.First;
-          mock_sym->VisibilityAnnotation = Visibility.Second;
+            mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.first,
+            {sm->CurrentScope}, ERR_ARGS(*mock_sym->VisibilityAnnotation, *this, *Visibility.second));
+          mock_sym->Visibility = Visibility.first;
+          mock_sym->VisibilityAnnotation = Visibility.second;
         }
       }
     }
@@ -633,7 +633,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   //  Do same with generic classes & object instantiation?
   for (auto const &[generic_scope, generic_proto, _] : _GenericSubstitutions) {
     auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
-    if (std::get<0>(generic_proto->_IsPureGeneric(&tm, meta, ctx))) { continue; }
+    if (spp::get<0>(generic_proto->_IsPureGeneric(&tm, meta, ctx))) { continue; }
 
     generic_scope->Children[0]->Children.Clear();
     generic_scope->FixChildrenToParentPointer();
@@ -689,7 +689,11 @@ auto spp::asts::FunctionPrototypeAst::RegisterGenericSubstitution(
   // Store the scope for object persistence (and codegen), keyed
   // by the arguments that produced it.
   _GenericSubstitutions.emplace_back(
-    GenericSubstitution{std::move(scope), std::move(new_ast), std::move(gn_args)});
+    GenericSubstitution{
+      .OwnedScope = std::move(scope),
+      .Proto = std::move(new_ast),
+      .GnArgs = std::move(gn_args)
+    });
 }
 
 auto spp::asts::FunctionPrototypeAst::FindGenericSubstitution(
@@ -699,15 +703,13 @@ auto spp::asts::FunctionPrototypeAst::FindGenericSubstitution(
   // arguments.
   for (auto const &sub : _GenericSubstitutions) {
     if (sub.Proto == nullptr or sub.GnArgs == nullptr) { continue; }
-    if (*sub.GnArgs == gn_args) { return MakePair(sub.OwnedScope.get(), sub.Proto.get()); }
+    if (*sub.GnArgs == gn_args) { return {sub.OwnedScope.get(), sub.Proto.get()}; }
   }
 
   // If no matches were found then return a pair of nullptr
   // values. This is impossible to reach (I think) but is a
   // failsafe. Todo: std::unreachable()?
-  return MakePair(
-    static_cast<analyse::scopes::Scope*>(nullptr),
-    static_cast<FunctionPrototypeAst*>(nullptr));
+  return {nullptr, nullptr};
 }
 
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions() const
@@ -759,22 +761,22 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 
   // Module level functions, and static methods, are always FunRef.
   if (_Ctx->To<ModulePrototypeAst>() == nullptr or FnParamGroup->GetSelfParam() == nullptr) {
-    return MakePair(FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref"));
+    return {FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref")};
   }
 
   // Class methods with "self" are the FunMov type.
   if (FnParamGroup->GetSelfParam()->Conv == nullptr) {
-    return MakePair(FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mov"));
+    return {FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mov")};
   }
 
   // Class methods with "&mut self" are the FunMut type.
   if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::MUT) {
-    return MakePair(FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mut"));
+    return {FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mut")};
   }
 
   // Class methods with "&self" are the FunRef type.
   if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::REF) {
-    return MakePair(FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref"));
+    return {FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref")};
   }
 
   std::unreachable();
@@ -784,7 +786,7 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
   analyse::scopes::ScopeManager *sm,
   CompilerMetaData *meta,
   codegen::LLvmCtx const *ctx) const
-  -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>> {
+  -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
   // Convert the return and parameter types to LLVM types.
   const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
     *ReturnType, *sm->CurrentScope, *sm, *meta);
@@ -810,7 +812,7 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
     const auto self_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
     llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
   }
-  return std::make_tuple(is_pure_generic, llvm_ret_type, llvm_param_types);
+  return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }
 
 SPP_MOD_END

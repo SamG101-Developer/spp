@@ -75,5 +75,5 @@ namespace spp::analyse::utils::monomorphization_utils {
     SharedVec<scopes::Symbol> const &external_generic_syms,
     scopes::ScopeManager const *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<scopes::Scope*, scopes::Scope*>;
+    -> Tup<scopes::Scope*, scopes::Scope*>;
 }

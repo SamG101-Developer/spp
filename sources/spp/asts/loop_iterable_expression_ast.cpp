@@ -234,11 +234,11 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
   // borrows it holds (e.g. the "&mut v" established by "v.iter_mut()").
   const auto iter_sym = sm->CurrentScope->GetVarSymbol(_IterableName.get());
   for (auto const &ceb : iter_sym->MemInfo->AstContainedEscapingBorrows) {
-    const auto b = std::get<0>(ceb)->To<IdentifierAst>();
+    const auto b = spp::get<0>(ceb)->To<IdentifierAst>();
     if (b == nullptr) { continue; }
     sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
       [&](auto info) {
-        return *std::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
+        return *spp::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
       });
   }
   iter_sym->MemInfo->AstContainedEscapingBorrows.Clear();

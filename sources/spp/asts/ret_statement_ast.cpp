@@ -199,7 +199,7 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   };
 
   // Temp holder for non-symbolic condition.
-  if (sm->CurrentScope->GetVarSymbolOutermost(*Expr).First == nullptr) {
+  if (sm->CurrentScope->GetVarSymbolOutermost(*Expr).first == nullptr) {
     meta->Save();
     meta->AssignmentTargetType = _RetType;
     const auto ret_val = codegen::llvm_materialize(*Expr, sm, meta, ctx);

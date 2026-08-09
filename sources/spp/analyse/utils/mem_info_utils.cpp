@@ -45,8 +45,8 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::Snapshot() const
   -> MemoryInfoSnapshot {
   // Create and return the snapshot.
   return MemoryInfoSnapshot(
-    std::get<0>(AstInitialization), std::get<1>(AstInitialization),
-    std::get<0>(AstMoved), std::get<1>(AstMoved),
+    spp::get<0>(AstInitialization), spp::get<1>(AstInitialization),
+    spp::get<0>(AstMoved), spp::get<1>(AstMoved),
     AstPartialMoves, AstContainedEscapingBorrows, InitializationCounter);
 }
 

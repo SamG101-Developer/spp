@@ -26,6 +26,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.algorithms;
 import genex;
 
 SPP_MOD_BEGIN
@@ -91,7 +92,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
   const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, *sm);
   const auto all_attr_names = all_attrs
-    | genex::views::tuple_nth<0>
+    | spp::views::tuple_nth<0>
     | genex::to<Vec>();
 
   // Check there is at most 1 autofill argument.
@@ -137,12 +138,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
       SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
         // Multiple attributes with same name (via base classes) -> can't infer the one to use.
         auto attrs = all_attrs
-          | genex::views::filter([kw_arg](auto const &x) { return *std::get<0>(x) == *kw_arg->Name; })
+          | genex::views::filter([kw_arg](auto const &x) { return *spp::get<0>(x) == *kw_arg->Name; })
           | genex::to<Vec>();
         if (attrs.Len() > 1) { continue; }
 
         // Use the type off the single matching attribute.
-        const auto attr_type_sym = std::get<1>(attrs[0]);
+        const auto attr_type_sym = spp::get<1>(attrs[0]);
         const auto attr_type = attr_type_sym->IsGeneric ? nullptr : attr_type_sym->FqName();
         meta->ReturnTypeOverloadResolverType = std::move(attr_type);
       }
@@ -179,12 +180,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   // Type check the non-autofill arguments against the class attributes.
   for (auto const &arg : GetNonAutoFillArgs()) {
     auto matching_attrs = all_attrs
-      | genex::views::filter([&arg](auto const &x) { return *std::get<0>(x) == *arg->Name; })
+      | genex::views::filter([&arg](auto const &x) { return *spp::get<0>(x) == *arg->Name; })
       | genex::to<Vec>();
 
     RaiseIf<SppAmbiguousMemberAccessError>(
       matching_attrs.Len() > 1, {sm->CurrentScope},
-      ERR_ARGS(*std::get<0>(matching_attrs[0]), *std::get<0>(matching_attrs[1]), *this));
+      ERR_ARGS(*spp::get<0>(matching_attrs[0]), *spp::get<0>(matching_attrs[1]), *this));
 
     auto [attr, attr_type_sym, _] = matching_attrs[0];
 

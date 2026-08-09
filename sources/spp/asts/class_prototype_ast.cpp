@@ -159,9 +159,9 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // Sync the type symbols' visibility from the AST.
-  if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.First; }
+  if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.first; }
   if (sm->CurrentScope->TySym != nullptr) {
-    sm->CurrentScope->TySym->Visibility = Visibility.First;
+    sm->CurrentScope->TySym->Visibility = Visibility.first;
   }
 
   // Mark the "Copy" class itself as copyable. Minimise TypeEq calls.
@@ -304,7 +304,7 @@ auto spp::asts::ClassPrototypeAst::GetRegisteredGenericSubstitutions() const
   -> Vec<Pair<analyse::scopes::Scope*, ClassPrototypeAst*>> {
   // Return the generic substituted scopes as raw pointers.
   return _GenericSubstitutions
-    | genex::views::transform([](auto const &x) { return MakePair(x.First, x.Second.get()); })
+    | genex::views::transform([](auto const &x) { return MakePair(x.first, x.second.get()); })
     | genex::to<Vec>();
 }
 
@@ -420,7 +420,7 @@ auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
   // Class attributes are read from the attribute types.
   else {
     types = GetAllAttrs(*type_sym->FqName(), *sm)
-      | genex::views::transform([&](auto const &pair) { return std::get<1>(pair); })
+      | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair); })
       | genex::views::transform([&](auto const &type) { return type ? codegen::GetLlvmType(*type, ctx) : nullptr; })
       | genex::to<Vec>();
   }

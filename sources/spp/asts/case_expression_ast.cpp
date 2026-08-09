@@ -288,15 +288,19 @@ auto spp::asts::CaseExpressionAst::InferType(
   auto [master_branch_type_info, branches_type_info] = ValidateInconsistentTypes(
     Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
 
-  // Ensure there is an "else" branch if the branches are not exhaustive.
+  // Ensure there is an "else" branch if the branches are
+  // not exhaustive.
   // Todo: Need to investigate how to detect exhaustion.
   const auto final_not_else = Branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>() == nullptr;
   RaiseIf<SppCaseBranchMissingElseError>(
     final_not_else and not meta->IgnoreMissingElseBranchForInference,
     {sm->CurrentScope}, ERR_ARGS(*this, *Branches.Back()));
 
-  // Return the branches' return type. If there are any branches, otherwise Void.
-  return branches_type_info.IsEmpty() ? VoidType(PosStart()) : master_branch_type_info.Second;
+  // Return the branches' return type. If there are any
+  // branches, otherwise Void.
+  return branches_type_info.IsEmpty()
+    ? VoidType(PosStart())
+    : master_branch_type_info.second;
 }
 
 auto spp::asts::CaseExpressionAst::Terminates() const

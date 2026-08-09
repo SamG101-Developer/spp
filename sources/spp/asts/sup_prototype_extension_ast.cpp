@@ -309,8 +309,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
       // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
       this_method->Visibility = base_method->Visibility;
       const auto func_sym = sm->CurrentScope->GetVarSymbol(this_method->Name.get(), true);
-      func_sym->Visibility = base_method->Visibility.First;
-      func_sym->VisibilityAnnotation = this_method->Visibility.Second;
+      func_sym->Visibility = base_method->Visibility.first;
+      func_sym->VisibilityAnnotation = this_method->Visibility.second;
     }
 
     else if (const auto type_member = member->To<TypeStatementAst>()) {
@@ -487,12 +487,14 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
   // are already registered the other way around (at any level).
   const auto existing_sup_scopes = sup_sym.LinkedScope->SupScopes()
     | genex::views::filter(check_cycle)
-    | genex::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
+    | genex::views::transform([](auto *x) {
+      return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>());
+    })
     | genex::to<Vec>();
 
   RaiseIf<SppSuperimpositionCyclicExtensionError>(
     not existing_sup_scopes.IsEmpty(), {&check_scope},
-    ERR_ARGS(*existing_sup_scopes[0].Second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+    ERR_ARGS(*existing_sup_scopes[0].second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
 }
 
 auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
@@ -519,13 +521,15 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
   auto all_sup_scopes = cls_sym.LinkedScope->DirectSupScopes;
   const auto existing_sup_scopes = all_sup_scopes
     | genex::views::filter(check_double)
-    | genex::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
+    | genex::views::transform([](auto *x) {
+      return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>());
+    })
     | genex::to<Vec>();
 
   if (not existing_sup_scopes.IsEmpty()) {
     Raise<SppSuperimpositionDoubleExtensionError>(
-      {&check_scope, existing_sup_scopes[0].First},
-      ERR_ARGS(*existing_sup_scopes[0].Second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+      {&check_scope, existing_sup_scopes[0].first},
+      ERR_ARGS(*existing_sup_scopes[0].second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
   }
 }
 

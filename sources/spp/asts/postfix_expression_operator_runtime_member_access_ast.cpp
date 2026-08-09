@@ -34,6 +34,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
+import spp.utils.algorithms;
 import spp.utils.uid;
 import genex;
 
@@ -156,55 +157,57 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
     }
 
-    auto all_scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope},
-                                                     lhs_type_sym->LinkedScope->SupScopes()) | genex::to<Vec>())
+    auto all_scopes_and_syms = (genex::views::concat(
+          Vec{lhs_type_sym->LinkedScope},
+          lhs_type_sym->LinkedScope->SupScopes())
+        | genex::to<Vec>())
       | genex::views::transform([name=Name.get()](auto const &x) {
         return MakePair(x, x->GetVarSymbol(name, true, false));
       })
       | genex::to<Vec>()
-      | genex::views::filter([](auto const &x) { return x.Second != nullptr; })
+      | genex::views::filter([](auto const &x) { return x.second != nullptr; })
       | genex::views::transform([&](auto const &x) {
-        return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second);
+        return MakeTuple(lhs_type_sym->LinkedScope->DepthDiff(x.first), x.first, x.second);
       })
       | genex::to<Vec>();
 
     // Enforce visibility on functional (method) members. Their mock ("$"-typed) symbols are excluded from the
     // attribute handling below, so without this the visibility check never runs for method accesses.
     auto fn_scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return std::get<2>(x)->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return spp::get<2>(x)->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
     if (not fn_scopes_and_syms.IsEmpty()) {
       const auto fn_closest = fn_scopes_and_syms.Back();
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
-      CheckTypeMemberVisibility(*std::get<2>(fn_closest), *Name, *cls_scope, *sm, *meta);
+      CheckTypeMemberVisibility(*spp::get<2>(fn_closest), *Name, *cls_scope, *sm, *meta);
     }
 
     auto scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return not std::get<2>(x)->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return not spp::get<2>(x)->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
 
     // If we only have functional types, just return.
     if (scopes_and_syms.Len() < 1) { return; }
 
     auto min_depth = genex::min_element(scopes_and_syms
-      | genex::views::tuple_nth<0>
+      | spp::views::tuple_nth<0>
       | genex::to<Vec>());
 
     auto closest = scopes_and_syms
-      | genex::views::filter([min_depth](auto const &x) { return std::get<0>(x) == min_depth; })
-      | genex::views::transform([](auto const &x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+      | genex::views::filter([min_depth](auto const &x) { return spp::get<0>(x) == min_depth; })
+      | genex::views::transform([](auto const &x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
       | genex::to<Vec>();
 
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
-      const auto scope = closest[0].First->NonGenericScope;
+      const auto scope = closest[0].first->NonGenericScope;
       CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get(), true), *Name, *scope, *sm, *meta);
     }
 
     if (closest.Len() <= 1) { return; }
     Raise<analyse::errors::SppAmbiguousMemberAccessError>(
-      {closest[0].First, closest[1].First, sm->CurrentScope},
-      ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *Name));
+      {closest[0].first, closest[1].first, sm->CurrentScope},
+      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *Name));
   }
 }
 
@@ -291,7 +294,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
 
   // If the lhs is symbolic, get the address of the outermost part. The symbol's alloca is already the address of the
   // object (the base pointer). Load borrows to get value.
-  else if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs).First;
+  else if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs).first;
     sym != nullptr) {
     SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
     base_ptr = is_borrow

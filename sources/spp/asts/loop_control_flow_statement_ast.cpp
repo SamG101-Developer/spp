@@ -115,7 +115,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     }
     else {
       auto stored_expr = Expr ? Expr.get() : nullptr;
-      (*meta->LoopReturnTypes)[depth] = std::make_tuple(stored_expr, expr_type, sm->CurrentScope);
+      (*meta->LoopReturnTypes)[depth] = {stored_expr, expr_type, sm->CurrentScope};
     }
   }
 }

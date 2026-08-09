@@ -53,13 +53,15 @@ auto spp::asts::LoopExpressionAst::InferType(
   using analyse::utils::type_utils::TypeEq;
   using generate::common_types::VoidType;
 
-  // Get the loop's exit type (or Void if there are no exits from inside the loop).
+  // Get the loop's exit type (or Void if there are no
+  // exits from inside the loop).
   auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
     ? *m_loop_exit_type_info
-    : std::make_tuple(nullptr, VoidType(PosStart()), nullptr);
+    : Tup(static_cast<ExpressionAst*>(nullptr), VoidType(PosStart()), static_cast<analyse::scopes::Scope*>(nullptr));
   exit_expr = exit_expr ? exit_expr : this;
 
-  // Check the else block's type is the same as the loop exit type.
+  // Check the else block's type is the same as the loop
+  // exit type.
   if (ElseBlock != nullptr and not meta->IgnoreMissingElseBranchForInference) {
     const auto else_type = ElseBlock->InferType(sm, meta);
     const auto final_member = ElseBlock->Body->FinalMember();

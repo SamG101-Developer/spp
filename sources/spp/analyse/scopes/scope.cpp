@@ -146,7 +146,7 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
 
   // Return the type scope, and the final type part.
   auto final = type_parts.Back().get();
-  return MakePair(shifted_scope, final);
+  return {shifted_scope, final};
 }
 
 auto spp::analyse::scopes::Scope::GetErrorFormatter() const
@@ -518,7 +518,7 @@ auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
 
     // Get the symbol (will be in this scope), and return it with the scope.
     auto sym = GetVarSymbol(adjusted_name->To<asts::IdentifierAst>());
-    return MakePair(sym, this);
+    return {sym, this};
   }
 
   if (is_valid_postfix_expression_static(&expr)) {
@@ -530,7 +530,7 @@ auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
     if (const auto type_lhs = postfix_expr->Lhs->To<asts::TypeAst>()) {
       const auto type_sym = GetTypeSymbol(type_lhs);
       const auto var_sym = type_sym->LinkedScope->GetVarSymbol(postfix_op->Name.get());
-      return MakePair(var_sym, const_cast<Scope const*>(type_sym->LinkedScope));
+      return {var_sym, const_cast<Scope const*>(type_sym->LinkedScope)};
     }
 
     // Namespace based left-hand-side, such as "a::b::c::my_function()"
@@ -540,12 +540,12 @@ auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
       namespace_scope = namespace_scope->ConvertPostfixToNestedScope(adjusted_name->To<asts::ExpressionAst>());
     }
     auto sym = namespace_scope ? namespace_scope->GetVarSymbol(postfix_op->Name.get()) : nullptr;
-    return MakePair(sym, namespace_scope);
+    return {sym, namespace_scope};
   }
 
   // Identifiers or non-symbolic expressions can use the normal lookup.
   auto sym = GetVarSymbol(adjusted_name->To<asts::IdentifierAst>());
-  return MakePair(sym, this);
+  return {sym, this};
 }
 
 auto spp::analyse::scopes::Scope::DepthDiff(
