@@ -221,11 +221,6 @@ namespace spp::analyse::utils::type_utils {
     bool deep = true)
     -> bool;
 
-  SPP_EXP_FUN auto IsTypeCopyable(
-    asts::TypeAst const &type,
-    scopes::ScopeManager const &sm)
-    -> bool;
-
   SPP_EXP_FUN auto IsIndexWithinBound(
     std::size_t index,
     asts::TypeAst const &type,

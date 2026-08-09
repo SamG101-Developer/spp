@@ -640,43 +640,6 @@ auto spp::analyse::utils::type_utils::IsTypeBorrowed(
   return false;
 }
 
-auto spp::analyse::utils::type_utils::IsTypeCopyable(
-  asts::TypeAst const &type,
-  scopes::ScopeManager const &sm)
-  -> bool {
-  // Check that either this type, or any super-types for this type,
-  // are copyable. A copyable type superimposes the Copy marker
-  // trait type, so check all super scopes recursively for a match.
-  using asts::generate::common_types_precompiled::COPY;
-  if (&type == COPY.get()) { return true; }
-
-  // Generic types are not Copy types, so return nullptr.
-  // Todo: This is wrong - might be constrained by Copy; remove?
-  const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
-  if (type_sym->IsGeneric) { return false; }
-
-  // Discover the supertypes and add the current type to it. Define
-  // the inner check as a direct comparison to the Copy type.
-  // Todo: Can we move this to just checking sym->IsDirectCopyable?
-  auto sup_types = Vec{type.shared_from_this()};
-  sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-  auto inner_copy_check = [&](auto &&t) {
-    return TypeEq(*t.WithoutGenerics(), *COPY, *sm.CurrentScope, *sm.CurrentScope, false);
-  };
-
-  // Search through the supertypes for a direct Copy type. One match
-  // means the type can be copied.
-  // Todo: Is this correct? Surely we only want to check the direct
-  //  super scopes? Not any depth?
-  const auto copy_type_candidates = sup_types
-    | genex::views::filter([&](auto &&sup_type) { return inner_copy_check(*sup_type); })
-    | genex::to<Vec>();
-
-  // If there is an explicit Copy type, return true, otherwise
-  // return false.
-  return not copy_type_candidates.IsEmpty();
-}
-
 auto spp::analyse::utils::type_utils::IsIndexWithinBound(
   const std::size_t index,
   asts::TypeAst const &type,
