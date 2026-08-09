@@ -5,7 +5,7 @@
   .Raise()
 
 #define ERR_ARGS(...) \
-  [&]() { return std::forward_as_tuple(__VA_ARGS__); }
+  [&]() { return spp::MakeErrArgs(__VA_ARGS__); }
 
 #define WRAP_ERROR(c, s)                                                    \
   try {                                                                     \
