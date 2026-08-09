@@ -3,13 +3,16 @@ module;
 // base address of its OS reservations from OS entropy, which defeats the
 // debugger's disable-randomization, so heap pointers differ between runs and
 // can't be compared against an address noted in an earlier run.
-#ifdef NDEBUG
+//
+// Sanitized builds don't use it either (SPP_NO_MIMALLOC, set by the build) because
+// mimalloc screws with the memory address analysing.
+#if defined(NDEBUG) && !defined(SPP_NO_MIMALLOC)
 #include <mimalloc-new-delete.h>
 #endif
 
 export module mimalloc;
 
-#ifdef NDEBUG
+#if defined(NDEBUG) && !defined(SPP_NO_MIMALLOC)
 export using ::operator delete;
 export using ::operator delete[];
 export using ::operator new;
