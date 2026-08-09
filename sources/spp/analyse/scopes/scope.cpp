@@ -682,6 +682,18 @@ auto spp::analyse::scopes::Scope::SupScopes() const
   return scopes;
 }
 
+auto spp::analyse::scopes::Scope::SupScopesConst() const
+  -> Vec<Scope const*> {
+  // Get all super scopes, recursively.
+  auto scopes = Vec<Scope const*>();
+  for (auto const *scope : DirectSupScopes) {
+    const auto child_scopes = scope->SupScopesConst();
+    scopes.push_back(scope);
+    scopes.AppendRange(child_scopes);
+  }
+  return scopes;
+}
+
 auto spp::analyse::scopes::Scope::SupTypes() const
   -> Vec<Shared<asts::TypeAst>> {
   static const auto resolve_fq_name = [](auto *scope) -> Shared<asts::TypeAst> {

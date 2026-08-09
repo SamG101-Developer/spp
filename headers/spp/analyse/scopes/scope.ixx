@@ -260,6 +260,8 @@ public:
 
   SPP_ATTR_NODISCARD auto SupScopes() const -> Vec<Scope*>;
 
+  SPP_ATTR_NODISCARD auto SupScopesConst() const -> Vec<Scope const*>;
+
   SPP_ATTR_NODISCARD auto SupTypes() const -> SharedVec<asts::TypeAst>;
 
   SPP_ATTR_NODISCARD auto DirectSupTypes() const -> SharedVec<asts::TypeAst>;
