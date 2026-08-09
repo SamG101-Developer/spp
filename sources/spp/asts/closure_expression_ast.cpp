@@ -82,6 +82,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::errors::SppSecondClassBorrowViolationError;
 
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
@@ -128,7 +129,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
 
   // The return type is inferred rather than declared, so it never passes through the function prototype's return
   // type borrow check.
-  RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(
+  RaiseIf<SppSecondClassBorrowViolationError>(
     Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_RetType, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *_RetType, "function return type"));
   meta->Restore(true);
