@@ -48,9 +48,10 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
   SPP_ATTR_NODISCARD auto GetDummyScopes() const
     -> std::span<analyse::scopes::Scope* const>;
 
-private:
-  Unique<Ast> _DummyAst;
+  static auto ClearDummyScopes() -> void;
 
+private:
+  inline static Vec<Unique<Ast>> _DummyScopeAsts = {};
   Vec<analyse::scopes::Scope*> _DummyScopes;
 };
 

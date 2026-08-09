@@ -15,6 +15,7 @@ import spp.asts.cmp_statement_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_parameter_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.module_implementation_ast;
@@ -385,6 +386,7 @@ auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   normal_sup_blocks.clear();
   generic_sup_blocks.Clear();
   temp_scopes.Clear();
+  asts::GenericParameterTypeAst::ClearDummyScopes();
 }
 
 SPP_MOD_END

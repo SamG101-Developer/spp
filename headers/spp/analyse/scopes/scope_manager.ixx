@@ -62,6 +62,11 @@ public:
    */
   inline static Vec<Scope*> generic_sup_blocks = {};
 
+  /**
+   * Scopes that belong to no enclosing scope's @c Children, and so are owned here for the whole compilation. A scope
+   * names its ast with a raw pointer and does not keep it alive, so anything registered on one of these has to be
+   * owned for the same lifetime - see @c GenericParameterTypeAst::dummy_scope_asts .
+   */
   inline static Vec<Unique<Scope>> temp_scopes = {};
 
   /**
