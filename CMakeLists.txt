@@ -152,6 +152,7 @@ target_link_libraries(
   LLVMipo
   LLVMPasses
   Threads::Threads
+  mimalloc
   unordered_dense::unordered_dense
   tomlplusplus::tomlplusplus
   nlohmann_json::nlohmann_json
