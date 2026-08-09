@@ -196,7 +196,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public y: S32
     }
 
-    fun f(p: std::shared::Shared[Point]) -> Void {
+    fun f(p: std::rc::rc::Rc[Point]) -> Void {
         p.x
     }
 )");

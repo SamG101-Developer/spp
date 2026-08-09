@@ -43,7 +43,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorEarlyReturnAst,
     test_invalid_early_return_non_try_type,
-    SppEarlyReturnRequiresTryTypeError, R"(
+    SppExpressionNotTryError, R"(
     fun f() -> Opt[S32] {
         let x = true?
         ret None

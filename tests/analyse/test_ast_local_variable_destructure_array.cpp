@@ -221,7 +221,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   LocalVariableDestructureArrayAst_MaterializeRhs,
   test_valid_function_call_value, R"(
-    fun g() -> [Str; 2] {
+    fun g() -> [Str; 2_uz] {
         ret [Str::from("a"), Str::from("b")]
     }
 

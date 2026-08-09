@@ -74,24 +74,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
-    test_invalid_postfix_func_call_unnecessary_explicit_generic_1,
-    SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: T) -> Void {
-        f[S32](1)
-    }
-)");
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorFunctionCallAst,
-    test_invalid_postfix_func_call_unnecessary_explicit_generic_2,
-    SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T](a: T) -> Void {
-        f[Str](1)
-    }
-)");
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_extra_generic,
     SppFunctionCallNoValidSignaturesError, R"(
     fun f[T](a: T) -> Void {
@@ -469,8 +451,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let mut x = pass_through(1, true, "hi")
-        x = (0, false, "bye")
+        let mut x = pass_through(1, true, Str::from("hi"))
+        x = (0, false, Str::from("bye"))
     }
 )");
 

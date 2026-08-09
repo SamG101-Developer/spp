@@ -2,12 +2,21 @@
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
+    test_invalid_async_unknown_target,
+    SppIdentifierUnknownError, R"(
+    fun g() -> Void {
+        async x()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_bad_target_1,
     SppInvalidPrimaryExpressionError, R"(
     fun g() -> Void {
         async Bool
     }
-)");
+)")
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,

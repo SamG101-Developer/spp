@@ -355,16 +355,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_complex, R"(
     cls A[T] {
-        buffer: std::memory::raw_buf::RawBuf[U8]
+        buffer: std::mem::raw_buf::RawBuf[U8]
     }
     type MyVec[ZZ] = A[ZZ]
 
     fun f(v: MyVec[U8], v2: MyVec[U8]) -> Void {
         case v is MyVec[U8](mut buffer, ..) {
-            buffer = std::memory::raw_buf::RawBuf[U8]()
+            buffer = std::mem::raw_buf::RawBuf[U8]()
         }
         case v2 is A[U8](mut buffer, ..) {
-            buffer = std::memory::raw_buf::RawBuf[U8]()
+            buffer = std::mem::raw_buf::RawBuf[U8]()
         }
     }
 )");

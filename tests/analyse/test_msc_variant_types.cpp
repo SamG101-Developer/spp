@@ -3,7 +3,7 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_1, R"(
-    fun f(mut a: StrView or U64 or Bool) -> Void {
+    fun f(mut a: &StrView or U64 or Bool) -> Void {
         a = "hello world"
     }
 )");
