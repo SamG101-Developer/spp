@@ -268,7 +268,10 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
   const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
 
-  auto sup_scopes = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->LinkedScope->SupScopes();
+  // We use "direct" super scopes here because it enforces
+  // superimposing "Copy" on the type directly, not via an
+  // extension chain.
+  auto sup_scopes = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->LinkedScope->DirectSupScopes;
   sup_scopes |= genex::actions::insert(sup_scopes.begin(), sup_sym->LinkedScope);
   sup_scopes |= genex::actions::remove_if([](auto const &x) {
     return x->AstNode->template To<ClassPrototypeAst>() == nullptr;
@@ -437,8 +440,10 @@ auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
 
   // Check if this block is purely generic.
   const auto is_generic_scope =
-    genex::any_of(sm->CurrentScope->AllTypeSymbols(true), [](auto const &x) { return x->IsGeneric; }) or
-    genex::any_of(sm->CurrentScope->AllVarSymbols(true), [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
+    genex::any_of(
+      sm->CurrentScope->AllTypeSymbols(true), [](auto const &x) { return x->IsGeneric; }) or
+    genex::any_of(
+      sm->CurrentScope->AllVarSymbols(true), [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
 
   // Generate the implementation if not a generic scope.
   if (not is_generic_scope) {
@@ -478,7 +483,8 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
       TypeEq(*ext->SuperClass, *Name, *sc, check_scope, false);
   };
 
-  // Prevent double inheritance by checking if the scopes are already registered the other way around.
+  // Prevent cyclic inheritance by checking if the scopes
+  // are already registered the other way around (at any level).
   const auto existing_sup_scopes = sup_sym.LinkedScope->SupScopes()
     | genex::views::filter(check_cycle)
     | genex::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
@@ -508,16 +514,19 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
       TypeEq(*ext->SuperClass, *SuperClass, *sc, check_scope, false);
   };
 
-  // Prevent double inheritance by checking if the scopes are already registered the other way around.
-  auto all_sup_scopes = cls_sym.LinkedScope->SupScopes();
+  // Prevent double inheritance by checking if the scopes
+  // are already registered this way around (at this level).
+  auto all_sup_scopes = cls_sym.LinkedScope->DirectSupScopes;
   const auto existing_sup_scopes = all_sup_scopes
     | genex::views::filter(check_double)
     | genex::views::transform([](auto *x) { return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>()); })
     | genex::to<Vec>();
 
-  RaiseIf<SppSuperimpositionDoubleExtensionError>(
-    not existing_sup_scopes.IsEmpty(), {&check_scope},
-    ERR_ARGS(*existing_sup_scopes[0].Second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+  if (not existing_sup_scopes.IsEmpty()) {
+    Raise<SppSuperimpositionDoubleExtensionError>(
+      {&check_scope, existing_sup_scopes[0].First},
+      ERR_ARGS(*existing_sup_scopes[0].Second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+  }
 }
 
 auto spp::asts::SupPrototypeExtensionAst::CheckSelfExtension(
