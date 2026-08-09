@@ -40,6 +40,12 @@ spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
 
 spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
 
+auto spp::analyse::scopes::NamespaceSymbol::NeedsDeepCopy() const
+  -> bool {
+  // Nothing about a namespace is per-instantiation.
+  return false;
+}
+
 auto spp::analyse::scopes::NamespaceSymbol::operator==(
   NamespaceSymbol const &that) const
   -> bool {
@@ -68,7 +74,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
 spp::analyse::scopes::VariableSymbol::VariableSymbol(
   VariableSymbol const &that) :
   Name(AstCloneShared(that.Name)),
-  Type(AstCloneShared(that.Type)),
+  Type(that.Type),
   ScopeDefinedIn(that.ScopeDefinedIn),
   IsMutable(that.IsMutable),
   IsGeneric(that.IsGeneric),
@@ -82,6 +88,12 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
 }
 
 spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
+
+auto spp::analyse::scopes::VariableSymbol::NeedsDeepCopy() const
+  -> bool {
+  // The memory state and the alloca belong to one instantiation.
+  return true;
+}
 
 auto spp::analyse::scopes::VariableSymbol::operator==(
   VariableSymbol const &that) const
@@ -192,6 +204,12 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
 }
 
 spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
+
+auto spp::analyse::scopes::TypeSymbol::NeedsDeepCopy() const
+  -> bool {
+  // Only an alias is rewritten per instantiation.
+  return AliasStmt != nullptr;
+}
 
 auto spp::analyse::scopes::TypeSymbol::operator==(
   TypeSymbol const &that) const

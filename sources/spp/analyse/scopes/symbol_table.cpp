@@ -18,23 +18,30 @@ spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() :
 }
 
 template <typename I, typename S>
-spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable(
-  IndividualSymbolTable const &that) {
-  // Copy constructor from another symbol table.
+spp::analyse::scopes::IndividualSymbolTable<I, S>::~IndividualSymbolTable() = default;
+
+template <typename I, typename S>
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::ShallowCopyFrom(
+  IndividualSymbolTable const &that)
+  -> void {
+  // Copying the map copies the shared pointers, so both
+  // tables name the same symbol objects.
   _Table = that._Table;
 }
 
 template <typename I, typename S>
-spp::analyse::scopes::IndividualSymbolTable<I, S>::~IndividualSymbolTable() = default;
-
-template <typename I, typename S>
-auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::DeepCopyFrom(
   IndividualSymbolTable const &that)
-  -> IndividualSymbolTable& {
+  -> void {
+  // Copy each symbol that a substitution goes on to rewrite,
+  // so that neither table can be changed through the other,
+  // and share the rest - most of a template's symbols mean
+  // the same thing from inside every instantiation of it.
+  _Table.clear();
+  _Table.reserve(that._Table.size());
   for (auto const &[k, v] : that._Table) {
-    _Table[k] = MakeShared<S>(*v);
+    _Table.emplace(k, v->NeedsDeepCopy() ? MakeShared<S>(*v) : v);
   }
-  return *this;
 }
 
 template <typename I, typename S>
@@ -42,7 +49,8 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Add(
   I const *sym_name,
   Shared<S> const &sym)
   -> void {
-  // Add a symbol to the table. Use string_view for the find to avoid a copy.
+  // Add a symbol to the table. Use string_view for the
+  // find to avoid a copy.
   const auto sv = sym_name->ToView();
   auto it = _Table.find(sv);
   if (it != _Table.end()) {
@@ -71,7 +79,8 @@ template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Get(
   I const *sym_name) const
   -> Shared<S> {
-  // Get a symbol from the table. Use string_view to avoid a string copy per lookup.
+  // Get a symbol from the table. Use string_view to avoid
+  // a string copy per lookup.
   if (sym_name == nullptr) { return nullptr; }
   auto ptr = _Table.find(sym_name->ToView());
   return ptr != _Table.end() ? ptr->second : nullptr;
@@ -98,23 +107,24 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::All() const
 
 spp::analyse::scopes::SymbolTable::SymbolTable() = default;
 
-spp::analyse::scopes::SymbolTable::SymbolTable(
-  SymbolTable const &that) :
-  NsTbl(that.NsTbl),
-  TypeTbl(that.TypeTbl),
-  VarTbl(that.VarTbl) {
-}
-
 spp::analyse::scopes::SymbolTable::~SymbolTable() = default;
 
-auto spp::analyse::scopes::SymbolTable::operator=(
+auto spp::analyse::scopes::SymbolTable::ShallowCopyFrom(
   SymbolTable const &that)
-  -> SymbolTable& {
-  // Assignment operator.
-  NsTbl = that.NsTbl;
-  TypeTbl = that.TypeTbl;
-  VarTbl = that.VarTbl;
-  return *this;
+  -> void {
+  // Share the symbols of every table.
+  NsTbl.ShallowCopyFrom(that.NsTbl);
+  TypeTbl.ShallowCopyFrom(that.TypeTbl);
+  VarTbl.ShallowCopyFrom(that.VarTbl);
+}
+
+auto spp::analyse::scopes::SymbolTable::DeepCopyFrom(
+  SymbolTable const &that)
+  -> void {
+  // Copy the symbols of every table.
+  NsTbl.DeepCopyFrom(that.NsTbl);
+  TypeTbl.DeepCopyFrom(that.TypeTbl);
+  VarTbl.DeepCopyFrom(that.VarTbl);
 }
 
 template class spp::analyse::scopes::IndividualSymbolTable<

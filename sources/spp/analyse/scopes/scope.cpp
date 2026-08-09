@@ -60,8 +60,9 @@ spp::analyse::scopes::Scope::Scope(Scope const &other) :
   TySym(other.TySym),
   NsSym(other.NsSym),
   NonGenericScope(other.NonGenericScope),
-  InternalTable(other.InternalTable),
   _ErrorFormatter(nullptr) {
+  InternalTable.ShallowCopyFrom(other.InternalTable);
+
   // Copy the children recursively.
   for (auto const &child_scope : other.Children) {
     auto child_copy = MakeUnique<Scope>(*child_scope);

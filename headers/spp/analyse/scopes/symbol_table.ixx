@@ -41,20 +41,28 @@ private:
 public:
   IndividualSymbolTable();
 
-  /**
-   * Shallow copy.
-   * @param that
-   */
-  IndividualSymbolTable(IndividualSymbolTable const &that);
-
   ~IndividualSymbolTable();
 
   /**
-   * Deep copy.
-   * @param that
-   * @return
+   * Force the usage of one of the two explicit copying methods - shallow or deep. This dis-ambiguates exactly what sort
+   * of copying is happening between two symbol tables.
    */
-  auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
+  IndividualSymbolTable(IndividualSymbolTable const &that) = delete;
+  auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable& = delete;
+
+  /**
+   * Share the symbols, but in a new map within the new symbol table. Modifying the map of symbols won't affect other
+   * tables' actual maps, but the symbols are shjared, so change in all places (all maps containing the changed symbol).
+   * @param that The table to share the symbols of.
+   */
+  auto ShallowCopyFrom(IndividualSymbolTable const &that) -> void;
+
+  /**
+   * Copy each symbol individually (should the method on the symbol say that a deep copy is actually required), into the
+   * new table. Modifying the symnbols in this table doesn't affect any symbols in other tables.
+   * @param that The table to copy the symbols of.
+   */
+  auto DeepCopyFrom(IndividualSymbolTable const &that) -> void;
 
   SPP_ATTR_HOT
   auto Add(I const *sym_name, Shared<S> const &sym) -> void;
@@ -74,21 +82,22 @@ public:
 SPP_EXP_CLS class spp::analyse::scopes::SymbolTable {
 public:
   SymbolTable();
-
-  /**
-   * Shallow copy.
-   * @param that
-   */
-  SymbolTable(SymbolTable const &that);
-
   ~SymbolTable();
 
+  SymbolTable(SymbolTable const &that) = delete;
+  auto operator=(SymbolTable const &that) -> SymbolTable& = delete;
+
   /**
-   * Deep copy.
-   * @param that
-   * @return
+   * Use the shallow copy on the individual symbol tables.
+   * @param that The table to share the symbols of.
    */
-  auto operator=(SymbolTable const &that) -> SymbolTable&;
+  auto ShallowCopyFrom(SymbolTable const &that) -> void;
+
+  /**
+   * Use the deep copy on the individual symbol tables.
+   * @param that The table to copy the symbols of.
+   */
+  auto DeepCopyFrom(SymbolTable const &that) -> void;
 
   IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> NsTbl;
   IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> TypeTbl;

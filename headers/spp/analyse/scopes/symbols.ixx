@@ -44,6 +44,14 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symb
   virtual ~Symbol();
 
   /**
+   * Whether a generic instantiation cloning a scope has to be given its own copy of this symbol, or can share the
+   * template's. Only what monomorphization goes on to rewrite, or what carries per-instantiation state, needs its own;
+   * everything else is written once and read from every instantiation. See @c IndividualSymbolTable::DeepCopyFrom .
+   * @return Whether this symbol must be copied rather than shared.
+   */
+  SPP_ATTR_NODISCARD virtual auto NeedsDeepCopy() const -> bool = 0;
+
+  /**
    * Obtain a @c Shared owning pointer to this symbol, downcast to the requested derived symbol type. Symbols are
    * always created via @c MakeShared and stored in symbol tables, so the enclosing control block is guaranteed to
    * exist; this mints an owning pointer lazily at the call sites that actually need shared ownership, without the
@@ -77,6 +85,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     NamespaceSymbol const &that);
 
   ~NamespaceSymbol() override;
+
+  /**
+   * A namespace is the same namespace from inside every instantiation, and nothing about one is rewritten by a
+   * substitution, so it is always shared. It is unlikely it is ever in a place that needs copying, but for future
+   * namespace aliasing, is included.
+   */
+  SPP_ATTR_NODISCARD auto NeedsDeepCopy() const -> bool override;
 
   auto operator==(
     NamespaceSymbol const &that) const
@@ -120,6 +135,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     VariableSymbol const &that);
 
   ~VariableSymbol() override;
+
+  /**
+   * A variable symbol carries state that belongs to one instantiation and not to the template: the memory state the
+   * memory checker writes, and the alloca (or global) code generation gives it. Two instantiations sharing one would
+   * be two functions sharing one stack slot, so a variable symbol is always copied.
+   */
+  SPP_ATTR_NODISCARD auto NeedsDeepCopy() const -> bool override;
 
   auto operator==(
     VariableSymbol const &that) const
@@ -208,6 +230,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     TypeSymbol const &that);
 
   ~TypeSymbol() override;
+
+  /**
+   * Only an alias is rewritten per instantiation ("type T = ..." becomes "type T = Str"). Everything else a type symbol
+   * holds is either the same from every instantiation, or - in the case of @c LlvmInfo - deliberately shared with the
+   * template, because one written type is one llvm type however many instantiations name it.
+   */
+  SPP_ATTR_NODISCARD auto NeedsDeepCopy() const -> bool override;
 
   /**
    * Whether a value of this type is copied rather than moved.
