@@ -1,6 +1,8 @@
 module;
 #include <spp/macros.hpp>
-#ifdef __clang__
+#include <spp/macros-platforms.hpp>
+
+#if SPP_COMPILER_CLANG
 #include <bits/floatn-common.h>
 #endif
 
@@ -23,7 +25,7 @@ export namespace std {
     }
   };
 
-#ifdef __clang__
+#if SPP_COMPILER_CLANG
   using float16_t = _Float16;
   using float32_t = _Float32;
   using float64_t = _Float64;

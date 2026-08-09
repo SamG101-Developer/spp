@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/macros-platforms.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
     if (not handle_validate(is_exe)) { return; }
@@ -348,9 +349,9 @@ auto spp::cli::create_default_config_for(
 auto spp::cli::get_system_shared_library_extension()
   -> Str {
   // Return the appropriate shared library extension for the current OS.
-#if defined(_WIN32) || defined(_WIN64)
+#if SPP_PLATFORM_WINDOWS
   return "dll";
-#elif defined(__APPLE__)
+#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
   return "dylib";
 #else
   return "so";
