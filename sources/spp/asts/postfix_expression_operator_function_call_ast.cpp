@@ -104,6 +104,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const
   ast->_ClosureDummyProto = AstClone(_ClosureDummyProto);
   ast->_TransformedAst = AstClone(_TransformedAst);
   ast->_OverloadInfo = _OverloadInfo;
+  if (ast->_OverloadInfo.has_value()
+    and _ClosureDummyProto != nullptr
+    and ast->_OverloadInfo->Proto == _ClosureDummyProto.get()) {
+    ast->_OverloadInfo->Proto = ast->_ClosureDummyProto.get();
+  }
   ast->_IsAsync = _IsAsync;
   ast->_FoldedAsts = AstCloneVec(_FoldedAsts);
   ast->_ClosureDummyArgGroup = AstClone(_ClosureDummyArgGroup);
@@ -181,8 +186,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   // Set the overload to the only pass overload.
   _OverloadInfo = _OInfo{
     .OverloadScope = std::get<0>(overload),
-    .Proto = std::get<1>(overload),
-    .GnArgs = std::move(std::get<3>(overload))
+    .Proto = std::get<1>(overload)
   };
   if (const auto self_param = _OverloadInfo->Proto->FnParamGroup->GetSelfParam()) {
     FnArgGroup->Args[0]->Conv = AstClone(self_param->Conv);

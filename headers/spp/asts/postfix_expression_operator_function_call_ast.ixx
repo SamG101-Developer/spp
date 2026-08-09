@@ -99,7 +99,6 @@ private:
   struct _OInfo {
     analyse::scopes::Scope const *OverloadScope;
     FunctionPrototypeAst *Proto;
-    Vec<GenericArgumentAst*> GnArgs;
   };
 
   std::optional<_OInfo> _OverloadInfo;
