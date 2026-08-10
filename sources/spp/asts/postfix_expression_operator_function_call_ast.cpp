@@ -52,6 +52,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -405,8 +406,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   RaiseIf<analyse::errors::SppInternalCompilerError>(
     _OverloadInfo->Proto->GetLlvmFunc() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));
 
-  const auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
+  // Because we have individual modules for each compilation
+  // unit, we need to add the declaration for the target into
+  // the current module.
+  auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
+  llvm_func = codegen::GetOrAddTargetIntoCurrentModule(*llvm_func, *ctx->Module);
+
   auto llvm_func_args = FnArgGroup->Args
     | genex::views::transform([sm, meta, ctx](auto const &x) { return x->Stage11_CodeGen(sm, meta, ctx); })
     | genex::to<Vec>();

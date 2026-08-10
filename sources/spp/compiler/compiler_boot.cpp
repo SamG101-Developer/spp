@@ -255,25 +255,37 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   std::cout << "Writing LLVM IR to: " << out_path << "\n";
 
   for (auto const &ctx : _LlvmCtxs) {
-    // auto structs = ctx->module->getIdentifiedStructTypes();
-    // for (auto const &strct : structs) {
-    //     llvm::errs() << "Struct : " << strct->getName() << "\n";
-    //     llvm::errs() << "\tIs opaque: " << (strct->isOpaque() ? "yes" : "no") << "\n";
-    //     if (not strct->isOpaque()) {
-    //         for (auto const &field : strct->elements()) {
-    //             llvm::errs() << "\tField type: ";
-    //             field->print(llvm::errs());
-    //             llvm::errs() << "\n";
-    //         }
-    //     }
-    // }
+    // llvm::errs() << "=== IR for module: " << ctx->Module->getName() << " ===\n";
+    // ctx->Module->print(llvm::errs(), nullptr);
+    // llvm::errs() << "=== End IR for module: " << ctx->Module->getName() << " ===\n";
 
-    llvm::errs() << "=== IR for module: " << ctx->Module->getName() << " ===\n";
-    ctx->Module->print(llvm::errs(), nullptr);
-    llvm::errs() << "=== End IR for module: " << ctx->Module->getName() << " ===\n";
+    struct DiagnosticCounts {
+      unsigned errors = 0;
+      unsigned warnings = 0;
+    };
+
+    DiagnosticCounts counts;
+    ctx->Context->setDiagnosticHandlerCallBack(
+      [](const llvm::DiagnosticInfo *DI, void *Context) {
+        auto *counts = static_cast<DiagnosticCounts*>(Context);
+
+        if (DI->getSeverity() == llvm::DS_Warning) {
+          ++counts->warnings;
+        }
+        else if (DI->getSeverity() == llvm::DS_Error) {
+          ++counts->errors;
+        }
+
+        llvm::DiagnosticPrinterRawOStream DP(llvm::errs());
+        DI->print(DP);
+        llvm::errs() << "\n";
+      }, &counts);
 
     if (llvm::verifyModule(*ctx->Module, &llvm::errs())) {
       llvm::errs() << "Invalid module: " << ctx->Module->getName() << "\n";
+      llvm::errs() << "\nVerifier: "
+        << counts.errors << " errors, "
+        << counts.warnings << " warnings\n";
       std::abort();
     }
 

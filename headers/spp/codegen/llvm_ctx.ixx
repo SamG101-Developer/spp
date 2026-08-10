@@ -13,7 +13,7 @@ namespace spp::analyse::scopes {
 namespace spp::codegen {
   SPP_EXP_CLS struct LLvmCtx;
   SPP_EXP_CLS struct LlvmGenerator;
-  auto global_context = new llvm::LLVMContext();
+  auto GLOBAL_CONTEXT = new llvm::LLVMContext();
 }
 
 SPP_EXP_CLS struct spp::codegen::LLvmCtx {

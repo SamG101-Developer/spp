@@ -6,6 +6,11 @@ import llvm;
 
 namespace spp::codegen {
   SPP_EXP_CLS struct LlvmFuncWrapper;
+
+  SPP_EXP_FUN auto GetOrAddTargetIntoCurrentModule(
+    llvm::Function const &target,
+    llvm::Module &current_module)
+    -> llvm::Function*;
 }
 
 /**

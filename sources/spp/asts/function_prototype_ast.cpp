@@ -807,10 +807,20 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
 
   const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted;
 
+  // For the self param, we add the pointer for "self", if "self"
+  // is declared as "&self" or "&mut self". Otherwise, for the
+  // value consumed, we add the value type.
   const auto self_param = FnParamGroup->GetSelfParam();
   if (self_param != nullptr) {
-    const auto self_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
-    llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
+    if (self_param->Type->GetConvention() != nullptr) {
+      const auto self_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
+      llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
+    }
+    else {
+      const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(self_param->Type.get());
+      const auto self_val_type = codegen::GetLlvmType(*self_ty_sym, ctx);
+      llvm_param_types.Insert(llvm_param_types.begin(), self_val_type);
+    }
   }
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }

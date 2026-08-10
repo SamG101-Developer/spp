@@ -2,6 +2,8 @@ module;
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/DiagnosticInfo.h>
+#include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
@@ -42,6 +44,8 @@ export namespace llvm {
   using ::llvm::ConstantPointerNull;
   using ::llvm::ConstantTokenNone;
   using ::llvm::ConstantStruct;
+  using ::llvm::DiagnosticInfo;
+  using ::llvm::DiagnosticPrinterRawOStream;
   using ::llvm::Function;
   using ::llvm::FunctionType;
   using ::llvm::GlobalValue;
@@ -63,6 +67,9 @@ export namespace llvm {
   using ::llvm::TypeSize;
   using ::llvm::UndefValue;
   using ::llvm::Value;
+
+  using ::llvm::DS_Warning;
+  using ::llvm::DS_Error;
 
   namespace sys::fs {
     using ::llvm::sys::fs::OpenFlags;
