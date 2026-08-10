@@ -1,2 +1,0 @@
-- talk about multi assignment
-- supports `a, b = b, a`

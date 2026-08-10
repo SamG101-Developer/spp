@@ -6,9 +6,13 @@ S++ Language Specification
 
    introduction/index
    type_system/index
-   containers/index
-   mem_safety/index
+   functions/index
+   statements/index
+   expressions/index
    modules/index
    concurrency/index
+   mem_safety/index
    stl/index
    advanced/index
+
+   containers/index
