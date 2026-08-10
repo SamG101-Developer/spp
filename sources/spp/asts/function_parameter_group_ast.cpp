@@ -138,9 +138,11 @@ auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
   // Bind each parameter's storage to its actual incoming
   // llvm::Argument, in declaration order. For closures, the
   // 0th argument is the closure env (skip it).
+  // Todo: why not using meta->Save()/->Restore()?
   const auto llvm_fn = ctx->Builder.GetInsertBlock()->getParent();
   auto arg_index = ctx->CurrentClosureType != nullptr ? 1u : 0u;
   for (auto const &param : Params) {
+    SPP_ASSERT(arg_index < llvm_fn->arg_size());
     meta->LetStatementPrecomputedValue = llvm_fn->getArg(arg_index);
     param->Stage11_CodeGen(sm, meta, ctx);
     meta->LetStatementPrecomputedValue = nullptr;

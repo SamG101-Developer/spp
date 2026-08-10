@@ -153,30 +153,30 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
 
     // Apply standard optimization flags.
     func->Target->addFnAttr(llvm::Attribute::NoUnwind);
-    func->Target->addFnAttr(llvm::Attribute::NoInline);
+    // func->Target->addFnAttr(llvm::Attribute::NoInline);
 
-    // Todo: Add the correct attributes.
-    // llvm_func->addFnAttr(analyse::utils::type_utils::is_type_never(*return_type, *sm->CurrentScope)
-    //                          ? llvm::Attribute::NoReturn
-    //                          : llvm::Attribute::WillReturn);
+    func->Target->addFnAttr(analyse::utils::type_utils::IsTypeNever(*ReturnType, *sm->CurrentScope)
+      ? llvm::Attribute::NoReturn
+      : llvm::Attribute::WillReturn);
 
-    // for (const auto i : genex::views::iota(param_group->params.Len() as U32)) {
-    //     if (param_group->params[i]->Type->GetConvention() == nullptr) {
-    //         llvm_func->addParamAttr(i, llvm::Attribute::NoUndef);
-    //     }
-    //     else if (param_group->params[i]->Type->GetConvention()->To<ConventionRefAst>()) {
-    //         llvm_func->addParamAttr(i, llvm::Attribute::NonNull);
-    //         llvm_func->addParamAttr(i, llvm::Attribute::NoUndef);
-    //         llvm_func->addParamAttr(i, llvm::Attribute::ReadOnly);
-    //         llvm_func->addParamAttr(i, llvm::Attribute::Dereferenceable);
-    //     }
-    //     else if (param_group->params[i]->Type->GetConvention()->To<ConventionMutAst>()) {
-    //         llvm_func->addParamAttr(i, llvm::Attribute::NonNull);
-    //         llvm_func->addParamAttr(i, llvm::Attribute::NoUndef);
-    //         llvm_func->addParamAttr(i, llvm::Attribute::NoAlias);
-    //         llvm_func->addParamAttr(i, llvm::Attribute::Dereferenceable);
-    //     }
-    // }
+    for (const auto i : genex::views::iota(FnParamGroup->Params.Len())) {
+      const auto j = static_cast<unsigned>(i);
+      if (FnParamGroup->Params[i]->Type->GetConvention() == nullptr) {
+        func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
+      }
+      else if (FnParamGroup->Params[i]->Type->GetConvention()->To<ConventionRefAst>()) {
+        func->Target->addParamAttr(j, llvm::Attribute::NonNull);
+        func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
+        func->Target->addParamAttr(j, llvm::Attribute::ReadOnly);
+        func->Target->addParamAttr(j, llvm::Attribute::Dereferenceable);
+      }
+      else if (FnParamGroup->Params[i]->Type->GetConvention()->To<ConventionMutAst>()) {
+        func->Target->addParamAttr(j, llvm::Attribute::NonNull);
+        func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
+        func->Target->addParamAttr(j, llvm::Attribute::NoAlias);
+        func->Target->addParamAttr(j, llvm::Attribute::Dereferenceable);
+      }
+    }
 
     *_LlvmFunc = func;
   }
