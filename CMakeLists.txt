@@ -45,7 +45,7 @@ set(CMAKE_LINKER_TYPE LLD)
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
-find_package(LLVM 23 CONFIG REQUIRED)
+find_package(LLVM 23.1.0 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
 find_package(unordered_dense CONFIG REQUIRED)
