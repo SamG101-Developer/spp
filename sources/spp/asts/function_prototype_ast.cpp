@@ -151,11 +151,22 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
       ctx->Module.get());
     const auto func = MakeShared<codegen::LlvmFuncWrapper>(created_llvm_func);
 
-    // Apply standard optimization flags.
+    // Apply standard optimization flags for the function,
+    // and read the inline annotation if its present.
     func->Target->addFnAttr(llvm::Attribute::NoUnwind);
-    // func->Target->addFnAttr(llvm::Attribute::NoInline);
+    if (InlineAnnotation.first != nullptr) {
+      if (InlineAnnotation.second == A::kLlvmInline) {
+        func->Target->addFnAttr(llvm::Attribute::InlineHint);
+      }
+      else if (InlineAnnotation.second == A::kLlvmAlwaysInline) {
+        func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
+      }
+      else if (InlineAnnotation.second == A::kLlvmNoInline) {
+        func->Target->addFnAttr(llvm::Attribute::NoInline);
+      }
+    }
 
-    func->Target->addFnAttr(analyse::utils::type_utils::IsTypeNever(*ReturnType, *sm->CurrentScope)
+    func->Target->addFnAttr(IsTypeNever(*ReturnType, *sm->CurrentScope)
       ? llvm::Attribute::NoReturn
       : llvm::Attribute::WillReturn);
 
@@ -176,6 +187,12 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
         func->Target->addParamAttr(j, llvm::Attribute::NoAlias);
         func->Target->addParamAttr(j, llvm::Attribute::Dereferenceable);
       }
+    }
+
+    // "noundef" is meaningless on a "void" return (there is no value to be
+    // undefined), and llvm rejects it outright, so only mark value returns.
+    if (not llvm_ret_type->isVoidTy()) {
+      func->Target->addRetAttr(llvm::Attribute::NoUndef);
     }
 
     *_LlvmFunc = func;

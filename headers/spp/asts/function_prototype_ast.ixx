@@ -76,7 +76,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
    * Optional @c \@always_inline, @c \@inline, or @c \@no_inline annotation. This is used to indicate that the
    * function should be inlined, or not inlined, or always inlined.
    */
-  AnnotationAst *InlineAnnotation;
+  Pair<AnnotationAst*, Str> InlineAnnotation;
 
   /**
    * The list of annotations that are applied to this function prototype. There are quite a lot of annotations that

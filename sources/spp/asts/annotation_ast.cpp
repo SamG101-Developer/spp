@@ -226,19 +226,19 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   // Mark a function as being inlinable via llvm.
   else if (fq_name == A::kLlvmInline) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
+    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
   }
 
   // Mark a function as being always inlined via llvm.
   else if (fq_name == A::kLlvmAlwaysInline) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
+    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
   }
 
   // Mark a function as being never inlined via llvm.
   else if (fq_name == A::kLlvmNoInline) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
+    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
   }
 
   // Mark a function as being "hot" via llvm.
