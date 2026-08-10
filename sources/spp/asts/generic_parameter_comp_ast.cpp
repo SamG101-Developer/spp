@@ -106,7 +106,7 @@ auto spp::asts::GenericParameterCompAst::Stage9_CompTimeResolve(
 auto spp::asts::GenericParameterCompAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The compile time constants' symbols need to be allocated into
   // the function. Start with "nullptr" value, to generate the alloca.

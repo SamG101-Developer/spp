@@ -62,7 +62,7 @@ static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics
 auto spp::codegen::GetFatPointerFields(
   asts::TypeAst const &type,
   analyse::scopes::Scope const &scope,
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> std::optional<Vec<llvm::Type*>> {
   //
   using analyse::utils::type_utils::IsTypeFunc;
@@ -79,7 +79,7 @@ auto spp::codegen::GetFatPointerFields(
 
 auto spp::codegen::RegisterLlvmTypeInfo(
   asts::ClassPrototypeAst const *cls_proto,
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> void {
   // $ types are function "mock" types (a $-type generated per
   // function that superimposes n FunXXXs over itself). A function
@@ -99,7 +99,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
 auto spp::codegen::RegisterLlvmTypeInfo(
   analyse::scopes::Scope const *scope,
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> void {
   // Get the class symbol from the scope that owns it. This pulls
   // the correct generic instantiation for struct types.
@@ -256,7 +256,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
 auto spp::codegen::GetLlvmType(
   analyse::scopes::TypeSymbol const &type_sym,
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> llvm::Type* {
   // Either return the llvm type bound to the symbol, or a
   // pointer for borrows.
@@ -264,7 +264,7 @@ auto spp::codegen::GetLlvmType(
 }
 
 auto spp::codegen::GetVariantTagType(
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> llvm::IntegerType* {
   // Every variant discriminates its members with the same
   // integer width (64 bits).
@@ -296,7 +296,7 @@ auto spp::codegen::GetVariantPayloadPtr(
   llvm::Value *variant_ptr,
   llvm::Type *variant_llvm_type,
   Str const &name,
-  LLvmCtx *ctx)
+  LlvmCtx *ctx)
   -> llvm::Value* {
   // The payload is the second field, behind the discriminant.
   return ctx->Builder.CreateStructGEP(variant_llvm_type, variant_ptr, 1, name);
@@ -306,7 +306,7 @@ auto spp::codegen::LoadVariantTag(
   llvm::Value *variant_ptr,
   llvm::Type *variant_llvm_type,
   Str const &name,
-  LLvmCtx *ctx)
+  LlvmCtx *ctx)
   -> llvm::Value* {
   // The discriminant is the first field, ahead of the payload.
   const auto tag_ptr = ctx->Builder.CreateStructGEP(variant_llvm_type, variant_ptr, 0, name + ".ptr");
@@ -318,7 +318,7 @@ auto spp::codegen::BuildVariant(
   llvm::Type *variant_llvm_type,
   const std::uint64_t tag,
   Str const &name,
-  LLvmCtx *ctx)
+  LlvmCtx *ctx)
   -> llvm::Value* {
   // Build into a stack slot, because the payload is written
   // through a pointer rather than by value. The slot starts
@@ -351,7 +351,7 @@ auto spp::codegen::CoerceToVariant(
   asts::TypeAst const &source_type,
   analyse::scopes::Scope const &scope,
   Str const &name,
-  LLvmCtx *ctx)
+  LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using analyse::utils::type_utils::DedupVariableInnerTypes;

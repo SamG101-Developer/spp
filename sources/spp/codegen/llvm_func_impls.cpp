@@ -38,7 +38,7 @@ import std;
 // =========================================================================================================
 
 auto spp::codegen::func_impls::simple_create_fn(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ret_ty, Vec<llvm::Type*> const &param_tys)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ret_ty, Vec<llvm::Type*> const &param_tys)
   -> llvm::Function* {
   const auto uid = "." + utils::Uid();
   const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
@@ -79,7 +79,7 @@ auto spp::codegen::func_impls::is_cmp_bin_op(
 }
 
 auto spp::codegen::func_impls::apply_bin_op(
-  LLvmCtx *ctx, const BinOp op, llvm::Value *a, llvm::Value *b)
+  LlvmCtx *ctx, const BinOp op, llvm::Value *a, llvm::Value *b)
   -> llvm::Value* {
   const auto name = "result" + utils::Uid();
   switch (op) {
@@ -131,7 +131,7 @@ auto spp::codegen::func_impls::apply_bin_op(
 }
 
 auto spp::codegen::func_impls::apply_un_op(
-  LLvmCtx *ctx, const UnOp op, llvm::Value *a) -> llvm::Value* {
+  LlvmCtx *ctx, const UnOp op, llvm::Value *a) -> llvm::Value* {
   const auto name = "result" + utils::Uid();
   switch (op) {
     case UnOp::Neg: return ctx->Builder.CreateNeg(a, name);
@@ -144,7 +144,7 @@ auto spp::codegen::func_impls::apply_un_op(
 }
 
 auto spp::codegen::func_impls::apply_conv_op(
-  LLvmCtx *ctx, const ConvOp op, llvm::Value *a, llvm::Type *dest_ty) -> llvm::Value* {
+  LlvmCtx *ctx, const ConvOp op, llvm::Value *a, llvm::Type *dest_ty) -> llvm::Value* {
   const auto name = "result" + utils::Uid();
   switch (op) {
     case ConvOp::SIToFP: return ctx->Builder.CreateSIToFP(a, dest_ty, name);
@@ -164,7 +164,7 @@ auto spp::codegen::func_impls::apply_conv_op(
 }
 
 auto spp::codegen::func_impls::simple_intrinsic_binop(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, const BinOp op) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const BinOp op) -> void {
   // "ty" (per the dispatcher) is always the function's declared RETURN type. For arithmetic ops that's also the
   // operand type ("T, T -> T"). For comparisons the return type is "Bool" (i1), so the *operand* type has to be read
   // off the function's own first parameter instead - "ty" alone can't give us both.
@@ -181,7 +181,7 @@ auto spp::codegen::func_impls::simple_intrinsic_binop(
 }
 
 auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *, const BinOp op) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *, const BinOp op) -> void {
   // "(this: &mut T, that: T) -> Void": "ty" (per the dispatcher) is the declared return type "Void", not "T" - the
   // operand type is read off "that" (the last parameter) instead, which - unlike "this" - is a plain "T" rather than
   // a reference, so there's no reference-unwrapping ambiguity.
@@ -203,14 +203,14 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
 }
 
 auto spp::codegen::func_impls::simple_intrinsic_unop(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, const UnOp op) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const UnOp op) -> void {
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ty});
   const auto operand = fn->arg_begin();
   ctx->Builder.CreateRet(apply_un_op(ctx, op, operand));
 }
 
 auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *, const UnOp op)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *, const UnOp op)
   -> void {
   // "(this: &mut T) -> Void": "ty" (per the dispatcher) is the declared return type "Void", not "T" - the operand
   // type is read off "this" instead. "this" is itself a "&mut T" reference, but (matching how every other
@@ -233,7 +233,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
 }
 
 auto spp::codegen::func_impls::simple_intrinsic_conv(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, const ConvOp op) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const ConvOp op) -> void {
   // "ty" (per the dispatcher) is the function's declared RETURN type - the conversion's destination. The source
   // (operand) type is read off the function's own single parameter instead, since conversions genuinely go from one
   // type to a different one (e.g. "S32 -> F64"), unlike every other builder here where operand type == return type.
@@ -246,7 +246,7 @@ auto spp::codegen::func_impls::simple_intrinsic_conv(
 }
 
 auto spp::codegen::func_impls::simple_intrinsic_is_const(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, const bool is_float, const double value) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const bool is_float, const double value) -> void {
   // "ty" (per the dispatcher) is the declared return type, "Bool" (i1) here - the operand's real type (T) is read
   // off "self" instead ("is_zero(&self) -> Bool" et al).
   using asts::generate::common_types_precompiled::SELF_VAR;
@@ -301,7 +301,7 @@ auto spp::codegen::func_impls::apply_atomic_rmw_op(
 static auto read_atomic_ordering(
   spp::analyse::scopes::ScopeManager *const sm,
   spp::asts::meta::CompilerMetaData *const meta,
-  spp::codegen::LLvmCtx *const ctx,
+  spp::codegen::LlvmCtx *const ctx,
   spp::Str const &name)
   -> llvm::AtomicOrdering {
   const auto param_name = spp::asts::IdentifierAst(0uz, name);
@@ -319,7 +319,7 @@ static auto read_atomic_ordering(
 }
 
 auto spp::codegen::func_impls::simple_atomic_fetch_rmw(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, const AtomicRmwOp op) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const AtomicRmwOp op) -> void {
   // "(&self, val: T, order: U8) -> T": a plain method (not a coroutine, and not a free "_inner" function), so its
   // "llvm::Function" is already declared/opened by the time this runs - same as "std_slot_replace" - and "self" is
   // already bound; no "simple_create_fn"/env indirection needed.
@@ -349,7 +349,7 @@ auto spp::codegen::func_impls::simple_atomic_fetch_rmw(
 }
 
 auto spp::codegen::func_impls::simple_binary_intrinsic_call(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
   const auto uid = "." + utils::Uid();
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ty, ty});
   const auto lhs = fn->arg_begin();
@@ -360,7 +360,7 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call(
 }
 
 auto spp::codegen::func_impls::simple_binary_intrinsic_call_overflow(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic)
   -> void {
   // "ty" (per the dispatcher) is already the whole return type's own lowering - "(T, Bool)" is a literal struct, so
   // "ty" arrives as exactly "{T, i1}". "T" (the operand type "llvm.sadd.with.overflow" etc. actually take) is pulled
@@ -377,7 +377,7 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call_overflow(
 }
 
 auto spp::codegen::func_impls::simple_unary_intrinsic_call(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
   const auto uid = "." + utils::Uid();
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ty});
   const auto operand = fn->arg_begin();
@@ -387,7 +387,7 @@ auto spp::codegen::func_impls::simple_unary_intrinsic_call(
 }
 
 auto spp::codegen::func_impls::simple_get_value(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty, llvm::Value *val) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Value *val) -> void {
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ty});
   (void)fn;
   ctx->Builder.CreateRet(val);
@@ -398,7 +398,7 @@ auto spp::codegen::func_impls::simple_get_value(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::simple_coro_iter(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, const bool reverse, const bool borrow) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const bool reverse, const bool borrow) -> void {
   // Implementation strategy for iterating an array - start at the
   // array pointer, and each step, increment the pointer value by
   // the array element size. At each position, load the value out
@@ -429,7 +429,7 @@ auto spp::codegen::func_impls::simple_coro_iter(
 
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LLvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
       const auto idx_0 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0uz);
       const auto idx_i = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), *I);
       const auto shift = ctx->Builder.CreateGEP(ArrTy, SelfPtr, {idx_0, idx_i});
@@ -456,7 +456,7 @@ auto spp::codegen::func_impls::simple_coro_iter(
 }
 
 auto spp::codegen::func_impls::simple_coro_non_null_fwd(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void {
   // The NonNull[T] type can forward to &T/&mut T - modelled
   // as a pointer to the T type, stored within the NonNull[T].
   // However, because the NonNull type is lowered as a pointer,
@@ -475,7 +475,7 @@ auto spp::codegen::func_impls::simple_coro_non_null_fwd(
 
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LLvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
       return SelfPtr;
     }
   };
@@ -487,7 +487,7 @@ auto spp::codegen::func_impls::simple_coro_non_null_fwd(
 
 auto spp::codegen::func_impls::simple_coro_view_slice(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *ctx)
+  LlvmCtx *ctx)
   -> void {
   // To slice a view, we need to GEP in the "from" and
   // "upto" pointers, and return the memory between.
@@ -518,7 +518,7 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
       decltype(uid) &uid)
       : _FromAlloca(from_alloca), _UptoAlloca(upto_alloca), _SelfPtr(self_ptr), _Uid(uid) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LLvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
       // Read the integer values from these alloca storages, and
       // use them for the GEP slicing. The borrow returned points
       // to the same memory as the "self" view, just sliced.
@@ -542,7 +542,7 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
 }
 
 auto spp::codegen::func_impls::simple_coro_view_index(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void {
   // To index a view, we need to GEP in the "from" and
   // "upto" pointers, and return the memory between.
   using asts::generate::common_types_precompiled::SELF_VAR;
@@ -567,7 +567,7 @@ auto spp::codegen::func_impls::simple_coro_view_index(
       decltype(idx_alloca) &idx_alloca, decltype(self_ptr) &self_ptr, decltype(uid) &uid):
       _IdxAlloca(idx_alloca), _SelfPtr(self_ptr), _Uid(uid) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LLvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
       // Read the integer value from these alloca storages, and
       // use them for the GEP slicing. The borrow returned points
       // to the same memory as the "self" view, just indexed.
@@ -593,247 +593,247 @@ auto spp::codegen::func_impls::simple_coro_view_index(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_boolean_and(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, llvm::Type::getInt1Ty(*ctx->Context), BinOp::LogicalAnd);
 }
 
 auto spp::codegen::func_impls::std_boolean_ior(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, llvm::Type::getInt1Ty(*ctx->Context), BinOp::LogicalOr);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_add(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Add);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sub(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Sub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_mul(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Mul);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sdiv(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_udiv(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::UDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_srem(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SRem);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_urem(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::URem);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_shl(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Shl);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_shr(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::LShr);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_ior(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Or);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_and(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::And);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_xor(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Xor);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_eq(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpEQ);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_oeq(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FCmpOEQ);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ne(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpNE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_one(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FCmpONE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_slt(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpSLT);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ult(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpULT);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_olt(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FCmpOLT);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sle(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpSLE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ule(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpULE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ole(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FCmpOLE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sgt(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpSGT);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ugt(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpUGT);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ogt(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FCmpOGT);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sge(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpSGE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uge(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::ICmpUGE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_oge(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FCmpOGE);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fadd(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FAdd);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fsub(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FSub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fmul(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FMul);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fdiv(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_frem(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::FRem);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sadd_wrapping(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NSWAdd);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uadd_wrapping(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NUWAdd);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ssub_wrapping(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NSWSub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_usub_wrapping(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NUWSub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_smul_wrapping(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NSWMul);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NUWMul);
 }
@@ -843,103 +843,103 @@ auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_add_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Add);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sub_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Sub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_mul_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Mul);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sdiv_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_udiv_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::UDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_srem_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SRem);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_urem_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::URem);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_shl_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Shl);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_shr_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::LShr);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_ior_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Or);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_and_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::And);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_xor_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Xor);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fadd_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::FAdd);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fsub_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::FSub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fmul_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::FMul);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fdiv_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::FDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_frem_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::FRem);
 }
@@ -949,25 +949,25 @@ auto spp::codegen::func_impls::std_intrinsics_frem_assign(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_sneg(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_unop(sm, proto, meta, ctx, ty, UnOp::Neg);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fneg(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_unop(sm, proto, meta, ctx, ty, UnOp::FNeg);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_not(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_unop(sm, proto, meta, ctx, ty, UnOp::Not);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_not_assign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_unop_assign(sm, proto, meta, ctx, ty, UnOp::Not);
 }
@@ -977,67 +977,67 @@ auto spp::codegen::func_impls::std_intrinsics_bit_not_assign(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_sitofp(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::SIToFP);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uitofp(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::UIToFP);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fptrunc(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::FPTrunc);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_strunc(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::Trunc);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_utrunc(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::Trunc);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_szext(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::SExt);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uzext(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::ZExt);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fpext(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::FPExt);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bit_cast(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::BitCast);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fptosi(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::FPToSI);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fptoui(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_conv(sm, proto, meta, ctx, ty, ConvOp::FPToUI);
 }
@@ -1047,25 +1047,25 @@ auto spp::codegen::func_impls::std_intrinsics_fptoui(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_num_float_is_zero(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_is_const(sm, proto, meta, ctx, ty, true, 0.0);
 }
 
 auto spp::codegen::func_impls::std_num_float_is_one(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_is_const(sm, proto, meta, ctx, ty, true, 1.0);
 }
 
 auto spp::codegen::func_impls::std_num_int_is_zero(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_is_const(sm, proto, meta, ctx, ty, false, 0.0);
 }
 
 auto spp::codegen::func_impls::std_num_int_is_one(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_intrinsic_is_const(sm, proto, meta, ctx, ty, false, 1.0);
 }
@@ -1075,7 +1075,7 @@ auto spp::codegen::func_impls::std_num_int_is_one(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_array_new(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // The array starts out uninitialized rather than zero-filled; callers that need defined contents go through
   // "new_filled"/"fill", which "mem_set" over this value afterwards.
@@ -1084,28 +1084,28 @@ auto spp::codegen::func_impls::std_array_new(
 }
 
 auto spp::codegen::func_impls::std_num_float_neg_one(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantFP::get(ty, -1.0);
   simple_get_value(sm, proto, meta, ctx, ty, val);
 }
 
 auto spp::codegen::func_impls::std_num_float_zero(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantFP::get(ty, 0.0);
   simple_get_value(sm, proto, meta, ctx, ty, val);
 }
 
 auto spp::codegen::func_impls::std_num_float_one(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantFP::get(ty, 1.0);
   simple_get_value(sm, proto, meta, ctx, ty, val);
 }
 
 auto spp::codegen::func_impls::std_num_int_neg_one(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // All-ones bit pattern is "-1" in two's complement, for any width.
   const auto val = llvm::ConstantInt::get(ty, llvm::APInt::getAllOnes(ty->getIntegerBitWidth()));
@@ -1113,28 +1113,28 @@ auto spp::codegen::func_impls::std_num_int_neg_one(
 }
 
 auto spp::codegen::func_impls::std_num_int_zero(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantInt::get(ty, 0);
   simple_get_value(sm, proto, meta, ctx, ty, val);
 }
 
 auto spp::codegen::func_impls::std_num_int_one(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantInt::get(ty, 1);
   simple_get_value(sm, proto, meta, ctx, ty, val);
 }
 
 auto spp::codegen::func_impls::std_num_int_two(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantInt::get(ty, 2);
   simple_get_value(sm, proto, meta, ctx, ty, val);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_min_val(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // The lowest representable value for this sized-integer type. LLVM integer types carry no sign, so signedness is
   // read off the resolved "Self" return type's name ("S32" vs "U32") instead of "ty".
@@ -1146,7 +1146,7 @@ auto spp::codegen::func_impls::std_intrinsics_min_val(
 }
 
 auto spp::codegen::func_impls::std_intrinsics_max_val(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // The highest representable value for this sized-integer type. See std_intrinsics_min_val for why signedness
   // comes from the return type's name rather than "ty".
@@ -1158,7 +1158,7 @@ auto spp::codegen::func_impls::std_intrinsics_max_val(
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fmin_val(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // Most negative finite value representable by this float type.
   const auto val = llvm::ConstantFP::get(*ctx->Context, llvm::APFloat::getLargest(ty->getFltSemantics(), true));
@@ -1166,7 +1166,7 @@ auto spp::codegen::func_impls::std_intrinsics_fmin_val(
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fmax_val(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // Largest finite value representable by this float type.
   const auto val = llvm::ConstantFP::get(*ctx->Context, llvm::APFloat::getLargest(ty->getFltSemantics(), false));
@@ -1178,97 +1178,97 @@ auto spp::codegen::func_impls::std_intrinsics_fmax_val(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_smax(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::smax);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umax(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::umax);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_smin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::smin);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::umin);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fpowi(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::powi);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fpowf(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::pow);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fatan2(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::atan2);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fmax(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::maxnum);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fmin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::minnum);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fcopysign(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::copysign);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sadd_saturating(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::sadd_sat);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uadd_saturating(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::uadd_sat);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ssub_saturating(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::ssub_sat);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_usub_saturating(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::usub_sat);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sshl_saturating(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::sshl_sat);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ushl_saturating(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::ushl_sat);
 }
@@ -1278,37 +1278,37 @@ auto spp::codegen::func_impls::std_intrinsics_ushl_saturating(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_sadd_overflow(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call_overflow(sm, proto, meta, ctx, ty, llvm::Intrinsic::sadd_with_overflow);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uadd_overflow(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call_overflow(sm, proto, meta, ctx, ty, llvm::Intrinsic::uadd_with_overflow);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ssub_overflow(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call_overflow(sm, proto, meta, ctx, ty, llvm::Intrinsic::ssub_with_overflow);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_usub_overflow(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call_overflow(sm, proto, meta, ctx, ty, llvm::Intrinsic::usub_with_overflow);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_smul_overflow(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call_overflow(sm, proto, meta, ctx, ty, llvm::Intrinsic::smul_with_overflow);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umul_overflow(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_binary_intrinsic_call_overflow(sm, proto, meta, ctx, ty, llvm::Intrinsic::umul_with_overflow);
 }
@@ -1318,151 +1318,151 @@ auto spp::codegen::func_impls::std_intrinsics_umul_overflow(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_abs(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::abs);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fsqrt(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::sqrt);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fsin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::sin);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fcos(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::cos);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ftan(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::tan);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fasin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::asin);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_facos(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::acos);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fatan(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::atan);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fsinh(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::sinh);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fcosh(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::cosh);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ftanh(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::tanh);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fexp(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::exp);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fexp2(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::exp2);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fexp10(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::exp10);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_flog(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::log);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_flog2(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::log2);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_flog10(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::log10);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fabs(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::fabs);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ffloor(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::floor);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fceil(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::ceil);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ftrunc(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::trunc);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fround(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::round);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_bitreverse(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::bitreverse);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ctlz(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::ctlz);
 }
 
 auto spp::codegen::func_impls::std_debug_breakpoint_internal(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::debugtrap);
 }
@@ -1474,7 +1474,7 @@ auto spp::codegen::func_impls::std_debug_breakpoint_internal(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_scmp(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
   const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
@@ -1491,7 +1491,7 @@ auto spp::codegen::func_impls::std_intrinsics_scmp(
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ucmp(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
   const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
@@ -1513,7 +1513,7 @@ auto spp::codegen::func_impls::std_intrinsics_ucmp(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_intrinsics_fpclass(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // "(value: T, flag: S32) -> Bool"; "ty" (per the dispatcher) is the return type "Bool" (i1) - "T" is read off the
   // "value" parameter instead.
@@ -1537,20 +1537,20 @@ auto spp::codegen::func_impls::std_intrinsics_fpclass(
 // =========================================================================================================
 
 auto spp::codegen::func_impls::std_array_iter_mov(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_iter(sm, proto, meta, ctx, false, false);
 }
 
 auto spp::codegen::func_impls::std_array_reverse_iter_mov(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_iter(sm, proto, meta, ctx, true, false);
 }
 
 auto spp::codegen::func_impls::std_array_fwd_ref(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *,
+  LlvmCtx *,
   llvm::Type *)
   -> void {
   // We have an [T x n] LLVM array, and are "viewing" into it.
@@ -1560,7 +1560,7 @@ auto spp::codegen::func_impls::std_array_fwd_ref(
 
 auto spp::codegen::func_impls::std_array_fwd_mut(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *,
+  LlvmCtx *,
   llvm::Type *)
   -> void {
   // We have an [T x n] LLVM array, and are "viewing" into it.
@@ -1570,7 +1570,7 @@ auto spp::codegen::func_impls::std_array_fwd_mut(
 
 auto spp::codegen::func_impls::std_vector_fwd_ref(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *,
+  LlvmCtx *,
   llvm::Type *)
   -> void {
   // We have an [T x n] LLVM array, and are "viewing" into it.
@@ -1580,7 +1580,7 @@ auto spp::codegen::func_impls::std_vector_fwd_ref(
 
 auto spp::codegen::func_impls::std_vector_fwd_mut(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *,
+  LlvmCtx *,
   llvm::Type *)
   -> void {
   // We have an [T x n] LLVM array, and are "viewing" into it.
@@ -1590,7 +1590,7 @@ auto spp::codegen::func_impls::std_vector_fwd_mut(
 
 auto spp::codegen::func_impls::std_generator_send(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *ctx,
+  LlvmCtx *ctx,
   llvm::Type *)
   -> void {
   // Dummy function for analysis. Still needs terminating. The .res() operator handles the lowering for generators
@@ -1600,7 +1600,7 @@ auto spp::codegen::func_impls::std_generator_send(
 
 auto spp::codegen::func_impls::std_generator_once_send(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *ctx,
+  LlvmCtx *ctx,
   llvm::Type *)
   -> void {
   // Dummy function for analysis. Still needs terminating. The .res() operator handles the lowering for generators
@@ -1609,7 +1609,7 @@ auto spp::codegen::func_impls::std_generator_once_send(
 }
 
 auto spp::codegen::func_impls::std_slot_get_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
@@ -1627,7 +1627,7 @@ auto spp::codegen::func_impls::std_slot_get_ref(
       decltype(self_ptr) &self_ptr) :
       _SelfPtr(self_ptr) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LLvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
       return _SelfPtr;
     }
   };
@@ -1638,13 +1638,13 @@ auto spp::codegen::func_impls::std_slot_get_ref(
 }
 
 auto spp::codegen::func_impls::std_slot_get_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   std_slot_get_ref(sm, proto, meta, ctx, ty);
 }
 
 auto spp::codegen::func_impls::std_slot_replace(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
@@ -1668,61 +1668,61 @@ auto spp::codegen::func_impls::std_slot_replace(
 }
 
 auto spp::codegen::func_impls::std_string_view_slice_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   simple_coro_view_slice(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_string_view_slice_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   simple_coro_view_slice(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_view_index_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   simple_coro_view_index(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_view_index_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   simple_coro_view_index(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_view_slice_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   simple_coro_view_slice(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_view_slice_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   simple_coro_view_slice(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_view_iter_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_iter(sm, proto, meta, ctx, false, true);
 }
 
 auto spp::codegen::func_impls::std_view_iter_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_iter(sm, proto, meta, ctx, false, true);
 }
 
 auto spp::codegen::func_impls::std_view_reverse_iter_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_iter(sm, proto, meta, ctx, true, true);
 }
 
 auto spp::codegen::func_impls::std_view_reverse_iter_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_iter(sm, proto, meta, ctx, true, true);
 }
 
 auto spp::codegen::func_impls::std_non_null_read(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
@@ -1734,7 +1734,7 @@ auto spp::codegen::func_impls::std_non_null_read(
 }
 
 auto spp::codegen::func_impls::std_non_null_write(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
@@ -1753,7 +1753,7 @@ auto spp::codegen::func_impls::std_non_null_write(
 
 auto spp::codegen::func_impls::std_non_null_raw(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *ctx,
+  LlvmCtx *ctx,
   llvm::Type *ty)
   -> void {
   //
@@ -1771,7 +1771,7 @@ auto spp::codegen::func_impls::std_non_null_raw(
 }
 
 auto spp::codegen::func_impls::std_non_null_cast(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
@@ -1782,7 +1782,7 @@ auto spp::codegen::func_impls::std_non_null_cast(
 
 auto spp::codegen::func_impls::std_non_null_from_ptr_inner(
   SPP_LLVM_FUNC_INFO,
-  LLvmCtx *ctx,
+  LlvmCtx *ctx,
   llvm::Type *ty)
   -> void {
   //
@@ -1800,19 +1800,19 @@ auto spp::codegen::func_impls::std_non_null_from_ptr_inner(
 }
 
 auto spp::codegen::func_impls::std_non_null_fwd_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_non_null_fwd(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_non_null_fwd_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_non_null_fwd(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_vol_read(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   using asts::generate::common_types_precompiled::SELF_TYPE;
@@ -1837,7 +1837,7 @@ auto spp::codegen::func_impls::std_vol_read(
 }
 
 auto spp::codegen::func_impls::std_vol_write(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   using asts::generate::common_types_precompiled::SELF_TYPE;
@@ -1868,7 +1868,7 @@ auto spp::codegen::func_impls::std_vol_write(
 }
 
 auto spp::codegen::func_impls::std_vol_replace(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
@@ -1891,19 +1891,19 @@ auto spp::codegen::func_impls::std_vol_replace(
 }
 
 auto spp::codegen::func_impls::std_raw_buf_index_ref(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_view_index(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_raw_buf_index_mut(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_coro_view_index(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_raw_buf_take_at(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // Bounds-checked "take" which moves an element off of a raw
   // buffer, and either returns None (out of bounds or the slot
   // isn't initialized), or Some(val) containing the taken value.
@@ -1952,7 +1952,7 @@ auto spp::codegen::func_impls::std_raw_buf_take_at(
 }
 
 auto spp::codegen::func_impls::std_raw_buf_place_at(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   using asts::generate::common_types_precompiled::SELF_VAR;
   using asts::generate::common_types_precompiled::SELF_TYPE;
   //
@@ -1981,7 +1981,7 @@ auto spp::codegen::func_impls::std_raw_buf_place_at(
 }
 
 auto spp::codegen::func_impls::std_raw_buf_shift(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   using asts::generate::common_types_precompiled::SELF_TYPE;
@@ -2020,14 +2020,14 @@ auto spp::codegen::func_impls::std_raw_buf_shift(
 }
 
 auto spp::codegen::func_impls::std_raw_buf_clear_range(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // Todo: no-op stub - see the header doc comment. Destroying "[start, start + count)" in place needs per-element
   // destructor calls, which nothing in the compiler can emit yet.
   ctx->Builder.CreateRetVoid();
 }
 
 auto spp::codegen::func_impls::std_mem_ops_size_of(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto t_ast = asts::TypeIdentifierAst::FromString("T");
   const auto t_sym = sm->CurrentScope->GetTypeSymbol(t_ast.get());
@@ -2036,7 +2036,7 @@ auto spp::codegen::func_impls::std_mem_ops_size_of(
 }
 
 auto spp::codegen::func_impls::std_mem_ops_align_of(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto t_ast = asts::TypeIdentifierAst::FromString("T");
   const auto t_sym = sm->CurrentScope->GetTypeSymbol(t_ast.get());
@@ -2045,7 +2045,7 @@ auto spp::codegen::func_impls::std_mem_ops_align_of(
 }
 
 auto spp::codegen::func_impls::std_mem_ops_size_of_val(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // Todo: this needs heap querying
   const auto value_param = proto->FnParamGroup->GetAllParams()[0];
   const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
@@ -2055,7 +2055,7 @@ auto spp::codegen::func_impls::std_mem_ops_size_of_val(
 }
 
 auto spp::codegen::func_impls::std_mem_ops_align_of_val(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // Todo: this needs heap querying
   const auto value_param = proto->FnParamGroup->GetAllParams()[0];
   const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
@@ -2065,7 +2065,7 @@ auto spp::codegen::func_impls::std_mem_ops_align_of_val(
 }
 
 auto spp::codegen::func_impls::std_mem_ops_replace(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // "dest" is "&mut T" - a borrow, so its slot holds an address that must be loaded before use (see
   // "simple_coro_slot_get"). "src" is a plain by-value "T", so its own slot already holds it directly.
   const auto dest_param = proto->FnParamGroup->GetAllParams()[0];
@@ -2083,14 +2083,14 @@ auto spp::codegen::func_impls::std_mem_ops_replace(
 }
 
 auto spp::codegen::func_impls::std_mem_ops_drop_in_place(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // Todo: no-op stub - same blocker as "std_raw_buf_clear_range" (see its comment): no destructor-dispatch codegen
   //  exists anywhere in the compiler yet for this to call into.
   ctx->Builder.CreateRetVoid();
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_is_lock_free(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_TYPE;
   const auto self_type_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
@@ -2107,7 +2107,7 @@ auto spp::codegen::func_impls::std_threading_atomic_is_lock_free(
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fence_inner(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // Create the fence function.
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
   simple_create_fn(sm, proto, meta, ctx, void_ty, Vec<llvm::Type*>{});
@@ -2118,7 +2118,7 @@ auto spp::codegen::func_impls::std_threading_atomic_fence_inner(
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_load_inner(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto uid = "." + utils::Uid();
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
@@ -2132,7 +2132,7 @@ auto spp::codegen::func_impls::std_threading_atomic_load_inner(
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_store_inner(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   const auto val_param = proto->FnParamGroup->GetAllParams()[1];
   const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
@@ -2151,7 +2151,7 @@ auto spp::codegen::func_impls::std_threading_atomic_store_inner(
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_compex_inner(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto ret_ty = llvm::cast<llvm::StructType>(ty);
   const auto elem_ty = ret_ty->getElementType(0);
@@ -2172,7 +2172,7 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_inner(
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_compex_weak_inner(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto ret_ty = llvm::cast<llvm::StructType>(ty);
   const auto elem_ty = ret_ty->getElementType(0);
@@ -2194,37 +2194,37 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_weak_inner(
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_exchange(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Xchg);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_and(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::And);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_nand(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Nand);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_or(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Or);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_xor(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Xor);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_not(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
@@ -2245,61 +2245,61 @@ auto spp::codegen::func_impls::std_threading_atomic_fetch_not(
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_add(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Add);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_sub(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Sub);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_fadd(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::FAdd);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_fsub(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::FSub);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_fmax(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::FMax);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_fmin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::FMin);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_smax(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Max);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_umax(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::UMax);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_smin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::Min);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_umin(
-  SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *)
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
   simple_atomic_fetch_rmw(sm, proto, meta, ctx, AtomicRmwOp::UMin);
 }

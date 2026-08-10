@@ -133,7 +133,7 @@ auto spp::asts::FunctionParameterGroupAst::Stage8_CheckMemory(
 auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Bind each parameter's storage to its actual incoming
   // llvm::Argument, in declaration order. For closures, the

@@ -100,7 +100,7 @@ auto spp::asts::SupImplementationAst::Stage9_CompTimeResolve(
 auto spp::asts::SupImplementationAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward to members.
   for (auto const &m : Members) { m->Stage10_PreCodeGen(sm, meta, ctx); }
@@ -110,7 +110,7 @@ auto spp::asts::SupImplementationAst::Stage10_PreCodeGen(
 auto spp::asts::SupImplementationAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward to members.
   for (auto const &m : Members) { m->Stage11_CodeGen(sm, meta, ctx); }

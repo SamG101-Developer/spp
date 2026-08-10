@@ -126,7 +126,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
   // variables get loaded from the environment struct.

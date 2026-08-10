@@ -6,7 +6,7 @@ import llvm;
 
 namespace spp::codegen {
   SPP_EXP_CLS struct LlvmGenerator;
-  SPP_EXP_CLS struct LLvmCtx;
+  SPP_EXP_CLS struct LlvmCtx;
 
   SPP_EXP_CLS enum class LlvmGeneratorStateStructFields {
     YIELD_SLOT = 0,
@@ -14,15 +14,15 @@ namespace spp::codegen {
   };
 
   SPP_EXP_FUN auto CreateLlvmGeneratorStateType(
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> llvm::Type*;
 
   SPP_EXP_FUN auto GetLlvmGeneratorStateYieldSlotType(
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> llvm::Type*;
 
   SPP_EXP_FUN auto GetLlvmGeneratorStateSendSlotType(
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> llvm::Type*;
 }
 

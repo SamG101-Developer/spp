@@ -149,7 +149,7 @@ auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
 auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
   const auto uid = "." + spp::utils::Uid(this);

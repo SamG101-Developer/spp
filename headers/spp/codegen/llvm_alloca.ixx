@@ -20,6 +20,6 @@ namespace spp::codegen {
   SPP_EXP_FUN auto LlvmEntryAlloca(
     llvm::Type *type,
     Str const &name,
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> llvm::AllocaInst*;
 }

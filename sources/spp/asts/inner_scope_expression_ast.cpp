@@ -174,7 +174,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
 auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Add all the expressions/statements into the current scope.
   sm->MoveToNextScope();

@@ -253,7 +253,7 @@ auto spp::asts::ClassPrototypeAst::Stage9_CompTimeResolve(
 auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for the class body.
   sm->MoveToNextScope();
@@ -282,7 +282,7 @@ auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
 auto spp::asts::ClassPrototypeAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Get the class symbol.
   sm->MoveToNextScope();
@@ -351,7 +351,7 @@ static auto ApplyStructLayout(
   spp::Vec<llvm::Type*> const &field_types,
   const spp::codegen::StructLayout layout,
   spp::codegen::LlvmTypeSymInfo *sym_info,
-  spp::codegen::LLvmCtx const *ctx)
+  spp::codegen::LlvmCtx const *ctx)
   -> void {
   switch (layout) {
     case spp::codegen::StructLayout::C: {
@@ -386,7 +386,7 @@ static auto ApplyStructLayout(
 auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
   ScopeManager const *sm,
   analyse::scopes::TypeSymbol const *type_sym,
-  codegen::LLvmCtx const *ctx) const
+  codegen::LlvmCtx const *ctx) const
   -> void {
   // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
   using analyse::utils::type_utils::IsTypeTup;

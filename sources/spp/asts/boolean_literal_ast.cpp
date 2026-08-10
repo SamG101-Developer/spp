@@ -103,7 +103,7 @@ auto spp::asts::BooleanLiteralAst::Stage9_CompTimeResolve(
 auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   SPP_ASSERT(
     TokBool->TokenType == lex::SppTokenType::KW_TRUE or

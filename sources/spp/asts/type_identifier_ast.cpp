@@ -301,7 +301,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 auto spp::asts::TypeIdentifierAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // These are always "zero_type", so return init.
   const auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(this), nullptr);

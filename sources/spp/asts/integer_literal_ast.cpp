@@ -138,7 +138,7 @@ auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(
 auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   using spp::utils::strings::NormaliseIntegerString;
 

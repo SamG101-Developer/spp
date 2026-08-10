@@ -169,7 +169,7 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
 auto spp::asts::IdentifierAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using analyse::errors::SppInternalCompilerError;

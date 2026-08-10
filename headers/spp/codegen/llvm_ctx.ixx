@@ -11,12 +11,12 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::codegen {
-  SPP_EXP_CLS struct LLvmCtx;
+  SPP_EXP_CLS struct LlvmCtx;
   SPP_EXP_CLS struct LlvmGenerator;
   auto GLOBAL_CONTEXT = new llvm::LLVMContext();
 }
 
-SPP_EXP_CLS struct spp::codegen::LLvmCtx {
+SPP_EXP_CLS struct spp::codegen::LlvmCtx {
   // General context information.
   llvm::LLVMContext *Context;
   Unique<llvm::Module> Module;
@@ -32,12 +32,12 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
   llvm::Type *CurrentClosureType = nullptr;
   analyse::scopes::Scope *CurrentClosureScope = nullptr;
 
-  LLvmCtx(LLvmCtx const &) = delete;
-  LLvmCtx(LLvmCtx &&) noexcept = delete;
-  auto operator=(LLvmCtx const &) -> LLvmCtx& = delete;
-  auto operator=(LLvmCtx &&) noexcept -> LLvmCtx& = delete;
+  LlvmCtx(LlvmCtx const &) = delete;
+  LlvmCtx(LlvmCtx &&) noexcept = delete;
+  auto operator=(LlvmCtx const &) -> LlvmCtx& = delete;
+  auto operator=(LlvmCtx &&) noexcept -> LlvmCtx& = delete;
 
-  LLvmCtx();
-  ~LLvmCtx();
-  static auto NewCtx(Str const &module_name) -> Unique<LLvmCtx>;
+  LlvmCtx();
+  ~LlvmCtx();
+  static auto NewCtx(Str const &module_name) -> Unique<LlvmCtx>;
 };

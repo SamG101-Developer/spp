@@ -23,7 +23,7 @@ auto spp::codegen::llvm_materialize(
   asts::ExpressionAst &ast,
   analyse::scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta,
-  LLvmCtx *ctx)
+  LlvmCtx *ctx)
   -> asts::IdentifierAst* {
   // Materialise an expression by assigning it to a temporary
   // variable.
@@ -51,7 +51,7 @@ auto spp::codegen::llvm_addr_of(
   asts::ExpressionAst &ast,
   analyse::scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta,
-  LLvmCtx *ctx)
+  LlvmCtx *ctx)
   -> llvm::Value* {
   // An expression that is already a borrow evaluates to the address of what it borrows, so it is its own address:
   // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one. Note: we

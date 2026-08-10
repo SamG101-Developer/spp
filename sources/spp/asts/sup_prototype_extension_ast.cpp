@@ -419,7 +419,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage9_CompTimeResolve(
 auto spp::asts::SupPrototypeExtensionAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -432,7 +432,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage10_PreCodeGen(
 auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();

@@ -197,7 +197,7 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
 auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The three-step operation for the "gen" expression is
   // to store the expression into the yield slot of the env,

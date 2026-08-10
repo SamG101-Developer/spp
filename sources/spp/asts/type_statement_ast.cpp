@@ -308,7 +308,7 @@ auto spp::asts::TypeStatementAst::Stage9_CompTimeResolve(
 auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *,
-  codegen::LLvmCtx *)
+  codegen::LlvmCtx *)
   -> llvm::Value* {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -319,7 +319,7 @@ auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
 auto spp::asts::TypeStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *,
-  codegen::LLvmCtx *)
+  codegen::LlvmCtx *)
   -> llvm::Value* {
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);

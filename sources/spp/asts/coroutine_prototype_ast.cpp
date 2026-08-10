@@ -111,7 +111,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using spp::utils::Uid;

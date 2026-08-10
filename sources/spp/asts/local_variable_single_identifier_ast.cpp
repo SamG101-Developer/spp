@@ -150,7 +150,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Create the alloca for the variable.
   const auto uid = "." + spp::utils::Uid(this);

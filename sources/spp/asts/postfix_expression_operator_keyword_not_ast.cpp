@@ -87,7 +87,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the left-hand-side expression, which analysis has guaranteed is a boolean, owned or borrowed.
   const auto uid = "." + spp::utils::Uid(this);

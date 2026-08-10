@@ -257,7 +257,7 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Alias the common utils functions and types.
   using analyse::utils::assignment_utils::IsDeref;

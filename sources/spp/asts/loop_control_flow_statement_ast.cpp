@@ -139,7 +139,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using analyse::errors::SppInternalCompilerError;

@@ -125,7 +125,7 @@ auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
 auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the desugared loop, already built and analysed
   // in Stage7 (its scope aligns with the walk here). As the

@@ -22,7 +22,7 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::codegen {
-  SPP_EXP_CLS struct LLvmCtx;
+  SPP_EXP_CLS struct LlvmCtx;
 }
 
 namespace spp::analyse::utils::destructure_utils {
@@ -109,6 +109,6 @@ namespace spp::analyse::utils::destructure_utils {
     Shared<asts::IdentifierAst> const &tmp_name,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> void;
 }

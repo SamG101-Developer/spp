@@ -175,7 +175,7 @@ auto spp::asts::UseStatementVariableAst::Stage9_CompTimeResolve(
 auto spp::asts::UseStatementVariableAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Code gen for the conversion AST.
   return _Conversion->Stage10_PreCodeGen(sm, meta, ctx);

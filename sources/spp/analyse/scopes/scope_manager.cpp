@@ -103,7 +103,7 @@ auto spp::analyse::scopes::ScopeManager::ExhaustScope()
 
 auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
   asts::ModulePrototypeAst const &mod,
-  codegen::LLvmCtx *ctx) const
+  codegen::LlvmCtx *ctx) const
   -> void {
   // Iterate the members of the module, filter to class prototypes, and call the register function.
 

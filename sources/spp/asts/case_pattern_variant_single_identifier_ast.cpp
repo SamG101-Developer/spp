@@ -87,7 +87,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Emit the binding, then report a constant "true" match so
   // the branch is always taken.

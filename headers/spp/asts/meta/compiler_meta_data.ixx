@@ -30,7 +30,7 @@ namespace spp::asts::meta {
 }
 
 namespace spp::codegen {
-  SPP_EXP_CLS struct LLvmCtx;
+  SPP_EXP_CLS struct LlvmCtx;
 }
 
 /**
@@ -92,7 +92,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Shared<TypeAst> IgnoreCmpGeneric;
   bool AllowMoveDeref;
   llvm::BasicBlock *LlvmEndBB;
-  codegen::LLvmCtx *LlvmCtx;
+  codegen::LlvmCtx *LlvmCtx;
 
   /**
    * Set when the consumer ast of an expression needs the address of the storage it names (an assignment target, or a

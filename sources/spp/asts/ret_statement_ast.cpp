@@ -177,7 +177,7 @@ auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
 auto spp::asts::RetStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Use the return void instruction if there is no return value.
   if (Expr == nullptr) {

@@ -24,7 +24,7 @@ namespace spp::codegen {
    */
   SPP_EXP_FUN auto RegisterLlvmTypeInfo(
     asts::ClassPrototypeAst const *cls_proto,
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> void;
 
   /**
@@ -35,12 +35,12 @@ namespace spp::codegen {
    */
   SPP_EXP_FUN auto RegisterLlvmTypeInfo(
     analyse::scopes::Scope const *scope,
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> void;
 
   SPP_EXP_FUN auto GetLlvmType(
     analyse::scopes::TypeSymbol const &type_sym,
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> llvm::Type*;
 
   /**
@@ -57,7 +57,7 @@ namespace spp::codegen {
   SPP_EXP_FUN auto GetFatPointerFields(
     asts::TypeAst const &type,
     analyse::scopes::Scope const &scope,
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> std::optional<Vec<llvm::Type*>>;
 
   /**
@@ -66,7 +66,7 @@ namespace spp::codegen {
    * @return The integer type used for every variant's discriminant.
    */
   SPP_EXP_FUN auto GetVariantTagType(
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> llvm::IntegerType*;
 
   /**
@@ -94,7 +94,7 @@ namespace spp::codegen {
     llvm::Value *variant_ptr,
     llvm::Type *variant_llvm_type,
     Str const &name,
-    LLvmCtx *ctx)
+    LlvmCtx *ctx)
     -> llvm::Value*;
 
   /**
@@ -109,7 +109,7 @@ namespace spp::codegen {
     llvm::Value *variant_ptr,
     llvm::Type *variant_llvm_type,
     Str const &name,
-    LLvmCtx *ctx)
+    LlvmCtx *ctx)
     -> llvm::Value*;
 
   /**
@@ -130,7 +130,7 @@ namespace spp::codegen {
     llvm::Type *variant_llvm_type,
     std::uint64_t tag,
     Str const &name,
-    LLvmCtx *ctx)
+    LlvmCtx *ctx)
     -> llvm::Value*;
 
   /**
@@ -153,6 +153,6 @@ namespace spp::codegen {
     asts::TypeAst const &source_type,
     analyse::scopes::Scope const &scope,
     Str const &name,
-    LLvmCtx *ctx)
+    LlvmCtx *ctx)
     -> llvm::Value*;
 }

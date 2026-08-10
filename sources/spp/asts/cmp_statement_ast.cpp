@@ -218,7 +218,7 @@ auto spp::asts::CmpStatementAst::Stage9_CompTimeResolve(
 auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // No generation for $ types.
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());

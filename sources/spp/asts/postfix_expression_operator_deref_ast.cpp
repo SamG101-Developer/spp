@@ -94,7 +94,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Get the value underlying the borrow.
   const auto uid = "." + spp::utils::Uid(this);

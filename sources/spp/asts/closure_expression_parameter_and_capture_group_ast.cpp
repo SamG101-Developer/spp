@@ -123,7 +123,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the parameters into the current scope.
   meta->CurrentLambdaOuterScope = sm->CurrentScope;

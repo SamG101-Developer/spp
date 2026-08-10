@@ -89,7 +89,7 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @param ctx The LLVM context to use for code generation.
    * @return The LLVM value generated from this AST.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * Forward the type checking to the mapped function. This just applies standard type inference from a function call.

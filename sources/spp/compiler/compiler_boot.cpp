@@ -198,7 +198,7 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
 
   // Attach all LLVM type info to all types now.
   for (auto const &mod : _Modules) {
-    auto ctx = codegen::LLvmCtx::NewCtx(mod->FilePath);
+    auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath);
     sm->AttachLlvmTypeInfo(*mod, ctx.get());
     _LlvmCtxs.EmplaceBack(std::move(ctx));
   }

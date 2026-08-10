@@ -80,7 +80,7 @@ auto spp::asts::StringLiteralAst::Stage9_CompTimeResolve(
 auto spp::asts::StringLiteralAst::Stage11_CodeGen(
   ScopeManager *,
   CompilerMetaData *,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using spp::utils::strings::DecodeStringLiteral;

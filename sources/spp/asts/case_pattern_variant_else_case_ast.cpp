@@ -73,7 +73,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::Stage9_CompTimeResolve(
 auto spp::asts::CasePatternVariantElseCaseAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx) -> llvm::Value* {
+  codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Delegate code generation to the case expression.
   return CaseExpr->Stage11_CodeGen(sm, meta, ctx);
 }

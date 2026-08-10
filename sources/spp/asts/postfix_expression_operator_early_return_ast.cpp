@@ -226,7 +226,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage9_CompTimeResolve(
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   meta->Save();
   meta->AssignmentTargetType = nullptr;

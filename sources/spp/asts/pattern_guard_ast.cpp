@@ -101,7 +101,7 @@ auto spp::asts::PatternGuardAst::Stage9_CompTimeResolve(
 auto spp::asts::PatternGuardAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);

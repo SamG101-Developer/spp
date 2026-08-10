@@ -180,7 +180,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Alias the common utils functions and types.
   using spp::utils::Uid;

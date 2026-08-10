@@ -317,7 +317,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx) -> llvm::Value* {
+  codegen::LlvmCtx *ctx) -> llvm::Value* {
   // For folding, generate the code for the folded
   // transformations and combine into single block.
   if (Fold != nullptr) {

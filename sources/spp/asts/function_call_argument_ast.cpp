@@ -63,7 +63,7 @@ auto spp::asts::FunctionCallArgumentAst::Stage9_CompTimeResolve(
 auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }

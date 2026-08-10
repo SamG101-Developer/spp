@@ -154,7 +154,7 @@ auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
 auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.

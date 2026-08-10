@@ -310,7 +310,7 @@ auto spp::asts::GenericParameterGroupAst::Stage8_CheckMemory(
 auto spp::asts::GenericParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Run the code generation steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage11_CodeGen(sm, meta, ctx); }

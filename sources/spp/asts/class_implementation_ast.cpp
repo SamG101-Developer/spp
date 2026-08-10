@@ -117,7 +117,7 @@ auto spp::asts::ClassImplementationAst::Stage9_CompTimeResolve(
 auto spp::asts::ClassImplementationAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for each member.
   for (auto const &m : Members) {

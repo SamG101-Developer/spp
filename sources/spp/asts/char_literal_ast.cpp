@@ -100,7 +100,7 @@ auto spp::asts::CharLiteralAst::Stage9_CompTimeResolve(
 auto spp::asts::CharLiteralAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Decode the char literal token (which includes its
   // surrounding single quotes) into its code point.

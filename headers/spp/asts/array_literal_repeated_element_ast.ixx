@@ -132,7 +132,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
    * @param ctx The LLVM context to use for code generation.
    * @return The LLVM value representing the array literal.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of

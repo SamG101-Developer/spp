@@ -70,7 +70,7 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
 auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Use the builtin to build the llvm custom lowered code. The
   // lowering reads the prototype's own scope, so it runs before

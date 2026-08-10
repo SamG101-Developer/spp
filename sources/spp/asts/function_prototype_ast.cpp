@@ -134,7 +134,7 @@ auto spp::asts::FunctionPrototypeAst::ToString() const
 auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   analyse::scopes::ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> Shared<codegen::LlvmFuncWrapper> {
   // Generate the return and parameter types.
   auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, meta, ctx);
@@ -533,7 +533,7 @@ auto spp::asts::FunctionPrototypeAst::Stage9_CompTimeResolve(
 auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
   analyse::scopes::ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Create the declaration, but not the definition, of the
   // function. This allows for order-agnostic behaviour.
@@ -561,7 +561,7 @@ auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
 auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   analyse::scopes::ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Build the function body.
   // Todo: Move all to the subroutine prototype. Given coroutine
@@ -785,7 +785,7 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
 auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
   analyse::scopes::ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx const *ctx) const
+  codegen::LlvmCtx const *ctx) const
   -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
   // Convert the return and parameter types to LLVM types.
   const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(

@@ -24,7 +24,7 @@ namespace spp::analyse::utils::builtins {
       scopes::ScopeManager *,
       asts::FunctionPrototypeAst const *,
       asts::meta::CompilerMetaData *,
-      codegen::LLvmCtx *,
+      codegen::LlvmCtx *,
       llvm::Type *)> llvm_fn;
     Unique<cmp_utils::CmpFn> cmp_fn;
     Str name;

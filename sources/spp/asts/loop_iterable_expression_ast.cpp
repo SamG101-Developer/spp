@@ -247,7 +247,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
 auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the code for the transformed loop.
   _TransformedLet->Stage11_CodeGen(sm, meta, ctx);

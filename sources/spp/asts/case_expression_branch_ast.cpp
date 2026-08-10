@@ -172,7 +172,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
 auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the branch architecture. Start by defining blocks
   // for the branch's "body" and "next" (after body) zones.
@@ -278,7 +278,7 @@ auto spp::asts::CaseExpressionBranchAst::InferType(
 auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx) const
+  codegen::LlvmCtx *ctx) const
   -> llvm::Value* {
   // If there is only one pattern, generate its condition directly.
   // Otherwise, collect all the pattern conditions and combine them with OR. The guard (if any) is deliberately not

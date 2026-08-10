@@ -82,7 +82,7 @@ auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
 auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the right-hand-side expression.
   meta->Save();

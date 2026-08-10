@@ -76,7 +76,7 @@ auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
 auto spp::asts::FunctionParameterAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the local variable so that the symbol table receives the alloca.
   meta->Save();

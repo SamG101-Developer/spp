@@ -164,7 +164,7 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
 auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Strategy: build an "environment" struct for the closure,
   // with fields for captures. The safety is already guaranteed

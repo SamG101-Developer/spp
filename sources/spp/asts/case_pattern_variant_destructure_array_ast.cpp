@@ -129,7 +129,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;

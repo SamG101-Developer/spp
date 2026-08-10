@@ -166,7 +166,7 @@ auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
 auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Memory analysis used the transformed AST to not repeat lhs as self.
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();

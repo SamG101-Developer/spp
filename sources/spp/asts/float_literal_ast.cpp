@@ -150,7 +150,7 @@ auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
 auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   using spp::utils::strings::NormalizeFloatString;
 

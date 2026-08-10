@@ -55,7 +55,7 @@ auto spp::asts::CasePatternVariantElseAst::Stage9_CompTimeResolve(
 auto spp::asts::CasePatternVariantElseAst::Stage11_CodeGen(
   ScopeManager *,
   CompilerMetaData *,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The "else" pattern always matches, so return "true". However,
   // should a previous branch match before this one is reached,

@@ -185,7 +185,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
   Vec<asts::CasePatternVariantAst*> const &elems,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> Vec<llvm::Value*> {
   // Get the expression and map then to LLVM values.
   std::copyable_function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {

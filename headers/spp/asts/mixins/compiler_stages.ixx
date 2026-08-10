@@ -24,7 +24,7 @@ namespace spp::asts::mixins {
 }
 
 namespace spp::codegen {
-  SPP_EXP_CLS struct LLvmCtx;
+  SPP_EXP_CLS struct LlvmCtx;
 }
 
 /**
@@ -123,7 +123,7 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] ctx The LLVM context to generate code into.
    * @return The LLVM value generated from this AST.
    */
-  virtual auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+  virtual auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value*;
 
   /**
    * Finish the LLVM IR generation for the remaining (majority) of the ASTs. This will then all get linked together
@@ -133,5 +133,5 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] ctx The LLVM context to generate code into.
    * @returns The LLVM value generated from this AST.
    */
-  virtual auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+  virtual auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value*;
 };

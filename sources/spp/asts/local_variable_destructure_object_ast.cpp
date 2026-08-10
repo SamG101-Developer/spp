@@ -261,7 +261,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
 auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the value into the hidden temporary once, before
   // anything indexes it.

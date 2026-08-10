@@ -203,7 +203,7 @@ auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
 auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward the code generation to the mapped function. The common
   // expressions like "1 + 2" follow these steps:

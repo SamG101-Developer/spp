@@ -199,7 +199,7 @@ auto spp::asts::CaseExpressionAst::Stage9_CompTimeResolve(
 auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Scope shift.
   sm->MoveToNextScope();

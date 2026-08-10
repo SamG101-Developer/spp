@@ -163,7 +163,7 @@ public:
 
   auto AttachLlvmTypeInfo(
     asts::ModulePrototypeAst const &mod,
-    codegen::LLvmCtx *ctx) const
+    codegen::LlvmCtx *ctx) const
     -> void;
 
   /**

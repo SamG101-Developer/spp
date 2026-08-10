@@ -100,9 +100,9 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto RegisterGenericSubstitution(analyse::scopes::Scope *scope, Unique<ClassPrototypeAst> &&new_ast) -> void;
 
@@ -119,7 +119,7 @@ private:
   auto _GenerateSymbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
 
   auto _FillLlvmLayout(ScopeManager const *sm, analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LLvmCtx const *ctx) const -> void;
+    codegen::LlvmCtx const *ctx) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)

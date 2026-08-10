@@ -2,7 +2,7 @@ module spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
 
 auto spp::codegen::CreateLlvmGeneratorStateType(
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> llvm::Type* {
   // Create a specialised struct for LLVM that contains 2
   // fields - the "yield" slot, and the "send" slot. Simple
@@ -15,7 +15,7 @@ auto spp::codegen::CreateLlvmGeneratorStateType(
 }
 
 auto spp::codegen::GetLlvmGeneratorStateYieldSlotType(
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> llvm::Type* {
   // The yield slot type is the 64-bit integer type.
   const auto llvm_yield_slot_type = llvm::IntegerType::getInt64Ty(
@@ -24,7 +24,7 @@ auto spp::codegen::GetLlvmGeneratorStateYieldSlotType(
 }
 
 auto spp::codegen::GetLlvmGeneratorStateSendSlotType(
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> llvm::Type* {
   // The send slot type is the 64-bit integer type.
   const auto llvm_send_slot_type = llvm::IntegerType::getInt64Ty(

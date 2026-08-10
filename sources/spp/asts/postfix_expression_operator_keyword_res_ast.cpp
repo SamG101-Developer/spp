@@ -115,7 +115,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The three-step operation for the "res" operation is to
   // store the potential argument into the send slot of the

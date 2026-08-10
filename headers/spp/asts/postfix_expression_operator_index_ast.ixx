@@ -70,7 +70,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For

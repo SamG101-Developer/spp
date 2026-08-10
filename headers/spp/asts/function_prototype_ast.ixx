@@ -184,9 +184,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const
     -> Shared<codegen::LlvmFuncWrapper>;
@@ -246,7 +246,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   virtual auto GenerateLlvmDeclaration(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> Shared<codegen::LlvmFuncWrapper>;
 
   virtual auto IsCoroutine() const
@@ -275,7 +275,7 @@ protected:
   SPP_ATTR_NODISCARD auto _IsPureGeneric(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx const *ctx) const
+    codegen::LlvmCtx const *ctx) const
     -> Tup<bool, llvm::Type*, Vec<llvm::Type*>>;
 };
 

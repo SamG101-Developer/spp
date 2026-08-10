@@ -21,7 +21,7 @@ namespace spp::asts::meta {
 }
 
 namespace spp::codegen {
-  SPP_EXP_CLS class LLvmCtx;
+  SPP_EXP_CLS class LlvmCtx;
 }
 
 namespace spp::analyse::utils::case_utils {
@@ -38,7 +38,7 @@ namespace spp::analyse::utils::case_utils {
     Vec<asts::CasePatternVariantAst*> const &elems,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> Vec<llvm::Value*>;
 
   SPP_EXP_FUN auto CreateAndAnalysePatternEqCompTime(

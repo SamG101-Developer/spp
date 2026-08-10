@@ -112,7 +112,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   Shared<asts::IdentifierAst> const &tmp_name,
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *const meta,
-  codegen::LLvmCtx *const ctx)
+  codegen::LlvmCtx *const ctx)
   -> void {
   // Give the temporary its own stack slot.
   const auto uid = "." + spp::utils::Uid(tmp_name.get());

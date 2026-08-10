@@ -110,7 +110,7 @@ auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
 auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // If the lhs was an identifier, the "is" causes it to get
   // flow typed, so we need to promote the original "alloca"

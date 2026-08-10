@@ -103,7 +103,7 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
 
 private:
   Vec<asts::ModulePrototypeAst*> _Modules;
-  Vec<Unique<codegen::LLvmCtx>> _LlvmCtxs;
+  Vec<Unique<codegen::LlvmCtx>> _LlvmCtxs;
 
   auto _ValidateEntryPoint(
     analyse::scopes::ScopeManager *sm)
