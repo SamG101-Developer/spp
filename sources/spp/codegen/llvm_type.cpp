@@ -211,6 +211,13 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     auto max_size = 0uz;
     auto max_align = 1uz;
 
+    // The members are named relative to the variant, so
+    // they are measured from the variant's own scope rather
+    // than from wherever the registration walk happens to
+    // be.
+    const auto member_sm = analyse::scopes::ScopeManager(
+      sm.GlobalScope, const_cast<analyse::scopes::Scope*>(scope));
+
     for (auto const &member : analyse::utils::type_utils::DedupVariableInnerTypes(*cls_sym->FqName(), *scope)) {
       const auto member_sym = scope->GetTypeSymbol(member.get());
       if (member_sym == nullptr) { continue; }
@@ -222,8 +229,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
         RegisterLlvmTypeInfo(member_sym->Type, sm, ctx);
       }
 
-      // Get the size and alignment, and upgrade the maximum
-      // if necessary.
+      EnsureLlvmTypeComplete(*member_sym, member_sm, ctx);
       const auto member_llvm_type = GetLlvmType(*member_sym, ctx);
       if (member_llvm_type == nullptr or not member_llvm_type->isSized()) { continue; }
       max_size = std::max(max_size, dl.getTypeAllocSize(member_llvm_type).getFixedValue());
@@ -256,7 +262,56 @@ auto spp::codegen::GetLlvmType(
   -> llvm::Type* {
   // Either return the llvm type bound to the symbol, or a
   // pointer for borrows.
-  return type_sym.Convention != nullptr ? llvm::PointerType::get(*ctx->Context, 0) : type_sym.LlvmInfo->LlvmType;
+  return type_sym.Convention != nullptr
+    ? llvm::PointerType::get(*ctx->Context, 0)
+    : type_sym.LlvmInfo->LlvmType;
+}
+
+auto spp::codegen::EnsureLlvmTypeComplete(
+  analyse::scopes::TypeSymbol const &type_sym,
+  analyse::scopes::ScopeManager const &sm,
+  LlvmCtx const *ctx)
+  -> void {
+  // Nothing to complete without a prototype behind the symbol
+  // (a bare generic parameter, say).
+  if (type_sym.Type == nullptr) { return; }
+
+  // Ensure the type is complete. This is an on-demand walk of
+  // the type's definition, including fields.
+  if (type_sym.LlvmInfo->LlvmType == nullptr) {
+    if (type_sym.LinkedScope != nullptr) { RegisterLlvmTypeInfo(type_sym.LinkedScope, sm, ctx); }
+    else { RegisterLlvmTypeInfo(type_sym.Type, sm, ctx); }
+  }
+
+  // Only a named struct can be half-built; everything else is
+  // complete the moment it is lowered. A struct that is still
+  // opaque is the placeholder a class gets at registration,
+  // waiting for Stage10 to derive its body.
+  const auto struct_type = llvm::dyn_cast_or_null<llvm::StructType>(type_sym.LlvmInfo->LlvmType);
+  if (struct_type == nullptr or not struct_type->isOpaque()) { return; }
+
+  // Laying the body out asks for the sizes of the attributes,
+  // which comes back through here for each of them, so a type
+  // that contains itself would recurse forever. Prevent this
+  // with a guard.
+  static thread_local auto in_progress = Set<llvm::StructType const*>();
+  if (not in_progress.insert(struct_type).second) { return; }
+  type_sym.Type->FillLlvmLayout(&sm, &type_sym, ctx);
+  in_progress.erase(struct_type);
+}
+
+auto spp::codegen::GetLlvmTypeOf(
+  asts::TypeAst const &type,
+  analyse::scopes::Scope const &scope,
+  LlvmCtx const *ctx)
+  -> llvm::Type* {
+  // A borrow is a pointer to the borrowee regardless of what
+  // the borrowee is, and "GetTypeSymbol" resolves through to
+  // the borrowee's symbol, losing the convention that made it
+  // a pointer, so the type is asked directly first.
+  if (type.GetConvention() != nullptr) { return llvm::PointerType::get(*ctx->Context, 0); }
+  const auto type_sym = scope.GetTypeSymbol(&type);
+  return type_sym != nullptr ? GetLlvmType(*type_sym, ctx) : nullptr;
 }
 
 auto spp::codegen::GetVariantTagType(

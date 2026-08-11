@@ -10,6 +10,7 @@ import std;
 namespace spp::analyse::scopes {
   SPP_EXP_CLS struct TypeSymbol;
   SPP_EXP_CLS class Scope;
+  SPP_EXP_CLS class ScopeManager;
 }
 
 namespace spp::asts {
@@ -46,10 +47,40 @@ namespace spp::codegen {
     -> llvm::Type*;
 
   /**
+   * Bring @p type_sym all the way down to a type whose size the DataLayout can answer for: registered if it has not
+   * been lowered at all, and given its struct body if it is still the opaque placeholder the Stage10 walk has yet to
+   * reach. Laying a type out needs the sizes of whatever it contains, and the walk visits types in module order
+   * rather than in dependency order, so anything that needs a size reaches for it through here instead of waiting.
+   * @param[in] type_sym The symbol to complete.
+   * @param[in] sm The scope manager.
+   * @param[in] ctx The LLVM context containing all codegen info.
+   */
+  SPP_EXP_FUN auto EnsureLlvmTypeComplete(
+    analyse::scopes::TypeSymbol const &type_sym,
+    analyse::scopes::ScopeManager const &sm,
+    LlvmCtx const *ctx)
+    -> void;
+
+  /**
+   * Lower a type written at an expression, honouring its convention. A borrowed type ("&T"/"&mut T") is a pointer to
+   * the borrowee whatever the borrowee lowers to, and resolving a type to its symbol drops the convention that says
+   * so - so anything holding a @c TypeAst should come through here rather than resolving to a symbol itself.
+   * @param[in] type The type to lower.
+   * @param[in] scope The scope to resolve @p type against.
+   * @param[in] ctx The LLVM context containing all codegen info.
+   * @return The llvm type, or nothing if @p type does not resolve.
+   */
+  SPP_EXP_FUN auto GetLlvmTypeOf(
+    asts::TypeAst const &type,
+    analyse::scopes::Scope const &scope,
+    LlvmCtx const *ctx)
+    -> llvm::Type*;
+
+  /**
    * The "Fun*"/"Gen*" family of compiler-known types always lower to the same { fn_ptr, env_ptr } fat pointer,
    * whether @p type IS one of them, or a class superimposes one of them as an interface (eg "Iterator[T]" over
    * "Gen[T]"). This is the single source of truth for that shape, so "RegisterLlvmTypeInfo" (lowering the type
-   * itself) and "ClassPrototypeAst::_FillLlvmLayout" (prepending the shape onto a superimposing class) can't drift
+   * itself) and "ClassPrototypeAst::FillLlvmLayout" (prepending the shape onto a superimposing class) can't drift
    * apart.
    * @param type The type to test.
    * @param scope The scope to resolve @p type against.
