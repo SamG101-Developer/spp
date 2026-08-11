@@ -206,8 +206,10 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   auto phi = static_cast<llvm::PHINode*>(nullptr);
   if (is_expr) {
     ctx->Builder.SetInsertPoint(loop_end_bb);
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type.get());
-    phi = ctx->Builder.CreatePHI(codegen::GetLlvmType(*ret_type_sym, ctx), 2U, "loop.phi" + uid);
+    const auto llvm_phi_type = codegen::GetLlvmTypeOf(
+      *ret_type, *sm->CurrentScope, ctx);
+    phi = ctx->Builder.CreatePHI(
+      llvm_phi_type, 2U, "loop.phi" + uid);
   }
 
   // Register this loop so that nested "exit"/"skip" statements can branch to the correct blocks. The stack is
