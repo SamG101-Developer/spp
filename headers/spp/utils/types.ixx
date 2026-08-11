@@ -52,8 +52,8 @@ namespace spp {
   SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>>
   using Map = ankerl::unordered_dense::map<K, V, H, Eq>;
 
-  SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>>
-  using Set = ankerl::unordered_dense::set<K, V, H, Eq>;
+  SPP_EXP_CLS template <typename T, typename H=Hash<T>, typename Eq=std::equal_to<T>>
+  using Set = ankerl::unordered_dense::set<T, H, Eq>;
 
   SPP_EXP_CLS
   using Str = std::string; // stringzilla::string;
