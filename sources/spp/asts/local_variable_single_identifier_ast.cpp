@@ -156,7 +156,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   const auto llvm_type = meta->LetStatementPrecomputedValue != nullptr
     ? meta->LetStatementPrecomputedValue->getType()
-    : codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(meta->LetStatementExplicitType.get()), ctx);
+    : codegen::GetLlvmTypeOf(*meta->LetStatementExplicitType, *sm->CurrentScope, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // The storage for this variable. Normally a fresh alloca at the top of the function, but inside a coroutine the
