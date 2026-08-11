@@ -163,7 +163,7 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   // type here, in case it hasn't been reached yet by the
   // class prototypes.
   if (llvm_type == nullptr) {
-    codegen::RegisterLlvmTypeInfo(type_sym->Type, ctx);
+    codegen::RegisterLlvmTypeInfo(type_sym->Type, *sm, ctx);
     llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   }
 
