@@ -132,7 +132,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   // Lower the type if the walk over class prototypes has
   // not reached it.
   if (llvm_type == nullptr and type_sym->LinkedScope != nullptr) {
-    codegen::RegisterLlvmTypeInfo(type_sym->LinkedScope, ctx);
+    codegen::RegisterLlvmTypeInfo(type_sym->LinkedScope, sm, ctx);
     llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   }
   SPP_ASSERT(llvm_type != nullptr);
