@@ -156,8 +156,21 @@ namespace spp::codegen {
       return AggregateLayout(Vec<Layout>{tag_layout, Layout{.Size = payload_size, .Align = payload_elem_size}});
     }
 
-    // Otherwise lay out the attributes of the struct/class, in the order the S++ layout puts them in: widest alignment
-    // first, then largest, which is what minimizes the padding between them.
+    // A type with no scope behind it has no attributes to walk;
+    // a bare generic parameter reached while a template being
+    // measured is the usual case. "GetAllAttrs" would read the
+    // superimposition list off the scope it does not have, so
+    // provide an empty layout instead (a template is never laid
+    // out for real anyway)
+    const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
+    if (type_sym == nullptr or type_sym->LinkedScope == nullptr) {
+      return Layout{0, 1};
+    }
+
+    // Otherwise lay out the attributes of the struct/class, in
+    // the order the S++ layout puts them in: widest alignment
+    // first, then largest, which is what minimizes the padding
+    // between them.
     auto attr_layouts = Vec<Layout>();
     for (auto const &attr : analyse::utils::type_utils::GetAllAttrs(type, sm)) {
       attr_layouts.EmplaceBack(LayoutOf(sm, *spp::get<1>(attr)->FqName()));
