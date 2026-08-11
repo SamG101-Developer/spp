@@ -20,6 +20,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_func;
 import spp.lex.tokens;
 import spp.utils.strings;
 import spp.utils.uid;
