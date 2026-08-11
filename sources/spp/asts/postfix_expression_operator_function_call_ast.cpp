@@ -375,7 +375,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     auto closure_param_tys = closure_args
       | genex::views::transform([](auto const &v) { return v->getType(); })
       | genex::to<Vec>();
-    const auto closure_ret_ty = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get()), ctx);
+    const auto closure_ret_ty = codegen::GetLlvmTypeOf(*InferType(sm, meta), *sm->CurrentScope, ctx);
     const auto closure_fn_ty = llvm::FunctionType::get(closure_ret_ty, closure_param_tys.ToStdVector(), false);
 
     // A call returning Void cannot be given a name (llvm forbids naming void values).
