@@ -111,6 +111,9 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
 
   SPP_ATTR_NODISCARD auto GetClsSym() const -> Shared<analyse::scopes::TypeSymbol>;
 
+  auto FillLlvmLayout(ScopeManager const *sm, analyse::scopes::TypeSymbol const *type_sym,
+    codegen::LlvmCtx const *ctx) const -> void;
+
 private:
   Vec<Pair<analyse::scopes::Scope*, Unique<ClassPrototypeAst>>> _GenericSubstitutions;
 
@@ -118,8 +121,6 @@ private:
 
   auto _GenerateSymbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
 
-  auto _FillLlvmLayout(ScopeManager const *sm, analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LlvmCtx const *ctx) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)

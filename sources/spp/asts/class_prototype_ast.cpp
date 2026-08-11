@@ -269,11 +269,11 @@ auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
   // If this is a raw generic class like Vec[T], then generate the generic implementations.
   if (genex::any_of(sm->CurrentScope->AllTypeSymbols(), [](auto const &sym) { return sym->IsGeneric; })) {
     for (auto const &[generic_scope, generic_ast] : _GenericSubstitutions) {
-      generic_ast->_FillLlvmLayout(sm, generic_scope->TySym.get(), ctx);
+      generic_ast->FillLlvmLayout(sm, generic_scope->TySym.get(), ctx);
     }
   }
 
-  _FillLlvmLayout(sm, cls_sym.get(), ctx);
+  FillLlvmLayout(sm, cls_sym.get(), ctx);
 
   sm->MoveOutOfCurrentScope();
   return nullptr;
@@ -383,7 +383,7 @@ static auto ApplyStructLayout(
   }
 }
 
-auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
+auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   ScopeManager const *sm,
   analyse::scopes::TypeSymbol const *type_sym,
   codegen::LlvmCtx const *ctx) const

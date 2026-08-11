@@ -192,7 +192,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   if (attr_names.IsEmpty()) { return llvm::Constant::getNullValue(llvm_type); }
 
   // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that interface's fat-pointer fields prepended ahead of
-  // its own declared attributes (see "ClassPrototypeAst::_FillLlvmLayout") - an object initializer only ever
+  // its own declared attributes (see "ClassPrototypeAst::FillLlvmLayout") - an object initializer only ever
   // fills in the class's own attributes, never those synthesized fields, so every declared index has to be
   // shifted past them.
   const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
