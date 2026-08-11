@@ -10,6 +10,23 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import genex;
 
+namespace spp::codegen::mangle {
+  namespace {
+    auto MangleTypeNameResolvingSelf(
+      spp::analyse::scopes::TypeSymbol const &type_sym)
+      -> spp::Str {
+      const auto name = spp::codegen::mangle::mangle_type_name(type_sym);
+      if (name != "Self" or type_sym.LinkedScope == nullptr or type_sym.LinkedScope->TySym == nullptr) {
+        return name;
+      }
+
+      // Guard against a "Self" that resolves to itself, which would otherwise recurse forever.
+      const auto resolved = spp::codegen::mangle::mangle_type_name(*type_sym.LinkedScope->TySym);
+      return resolved == "Self" ? name : resolved;
+    }
+  }
+}
+
 auto spp::codegen::mangle::mangle_type_name(
   analyse::scopes::TypeSymbol const &type_sym)
   -> Str {
@@ -61,8 +78,11 @@ auto spp::codegen::mangle::mangle_fun_name(
   types.AppendRange(param_type_syms);
 
   // Convert the mangled type names into a single function name.
+  auto h = spp::Hash<std::string>{};
   const auto fun_sig = types
-    | genex::views::transform([](auto const &type_sym) { return mangle_type_name(*type_sym); })
+    | genex::views::transform([&h](auto const &type_sym) {
+      return std::to_string(h(MangleTypeNameResolvingSelf(*type_sym)));
+    })
     | genex::to<Vec>()
     | genex::views::join_with('#')
     | genex::to<Str>();
