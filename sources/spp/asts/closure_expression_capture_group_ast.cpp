@@ -138,8 +138,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
     // For the capture x, mock "let x = env.x".
     const auto cap_val = capture->Val->To<IdentifierAst>();
     const auto cap_ty = capture->InferType(sm, meta);
-    const auto cap_llvm_type = codegen::GetLlvmType(
-      *sm->CurrentScope->GetTypeSymbol(cap_ty.get()), ctx);
+    const auto cap_llvm_type = codegen::GetLlvmTypeOf(
+      *cap_ty, *sm->CurrentScope, ctx);
 
     // Create the alloca for the variable.
     const auto alloca = codegen::LlvmEntryAlloca(

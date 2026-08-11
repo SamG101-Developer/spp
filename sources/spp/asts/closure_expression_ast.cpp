@@ -24,6 +24,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_identifier_ast;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -193,12 +194,19 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     | genex::views::transform([&](auto const &param) { return codegen::GetLlvmType(*param, ctx); })
     | genex::to<Vec>();
   llvm_param_types.Insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
-  const auto llvm_ret_ty = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(_RetType.get()), ctx);
+  const auto llvm_ret_ty = codegen::GetLlvmTypeOf(*_RetType, *sm->CurrentScope, ctx);
 
   const auto llvm_fn_ty = llvm::FunctionType::get(
     llvm_ret_ty, llvm_param_types.ToStdVector(), PcGroup->ParamGroup->GetVariadicParams() != nullptr);
+
+  // The closure body has internal linkage, so it cannot be declared
+  // into a second module the way an external symbol can - it has to
+  // be created in the module that takes its address, which is the
+  // one the enclosing function belongs to rather than "ctx->Module".
   const auto llvm_fn = llvm::Function::Create(
-    llvm_fn_ty, llvm::Function::InternalLinkage, "closure.fn." + uid, ctx->Module.get());
+    llvm_fn_ty, llvm::Function::InternalLinkage,
+    "closure.fn." + uid, codegen::GetEmissionModule(*ctx));
+
   const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
 
   const auto saved_bb = ctx->Builder.GetInsertBlock();
@@ -268,7 +276,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   // Build the closure value as its FunXXX type, which lowers to a
   // { fn_ptr, env_ptr } pair (RegisterLlvmTypeInfo).
   const auto llvm_closure_ty = llvm::cast<llvm::StructType>(
-    codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(InferType(sm, meta).get()), ctx));
+    codegen::GetLlvmTypeOf(*InferType(sm, meta), *sm->CurrentScope, ctx));
 
   const auto closure_alloca = codegen::LlvmEntryAlloca(
     llvm_closure_ty, "closure.obj.alloca." + uid, ctx);
