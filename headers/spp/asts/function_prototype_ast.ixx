@@ -134,6 +134,14 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
    */
   Unique<FunctionImplementationAst> Impl;
 
+  /**
+   * For an instantiation of a variadic function, the tuple its call collapsed the trailing arguments into. The
+   * variadic parameter still declares one element ("..b: T"), which is what analysis works with, but what is
+   * actually passed - and so what the llvm signature and the mangled name have to be built from - is this tuple.
+   * Null on a non-variadic function and on the uninstantiated template.
+   */
+  Shared<TypeAst> VariadicPackType;
+
   struct {
     Shared<TypeAst> OriginalReturnType;
     Unique<FunctionImplementationAst> OriginalImpl;

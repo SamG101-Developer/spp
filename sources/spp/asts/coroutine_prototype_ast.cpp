@@ -75,6 +75,7 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
   ast->InlineAnnotation = InlineAnnotation;
   ast->Visibility = Visibility;
   ast->_LlvmFunc = _LlvmFunc;
+  ast->VariadicPackType = VariadicPackType;
   for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
   return ast;
 }

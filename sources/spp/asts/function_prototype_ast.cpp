@@ -28,6 +28,7 @@ import spp.asts.function_implementation_lowered_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
+import spp.asts.function_parameter_variadic_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_keyword_ast;
@@ -825,10 +826,17 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
   const auto llvm_ret_type = codegen::GetLlvmTypeOf(
     *ret_type, *sm->CurrentScope, ctx);
 
+  // A variadic parameter declares one element ("..b: T") but
+  // receives the whole tuple the call site collapsed its
+  // trailing arguments into, so that tuple is what it lowers as.
+  // Every argument count is its own instantiation with its own
+  // pack type.
+  const auto variadic_param = FnParamGroup->GetVariadicParams();
   auto llvm_param_types = FnParamGroup->GetNonSelfParams()
     | genex::views::transform([&](auto const &x) {
+      auto const &source_type = (VariadicPackType != nullptr and x == static_cast<FunctionParameterAst*>(variadic_param)) ? VariadicPackType : x->Type;
       const auto param_type = ResolveAndSubstituteSelfType(
-        *x->Type, *sm->CurrentScope, *sm, *meta);
+        *source_type, *sm->CurrentScope, *sm, *meta);
       return codegen::GetLlvmTypeOf(
         *param_type, *sm->CurrentScope, ctx);
     })
