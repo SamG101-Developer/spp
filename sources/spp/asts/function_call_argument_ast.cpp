@@ -17,6 +17,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_materialize;
+import spp.codegen.llvm_type;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
