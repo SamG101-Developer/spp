@@ -22,6 +22,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_size;
 import spp.lex.tokens;
 import spp.utils.types;
 import genex;
@@ -79,6 +80,7 @@ auto spp::codegen::GetFatPointerFields(
 
 auto spp::codegen::RegisterLlvmTypeInfo(
   asts::ClassPrototypeAst const *cls_proto,
+  analyse::scopes::ScopeManager const &sm,
   LlvmCtx const *ctx)
   -> void {
   // $ types are function "mock" types (a $-type generated per
@@ -94,11 +96,12 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Push the scope into the the registration function that accepts
   // a scope and context.
-  RegisterLlvmTypeInfo(cls_proto->GetAstScope(), ctx);
+  RegisterLlvmTypeInfo(cls_proto->GetAstScope(), sm, ctx);
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
   analyse::scopes::Scope const *scope,
+  analyse::scopes::ScopeManager const &sm,
   LlvmCtx const *ctx)
   -> void {
   // Get the class symbol from the scope that owns it. This pulls
@@ -163,7 +166,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val.get());
     if (length_ast != nullptr and elem_sym != nullptr) {
       if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
-        RegisterLlvmTypeInfo(elem_sym->Type, ctx);
+        RegisterLlvmTypeInfo(elem_sym->Type, sm, ctx);
       }
       if (const auto elem_llvm_type = GetLlvmType(*elem_sym, ctx); elem_llvm_type != nullptr) {
         cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, std::stoull(length_ast->Val->TokenData));
@@ -223,7 +226,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
       // are, so lower any member still missing its llvm
       // type.
       if (member_sym->LlvmInfo->LlvmType == nullptr and member_sym->Type != nullptr) {
-        RegisterLlvmTypeInfo(member_sym->Type, ctx);
+        RegisterLlvmTypeInfo(member_sym->Type, sm, ctx);
       }
 
       // Get the size and alignment, and upgrade the maximum

@@ -24,6 +24,7 @@ namespace spp::codegen {
    */
   SPP_EXP_FUN auto RegisterLlvmTypeInfo(
     asts::ClassPrototypeAst const *cls_proto,
+    analyse::scopes::ScopeManager const &sm,
     LlvmCtx const *ctx)
     -> void;
 
@@ -35,6 +36,7 @@ namespace spp::codegen {
    */
   SPP_EXP_FUN auto RegisterLlvmTypeInfo(
     analyse::scopes::Scope const *scope,
+    analyse::scopes::ScopeManager const &sm,
     LlvmCtx const *ctx)
     -> void;
 
