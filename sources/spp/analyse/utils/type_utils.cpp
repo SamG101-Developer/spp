@@ -1323,7 +1323,7 @@ auto spp::analyse::utils::type_utils::GetFieldIndexInType(
   scopes::ScopeManager const &sm)
   -> std::size_t {
   // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that interface's fat-pointer fields prepended ahead of
-  // its own declared attributes (see "ClassPrototypeAst::_FillLlvmLayout"), so an attribute's declared index has
+  // its own declared attributes (see "ClassPrototypeAst::FillLlvmLayout"), so an attribute's declared index has
   // to be shifted past them.
   const auto base = GetSuperimposedFatPointerFieldCount(type_sym, *sm.CurrentScope);
 
