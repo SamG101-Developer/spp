@@ -229,13 +229,14 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     // to at the end of the branch's body), not the entry block.
     ctx->Builder.SetInsertPoint(case_end_bb);
     ret_type = InferType(sm, meta);
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type.get());
 
     // Create a PHI handler with "n" reserved values, 1 for each
     // branch that might get entered for this "case" expression.
     const auto n = static_cast<unsigned>(Branches.Len());
+    const auto llvm_phi_ty = codegen::GetLlvmTypeOf(
+      *ret_type, *sm->CurrentScope, ctx);
     phi = ctx->Builder.CreatePHI(
-      codegen::GetLlvmType(*ret_type_sym, ctx), n, "case.phi" + uid);
+      llvm_phi_ty, n, "case.phi" + uid);
   }
 
   // Set "case" information to the meta struct for branches and
