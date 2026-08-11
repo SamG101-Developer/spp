@@ -73,7 +73,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   TemperatureAnnotation(nullptr),
   FfiAnnotation(nullptr),
   BuiltinAnnotation(nullptr),
-  InlineAnnotation(nullptr),
+  InlineAnnotation({nullptr, ""}),
   Annotations(std::move(annotations)),
   TokCmp(std::move(tok_cmp)),
   TokFun(std::move(tok_fun)),
@@ -137,17 +137,22 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   codegen::LlvmCtx *ctx)
   -> Shared<codegen::LlvmFuncWrapper> {
   // Generate the return and parameter types.
-  auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(sm, meta, ctx);
+  using analyse::utils::type_utils::IsTypeNever;
+  using A = analyse::utils::annotation_utils::BuiltinAnnotations;
+  auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(
+    sm, meta, ctx);
 
   if (not is_generic) {
     // Create the LLVM function type. A "..a: T" parameter is never true C-ABI varargs - the call site (NameFnArgs)
     // always collapses the trailing arguments into a single tuple value ahead of time, so the callee is an ordinary
     // fixed-arity function whose last parameter happens to have a tuple type.
-    const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types.ToStdVector(), false);
+    const auto llvm_fun_type = llvm::FunctionType::get(
+      llvm_ret_type, llvm_param_types.ToStdVector(), false);
 
     // Create the LLVM function and add it to the context.
     const auto created_llvm_func = llvm::Function::Create(
-      llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->CurrentScope, *this),
+      llvm_fun_type, llvm::Function::ExternalLinkage,
+      codegen::mangle::mangle_fun_name(*sm->CurrentScope, *this),
       ctx->Module.get());
     const auto func = MakeShared<codegen::LlvmFuncWrapper>(created_llvm_func);
 
@@ -170,6 +175,10 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
       ? llvm::Attribute::NoReturn
       : llvm::Attribute::WillReturn);
 
+    // const auto is_coro = To<CoroutinePrototypeAst>() != nullptr;
+    // Todo: Captures, NoFree (in non "del" methods), NoSync, NoRecurse (detect recursion in stage7)
+    //  ZExt, SExt?
+
     for (const auto i : genex::views::iota(FnParamGroup->Params.Len())) {
       const auto j = static_cast<unsigned>(i);
       if (FnParamGroup->Params[i]->Type->GetConvention() == nullptr) {
@@ -180,6 +189,7 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
         func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
         func->Target->addParamAttr(j, llvm::Attribute::ReadOnly);
         func->Target->addParamAttr(j, llvm::Attribute::Dereferenceable);
+        // if (not is_coro) func->Target->addParamAttr(j, llvm::Attribute::NoCapture);
       }
       else if (FnParamGroup->Params[i]->Type->GetConvention()->To<ConventionMutAst>()) {
         func->Target->addParamAttr(j, llvm::Attribute::NonNull);
@@ -608,7 +618,6 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   meta->EnclosingFunctionScope = sm->CurrentScope;
 
   // If there is an implementation, generate its code.
-  const auto is_extern = FfiAnnotation || AbstractAnnotation;
   if (llvm_func_target == nullptr) {
     // A template ("_IsPureGeneric" declined to declare it) or
     // an uninstantiable signature, so there is no body to
@@ -618,29 +627,32 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     while (sm->CurrentScope != final_scope) {
       sm->MoveToNextScope(false);
     }
+    ctx->Builder.CreateUnreachable();
   }
   else if (BuiltinAnnotation or FfiAnnotation) {
     // Get manual IR from a codegen module.
     Impl->Stage11_CodeGen(sm, meta, ctx);
-  }
-  else if (not is_extern) {
-    // Generate the function implementation.
-    Impl->Stage11_CodeGen(sm, meta, ctx);
-
-    // The body is an expression scope, so it never emits its own
-    // terminator. Return with void if there is no return statement,
-    // otherwise we have already returned to emit an "unreachable"
-    // instruction.
-    if (not ctx->Builder.GetInsertBlock()->empty() and not ctx->Builder.GetInsertBlock()->back().isTerminator()) {
-      ctx->Builder.CreateRetVoid();
+    if (entry_bb->empty()) {
+      entry_bb->eraseFromParent();
+      ctx->Builder.ClearInsertionPoint();
     }
-    VALIDATE_LLVM
   }
   else {
-    // Skip the scope, and the linker will provide the ffi-discovered
-    // implementation for this function.
+    // Generate the function implementation. For abstract method,
+    // shift scopes, as there is still a body, it's just empty.
     Impl->Stage11_CodeGen(sm, meta, ctx);
+
+    // Add a return instruction inside the function if there isn't
+    // one (abstract methods will never be called due to previous
+    // semantic analysis on abstracts, but to satisfy LLVM analysis).
+    const auto insert_bb = ctx->Builder.GetInsertBlock();
+    if (not insert_bb->hasTerminator()) {
+      const auto ret_void = insert_bb->getParent()->getReturnType()->isVoidTy();
+      if (ret_void) { ctx->Builder.CreateRetVoid(); }
+      else { ctx->Builder.CreateUnreachable(); }
+    }
   }
+  VALIDATE_LLVM
 
   meta->Restore();
   sm->MoveOutOfCurrentScope();
@@ -804,41 +816,48 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
   CompilerMetaData *meta,
   codegen::LlvmCtx const *ctx) const
   -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
+  //
+  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+
   // Convert the return and parameter types to LLVM types.
-  const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+  const auto ret_type = ResolveAndSubstituteSelfType(
     *ReturnType, *sm->CurrentScope, *sm, *meta);
-  const auto llvm_ret_type = codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ret_type.get()), ctx);
+  const auto llvm_ret_type = codegen::GetLlvmTypeOf(
+    *ret_type, *sm->CurrentScope, ctx);
 
   auto llvm_param_types = FnParamGroup->GetNonSelfParams()
     | genex::views::transform([&](auto const &x) {
-      const auto param_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+      const auto param_type = ResolveAndSubstituteSelfType(
         *x->Type, *sm->CurrentScope, *sm, *meta);
-      return codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(param_type.get()), ctx);
+      return codegen::GetLlvmTypeOf(
+        *param_type, *sm->CurrentScope, ctx);
     })
     | genex::to<Vec>();
-
-  // Check if any of the types failed to convert.
-  const auto all_types_converted = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) {
-    return x != nullptr;
-  });
-
-  const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted;
 
   // For the self param, we add the pointer for "self", if "self"
   // is declared as "&self" or "&mut self". Otherwise, for the
   // value consumed, we add the value type.
   const auto self_param = FnParamGroup->GetSelfParam();
   if (self_param != nullptr) {
-    if (self_param->Type->GetConvention() != nullptr) {
+    if (self_param->Conv != nullptr) {
       const auto self_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
       llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
     }
     else {
-      const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(self_param->Type.get());
+      const auto self_type = ResolveAndSubstituteSelfType(
+        *self_param->Type, *sm->CurrentScope, *sm, *meta);
+      const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(self_type.get());
       const auto self_val_type = codegen::GetLlvmType(*self_ty_sym, ctx);
       llvm_param_types.Insert(llvm_param_types.begin(), self_val_type);
     }
   }
+
+  // Check if any of the types failed to convert. Any failed
+  // conversions indicate a generic.
+  const auto all_types_converted = llvm_ret_type != nullptr
+    and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
+
+  const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted;
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }
 
