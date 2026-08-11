@@ -14,6 +14,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_func;
 import spp.utils.uid;
 import spp.utils.types;
 import llvm;
@@ -76,6 +77,12 @@ auto spp::codegen::llvm_addr_of(
   if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(ast).first; sym != nullptr) {
     const auto llvm_alloca = sym->LlvmInfo->Alloca;
     SPP_ASSERT(llvm_alloca != nullptr and llvm_alloca->getType()->isPointerTy());
+
+    // A "cmp" constant is a global, and a global belongs to the one module that defines it - borrowing one from
+    // another module has to go through that module's own declaration of the symbol, the same way a load of one does.
+    if (const auto global_var = llvm::dyn_cast<llvm::GlobalVariable>(llvm_alloca); global_var != nullptr) {
+      return GetOrAddGlobalIntoCurrentModule(*global_var, *GetEmissionModule(*ctx));
+    }
     return llvm_alloca;
   }
 
