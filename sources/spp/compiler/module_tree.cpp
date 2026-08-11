@@ -120,4 +120,30 @@ auto spp::compiler::ModuleTree::RootPath() const
   return m_root;
 }
 
+auto spp::compiler::ModuleTree::LlvmOutPathFor(
+  std::filesystem::path const &module_path) const
+  -> std::filesystem::path {
+  const auto out_root = m_root / "out" / "llvm";
+
+  // The project's own sources lose their "src" prefix, so
+  // "<root>/src/a/b.spp" mirrors to "<root>/out/llvm/a/b.ll".
+  const auto roots = Vec<Pair<std::filesystem::path, std::filesystem::path>>{
+    {m_src_path, std::filesystem::path()},
+    {m_vcs_path, std::filesystem::path("vcs")},
+    {m_ffi_path, std::filesystem::path("ffi")}
+  };
+
+  for (auto const &[root, prefix] : roots) {
+    const auto relative_path = module_path.lexically_relative(root);
+    if (relative_path.empty() or *relative_path.begin() == "..") { continue; }
+    auto out_file = out_root / prefix / relative_path;
+    out_file.replace_extension(".ll");
+    return out_file;
+  }
+
+  auto out_file = out_root / module_path.filename();
+  out_file.replace_extension(".ll");
+  return out_file;
+}
+
 SPP_MOD_END

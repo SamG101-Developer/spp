@@ -69,4 +69,16 @@ public:
 
   auto RootPath() const
     -> std::filesystem::path;
+
+  /**
+   * Where a module's generated LLVM IR belongs: the module's own path mirrored under the project's @c out/llvm tree,
+   * with a @c .ll extension. The mirror is anchored on the source root that actually produced the module rather than
+   * on the first path component spelled @c src , because a module is free to have directories of its own by that
+   * name and only the real root decides where the mirrored part starts.
+   * @param[in] module_path The absolute path of the module's source file.
+   * @return The absolute path to write its IR to. Its parent directory is not created.
+   */
+  auto LlvmOutPathFor(
+    std::filesystem::path const &module_path) const
+    -> std::filesystem::path;
 };

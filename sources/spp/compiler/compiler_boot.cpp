@@ -252,9 +252,11 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   // Write the llvm modules to file.
   const auto out_path = tree.RootPath() / "out" / "llvm";
   std::filesystem::create_directories(out_path);
-  std::cout << "Writing LLVM IR to: " << out_path << "\n";
+  std::cout << "Writing LLVM IR to: " << out_path << std::endl;
 
-  for (auto const &ctx : _LlvmCtxs) {
+  // Paired with the modules, because the file each context belongs to comes from the module's own path. Reading it
+  // back off "Module->getName()" would work too, but the path is already here and does not need re-parsing.
+  for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     // llvm::errs() << "=== IR for module: " << ctx->Module->getName() << " ===\n";
     // ctx->Module->print(llvm::errs(), nullptr);
     // llvm::errs() << "=== End IR for module: " << ctx->Module->getName() << " ===\n";
@@ -281,6 +283,18 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
         llvm::errs() << "\n";
       }, &counts);
 
+    // The module's source path mirrored into the "out" tree. Joining "out_path" with the module's own path would
+    // just discard "out_path", since that path is absolute and "operator/" replaces rather than appends.
+    const auto file = tree.LlvmOutPathFor(mod->FilePath);
+    std::filesystem::create_directories(file.parent_path());
+
+    auto ec = std::error_code();
+    auto out = llvm::raw_fd_ostream(
+      file.native_encoded_string(), ec,
+      static_cast<llvm::sys::fs::OpenFlags>(0));
+    ctx->Module->print(out, nullptr);
+    out.flush();
+
     if (llvm::verifyModule(*ctx->Module, &llvm::errs())) {
       llvm::errs() << "Invalid module: " << ctx->Module->getName() << "\n";
       llvm::errs() << "\nVerifier: "
@@ -294,12 +308,6 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
       llvm::errs() << "Invalid module after lowering: " << ctx->Module->getName() << "\n";
       std::abort();
     }
-
-    // auto ec = std::error_code();
-    // auto file = out_path / (ctx->module->getName().str() + ".ll");
-    // auto out = llvm::raw_fd_ostream(file.string(), ec, static_cast<llvm::sys::fs::OpenFlags>(0));
-    // ctx->module->print(out, nullptr);
-    // out.flush();
   }
 }
 
