@@ -31,7 +31,6 @@ import std;
 
 const spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
 const spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
-const spp::Vec<spp::Str> kStrViewParts = {"std", "string_view", "StrView"};
 const spp::Vec<spp::Str> kSizedIntegerParts = {"std", "num", "sized_integer", "SizedInteger"};
 const spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
 const spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
@@ -124,12 +123,6 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // Lower S++ "Bool" to the llvm "i1" type.
   if (parts == kBoolParts) {
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getInt1Ty(*ctx->Context);
-    return;
-  }
-
-  // Lower S++ "StrView" to the llvm "i8*" type.
-  if (parts == kStrViewParts) {
-    cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
   }
 

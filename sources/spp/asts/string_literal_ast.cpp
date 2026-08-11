@@ -13,6 +13,9 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_func;
+import spp.codegen.llvm_layout;
+import spp.codegen.llvm_type;
 import spp.utils.strings;
 import llvm;
 
@@ -78,8 +81,8 @@ auto spp::asts::StringLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::StringLiteralAst::Stage11_CodeGen(
-  ScopeManager *,
-  CompilerMetaData *,
+  ScopeManager *sm,
+  CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -87,11 +90,39 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
 
   // Decode the token (which includes its surrounding double
   // quotes) into the raw bytes, resolving escape sequences,
-  // then emit a global string for it.
+  // and emit either a string or byte string for it.
   const auto bytes = DecodeStringLiteral(Val->TokenData);
   const auto str_alloc = ctx->Builder.CreateGlobalString(
     bytes, "string_literal", 0, ctx->Module.get(), false);
   return str_alloc;
+  const auto emission_module = codegen::GetEmissionModule(*ctx);
+  const auto llvm_bytes = ctx->Builder.CreateGlobalString(
+    bytes, "string_literal", 0, emission_module, false);
+
+  // A literal's type is "&StrView" (or "&View[U8]" behind the
+  // "b" prefix), and both of those are a { ptr, length } pair
+  // rather than a bare pointer. Everything in it is a compile
+  // time constant, so the view is emitted as its own constant
+  // global instead of being rebuilt on the stack at every use.
+  const auto view_type = InferType(sm, meta)->WithoutConvention();
+  const auto view_type_sym = sm->CurrentScope->GetTypeSymbol(view_type.get());
+  const auto llvm_view_type = view_type_sym != nullptr
+    ? llvm::dyn_cast_or_null<llvm::StructType>(codegen::GetLlvmType(*view_type_sym, ctx))
+    : nullptr;
+
+  // Build the view's fields, which are always a pointer and a
+  // length.
+  const auto ptr_idx = codegen::GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 0);
+  const auto length_idx = codegen::GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 1);
+  auto llvm_fields = Vec<llvm::Constant*>(llvm_view_type->getNumElements(), nullptr);
+  llvm_fields[ptr_idx] = llvm_bytes;
+  llvm_fields[length_idx] = llvm::ConstantInt::get(
+    llvm_view_type->getElementType(length_idx), bytes.size());
+
+  const auto llvm_view = llvm::ConstantStruct::get(
+    llvm_view_type, llvm_fields.ToStdVector());
+  return new llvm::GlobalVariable(
+    *emission_module, llvm_view_type, true, llvm::GlobalValue::PrivateLinkage, llvm_view, "string_literal.view");
 }
 
 auto spp::asts::StringLiteralAst::InferType(
