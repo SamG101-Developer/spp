@@ -127,17 +127,16 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
     ERR_ARGS(*tmp_name, no_tmp_msg));
 
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym->Type.get());
-  auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // Lower the type if the walk over class prototypes has
-  // not reached it.
-  if (llvm_type == nullptr and type_sym->LinkedScope != nullptr) {
-    codegen::RegisterLlvmTypeInfo(type_sym->LinkedScope, sm, ctx);
-    llvm_type = codegen::GetLlvmType(*type_sym, ctx);
-  }
+  // not reached it, and lower it all the way, because an
+  // alloca needs a size.
+  codegen::EnsureLlvmTypeComplete(*type_sym, sm, ctx);
+  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "destructure.alloca" + uid, ctx);
+  const auto alloca = codegen::LlvmEntryAlloca(
+    llvm_type, "destructure.alloca" + uid, ctx);
   sym->LlvmInfo->Alloca = alloca;
 
   // Generate the value exactly once, into the temporary. The expanded "let" statements then index the temporary.
