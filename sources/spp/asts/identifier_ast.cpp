@@ -15,6 +15,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_func;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
@@ -199,7 +200,9 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   // with the normal stack alloca instruction, rather with
   // llvm's "ConstantXXX" method, wrapped into a global.
   if (llvm::isa<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca)) {
-    const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+    const auto defined_global = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
+      *defined_global, *codegen::GetEmissionModule(*ctx));
     return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
   }
 

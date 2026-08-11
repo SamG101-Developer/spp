@@ -194,7 +194,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
     const auto var_sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
     SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
-    const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
+      *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
+      *codegen::GetEmissionModule(*ctx));
     return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_type_member" + uid);
   }
 
@@ -203,7 +205,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   const auto var_sym = lhs_ns_scope->GetVarSymbol(Name.get(), true);
   if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
-  const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+  const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
+    *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
+    *codegen::GetEmissionModule(*ctx));
   return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
 }
 

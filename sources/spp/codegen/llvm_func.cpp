@@ -23,3 +23,36 @@ auto spp::codegen::GetOrAddTargetIntoCurrentModule(
     name,
     &current_module);
 }
+
+auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
+  llvm::GlobalVariable const &target,
+  llvm::Module &current_module)
+  -> llvm::GlobalVariable* {
+  // Mangling is namespace qualified, so the name identifies
+  // the constant across every module.
+  const auto name = target.getName();
+  if (const auto existing = current_module.getGlobalVariable(name, true); existing != nullptr) {
+    return existing;
+  }
+
+  // Otherwise declare it here. The initializer stays with the
+  // module that defines it, as repeating it would give the program
+  // two definitions of one symbol. This is a bare external
+  // declaration for the linker to resolve.
+  const auto declaration = new llvm::GlobalVariable(
+    current_module, target.getValueType(), target.isConstant(), llvm::GlobalValue::ExternalLinkage,
+    nullptr, name);
+  declaration->setAlignment(target.getAlign());
+  return declaration;
+}
+
+auto spp::codegen::GetEmissionModule(
+  LlvmCtx const &ctx)
+  -> llvm::Module* {
+  // Outside a function body (a "cmp" initializer, say) there is
+  // nothing being emitted into, so the context's own module is
+  // the only answer.
+  const auto insert_bb = ctx.Builder.GetInsertBlock();
+  if (insert_bb == nullptr or insert_bb->getParent() == nullptr) { return ctx.Module.get(); }
+  return insert_bb->getParent()->getParent();
+}
