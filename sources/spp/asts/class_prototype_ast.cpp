@@ -353,18 +353,26 @@ static auto ApplyStructLayout(
   spp::codegen::LlvmTypeSymInfo *sym_info,
   spp::codegen::LlvmCtx const *ctx)
   -> void {
+  // A struct body is only ever set once. "RegisterLlvmTypeInfo"
+  // lays the compiler-known types out itself, like "Var" is a
+  // { tag, payload } pair, "Generated" and the "Fun*" family
+  // are { fn_ptr, env_ptr } literals. As none of them declare
+  // attributes, we need to skip setting 0 fields, as this messes
+  // up the layout and subsequent GEP instructions.
+  const auto needs_body = struct_type->isOpaque();
+
   switch (layout) {
     case spp::codegen::StructLayout::C: {
       // Keep declaration order, with natural alignment padding.
       // This mirrors the C language / specifications. Seen in the
       // FFI structs.
-      struct_type->setBody(field_types.ToStdVector(), false);
+      if (needs_body) { struct_type->setBody(field_types.ToStdVector(), false); }
       sym_info->FieldIndexMap.clear();
       break;
     }
     case spp::codegen::StructLayout::Packed: {
       // Keep declaration order, but remove all inter-field padding.
-      struct_type->setBody(field_types.ToStdVector(), true);
+      if (needs_body) { struct_type->setBody(field_types.ToStdVector(), true); }
       sym_info->FieldIndexMap.clear();
       break;
     }
@@ -373,7 +381,7 @@ static auto ApplyStructLayout(
       // each declared attribute ended up, so that codegen can map
       // a declaration index to its physical field index.
       auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
-      struct_type->setBody(sorted_types.ToStdVector(), false);
+      if (needs_body) { struct_type->setBody(sorted_types.ToStdVector(), false); }
       sym_info->FieldIndexMap = std::move(index_map);
       break;
     }
@@ -407,13 +415,25 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
     *type_sym->FqName(), *sm->CurrentScope);
   auto types = Vec<llvm::Type*>();
 
+  // The "Spp" layout sorts the fields by size and alignment, so
+  // every field has to be complete before any of them can be
+  // placed - a field still sitting as an opaque placeholder has
+  // no size to sort on. The walk reaches types in module order
+  // rather than in the order they contain one another, so each
+  // field is completed on demand here.
+  const auto lower_field = [&](analyse::scopes::TypeSymbol const *field_type_sym) -> llvm::Type* {
+    if (field_type_sym == nullptr) { return nullptr; }
+    codegen::EnsureLlvmTypeComplete(*field_type_sym, *sm, ctx);
+    return codegen::GetLlvmType(*field_type_sym, ctx);
+  };
+
   // Tuple fields are positional based off of the types found
   // in the generic arguments.
   if (is_tuple) {
     const auto elems = type_sym->FqName()->LastTypePart()->GnArgGroup->GetTypeArgs();
     types = elems
       | genex::views::transform([&](auto const &elem) { return sm->CurrentScope->GetTypeSymbol(elem->Val.get()); })
-      | genex::views::transform([&](auto const &type) { return type ? codegen::GetLlvmType(*type, ctx) : nullptr; })
+      | genex::views::transform([&](auto const &type) { return lower_field(type.get()); })
       | genex::to<Vec>();
   }
 
@@ -421,7 +441,7 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   else {
     types = GetAllAttrs(*type_sym->FqName(), *sm)
       | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair); })
-      | genex::views::transform([&](auto const &type) { return type ? codegen::GetLlvmType(*type, ctx) : nullptr; })
+      | genex::views::transform([&](auto const &type) { return lower_field(type.get()); })
       | genex::to<Vec>();
   }
 
