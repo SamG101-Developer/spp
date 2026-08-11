@@ -407,23 +407,77 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     _OverloadInfo->Proto->GetLlvmFunc() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));
 
   // Because we have individual modules for each compilation
-  // unit, we need to add the declaration for the target into
-  // the current module.
+  // unit, the declaration for the target has to be added to
+  // the module the call is being emitted into.
   auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
-  llvm_func = codegen::GetOrAddTargetIntoCurrentModule(*llvm_func, *ctx->Module);
+  llvm_func = codegen::GetOrAddTargetIntoCurrentModule(
+    *llvm_func, *codegen::GetEmissionModule(*ctx));
 
-  auto llvm_func_args = FnArgGroup->Args
-    | genex::views::transform([sm, meta, ctx](auto const &x) { return x->Stage11_CodeGen(sm, meta, ctx); })
-    | genex::to<Vec>();
-  if (llvm_self_arg != nullptr) { llvm_func_args[0] = llvm_self_arg; }
+  // The arguments have already been reordered to match the
+  // parameters, so the two line up index for index.
+  const auto &fn_params = _OverloadInfo->Proto->FnParamGroup->Params;
+  auto llvm_func_args = Vec<llvm::Value*>();
+  llvm_func_args.Reserve(FnArgGroup->Args.Len());
+
+  for (auto i = 0uz; i < FnArgGroup->Args.Len(); ++i) {
+    auto const &arg = FnArgGroup->Args[i];
+    auto llvm_arg = arg->Stage11_CodeGen(sm, meta, ctx);
+    SPP_ASSERT(llvm_arg != nullptr);
+
+    // The parameter's type is named where the overload lives,
+    // so it is qualified there and then re-resolved here. The
+    // coercion compares the two types from this scope, and a
+    // parameter that does not resolve from it (a "Self" or a
+    // generic still standing in for one) is not a variant this
+    // call has to widen into anyway.
+    const auto param_type_sym = i < fn_params.Len()
+      ? _OverloadInfo->OverloadScope->GetTypeSymbol(fn_params[i]->Type.get())
+      : nullptr;
+    const auto param_type = param_type_sym != nullptr ? param_type_sym->FqName() : nullptr;
+
+    if (param_type != nullptr and sm->CurrentScope->GetTypeSymbol(param_type.get()) != nullptr) {
+      llvm_arg = codegen::CoerceToVariant(
+        llvm_arg, *param_type, *arg->InferType(sm, meta),
+        *sm->CurrentScope, "arg.variant" + uid, ctx);
+      SPP_ASSERT(llvm_arg != nullptr);
+    }
+
+    // Just because a argument type is a borrow, it doesn't mean
+    // that the borrow is happening here. For example, if "x" is
+    // "&X", that borrow can then be moved into "fun a(y: &X)" -
+    // re don't re-borrow just because it's a borrow type.
+    const auto self_param = i < fn_params.Len()
+      ? fn_params[i]->To<FunctionParameterSelfAst>()
+      : nullptr;
+
+    const auto param_by_value = i < fn_params.Len() and (self_param != nullptr
+      ? self_param->Conv == nullptr
+      : fn_params[i]->Type->GetConvention() == nullptr);
+
+    if (param_by_value and llvm_arg->getType()->isPointerTy()) {
+      const auto arg_type = arg->InferType(sm, meta);
+      if (arg_type->GetConvention() != nullptr) {
+        if (const auto llvm_arg_type = codegen::GetLlvmTypeOf(
+          *arg_type->WithoutConvention(), *sm->CurrentScope, ctx); llvm_arg_type != nullptr) {
+          llvm_arg = ctx->Builder.CreateLoad(llvm_arg_type, llvm_arg, "arg.copy" + uid);
+        }
+      }
+    }
+    llvm_func_args.EmplaceBack(llvm_arg);
+  }
+
+  if (llvm_self_arg != nullptr) {
+    llvm_func_args[0] = llvm_self_arg;
+  }
 
   // Create the call instruction (a call returning Void cannot be given a name - llvm forbids naming void
   // values).
   if (llvm_func->getReturnType()->isVoidTy()) {
     return ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector());
   }
-  const auto llvm_call = ctx->Builder.CreateCall(llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
+  const auto llvm_call = ctx->Builder.CreateCall(
+    llvm_func, llvm_func_args.ToStdVector(), "call" + uid);
 
   // Todo: Document this.
   if (is_coroutine_call) {
