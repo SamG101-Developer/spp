@@ -21,9 +21,6 @@ auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
   VOID = nullptr;
   NEVER = nullptr;
   COPY = nullptr;
-  SINGLE = nullptr;
-  SHARED = nullptr;
-  SHADOW = nullptr;
   FWD_MUT = nullptr;
   FWD_REF = nullptr;
   S8 = nullptr;

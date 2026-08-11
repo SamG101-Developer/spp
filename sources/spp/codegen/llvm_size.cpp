@@ -99,17 +99,6 @@ namespace spp::codegen {
       return ScalarLayout(sizeof(std::size_t));
     }
 
-    // Smart pointers (heap wrappers, ignore attributes).
-    if (TypeEq(*type.WithoutGenerics(), *SINGLE, *sm.CurrentScope, *sm.CurrentScope)) {
-      return ScalarLayout(sizeof(void*));
-    }
-    if (TypeEq(*type.WithoutGenerics(), *SHARED, *sm.CurrentScope, *sm.CurrentScope)) {
-      return Layout{sizeof(void*) + 2 * sizeof(std::size_t), alignof(void*)};
-    }
-    if (TypeEq(*type.WithoutGenerics(), *SHADOW, *sm.CurrentScope, *sm.CurrentScope)) {
-      return ScalarLayout(sizeof(void*));
-    }
-
     // A function value is a fat pointer: the code paired with
     // the environment it closes over, so it is two pointers wide,
     // not one. A "$" mock is a function used as a value, so it
