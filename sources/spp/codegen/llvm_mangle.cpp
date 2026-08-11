@@ -5,6 +5,7 @@ import spp.analyse.scopes.symbols;
 import spp.asts.cmp_statement_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
@@ -67,9 +68,16 @@ auto spp::codegen::mangle::mangle_fun_name(
 
   // Get the return and parameter types of the function.
   const auto return_type_sym = owner_scope.GetTypeSymbol(fun_proto.ReturnType.get());
+  // The variadic parameter is mangled from the tuple it actually receives, not from the single element it declares -
+  // otherwise two instantiations differing only in argument count mangle to one name, and llvm quietly uniques the
+  // second, leaving callers pointing at whichever one won.
+  const auto variadic_param = fun_proto.FnParamGroup->GetVariadicParams();
   const auto param_type_syms = fun_proto.FnParamGroup->Params
-    | genex::views::transform([&owner_scope](auto const &param) {
-      return owner_scope.GetTypeSymbol(param->Type.get());
+    | genex::views::transform([&](auto const &param) {
+      auto const &param_type = (fun_proto.VariadicPackType != nullptr and param.get() == static_cast<asts::FunctionParameterAst const*>(variadic_param))
+        ? fun_proto.VariadicPackType
+        : param->Type;
+      return owner_scope.GetTypeSymbol(param_type.get());
     })
     | genex::to<Vec>();
 
