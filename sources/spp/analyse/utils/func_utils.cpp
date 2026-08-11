@@ -21,6 +21,7 @@ import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.function_parameter_optional_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_ast;
@@ -639,6 +640,37 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     kw_arg->Val = std::move(positional_arg->Val);
     a_group.Args[i] = std::move(kw_arg);
   }
+
+  // Put the arguments into the parameters' own order, materialising
+  // a default value for every optional parameter the call left out.
+  // Ordering by parameter is needed for LLVM to do an ordinal match
+  // despite S++ operating with keyword-matching.
+  auto ordered_args = UniqueVec<asts::FunctionCallArgumentAst>();
+  for (auto const *param : p_group.GetAllParams()) {
+    const auto param_name = param->ExtractName();
+
+    auto matched = false;
+    for (auto &&arg : a_group.Args) {
+      const auto kw_arg = arg != nullptr
+        ? arg->To<asts::FunctionCallArgumentKeywordAst>()
+        : nullptr;
+
+      if (kw_arg == nullptr or kw_arg->Name->Val != param_name->Val) { continue; }
+      ordered_args.EmplaceBack(std::move(arg));
+      matched = true;
+      break;
+    }
+    if (matched) { continue; }
+
+    // Leftover optional parameters inject their argument into the
+    // callsite (unlike Python, which executes once for all func
+    // calls).
+    const auto optional_param = param->To<asts::FunctionParameterOptionalAst>();
+    if (optional_param == nullptr or optional_param->DefaultVal == nullptr) { continue; }
+    ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
+      param_name, nullptr, nullptr, asts::AstClone(optional_param->DefaultVal)));
+  }
+  a_group.Args = std::move(ordered_args);
 }
 
 static auto CollectDirectInferences(
