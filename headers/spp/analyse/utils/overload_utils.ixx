@@ -96,6 +96,7 @@ namespace spp::analyse::utils::overload_utils {
     asts::FunctionPrototypeAst *fn_proto,
     scopes::Scope const *fn_scope,
     asts::GenericArgumentGroupAst &generic_args,
+    Shared<asts::TypeAst> const &variadic_pack_type,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> Tup<asts::FunctionPrototypeAst*, scopes::Scope const*>;

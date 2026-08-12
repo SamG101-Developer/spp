@@ -37,6 +37,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
@@ -183,8 +184,23 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
 
       InferAllGenerics(
         *fn_proto, *fn_params, *fn_args, *gn_args, is_variadic_fn, fn_scope, sm, meta);
+
+      // "InferAllGenerics" has run "NameFnArgs", so the trailing
+      // arguments of a variadic call are already collapsed into one
+      // tuple-valued argument. Its type is what the callee's variadic
+      // parameter actually receives.
+      auto variadic_pack_type = Shared<asts::TypeAst>(nullptr);
+      if (is_variadic_fn) {
+        const auto variadic_name = fn_proto->FnParamGroup->GetVariadicParams()->ExtractName();
+        for (auto const &a : fn_args->GetKeywordArgs()) {
+          if (a->Name->Val != variadic_name->Val) { continue; }
+          variadic_pack_type = a->Val->InferType(sm, meta);
+          break;
+        }
+      }
+
       std::tie(fn_proto, fn_scope) = PotentiallyGenerateGenericSubstitutedPrototype(
-        fn_proto, fn_scope, *gn_args, sm, meta);
+        fn_proto, fn_scope, *gn_args, variadic_pack_type, sm, meta);
       ValidateArgsMatchParams(
         fn_call, *fn_proto, fn_scope, *fn_args, sm, meta);
       pass_overloads.EmplaceBack(
@@ -381,6 +397,7 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
   asts::FunctionPrototypeAst *fn_proto,
   scopes::Scope const *fn_scope,
   asts::GenericArgumentGroupAst &generic_args,
+  Shared<asts::TypeAst> const &variadic_pack_type,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> Tup<asts::FunctionPrototypeAst*, scopes::Scope const*> {
@@ -399,6 +416,17 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
   // that is nothing then there is no instantiation to make.
   combined_generics.Args |= genex::actions::remove_if(
     [](auto const &a) { return generic_bindings::BindsToItself(*a); });
+
+  // Separate variadic instantiation by the types going into the
+  // variadic function parameter.
+  if (variadic_pack_type != nullptr) {
+    auto pack_name = MakeUnique<asts::TypeIdentifierAst>(
+      variadic_pack_type->PosStart(),
+      "VariadicPackOf" + fn_proto->FnParamGroup->GetVariadicParams()->ExtractName()->Val,
+      nullptr);
+    combined_generics.Args.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+      std::move(pack_name), nullptr, asts::AstClone(variadic_pack_type)));
+  }
 
   // Consider if we need to create a generic substituted
   // function prototype.
@@ -437,6 +465,8 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
       p->Type = p->Type->SubstituteGenerics(combined_generics.GetAllArgs());
       p->Type->Stage7_AnalyseSemantics(&tm, meta);
     }
+    new_fn_proto->VariadicPackType = asts::AstClone(variadic_pack_type);
+
     new_fn_proto->ReturnType = new_fn_proto->ReturnType->SubstituteGenerics(combined_generics.GetAllArgs());
     new_fn_proto->ReturnType->Stage7_AnalyseSemantics(&tm, meta);
 
