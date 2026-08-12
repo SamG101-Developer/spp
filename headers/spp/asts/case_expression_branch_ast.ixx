@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct BinaryExpressionAst;
   SPP_EXP_CLS struct CaseExpressionBranchAst;
   SPP_EXP_CLS struct CasePatternVariantAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
@@ -79,6 +80,12 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
 private:
   bool _ForIterLoopYield = false;
+
+  /**
+   * Save the generated combined pattern expressions for code generation without needed to re-walk asts and scopes that
+   * messes up the scope manager's alignment.
+   */
+  UniqueVec<BinaryExpressionAst> _PatternComparisons;
 
   /**
    * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is

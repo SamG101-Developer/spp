@@ -108,6 +108,21 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
     }
   }
 
+  // Build the comparison the branch actually tests, over the
+  // real operands. This is to retained, rather than needing to
+  // rebuild at codegen time. Only needed for "case ... of".
+  _PatternComparisons = UniqueVec<BinaryExpressionAst>(Patterns.Len());
+  if (Op != nullptr and Op->TokenType != lex::SppTokenType::KW_IS) {
+    for (auto const &[i, p] : Patterns | genex::views::ptr | genex::views::enumerate) {
+      const auto pe = p->To<CasePatternVariantExpressionAst>();
+      if (pe == nullptr) { continue; }
+
+      _PatternComparisons[i] = MakeUnique<BinaryExpressionAst>(
+        AstClone(meta->CaseCondition), AstClone(Op), AstClone(pe->Expr));
+      _PatternComparisons[i]->Stage7_AnalyseSemantics(sm, meta);
+    }
+  }
+
   // Analyse the guard and body.
   if (Guard) { Guard->Stage7_AnalyseSemantics(sm, meta); }
   Body->Stage7_AnalyseSemantics(sm, meta);
@@ -280,13 +295,23 @@ auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) const
   -> llvm::Value* {
+  // Reuse either the generated pattern combinations, or the normal
+  // pattern codegen if there was no combinations performed.
+  const auto codegen_pattern = [&](const std::size_t i) -> llvm::Value* {
+    return i < _PatternComparisons.Len() and _PatternComparisons[i] != nullptr
+      ? _PatternComparisons[i]->Stage11_CodeGen(sm, meta, ctx)
+      : Patterns[i]->Stage11_CodeGen(sm, meta, ctx);
+  };
+
   // If there is only one pattern, generate its condition directly.
-  // Otherwise, collect all the pattern conditions and combine them with OR. The guard (if any) is deliberately not
-  // folded in here - see Stage11_CodeGen, which branches on this result before deciding whether to evaluate it.
-  auto llvm_combined_pattern = Patterns.Front()->Stage11_CodeGen(sm, meta, ctx);
-  for (auto const &pattern : Patterns | genex::views::ptr | genex::views::drop(1)) {
-    const auto llvm_pattern = pattern->Stage11_CodeGen(sm, meta, ctx);
-    llvm_combined_pattern = ctx->Builder.CreateOr(llvm_combined_pattern, llvm_pattern);
+  // Otherwise, collect all the pattern conditions and combine them
+  // with OR. The guard (if any) is deliberately not folded in here
+  // because otherwise the inner pattern codegen is executed despite
+  // a false guard. The guard is executed before this from the case
+  // expression ast.
+  auto llvm_combined_pattern = codegen_pattern(0);
+  for (auto i = 1uz; i < Patterns.Len(); ++i) {
+    llvm_combined_pattern = ctx->Builder.CreateOr(llvm_combined_pattern, codegen_pattern(i));
   }
   return llvm_combined_pattern;
 }
