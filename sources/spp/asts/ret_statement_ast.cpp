@@ -179,6 +179,15 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
+  // Inside a coroutine, "ret" ends the generator rather than
+  // returning anything: control goes to the final suspend
+  // block, which runs "llvm.coro.end" and hands the frame
+  // handle back to whoever resumed it.
+  if (meta->LlvmGenerator != nullptr and meta->LlvmGenerator->SuspendBlock != nullptr) {
+    ctx->Builder.CreateBr(meta->LlvmGenerator->SuspendBlock);
+    return nullptr;
+  }
+
   // Use the return void instruction if there is no return value.
   if (Expr == nullptr) {
     ctx->Builder.CreateRetVoid();
@@ -190,7 +199,9 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   const auto ret_type = _RetType != nullptr
     ? _RetType
-    : meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType.Back();
+    : meta->EnclosingFunctionRetType.IsEmpty()
+    ? nullptr
+    : meta->EnclosingFunctionRetType.Back();
 
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
@@ -198,21 +209,15 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
       llvm_ret_val, *ret_type, *Expr->InferType(sm, meta), *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
-  // Temp holder for non-symbolic condition.
-  if (sm->CurrentScope->GetVarSymbolOutermost(*Expr).first == nullptr) {
-    meta->Save();
-    meta->AssignmentTargetType = _RetType;
-    const auto ret_val = codegen::llvm_materialize(*Expr, sm, meta, ctx);
-    const auto llvm_ret_val = ret_val->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
-    meta->Restore();
+  meta->Save();
+  meta->AssignmentTargetType = _RetType;
+  if (meta->AssignmentTarget == nullptr) {
+    meta->AssignmentTarget = MakeShared<IdentifierAst>(PosStart(), "$ret");
   }
 
-  // Otherwise, generate normally.
-  else {
-    const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
-  }
+  const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
+  ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
+  meta->Restore();
 
   return nullptr;
 }
