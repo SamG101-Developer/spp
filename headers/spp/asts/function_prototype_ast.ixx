@@ -211,15 +211,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   auto DetachLlvmFuncSlot()
     -> void;
 
-  /**
-   * Point this prototype at a given llvm function. Used while a generic instantiation's body is emitted into a module
-   * other than the one that first declared it, so the body lands on that module's own copy of the symbol.
-   * @param[in] func The function to target, or null to clear.
-   */
-  auto SetLlvmFunc(
-    Shared<codegen::LlvmFuncWrapper> func)
-    -> void;
-
   SPP_ATTR_NODISCARD auto PrintSignature(
     Str const &owner) const
     -> Str;

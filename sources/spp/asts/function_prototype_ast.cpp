@@ -725,12 +725,6 @@ auto spp::asts::FunctionPrototypeAst::GetLlvmFunc() const
   return *_LlvmFunc;
 }
 
-auto spp::asts::FunctionPrototypeAst::SetLlvmFunc(
-  Shared<codegen::LlvmFuncWrapper> func)
-  -> void {
-  *_LlvmFunc = std::move(func);
-}
-
 auto spp::asts::FunctionPrototypeAst::DetachLlvmFuncSlot()
   -> void {
   // Break the slot shared with the prototype this was cloned
