@@ -261,28 +261,6 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     // ctx->Module->print(llvm::errs(), nullptr);
     // llvm::errs() << "=== End IR for module: " << ctx->Module->getName() << " ===\n";
 
-    struct DiagnosticCounts {
-      unsigned errors = 0;
-      unsigned warnings = 0;
-    };
-
-    DiagnosticCounts counts;
-    ctx->Context->setDiagnosticHandlerCallBack(
-      [](const llvm::DiagnosticInfo *DI, void *Context) {
-        auto *counts = static_cast<DiagnosticCounts*>(Context);
-
-        if (DI->getSeverity() == llvm::DS_Warning) {
-          ++counts->warnings;
-        }
-        else if (DI->getSeverity() == llvm::DS_Error) {
-          ++counts->errors;
-        }
-
-        llvm::DiagnosticPrinterRawOStream DP(llvm::errs());
-        DI->print(DP);
-        llvm::errs() << "\n";
-      }, &counts);
-
     // The module's source path mirrored into the "out" tree. Joining "out_path" with the module's own path would
     // just discard "out_path", since that path is absolute and "operator/" replaces rather than appends.
     const auto file = tree.LlvmOutPathFor(mod->FilePath);
@@ -297,9 +275,6 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     if (llvm::verifyModule(*ctx->Module, &llvm::errs())) {
       llvm::errs() << "Invalid module: " << ctx->Module->getName() << "\n";
-      llvm::errs() << "\nVerifier: "
-        << counts.errors << " errors, "
-        << counts.warnings << " warnings\n";
       std::abort();
     }
 
