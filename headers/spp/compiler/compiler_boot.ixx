@@ -95,10 +95,15 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     analyse::scopes::ScopeManager *sm)
     -> void;
 
+  /**
+   * @param[in] optimize Whether to run the optimization pipeline over each module before it is written out. Off for a
+   * dev build, where the unoptimized ir is what makes the generated code readable against its source.
+   */
   auto Stage11_CodeGen(
     utils::ProgressBar &bar,
     ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
+    analyse::scopes::ScopeManager *sm,
+    bool optimize)
     -> void;
 
 private:

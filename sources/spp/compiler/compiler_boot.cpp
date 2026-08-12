@@ -237,7 +237,8 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
 auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   utils::ProgressBar &bar,
   ModuleTree &tree,
-  analyse::scopes::ScopeManager *sm)
+  analyse::scopes::ScopeManager *sm,
+  const bool optimize)
   -> void {
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
@@ -261,18 +262,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     // ctx->Module->print(llvm::errs(), nullptr);
     // llvm::errs() << "=== End IR for module: " << ctx->Module->getName() << " ===\n";
 
-    // The module's source path mirrored into the "out" tree. Joining "out_path" with the module's own path would
-    // just discard "out_path", since that path is absolute and "operator/" replaces rather than appends.
-    const auto file = tree.LlvmOutPathFor(mod->FilePath);
-    std::filesystem::create_directories(file.parent_path());
-
-    auto ec = std::error_code();
-    auto out = llvm::raw_fd_ostream(
-      file.native_encoded_string(), ec,
-      static_cast<llvm::sys::fs::OpenFlags>(0));
-    ctx->Module->print(out, nullptr);
-    out.flush();
-
+    // Verified before anything transforms it, so a complaint here
+    // is about what codegen produced rather than about what a pass
+    // made of it.
     if (llvm::verifyModule(*ctx->Module, &llvm::errs())) {
       llvm::errs() << "Invalid module: " << ctx->Module->getName() << "\n";
       std::abort();
@@ -283,6 +275,26 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
       llvm::errs() << "Invalid module after lowering: " << ctx->Module->getName() << "\n";
       std::abort();
     }
+
+    if (optimize) {
+      codegen::RunOptimizationPipeline(ctx->Module.get());
+      if (llvm::verifyModule(*ctx->Module, &llvm::errs())) {
+        llvm::errs() << "Invalid module after optimization: " << ctx->Module->getName() << "\n";
+        std::abort();
+      }
+    }
+
+    // Written last, so the file on disk is the module as it will
+    // actually be built.
+    const auto file = tree.LlvmOutPathFor(mod->FilePath);
+    std::filesystem::create_directories(file.parent_path());
+
+    auto ec = std::error_code();
+    auto out = llvm::raw_fd_ostream(
+      file.native_encoded_string(), ec,
+      static_cast<llvm::sys::fs::OpenFlags>(0));
+    ctx->Module->print(out, nullptr);
+    out.flush();
   }
 }
 
