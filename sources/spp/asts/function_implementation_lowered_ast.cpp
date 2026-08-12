@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.builtins;
+import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.function_prototype_ast;
@@ -75,10 +76,15 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
   // Use the builtin to build the llvm custom lowered code. The
   // lowering reads the prototype's own scope, so it runs before
   // the scope walk below moves the cursor off it.
+  const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+    *_ProtoPtr->ReturnType, *sm->CurrentScope, *sm, *meta);
+  if (const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type.get()); ret_type_sym != nullptr) {
+    codegen::EnsureLlvmTypeComplete(*ret_type_sym, *sm, ctx);
+  }
+
   analyse::utils::builtins::kBuiltinFuncs
     .at(_ScopePtr)
-    .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmType(
-      *sm->CurrentScope->GetTypeSymbol(_ProtoPtr->ReturnType.get()), ctx));
+    .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(*ret_type, *sm->CurrentScope, ctx));
 
   // Skip scopes to get back to the parent scope (skipping inner
   // scopes on the lowered function - `!intrinsic` etc).
