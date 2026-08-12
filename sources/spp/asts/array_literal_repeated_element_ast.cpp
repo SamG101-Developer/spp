@@ -195,11 +195,25 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(llvm_rt_elem_ty, n);
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
 
+    // A constant element repeated is a constant array, so it can be
+    // produced as a value rather than materialised with no stack slot,
+    // per-slot GEP and store/load.
+    if (llvm::isa<llvm::Constant>(llvm_rt_elem)) {
+      auto llvm_ct_elems = Vec<llvm::Constant*>{};
+      llvm_ct_elems.Reserve(n);
+      for (auto i = 0uz; i < n; ++i) {
+        const auto llvm_ct_elem = llvm::cast<llvm::Constant>(llvm_rt_elem);
+        llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+      }
+      return llvm::ConstantArray::get(
+        llvm_rt_arr_ty, llvm_ct_elems.ToStdVector());
+    }
+
     // Allocate the array into the enclosing function using the uniform
     // entry alloca function.
     const auto uid = "." + Uid(this);
     const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
-      llvm_rt_arr_ty, "array.explicit.alloca" + uid, ctx);
+      llvm_rt_arr_ty, "array.repeated.alloca" + uid, ctx);
 
     // Finally, copy the single generated element into every slot of the
     // array allocation, using the GEP and store commands.
@@ -212,6 +226,9 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
       SPP_ASSERT(llvm_rt_elem_ptr != nullptr);
       ctx->Builder.CreateStore(llvm_rt_elem, llvm_rt_elem_ptr);
     }
+
+    return ctx->Builder.CreateLoad(
+      llvm_rt_arr_ty, llvm_rt_arr_alloc, "array.repeated.result" + uid);
   }
 
   // Comptime array creation. This pathway generates the element once as a

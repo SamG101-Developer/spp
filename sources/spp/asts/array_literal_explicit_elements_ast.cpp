@@ -186,7 +186,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   using spp::utils::Uid;
 
   // Runtime allocation. This pathway generates each element and
-  // then uses alloca into the entry block of the function.
+  // then uses alloca into the entry block of the function. Unless
+  // every element itself is constant then it can use constant
+  // array to optimize away the GEPs.
   if (not ctx->InConstantContext) {
     // Collect the llvm generated versions of the elements, ensuring
     // the validity of each element (debug only).
@@ -205,6 +207,26 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(
       llvm_rt_elem_ty, llvm_rt_elems.Len());
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
+
+    // If every element came back a constant then so is the array, and
+    // it can be produced as a value rather than materialised, use the
+    // equivalent to the constant path.
+    const auto all_elems_constant = genex::all_of(llvm_rt_elems, [&](auto const *llvm_rt_elem) {
+      return llvm::isa<llvm::Constant>(llvm_rt_elem) and llvm_rt_elem->getType() == llvm_rt_elem_ty;
+    });
+
+    if (all_elems_constant) {
+      auto llvm_ct_elems = Vec<llvm::Constant*>{};
+      llvm_ct_elems.Reserve(llvm_rt_elems.Len());
+      for (auto *llvm_rt_elem : llvm_rt_elems) {
+        const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
+          llvm_rt_elem);
+        SPP_ASSERT(llvm_ct_elem != nullptr);
+        llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+      }
+      return llvm::ConstantArray::get(
+        llvm_rt_arr_ty, llvm_ct_elems.ToStdVector());
+    }
 
     // Allocate the array into the enclosing function using the uniform
     // entry alloca function.
