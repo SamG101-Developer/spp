@@ -221,8 +221,8 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // No generation for $ types.
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto llvm_type = codegen::GetLlvmTypeOf(
+    *Type, *sm->CurrentScope, ctx);
 
   // Generate the value in a constant context. Can be nullptr from
   // "cmp" generic parameter placeholder -> use the null value for

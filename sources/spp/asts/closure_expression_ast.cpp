@@ -190,8 +190,9 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   // It needs a variable binding at the top (ie allow "let a = env.a";
   // function sig is "(env: $ClosureX, ...params: Params) -> RetType").
   auto llvm_param_types = PcGroup->ParamGroup->GetAllParams()
-    | genex::views::transform([&](auto const &param) { return sm->CurrentScope->GetTypeSymbol(param->Type.get()); })
-    | genex::views::transform([&](auto const &param) { return codegen::GetLlvmType(*param, ctx); })
+    | genex::views::transform([&](auto const &param) {
+      return codegen::GetLlvmTypeOf(*param->Type, *sm->CurrentScope, ctx);
+    })
     | genex::to<Vec>();
   llvm_param_types.Insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
   const auto llvm_ret_ty = codegen::GetLlvmTypeOf(*_RetType, *sm->CurrentScope, ctx);
