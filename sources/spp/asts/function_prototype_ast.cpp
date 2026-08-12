@@ -150,10 +150,15 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     const auto llvm_fun_type = llvm::FunctionType::get(
       llvm_ret_type, llvm_param_types.ToStdVector(), false);
 
-    // Create the LLVM function and add it to the context.
+    // Create the LLVM function and add it to the context. An ffi
+    // function is declared under the symbol its annotation names,
+    // because that is what the shared library exports and what
+    // the linker will resolve against. Everything else gets the
+    // S++ mangled name.
+    const auto ffi_symbol = GetFfiSymbolName();
     const auto created_llvm_func = llvm::Function::Create(
       llvm_fun_type, llvm::Function::ExternalLinkage,
-      codegen::mangle::mangle_fun_name(*sm->CurrentScope, *this),
+      ffi_symbol.empty() ? codegen::mangle::mangle_fun_name(*sm->CurrentScope, *this) : ffi_symbol,
       ctx->Module.get());
     const auto func = MakeShared<codegen::LlvmFuncWrapper>(created_llvm_func);
 
@@ -433,7 +438,9 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Apply constraints in the types.
+  // Apply constraints in the types. Force re-analysis
+  // post sup-scope attachment, but before stage 7, to remain
+  // order agnostic.
   for (auto const &param : FnParamGroup->GetAllParams()) {
     param->Type->ResetCache();
     param->Type->Stage7_AnalyseSemantics(sm, meta);
@@ -456,10 +463,17 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     }
   }
 
-  // If this is a !compiler_builtin function, swap in the lowered implementation now (stage 6), so that the lowered
-  // (comptime) body is available to any dependent Stage9_CompTimeResolve regardless of definition order. Doing this in
-  // Stage7 made it order-dependent: a comptime call site (eg `[a; 1_uz + 2_uz]` lowering to `intrinsics::add`) could be
-  // resolved before the target prototype's Stage7 had run, leaving no lowered impl to evaluate.
+  // If this is a !compiler_builtin function, swap in the lowered
+  // implementation now (stage 6), so that the lowered (comptime)
+  // body is available to any stage 9 call regardless of definition
+  // order.
+  _InstallLoweredImpl(sm);
+  sm->MoveOutOfCurrentScope();
+}
+
+auto spp::asts::FunctionPrototypeAst::_InstallLoweredImpl(
+  ScopeManager *sm)
+  -> void {
   if (BuiltinAnnotation) {
     const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
 
@@ -489,9 +503,6 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
       TokCmp != nullptr and analyse::utils::builtins::kBuiltinFuncs.at(name).cmp_fn == nullptr,
       {sm->CurrentScope}, ERR_ARGS(*TokCmp, err2));
   }
-
-  // Move out of the function scope, as it is now complete.
-  sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
@@ -599,6 +610,17 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   const auto llvm_func = GetLlvmFunc();
   const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
 
+  // An "@ffi" function is a declaration and will receive its
+  // implementation from the linker. Nothing needs to be emitted
+  // into it.
+  if (FfiAnnotation != nullptr) {
+    ctx->Builder.ClearInsertionPoint();
+    const auto ffi_final_scope = sm->CurrentScope->FinalChildScope();
+    while (sm->CurrentScope != ffi_final_scope) { sm->MoveToNextScope(false); }
+    sm->MoveOutOfCurrentScope();
+    return nullptr;
+  }
+
   // Add the entry block to the function.
   const auto entry_bb = llvm::BasicBlock::Create(
     *ctx->Context, "entry", llvm_func_target);
@@ -673,6 +695,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     const auto current_iter = tm.CurrentIterator();
 
     generic_proto->Impl = std::move(generic_proto->Source.OriginalImpl);
+    generic_proto->_InstallLoweredImpl(&tm);
     meta->Save();
     meta->ResolveBoundCompGenerics = true;
     meta->AssignmentTarget = nullptr;
@@ -688,9 +711,24 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   return nullptr;
 }
 
+auto spp::asts::FunctionPrototypeAst::GetFfiSymbolName() const
+  -> Str {
+  if (FfiAnnotation == nullptr) { return ""; }
+  const auto symbol_arg = FfiAnnotation->FnArgGroup->At("symbol");
+  if (symbol_arg == nullptr) { return ""; }
+  const auto symbol_literal = symbol_arg->Val->To<StringLiteralAst>();
+  return symbol_literal != nullptr ? symbol_literal->CppVal() : Str();
+}
+
 auto spp::asts::FunctionPrototypeAst::GetLlvmFunc() const
   -> Shared<codegen::LlvmFuncWrapper> {
   return *_LlvmFunc;
+}
+
+auto spp::asts::FunctionPrototypeAst::SetLlvmFunc(
+  Shared<codegen::LlvmFuncWrapper> func)
+  -> void {
+  *_LlvmFunc = std::move(func);
 }
 
 auto spp::asts::FunctionPrototypeAst::DetachLlvmFuncSlot()

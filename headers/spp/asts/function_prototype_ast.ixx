@@ -196,10 +196,28 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
+  /**
+   * The linkage name an @c \@ffi function is declared under: the @c symbol argument of its annotation, which is the
+   * name the shared library actually exports. An ffi function is never mangled the S++ way, because the definition it
+   * binds to was compiled by something else entirely (effectively: extern "C").
+   * @return The symbol name, or an empty string if this is not an ffi function.
+   */
+  SPP_ATTR_NODISCARD auto GetFfiSymbolName() const
+    -> Str;
+
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const
     -> Shared<codegen::LlvmFuncWrapper>;
 
   auto DetachLlvmFuncSlot()
+    -> void;
+
+  /**
+   * Point this prototype at a given llvm function. Used while a generic instantiation's body is emitted into a module
+   * other than the one that first declared it, so the body lands on that module's own copy of the symbol.
+   * @param[in] func The function to target, or null to clear.
+   */
+  auto SetLlvmFunc(
+    Shared<codegen::LlvmFuncWrapper> func)
     -> void;
 
   SPP_ATTR_NODISCARD auto PrintSignature(
@@ -279,6 +297,15 @@ protected:
 
   SPP_ATTR_NODISCARD auto _DeduceMockClassType() const
     -> Pair<Shared<TypeAst>, Str>;
+
+  /**
+   * Swap a @c \@compiler_builtin function's parsed body for the lowered one that dispatches into @c kBuiltinFuncs .
+   * Done for the prototype itself in Stage6, and any generic substitutions of it.
+   * @param[in] sm The scope manager, positioned on this prototype's own scope.
+   */
+  auto _InstallLoweredImpl(
+    ScopeManager *sm)
+    -> void;
 
   SPP_ATTR_NODISCARD auto _IsPureGeneric(
     ScopeManager *sm,
