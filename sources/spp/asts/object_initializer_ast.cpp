@@ -176,30 +176,41 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   using analyse::utils::type_utils::GetAllAttrs;
   using analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount;
 
-  // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
+  // Create an empty struct based on the llvm type - will never
+  // be a borrow so always stack allocated, not a pointer.
   const auto uid = "." + spp::utils::Uid(this);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
+
+  // Reached from a "cmp" initializer during Stage10, the type
+  // can still be the opaque placeholder it was registered as,
+  // so ensure it exists, and then get its LLVM implementation.
+  codegen::EnsureLlvmTypeComplete(*type_sym, *sm, ctx);
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
-  SPP_ASSERT(llvm_type != nullptr); // todo : could be from stage10 cmp, so generate here
+  SPP_ASSERT(llvm_type != nullptr);
 
   const auto attr_names = GetAllAttrs(*type_sym->FqName(), *sm)
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
 
-  // Types with no attributes have nothing to fill in, so they initialize to their zero value. This covers the
-  // compiler-known primitives (which don't even lower to structs) and the fat pointer types. Also the base cases for
-  // the recursive default initialization.
+  // Types with no attributes have nothing to fill in, so they
+  // initialize to their zero value. This covers the compiler-
+  // known primitives (which don't even lower to structs) and
+  // the fat pointer types. Also the base cases for the recursive
+  // default initialization.
   if (attr_names.IsEmpty()) { return llvm::Constant::getNullValue(llvm_type); }
 
-  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that interface's fat-pointer fields prepended ahead of
-  // its own declared attributes (see "ClassPrototypeAst::FillLlvmLayout") - an object initializer only ever
-  // fills in the class's own attributes, never those synthesized fields, so every declared index has to be
-  // shifted past them.
+  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that
+  // interface's fat-pointer fields prepended ahead of its own
+  // declared attributes. An object initializer only ever fills
+  // in the class's own attributes, never the synthesized fields,
+  // so every declared index has to be shifted past them.
   const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
     *type_sym->FqName(), *sm->CurrentScope);
 
-  // The physical field order isn't the declaration order, because the S++ layout re-orders the fields to minimize
-  // padding, so every attribute's index has to be resolved through the type's field index map.
+  // The physical field order isn't the declaration order, because
+  // the S++ layout re-orders the fields to minimize padding, so
+  // every attribute's index has to be resolved through the type's
+  // field index map.
   const auto field_index = [&](IdentifierAst const &name) {
     const auto decl_index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
     SPP_ASSERT(decl_index >= 0);
@@ -209,14 +220,46 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
 
   // Runtime pathway.
   if (not ctx->InConstantContext) {
+    // Every argument is generated up front, paired with the physical
+    // field it fills, because whether the aggregate as a whole is
+    // constant cannot be known until they have been.
+    auto arg_values = Vec<Pair<std::uint32_t, llvm::Value*>>();
+    arg_values.Reserve(ArgGroup->Args.Len());
+    for (auto const &arg : ArgGroup->Args) {
+      const auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
+      SPP_ASSERT(val != nullptr);
+      arg_values.EmplaceBack(MakePair(field_index(*arg->Name), val));
+    }
+
+    // If every field is filled by a constant of the right type then
+    // so is the aggregate, and it can be produced as a value rather
+    // than materialised.
+    const auto llvm_struct_type = llvm::dyn_cast<llvm::StructType>(llvm_type);
+    auto llvm_ct_fields = Vec<llvm::Constant*>(
+      llvm_struct_type != nullptr ? llvm_struct_type->getNumElements() : 0uz, nullptr);
+    auto all_fields_constant = llvm_struct_type != nullptr and arg_values.Len() == llvm_ct_fields.Len();
+
+    if (all_fields_constant) {
+      for (auto const &[index, val] : arg_values) {
+        if (not llvm::isa<llvm::Constant>(val) or val->getType() != llvm_struct_type->getElementType(index)) {
+          all_fields_constant = false;
+          break;
+        }
+        llvm_ct_fields[index] = llvm::cast<llvm::Constant>(val);
+      }
+    }
+
+    if (all_fields_constant and genex::all_of(llvm_ct_fields, [](auto const *f) { return f != nullptr; })) {
+      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_fields.ToStdVector());
+    }
+
     // Set each field value in the aggregate.
     const auto aggregate = codegen::LlvmEntryAlloca(
       llvm_type, "obj_init.aggregate" + uid, ctx);
-    for (auto const &arg : ArgGroup->Args) {
-      const auto attr_ptr = ctx->Builder.CreateStructGEP(llvm_type, aggregate, field_index(*arg->Name), arg->Name->Val);
-      const auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-
-      SPP_ASSERT(val != nullptr and attr_ptr != nullptr);
+    for (auto const &[index, val] : arg_values) {
+      const auto attr_ptr = ctx->Builder.CreateStructGEP(
+        llvm_type, aggregate, index, "obj_init.field" + uid);
+      SPP_ASSERT(attr_ptr != nullptr);
       ctx->Builder.CreateStore(val, attr_ptr);
     }
 
@@ -225,13 +268,24 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     return ctx->Builder.CreateLoad(llvm_type, aggregate, "obj_init.result" + uid);
   }
 
-  // Constant pathway.
-  // Set each field value in the constant, indexed by its physical position in the struct.
+  // Set each field value in the constant, indexed by its physical
+  // position in the struct. The vector is sized by the struct rather
+  // than by the attribute count (for fat pointer shifting).
   const auto struct_type = llvm::cast<llvm::StructType>(llvm_type);
-  auto comp_fields = Vec<llvm::Constant*>(attr_names.Len(), nullptr);
+  auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
     comp_fields[field_index(*arg->Name)] = llvm::cast<llvm::Constant>(comp_val);
+  }
+
+  // Anything the arguments did not cover - a synthesized fat-
+  // pointer field, or an attribute this initializer leaves out,
+  // still needs a value, because a constant has to give one for
+  // every field.
+  for (auto i = 0uz; i < comp_fields.Len(); ++i) {
+    if (comp_fields[i] != nullptr) { continue; }
+    comp_fields[i] = llvm::Constant::getNullValue(
+      struct_type->getElementType(static_cast<unsigned>(i)));
   }
 
   // Return the constant struct.
