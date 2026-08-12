@@ -230,6 +230,14 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   // For now, just skip scopes and return a nullptr.
   const auto parent_scope = sm->CurrentScope;
   meta->Save();
+
+  // Copy stage 8 meta reset changes to prevent leakage between
+  // info from outside the closure and inside the closure.
+  meta->AssignmentTarget = nullptr;
+  meta->AssignmentTargetType = nullptr;
+  meta->LlvmAssignmentTarget = nullptr;
+  meta->LlvmAssignmentTargetType = nullptr;
+
   PcGroup->Stage11_CodeGen(sm, meta, ctx);
   sm->MoveToNextScope();
   const auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
