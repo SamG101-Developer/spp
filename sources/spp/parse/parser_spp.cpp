@@ -1473,7 +1473,7 @@ auto spp::parse::ParserSpp::parse_closure_expression_parameter_group()
 auto spp::parse::ParserSpp::parse_closure_expression_parameter()
   -> Unique<asts::ClosureExpressionParameterAst> {
   PARSE_ALTERNATE(
-    p1, asts::ClosureExpressionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
+    p1, asts::ClosureExpressionParameterAst, parse_function_parameter_variadic,
     parse_function_parameter_required);
   return FORWARD_AST(p1);
 }
