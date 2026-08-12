@@ -82,11 +82,13 @@ auto spp::asts::CaseExpressionAst::PosEnd() const
 auto spp::asts::CaseExpressionAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<CaseExpressionAst>(
+  auto c = MakeUnique<CaseExpressionAst>(
     AstClone(TokCase),
     AstClone(Cond),
     AstClone(TokOf),
     AstCloneVec(Branches));
+  c->DesugaredFromIsExpr = DesugaredFromIsExpr;
+  return c;
 }
 
 auto spp::asts::CaseExpressionAst::ToString() const
@@ -208,7 +210,12 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   // and generate the condition. The expression flag is needed
   // when considering PHI node handling.
   const auto uid = "." + spp::utils::Uid(this);
-  const auto is_expr = meta->AssignmentTarget != nullptr;
+
+  // A "case" yields a value when something is catching it, or
+  // when it is the desugaring of an "is", which is a boolean
+  // expression wherever it appears, including the condition
+  // positions that assign nothing.
+  const auto is_expr = meta->AssignmentTarget != nullptr or DesugaredFromIsExpr;
   Cond->Stage11_CodeGen(sm, meta, ctx);
 
   // Get the function, and create the end basic block. We
@@ -228,13 +235,21 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     // belongs in the end block (where every branch body branches
     // to at the end of the branch's body), not the entry block.
     ctx->Builder.SetInsertPoint(case_end_bb);
-    ret_type = InferType(sm, meta);
 
     // Create a PHI handler with "n" reserved values, 1 for each
     // branch that might get entered for this "case" expression.
     const auto n = static_cast<unsigned>(Branches.Len());
-    const auto llvm_phi_ty = codegen::GetLlvmTypeOf(
-      *ret_type, *sm->CurrentScope, ctx);
+
+    // An "is" desugars into branches yielding "true" and "false", so the merged value is a boolean by construction.
+    // Inferring it instead would re-walk the branches with the scope manager standing where codegen left it rather
+    // than where analysis did, and a disagreement there surfaces as a type mismatch raised from the middle of code
+    // generation. "ret_type" stays null with it, which is what stops the branches trying to widen a bool into a
+    // variant on the way into the phi.
+    const auto llvm_phi_ty = [&] {
+      if (DesugaredFromIsExpr) { return static_cast<llvm::Type*>(llvm::Type::getInt1Ty(*ctx->Context)); }
+      ret_type = InferType(sm, meta);
+      return codegen::GetLlvmTypeOf(*ret_type, *sm->CurrentScope, ctx);
+    }();
     phi = ctx->Builder.CreatePHI(
       llvm_phi_ty, n, "case.phi" + uid);
   }

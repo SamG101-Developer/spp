@@ -49,6 +49,14 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
   UniqueVec<CaseExpressionBranchAst> Branches;
 
   /**
+   * Set when this @c case was produced by desugaring an @c is expression ("x is T(..)"), whose two branches yield
+   * @c true and @c false. This case always evaluates to a boolean, but typical usage omits the returning value when we
+   * need to actually catch it (e.g. a loop condition), so enforce that by this flag. Needed for the phi nodes.
+   * Todo: is this a more general problem? Does "loop case ... { }" fail to generate?,=
+   */
+  bool DesugaredFromIsExpr = false;
+
+  /**
    * Construct the CaseExpressionAst with the arguments matching the members.
    * @param[in] tok_case The token that represents the @c case keyword in the case expression.
    * @param[in] cond The condition of the case expression.
