@@ -22,6 +22,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -241,7 +242,22 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_end, {},
     {coro_handle, ctx->Builder.getFalse(), llvm::ConstantTokenNone::get(*ctx->Context)}, {}, "");
-  ctx->Builder.CreateRet(coro_handle);
+
+  // "Gen"/"GenOnce" lower to the bare handle, so the coroutine hands it straight back. A class superimposing one of
+  // them ("Iterator[T]") is a struct instead, carrying the handle in the fat-pointer field ahead of whatever it
+  // declares of its own, so the handle is packed into that shape before it leaves the function - the caller unwraps
+  // it again to drive the coroutine intrinsics.
+  const auto llvm_ret_type = llvm_func_target->getReturnType();
+  if (llvm_ret_type->isPointerTy()) {
+    ctx->Builder.CreateRet(coro_handle);
+  }
+  else {
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
+    const auto handle_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
+    const auto empty_ret_val = llvm::Constant::getNullValue(llvm_ret_type);
+    ctx->Builder.CreateRet(
+      ctx->Builder.CreateInsertValue(empty_ret_val, coro_handle, {handle_idx}, "coro.handle.wrap" + uid));
+  }
 
   meta->Restore();
   sm->MoveOutOfCurrentScope();
