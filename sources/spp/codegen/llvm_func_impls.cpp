@@ -19,6 +19,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
@@ -40,6 +41,10 @@ import std;
 auto spp::codegen::func_impls::simple_create_fn(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ret_ty, Vec<llvm::Type*> const &param_tys)
   -> llvm::Function* {
+  if (const auto declared = proto->GetLlvmFunc(); declared != nullptr and declared->Target != nullptr) {
+    return declared->Target;
+  }
+
   const auto uid = "." + utils::Uid();
   const auto name = mangle::mangle_fun_name(*sm->CurrentScope, *proto);
   const auto fn_ty = llvm::FunctionType::get(ret_ty, param_tys.ToStdVector(), false);
@@ -505,6 +510,18 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
   const auto from_alloca = sm->CurrentScope->GetVarSymbol(from_param.get(), true)->LlvmInfo->Alloca;
   const auto upto_alloca = sm->CurrentScope->GetVarSymbol(upto_param.get(), true)->LlvmInfo->Alloca;
 
+  const auto view_type = self_sym->Type->WithoutConvention();
+  const auto view_type_sym = sm->CurrentScope->GetTypeSymbol(view_type.get());
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+
+  const auto elem_type_arg = view_type->LastTypePart()->GnArgGroup->TypeAt("T");
+  const auto elem_llvm_type = elem_type_arg != nullptr
+    ? GetLlvmTypeOf(*elem_type_arg->Val, *sm->CurrentScope, ctx)
+    : llvm::Type::getInt8Ty(*ctx->Context);
+
+  const auto data_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 0);
+  const auto length_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 1);
+
   struct CustomExpr : asts::ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
 
@@ -512,32 +529,57 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
     decltype(upto_alloca) &_UptoAlloca;
     decltype(self_ptr) &_SelfPtr;
     decltype(uid) &_Uid;
+    llvm::StructType *_ViewTy;
+    llvm::Type *_ElemTy;
+    std::uint32_t _DataIdx;
+    std::uint32_t _LengthIdx;
 
     CustomExpr(
       decltype(from_alloca) &from_alloca, decltype(upto_alloca) &upto_alloca, decltype(self_ptr) &self_ptr,
-      decltype(uid) &uid)
-      : _FromAlloca(from_alloca), _UptoAlloca(upto_alloca), _SelfPtr(self_ptr), _Uid(uid) {}
+      decltype(uid) &uid, llvm::StructType *view_ty, llvm::Type *elem_ty, const std::uint32_t data_idx,
+      const std::uint32_t length_idx)
+      : _FromAlloca(from_alloca), _UptoAlloca(upto_alloca), _SelfPtr(self_ptr), _Uid(uid), _ViewTy(view_ty),
+        _ElemTy(elem_ty), _DataIdx(data_idx), _LengthIdx(length_idx) {}
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
-      // Read the integer values from these alloca storages, and
-      // use them for the GEP slicing. The borrow returned points
-      // to the same memory as the "self" view, just sliced.
-      const auto from_val = ctx->Builder.CreateLoad(
-        llvm::Type::getInt64Ty(*ctx->Context), _FromAlloca, "view.slice.from_val" + _Uid);
-      const auto upto_val = ctx->Builder.CreateLoad(
-        llvm::Type::getInt64Ty(*ctx->Context), _UptoAlloca, "view.slice.upto_val" + _Uid);
+      // Read the bounds out of the parameters' storage.
+      const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+      const auto from_val = ctx->Builder.CreateLoad(i64_ty, _FromAlloca, "view.slice.from_val" + _Uid);
+      const auto upto_val = ctx->Builder.CreateLoad(i64_ty, _UptoAlloca, "view.slice.upto_val" + _Uid);
 
-      // Perform the GEP slice to index the view whilst pointing
-      // to the same storage.
-      const auto slice = ctx->Builder.CreateGEP(
-        llvm::Type::getInt8Ty(*ctx->Context), _SelfPtr, {from_val, upto_val}, "view.slice.slice" + _Uid);
+      // The data the view spans, read out of its first field.
+      const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+      const auto self_data_ptr = ctx->Builder.CreateStructGEP(
+        _ViewTy, _SelfPtr, _DataIdx, "view.slice.self_data_ptr" + _Uid);
+      const auto self_data = ctx->Builder.CreateLoad(ptr_ty, self_data_ptr, "view.slice.self_data" + _Uid);
+
+      // A slice is a new view over the same storage: its data
+      // starts "from" elements along, and it is "upto - from"
+      // elements long. Indexing is over the element type, so
+      // that one index advances by one element rather than by
+      // one byte.
+      const auto slice_data = ctx->Builder.CreateGEP(
+        _ElemTy, self_data, {from_val}, "view.slice.data" + _Uid);
+      const auto slice_length = ctx->Builder.CreateSub(upto_val, from_val, "view.slice.length" + _Uid);
+
+      // The coroutine yields "&View[T]", so what leaves here
+      // is the address of that new view rather than the view
+      // itself. It lives in the frame, which the caller owns
+      // for as long as the borrow does.
+      const auto slice = LlvmEntryAlloca(_ViewTy, "view.slice.slice" + _Uid, ctx);
+      ctx->Builder.CreateStore(
+        slice_data, ctx->Builder.CreateStructGEP(_ViewTy, slice, _DataIdx, "view.slice.data_ptr" + _Uid));
+      ctx->Builder.CreateStore(
+        slice_length, ctx->Builder.CreateStructGEP(_ViewTy, slice, _LengthIdx, "view.slice.length_ptr" + _Uid));
 
       return slice;
     }
   };
 
   const auto mock_gen = MakeUnique<asts::GenExpressionAst>(
-    nullptr, nullptr, MakeUnique<CustomExpr>(from_alloca, upto_alloca, self_ptr, uid));
+    nullptr, nullptr, MakeUnique<CustomExpr>(
+      from_alloca, upto_alloca, self_ptr, uid,
+      view_llvm_type, elem_llvm_type, data_idx, length_idx));
   mock_gen->Stage11_CodeGen(sm, meta, ctx);
 }
 
@@ -564,7 +606,7 @@ auto spp::codegen::func_impls::simple_coro_view_index(
     decltype(uid) &_Uid;
 
     CustomExpr(
-      decltype(idx_alloca) &idx_alloca, decltype(self_ptr) &self_ptr, decltype(uid) &uid):
+      decltype(idx_alloca) &idx_alloca, decltype(self_ptr) &self_ptr, decltype(uid) &uid) :
       _IdxAlloca(idx_alloca), _SelfPtr(self_ptr), _Uid(uid) {}
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
@@ -1464,7 +1506,9 @@ auto spp::codegen::func_impls::std_intrinsics_ctlz(
 auto spp::codegen::func_impls::std_debug_breakpoint_internal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_unary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::debugtrap);
+  simple_create_fn(sm, proto, meta, ctx, ty, {});
+  ctx->Builder.CreateIntrinsic(llvm::Intrinsic::debugtrap, {}, {}, {}, "");
+  ctx->Builder.CreateRetVoid();
 }
 
 // =========================================================================================================
