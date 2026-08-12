@@ -29,3 +29,27 @@ auto spp::codegen::RunCoroLoweringPipeline(
   module_pm.addPass(llvm::createModuleToPostOrderCGSCCPassAdaptor(llvm::CoroAnnotationElidePass()));
   module_pm.run(llvm_mod, module_am);
 }
+
+auto spp::codegen::RunOptimizationPipeline(
+  void *llvm_module)
+  -> void {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  auto loop_am = llvm::LoopAnalysisManager();
+  auto func_am = llvm::FunctionAnalysisManager();
+  auto cgscc_am = llvm::CGSCCAnalysisManager();
+  auto module_am = llvm::ModuleAnalysisManager();
+
+  auto pass_builder = llvm::PassBuilder();
+  pass_builder.registerModuleAnalyses(module_am);
+  pass_builder.registerCGSCCAnalyses(cgscc_am);
+  pass_builder.registerFunctionAnalyses(func_am);
+  pass_builder.registerLoopAnalyses(loop_am);
+  pass_builder.crossRegisterProxies(loop_am, func_am, cgscc_am, module_am);
+
+  // Run per-module rather than with link-time optimization:
+  // each s++ module is its own llvm module, and they are not
+  // combined here.
+  auto module_pm = pass_builder.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
+  module_pm.run(llvm_mod, module_am);
+}
