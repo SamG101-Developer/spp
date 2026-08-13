@@ -460,6 +460,102 @@ auto spp::codegen::func_impls::simple_coro_iter(
   }
 }
 
+auto spp::codegen::func_impls::simple_coro_view_iter(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const bool reverse, const bool borrow) -> void {
+  // A view is a "{data, length}" pair, and the length is a runtime value, so there is no count to unroll against the
+  // way there is for an array. This emits the loop instead, with the suspend point inside the body: the counter is an
+  // entry-block alloca, so the coroutine passes give it a frame slot and it holds its value across each suspend.
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto uid = "." + utils::Uid();
+  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "view.iter.self" + uid);
+
+  const auto view_type = self_sym->Type->WithoutConvention();
+  const auto view_type_sym = sm->CurrentScope->GetTypeSymbol(view_type.get());
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+
+  const auto elem_type_arg = view_type->LastTypePart()->GnArgGroup->TypeAt("T");
+  const auto elem_llvm_type = elem_type_arg != nullptr
+    ? GetLlvmTypeOf(*elem_type_arg->Val, *sm->CurrentScope, ctx)
+    : llvm::Type::getInt8Ty(*ctx->Context);
+
+  const auto data_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 0);
+  const auto length_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 1);
+
+  // Both fields are read once, up front: the view itself is not modified by iterating it, so re-reading them each
+  // time around would only add loads the optimizer has to prove redundant.
+  const auto data = ctx->Builder.CreateLoad(
+    ptr_ty, ctx->Builder.CreateStructGEP(view_llvm_type, self_ptr, data_idx, "view.iter.data_ptr" + uid),
+    "view.iter.data" + uid);
+  const auto length = ctx->Builder.CreateLoad(
+    i64_ty, ctx->Builder.CreateStructGEP(view_llvm_type, self_ptr, length_idx, "view.iter.length_ptr" + uid),
+    "view.iter.length" + uid);
+
+  // Counted down from the length when reversed, so that one counter drives both directions and neither can run past
+  // the end: forwards yields index "i" while "i < length", backwards yields index "i - 1" while "i > 0".
+  const auto counter = LlvmEntryAlloca(i64_ty, "view.iter.counter" + uid, ctx);
+  ctx->Builder.CreateStore(
+    reverse ? static_cast<llvm::Value*>(length) : llvm::ConstantInt::get(i64_ty, 0), counter);
+
+  const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+  const auto cond_bb = llvm::BasicBlock::Create(*ctx->Context, "view.iter.cond" + uid, fn);
+  const auto body_bb = llvm::BasicBlock::Create(*ctx->Context, "view.iter.body" + uid, fn);
+  const auto exit_bb = llvm::BasicBlock::Create(*ctx->Context, "view.iter.exit" + uid, fn);
+
+  ctx->Builder.CreateBr(cond_bb);
+  ctx->Builder.SetInsertPoint(cond_bb);
+  const auto counter_val = ctx->Builder.CreateLoad(i64_ty, counter, "view.iter.i" + uid);
+  const auto more = reverse
+    ? ctx->Builder.CreateICmpUGT(counter_val, llvm::ConstantInt::get(i64_ty, 0), "view.iter.more" + uid)
+    : ctx->Builder.CreateICmpULT(counter_val, length, "view.iter.more" + uid);
+  ctx->Builder.CreateCondBr(more, body_bb, exit_bb);
+
+  // The index the current step yields, filled in below and read by the yielded expression when the "gen" runs.
+  auto index = static_cast<llvm::Value*>(nullptr);
+
+  struct CustomExpr : asts::ExpressionAst {
+    SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+
+    decltype(index) &_Index;
+    decltype(data) &_Data;
+    decltype(uid) &_Uid;
+    llvm::Type *_ElemTy;
+    bool _Borrow;
+
+    CustomExpr(
+      decltype(index) &index, decltype(data) &data, decltype(uid) &uid, llvm::Type *elem_ty, const bool borrow)
+      : _Index(index), _Data(data), _Uid(uid), _ElemTy(elem_ty), _Borrow(borrow) {}
+
+    auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *, LlvmCtx *ctx) -> llvm::Value* override {
+      // Indexed over the element type, so one step of the index advances by one element rather than by one byte.
+      const auto shift = ctx->Builder.CreateGEP(_ElemTy, _Data, {_Index}, "view.iter.elem_ptr" + _Uid);
+      return _Borrow
+        ? shift
+        : static_cast<llvm::Value*>(ctx->Builder.CreateLoad(_ElemTy, shift, "view.iter.elem" + _Uid));
+    }
+  };
+
+  const auto mock_gen = MakeUnique<asts::GenExpressionAst>(
+    nullptr, nullptr, MakeUnique<CustomExpr>(index, data, uid, elem_llvm_type, borrow));
+
+  ctx->Builder.SetInsertPoint(body_bb);
+  const auto next = reverse
+    ? ctx->Builder.CreateSub(counter_val, llvm::ConstantInt::get(i64_ty, 1), "view.iter.next" + uid)
+    : ctx->Builder.CreateAdd(counter_val, llvm::ConstantInt::get(i64_ty, 1), "view.iter.next" + uid);
+  index = reverse ? next : counter_val;
+
+  // Advanced before suspending, so the slot already holds the next step when the caller resumes.
+  ctx->Builder.CreateStore(next, counter);
+  mock_gen->Stage11_CodeGen(sm, meta, ctx);
+
+  // The "gen" leaves the builder in the block the coroutine resumes into, which is where the loop closes - branching
+  // from "body_bb" would put the back edge before the suspend point instead of after it.
+  ctx->Builder.CreateBr(cond_bb);
+  ctx->Builder.SetInsertPoint(exit_bb);
+}
+
 auto spp::codegen::func_impls::simple_coro_non_null_fwd(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void {
   // The NonNull[T] type can forward to &T/&mut T - modelled
@@ -1744,25 +1840,25 @@ auto spp::codegen::func_impls::std_view_slice_mut(
 auto spp::codegen::func_impls::std_view_iter_ref(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
-  simple_coro_iter(sm, proto, meta, ctx, false, true);
+  simple_coro_view_iter(sm, proto, meta, ctx, false, true);
 }
 
 auto spp::codegen::func_impls::std_view_iter_mut(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
-  simple_coro_iter(sm, proto, meta, ctx, false, true);
+  simple_coro_view_iter(sm, proto, meta, ctx, false, true);
 }
 
 auto spp::codegen::func_impls::std_view_reverse_iter_ref(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
-  simple_coro_iter(sm, proto, meta, ctx, true, true);
+  simple_coro_view_iter(sm, proto, meta, ctx, true, true);
 }
 
 auto spp::codegen::func_impls::std_view_reverse_iter_mut(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
   -> void {
-  simple_coro_iter(sm, proto, meta, ctx, true, true);
+  simple_coro_view_iter(sm, proto, meta, ctx, true, true);
 }
 
 auto spp::codegen::func_impls::std_non_null_read(

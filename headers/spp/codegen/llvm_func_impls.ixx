@@ -188,15 +188,31 @@ export namespace spp::codegen::func_impls {
    * Shared codegen for a coroutine that hands out the elements of a fixed-size, inline array one at a time, moving
    * each element out via a "gen"-style suspend/resume point. The array's length is a compile-time constant, so this
    * unrolls into one yield per element (forwards or backwards) instead of a runtime loop, matching exactly what a
-   * hand-written "gen self[i]" loop would lower to. Used by @c std_array_iter_mov and @c std_array_reverse_iter_mov;
-   * a future "View" iterator (over a runtime-length pointer/length pair) will need a different, loop-based helper
-   * since its length is not known at compile time.
+   * hand-written "gen self[i]" loop would lower to. Used by @c std_array_iter_mov and @c std_array_reverse_iter_mov
+   * only; a "View" iterates a runtime-length pointer/length pair and so cannot be unrolled - see
+   * @c simple_coro_view_iter .
    * @param proto The coroutine prototype (must be a @c CoroutinePrototypeAst); its env/resume function must already
    * be built by the time this runs (true when called from @c FunctionImplementationLoweredAst::Stage11_CodeGen).
    * @param ctx The llvm context.
    * @param reverse If true, yields from the last element to the first; otherwise first to last.
    */
   auto simple_coro_iter(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, bool reverse, bool borrow) -> void;
+
+  /**
+   * Shared codegen for a coroutine that hands out the elements of a @c View one at a time. A view is a
+   * "{data, length}" pair whose length is only known at runtime, so unlike @c simple_coro_iter this cannot unroll
+   * into one yield per element: it emits a real loop with the suspend point inside it, which is what a hand-written
+   * "gen self[i]" over a runtime bound would lower to.
+   *
+   * The counter lives in an entry-block alloca, so the coroutine passes give it a frame slot and it survives the
+   * suspend - the loop resumes where it left off rather than restarting.
+   * @param proto The coroutine prototype (must be a @c CoroutinePrototypeAst); its env/resume function must already
+   * be built by the time this runs (true when called from @c FunctionImplementationLoweredAst::Stage11_CodeGen).
+   * @param ctx The llvm context.
+   * @param reverse If true, yields from the last element to the first; otherwise first to last.
+   * @param borrow If true, yields the address of each element rather than the element's value.
+   */
+  auto simple_coro_view_iter(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, bool reverse, bool borrow) -> void;
 
   /**
    * Shared codegen for "NonNull[T]::fwd_ref"/"fwd_mut": "(&self) -> GenOnce[&T]" (or "&mut T"). "NonNull[T]" lowers to
