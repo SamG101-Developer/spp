@@ -19,32 +19,16 @@ prune() {
   done
 }
 
-# Read a pinned value straight out of .github/versions.env. The loader is not used here: this job installs no toolchain,
-# so it has no reason to publish the whole file into the environment.
-pinned() { grep -oP "^$1=\K.*" .github/versions.env; }
+# Every cache this repository writes now ends in a segment that changes whenever its contents should: a commit sha for
+# the compiler caches, which are reached through a prefix restore-key that picks the newest match, and a hash of the
+# defining files for the rest.
+for prefix in spp-libs- cc- doxygen-; do
+  echo "keeping the newest ${prefix} cache per branch and key prefix"
 
-# The dependency cache key ends in a hash of the files that decide what the tree contains (see "setup-toolchain"), so an
-# entry stops being reachable the moment any of them changes.
-echo "keeping the newest spp-libs cache per branch and key prefix"
-prune '[.[] | select(.key | startswith("spp-libs-"))]
-       | group_by([.ref, (.key | sub("-[^-]*$"; ""))])
-       | map(sort_by(.createdAt) | .[:-1])
-       | flatten | .[] | [.id, "\(.key) on \(.ref)"] | @tsv'
-
-# The compiler caches end in a commit sha and are restored through a prefix restore-key that picks the newest match, so
-# only the newest entry behind a given prefix can ever be hit again. Group on (ref, prefix), keep the newest of each
-# group, delete what is behind it.
-echo "keeping the newest cc- cache per branch and key prefix"
-prune '[.[] | select(.key | startswith("cc-"))]
-       | group_by([.ref, (.key | sub("-[^-]*$"; ""))])
-       | map(sort_by(.createdAt) | .[:-1])
-       | flatten | .[] | [.id, "\(.key) on \(.ref)"] | @tsv'
-
-# The doxygen cache key carries the release version and DOXYGEN_CACHE_VERSION, both pinned in versions.env, so exactly
-# one entry per runner is reachable and every other one is dead.
-keep="-$(pinned DOXYGEN_VERSION)-v$(pinned DOXYGEN_CACHE_VERSION)"
-echo "keeping doxygen caches ending in '${keep}'"
-
-# shellcheck disable=SC2016  # $keep is a jq variable bound by --arg below; the shell must not expand it.
-prune '.[] | select(.key | startswith("doxygen-")) | select(.key | endswith($keep) | not) | [.id, .key] | @tsv' \
-  --arg keep "$keep"
+  # shellcheck disable=SC2016  # $p is a jq variable bound by --arg below; the shell must not expand it.
+  prune '[.[] | select(.key | startswith($p))]
+         | group_by([.ref, (.key | sub("-[^-]*$"; ""))])
+         | map(sort_by(.createdAt) | .[:-1])
+         | flatten | .[] | [.id, "\(.key) on \(.ref)"] | @tsv' \
+    --arg p "$prefix"
+done
