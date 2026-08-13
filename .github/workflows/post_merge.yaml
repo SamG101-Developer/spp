@@ -30,6 +30,7 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
+          disable-sudo: true
 
       # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
       # secured under the above "harden-runner" step.

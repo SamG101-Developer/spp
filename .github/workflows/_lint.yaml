@@ -23,6 +23,7 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
+          disable-sudo: true
 
       # Enforce the regex rules on the PR title and description. There is a preset list of valid types of PRs, that
       # should cover all PRs. Description regex is defined here too.
@@ -60,6 +61,7 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
+          disable-sudo: true
 
       # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
       # secured under the above "harden-runner" step.
