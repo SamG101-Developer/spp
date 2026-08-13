@@ -56,7 +56,7 @@ jobs:
         with:
           # SPP_DOXYGEN_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
           path: ~/.tools/doxygen
-          key: doxygen-${{ runner.os }}-${{ env.DOXYGEN_VERSION }}-v${{ env.DOXYGEN_CACHE_VERSION }}
+          key: doxygen-${{ runner.os }}-${{ hashFiles('.github/versions.env', '.github/scripts/lib/load-versions.sh', '.github/scripts/docs/install-doxygen.sh') }}
 
       - name: Install Doxygen (cache miss)
         if: steps.doxygen-cache.outputs.cache-hit != 'true'
