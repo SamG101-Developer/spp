@@ -74,6 +74,31 @@ import spp.utils.types;
 import spp.utils.uid;
 import genex;
 
+namespace {
+  /**
+   * Temporarily re-parent a scope, putting the original parent back however the enclosing block is left - including by
+   * a thrown semantic error.
+   *
+   * Overload resolution catches per-candidate exceptions, so a bare restore after a call that raises leaves the scope
+   * tree permanently wrongly-parented: every later lookup through that scope silently resolves against the wrong
+   * ancestors, with no failure at the point the damage is done.
+   */
+  struct ScopeParentSwap {
+    spp::analyse::scopes::Scope *Scope;
+    spp::analyse::scopes::Scope *Original;
+
+    ScopeParentSwap(spp::analyse::scopes::Scope *const scope, spp::analyse::scopes::Scope *const replacement) :
+      Scope(scope), Original(scope->Parent) { scope->Parent = replacement; }
+
+    ~ScopeParentSwap() { Scope->Parent = Original; }
+
+    ScopeParentSwap(ScopeParentSwap const&) = delete;
+    ScopeParentSwap(ScopeParentSwap&&) = delete;
+    auto operator=(ScopeParentSwap const&) -> ScopeParentSwap& = delete;
+    auto operator=(ScopeParentSwap&&) -> ScopeParentSwap& = delete;
+  };
+}
+
 auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
   asts::ExpressionAst const &lhs,
   scopes::ScopeManager &sm,
@@ -279,10 +304,20 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
         // version is kept.
         if (o1.Proto != o2.Proto
           and target_scope->DepthDiff(o1.FnScope) < target_scope->DepthDiff(o2.FnScope)) {
-          // Todo: the override check reads the prototype's grandparent scope, so the candidate's own scope is spliced
-          //  in and put back around it. Give "CheckForConflictingOverride" the scope instead of borrowing the tree.
-          const auto temp = o1.Proto->GetAstScope()->Parent->Parent;
-          o1.Proto->GetAstScope()->Parent->Parent = const_cast<scopes::Scope*>(o1.FnScope);
+          // The prototype reached here belongs to the template's subtree, not to the instantiation the overload was
+          // found through: a substituted "sup" scope shares its ast node with the template it was cloned from (see
+          // "Scope"'s copy constructor), so reading the block's members off that ast yields the template's, whose
+          // scopes sit under the template's own generic parameters - unbound. Splicing the found scope in is what
+          // makes the type comparison below resolve against this instantiation's bindings instead.
+          //
+          // Todo: this is a band-aid over one ast node being aliased by a template scope and its instantiations, which
+          //  is what makes "GetAstScope" ambiguous in the first place. The instantiation owning its own subtree would
+          //  remove the need for it entirely; passing the scope to "CheckForConflictingOverride" would not, because
+          //  the comparison inside resolves through that scope's *ancestors*, which is what is really being supplied.
+          //  There is no substituted block scope to use instead - "CreateGenericSupScope" clones a block's own symbols
+          //  but not its subtree, so the instantiation has no member scopes of its own.
+          const auto swap = ScopeParentSwap(
+            o1.Proto->GetAstScope()->Parent, const_cast<scopes::Scope*>(o1.FnScope));
 
           auto conflict =
             CheckForConflictingOverride(*o1.Proto->GetAstScope()->Parent, o2.FnScope, *o1.Proto, sm, meta);
@@ -291,7 +326,6 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
               return info.Proto == conflict;
             });
           }
-          o1.Proto->GetAstScope()->Parent->Parent = temp;
         }
       }
     }
