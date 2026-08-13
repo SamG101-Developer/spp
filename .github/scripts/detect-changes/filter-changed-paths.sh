@@ -13,19 +13,21 @@ if [ -z "$BASE_SHA" ] \
   exit 0
 fi
 
-# Detect changed files between the base and head commits, and check if any of them match the pattern of files that can
-# affect a build, test or analysis result. If any do, report `code=true`, otherwise report `code=false`.
+# Detect changed files between the base and head commits, and decide from them whether anything could have moved a
+# build, test or analysis result.
 files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
 echo "Changed files:"
 echo "$files"
 
-# Keep this pattern in step with the directories the build actually reads. Any changes to headers, sources, tests or
-# main.cpp invokes a new build. So does the workflow configs because they workflow outputs may change.
-pattern='^(headers/|sources/|tests/|main\.cpp$|CMakeLists\.txt$'
-pattern+='|\.github/(workflows|actions|scripts)/)'
+# The inert directories contain changes that don't affect the build, test or analysis results. The inert files are
+# generally either documentation or configuration.
+inert='^(docs/|\.vale/|\.idea/|[^/]*\.md$|\.gitignore$)'
 
-# Check for a grep output and return the flag if a code change has been detected by the modified files.
-if echo "$files" | grep -qE "$pattern"; then
+# grep -v exits 0 as soon as one line fails to match, i.e. as soon as one changed path is not inert.
+if [ -z "$files" ]; then
+  echo "no files changed"
+  echo "code=false" >> "$GITHUB_OUTPUT"
+elif echo "$files" | grep -qvE "$inert"; then
   echo "code=true" >> "$GITHUB_OUTPUT"
 else
   echo "code=false" >> "$GITHUB_OUTPUT"
