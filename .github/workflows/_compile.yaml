@@ -113,7 +113,7 @@ jobs:
 
       # Save the build tree to the cache.
       - name: Save build tree
-        if: always() && inputs.cache-build-tree
+        if: ${{ !cancelled() && inputs.cache-build-tree }}
         continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
