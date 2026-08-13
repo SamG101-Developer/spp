@@ -12,10 +12,11 @@ if ! [ -x "$binary" ]; then
 fi
 
 # Ensure the gtest-parallel test runner script itself is present. The fetch step is skipped on a cache hit alone, so a
-# cache entry that was saved from a half-finished clone leaves the directory in place with the script missing.
+# cache entry that was saved from a half-finished checkout leaves the directory in place with the script missing.
 runner="${RUNNER_TEMP}/gtest-parallel/gtest-parallel"
 if ! [ -f "$runner" ]; then
-  echo "::error::gtest-parallel not found at $runner; bump GTEST_PARALLEL_CACHE_VERSION in .github/versions.env"
+  echo "::error::gtest-parallel not found at $runner; the cache entry for GTEST_PARALLEL_COMMIT is incomplete."
+  echo "::error::Delete it from the repository's Actions caches, or move the pin in .github/versions.env."
   exit 1
 fi
 
