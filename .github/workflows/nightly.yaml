@@ -26,9 +26,9 @@ jobs:
     with:
       full-scan: true
 
-  # The dependency cache key carries the UTC date and SPP_LIBS_CACHE_VERSION (see .github/actions/setup-toolchain), so
-  # the moment either changes the previous entries never used, but stay in the cache. The same goes for every compiler
-  # cache behind the newest one on its branch. This builds up to the 10GB limit, so prune once stale.
+  # Superseded entries are never read again but still count against the repository's 10GB budget until they are
+  # evicted: every compiler cache behind the newest one on its branch, every dependency tree whose key hash has moved
+  # on, and every Doxygen build older than the pinned release. Prune them once they are stale.
   prune-caches:
     name: Prune Stale Caches
     runs-on: ubuntu-latest
@@ -43,6 +43,7 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
+          disable-sudo: true
 
       # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
       # secured under the above "harden-runner" step.
