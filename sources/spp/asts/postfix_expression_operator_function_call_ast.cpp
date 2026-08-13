@@ -484,17 +484,56 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     llvm_call->addFnAttr(llvm::Attribute::CoroElideSafe);
   }
 
-  if (is_coroutine_call and meta->LlvmAssignmentTarget != nullptr) {
+  // A generator is either bound to something ("let g = f()",
+  // so a later "res" can find it again) or collapsed on the
+  // spot into the one value it yields ("v[0]" reads as the
+  // element, not as a generator over it). Both need the frame's
+  // promise, which is reached through the handle.
+  const auto auto_resume = _IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume;
+  if (is_coroutine_call and (meta->LlvmAssignmentTarget != nullptr or auto_resume)) {
+    auto llvm_coro_handle = static_cast<llvm::Value*>(llvm_call);
+    if (not llvm_call->getType()->isPointerTy()) {
+      const auto coro_ret_type_sym =
+        _OverloadInfo->OverloadScope->GetTypeSymbol(_OverloadInfo->Proto->ReturnType.get());
+      const auto handle_idx = codegen::GetPhysicalFieldIndex(
+        *coro_ret_type_sym->LlvmInfo, 0);
+      llvm_coro_handle = ctx->Builder.CreateExtractValue(
+        llvm_call, {handle_idx}, "coro.handle" + uid);
+    }
+
     const auto llvm_promise_align = llvm::ConstantInt::get(
       llvm::Type::getInt32Ty(*ctx->Context), alignof(std::max_align_t));
     const auto llvm_gen_state = ctx->Builder.CreateIntrinsic(
-      llvm::Intrinsic::coro_promise, {}, {llvm_call, llvm_promise_align, ctx->Builder.getFalse()}, {},
+      llvm::Intrinsic::coro_promise, {}, {llvm_coro_handle, llvm_promise_align, ctx->Builder.getFalse()}, {},
       "coro.gen.state" + uid);
 
-    auto generator = MakeUnique<codegen::LlvmGenerator>();
-    generator->Handle = llvm_call;
-    generator->State = llvm_gen_state;
-    ctx->LlvmGenerators[meta->LlvmAssignmentTarget] = std::move(generator);
+    if (meta->LlvmAssignmentTarget != nullptr) {
+      auto generator = MakeUnique<codegen::LlvmGenerator>();
+      generator->Handle = llvm_coro_handle;
+      generator->State = llvm_gen_state;
+      ctx->LlvmGenerators[meta->LlvmAssignmentTarget] = std::move(generator);
+    }
+
+    // A "GenOnce" coroutine called in an expression position never
+    // reaches the caller as a generator - "InferType" reports the
+    // "Yield" type for it, so it is resumed right here and the
+    // yielded value is what the call evaluates to.
+    if (auto_resume) {
+      const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
+      ctx->Builder.CreateIntrinsic(llvm::Intrinsic::coro_resume, {}, {llvm_coro_handle}, {}, "");
+      const auto llvm_yield_slot = ctx->Builder.CreateStructGEP(
+        llvm_gen_state_ty, llvm_gen_state,
+        std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT), "gen.yield.slot" + uid);
+
+      // A borrowed yield ("&T", which is what an indexing coroutine hands back) is a pointer to the borrowee, and
+      // resolving the type to its symbol loses the convention that says so - ask the type itself instead.
+      const auto yield_type = InferType(sm, meta);
+      const auto llvm_yield_type = yield_type->GetConvention() != nullptr
+        ? llvm::PointerType::get(*ctx->Context, 0)
+        : codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(yield_type.get()), ctx);
+      return ctx->Builder.CreateLoad(
+        llvm_yield_type, llvm_yield_slot, "gen.yield.value" + uid);
+    }
   }
 
   return llvm_call;
