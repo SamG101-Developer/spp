@@ -37,12 +37,18 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # For CodeQL, the GCC 16 build is used, so reuse the setup action with no cache to force a full rebuild.
+      # setup-toolchain loads versions.env itself, but not until after its own `with:` has been evaluated, so the
+      # loader runs here as well to put GCC_VERSION within reach of the step below.
+      - name: Load pinned versions
+        run: bash .github/scripts/lib/load-versions.sh
+
+      # CodeQL analyses the blocking toolchain's build, so it tracks GCC_VERSION rather than naming a compiler of its
+      # own. No compiler cache: a cache hit skips the real compiler, and the extractor never sees the translation unit.
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
           compiler: gcc
-          version: "16"
+          version: ${{ env.GCC_VERSION }}
           compiler-cache: "false"
 
       # Install the CodeQL action, with C/C++ support, and specify the query configurations. This is the only CodeQL
@@ -94,14 +100,23 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # This job installs no toolchain, but the scanner's pinned release and digest live in versions.env with
+      # everything else, so the loader still has to run before the installation step can read them.
+      - name: Load pinned versions
+        run: bash .github/scripts/lib/load-versions.sh
+
       - name: Install osv-scanner
         run: bash .github/scripts/security/install-osv-scanner.sh
 
+      # Vulnerabilities are a warning and a SARIF entry; a scanner that could not run is a failure. See the script for
+      # why those two are separated and for the one-line change that makes findings blocking.
       - name: Scan dependencies
-        continue-on-error: true
-        run: osv-scanner scan --recursive --format sarif --output osv.sarif ./
+        run: bash .github/scripts/security/scan-dependencies.sh osv.sarif
 
+      # Still uploaded when an earlier step failed, so a partial report is not thrown away, but only if a report
+      # actually exists: without the guard this step fails over a missing file and buries the real error above it.
       - name: Upload OSV results
+        if: always() && hashFiles('osv.sarif') != ''
         uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:
           sarif_file: osv.sarif

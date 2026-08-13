@@ -24,12 +24,12 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ${{ runner.temp }}/gtest-parallel
-        key: gtest-parallel-${{ runner.os }}-v${{ env.GTEST_PARALLEL_CACHE_VERSION }}
+        key: gtest-parallel-${{ runner.os }}-${{ env.GTEST_PARALLEL_COMMIT }}
 
     - name: Fetch gtest-parallel (cache miss)
       if: steps.gtp-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: git clone --depth 1 https://github.com/google/gtest-parallel.git "${RUNNER_TEMP}/gtest-parallel"
+      run: bash .github/scripts/run-tests/fetch-gtest-parallel.sh
 
     - name: Run tests
       shell: bash

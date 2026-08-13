@@ -124,41 +124,40 @@ runs:
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-linux.sh
 
-    # CMAKE_LINKER_TYPE=LLD makes GCC pass -fuse-ld=lld, and GCC only ever looks for a
-    # plain 'ld.lld' on PATH.
+    # CMAKE_LINKER_TYPE=LLD makes GCC pass -fuse-ld=lld, and GCC
+    # only ever looks for a plain 'ld.lld' on PATH.
     - name: Expose ld.lld (Linux)
       if: inputs.dependencies == 'true' && runner.os == 'Linux'
       shell: bash
       run: bash .github/scripts/setup-toolchain/expose-lld-linux.sh
 
-    # Windows gets the official clang+llvm release tarball, which ships the
-    # static libs and lib/cmake/llvm that find_package(LLVM) needs.
+    # Windows gets the official clang+llvm release tarball, which
+    # ships the static libs and lib/cmake/llvm that
+    # "find_package(LLVM)" needs.
     - name: Cache LLVM dev libraries (Windows)
       if: inputs.dependencies == 'true' && runner.os == 'Windows'
       id: llvm-win-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
-        # SPP_LLVM_WIN_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
         path: ~/llvm
-        key: llvm-win-${{ env.LLVM_LIB_FULL_VERSION }}
+        key: llvm-win-${{ env.LLVM_WIN_SHA256 }}
 
     - name: Install LLVM dev libraries (Windows, cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-win-cache.outputs.cache-hit != 'true'
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-windows.sh
 
-    # The remaining libraries are header/CMake projects: clone, install, cache.
-    # The key rotates daily (CACHE_DATE) so upstream changes get picked up on
-    # their own; bump SPP_LIBS_CACHE_VERSION in .github/versions.env to force a
-    # rebuild before the next rollover.
+    # The remaining libraries are header/CMake projects: check out,
+    # install, cache. The key is content-addressed on the three
+    # files that decide what the tree contains and where it goes:
+    # install-small-libs.sh, versions.env and load-versions.sh.
     - name: Cache small libraries
       if: inputs.dependencies == 'true'
       id: libs-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
-        # SPP_LOCAL_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
         path: ~/.local
-        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ env.CACHE_DATE }}-v${{ env.SPP_LIBS_CACHE_VERSION }}
+        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/versions.env', '.github/scripts/lib/load-versions.sh', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
 
     - name: Clone & install small libraries (cache miss)
       if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'

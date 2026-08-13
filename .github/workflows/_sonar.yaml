@@ -38,11 +38,16 @@ jobs:
       - name: Restore source mtimes
         uses: ./.github/actions/restore-mtimes
 
+      # setup-toolchain loads versions.env itself, but not until after its own `with:` has been evaluated, so the
+      # loader runs here as well to put GCC_VERSION within reach of the step below and of the cache key further down.
+      - name: Load pinned versions
+        run: bash .github/scripts/lib/load-versions.sh
+
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
           compiler: gcc
-          version: "16"
+          version: ${{ env.GCC_VERSION }}
           cache-key-suffix: sonar
 
       # Shares the release variant's tree; Sonar only adds -DCMAKE_EXPORT_COMPILE_COMMANDS, which does not invalidate
@@ -51,9 +56,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
-          key: build-ubuntu-latest-gcc16-release-${{ github.sha }}
+          key: build-ubuntu-latest-gcc${{ env.GCC_VERSION }}-release-${{ github.sha }}
           restore-keys: |
-            build-ubuntu-latest-gcc16-release-
+            build-ubuntu-latest-gcc${{ env.GCC_VERSION }}-release-
 
       # Add the extra configuration flag into the cmake configuration (won't trigger a rebuild of the entire project).
       - name: Configure
