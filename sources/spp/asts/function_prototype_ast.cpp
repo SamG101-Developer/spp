@@ -866,7 +866,10 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
   const auto variadic_param = FnParamGroup->GetVariadicParams();
   auto llvm_param_types = FnParamGroup->GetNonSelfParams()
     | genex::views::transform([&](auto const &x) {
-      auto const &source_type = (VariadicPackType != nullptr and x == static_cast<FunctionParameterAst*>(variadic_param)) ? VariadicPackType : x->Type;
+      auto const &source_type = (VariadicPackType != nullptr and x == static_cast<FunctionParameterAst*>(
+          variadic_param))
+        ? VariadicPackType
+        : x->Type;
       const auto param_type = ResolveAndSubstituteSelfType(
         *source_type, *sm->CurrentScope, *sm, *meta);
       return codegen::GetLlvmTypeOf(
