@@ -1910,6 +1910,19 @@ auto spp::codegen::func_impls::std_non_null_raw(
   ctx->Builder.CreateRet(result);
 }
 
+auto spp::codegen::func_impls::std_non_null_erase_type(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // Cast the pointer to U8 (erase type).
+  using asts::generate::common_types_precompiled::U8;
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.erase_type.self");
+  const auto result = ctx->Builder.CreateBitCast(
+    self_ptr, GetLlvmTypeOf(*U8, *sm->CurrentScope, ctx), "non_null.erase_type.result");
+  ctx->Builder.CreateRet(result);
+}
+
 auto spp::codegen::func_impls::std_non_null_cast(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //

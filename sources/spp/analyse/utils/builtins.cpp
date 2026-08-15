@@ -57,6 +57,7 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.read", std_non_null_read);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.write", std_non_null_write);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.raw", std_non_null_raw);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.erase_type", std_non_null_erase_type);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.cast", std_non_null_cast);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.from_ptr_inner", std_non_null_from_ptr_inner);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.pointer.NonNull.fwd_mut", std_non_null_fwd_mut);
