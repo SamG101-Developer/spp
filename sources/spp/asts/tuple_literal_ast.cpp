@@ -160,17 +160,46 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
 
   // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.
   if (not ctx->InConstantContext) {
+    const auto llvm_struct_type = llvm::cast<llvm::StructType>(llvm_type);
+
+    // Every element is generated up front, because whether the tuple as a whole is constant cannot be known until
+    // they have been.
+    auto elem_values = Vec<llvm::Value*>();
+    elem_values.Reserve(Elems.Len());
+    for (auto const &elem : Elems) {
+      const auto elem_value = elem->Stage11_CodeGen(sm, meta, ctx);
+      SPP_ASSERT(elem_value != nullptr);
+      elem_values.EmplaceBack(elem_value);
+    }
+
+    // If they all came back constant then so is the tuple, and it can be produced as a value rather than
+    // materialised: no stack slot, no per-field GEP and store, and no load to read it back. Being outside a constant
+    // context only says this was not written as a "cmp" initializer, which is no statement about the elements.
+    auto all_elems_constant = true;
+    for (auto i = 0uz; i < elem_values.Len(); ++i) {
+      const auto field_type = llvm_struct_type->getElementType(static_cast<unsigned>(i));
+      if (llvm::isa<llvm::Constant>(elem_values[i]) and elem_values[i]->getType() == field_type) { continue; }
+      all_elems_constant = false;
+      break;
+    }
+
+    if (all_elems_constant) {
+      auto llvm_ct_elems = Vec<llvm::Constant*>();
+      llvm_ct_elems.Reserve(elem_values.Len());
+      for (auto *elem_value : elem_values) {
+        llvm_ct_elems.EmplaceBack(llvm::cast<llvm::Constant>(elem_value));
+      }
+      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_elems.ToStdVector());
+    }
+
     const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "tuple.alloca" + uid, ctx);
     SPP_ASSERT(alloca != nullptr);
 
     // Store each element into the tuple alloca.
-    for (auto i = 0uz; i < Elems.Len(); ++i) {
-      const auto elem_value = Elems[i]->Stage11_CodeGen(sm, meta, ctx);
-      SPP_ASSERT(elem_value != nullptr);
-
+    for (auto i = 0uz; i < elem_values.Len(); ++i) {
       const auto elem_ptr = ctx->Builder.CreateStructGEP(
         llvm_type, alloca, static_cast<std::uint32_t>(i), "tuple.elem.ptr" + uid);
-      ctx->Builder.CreateStore(elem_value, elem_ptr);
+      ctx->Builder.CreateStore(elem_values[i], elem_ptr);
     }
 
     // Load the tuple value from the alloca and return it.
