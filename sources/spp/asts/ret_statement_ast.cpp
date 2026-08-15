@@ -76,12 +76,10 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeVoid;
   using analyse::utils::type_utils::TypeEq;
   using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
   using analyse::errors::SppCoroutineContainsReturnStatementError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppInvalidVoidValueError;
   using analyse::errors::SppTypeMismatchError;
   using analyse::scopes::ScopeTypeIdentifierName;
   using generate::common_types::VoidType;
@@ -125,11 +123,6 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
       ? nullptr
       : meta->EnclosingFunctionSourceRetType[0];
     meta->Restore();
-
-    // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
-    RaiseIf<SppInvalidVoidValueError>(
-      IsTypeVoid(*expr_type, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Expr, "return statement"));
   }
 
   // Functions provide the return type, closures require inference; handle the inference.

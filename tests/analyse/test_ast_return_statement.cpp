@@ -51,10 +51,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstReturnStatementAst,
-    test_invalid_ret_void_value,
-    SppInvalidVoidValueError, R"(
+    test_valid_ret_void_value, R"(
     fun g() -> Void { }
 
     fun f() -> Void {
