@@ -103,9 +103,9 @@ runs:
         path: |
           ~/.ccache
           ~/.cache/sccache
-        key: cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
+        key: cc-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
         restore-keys: |
-          cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
+          cc-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
 
     - name: Disable compiler cache
       if: inputs.compiler-cache != 'true'
@@ -157,7 +157,7 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.local
-        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/versions.env', '.github/scripts/lib/load-versions.sh', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
+        key: spp-libs-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/versions.env', '.github/scripts/lib/load-versions.sh', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
 
     - name: Clone & install small libraries (cache miss)
       if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
