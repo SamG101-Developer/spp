@@ -317,6 +317,14 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
   }
   meta->Restore();
 
+  // A field carrying no value is not laid out, so there is nothing
+  // to index to and nothing to read: llvm has no value of that type,
+  // no member for it in the struct, and "load void" is not valid ir.
+  const auto field_type = InferType(sm, meta);
+  const auto field_llvm_type = sm->CurrentScope->GetTypeSymbol(
+    field_type.get())->LlvmInfo->LlvmType;
+  if (codegen::IsValuelessType(field_llvm_type)) { return nullptr; }
+
   // Resolve the address of the member. A numeric name indexes a tuple or array positionally; any other name is an
   // attribute, whose physical position depends on how the owning type was laid out.
   auto field_ptr = static_cast<llvm::Value*>(nullptr);
@@ -349,9 +357,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
 
   // Otherwise read the field out. Fields are never borrows (the second class borrow rules forbid storing one), so the
   // field's own lowered type is always the type held in the slot.
-  const auto field_type = InferType(sm, meta);
-  const auto field_llvm_type = sm->CurrentScope->GetTypeSymbol(field_type.get())->LlvmInfo->LlvmType;
-  SPP_ASSERT(field_llvm_type != nullptr);
   return ctx->Builder.CreateLoad(field_llvm_type, field_ptr, "member_access.field" + uid);
 }
 
