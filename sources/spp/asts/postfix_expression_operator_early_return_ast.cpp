@@ -161,6 +161,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   auto case_tok = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_CASE, "case");
   auto case_expr = CaseExpressionAst::NewNonPatternMatch(
     std::move(case_tok), std::move(is_value_cond), std::move(output_body), std::move(branches));
+  case_expr->LoweredFromTryOperator = true;
 
   // Wrap the two into one scope, so the temporary does not leak into
   // the surrounding one and the whole lowering has a single AST for
