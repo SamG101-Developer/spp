@@ -5,12 +5,14 @@ auto spp::codegen::SortMembersForSppLayout(
   Vec<llvm::Type*> const &field_types,
   LlvmCtx const *ctx)
   -> Pair<Vec<llvm::Type*>, Map<std::size_t, std::size_t>> {
-  // Based on the ABI detected size of each type, re-order for minimal total object size (minimize padding). Return
-  // the re-ordered fields and the field index mapping.
+  // Based on the ABI detected size of each type, re-order for
+  // minimal total object size (minimize padding). Return the
+  // re-ordered fields and the field index mapping.
   auto const &dl = ctx->Module->getDataLayout();
   auto order = genex::views::iota(0uz, field_types.Len()) | genex::to<Vec>();
   order |= genex::actions::stable_sort([&](auto a, auto b) {
-    // Sort first on alignment, moving the smaller alignments first.
+    // Sort first on alignment, moving the smaller alignments
+    // first.
     const auto align_a = dl.getABITypeAlign(field_types[a]).value();
     const auto align_b = dl.getABITypeAlign(field_types[b]).value();
     if (align_a != align_b) { return align_a > align_b; }
@@ -36,7 +38,8 @@ auto spp::codegen::GetPhysicalFieldIndex(
   LlvmTypeSymInfo const &sym_info,
   const std::size_t decl_index)
   -> std::uint32_t {
-  // An empty map means the layout preserved the declaration order (the C and packed layouts).
+  // An empty map means the layout preserved the declaration
+  // order (the C and packed layouts).
   const auto it = sym_info.FieldIndexMap.find(decl_index);
   const auto index = it != sym_info.FieldIndexMap.end() ? it->second : decl_index;
   return static_cast<std::uint32_t>(index);
