@@ -92,7 +92,14 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Type, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
-  const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics().get());
+  const auto named_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics().get());
+
+  // "Self(...)" names the class it stands for, and the attribute walk below reads that class's prototype - which a
+  // stand-in symbol does not carry. An unbound generic parameter is prototype-less in the same way but links to the
+  // dummy scope standing in for it rather than to a class, so "A()" is left alone and takes the generic path.
+  const auto base_cls_sym = Type->IsSelfType() and named_cls_sym != nullptr
+    ? named_cls_sym->AsClassSymbol()
+    : named_cls_sym;
 
   // If the type is a variant type, prevent instantiation.
   RaiseIf<SppObjectInitializerVariantError>(
@@ -181,16 +188,16 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
 
-  // Reached from a "cmp" initializer during Stage10, the type
-  // can still be the opaque placeholder it was registered as,
-  // so ensure it exists, and then get its LLVM implementation.
-  codegen::EnsureLlvmTypeComplete(*type_sym, *sm, ctx);
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   const auto attr_names = GetAllAttrs(*type_sym->FqName(), *sm)
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
+
+  // A type carrying no value has no value to build, so prevent
+  // any code generation (or further GEPs into it).
+  if (codegen::IsValuelessType(llvm_type)) { return nullptr; }
 
   // Types with no attributes have nothing to fill in, so they
   // initialize to their zero value. This covers the compiler-
@@ -226,8 +233,10 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     auto arg_values = Vec<Pair<std::uint32_t, llvm::Value*>>();
     arg_values.Reserve(ArgGroup->Args.Len());
     for (auto const &arg : ArgGroup->Args) {
+      // No value for Void type arguments (from the generic
+      // implementations), so skip them.
       const auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-      SPP_ASSERT(val != nullptr);
+      if (val == nullptr) { continue; }
       arg_values.EmplaceBack(MakePair(field_index(*arg->Name), val));
     }
 
@@ -275,6 +284,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
+    if (comp_val == nullptr) { continue; }
     comp_fields[field_index(*arg->Name)] = llvm::cast<llvm::Constant>(comp_val);
   }
 
@@ -296,8 +306,11 @@ auto spp::asts::ObjectInitializerAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *)
   -> Shared<TypeAst> {
-  // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
-  // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
+  // The type of the object initializer is the type being initialized.
+  // The conventions are added for dummy types being created into
+  // values during other ast's analysis. Types cannot be instantiated
+  // as borrows in user code.
+  // Todo: tidy this by splitting into lines.
   return sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 }
 
