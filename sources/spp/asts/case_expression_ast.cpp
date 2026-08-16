@@ -250,8 +250,11 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
       ret_type = InferType(sm, meta);
       return codegen::GetLlvmTypeOf(*ret_type, *sm->CurrentScope, ctx);
     }();
-    phi = ctx->Builder.CreatePHI(
-      llvm_phi_ty, n, "case.phi" + uid);
+
+    if (not codegen::IsValuelessType(llvm_phi_ty)) {
+      phi = ctx->Builder.CreatePHI(
+        llvm_phi_ty, n, "case.phi" + uid);
+    }
   }
 
   // Set "case" information to the meta struct for branches and

@@ -319,6 +319,7 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   // Now that every value and location has been computed off the
   // (pre-assignment) state, commit the stores.
   for (auto i = 0uz; i < Lhs.Len(); ++i) {
+    if (llvm_lhs_locs[i] == nullptr and llvm_rhs_vals[i] == nullptr) { continue; }
     SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
     ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);
   }

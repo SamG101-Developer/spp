@@ -300,6 +300,12 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   in_progress.erase(struct_type);
 }
 
+auto spp::codegen::IsValuelessType(
+  llvm::Type const *type)
+  -> bool {
+  return type == nullptr or type->isVoidTy();
+}
+
 auto spp::codegen::GetLlvmTypeOf(
   asts::TypeAst const &type,
   analyse::scopes::Scope const &scope,

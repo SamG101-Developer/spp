@@ -62,14 +62,21 @@ namespace spp::codegen {
     -> void;
 
   /**
-   * Lower a type written at an expression, honouring its convention. A borrowed type ("&T"/"&mut T") is a pointer to
-   * the borrowee whatever the borrowee lowers to, and resolving a type to its symbol drops the convention that says
-   * so - so anything holding a @c TypeAst should come through here rather than resolving to a symbol itself.
-   * @param[in] type The type to lower.
-   * @param[in] scope The scope to resolve @p type against.
-   * @param[in] ctx The LLVM context containing all codegen info.
-   * @return The llvm type, or nothing if @p type does not resolve.
+   * Whether a value of this lowered type has any runtime representation at all.
+   *
+   * @n
+   * @c Void is the case that matters: llvm has no value of type void, so there is nothing to store, nothing to load
+   * and nothing to hand to a phi. Code generation represents such a value as a null @c llvm::Value* - the same thing
+   * a statement evaluates to - so a producer returns null for one and a consumer skips the store, load or incoming
+   * edge it would otherwise make. A generic instantiated at @c Void reaches all of these without anything unusual
+   * being written: the @c "val" bound by destructuring a @c "Pass[T=Void]" is exactly such a value.
+   *
+   * @param[in] type The lowered type, which may be null when the type did not lower at all.
    */
+  SPP_EXP_FUN auto IsValuelessType(
+    llvm::Type const *type)
+    -> bool;
+
   SPP_EXP_FUN auto GetLlvmTypeOf(
     asts::TypeAst const &type,
     analyse::scopes::Scope const &scope,
