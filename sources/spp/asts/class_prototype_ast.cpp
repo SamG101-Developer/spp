@@ -332,6 +332,12 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
   sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_1);
   _ClsSym = sm->CurrentScope->TySym;
 
+  // A class that still declares parameters is a template, and a template has no layout: its attributes are written in
+  // terms of names that stand for nothing yet, so there is no size to give and nothing that can be built against it.
+  // Only its instantiations are real types. Its own symbol names it as "Vec[T=T]", which reads like an instantiation
+  // and is why this has to be said outright.
+  symbol_1->IsConcrete = GnParamGroup->Params.IsEmpty();
+
   // If the type was generic, like Vec[T], also create a base Vec symbol.
   if (not GnParamGroup->Params.IsEmpty()) {
     symbol_2 = MakeShared<analyse::scopes::TypeSymbol>(
@@ -361,19 +367,32 @@ static auto ApplyStructLayout(
   // up the layout and subsequent GEP instructions.
   const auto needs_body = struct_type->isOpaque();
 
+  // Fields that carry no value are not laid out at all, whichever convention is in force.
+  const auto kept = spp::codegen::DropValuelessFields(field_types);
+  auto kept_types = spp::Vec<llvm::Type*>();
+  auto kept_map = spp::Map<std::size_t, std::size_t>();
+  for (auto new_idx = 0uz; new_idx < kept.Len(); ++new_idx) {
+    kept_types.EmplaceBack(field_types[kept[new_idx]]);
+    kept_map[kept[new_idx]] = new_idx;
+  }
+  const auto dropped_any = kept.Len() != field_types.Len();
+
   switch (layout) {
     case spp::codegen::StructLayout::C: {
       // Keep declaration order, with natural alignment padding.
       // This mirrors the C language / specifications. Seen in the
       // FFI structs.
-      if (needs_body) { struct_type->setBody(field_types.ToStdVector(), false); }
-      sym_info->FieldIndexMap.clear();
+      if (needs_body) { struct_type->setBody(kept_types.ToStdVector(), false); }
+      // An empty map means the declaration order was preserved outright, which it only is when nothing was dropped.
+      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
+      else { sym_info->FieldIndexMap.clear(); }
       break;
     }
     case spp::codegen::StructLayout::Packed: {
       // Keep declaration order, but remove all inter-field padding.
-      if (needs_body) { struct_type->setBody(field_types.ToStdVector(), true); }
-      sym_info->FieldIndexMap.clear();
+      if (needs_body) { struct_type->setBody(kept_types.ToStdVector(), true); }
+      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
+      else { sym_info->FieldIndexMap.clear(); }
       break;
     }
     case spp::codegen::StructLayout::Spp: {
@@ -409,6 +428,12 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
     return;
   }
 
+  // A template wearing an instantiation's clothes has no layout to give: "Pass[T=T]" would take a field of its own
+  // type and build a cyclic llvm type, which nothing diagnoses - it simply recurses inside "DataLayout" until the
+  // stack runs out. Left opaque, it is skipped by everything downstream, exactly as the template it stands for is.
+  if (not type_sym->IsConcrete) { return; }
+
+
   // Next we need to handle tuples (anonymous index-attribute
   // based classes) vs standard struct classes.
   const auto is_tuple = IsTypeTup(
@@ -416,15 +441,12 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   auto types = Vec<llvm::Type*>();
 
   // The "Spp" layout sorts the fields by size and alignment, so
-  // every field has to be complete before any of them can be
-  // placed - a field still sitting as an opaque placeholder has
-  // no size to sort on. The walk reaches types in module order
-  // rather than in the order they contain one another, so each
-  // field is completed on demand here.
+  // every field has to be lowered all the way before any of them
+  // can be placed - a field still sitting as an opaque placeholder
+  // has no size to sort on. "GetLlvmType" does that on demand, so
+  // the order fields are reached in does not matter.
   const auto lower_field = [&](analyse::scopes::TypeSymbol const *field_type_sym) -> llvm::Type* {
-    if (field_type_sym == nullptr) { return nullptr; }
-    codegen::EnsureLlvmTypeComplete(*field_type_sym, *sm, ctx);
-    return codegen::GetLlvmType(*field_type_sym, ctx);
+    return field_type_sym != nullptr ? codegen::GetLlvmType(*field_type_sym, ctx) : nullptr;
   };
 
   // Tuple fields are positional based off of the types found

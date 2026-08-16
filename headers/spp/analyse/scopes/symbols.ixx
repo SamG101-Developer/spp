@@ -176,6 +176,19 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   bool IsGeneric = false;
 
+  /**
+   * Whether this names a real type the whole way down. False only for a generic instantiation built from arguments
+   * that are themselves still parameters - @c "Pass[T=T]" or @c "Vec[T=U8, A=A]", which a generic body produces
+   * simply by naming a type in terms of its own parameters. Such a type has no layout to give and no size to answer
+   * with, so code generation leaves its struct opaque and never builds anything against it.
+   *
+   * @n
+   * Decided where the instantiation is created (see @c CreateGenericClsScope ), for the same reason
+   * @c FunctionPrototypeAst::GenericSubstitution::IsConcrete is: every reader has to reach the same answer, and
+   * asking separately is how they come to disagree.
+   */
+  bool IsConcrete = true;
+
   Vec<Shared<asts::TypeAst>> GenericConstraints;
 
   /**
@@ -261,7 +274,43 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
    * bound to a generic ("mod_a::a(b)" binding "F = mod_b::$B") is resolved in the caller's scope during inference,
    * before any generic substitution runs. Only opt out where a bare name is genuinely wanted.
    */
+  /**
+   * The symbol for the class this one names. Usually that is this symbol; the exception is a symbol that stands in for
+   * a class without carrying its prototype - @c "Self", which links to the class's scope but has a null @c Type (see
+   * @c AddSelfTypeSym ). Anything wanting the class rather than the name has to come through here, because reading
+   * @c Type off a stand-in gets nothing.
+   *
+   * @n
+   * The null @c Type on a stand-in is deliberate and must stay: it is what lets two @c "Self" symbols compare equal to
+   * each other, which is how a method written in terms of @c "Self" is recognised as overriding an abstract one. So
+   * the resolution is done by the readers that need a class, never by filling the prototype in.
+   *
+   * @return The class's symbol, or this symbol when it is already one (or names nothing at all).
+   */
+  SPP_ATTR_NODISCARD auto AsClassSymbol() const
+    -> Shared<TypeSymbol>;
+
   SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = false) const
+    -> Shared<asts::TypeAst>;
+
+  /**
+   * The type this symbol stands for where it is written.
+   *
+   * @n
+   * For anything but a generic parameter that is simply its fully qualified name. A parameter is the interesting case:
+   * an instantiation binds it, and a type written in terms of it - the @c "Pass[T]" of @c "is Pass[T](val)" - stands
+   * for what it was bound to once that body is being analysed as the instantiation's own. @c FqName cannot answer
+   * that, because a parameter's own name is exactly what it has to keep giving back while the template is analysed in
+   * its own terms, and both readings come through the same symbol.
+   *
+   * @n
+   * An unbound parameter has nothing to follow and stands for itself, which is what leaves a template's body written
+   * the way its author wrote it. A parameter bound to another parameter (@c "T=T", passing an enclosing body's
+   * parameter along) is that same case reached the long way round, and gives back the name it was bound to.
+   *
+   * @return The bound type, or this parameter's own name when it is unbound.
+   */
+  SPP_ATTR_NODISCARD auto BoundName() const
     -> Shared<asts::TypeAst>;
 };
 

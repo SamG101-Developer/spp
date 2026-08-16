@@ -217,6 +217,14 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
   return this == &that;
 }
 
+auto spp::analyse::scopes::TypeSymbol::AsClassSymbol() const
+  -> Shared<TypeSymbol> {
+  // Already a class, or a name with nothing behind it either way.
+  const auto self = const_cast<TypeSymbol*>(this)->SharedFromThis<TypeSymbol>();
+  if (Type != nullptr or LinkedScope == nullptr or LinkedScope->TySym == nullptr) { return self; }
+  return LinkedScope->TySym.get() == this ? self : LinkedScope->TySym;
+}
+
 auto spp::analyse::scopes::TypeSymbol::FqName(
   const bool ignore_dollar) const
   -> Shared<asts::TypeAst> {
