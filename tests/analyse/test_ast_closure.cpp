@@ -316,3 +316,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = cor (caps a) { ret a }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    ClosureExpressionAst,
+    test_valid_closure_parameters_without_defaults,
+    R"(
+    fun f() -> Void {
+        let x = (a: U32, b: U32) a
+        x(1_u32, 2_u32)
+    }
+)");
