@@ -23,16 +23,14 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
+      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
           disable-sudo: true
 
-      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
-      # secured under the above "harden-runner" step. Nothing is built here, so the mtime pass is not needed.
+      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -65,7 +63,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/_compile.yaml
     with:
-      os: ubuntu-latest
+      os: ubuntu-24.04
       compiler: gcc
       version: "16"
       fail-fast: true
@@ -87,7 +85,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, compiler: clang, version: "22" }
+          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16" }
+          - { os: ubuntu-24.04, compiler: clang, version: "22" }
           - { os: macos-latest, compiler: clang, version: "" }
           - { os: windows-latest, compiler: msvc, version: "" }
           - { os: windows-latest, compiler: clang-cl, version: "" }
@@ -99,7 +98,7 @@ jobs:
       fail-fast: false
       variants: '[{"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""}]'
 
-  # Independent of the compile chain: doc breakage is worth hearing about even while the build is still running.
+  # Independent of the compilation chain: doc breakage is worth hearing about even while the build is still running.
   docs:
     name: Docs
     permissions:
