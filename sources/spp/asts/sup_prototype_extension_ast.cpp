@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.generic_bindings;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
@@ -352,7 +353,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+  using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
   using generate::common_types_precompiled::SELF_TYPE;
 
   // Move to the next scope.
@@ -436,31 +437,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
   -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
-  // SPP_ASSERT(sm->CurrentScope == _Scope);
-
-  // Check if this block is purely generic.
-  const auto is_generic_scope =
-    genex::any_of(
-      sm->CurrentScope->AllTypeSymbols(true), [](auto const &x) { return x->IsGeneric; }) or
-    genex::any_of(
-      sm->CurrentScope->AllVarSymbols(true), [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
-
-  // Generate the implementation if not a generic scope.
-  if (not is_generic_scope) {
-    Impl->Stage11_CodeGen(sm, meta, ctx);
-  }
-
-  // Generic sup block so not generating for it.
-  // Manual scope skipping.
-  else {
-    const auto final_scope = sm->CurrentScope->FinalChildScope();
-    while (sm->CurrentScope != final_scope) {
-      sm->MoveToNextScope(false);
-    }
-  }
-
+  Impl->Stage11_CodeGen(sm, meta, ctx);
   sm->MoveOutOfCurrentScope();
-
   return nullptr;
 }
 
