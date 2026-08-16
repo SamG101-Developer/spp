@@ -125,10 +125,16 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
       | genex::views::transform([](auto &&x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
       | genex::to<Vec>();
 
-    // Enforce visibility on the accessed member.
+    // Enforce visibility on the accessed member. Visibility is
+    // read off the non-generic scope, because that is where the
+    // member was written and so where its annotation lives; an
+    // instantiation's copy of a symbol is not the declaration.
     if (not closest.IsEmpty()) {
       const auto scope = closest[0].first->NonGenericScope;
-      CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get()), *Name, *scope, *sm, *meta);
+      const auto declared_sym = scope->GetVarSymbol(Name.get());
+      CheckTypeMemberVisibility(
+        declared_sym != nullptr ? *declared_sym : *closest[0].second, *Name,
+        declared_sym != nullptr ? *scope : *closest[0].first, *sm, *meta);
     }
 
     if (closest.Len() <= 1) { return; }
