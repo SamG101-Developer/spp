@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.token_ast;
@@ -174,12 +175,20 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   -> llvm::Value* {
   //
   using analyse::errors::SppInternalCompilerError;
+  using analyse::utils::type_utils::IsTypeVoid;
 
   // Get the allocation for the variable from the current
   // scope. The "alloca" will have been filled from wherever
   // this identifier was introduced ("let", param, etc).
   const auto uid = "." + spp::utils::Uid(this);
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
+
+  // Void identifiers could be created via generic
+  // implementation, to prevent any usages of it as this
+  // level too.
+  if (var_sym->Type != nullptr and IsTypeVoid(*var_sym->Type, *sm->CurrentScope)) {
+    return nullptr;
+  }
 
   // A symbol with no address by this point is an internal
   // error. Report it as one rather than asserting, so the
