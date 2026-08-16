@@ -261,4 +261,23 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
   return Convention ? qualified_name->WithConvention(asts::AstClone(Convention)) : qualified_name;
 }
 
+auto spp::analyse::scopes::TypeSymbol::BoundName() const
+  -> Shared<asts::TypeAst> {
+  // Not a parameter, so there is no binding to follow and
+  // the name is the whole answer.
+  if (not IsGeneric) { return FqName(); }
+
+  // Bound to a real type: that type's own name, carrying
+  // over whatever convention the binding was written with.
+  if (LinkedScope != nullptr and LinkedScope->TySym != nullptr and LinkedScope->TySym.get() != this) {
+    auto bound = LinkedScope->TySym->FqName();
+    return Convention != nullptr ? bound->WithConvention(asts::AstClone(Convention)) : bound;
+  }
+
+  // Bound to another parameter, which has no scope of its own
+  // to reach: the recorded argument is the only record of the
+  // binding. Failing that, unbound, and it stands for itself.
+  return GenericVal != nullptr ? GenericVal : Name;
+}
+
 SPP_MOD_END
