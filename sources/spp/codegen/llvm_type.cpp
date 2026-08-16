@@ -260,11 +260,18 @@ auto spp::codegen::GetLlvmType(
   analyse::scopes::TypeSymbol const &type_sym,
   LlvmCtx const *ctx)
   -> llvm::Type* {
-  // Either return the llvm type bound to the symbol, or a
-  // pointer for borrows.
-  return type_sym.Convention != nullptr
-    ? llvm::PointerType::get(*ctx->Context, 0)
-    : type_sym.LlvmInfo->LlvmType;
+  // A borrow is a pointer to the borrowee whatever the borrowee
+  // is, so nothing has to be lowered to answer for it.
+  if (type_sym.Convention != nullptr) { return llvm::PointerType::get(*ctx->Context, 0); }
+
+  // Otherwise lower it now if nothing has yet. Types are minted
+  // right through monomorphisation and code generation, so "has
+  // something already registered this?" is not a question with
+  // a stable answer - asking for the type is what makes it exist.
+  if (type_sym.LlvmInfo->LlvmType == nullptr and ctx->Sm != nullptr) {
+    EnsureLlvmTypeComplete(type_sym, *ctx->Sm, ctx);
+  }
+  return type_sym.LlvmInfo->LlvmType;
 }
 
 auto spp::codegen::EnsureLlvmTypeComplete(
@@ -272,6 +279,27 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   analyse::scopes::ScopeManager const &sm,
   LlvmCtx const *ctx)
   -> void {
+  // A symbol that names another type without carrying its
+  // prototype - "Self", which links to the class it stands
+  // for (see "AddSelfTypeSym") - is completed as that class
+  // and then adopts the result. It cannot be completed as
+  // itself: there is no prototype on it to read a layout
+  // from, and the guard below would turn it away.
+  const auto linked_sym = type_sym.AsClassSymbol();
+  if (linked_sym.get() != &type_sym) {
+    // Stand-ins can name each other - the "Self" of a scope
+    // whose class scope carries another "Self" - and following
+    // the chain would then never end. Same guard, and for the
+    // same reason, as the layout walk below.
+    static thread_local auto in_progress = Set<analyse::scopes::TypeSymbol const*>();
+    if (not in_progress.insert(&type_sym).second) { return; }
+
+    EnsureLlvmTypeComplete(*linked_sym, sm, ctx);
+    type_sym.LlvmInfo->LlvmType = linked_sym->LlvmInfo->LlvmType;
+    in_progress.erase(&type_sym);
+    return;
+  }
+
   // Nothing to complete without a prototype behind the symbol
   // (a bare generic parameter, say).
   if (type_sym.Type == nullptr) { return; }
@@ -281,6 +309,20 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   if (type_sym.LlvmInfo->LlvmType == nullptr) {
     if (type_sym.LinkedScope != nullptr) { RegisterLlvmTypeInfo(type_sym.LinkedScope, sm, ctx); }
     else { RegisterLlvmTypeInfo(type_sym.Type, sm, ctx); }
+
+    // A symbol standing in for another type - a generic parameter
+    // bound to one, "T" inside an instantiation - is not the
+    // symbol the registration above writes to; that writes to the
+    // one owned by the linked scope. Adopt the result, or this
+    // symbol stays un-lowered however many times it is asked for,
+    // which is what "AttachLlvmTypeInfo" does eagerly for the
+    // aliases it can see at the end of Stage8. It cannot see these:
+    // a binding minted while monomorphising did not exist yet.
+    if (type_sym.LlvmInfo->LlvmType == nullptr
+      and type_sym.LinkedScope != nullptr
+      and type_sym.LinkedScope->TySym != nullptr) {
+      type_sym.LlvmInfo->LlvmType = type_sym.LinkedScope->TySym->LlvmInfo->LlvmType;
+    }
   }
 
   // Only a named struct can be half-built; everything else is
