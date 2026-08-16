@@ -40,17 +40,6 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::func_utils {
-  using InferenceSourceMap = Map<
-    Shared<asts::IdentifierAst>,
-    Shared<asts::TypeAst>,
-    spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
-
-  using InferenceTargetMap = Map<
-    Shared<asts::IdentifierAst>,
-    Shared<asts::TypeAst>,
-    spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
   SPP_EXP_CLS struct FunctionOverload {
     scopes::Scope const *FnScope;
@@ -129,39 +118,17 @@ namespace spp::analyse::utils::func_utils {
     scopes::ScopeManager &sm)
     -> void;
 
-  SPP_EXP_FUN auto EnforceNoUninferredGnArgs(
-    Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
-    Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
-    scopes::Scope const &owner_scope,
-    Shared<asts::Ast> const &owner,
-    scopes::ScopeManager &sm)
-    -> void;
-
-  SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
-    asts::GenericParameterGroupAst const &p_group,
-    asts::GenericArgumentGroupAst const &a_group,
-    scopes::Scope const &owner_scope,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta)
-    -> void;
-
+  /**
+   * @param generic_args The generic bindings known for this call, used to translate the default value of any optional
+   * parameter the call left out. Such a default is the callee's own expression and is materialised into the caller's
+   * argument list, so a default like @c "alloc: A = A()" arrives at the call site still naming @c "A" - a name only
+   * the callee has - unless it is rewritten as it is materialised.
+   */
   SPP_EXP_FUN auto NameFnArgs(
     asts::FunctionCallArgumentGroupAst &a_group,
     asts::FunctionParameterGroupAst const &p_group,
-    scopes::ScopeManager &sm)
-    -> void;
-
-  SPP_EXP_FUN auto InferGnArgs(
-    asts::GenericParameterGroupAst const &p_group,
-    asts::GenericArgumentGroupAst &a_group,
-    InferenceSourceMap infer_source,
-    InferenceTargetMap infer_target,
-    Shared<asts::Ast> const &owner,
-    scopes::Scope const &owner_scope,
-    Shared<asts::IdentifierAst> const &variadic_fn_param_name,
-    bool is_tuple_owner,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta)
+    Vec<asts::GenericArgumentAst*> const &generic_args = {})
     -> void;
 
   SPP_EXP_FUN auto IsTargetCallable(
