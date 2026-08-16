@@ -180,7 +180,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
 
   // Void could have been introduced via a generic implementation,
   // so just prevent allocas from Void types.
-  const auto is_void = llvm_type->isVoidTy();
+  const auto is_void = codegen::IsValuelessType(llvm_type);
   auto alloca = var_sym->LlvmInfo->Alloca;
   if (alloca == nullptr and not is_void) {
     alloca = codegen::LlvmEntryAlloca(llvm_type, "local.alloca" + uid, ctx);
