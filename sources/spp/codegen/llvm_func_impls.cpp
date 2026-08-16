@@ -38,6 +38,28 @@ import std;
 // Layer 1: function + entry-block creation.
 // =========================================================================================================
 
+namespace {
+  /**
+   * The type a @c "Self" symbol stands for.
+   *
+   * @n
+   * @c TypeSymbol::FqName gives @c "Self" back as written, by design: two prototype-less @c "Self" symbols matching
+   * each other is what makes a method written in terms of it recognisable as overriding an abstract one. A reader that
+   * needs the generic arguments of the type being stood for therefore has to go through the scope the symbol links to,
+   * which is the instantiation itself.
+   *
+   * @param self_ty_sym The symbol to resolve, whether or not it is a @c "Self" one.
+   * @return The linked type's fully qualified name, or the symbol's own when it links to nothing.
+   */
+  auto SelfTypeName(
+    spp::analyse::scopes::TypeSymbol const &self_ty_sym)
+    -> spp::Shared<spp::asts::TypeAst> {
+    return self_ty_sym.LinkedScope != nullptr and self_ty_sym.LinkedScope->TySym != nullptr
+      ? self_ty_sym.LinkedScope->TySym->FqName()
+      : self_ty_sym.FqName();
+  }
+}
+
 auto spp::codegen::func_impls::simple_create_fn(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ret_ty, Vec<llvm::Type*> const &param_tys)
   -> llvm::Function* {
@@ -193,7 +215,7 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
   const auto uid = "." + utils::Uid();
   const auto that_param = proto->FnParamGroup->GetAllParams().Back();
   const auto that_sym = sm->CurrentScope->GetVarSymbol(that_param->ExtractName().get());
-  const auto operand_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(that_sym->Type.get()), ctx);
+  const auto operand_ty = GetLlvmTypeOf(*that_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
@@ -224,7 +246,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
   const auto uid = "." + utils::Uid();
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
   const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
-  const auto operand_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(this_sym->Type.get()), ctx);
+  const auto operand_ty = GetLlvmTypeOf(*this_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
@@ -1618,8 +1640,7 @@ auto spp::codegen::func_impls::std_intrinsics_scmp(
   -> void {
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
   const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
-  const auto operand_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(this_sym->Type.get()), ctx);
-
+  const auto operand_ty = GetLlvmTypeOf(*this_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto uid = "." + utils::Uid();
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{operand_ty, operand_ty});
   const auto lhs = fn->arg_begin();
@@ -1635,7 +1656,7 @@ auto spp::codegen::func_impls::std_intrinsics_ucmp(
   -> void {
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
   const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
-  const auto operand_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(this_sym->Type.get()), ctx);
+  const auto operand_ty = GetLlvmTypeOf(*this_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto uid = "." + utils::Uid();
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{operand_ty, operand_ty});
@@ -1659,7 +1680,7 @@ auto spp::codegen::func_impls::std_intrinsics_fpclass(
   // "value" parameter instead.
   const auto value_param = proto->FnParamGroup->GetAllParams()[0];
   const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
-  const auto value_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(value_sym->Type.get()), ctx);
+  const auto value_ty = GetLlvmTypeOf(*value_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto uid = "." + utils::Uid();
   const auto i32_ty = llvm::cast<llvm::Type>(llvm::Type::getInt32Ty(*ctx->Context));
@@ -1763,7 +1784,7 @@ auto spp::codegen::func_impls::std_slot_get_ref(
 
     decltype(self_ptr) &_SelfPtr;
 
-    CustomExpr(
+    explicit CustomExpr(
       decltype(self_ptr) &self_ptr) :
       _SelfPtr(self_ptr) {}
 
@@ -1884,7 +1905,7 @@ auto spp::codegen::func_impls::std_non_null_write(
 
   const auto value_param = proto->FnParamGroup->GetAllParams()[0];
   const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
-  const auto value_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(value_sym->Type.get()), ctx);
+  const auto value_ty = GetLlvmTypeOf(*value_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto value_val = ctx->Builder.CreateLoad(value_ty, value_sym->LlvmInfo->Alloca, "non_null.write.value");
 
   ctx->Builder.CreateStore(value_val, data_ptr);
@@ -1942,7 +1963,7 @@ auto spp::codegen::func_impls::std_non_null_from_ptr_inner(
   const auto ptr_param = proto->FnParamGroup->GetAllParams()[0];
   const auto ptr_sym = sm->CurrentScope->GetVarSymbol(ptr_param->ExtractName().get());
   const auto ptr_struct_ty = llvm::cast<llvm::StructType>(
-    GetLlvmType(*sm->CurrentScope->GetTypeSymbol(ptr_sym->Type.get()), ctx));
+    GetLlvmTypeOf(*ptr_param->Type->WithoutConvention(), *sm->CurrentScope, ctx));
   const auto addr_field_ptr = ctx->Builder.CreateStructGEP(
     ptr_struct_ty, ptr_sym->LlvmInfo->Alloca, 0, "non_null.from_ptr.addr_field");
   const auto addr_val = ctx->Builder.CreateLoad(
@@ -2070,13 +2091,14 @@ auto spp::codegen::func_impls::std_raw_buf_take_at(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
 
-  const auto elem_ty_spp = self_ty_sym->FqName()->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
+  const auto elem_ty_spp = SelfTypeName(*self_ty_sym)->LastTypePart()->GnArgGroup->TypeAt("T")->Val
+    ->WithoutConvention();
   const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
   const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
 
   const auto index_param = proto->FnParamGroup->GetAllParams()[0];
   const auto index_sym = sm->CurrentScope->GetVarSymbol(index_param->ExtractName().get());
-  const auto usize_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(index_sym->Type.get()), ctx);
+  const auto usize_ty = GetLlvmTypeOf(*index_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto index_val = ctx->Builder.CreateLoad(usize_ty, index_sym->LlvmInfo->Alloca, "raw_buf.take_at.index");
 
   const auto capacity_addr = ctx->Builder.CreateStructGEP(
@@ -2115,13 +2137,14 @@ auto spp::codegen::func_impls::std_raw_buf_place_at(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
 
-  const auto elem_ty_spp = self_ty_sym->FqName()->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
+  const auto elem_ty_spp = SelfTypeName(*self_ty_sym)->LastTypePart()->GnArgGroup->TypeAt("T")->Val
+                                                     ->WithoutConvention();
   const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
   const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
 
   const auto index_param = proto->FnParamGroup->GetAllParams()[0];
   const auto index_sym = sm->CurrentScope->GetVarSymbol(index_param->ExtractName().get());
-  const auto usize_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(index_sym->Type.get()), ctx);
+  const auto usize_ty = GetLlvmTypeOf(*index_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto index_val = ctx->Builder.CreateLoad(usize_ty, index_sym->LlvmInfo->Alloca, "raw_buf.place_at.index");
 
   const auto element_param = proto->FnParamGroup->GetAllParams()[1];
@@ -2144,7 +2167,8 @@ auto spp::codegen::func_impls::std_raw_buf_shift(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
 
-  const auto elem_ty_spp = self_ty_sym->FqName()->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
+  const auto elem_ty_spp = SelfTypeName(*self_ty_sym)->LastTypePart()->GnArgGroup->TypeAt("T")->Val
+                                                     ->WithoutConvention();
   const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
   const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
 
@@ -2154,7 +2178,7 @@ auto spp::codegen::func_impls::std_raw_buf_shift(
   const auto from_sym = sm->CurrentScope->GetVarSymbol(from_param->ExtractName().get());
   const auto upto_sym = sm->CurrentScope->GetVarSymbol(upto_param->ExtractName().get());
   const auto count_sym = sm->CurrentScope->GetVarSymbol(count_param->ExtractName().get());
-  const auto usize_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(from_sym->Type.get()), ctx);
+  const auto usize_ty = GetLlvmTypeOf(*from_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto from_val = ctx->Builder.CreateLoad(usize_ty, from_sym->LlvmInfo->Alloca, "raw_buf.shift.from");
   const auto upto_val = ctx->Builder.CreateLoad(usize_ty, upto_sym->LlvmInfo->Alloca, "raw_buf.shift.upto");
   const auto count_val = ctx->Builder.CreateLoad(usize_ty, count_sym->LlvmInfo->Alloca, "raw_buf.shift.count");
@@ -2289,7 +2313,7 @@ auto spp::codegen::func_impls::std_threading_atomic_store_inner(
   //
   const auto val_param = proto->FnParamGroup->GetAllParams()[1];
   const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
-  const auto val_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(val_sym->Type.get()), ctx);
+  const auto val_ty = GetLlvmTypeOf(*val_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
