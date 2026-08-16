@@ -167,6 +167,6 @@ auto spp::analyse::utils::bin_utils::ConvertIsExprToFuncCall(
   // Construct and return the case expression AST.
   auto case_expr = MakeUnique<asts::CaseExpressionAst>(
     nullptr, std::move(is_expr.Lhs), nullptr, std::move(branches));
-  case_expr->DesugaredFromIsExpr = true;
+  case_expr->LoweredFromIsExpr = true;
   return case_expr;
 }
