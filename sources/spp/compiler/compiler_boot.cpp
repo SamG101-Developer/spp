@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.monomorphization_utils;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
@@ -196,10 +197,10 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   }
   bar.Finish();
 
-  // Attach all LLVM type info to all types now.
+  // Give every module a context to build into.
   for (auto const &mod : _Modules) {
     auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath);
-    sm->AttachLlvmTypeInfo(*mod, ctx.get());
+    ctx->Sm = sm;
     _LlvmCtxs.EmplaceBack(std::move(ctx));
   }
 }
@@ -216,6 +217,23 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
     sm->Reset();
     bar.Next();
   }
+  bar.Finish();
+}
+
+auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
+  utils::ProgressBar &bar,
+  ModuleTree &,
+  analyse::scopes::ScopeManager *sm)
+  -> void {
+  //
+  using analyse::utils::monomorphization_utils::MonomorphiseToFixedPoint;
+
+  // Monomorphisation stage. Not a walk over the modules -
+  // see "MonomorphiseToFixedPoint" - so there is no per-module
+  // progress to report, only the whole thing being done.
+  auto meta = asts::meta::CompilerMetaData();
+  meta.CurrentStage = 11.5;
+  MonomorphiseToFixedPoint(sm, &meta);
   bar.Finish();
 }
 

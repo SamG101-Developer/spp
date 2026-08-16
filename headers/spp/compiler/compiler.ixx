@@ -27,6 +27,7 @@ inline constexpr auto kCompilerStageNames = std::array{
   "Analysing Semantics............ ",
   "Checking Memory Safety......... ",
   "Resolving comptime constants... ",
+  "Monomorphising generics........ ",
   "Generating Code (1)............ ",
   "Generating Code (2)............ "
 };

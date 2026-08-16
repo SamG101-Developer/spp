@@ -89,6 +89,12 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     analyse::scopes::ScopeManager *sm)
     -> void;
 
+  auto Stage9_5_Monomorphise(
+    utils::ProgressBar &bar,
+    ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm)
+    -> void;
+
   auto Stage10_PreCodeGen(
     utils::ProgressBar &bar,
     ModuleTree &tree,

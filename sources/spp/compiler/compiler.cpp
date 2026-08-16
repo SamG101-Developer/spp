@@ -5,6 +5,7 @@ module spp.compiler.compiler;
 
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.instantiation_queue;
 import spp.asts.module_prototype_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -72,6 +73,7 @@ auto spp::compiler::Compiler::Compile() -> void {
     m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
     m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
     if (not m_for_unit_tests) {
+      m_boot->Stage9_5_Monomorphise(**ps++, *m_modules, m_scope_manager.get());
       m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
       m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get(), m_mode == Mode::REL);
     }
@@ -90,6 +92,7 @@ auto spp::compiler::Compiler::Compile() -> void {
 auto spp::compiler::Compiler::Cleanup() -> void {
   asts::generate::common_types_precompiled::ClearTypes();
   analyse::scopes::ScopeManager::Cleanup();
+  analyse::utils::instantiation_queue::Clear();
 }
 
 SPP_MOD_END
