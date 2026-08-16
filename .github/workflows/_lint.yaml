@@ -1,7 +1,7 @@
 name: lint
 
-# The two cheap gates, run side by side. Both must pass before anything expensive starts, so a malformed PR title costs
-# seconds rather than a full compile. Check the pr title and description for simple uniform conformance rules.
+# The two inexpensive gates, run side by side. Both must pass before anything expensive starts, so a malformed PR title
+# costs seconds rather than a full compilation. Check the pr title and description for simple uniform conformance rules.
 
 on:
   workflow_call: { }
@@ -15,18 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      pull-requests: read  # read the PR title to validate its format
+      pull-requests: read
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
+      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
           disable-sudo: true
 
-      # Enforce the regex rules on the PR title and description. There is a preset list of valid types of PRs, that
-      # should cover all PRs. Description regex is defined here too.
+      # Enforce the regex rules on the PR title and description.
       - name: Check PR title
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50
         env:
@@ -47,7 +45,7 @@ jobs:
           subjectPatternError: "The description must match the regex."
 
   # The "pre-commit" step runs the pre-commit-config.yaml file, which runs the simple linting such as missing or extra
-  # newlines, whitespace, yaml/toml/jaon/action checks, cmake formatting etc.
+  # newlines, whitespace, yaml/toml/jaon/action checks, cmake formatting, etc.
   pre-commit:
     name: Format & Lint
     runs-on: ubuntu-latest
@@ -55,23 +53,21 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
+      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
           disable-sudo: true
 
-      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
-      # secured under the above "harden-runner" step.
+      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      # Setup python for the pre-commit to actually run.
+      # Set up python for the pre-commit to actually run.
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
