@@ -120,10 +120,17 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
 
   // Check the value's memory.
   meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
+
+  // Fix variable shadowing, where a newer version of the symbol is
+  // gotten because stage7 added it, when we are trying to use the
+  // original.
+  const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
+  const auto shadowed = sm->CurrentScope->RemVarSymbol(sym_name);
   ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, meta);
+  if (shadowed != nullptr) { sm->CurrentScope->AddVarSymbol(shadowed); }
 
   // Get the name or alias symbol to mark it as initialized.
-  const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
+  const auto sym = sm->CurrentScope->GetVarSymbol(sym_name);
   sym->MemInfo->InitializedBy(*Name, sm->CurrentScope);
   if (Conv != nullptr) {
     sym->MemInfo->AstBorrowed = {Conv.get(), sm->CurrentScope};
@@ -137,9 +144,16 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
   // Assign the generated value into the variable symbol.
   meta->Save();
   meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
-  meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
 
-  const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
+  // Fix variable shadowing, where a newer version of the symbol is
+  // gotten because stage7 added it, when we are trying to use the
+  // original.
+  const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
+  const auto shadowed = sm->CurrentScope->RemVarSymbol(sym_name);
+  meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
+  if (shadowed != nullptr) { sm->CurrentScope->AddVarSymbol(shadowed); }
+
+  const auto var_sym = sm->CurrentScope->GetVarSymbol(sym_name);
   if (var_sym != nullptr) {
     // Can be nullptr for the materialization into $ symbols.
     var_sym->CompTimeValue = std::move(meta->CmpResult);
@@ -163,8 +177,12 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   // resume prologue has already pointed the symbol at its env field (its frame lives on the caller's stack). Reuse
   // that pre-set alloca storage instead of allocating a fresh non-persisting slot.
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
+
+  // Void could have been introduced via a generic implementation,
+  // so just prevent allocas from Void types.
+  const auto is_void = llvm_type->isVoidTy();
   auto alloca = var_sym->LlvmInfo->Alloca;
-  if (alloca == nullptr) {
+  if (alloca == nullptr and not is_void) {
     alloca = codegen::LlvmEntryAlloca(llvm_type, "local.alloca" + uid, ctx);
     var_sym->LlvmInfo->Alloca = alloca;
   }
@@ -172,15 +190,25 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   // Generate the initializer expression. A function/closure parameter has no initializer expression to codegen -
   // its value is an already-generated llvm::Argument (see FunctionParameterGroupAst::Stage11_CodeGen) - so that
   // takes priority over evaluating "LetStatementValue".
-  if (meta->LetStatementPrecomputedValue != nullptr) {
+  if (meta->LetStatementPrecomputedValue != nullptr and not is_void) {
     ctx->Builder.CreateStore(meta->LetStatementPrecomputedValue, alloca);
   }
   else if (not meta->LetStatementFromUninitialized) {
     meta->Save();
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
     meta->LlvmAssignmentTarget = alloca;
+
+    // Fix variable shadowing, where a newer version of the symbol is
+    // gotten because stage7 added it, when we are trying to use the
+    // original.
+    const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
+    const auto shadowed = sm->CurrentScope->RemVarSymbol(sym_name);
+
     const auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateStore(llvm_val, alloca);
+    if (shadowed != nullptr) { sm->CurrentScope->AddVarSymbol(shadowed); }
+
+    // Skip storing Void (created via generic implementation analysis).
+    if (not is_void) { ctx->Builder.CreateStore(llvm_val, alloca); }
     meta->Restore();
   }
 
