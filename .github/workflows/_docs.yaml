@@ -43,7 +43,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
         with:
-          python-version: "3.14"
+          python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
           cache-dependency-glob: uv.lock
 
@@ -52,7 +52,6 @@ jobs:
         id: doxygen-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          # SPP_DOXYGEN_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
           path: ~/.tools/doxygen
           key: doxygen-${{ runner.os }}-${{ hashFiles('.github/versions.env', '.github/scripts/lib/load-versions.sh', '.github/scripts/docs/install-doxygen.sh') }}
 

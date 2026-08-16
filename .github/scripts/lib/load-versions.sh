@@ -18,6 +18,7 @@ is_allowed_key() {
     GTEST_PARALLEL_COMMIT) return 0 ;;
     LLVM_LIB_VERSION | LLVM_SH_SHA256) return 0 ;;
     LLVM_WIN_ASSET | LLVM_WIN_SHA256 | LLVM_WIN_TAG) return 0 ;;
+    NINJA_VERSION | PYTHON_VERSION) return 0 ;;
     OSV_SCANNER_SHA256 | OSV_SCANNER_VERSION) return 0 ;;
     *) return 1 ;;
   esac

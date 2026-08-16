@@ -41,7 +41,7 @@ runs:
       uses: lukka/get-cmake@e6906078ebd1ccb8ce51ab4626ac46a1b5a517e3
       with:
         cmakeVersion: ${{ env.CMAKE_VERSION }}
-        ninjaVersion: "latest"
+        ninjaVersion: ${{ env.NINJA_VERSION }}
 
     # Compiler
     # Linux + GCC

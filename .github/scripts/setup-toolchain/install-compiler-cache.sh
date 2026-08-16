@@ -6,6 +6,6 @@ set -euo pipefail
 
 case "$RUNNER_OS" in
   Linux)   sudo apt-get install -y ccache ;;
-  macOS)   brew install ccache ninja ;;
+  macOS)   brew install ccache ;;
   Windows) choco install sccache -y ;;
 esac
