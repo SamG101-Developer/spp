@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install the requested Clang, plus the libstdc++ it borrows, and point CC/CXX at it.
+# Install the requested Clang, plus the libstdc++ it
+# borrows, and point CC/CXX at it.
 set -euo pipefail
 
 sudo "${RUNNER_TEMP}/llvm.sh" "${CLANG_VERSION}"

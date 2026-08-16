@@ -129,6 +129,10 @@ echo "prebuilt Boost (${VERSIONS})"
 boost="$(pinned BOOST_VERSION)"
 set_pin BOOST_SHA256_LINUX \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-24.04-gcc-static+shared-x86.tar.gz")"
+# There is no 24.04 arm64 build upstream, and none is needed: only the headers are used, so the 22.04 tarball is what
+# the arm64 runners take. Keep this in step with the case block in install-boost.sh.
+set_pin BOOST_SHA256_LINUX_ARM64 \
+  "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-22.04-gcc-static+shared-aarch64.tar.gz")"
 set_pin BOOST_SHA256_MACOS \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-macos-15-clang-static+shared-aarch64.tar.gz")"
 set_pin BOOST_SHA256_WINDOWS \

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install the pinned Doxygen release into SPP_DOXYGEN_PREFIX, checksum first.
+# Install the pinned Doxygen release into SPP_DOXYGEN_PREFIX,
+# checksum first.
 set -euo pipefail
 
 source .github/scripts/lib/verified-fetch.sh

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install the requested GCC from the toolchain PPA and point CC/CXX at it.
+# Install the requested GCC from the toolchain PPA and
+# point CC/CXX at it.
 set -euo pipefail
 
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test

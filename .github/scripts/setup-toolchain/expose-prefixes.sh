@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Publish the dependency prefixes so the configure step finds them without any per-workflow wiring.
+# Publish the dependency prefixes so the configure step
+# finds them without any per-workflow wiring.
 set -euo pipefail
 
 if [ "$RUNNER_OS" = "Windows" ]; then

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Fetch the apt.llvm.org installer the Clang and LLVM steps run later.
+# Fetch the apt.llvm.org installer the Clang and LLVM
+# steps run later.
 set -euo pipefail
 source .github/scripts/lib/verified-fetch.sh
 

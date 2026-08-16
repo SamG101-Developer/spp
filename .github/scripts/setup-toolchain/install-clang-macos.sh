@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install the requested Clang from brew, point CC/CXX at it, and rewrite the libc++ module manifest with absolute paths
+# Install the requested Clang from brew, point CC/CXX at it,
+# and rewrite the libc++ module manifest with absolute paths
 # so module builds resolve it.
 set -euo pipefail
 

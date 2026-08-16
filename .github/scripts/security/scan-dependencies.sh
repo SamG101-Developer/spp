@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Scan the repository's dependency manifests and write SARIF for the Security tab. The osv-scanner distinguishes
-# "found vulnerabilities" from "could not scan". Findings are reported rather than fatal. A scanner that failed to run
+# Scan the repository's dependency manifests and write SARIF
+# for the Security tab. The osv-scanner distinguishes
+# "found vulnerabilities" from "could not scan". Findings
+# are reported rather than fatal. A scanner that failed to run
 # is considered fatal.
 # Todo: To make findings blocking -> change the `1)` branch below to exit 1.
 set -euo pipefail
@@ -23,7 +25,8 @@ case "$status" in
     ;;
 esac
 
-# Both surviving paths are meant to have written a report, so its absence means the scanner exited successfully
+# Both surviving paths are meant to have written a report,
+# so its absence means the scanner exited successfully
 # without doing the one thing it was asked to do.
 if ! [ -f "$output" ]; then
   echo "::error::osv-scanner exited ${status} but wrote no report to ${output}"

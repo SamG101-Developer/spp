@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Turn the compiler cache off; configure-cmake reads SPP_NO_COMPILER_LAUNCHER and leaves CMAKE_<LANG>_COMPILER_LAUNCHER
+# Turn the compiler cache off; configure-cmake reads
+# SPP_NO_COMPILER_LAUNCHER and leaves CMAKE_<LANG>_COMPILER_LAUNCHER
 # unset.
 set -euo pipefail
 

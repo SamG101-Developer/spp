@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Windows gets the official clang+llvm release tarball, which ships the static libs and lib/cmake/llvm that
+# Windows gets the official clang+llvm release tarball,
+# which ships the static libs and lib/cmake/llvm that
 # "find_package(LLVM)" needs.
 set -euo pipefail
 source .github/scripts/lib/verified-fetch.sh

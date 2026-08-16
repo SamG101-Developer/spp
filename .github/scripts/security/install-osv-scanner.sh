@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Put the pinned osv-scanner release on PATH, checksum first.
+# Put the pinned osv-scanner release on PATH, checksum
+# first.
 set -euo pipefail
 
 source .github/scripts/lib/verified-fetch.sh
