@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.generic_bindings;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.annotation_ast;
@@ -236,7 +237,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+  using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
   using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 

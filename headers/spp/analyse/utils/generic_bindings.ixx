@@ -23,6 +23,50 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::generic_bindings {
+  using InferenceSourceMap = Map<
+    Shared<asts::IdentifierAst>,
+    Shared<asts::TypeAst>,
+    spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
+    spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
+
+  using InferenceTargetMap = Map<
+    Shared<asts::IdentifierAst>,
+    Shared<asts::TypeAst>,
+    spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
+    spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
+
+  SPP_EXP_FUN auto EnforceNoUninferredGnArgs(
+    Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
+    Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
+    scopes::Scope const &owner_scope,
+    Shared<asts::Ast> const &owner,
+    scopes::ScopeManager &sm)
+    -> void;
+
+
+  SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
+    asts::GenericParameterGroupAst const &p_group,
+    asts::GenericArgumentGroupAst const &a_group,
+    scopes::Scope const &owner_scope,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData &meta)
+    -> void;
+
+
+  SPP_EXP_FUN auto InferGnArgs(
+    asts::GenericParameterGroupAst const &p_group,
+    asts::GenericArgumentGroupAst &a_group,
+    InferenceSourceMap infer_source,
+    InferenceTargetMap infer_target,
+    Shared<asts::Ast> const &owner,
+    scopes::Scope const &owner_scope,
+    Shared<asts::IdentifierAst> const &variadic_fn_param_name,
+    bool is_tuple_owner,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData &meta)
+    -> void;
+
+
   /**
    * Rewrite a generic argument group into its canonical form: every generic argument as a "keyword" generic argument,
    * bound against the parameter it 's for, ordered as the parameters are declared. Mutates in place.
