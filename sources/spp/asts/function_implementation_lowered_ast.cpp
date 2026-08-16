@@ -78,10 +78,6 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
   // the scope walk below moves the cursor off it.
   const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
     *_ProtoPtr->ReturnType, *sm->CurrentScope, *sm, *meta);
-  if (const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ret_type.get()); ret_type_sym != nullptr) {
-    codegen::EnsureLlvmTypeComplete(*ret_type_sym, *sm, ctx);
-  }
-
   analyse::utils::builtins::kBuiltinFuncs
     .at(_ScopePtr)
     .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(*ret_type, *sm->CurrentScope, ctx));
