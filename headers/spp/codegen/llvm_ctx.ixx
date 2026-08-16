@@ -8,6 +8,7 @@ import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
+  SPP_EXP_CLS class ScopeManager;
 }
 
 namespace spp::codegen {
@@ -19,6 +20,7 @@ namespace spp::codegen {
 SPP_EXP_CLS struct spp::codegen::LlvmCtx {
   // General context information.
   llvm::LLVMContext *Context;
+  analyse::scopes::ScopeManager const *Sm = nullptr;
   Unique<llvm::Module> Module;
   llvm::IRBuilder<> Builder;
   llvm::MachineFunction *MF;
