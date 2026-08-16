@@ -127,7 +127,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     expr_type = Expr->InferType(sm, meta);
-    if (Conv) expr_type = expr_type->WithConvention(AstClone(Conv));
+    if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
     meta->Restore();
   }
 
