@@ -139,8 +139,8 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   // Todo: Add higher order generic checks into the unit tests (self and generic type).
-  using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
-  using analyse::utils::func_utils::InferGnArgs;
+  using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
+  using analyse::utils::generic_bindings::InferGnArgs;
   using analyse::utils::generic_bindings::NameGnArgs;
   using analyse::utils::monomorphization_utils::CreateGenericClsScope;
   using analyse::utils::type_utils::GetTypeSymOrError;
