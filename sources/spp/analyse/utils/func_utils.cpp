@@ -356,8 +356,18 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     }
   }
 
+  // Remove duplicate overloads that are the same pointer (ie
+  // exact protos). Todo: Likely a bandaid over an issue.
+  auto unique_overloads = Vec<FunctionOverload>();
+  for (auto &&info : overload_scopes) {
+    const auto already_seen = genex::any_of(unique_overloads, [&info](auto const &seen) {
+      return seen.Proto == info.Proto and seen.FnScope == info.FnScope;
+    });
+    if (not already_seen) { unique_overloads.EmplaceBack(std::move(info)); }
+  }
+
   // Return all the found function scopes.
-  return overload_scopes;
+  return unique_overloads;
 }
 
 auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
@@ -556,6 +566,9 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   scopes::ScopeManager &sm,
   Vec<asts::GenericArgumentAst*> const &generic_args)
   -> void {
+  //
+  using asts::utils::generic_substitution::SubstituteGenericsInExpression;
+
   // Validate the named arguments against the parameters.
   EnforceNoInvalidFnArgs(p_group.GetAllParams(), a_group.GetKeywordArgs(), sm);
 
@@ -625,8 +638,17 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     // calls).
     const auto optional_param = param->To<asts::FunctionParameterOptionalAst>();
     if (optional_param == nullptr or optional_param->DefaultVal == nullptr) { continue; }
+
+    // Translate the default out of the callee's terms as it is
+    // materialised. The parameter's own type is substituted when
+    // the instantiation's prototype is built, but its default
+    // value is an expression and nothing rewrites those, so
+    // "alloc: A = A()" would arrive here as an "A()" the caller
+    // has no "A" for.
+    auto default_val = asts::AstClone(optional_param->DefaultVal);
+    SubstituteGenericsInExpression(default_val, generic_args);
     ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
-      param_name, nullptr, nullptr, asts::AstClone(optional_param->DefaultVal)));
+      param_name, nullptr, nullptr, std::move(default_val)));
   }
   a_group.Args = std::move(ordered_args);
 }
