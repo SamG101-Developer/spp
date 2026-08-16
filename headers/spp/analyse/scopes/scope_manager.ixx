@@ -156,14 +156,10 @@ public:
     -> Scope*;
 
   /**
-   * Skip every scope belonging to the current scope. This moves the iterator such that iterating once more will move
-   * to the next sibling of this scope.
+   * Advance the iterator past every scope below the current one, leaving it on the last of them. Used by the stages
+   * that skip a subtree rather than walking it.
    */
-  auto ExhaustScope() -> void;
-
-  auto AttachLlvmTypeInfo(
-    asts::ModulePrototypeAst const &mod,
-    codegen::LlvmCtx *ctx) const
+  auto ExhaustScope()
     -> void;
 
   /**
