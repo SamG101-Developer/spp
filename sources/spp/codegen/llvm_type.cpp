@@ -185,9 +185,9 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower the "Fun*" family to a { fn_ptr, env_ptr } fat pointer.
-  // Allows for compatibility with closures too; one uniform system
-  // for all function type storage.
+  // Lower the "Fun*" family to a { fn_ptr, env_ptr } fat
+  // pointer. Allows for compatibility with closures too;
+  // one uniform system for all function type storage.
   if (const auto fields = GetFatPointerFields(*cls_sym->FqName(), *scope, ctx); fields.has_value()) {
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, fields->ToStdVector());
     return;
@@ -409,16 +409,16 @@ auto spp::codegen::CoerceToVariant(
   using analyse::utils::type_utils::IsTypeVariant;
   using analyse::utils::type_utils::TypeEq;
 
-  // Only a variant target ever needs a coercion, and a value already
-  // of the target type is one.
+  // Only a variant target ever needs a coercion, and a value
+  // already of the target type is one.
   if (llvm_val == nullptr or not IsTypeVariant(target_type, scope)) { return llvm_val; }
   if (TypeEq(target_type, source_type, scope, scope, false)) { return llvm_val; }
 
   const auto target_llvm_type = scope.GetTypeSymbol(&target_type)->LlvmInfo->LlvmType;
   SPP_ASSERT(target_llvm_type != nullptr);
 
-  // A member value (source) is wrapped: tagged and copied into the
-  // payload.
+  // A member value (source) is wrapped: tagged and copied into
+  // the payload.
   if (not IsTypeVariant(source_type, scope)) {
     const auto tag = GetVariantIndexOfMember(target_type, source_type, scope);
     if (not tag.has_value()) { return llvm_val; }
@@ -448,9 +448,9 @@ auto spp::codegen::CoerceToVariant(
   const auto source_tag = LoadVariantTag(source_slot, source_llvm_type, name + ".from.tag", ctx);
 
   // Translate the discriminant with a chain of selects, innermost
-  // first. Variants have few members, so this stays smaller than a
-  // lookup table, and it folds away entirely when the two numberings
-  // happen to agree.
+  // first. Variants have few members, so this stays smaller than
+  // a lookup table, and it folds away entirely when the two
+  // numberings happen to agree.
   const auto tag_type = GetVariantTagType(ctx);
   auto target_tag = static_cast<llvm::Value*>(source_tag);
   if (not is_identity_map) {
@@ -463,11 +463,11 @@ auto spp::codegen::CoerceToVariant(
     }
   }
 
-  // Write the translated discriminant and move the payload over. The
-  // target's members are a superset of the source's, so its payload
-  // buffer is always at least as large, and the source's size is the
-  // amount worth copying. That leaves the target's wider tail uncopied,
-  // so zero the slot first.
+  // Write the translated discriminant and move the payload over.
+  // The target's members are a superset of the source's, so its
+  // payload buffer is always at least as large, and the source's
+  // size is the amount worth copying. That leaves the target's
+  // wider tail uncopied, so zero the slot first.
   const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".to.slot", ctx);
   ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
   ctx->Builder.CreateStore(
