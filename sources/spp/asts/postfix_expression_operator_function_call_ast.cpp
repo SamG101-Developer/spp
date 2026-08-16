@@ -395,7 +395,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   if (_OverloadInfo->Proto->GetLlvmFunc() == nullptr) {
     auto tm = ScopeManager(sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
     tm.Reset(tm.CurrentScope);
-    _OverloadInfo->Proto->GenerateLlvmDeclaration(&tm, meta, ctx);
+    const auto owner_ctx = _OverloadInfo->Proto->OwnerCtx();
+    _OverloadInfo->Proto->GenerateLlvmDeclaration(
+      &tm, meta, owner_ctx != nullptr ? owner_ctx : ctx);
   }
 
   // SPP_ASSERT(not ctx->Builder.GetInsertBlock()->getTerminator());
