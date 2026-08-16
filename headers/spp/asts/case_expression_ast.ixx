@@ -54,7 +54,15 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
    * need to actually catch it (e.g. a loop condition), so enforce that by this flag. Needed for the phi nodes.
    * Todo: is this a more general problem? Does "loop case ... { }" fail to generate?,=
    */
-  bool DesugaredFromIsExpr = false;
+  bool LoweredFromIsExpr = false;
+
+  /**
+   * Set when this @c case is the lowering of the @c "?" operator, whose value branch yields the operand's value and
+   * whose @c else branch returns. The operator is an expression wherever it is written, so the @c case standing in for
+   * it always yields a value - which is not something the surrounding code generation can be asked about, because the
+   * lowering deliberately detaches itself from the assignment the operator sits inside.
+   */
+  bool LoweredFromTryOperator = false;
 
   /**
    * Construct the CaseExpressionAst with the arguments matching the members.

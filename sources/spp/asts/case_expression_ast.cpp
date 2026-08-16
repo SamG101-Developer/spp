@@ -87,7 +87,8 @@ auto spp::asts::CaseExpressionAst::Clone() const
     AstClone(Cond),
     AstClone(TokOf),
     AstCloneVec(Branches));
-  c->DesugaredFromIsExpr = DesugaredFromIsExpr;
+  c->LoweredFromIsExpr = LoweredFromIsExpr;
+  c->LoweredFromTryOperator = LoweredFromTryOperator;
   return c;
 }
 
@@ -215,7 +216,9 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   // when it is the desugaring of an "is", which is a boolean
   // expression wherever it appears, including the condition
   // positions that assign nothing.
-  const auto is_expr = meta->AssignmentTarget != nullptr or DesugaredFromIsExpr;
+  const auto is_expr = meta->AssignmentTarget != nullptr
+    or LoweredFromIsExpr
+    or LoweredFromTryOperator;
   Cond->Stage11_CodeGen(sm, meta, ctx);
 
   // Get the function, and create the end basic block. We
@@ -246,7 +249,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     // generation. "ret_type" stays null with it, which is what stops the branches trying to widen a bool into a
     // variant on the way into the phi.
     const auto llvm_phi_ty = [&] {
-      if (DesugaredFromIsExpr) { return static_cast<llvm::Type*>(llvm::Type::getInt1Ty(*ctx->Context)); }
+      if (LoweredFromIsExpr) { return static_cast<llvm::Type*>(llvm::Type::getInt1Ty(*ctx->Context)); }
       ret_type = InferType(sm, meta);
       return codegen::GetLlvmTypeOf(*ret_type, *sm->CurrentScope, ctx);
     }();
