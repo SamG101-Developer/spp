@@ -139,8 +139,17 @@ auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Comptime resolve the value.
+  // Fix variable shadowing, where a newer version of the symbol is
+  // gotten because stage7 added it, when we are trying to use the
+  // original.
+  auto shadowed = Vec<Shared<analyse::scopes::VariableSymbol>>();
+  for (auto const &target : Var->ExtractNames()) {
+    if (auto sym = sm->CurrentScope->RemVarSymbol(target.get()); sym != nullptr) {
+      shadowed.EmplaceBack(std::move(sym));
+    }
+  }
   Val->Stage9_CompTimeResolve(sm, meta);
+  for (auto const &sym : shadowed) { sm->CurrentScope->AddVarSymbol(sym); }
 
   // Assign the comptime value to the variable.
   meta->Save();
@@ -158,10 +167,14 @@ auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
   -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
+  // Todo: Inconsistent with lower level stages?
   meta->Save();
   meta->AssignmentTarget = Var->ExtractName();
-  meta->AssignmentTargetType = Type ? Type : Val->InferType(sm, meta);
-  meta->LetStatementExplicitType = Type ? Type : Val->InferType(sm, meta);
+  meta->AssignmentTargetType = Type;
+  const auto val_type = Type ? Type : Val->InferType(sm, meta);
+
+  meta->AssignmentTargetType = val_type;
+  meta->LetStatementExplicitType = val_type;
   meta->LetStatementValue = Val.get();
 
   // Delegate the code generation to the variable, after setting
