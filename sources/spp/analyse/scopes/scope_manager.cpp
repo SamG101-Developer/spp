@@ -162,7 +162,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     // Load the generics.
     if (not RelaxedTypeEq(
       *fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *sup_scope,
-      scope_generics_map, false, false)) { continue; }
+      scope_generics_map, false, false, true)) { continue; }
     auto scope_generics = asts::GenericArgumentGroupAst::FromMap(std::move(scope_generics_map));
 
     // Create a generic version of the super scope if needed.
@@ -185,7 +185,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
       // agnostic. On-demand attachment (deferred == nullptr) checks the constraint inline as before.
       if (auto _ = GenericInferenceMap(); not RelaxedTypeEq(
         *fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *new_sup_scope,
-        _, false, deferred == nullptr)) { continue; }
+        _, false, deferred == nullptr, true)) { continue; }
       defer_constraint = deferred != nullptr;
     }
     else {
@@ -252,7 +252,7 @@ auto spp::analyse::scopes::ScopeManager::PruneUnsatisfiedSupConstraints(
       const auto fq_type = dc.owner_scope->TySym->FqName();
       if (RelaxedTypeEq(
         *fq_type, *asts::AstName(dc.base_sup_scope->AstNode), *dc.owner_scope->TySym->ScopeDefinedIn, *dc.sup_scope,
-        _, false, true)) { continue; }
+        _, false, true, true)) { continue; }
 
       // The constraint is not satisfied, so remove the attached super scope (and its paired class scope).
       auto &sup_scopes = dc.owner_scope->DirectSupScopes;

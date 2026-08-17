@@ -135,6 +135,18 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope const &type_scope)
     -> bool;
 
+  /**
+   * @param strict_generic_args Whether a generic @e argument that is still an unbound parameter fails to match a type
+   * written opposite it. Off for the argument/parameter checks, which is the whole point of them - a "T" parameter
+   * accepts the "U8" argument offered for it. On when deciding whether a @c sup block applies to a type: an unbound
+   * "T" is not yet anything, so letting it match attaches @c "sup NonNull[U8]" to the template @c "NonNull[T]" and
+   * lets a body written for every "T" call what only "NonNull[U8]" has - resolving while "T" stands for nothing, and
+   * failing once it stands for something, against code the author cannot see.
+   *
+   * @note Only the arguments are held to this, never the bare parameter itself. @c "A" compared against @c "Alloc" is
+   * how a constraint's @c sup block is attached to @c "A" to begin with, so refusing that match would leave every
+   * constrained parameter with none of the members its constraint gives it.
+   */
   SPP_EXP_FUN auto RelaxedTypeEq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type,
@@ -142,7 +154,8 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope const &rhs_scope,
     GenericInferenceMap &generic_args,
     bool check_variant = false,
-    bool check_constraints = true)
+    bool check_constraints = true,
+    bool strict_generic_args = false)
     -> bool;
 
   SPP_EXP_FUN auto RelaxedTypeEq(
@@ -214,6 +227,26 @@ namespace spp::analyse::utils::type_utils {
     asts::ClassPrototypeAst const &type,
     scopes::ScopeManager const &sm)
     -> Shared<asts::TypeAst>;
+
+  /**
+   * Whether a type names real types the whole way down: itself, and every generic argument inside it, however deeply
+   * nested. This is what separates a genuine instantiation from a template wearing one's clothes - @c "NonNull[T=T]"
+   * or @c "SizedInteger[w=w]" - which is registered while a generic body is analysed and must never be laid out or
+   * emitted.
+   *
+   * Asking whether the type @e lowers is not the same question and does not answer this one: a borrowed type lowers to
+   * a pointer whatever it points at, and @c NonNull lowers to a bare pointer whatever it holds, so both report success
+   * for an argument that is still a parameter.
+   *
+   * @param[in] type The type to inspect.
+   * @param[in] scope The scope to resolve @p type and its arguments against - the instantiation's own, never the
+   * caller's, since a caller may have a same-named parameter bound to something real.
+   * @return Whether every name in @p type resolves to a class rather than to an unbound parameter.
+   */
+  SPP_EXP_FUN auto IsTypeFullyConcrete(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> bool;
 
   SPP_EXP_FUN auto IsTypeBorrowed(
     asts::TypeAst const &type,

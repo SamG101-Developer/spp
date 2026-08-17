@@ -186,10 +186,24 @@ auto spp::analyse::utils::type_utils::TypeEq(
   // Get the non-generic symbols. For the "Self" types, we reverse
   // the scopes, so that we get "Self" in the opposite scope, and
   // compare it to the type from that scope.
-  const auto stripped_lhs_sym = (lhs_type.IsSelfType() ? rhs_scope : lhs_scope).
+  auto stripped_lhs_sym = (lhs_type.IsSelfType() ? rhs_scope : lhs_scope).
     GetTypeSymbol(stripped_lhs.get(), false);
-  const auto stripped_rhs_sym = (rhs_type.IsSelfType() ? lhs_scope : rhs_scope).
+  auto stripped_rhs_sym = (rhs_type.IsSelfType() ? lhs_scope : rhs_scope).
     GetTypeSymbol(stripped_rhs.get(), false);
+
+  // A "Self" symbol links to the class it stands for but carries no prototype of its own, and the prototype is what
+  // the comparison below is on. Two "Self" types are already equal by the check above, so what is left is "Self"
+  // against a written type - an instantiated body returning "Self" from a function whose return type resolved to the
+  // concrete class, say - and that only matches once "Self" is followed through to the class it names.
+  //
+  // Only worth doing when the other side does name a class. Against a symbol that carries no prototype either (an
+  // unbound generic parameter, most of all) the two match precisely by both being prototype-less, which is what lets
+  // a method written in terms of "Self" register as overriding an abstract one; resolving would break that.
+  const auto resolve_self_sym = [](Shared<scopes::TypeSymbol> const &sym, Shared<scopes::TypeSymbol> const &other) {
+    return other != nullptr and other->Type != nullptr and sym != nullptr ? sym->AsClassSymbol() : sym;
+  };
+  if (lhs_type.IsSelfType()) { stripped_lhs_sym = resolve_self_sym(stripped_lhs_sym, stripped_rhs_sym); }
+  if (rhs_type.IsSelfType()) { stripped_rhs_sym = resolve_self_sym(stripped_rhs_sym, stripped_lhs_sym); }
   const auto lhs_sym = lhs_scope.GetTypeSymbol(&lhs_type);
 
   // If the left-hand-side is a "Variant" type, check the member
@@ -374,7 +388,9 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
   scopes::Scope const &rhs_scope,
   GenericInferenceMap &generic_args,
   const bool check_variant,
-  const bool check_constraints) -> bool {
+  const bool check_constraints,
+  const bool strict_generic_args) -> bool {
+  // Todo: Make this left relaxed only and remove strict_generic_args?
   // Strip the generics from the types. This allows for the base
   // types to be retrieved and compared in their respective scopes.
   using asts::generate::common_types_precompiled::VAR;
@@ -448,9 +464,21 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     if (const auto rhs_generic_part_t = rhs_generic->To<asts::GenericArgumentTypeAst>()) {
       const auto rhs_generic_part = rhs_generic_part_t;
       const auto lhs_generic_part = lhs_generic->ToUnchecked<asts::GenericArgumentTypeAst>();
+
+      // Under "strict_generic_args", an argument that is still an unbound parameter is not the particular type
+      // written opposite it. Only the arguments are held to this: the bare parameter itself, compared against a type
+      // it is constrained by, has to keep matching, because that comparison is how a constraint's "sup" block is
+      // attached to the parameter in the first place.
+      if (strict_generic_args) {
+        const auto lhs_arg_sym = lhs_scope.GetTypeSymbol(lhs_generic_part->Val->WithoutGenerics().get());
+        const auto rhs_arg_sym = rhs_scope.GetTypeSymbol(rhs_generic_part->Val->WithoutGenerics().get());
+        if (lhs_arg_sym != nullptr and lhs_arg_sym->IsGeneric and lhs_arg_sym->Type == nullptr
+          and rhs_arg_sym != nullptr and not rhs_arg_sym->IsGeneric) { return false; }
+      }
+
       if (not RelaxedTypeEq(
         *lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args,
-        check_variant, check_constraints)) { return false; }
+        check_variant, check_constraints, strict_generic_args)) { return false; }
     }
     else {
       const auto lhs_generic_part = lhs_generic->ToUnchecked<asts::GenericArgumentCompAst>();
@@ -594,6 +622,42 @@ auto spp::analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount(
     if (IsTypeFunc(*sup_type, *type_sym->LinkedScope)) { return 2uz; }
   }
   return 0uz;
+}
+
+auto spp::analyse::utils::type_utils::IsTypeFullyConcrete(
+  asts::TypeAst const &type,
+  scopes::Scope const &scope)
+  -> bool {
+  // Only a name that positively resolves to an unbound parameter counts against the type. Such a symbol is found but
+  // carries no prototype - it is linked to the dummy scope "GenericParameterTypeAst::Stage2_GenTopLvlScopes" makes for
+  // it - where a parameter bound to a real type carries that type's prototype.
+  //
+  // A name that resolves to nothing at all is a different situation and is deliberately not treated as a parameter: a
+  // nested argument is looked up in the instantiation's own scope, which need not have every type its arguments were
+  // written in terms of in view, and reading "not found" as "still generic" would refuse perfectly good instantiations.
+  const auto stripped = type.WithoutGenerics()->WithoutConvention();
+  const auto sym = scope.GetTypeSymbol(stripped.get());
+  if (type.IsSelfType()) { return false; }
+  if (sym != nullptr and sym->Type == nullptr) { return false; }
+
+  // Then every argument, recursively. Recursion terminates because a written type is a finite tree; it is the
+  // arguments that carry the parameters, and a type like "NonNull[T=T]" is only distinguishable from "NonNull[T=U8]"
+  // by looking at them.
+  for (auto const &gn_arg : type.LastTypePart()->GnArgGroup->Args) {
+    if (const auto type_arg = gn_arg->To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
+      if (not IsTypeFullyConcrete(*type_arg->Val, scope)) { return false; }
+      continue;
+    }
+
+    // A comp argument still written as a name is a parameter rather than a value: "SizedInteger[w=w]" is the template
+    // and "SizedInteger[w=32]" is the instantiation, and only the second has a width to lower to (see the
+    // "kSizedIntegerParts" case in "RegisterLlvmTypeInfo", which gives up on anything that is not a literal). A name
+    // that stood for a value would have been rewritten to that value when the instantiation was built.
+    if (const auto comp_arg = gn_arg->To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
+      if (comp_arg->Val->To<asts::IdentifierAst>() != nullptr) { return false; }
+    }
+  }
+  return true;
 }
 
 auto spp::analyse::utils::type_utils::IsTypeRecursive(
