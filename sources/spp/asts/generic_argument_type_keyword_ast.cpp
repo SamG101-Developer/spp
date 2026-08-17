@@ -99,12 +99,12 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
   if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 
-  // Analyse the name and value of the generic type argument.
-  const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val.get());
-  const auto tmp2 = tmp1->FqName();
-  auto tmp3 = AstClone(Val->GetConvention());
-  const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
-  Val = tmp4;
+  // Todo: Document the branching.
+  const auto val_sym = sm->CurrentScope->GetTypeSymbol(Val.get());
+  const auto val_name = meta->ResolveBoundCompGenerics
+    ? val_sym->BoundName()
+    : val_sym->FqName();
+  Val = val_name->WithConvention(AstClone(Val->GetConvention()));
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::ViewName() const
