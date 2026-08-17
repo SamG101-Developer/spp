@@ -80,6 +80,15 @@ auto spp::codegen::func_impls::simple_create_fn(
 // Layer 2: enum-driven operation dispatchers.
 // =========================================================================================================
 
+auto spp::codegen::func_impls::is_shift_bin_op(
+  const BinOp op) -> bool {
+  switch (op) {
+    case BinOp::Shl:
+    case BinOp::LShr: return true;
+    default: return false;
+  }
+}
+
 auto spp::codegen::func_impls::is_cmp_bin_op(
   const BinOp op) -> bool {
   switch (op) {
@@ -202,8 +211,16 @@ auto spp::codegen::func_impls::simple_intrinsic_binop(
     : ty;
 
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{operand_ty, operand_ty});
-  const auto lhs = fn->arg_begin();
-  const auto rhs = fn->arg_begin() + 1;
+  const auto lhs = llvm::cast<llvm::Value>(fn->arg_begin());
+  auto rhs = llvm::cast<llvm::Value>(fn->arg_begin() + 1);
+
+  // A shift is the one binary operation whose two operands are separately typed in the source ("bit_shl[T, U](this: T,
+  // by: U)"), because a shift distance is a count rather than a value of the thing being shifted. Llvm requires both
+  // operands of one, so the distance is widened or narrowed to the shifted value's type. Neither direction can lose a
+  // meaningful distance: a distance that does not fit in "T" is already past the width being shifted.
+  if (is_shift_bin_op(op) and rhs->getType() != lhs->getType()) {
+    rhs = ctx->Builder.CreateZExtOrTrunc(rhs, lhs->getType(), "intrinsic.shift.by");
+  }
   ctx->Builder.CreateRet(apply_bin_op(ctx, op, lhs, rhs));
 }
 
@@ -259,6 +276,44 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
   ctx->Builder.CreateRetVoid();
 }
 
+namespace {
+  /**
+   * Whether a conversion is defined for a source and destination pair.
+   *
+   * @n
+   * Each of these operations is only meaningful over part of the space of type pairs - a truncation has to narrow, an
+   * extension has to widen, a bit cast has to keep the size - and llvm rejects an instruction built outside it.
+   *
+   * @param op The conversion being built.
+   * @param src The type being converted from.
+   * @param dst The type being converted to.
+   * @return Whether @p op is defined from @p src to @p dst .
+   */
+  auto ConvOpIsDefined(
+    const spp::codegen::func_impls::ConvOp op,
+    llvm::Type const *src,
+    llvm::Type const *dst)
+    -> bool {
+    using ConvOp = spp::codegen::func_impls::ConvOp;
+    const auto ints = src->isIntegerTy() and dst->isIntegerTy();
+    const auto floats = src->isFloatingPointTy() and dst->isFloatingPointTy();
+    switch (op) {
+      case ConvOp::Trunc: return ints and src->getIntegerBitWidth() > dst->getIntegerBitWidth();
+      case ConvOp::SExt:
+      case ConvOp::ZExt: return ints and src->getIntegerBitWidth() < dst->getIntegerBitWidth();
+      case ConvOp::FPTrunc: return floats and src->getPrimitiveSizeInBits() > dst->getPrimitiveSizeInBits();
+      case ConvOp::FPExt: return floats and src->getPrimitiveSizeInBits() < dst->getPrimitiveSizeInBits();
+      case ConvOp::SIToFP:
+      case ConvOp::UIToFP: return src->isIntegerTy() and dst->isFloatingPointTy();
+      case ConvOp::FPToSI:
+      case ConvOp::FPToUI: return src->isFloatingPointTy() and dst->isIntegerTy();
+      case ConvOp::BitCast: return src->isPtrOrPtrVectorTy() == dst->isPtrOrPtrVectorTy()
+        and (src->isPtrOrPtrVectorTy() or src->getPrimitiveSizeInBits() == dst->getPrimitiveSizeInBits());
+      default: std::unreachable();
+    }
+  }
+}
+
 auto spp::codegen::func_impls::simple_intrinsic_conv(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const ConvOp op) -> void {
   // "ty" (per the dispatcher) is the function's declared RETURN type - the conversion's destination. The source
@@ -269,6 +324,16 @@ auto spp::codegen::func_impls::simple_intrinsic_conv(
   const auto src_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(param_sym->Type.get()), ctx);
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{src_ty});
   const auto operand = fn->arg_begin();
+
+  // A conversion is only defined for some source/destination pairs - a truncation has to narrow, an extension has to
+  // widen, a bit cast has to keep the size. An instantiation for a pair outside that is one nothing can call: the
+  // conversions are selected by a "case w of { < that_w { utrunc } > that_w { uzext } else { bit_cast } }", and every
+  // arm of that gets instantiated for the widths the enclosing instantiation binds, while only the arm the widths
+  // choose can ever run. The other arms are given a body that says so, rather than an instruction llvm rejects.
+  if (not ConvOpIsDefined(op, src_ty, ty)) {
+    ctx->Builder.CreateUnreachable();
+    return;
+  }
   ctx->Builder.CreateRet(apply_conv_op(ctx, op, operand, ty));
 }
 
@@ -400,7 +465,16 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call_overflow(
   const auto rhs = fn->arg_begin() + 1;
   const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {elem_ty});
   const auto result = ctx->Builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
-  ctx->Builder.CreateRet(result);
+
+  // The intrinsic hands back an anonymous "{T, i1}", while "(T, Bool)" lowers to the named struct every other tuple of
+  // that shape shares. Llvm types are compared by identity, not by layout, so the two are different types however
+  // alike they look, and the fields have to be moved across rather than the result returned as it stands.
+  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  packed = ctx->Builder.CreateInsertValue(
+    packed, ctx->Builder.CreateExtractValue(result, {0}, "intrinsic.value" + uid), {0}, "intrinsic.packed" + uid);
+  packed = ctx->Builder.CreateInsertValue(
+    packed, ctx->Builder.CreateExtractValue(result, {1}, "intrinsic.flag" + uid), {1}, "intrinsic.packed" + uid);
+  ctx->Builder.CreateRet(packed);
 }
 
 auto spp::codegen::func_impls::simple_unary_intrinsic_call(
@@ -1638,13 +1712,16 @@ auto spp::codegen::func_impls::std_debug_breakpoint_internal(
 auto spp::codegen::func_impls::std_intrinsics_scmp(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Both operands are declared "&T", so they arrive as pointers and the values have to be read out of them before
+  // the comparison intrinsic - which takes the integers themselves - can be handed anything.
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
-  const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
   const auto operand_ty = GetLlvmTypeOf(*this_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
+
   const auto uid = "." + utils::Uid();
-  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{operand_ty, operand_ty});
-  const auto lhs = fn->arg_begin();
-  const auto rhs = fn->arg_begin() + 1;
+  const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
+  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ptr_ty, ptr_ty});
+  const auto lhs = ctx->Builder.CreateLoad(operand_ty, fn->arg_begin(), "intrinsic.lhs" + uid);
+  const auto rhs = ctx->Builder.CreateLoad(operand_ty, fn->arg_begin() + 1, "intrinsic.rhs" + uid);
   const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
     ctx->Module.get(), llvm::Intrinsic::scmp, {ty, operand_ty});
   const auto result = ctx->Builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
@@ -1654,14 +1731,16 @@ auto spp::codegen::func_impls::std_intrinsics_scmp(
 auto spp::codegen::func_impls::std_intrinsics_ucmp(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Both operands are declared "&T", so they arrive as pointers and the values have to be read out of them before
+  // the comparison intrinsic - which takes the integers themselves - can be handed anything.
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
-  const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
   const auto operand_ty = GetLlvmTypeOf(*this_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto uid = "." + utils::Uid();
-  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{operand_ty, operand_ty});
-  const auto lhs = fn->arg_begin();
-  const auto rhs = fn->arg_begin() + 1;
+  const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
+  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ptr_ty, ptr_ty});
+  const auto lhs = ctx->Builder.CreateLoad(operand_ty, fn->arg_begin(), "intrinsic.lhs" + uid);
+  const auto rhs = ctx->Builder.CreateLoad(operand_ty, fn->arg_begin() + 1, "intrinsic.rhs" + uid);
   const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
     ctx->Module.get(), llvm::Intrinsic::ucmp, {ty, operand_ty});
   const auto result = ctx->Builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
@@ -1933,15 +2012,11 @@ auto spp::codegen::func_impls::std_non_null_raw(
 
 auto spp::codegen::func_impls::std_non_null_erase_type(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  // Cast the pointer to U8 (erase type).
-  using asts::generate::common_types_precompiled::U8;
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.erase_type.self");
-  const auto result = ctx->Builder.CreateBitCast(
-    self_ptr, GetLlvmTypeOf(*U8, *sm->CurrentScope, ctx), "non_null.erase_type.result");
-  ctx->Builder.CreateRet(result);
+  ctx->Builder.CreateRet(self_ptr);
 }
 
 auto spp::codegen::func_impls::std_non_null_cast(
@@ -2096,7 +2171,8 @@ auto spp::codegen::func_impls::std_raw_buf_take_at(
   const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
   const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
 
-  const auto index_param = proto->FnParamGroup->GetAllParams()[0];
+  // As in "place_at": "self" is a parameter like any other, and is reached through its own symbol above.
+  const auto index_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto index_sym = sm->CurrentScope->GetVarSymbol(index_param->ExtractName().get());
   const auto usize_ty = GetLlvmTypeOf(*index_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto index_val = ctx->Builder.CreateLoad(usize_ty, index_sym->LlvmInfo->Alloca, "raw_buf.take_at.index");
@@ -2142,12 +2218,14 @@ auto spp::codegen::func_impls::std_raw_buf_place_at(
   const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
   const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
 
-  const auto index_param = proto->FnParamGroup->GetAllParams()[0];
+  // "self" is a parameter like any other, and is reached through its own symbol above, so the declared parameters
+  // are counted without it.
+  const auto index_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto index_sym = sm->CurrentScope->GetVarSymbol(index_param->ExtractName().get());
   const auto usize_ty = GetLlvmTypeOf(*index_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto index_val = ctx->Builder.CreateLoad(usize_ty, index_sym->LlvmInfo->Alloca, "raw_buf.place_at.index");
 
-  const auto element_param = proto->FnParamGroup->GetAllParams()[1];
+  const auto element_param = proto->FnParamGroup->GetNonSelfParams()[1];
   const auto element_sym = sm->CurrentScope->GetVarSymbol(element_param->ExtractName().get());
   const auto element_val = ctx->Builder.CreateLoad(elem_ty, element_sym->LlvmInfo->Alloca, "raw_buf.place_at.element");
 
@@ -2172,9 +2250,9 @@ auto spp::codegen::func_impls::std_raw_buf_shift(
   const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
   const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
 
-  const auto from_param = proto->FnParamGroup->GetAllParams()[0];
-  const auto upto_param = proto->FnParamGroup->GetAllParams()[1];
-  const auto count_param = proto->FnParamGroup->GetAllParams()[2];
+  const auto from_param = proto->FnParamGroup->GetNonSelfParams()[0];
+  const auto upto_param = proto->FnParamGroup->GetNonSelfParams()[1];
+  const auto count_param = proto->FnParamGroup->GetNonSelfParams()[2];
   const auto from_sym = sm->CurrentScope->GetVarSymbol(from_param->ExtractName().get());
   const auto upto_sym = sm->CurrentScope->GetVarSymbol(upto_param->ExtractName().get());
   const auto count_sym = sm->CurrentScope->GetVarSymbol(count_param->ExtractName().get());

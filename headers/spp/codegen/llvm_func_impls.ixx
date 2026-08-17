@@ -87,6 +87,9 @@ export namespace spp::codegen::func_impls {
   /** True if "op" is a comparison, and therefore returns "Bool" (i1) rather than the operand type. */
   auto is_cmp_bin_op(BinOp op) -> bool;
 
+  /** True if "op" is a shift, whose distance operand is separately typed in the source and so needs coercing. */
+  auto is_shift_bin_op(BinOp op) -> bool;
+
   /** Build the actual instruction for a "BinOp" on operands "a" and "b". */
   auto apply_bin_op(LlvmCtx *ctx, BinOp op, llvm::Value *a, llvm::Value *b) -> llvm::Value*;
 
