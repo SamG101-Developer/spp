@@ -20,6 +20,7 @@ import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.ret_statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -199,6 +200,20 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
+  // Consider if we are in a subroutine by desugar (ie for a
+  // lowered GenOnce check. If this is the case, use the return
+  // instruction instead.
+  if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+    if (Conv != nullptr) {
+      ctx->Builder.CreateRet(codegen::llvm_addr_of(*Expr, sm, meta, ctx));
+      return nullptr;
+    }
+
+    // Todo: Just CreateRet here?
+    const auto mock_ret_statement = MakeUnique<RetStatementAst>(nullptr, std::move(Expr));
+    return mock_ret_statement->Stage11_CodeGen(sm, meta, ctx);
+  }
+
   // The three-step operation for the "gen" expression is
   // to store the expression into the yield slot of the env,
   // suspend the coroutine, then receive the sent value.
