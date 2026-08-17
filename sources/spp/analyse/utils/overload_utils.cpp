@@ -30,6 +30,7 @@ import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -356,14 +357,14 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
   asts::meta::CompilerMetaData *meta)
   -> void {
   //
-  using func_utils::EnforceGenericConstraintsAllArgs;
-  using func_utils::InferGnArgs;
+  using generic_bindings::EnforceGenericConstraintsAllArgs;
+  using generic_bindings::InferGnArgs;
   using func_utils::NameFnArgs;
 
   // Name the positional function arguments. The generic arguments
   // were named by the caller, which has to do it before it merges
   // the owner's and the "sup" block's arguments in.
-  NameFnArgs(fn_args, fn_params, *sm);
+  NameFnArgs(fn_args, fn_params, *sm, gn_args.GetAllArgs());
 
   // The inference source is all the function arguments (except for
   // "self")
@@ -410,6 +411,36 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
   // this prototype's generic parameters, including the ones it
   // inherited from the enclosing "sup" block.
   auto &combined_generics = generic_args;
+
+  // An unbound parameter is what it looks like and is left alone:
+  // its symbol carries no class prototype, which is what separates
+  // it from a parameter bound to a real type.
+  for (auto *arg : combined_generics.Args
+       | genex::views::ptr
+       | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()) {
+    const auto val_sym = sm->CurrentScope->GetTypeSymbol(arg->Val.get());
+    if (val_sym == nullptr or not val_sym->IsGeneric or val_sym->Type == nullptr) { continue; }
+    if (val_sym->LinkedScope == nullptr or val_sym->LinkedScope->TySym == nullptr) { continue; }
+    arg->Val = val_sym->LinkedScope->TySym->FqName();
+  }
+
+  // The same for a comp-time argument naming a bound comp generic.
+  // A binding is a variable symbol carrying the argument it was
+  // bound from, so what the name resolves to is read back off that;
+  // an unbound parameter carries nothing and is left alone.
+  for (auto *arg : combined_generics.Args
+       | genex::views::ptr
+       | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()) {
+    const auto val_ident = arg->Val->To<asts::IdentifierAst>();
+    if (val_ident == nullptr) { continue; }
+
+    const auto val_sym = sm->CurrentScope->GetVarSymbol(val_ident);
+    if (val_sym == nullptr or val_sym->MemInfo->AstCompTime == nullptr) { continue; }
+
+    const auto bound_arg = val_sym->MemInfo->AstCompTime->To<asts::GenericArgumentCompKeywordAst>();
+    if (bound_arg == nullptr or bound_arg->Val == nullptr) { continue; }
+    arg->Val = asts::AstClone(bound_arg->Val);
+  }
 
   // Drop the arguments that only restate their parameter. What
   // is left is what this instantiation actually pins, and if
@@ -475,6 +506,27 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
       IsTypeBorrowed(*new_fn_proto->ReturnType, tm),
       {sm->CurrentScope},
       ERR_ARGS(*new_fn_proto->ReturnType, *new_fn_proto->ReturnType, "substituted function return type"));
+
+    //
+    const auto type_is_concrete = [&](asts::TypeAst const &type) {
+      const auto resolved = type_utils::ResolveAndSubstituteSelfType(type, *new_fn_scope, tm, *meta);
+      return type_utils::IsTypeFullyConcrete(*resolved, *new_fn_scope);
+    };
+
+    generic_sub_slot.IsConcrete =
+      genex::all_of(combined_generics.Args | genex::views::ptr, [&](auto const *arg) {
+        if (const auto type_arg = arg->template To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
+          return type_utils::IsTypeFullyConcrete(*type_arg->Val, *sm->CurrentScope);
+        }
+        if (const auto comp_arg = arg->template To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
+          return comp_arg->Val->template To<asts::IdentifierAst>() == nullptr;
+        }
+        return true;
+      })
+      and type_is_concrete(*new_fn_proto->ReturnType)
+      and genex::all_of(new_fn_proto->FnParamGroup->GetAllParams(), [&](auto const *p) {
+        return type_is_concrete(*p->Type);
+      });
 
     // Save the generic implementation against the base function,
     // and update the active scope and prototype.
