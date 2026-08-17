@@ -8,6 +8,7 @@ import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.utils.algorithms;
+import spp.analyse.utils.instantiation_queue;
 import spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -36,6 +37,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
+import spp.codegen.llvm_ctx;
 import spp.utils.ptr;
 import genex;
 import std;
@@ -270,6 +272,19 @@ namespace spp::analyse::utils::monomorphization_utils {
   }
 }
 
+auto spp::analyse::utils::monomorphization_utils::MonomorphiseToFixedPoint(
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta)
+  -> void {
+  // Every instantiation registered during stages 1-9 is already waiting, because registering one is what records its
+  // template. Draining a template analyses whatever it has accumulated since, and that analysis records whatever it
+  // reaches in turn, so the loop ends exactly when nothing new was found.
+  while (auto *fn_template = instantiation_queue::Pop()) {
+    fn_template->AnalysePendingGenericSubstitutions(sm, meta);
+  }
+  sm->Reset();
+}
+
 auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   asts::TypeIdentifierAst &type_part,
   Shared<scopes::TypeSymbol> const &old_cls_sym,
@@ -294,6 +309,18 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
     name_clone, new_cls_scope->AstNode->To<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->CurrentScope,
     old_cls_scope->Parent, old_cls_sym->IsGeneric, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
   new_cls_sym->CopyableBaseSym = old_cls_sym;
+
+  new_cls_sym->IsConcrete = genex::all_of(
+    type_part.GnArgGroup->Args | genex::views::ptr, [&](auto const *arg) {
+      if (const auto type_arg = arg->template To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
+        return type_utils::IsTypeFullyConcrete(*type_arg->Val, *sm->CurrentScope);
+      }
+      if (const auto comp_arg = arg->template To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
+        return comp_arg->Val->template To<asts::IdentifierAst>() == nullptr;
+      }
+      return true;
+    });
+
   new_cls_sym->ZeroTypeBaseSym = old_cls_sym;
   new_cls_scope_ptr->TySym = new_cls_sym;
 
@@ -365,12 +392,6 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
     attr->Type = attr->Type->SubstituteGenerics(substitution_generics);
     if (meta->CurrentStage > 5) {
       attr->Stage7_AnalyseSemantics(&tm, meta);
-    }
-
-    // Remove void attributes from the class, so that a generic attribute given "Void" takes no space in the layout.
-    if (type_utils::IsTypeVoid(*attr->Type, *new_cls_scope_ptr)) {
-      new_cls_scope_ptr->RemVarSymbol(attr->Name.get());
-      new_ast_ptr->Impl->Members |= genex::actions::remove_if([&](auto &&x) { return x.get() == attr; });
     }
   }
 

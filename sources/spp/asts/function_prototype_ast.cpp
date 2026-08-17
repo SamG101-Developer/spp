@@ -13,6 +13,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.builtins;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.instantiation_queue;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_mut_ast;
@@ -31,6 +32,7 @@ import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
@@ -85,6 +87,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   ReturnType(std::move(return_type)),
   Impl(std::move(impl)),
   _LlvmFunc(nullptr),
+  _OwnerCtx(nullptr),
   _AnnotationInfo(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
   // SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnParamGroup);
@@ -578,14 +581,21 @@ auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
   // function. This allows for order-agnostic behaviour.
   sm->MoveToNextScope();
 
+  // This walk visits every module with that module's own context,
+  // so it is where a prototype learns which module owns it. Read
+  // back through "OwnerCtx", including by instantiations minted
+  // after this stage, which have no stamp of their own.
+  _OwnerCtx = ctx;
+
   // Handle the main function prototype.
   GenerateLlvmDeclaration(sm, meta, ctx);
 
   // Handle generic substitutions of a function.
-  for (auto const &[generic_scope, generic_ast, generic_args] : _GenericSubstitutions) {
-    if (generic_ast == nullptr) { continue; }
-    auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
-    generic_ast->GenerateLlvmDeclaration(&tm, meta, ctx);
+  for (auto const &sub : _GenericSubstitutions) {
+    if (sub.Proto == nullptr or not sub.IsConcrete) { continue; }
+    sub.Proto->_OwnerCtx = ctx;
+    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
+    sub.Proto->GenerateLlvmDeclaration(&tm, meta, ctx);
   }
 
   // Manual scope skipping.
@@ -621,16 +631,28 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     return nullptr;
   }
 
+  // A template ("_IsPureGeneric" declined to declare it) or an
+  // uninstantiable signature. There is no llvm function to emit
+  // into, so nothing here applies to it: not an entry block
+  // (which would be built parentless, and leak), not the enclosing
+  // function meta data, and not the return type lookup, which a
+  // template's return type need not even satisfy. Only its
+  // instantiations have bodies, and those are emitted below.
+  if (llvm_func_target == nullptr) {
+    sm->ExhaustScope();
+    sm->MoveOutOfCurrentScope();
+    _CodeGenGenericSubstitutions(sm, meta, ctx);
+    return nullptr;
+  }
+
   // Add the entry block to the function.
   const auto entry_bb = llvm::BasicBlock::Create(
     *ctx->Context, "entry", llvm_func_target);
   ctx->Builder.SetInsertPoint(entry_bb);
 
   // Generate the parameters as variables.
-  if (llvm_func_target != nullptr) {
-    FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
-    GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
-  }
+  FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
+  GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
 
   const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
     ReturnType.get());
@@ -641,18 +663,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
   meta->EnclosingFunctionScope = sm->CurrentScope;
 
   // If there is an implementation, generate its code.
-  if (llvm_func_target == nullptr) {
-    // A template ("_IsPureGeneric" declined to declare it) or
-    // an uninstantiable signature, so there is no body to
-    // generate - only instantiations are ever meant to run.
-    // Manual scope skipping.
-    const auto final_scope = sm->CurrentScope->FinalChildScope();
-    while (sm->CurrentScope != final_scope) {
-      sm->MoveToNextScope(false);
-    }
-    ctx->Builder.CreateUnreachable();
-  }
-  else if (BuiltinAnnotation or FfiAnnotation) {
+  if (BuiltinAnnotation or FfiAnnotation) {
     // Get manual IR from a codegen module.
     Impl->Stage11_CodeGen(sm, meta, ctx);
     if (entry_bb->empty()) {
@@ -679,36 +690,82 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
 
   meta->Restore();
   sm->MoveOutOfCurrentScope();
+  _CodeGenGenericSubstitutions(sm, meta, ctx);
+  return nullptr;
+}
 
-  // Analyse to make a new scope in the correct place.
-  // TODO: Remove this? func_call() generates generic target when needed,
-  //  Do same with generic classes & object instantiation?
-  for (auto const &[generic_scope, generic_proto, _] : _GenericSubstitutions) {
-    auto tm = ScopeManager(sm->GlobalScope, generic_scope.get());
-    if (spp::get<0>(generic_proto->_IsPureGeneric(&tm, meta, ctx))) { continue; }
-
-    generic_scope->Children[0]->Children.Clear();
-    generic_scope->FixChildrenToParentPointer();
-
+auto spp::asts::FunctionPrototypeAst::_CodeGenGenericSubstitutions(
+  analyse::scopes::ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx)
+  -> void {
+  // Emit the bodies of this prototype's instantiations. Their own bodies
+  // were analysed by the monomorphisation stage, which ran to a fixed
+  // point before any code generation: an instantiation reached only from
+  // inside another generic body would otherwise be discovered here,
+  // after the module owning its template had already been walked past.
+  for (auto const &sub : _GenericSubstitutions) {
+    if (sub.Proto == nullptr or not sub.IsConcrete) { continue; }
+    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
     tm.Reset(tm.CurrentScope);
-    const auto current_scope = tm.CurrentScope;
-    const auto current_iter = tm.CurrentIterator();
+    GnParamGroup->Stage11_CodeGen(&tm, meta, ctx);
+    sub.Proto->Stage11_CodeGen(&tm, meta, ctx);
+  }
+}
 
-    generic_proto->Impl = std::move(generic_proto->Source.OriginalImpl);
-    generic_proto->_InstallLoweredImpl(&tm);
+auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
+  analyse::scopes::ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Iterating while appending is deliberate, and is why the
+  // substitutions are held in a list: analysing one instantiation
+  // can instantiate this very prototype again (a generic function
+  // that calls itself with different arguments), and a list's end
+  // iterator stays valid across the append, so the new entry is
+  // picked up by this same loop rather than waiting for the
+  // template to come back around the queue.
+  for (auto &sub : _GenericSubstitutions) {
+    if (sub.BodyAnalysed) { continue; }
+
+    // An overload candidate that failed after its scope was
+    // reserved leaves the slot empty. It is never filled in
+    // later, so it is left alone rather than marked - there is
+    // no prototype to mark anything about.
+    if (sub.Proto == nullptr) { continue; }
+    sub.BodyAnalysed = true;
+    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
+    if (not sub.IsConcrete) { continue; }
+
+    // Discard the scopes the template's own body analysis left
+    // behind under this clone. They describe the template's body,
+    // and the analysis below builds this instantiation's in their
+    // place.
+    sub.ProtoScope()->Children.Clear();
+    sub.WalkScope()->FixChildrenToParentPointer();
+    tm.Reset(tm.CurrentScope);
+
+    // The instantiation was built from the signature alone, so the
+    // body it holds is still the template's, unanalysed.
+    sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl);
+    sub.Proto->_InstallLoweredImpl(&tm);
+
     meta->Save();
     meta->ResolveBoundCompGenerics = true;
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
-    generic_proto->Stage7_AnalyseSemantics(&tm, meta);
+
+    // Same relaxation, and for the same reason, as the one
+    // "AnalyseSubstitutedType" applies to the types a substitution
+    // produces: an instantiated body is reached out of the order
+    // the writer's own code is, so it may name an abstract type
+    // before the implementation satisfying it has been attached.
+    // Nothing is lost by allowing it - the template's own body was
+    // analysed in written order at stage 7, and that is what holds
+    // the author to the rule.
+    meta->AllowAbstractType = true;
+    sub.Proto->Stage7_AnalyseSemantics(&tm, meta);
     meta->Restore();
-
-    tm.Reset(current_scope, current_iter);
-    GnParamGroup->Stage11_CodeGen(&tm, meta, ctx);
-    generic_proto->Stage11_CodeGen(&tm, meta, ctx);
   }
-
-  return nullptr;
 }
 
 auto spp::asts::FunctionPrototypeAst::GetFfiSymbolName() const
@@ -723,6 +780,19 @@ auto spp::asts::FunctionPrototypeAst::GetFfiSymbolName() const
 auto spp::asts::FunctionPrototypeAst::GetLlvmFunc() const
   -> Shared<codegen::LlvmFuncWrapper> {
   return *_LlvmFunc;
+}
+
+auto spp::asts::FunctionPrototypeAst::OwnerCtx() const
+  -> codegen::LlvmCtx* {
+  // Walk to the template this was substituted from, which is
+  // what carries the stamp when this is an instantiation minted
+  // after Stage10. "_NonGenericImpl" is self-referential on a
+  // prototype that is not one, which ends the walk.
+  for (auto const *proto = this; proto != nullptr; proto = proto->_NonGenericImpl) {
+    if (proto->_OwnerCtx != nullptr) { return proto->_OwnerCtx; }
+    if (proto->_NonGenericImpl == proto) { break; }
+  }
+  return nullptr;
 }
 
 auto spp::asts::FunctionPrototypeAst::DetachLlvmFuncSlot()
@@ -743,6 +813,16 @@ auto spp::asts::FunctionPrototypeAst::PrintSignature(
   SPP_STRING_END;
 }
 
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::WalkScope() const
+  -> analyse::scopes::Scope* {
+  return OwnedScope.get();
+}
+
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::ProtoScope() const
+  -> analyse::scopes::Scope* {
+  return OwnedScope->Children[0].get();
+}
+
 auto spp::asts::FunctionPrototypeAst::RegisterGenericSubstitution(
   Unique<analyse::scopes::Scope> &&scope,
   Unique<FunctionPrototypeAst> &&new_ast,
@@ -756,6 +836,14 @@ auto spp::asts::FunctionPrototypeAst::RegisterGenericSubstitution(
       .Proto = std::move(new_ast),
       .GnArgs = std::move(gn_args)
     });
+
+  // The instantiation's body has not been analysed yet, and
+  // nothing walks the ast to find it - a substitution is
+  // registered against the template, wherever the template
+  // happens to live, from wherever the call that produced it was
+  // written. Record the template so the monomorphisation stage
+  // comes back for it.
+  analyse::utils::instantiation_queue::Enqueue(this);
 }
 
 auto spp::asts::FunctionPrototypeAst::FindGenericSubstitution(
@@ -765,7 +853,7 @@ auto spp::asts::FunctionPrototypeAst::FindGenericSubstitution(
   // arguments.
   for (auto const &sub : _GenericSubstitutions) {
     if (sub.Proto == nullptr or sub.GnArgs == nullptr) { continue; }
-    if (*sub.GnArgs == gn_args) { return {sub.OwnedScope.get(), sub.Proto.get()}; }
+    if (*sub.GnArgs == gn_args) { return {sub.WalkScope(), sub.Proto.get()}; }
   }
 
   // If no matches were found then return a pair of nullptr
@@ -777,7 +865,7 @@ auto spp::asts::FunctionPrototypeAst::FindGenericSubstitution(
 auto spp::asts::FunctionPrototypeAst::RegisteredGenericSubstitutions() const
   -> std::list<Pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
   return _GenericSubstitutions
-    | genex::views::transform([](auto const &x) { return MakePair(x.OwnedScope.get(), x.Proto.get()); })
+    | genex::views::transform([](auto const &x) { return MakePair(x.WalkScope(), x.Proto.get()); })
     | genex::to<std::list>();
 }
 

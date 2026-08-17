@@ -208,6 +208,22 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const
     -> Shared<codegen::LlvmFuncWrapper>;
 
+  /**
+   * The llvm context of the module this prototype was written in, which is the one module its definition may be
+   * emitted into. Stamped on during Stage10, whose walk visits every module with that module's own context.
+   *
+   * @n
+   * An instantiation carries no stamp of its own if it was minted after that walk, so the answer is taken from the
+   * template it substitutes (see @c GetNonGenericImpl ) - the template is what a substitution is registered against,
+   * and it is the template's module that owns the pair. Without this, an instantiation first needed halfway through
+   * some other module's code generation would have its @c llvm::Function created in that module, making whichever
+   * caller got there first the accidental owner of the definition.
+   *
+   * @return The owning context, or @c nullptr if Stage10 has not run yet.
+   */
+  SPP_ATTR_NODISCARD auto OwnerCtx() const
+    -> codegen::LlvmCtx*;
+
   auto DetachLlvmFuncSlot()
     -> void;
 
@@ -225,6 +241,41 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     Unique<analyse::scopes::Scope> OwnedScope;
     Unique<FunctionPrototypeAst> Proto;
     Unique<GenericArgumentGroupAst> GnArgs;
+
+    /**
+     * Whether this instantiation names real types the whole way down - both the arguments it was built from and the
+     * signature it ended up with. Decided once, where it is built (see
+     * @c PotentiallyGenerateGenericSubstitutedPrototype ), because every later reader must reach the same answer:
+     * declaration and emission disagreeing leaves a call with no target, and a body built against a type that has no
+     * size produces ir that does not verify.
+     *
+     * @n
+     * A false one is still built and still analysed - the call it came from is type checked against its signature -
+     * it is simply never given an @c llvm::Function nor a body.
+     */
+    bool IsConcrete = false;
+
+    /**
+     * Whether the monomorphisation stage has already considered this instantiation. Set whether or not a body was
+     * actually analysed, because an instantiation declined once (still generic, or never filled in) is declined for
+     * good - the drain re-reads the whole list every time its template comes up, and this is what keeps that from
+     * being quadratic and from re-analysing a body that is already analysed.
+     */
+    bool BodyAnalysed = false;
+
+    /**
+     * The scope to position a scope manager on before running any stage over @c Proto , and the scope every symbol
+     * this instantiation bound was registered into.
+     */
+    SPP_ATTR_NODISCARD auto WalkScope() const
+      -> analyse::scopes::Scope*;
+
+    /**
+     * The prototype's own scope, one below @c WalkScope . The mock block Stage1 builds superimposes a single function
+     * over a mock type, so the block has exactly the one child scope and it is this.
+     */
+    SPP_ATTR_NODISCARD auto ProtoScope() const
+      -> analyse::scopes::Scope*;
   };
 
   auto RegisterGenericSubstitution(
@@ -246,6 +297,25 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions()
     -> std::list<GenericSubstitution>&;
+
+  /**
+   * Analyse the bodies of every instantiation registered against this prototype that has not been analysed yet.
+   *
+   * @n
+   * An instantiation is built from the signature alone - @c PotentiallyGenerateGenericSubstitutedPrototype substitutes
+   * the parameters and return type, because that is all overload resolution needs - so its body arrives here still
+   * being the template's, written in terms of parameters this instantiation has since bound. Analysing it is what
+   * turns it into this instantiation's body, and is also the only thing that discovers what *it* calls: every
+   * instantiation reached only from inside another generic body exists because of this walk.
+   *
+   * @param[in] sm The scope manager, used for its global scope only - each instantiation is analysed through a manager
+   * rooted at its own scope.
+   * @param[in] meta The compiler meta data.
+   */
+  auto AnalysePendingGenericSubstitutions(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void;
 
   auto SetNonGenericImpl(
     FunctionPrototypeAst *impl)
@@ -284,6 +354,12 @@ protected:
    */
   Shared<Shared<codegen::LlvmFuncWrapper>> _LlvmFunc;
 
+  /**
+   * The context of the module this prototype belongs to; see @c OwnerCtx , which is how it should be read. Never set
+   * on a clone, because a clone is not written in any module - it is reached through the template it substitutes.
+   */
+  codegen::LlvmCtx *_OwnerCtx;
+
   Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
 
   SPP_ATTR_NODISCARD auto _DeduceMockClassType() const
@@ -303,6 +379,17 @@ protected:
     CompilerMetaData *meta,
     codegen::LlvmCtx const *ctx) const
     -> Tup<bool, llvm::Type*, Vec<llvm::Type*>>;
+
+  /**
+   * Emit the body of every instantiation registered against this prototype into @p ctx , which is the module owning
+   * this prototype - the walk that reached it came from there. Both exits from @c Stage11_CodeGen run this, because a
+   * template emits nothing of its own but is exactly where the instantiations that do are registered.
+   */
+  auto _CodeGenGenericSubstitutions(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)
