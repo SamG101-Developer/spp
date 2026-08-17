@@ -41,6 +41,7 @@ import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.statement_ast;
+import spp.asts.subroutine_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
@@ -388,37 +389,34 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // constructs a generator. The frame is owned by the llvm coroutine
   // intrinsics, and the value handed back is nothing but the
   // "llvm.coro.begin" handle.
-  const auto is_coroutine_call = _OverloadInfo->Proto->IsCoroutine();
+  const auto is_coroutine_call = Target()->IsCoroutine();
 
   // For generically converted function prototypes, generate
   // their llvm declaration in-walk if it is still missing.
-  if (_OverloadInfo->Proto->GetLlvmFunc() == nullptr) {
+  if (Target()->GetLlvmFunc() == nullptr) {
     auto tm = ScopeManager(sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
     tm.Reset(tm.CurrentScope);
-    const auto owner_ctx = _OverloadInfo->Proto->OwnerCtx();
-    _OverloadInfo->Proto->GenerateLlvmDeclaration(
+    const auto owner_ctx = Target()->OwnerCtx();
+    Target()->GenerateLlvmDeclaration(
       &tm, meta, owner_ctx != nullptr ? owner_ctx : ctx);
   }
 
-  // SPP_ASSERT(not ctx->Builder.GetInsertBlock()->getTerminator());
   const auto uid = "." + spp::utils::Uid(this);
-  const auto llvm_self_arg = static_cast<llvm::Value*>(nullptr);
-
-  const auto o = "Call target has no llvm declaration: " + _OverloadInfo->Proto->PrintSignature("");
+  const auto o = "Call target has no llvm declaration: " + Target()->PrintSignature("");
   RaiseIf<analyse::errors::SppInternalCompilerError>(
-    _OverloadInfo->Proto->GetLlvmFunc() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));
+    Target()->GetLlvmFunc() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));
 
   // Because we have individual modules for each compilation
   // unit, the declaration for the target has to be added to
   // the module the call is being emitted into.
-  auto llvm_func = _OverloadInfo->Proto->GetLlvmFunc()->Target;
+  auto llvm_func = Target()->GetLlvmFunc()->Target;
   SPP_ASSERT(llvm_func != nullptr);
   llvm_func = codegen::GetOrAddTargetIntoCurrentModule(
     *llvm_func, *codegen::GetEmissionModule(*ctx));
 
   // The arguments have already been reordered to match the
   // parameters, so the two line up index for index.
-  const auto &fn_params = _OverloadInfo->Proto->FnParamGroup->Params;
+  const auto &fn_params = Target()->FnParamGroup->Params;
   auto llvm_func_args = Vec<llvm::Value*>();
   llvm_func_args.Reserve(FnArgGroup->Args.Len());
 
@@ -469,10 +467,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     llvm_func_args.EmplaceBack(llvm_arg);
   }
 
-  if (llvm_self_arg != nullptr) {
-    llvm_func_args[0] = llvm_self_arg;
-  }
-
   // Create the call instruction (a call returning Void cannot be given a name - llvm forbids naming void
   // values).
   if (llvm_func->getReturnType()->isVoidTy()) {
@@ -491,12 +485,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // spot into the one value it yields ("v[0]" reads as the
   // element, not as a generator over it). Both need the frame's
   // promise, which is reached through the handle.
-  const auto auto_resume = _IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume;
-  if (is_coroutine_call and (meta->LlvmAssignmentTarget != nullptr or auto_resume)) {
+  if (is_coroutine_call and meta->LlvmAssignmentTarget != nullptr) {
     auto llvm_coro_handle = static_cast<llvm::Value*>(llvm_call);
     if (not llvm_call->getType()->isPointerTy()) {
       const auto coro_ret_type_sym =
-        _OverloadInfo->OverloadScope->GetTypeSymbol(_OverloadInfo->Proto->ReturnType.get());
+        _OverloadInfo->OverloadScope->GetTypeSymbol(Target()->ReturnType.get());
       const auto handle_idx = codegen::GetPhysicalFieldIndex(
         *coro_ret_type_sym->LlvmInfo, 0);
       llvm_coro_handle = ctx->Builder.CreateExtractValue(
@@ -514,27 +507,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       generator->Handle = llvm_coro_handle;
       generator->State = llvm_gen_state;
       ctx->LlvmGenerators[meta->LlvmAssignmentTarget] = std::move(generator);
-    }
-
-    // A "GenOnce" coroutine called in an expression position never
-    // reaches the caller as a generator - "InferType" reports the
-    // "Yield" type for it, so it is resumed right here and the
-    // yielded value is what the call evaluates to.
-    if (auto_resume) {
-      const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
-      ctx->Builder.CreateIntrinsic(llvm::Intrinsic::coro_resume, {}, {llvm_coro_handle}, {}, "");
-      const auto llvm_yield_slot = ctx->Builder.CreateStructGEP(
-        llvm_gen_state_ty, llvm_gen_state,
-        std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT), "gen.yield.slot" + uid);
-
-      // A borrowed yield ("&T", which is what an indexing coroutine hands back) is a pointer to the borrowee, and
-      // resolving the type to its symbol loses the convention that says so - ask the type itself instead.
-      const auto yield_type = InferType(sm, meta);
-      const auto llvm_yield_type = yield_type->GetConvention() != nullptr
-        ? llvm::PointerType::get(*ctx->Context, 0)
-        : codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(yield_type.get()), ctx);
-      return ctx->Builder.CreateLoad(
-        llvm_yield_type, llvm_yield_slot, "gen.yield.value" + uid);
     }
   }
 
@@ -620,7 +592,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::MarkAsAsync(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Target() const
   -> FunctionPrototypeAst* {
-  return _OverloadInfo.has_value() ? _OverloadInfo->Proto : nullptr;
+  if (not _OverloadInfo.has_value()) { return nullptr; }
+  const auto target_proto = _OverloadInfo->Proto;
+  if (const auto coro_proto = target_proto->To<CoroutinePrototypeAst>(); coro_proto != nullptr and coro_proto->IsOnce()) {
+    return coro_proto->GenOnceLowered();
+  }
+  return target_proto;
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::SetClosureDummyProto(
