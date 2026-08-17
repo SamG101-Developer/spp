@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/codegen/macros.hpp>
 
 module spp.asts.coroutine_prototype_ast;
 import spp.analyse.errors.semantic_error;
@@ -16,6 +17,7 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.subroutine_prototype_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -34,16 +36,19 @@ spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
-  decltype(Name) &&name,
+  decltype(Name) name,
   decltype(GnParamGroup) &&generic_param_group,
   decltype(FnParamGroup) &&param_group,
   decltype(TokArrow) &&tok_arrow,
-  decltype(ReturnType) &&return_type,
+  decltype(ReturnType) return_type,
   decltype(Impl) &&impl) :
   FunctionPrototypeAst(
     std::move(annotations), std::move(tok_cmp), std::move(tok_fun), std::move(name),
     std::move(generic_param_group), std::move(param_group), std::move(tok_arrow),
-    std::move(return_type), std::move(impl)) {
+    std::move(return_type), std::move(impl)),
+  _IsOnce(false),
+  _YieldType(nullptr),
+  _GenOnceLowered(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_COR, "cor");
 }
 
@@ -51,9 +56,9 @@ spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
 auto spp::asts::CoroutinePrototypeAst::Clone() const
   -> Unique<Ast> {
-  auto ast = MakeUnique<CoroutinePrototypeAst>( // Todo: why no "cmp"?
+  auto ast = MakeUnique<CoroutinePrototypeAst>(
     AstCloneVec(Annotations),
-    nullptr,
+    nullptr, // "cmp cor" not syntactically allowed. Todo: Raise semantic error instead?
     AstClone(TokFun),
     AstClone(Name),
     AstClone(GnParamGroup),
@@ -101,8 +106,11 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   Impl->Stage7_AnalyseSemantics(sm, meta);
 
   // Check the return type superimposes the generator type.
-  GetGenAndYieldTypes(
-    *ret_type_sym->FqName(), *sm->CurrentScope, *Source.OriginalReturnType, "coroutine return type");
+  auto [_, yield_type, is_once] = GetGenAndYieldTypes(
+    *ret_type_sym->FqName(), *sm->CurrentScope,
+    *Source.OriginalReturnType, "coroutine return type");
+  _YieldType = yield_type;
+  _IsOnce = is_once;
 
   // Analyse the semantics of the function body, and move out the scope.
   sm->MoveOutOfCurrentScope();
@@ -110,11 +118,63 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   meta->LoopReturnTypes->clear();
 }
 
+auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx)
+  -> llvm::Value* {
+  // For "GenOnce" coroutines, we can desugar them into
+  // subroutines returning the yielded value. This is memory
+  // safe as we have finished stage 8 already.
+  _LowerGenOnce();
+  if (_GenOnceLowered == nullptr) {
+    return FunctionPrototypeAst::Stage10_PreCodeGen(sm, meta, ctx);
+  }
+
+  // The lowering is what a call now targets, so it is the lowering
+  // that is declared. The stamp still belongs on this prototype,
+  // because the lowering reaches it through "SetNonGenericImpl",
+  // and because a non-lowered reader (an instantiation of this
+  // template, below) asks this one for it.
+  _OwnerCtx = ctx;
+  _GenOnceLowered->Stage10_PreCodeGen(sm, meta, ctx);
+
+  // An instantiation is a clone of this prototype holding its own
+  // analysed body, so it needs a lowering, and a declaration, of
+  // its own. This is the only walk that reaches one: instantiations
+  // are registered against their template, never visited as
+  // prototypes in their own right.
+  for (auto const &sub : _GenericSubstitutions) {
+    if (sub.Proto == nullptr or not sub.IsConcrete) { continue; }
+    auto sub_target = sub.Proto.get();
+    if (const auto sub_coro = sub.Proto->To<CoroutinePrototypeAst>(); sub_coro != nullptr) {
+      sub_coro->_OwnerCtx = ctx;
+      sub_coro->_LowerGenOnce();
+      if (sub_coro->_GenOnceLowered != nullptr) { sub_target = sub_coro->_GenOnceLowered.get(); }
+    }
+
+    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
+    sub_target->GenerateLlvmDeclaration(&tm, meta, ctx);
+  }
+
+  return nullptr;
+}
+
 auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
+  // The lowering emits this prototype's body, but it is this
+  // prototype the instantiations are registered against, so their
+  // bodies (each emitted through its own lowering) are still driven
+  // from here.
+  if (_GenOnceLowered != nullptr) {
+    _GenOnceLowered->Stage11_CodeGen(sm, meta, ctx);
+    _CodeGenGenericSubstitutions(sm, meta, ctx);
+    return nullptr;
+  }
+
   //
   using spp::utils::Uid;
   sm->MoveToNextScope();
@@ -258,6 +318,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     ctx->Builder.CreateRet(
       ctx->Builder.CreateInsertValue(empty_ret_val, coro_handle, {handle_idx}, "coro.handle.wrap" + uid));
   }
+  VALIDATE_LLVM;
 
   meta->Restore();
   sm->MoveOutOfCurrentScope();
@@ -267,6 +328,35 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
 auto spp::asts::CoroutinePrototypeAst::IsCoroutine() const
   -> bool {
   return true;
+}
+
+auto spp::asts::CoroutinePrototypeAst::IsOnce() const
+  -> bool {
+  return _IsOnce;
+}
+
+auto spp::asts::CoroutinePrototypeAst::GenOnceLowered() const
+  -> SubroutinePrototypeAst* {
+  return _GenOnceLowered.get();
+}
+
+auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce()
+  -> void {
+  if (not _IsOnce or _GenOnceLowered != nullptr) { return; }
+
+  // The signature is this coroutine's with the generator return
+  // type replaced by what it yields; the body is taken over
+  // wholesale, because nothing about it changes - a "gen" inside
+  // it reads as a "ret" once the enclosing flavour says "fun".
+  _GenOnceLowered = MakeUnique<SubroutinePrototypeAst>(
+    SPP_NO_ANNOTATIONS, nullptr, nullptr, Name,
+    AstClone(GnParamGroup), AstClone(FnParamGroup),
+    nullptr, _YieldType, std::move(Impl));
+
+  // The lowering is written in no module of its own, so point it
+  // at the coroutine it came from: that is where Stage10 stamps
+  // the owning context "OwnerCtx" reads back.
+  _GenOnceLowered->SetNonGenericImpl(this);
 }
 
 SPP_MOD_END

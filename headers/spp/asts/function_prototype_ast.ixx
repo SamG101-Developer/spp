@@ -163,11 +163,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,
     decltype(TokFun) &&tok_fun,
-    decltype(Name) &&name,
+    decltype(Name) name,
     decltype(GnParamGroup) &&generic_param_group,
     decltype(FnParamGroup) &&param_group,
     decltype(TokArrow) &&tok_arrow,
-    decltype(ReturnType) &&return_type,
+    decltype(ReturnType) return_type,
     decltype(Impl) &&impl);
 
   ~FunctionPrototypeAst() override;
@@ -193,8 +193,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
-
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * The linkage name an @c \@ffi function is declared under: the @c symbol argument of its annotation, which is the
