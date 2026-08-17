@@ -64,6 +64,7 @@ auto spp::codegen::mangle::mangle_fun_name(
   asts::FunctionPrototypeAst const &fun_proto)
   -> Str {
   // The module/context name that the function belongs to.
+  // Todo: Change to use the llvm type (u32/s32 are same in llvm but different in spp).
   const auto mod_name = mangle_mod_name(owner_scope);
 
   // Get the return and parameter types of the function.
@@ -86,10 +87,9 @@ auto spp::codegen::mangle::mangle_fun_name(
   types.AppendRange(param_type_syms);
 
   // Convert the mangled type names into a single function name.
-  auto h = spp::Hash<std::string>{};
   const auto fun_sig = types
-    | genex::views::transform([&h](auto const &type_sym) {
-      return std::to_string(h(MangleTypeNameResolvingSelf(*type_sym)));
+    | genex::views::transform([&](auto const &type_sym) {
+      return MangleTypeNameResolvingSelf(*type_sym);
     })
     | genex::to<Vec>()
     | genex::views::join_with('#')

@@ -183,7 +183,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   const auto is_void = codegen::IsValuelessType(llvm_type);
   auto alloca = var_sym->LlvmInfo->Alloca;
   if (alloca == nullptr and not is_void) {
-    alloca = codegen::LlvmEntryAlloca(llvm_type, "local.alloca" + uid, ctx);
+    alloca = codegen::LlvmEntryAlloca(llvm_type, "local.alloca" + Name->Val + "." + uid, ctx);
     var_sym->LlvmInfo->Alloca = alloca;
   }
 
