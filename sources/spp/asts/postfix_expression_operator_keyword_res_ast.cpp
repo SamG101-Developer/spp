@@ -134,12 +134,41 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   const auto llvm_generator_addr = codegen::llvm_addr_of(*meta->PostfixExpressionLhs, sm, meta, ctx);
   const auto llvm_generator_it = ctx->LlvmGenerators.find(llvm_generator_addr);
 
-  const auto no_env_msg = Str(
-    "No generator environment was registered for this resumption. The resumed value is generator-typed but was not "
-    "produced by a coroutine call, so there is nothing to resume");
-  RaiseIf<analyse::errors::SppInternalCompilerError>(
-    llvm_generator_it == ctx->LlvmGenerators.end(), {sm->CurrentScope}, ERR_ARGS(*this, no_env_msg));
-  const auto &llvm_generator_env = llvm_generator_it->second;
+  // A generator that was produced by a coroutine call in this function was registered when that call was generated.
+  // One that arrived as a value was not: "loop item in self", inside a coroutine taking another generator as "self",
+  // resumes something this function never called. Its handle is not lost though - it is the first field of the
+  // generator value itself, which is exactly what the call site extracts before registering - so rebuild the
+  // environment from the value in storage, the same way and with the same field.
+  auto rebuilt_generator = Unique<codegen::LlvmGenerator>(nullptr);
+  if (llvm_generator_it == ctx->LlvmGenerators.end()) {
+    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta)->WithoutConvention();
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
+
+    const auto no_env_msg = Str(
+      "No generator environment was registered for this resumption, and none could be rebuilt from the value. The "
+      "resumed value is generator-typed but carries no coroutine handle, so there is nothing to resume");
+    RaiseIf<analyse::errors::SppInternalCompilerError>(
+      lhs_type_sym == nullptr or lhs_type_sym->LlvmInfo->LlvmType == nullptr,
+      {sm->CurrentScope}, ERR_ARGS(*this, no_env_msg));
+
+    const auto handle_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
+    const auto llvm_handle_ptr = ctx->Builder.CreateStructGEP(
+      lhs_type_sym->LlvmInfo->LlvmType, llvm_generator_addr, handle_idx, "gen.handle.slot");
+    const auto llvm_handle = ctx->Builder.CreateLoad(
+      llvm::PointerType::get(*ctx->Context, 0), llvm_handle_ptr, "gen.handle");
+
+    const auto llvm_promise_align = llvm::ConstantInt::get(
+      llvm::Type::getInt32Ty(*ctx->Context), alignof(std::max_align_t));
+    rebuilt_generator = MakeUnique<codegen::LlvmGenerator>();
+    rebuilt_generator->Handle = llvm_handle;
+    rebuilt_generator->State = ctx->Builder.CreateIntrinsic(
+      llvm::Intrinsic::coro_promise, {}, {llvm_handle, llvm_promise_align, ctx->Builder.getFalse()}, {},
+      "gen.state");
+  }
+
+  const auto &llvm_generator_env = rebuilt_generator != nullptr
+    ? rebuilt_generator
+    : llvm_generator_it->second;
 
   // Step 1: Place the value of the argument (if it exists),
   // into the "send" slot on the generator state struct. A bare
