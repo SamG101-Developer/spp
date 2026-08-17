@@ -1,7 +1,7 @@
 module;
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/cpp_int/bitwise.hpp>
-#include <boost/multiprecision/cpp_dec_float.hpp>
 
 #define SPECIALIZE_OP(OP, NAME)                                                                                  \
   template <> struct OP<boost::int128_t> {                                                                       \
