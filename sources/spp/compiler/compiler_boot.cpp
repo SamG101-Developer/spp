@@ -273,8 +273,10 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   std::filesystem::create_directories(out_path);
   std::cout << "Writing LLVM IR to: " << out_path << std::endl;
 
-  // Paired with the modules, because the file each context belongs to comes from the module's own path. Reading it
-  // back off "Module->getName()" would work too, but the path is already here and does not need re-parsing.
+  // Paired with the modules, because the file each context belongs
+  // to comes from the module's own path. Reading it back off
+  // "Module->getName()" would work too, but the path is already here
+  // and does not need re-parsing.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     // llvm::errs() << "=== IR for module: " << ctx->Module->getName() << " ===\n";
     // ctx->Module->print(llvm::errs(), nullptr);
