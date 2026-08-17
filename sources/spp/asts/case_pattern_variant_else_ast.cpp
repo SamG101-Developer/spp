@@ -2,12 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_else_ast;
-import spp.lex.tokens;
 import spp.asts.boolean_literal_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(

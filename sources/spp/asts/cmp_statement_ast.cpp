@@ -5,9 +5,9 @@ module;
 module spp.asts.cmp_statement_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
@@ -21,8 +21,8 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
-import llvm;
 import genex;
+import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::CmpStatementAst::CmpStatementAst(

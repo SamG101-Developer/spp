@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
-import os.path
 import random
 import shutil
 import sys
 import tempfile
 import threading
 import unittest
+import os.path
 
 import gtest_parallel
 

@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_ast;
-import spp.asts.local_variable_ast;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.meta.compiler_meta_data;
 
 SPP_MOD_BEGIN

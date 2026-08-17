@@ -19,10 +19,10 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.module_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
@@ -32,8 +32,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
-import spp.parse.parser_spp;
 import spp.lex.lexer;
+import spp.parse.parser_spp;
 
 SPP_MOD_BEGIN
 spp::asts::AnnotationAst::AnnotationAst(

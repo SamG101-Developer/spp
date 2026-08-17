@@ -5,12 +5,12 @@
 Handles files of the form:
 
     module;
-    #include <...> <- optional global-module fragment (sorted)
     #include <...>
+    #include <...> <- optional global-module fragment (sorted)
 
     [export] module foo.bar;
-    import ...; <- sorted: spp.* first (ASCII), then the rest (ASCII)
     import ...;
+    import ...; <- sorted: spp.* first (ASCII), then the rest (ASCII)
 
 Rules:
   * Global-module-fragment #includes (between `module;` and the module
@@ -27,6 +27,7 @@ Auto-fixes in place. Exit code 1 if any file was modified.
 from __future__ import annotations
 import re
 import sys
+from typing import Callable
 
 INCLUDE_RE = re.compile(r"^\s*#\s*include\b")
 IMPORT_RE = re.compile(r"^\s*(?:export\s+)?import\b")
@@ -34,14 +35,29 @@ MODULE_DECL_RE = re.compile(r"^\s*(?:export\s+)?module\b")
 MODULE_FRAGMENT_RE = re.compile(r"^\s*module\s*;\s*$")
 
 
-def import_key(line: str) -> tuple[int, str]:
-    stripped = line.strip().rstrip(";").strip()
+def import_key(line: str) -> tuple:
+    """Sort imports hierarchically, like a directory tree."""
+    stripped = line.strip().rstrip(';').strip()
     name = re.sub(r'^(?:export\s+)?import\s+', '', stripped)
+    parts = name.split('.')
+    branch = parts[1] if len(parts) > 1 else ''
+    tail = tuple(parts[2:]) if len(parts) > 2 else ()
     group = 0 if name.startswith("spp.") else 1
-    return group, name
+    return group, branch, len(parts), tail, name
 
 
-def sort_run(lines: list[str], key: Callable[[str], tuple[int, str]]) -> list[str]:
+def include_key(line: str) -> tuple:
+    """Sort includes hierarchically, like a directory tree."""
+    stripped = line.strip()
+    match = re.search(r'include\s*[<"]([^>"]+)[>"]', stripped)
+    name = match.group(1) if match else stripped
+    parts = name.split('/')
+    branch = parts[0] if parts else ''
+    tail = tuple(parts[1:]) if len(parts) > 1 else ()
+    return branch, len(parts), tail, name
+
+
+def sort_run(lines: list[str], key: Callable[[str], tuple]) -> list[str]:
     return sorted(lines, key=key)
 
 
@@ -60,7 +76,7 @@ def process(text: str) -> str:
             while j < n and INCLUDE_RE.match(lines[j]):
                 j += 1
             run = lines[i:j]
-            out.extend(sorted(run, key=lambda s: s.strip()))
+            out.extend(sort_run(run, include_key))
             i = j
             continue
 

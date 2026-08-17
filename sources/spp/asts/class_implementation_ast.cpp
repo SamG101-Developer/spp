@@ -1,13 +1,13 @@
 module;
-#include <spp/analyse/macros.hpp>
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.class_implementation_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
-import spp.asts.identifier_ast;
 import spp.asts.class_attribute_ast;
+import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import genex;

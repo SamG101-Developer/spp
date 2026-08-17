@@ -3,19 +3,19 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_ast;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_early_return_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.token_ast;

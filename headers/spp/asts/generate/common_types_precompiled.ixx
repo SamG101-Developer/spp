@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generate.common_types_precompiled;
-import spp.asts.type_ast;
 import spp.asts.identifier_ast;
+import spp.asts.type_ast;
 import spp.utils.types;
 import std;
 

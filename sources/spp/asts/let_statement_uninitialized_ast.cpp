@@ -2,13 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.let_statement_uninitialized_ast;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.asts.local_variable_ast;
 import spp.asts.identifier_ast;
-import spp.asts.object_initializer_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;

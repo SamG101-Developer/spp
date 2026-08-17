@@ -34,9 +34,9 @@ using sys::write;
 using sys::stat;
 using sys::S_ISDIR;
 
+#include <gtest/gtest.h>
 #include <spp/macros.hpp>
 #include <spp/parse/macros.hpp>
-#include <gtest/gtest.h>
 #include "test_boot.hpp"
 
 #define SPP_TEST_SHOULD_PASS_SYNTACTIC(name, code) \

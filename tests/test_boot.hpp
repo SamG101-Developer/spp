@@ -1,15 +1,15 @@
 #pragma once
 
-import spp.cli;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.cli;
 import spp.lex.lexer;
-import spp.parse.errors.parser_error;
 import spp.parse.parser_spp;
+import spp.parse.errors.parser_error;
 import spp.utils.files;
-import sys;
 import std;
+import sys;
 
 inline auto build_temp_project(std::string code, const bool add_main = true) -> void {
   const auto cwd = std::filesystem::current_path();

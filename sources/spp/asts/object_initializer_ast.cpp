@@ -9,10 +9,10 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
-import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -27,8 +27,8 @@ import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.utils.algorithms;
 import spp.utils.uid;
-import llvm;
 import genex;
+import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(

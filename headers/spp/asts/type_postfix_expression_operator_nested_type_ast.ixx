@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_postfix_expression_operator_nested_type_ast;
-import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.token_ast;
+import spp.asts.type_postfix_expression_operator_ast;
 import spp.utils.types;
 import std;
 

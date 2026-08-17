@@ -1,6 +1,6 @@
 module;
-#include <spp/analyse/macros.hpp>
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.array_literal_explicit_elements_ast;
 import spp.analyse.errors.semantic_error;

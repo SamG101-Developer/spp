@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
-#include <spp/parse/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
+#include <spp/parse/macros.hpp>
 
 module spp.compiler.compiler_boot;
 import spp.analyse.errors.semantic_error;
@@ -14,11 +14,11 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.monomorphization_utils;
 import spp.asts.ast;
 import spp.asts.expression_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
+import spp.asts.module_prototype_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.module_prototype_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
 import spp.compiler.module_tree;
@@ -28,8 +28,8 @@ import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 import spp.utils.files;
-import llvm;
 import genex;
+import llvm;
 
 #define PREP_SCOPE_MANAGER \
   auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })

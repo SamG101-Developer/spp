@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_postfix_expression_ast;
-import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.type_ast;
+import spp.asts.type_postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;

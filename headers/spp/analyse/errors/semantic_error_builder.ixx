@@ -3,10 +3,10 @@ module;
 #include <spp/analyse/macros.hpp>
 
 export module spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
 import spp.analyse.errors.semantic_error;
-import spp.utils.errors;
+import spp.analyse.scopes.scope;
 import spp.utils.error_formatter;
+import spp.utils.errors;
 import spp.utils.types;
 import colex;
 import genex;

@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.function_parameter_variadic_ast;
-import spp.asts.local_variable_ast;
 import spp.asts.ast;
+import spp.asts.local_variable_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;

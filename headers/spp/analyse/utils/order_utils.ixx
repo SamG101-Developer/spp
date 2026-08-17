@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.order_utils;
-import spp.utils.types;
 import spp.asts.utils.orderable;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {

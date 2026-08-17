@@ -1,6 +1,6 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/macros-platforms.hpp>
+#include <spp/macros.hpp>
 
 #if SPP_COMPILER_CLANG
 #include <bits/floatn-common.h>

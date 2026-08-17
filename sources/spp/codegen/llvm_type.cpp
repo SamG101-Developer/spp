@@ -3,8 +3,8 @@ module;
 
 module spp.codegen.llvm_type;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.boolean_literal_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.function_parameter_ast;

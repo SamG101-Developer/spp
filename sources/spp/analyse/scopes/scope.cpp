@@ -3,11 +3,11 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.symbols;
-import spp.analyse.scopes.symbol_table;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.symbol_table;
+import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
@@ -32,9 +32,9 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.compiler.module_tree;
+import spp.utils.algorithms;
 import spp.utils.error_formatter;
 import spp.utils.functions;
-import spp.utils.algorithms;
 import spp.utils.ptr;
 import genex;
 

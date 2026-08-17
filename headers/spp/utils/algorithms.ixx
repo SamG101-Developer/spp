@@ -1,6 +1,6 @@
 module;
-#include <spp/macros.hpp>
 #include <genex/macros.hpp>
+#include <spp/macros.hpp>
 
 export module spp.utils.algorithms;
 import spp.utils.types;

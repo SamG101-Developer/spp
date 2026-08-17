@@ -3,8 +3,8 @@ module;
 
 module spp.asts.sup_implementation_ast;
 import spp.asts.sup_member_ast;
-import spp.asts.utils.ast_utils;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 import genex;
 
 SPP_MOD_BEGIN

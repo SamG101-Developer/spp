@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.use_statement_ast;
-import spp.asts.statement_ast;
 import spp.asts.module_member_ast;
+import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
