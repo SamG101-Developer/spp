@@ -334,10 +334,21 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
 
     // Adjust the scope to the inner function scope.
     for (auto &info : overload_scopes) {
-      info.FnScope = (info.FnScope->Children
+      const auto blocks = info.FnScope->Children
         | genex::views::ptr
         | genex::views::filter(is_valid_ext_scope)
-        | genex::to<Vec>())[0];
+        | genex::to<Vec>();
+
+      auto owning_block = static_cast<scopes::Scope const*>(nullptr);
+      for (auto const *block : blocks) {
+        auto const body = asts::AstBody(block->AstNode);
+        if (not body.IsEmpty() and body[0]->To<asts::FunctionPrototypeAst>() == info.Proto) {
+          owning_block = block;
+          break;
+        }
+      }
+
+      info.FnScope = owning_block != nullptr ? owning_block : blocks[0];
     }
   }
 
