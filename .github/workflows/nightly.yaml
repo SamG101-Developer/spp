@@ -32,7 +32,7 @@ jobs:
   # something at the other end moved, on a day nobody here pushed anything.
   links:
     name: Check Links
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -90,7 +90,7 @@ jobs:
   # on, and every Doxygen build older than the pinned release. Prune them once they are stale.
   prune-caches:
     name: Prune Stale Caches
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read

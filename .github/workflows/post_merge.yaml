@@ -19,7 +19,7 @@ concurrency:
 jobs:
   changes:
     name: Detect Code Changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -66,7 +66,7 @@ jobs:
   publish-docs:
     name: Publish Docs
     needs: [ docs ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       pages: write     # deploy the built site

@@ -12,6 +12,13 @@ repos:
         language: python
         # files: \.(hpp|cpp|ixx)$
 
+      - id: pins
+        name: validate dependency manifest
+        entry: python3 .github/scripts/lib/pins.py check -q
+        language: python
+        pass_filenames: false
+        files: '^\.github/(dependencies\.toml|workflows/|actions/|scripts/lib/pins\.py)'
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # v6.0.0
     hooks:

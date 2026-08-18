@@ -14,7 +14,7 @@ jobs:
   pr-title:
     name: PR Title Format
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       pull-requests: read
@@ -54,7 +54,7 @@ jobs:
   # newlines, whitespace, yaml/toml/jaon/action checks, cmake formatting, etc.
   pre-commit:
     name: Format & Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
       contents: read

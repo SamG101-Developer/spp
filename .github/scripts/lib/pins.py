@@ -7,6 +7,7 @@ stated once instead of once per consumer.
 Subcommands:
     env         NAME=value lines for GITHUB_ENV (pins and install prefixes)
     libraries   one tab-separated record per small CMake library: name, repo, commit, space-joined cmake flags
+    runners     one tab-separated record per canonical runner image
     get NAME    print one exported value, for scripts that want a single pin without loading the lot
     set PATH V  rewrite one value in place, preserving comments and layout; used by refresh-pins.sh
     check       validate the file and print what it exports
@@ -38,7 +39,13 @@ VALUE = re.compile(r"^[A-Za-z0-9._:/+-]+$")
 NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
-TABLES = {"pin", "prefix", "library"}
+TABLES = {"pin", "prefix", "library", "runner"}
+
+# Runner images are not exported: `runs-on` cannot read the env context, and RUNNER_* is GitHub's own namespace. The
+# manifest is the canonical list and check_workflows() enforces that the YAML agrees with it.
+IMAGE = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.-]+$")
+IMAGE_IN_TEXT = re.compile(r"\b(?:ubuntu|macos|windows)-(?:latest|\d+(?:\.\d+)*)(?:-arm(?:64)?)?\b")
+WORKFLOW_DIRS = (Path(".github/workflows"), Path(".github/actions"))
 
 
 def fail(message: str) -> None:
@@ -120,6 +127,39 @@ def libraries(data: dict) -> list[dict]:
     return list(data.get("library", []))
 
 
+def runners(data: dict) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for key, value in data.get("runner", {}).items():
+        if not isinstance(value, str) or not IMAGE.match(value):
+            fail(f"runner.{key} is not a runner image: {value!r}")
+        if value.endswith("-latest"):
+            fail(f"runner.{key} is a floating image: {value!r}; name the version")
+        out[key] = value
+    return out
+
+
+def check_workflows(data: dict) -> int:
+    """Every runner image named in the workflows must be one the manifest lists."""
+    allowed = set(runners(data).values())
+    if not allowed:
+        fail("[runner] is empty, so there is nothing to check the workflows against")
+
+    problems = 0
+    for directory in WORKFLOW_DIRS:
+        for path in sorted(directory.rglob("*.y*ml")):
+            for number, line in enumerate(path.read_text().splitlines(), start=1):
+                for found in IMAGE_IN_TEXT.findall(line):
+                    if found not in allowed:
+                        print(f"::error file={path},line={number}::{found} is not in [runner]: {line.strip()}")
+                        problems += 1
+    return problems
+
+
+def cmd_runners(data: dict) -> None:
+    for key, value in runners(data).items():
+        print(f"{key}\t{value}")
+
+
 def cmd_env(data: dict) -> None:
     for name, value in exports(data).items():
         print(f"{name}={value}")
@@ -162,12 +202,21 @@ def cmd_get(data: dict, name: str) -> None:
     print(values[name])
 
 
-def cmd_check(data: dict) -> None:
+def cmd_check(data: dict, quiet: bool) -> None:
     values = exports(data)
     libs = libraries(data)
-    for name, value in sorted(values.items()):
-        print(f"  {name}={value}")
-    print(f"{MANIFEST}: {len(values)} exported pins, {len(libs)} libraries")
+    images = runners(data)
+    if not quiet:
+        for name, value in sorted(values.items()):
+            print(f"  {name}={value}")
+        for key, value in images.items():
+            print(f"  runner.{key}={value}")
+    problems = check_workflows(data)
+    summary = f"{MANIFEST}: {len(values)} pins, {len(libs)} libraries, {len(images)} runner images"
+    if problems:
+        fail(f"{summary}; {problems} workflow reference(s) disagree with [runner]")
+    if not quiet:
+        print(summary)
 
 
 def cmd_set(path: str, value: str) -> None:
@@ -218,7 +267,9 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("env")
     sub.add_parser("libraries")
-    sub.add_parser("check")
+    sub.add_parser("runners")
+    check = sub.add_parser("check")
+    check.add_argument("-q", "--quiet", action="store_true")
     get = sub.add_parser("get")
     get.add_argument("name")
     setter = sub.add_parser("set")
@@ -235,10 +286,12 @@ def main() -> None:
         cmd_env(data)
     elif args.command == "libraries":
         cmd_libraries(data)
+    elif args.command == "runners":
+        cmd_runners(data)
     elif args.command == "get":
         cmd_get(data, args.name)
     else:
-        cmd_check(data)
+        cmd_check(data, args.quiet)
 
 
 if __name__ == "__main__":

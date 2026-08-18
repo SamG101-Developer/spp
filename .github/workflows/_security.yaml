@@ -17,7 +17,7 @@ permissions: { }
 jobs:
   codeql:
     name: CodeQL
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read          # checkout
@@ -79,7 +79,7 @@ jobs:
 
   osv:
     name: OSV Dependency Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read          # read the dependency manifests
@@ -124,7 +124,7 @@ jobs:
 
   secrets:
     name: Secret Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read          # read the tree and its history
@@ -176,7 +176,7 @@ jobs:
   dependency-review:
     name: Dependency Review
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read  # read the dependency graph for both sides of the diff

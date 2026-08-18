@@ -18,7 +18,7 @@ jobs:
   # ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled.
   changes:
     name: Detect Code Changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -106,9 +106,9 @@ jobs:
         include:
           - { os: ubuntu-24.04-arm, compiler: gcc, version: "16" }
           - { os: ubuntu-24.04, compiler: clang, version: "22" }
-          - { os: macos-latest, compiler: clang, version: "" }
-          - { os: windows-latest, compiler: msvc, version: "" }
-          - { os: windows-latest, compiler: clang-cl, version: "" }
+          - { os: macos-15, compiler: clang, version: "" }
+          - { os: windows-2025, compiler: msvc, version: "" }
+          - { os: windows-2025, compiler: clang-cl, version: "" }
     uses: ./.github/workflows/_compile.yaml
     with:
       os: ${{ matrix.os }}
@@ -169,7 +169,7 @@ jobs:
     name: CI Success
     if: ${{ always() }}
     needs: [ changes, lint, cppcheck, build-test, docs, security ] # sonar
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }
     steps:

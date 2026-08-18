@@ -10,10 +10,10 @@ on:
         required: true
         type: string
       os:
-        description: "Runner image (ubuntu-latest | macos-latest | windows-latest)."
+        description: "Runner image; one of the images listed under [runner] in .github/dependencies.toml."
         required: false
         type: string
-        default: "ubuntu-latest"
+        default: "ubuntu-24.04"
       compiler:
         description: "Compiler (gcc | clang | msvc | clang-cl)."
         required: false
