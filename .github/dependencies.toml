@@ -66,6 +66,12 @@ version = "2.21.1"
 commit = "904cfdcf774c44b17db789c8a212e2f1c69fc833"
 
 # Install prefixes, exported as SPP_<KEY>_PREFIX. {home} expands at load time.
+[runner]
+linux = "ubuntu-24.04"
+linux-arm = "ubuntu-24.04-arm"
+macos = "macos-15"
+windows = "windows-2025"
+
 [prefix]
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
