@@ -181,7 +181,7 @@ auto spp::codegen::EmitCEntryPoint(
     return false;
   }
 
-  const auto result = builder.CreateCall(spp_main, {});
+  builder.CreateCall(spp_main, {});
 
   // An S++ "main" returns "Void", which is where this ends up;
   // the sppc::exit class of functions can be used to actually
