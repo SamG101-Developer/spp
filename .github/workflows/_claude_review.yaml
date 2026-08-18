@@ -1,19 +1,22 @@
-name: Claude Code Review
+name: claude-review
+
+# Automated review pass over a pull request. Advisory in exactly the way Sonar is: it runs inside the PR pipeline and
+# reports, but it is deliberately left out of the ci-success `needs` list, so nothing it says blocks a merge.
+#
+# This has no trigger of its own. It is called from pr.yaml, which owns the concurrency group, so a new push cancels
+# the run this belongs to rather than leaving a stale review to post twice.
 
 on:
-  pull_request:
-    types: [ opened, synchronize, ready_for_review, reopened ]
+  workflow_call:
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
 
 permissions: { }
 
-# A new push makes the in-flight review stale, so drop it rather than post twice.
-concurrency:
-  group: claude-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   claude-review:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    name: Claude Code Review
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -21,7 +24,6 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
-
     steps:
       # Secure the runner from external packages or actions.
       - name: Harden Runner
