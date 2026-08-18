@@ -47,6 +47,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LlvmWantAddress = false;
   LlvmAssignmentTarget = nullptr;
   LlvmAssignmentTargetType = nullptr;
+  LlvmCaseCondition = nullptr;
   LlvmPhi = nullptr;
   LlvmLoopStack = {};
   CmpResult = nullptr;
@@ -104,6 +105,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LlvmWantAddress = LlvmWantAddress;
   s.LlvmAssignmentTarget = LlvmAssignmentTarget;
   s.LlvmAssignmentTargetType = LlvmAssignmentTargetType;
+  s.LlvmCaseCondition = LlvmCaseCondition;
   s.LlvmPhi = LlvmPhi;
   s.LlvmLoopStack = LlvmLoopStack;
   s.CmpArgs = std::move(CmpArgs);
@@ -163,6 +165,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmWantAddress = state.LlvmWantAddress;
   LlvmAssignmentTarget = state.LlvmAssignmentTarget;
   LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
+  LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
   CmpArgs = std::move(state.CmpArgs);

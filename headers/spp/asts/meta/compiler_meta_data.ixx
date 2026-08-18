@@ -102,6 +102,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   llvm::Value *LlvmAssignmentTarget;
   llvm::Value *LlvmAssignmentTargetType;
+  llvm::Value *LlvmCaseCondition;
+
   llvm::PHINode *LlvmPhi;
   Vec<LlvmLoopInfo> LlvmLoopStack;
   Map<
