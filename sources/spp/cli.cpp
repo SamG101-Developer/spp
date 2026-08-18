@@ -223,10 +223,8 @@ auto spp::cli::handle_run(
   // than the tail of the build that produced it. This is the byte
   // sequence "clear" sends: without the ED 3, the erased lines stay
   // in the scrollback and the console still reads as uncleared.
-  if (sys::isatty(sys::fileno(sys::stdout)) != 0) {
-    std::cout << "\033[H\033[2J\033[3J";
-    std::cout.flush();
-  }
+  std::cout << "\033[H\033[2J\033[3J";
+  std::cout.flush();
 
   const auto status = std::system(utils::files::NativeString(exe_file).c_str());
   const auto exited_normally = (status & 0x7F) == 0;
