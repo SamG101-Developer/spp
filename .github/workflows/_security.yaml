@@ -122,6 +122,18 @@ jobs:
           sarif_file: osv.sarif
           category: osv-scanner
 
+      # The osv-scanner reads lockfiles, and the C++ dependency set is not one: the libraries are git commits and the
+      # prebuilt archives are versions, so it never sees them. This asks OSV about them directly.
+      - name: Scan pinned dependencies
+        run: python3 .github/scripts/security/scan-pinned-deps.py osv-pins.sarif
+
+      - name: Upload pinned dependency results
+        if: always() && hashFiles('osv-pins.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          sarif_file: osv-pins.sarif
+          category: osv-pinned-deps
+
   secrets:
     name: Secret Scan
     runs-on: ubuntu-24.04
@@ -130,8 +142,6 @@ jobs:
       contents: read          # read the tree and its history
       security-events: write  # upload the gitleaks SARIF
     steps:
-      # Everything this job reaches for is a GitHub endpoint, so it can afford the blocking policy rather than the
-      # audit one: the scanner binary, the repository and the SARIF upload are the whole of its egress.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:

@@ -10,7 +10,7 @@ repos:
         name: sort C++ module imports
         entry: python3 .github/precommit/sort_imports.py
         language: python
-        # files: \.(hpp|cpp|ixx)$
+        files: \.(hpp|cpp|ixx)$
 
       - id: pins
         name: validate dependency manifest

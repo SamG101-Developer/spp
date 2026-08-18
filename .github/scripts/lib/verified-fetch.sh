@@ -5,7 +5,7 @@
 # them, then commit the result.
 # shellcheck shell=bash
 
-# Print the sha256 of a file. Ubuntu and the Git-for-Windows
+# Get the sha256 of a file. Ubuntu and the Git-for-Windows
 # coreutils have sha256sum; macOS ships shasum instead and
 # has no sha256sum at all, and install-boost.sh runs on all
 # three.

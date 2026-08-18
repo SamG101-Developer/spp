@@ -1,18 +1,6 @@
 #!/usr/bin/env bash
 # Scan the repository for committed secrets and write SARIF
 # for the Security tab.
-#
-# This exists because the gitleaks pre-commit hook does not
-# cover CI. That hook scans the index, and under
-# `pre-commit run --all-files` on a fresh checkout nothing
-# is staged, so it passes over a repository it never read.
-# A hook is also bypassable with `--no-verify`, which is
-# exactly the wrong property for the one check that catches
-# a live credential.
-#
-# Unlike the dependency scan, findings here are fatal. A CVE
-# in a dependency is something to schedule; a key in the
-# tree is something to rotate before the branch merges.
 set -euo pipefail
 
 output="${1:-gitleaks.sarif}"

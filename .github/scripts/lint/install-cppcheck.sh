@@ -2,12 +2,6 @@
 # Build the pinned cppcheck into SPP_CPPCHECK_PREFIX, which
 # the calling step caches as a single tree.
 #
-# Source rather than a package: Ubuntu 24.04 ships 2.13, and
-# a cppcheck that old rejects --std=c++26 outright and
-# reports most of this codebase as a syntax error. Pinned by
-# commit rather than by tarball digest because GitHub's
-# generated archives are not byte-stable.
-#
 # Bumping: run .github/scripts/security/refresh-pins.sh.
 set -euo pipefail
 
@@ -35,4 +29,8 @@ cmake -S "$src" -B "$src/build" -G Ninja \
   -DUSE_MATCHCOMPILER=ON \
   -DBUILD_TESTS=OFF \
   -DBUILD_GUI=OFF
-cmake --build "$src/build" --target install --parallel
+
+cmake \
+  --build "$src/build" \
+  --target install \
+  --parallel

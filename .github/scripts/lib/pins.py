@@ -62,6 +62,7 @@ def load() -> dict:
         fail(f"{MANIFEST} not found; run from the repository root")
     with MANIFEST.open("rb") as handle:
         return tomllib.load(handle)
+    return None
 
 
 def exports(data: dict) -> dict[str, str]:

@@ -29,7 +29,7 @@ runs:
     - name: Fetch gtest-parallel (cache miss)
       if: steps.gtp-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: bash .github/scripts/run-tests/fetch-gtest-parallel.sh
+      run: bash .github/scripts/run-tests/install-gtest-parallel.sh
 
     - name: Run tests
       shell: bash

@@ -36,6 +36,8 @@ sha256 = "9465632c6d96e65ab6b7f6fbf7ae447621803982b2348483221812bbf4c8b6af"
 # install-boost.sh: there is no 24.04 arm64 build upstream, so arm64 takes the 22.04 tarball.
 [pin.boost]
 version = "1.91.0"
+osv-ecosystem = "OSS-Fuzz"
+osv-name = "boost"
 sha256-linux = "24b11fd9c9287389491c16d1e22522ab7d6adaaf1fd80af1ece2436e5dd883d9"
 sha256-linux-arm64 = "c888304ea2f244f87e28044e1be35d82236e8c118d5811892583a9e360795058"
 sha256-macos = "3b249cddee3fde8c20427b4ff93e18c2d88b8fb3bfeb2861081e8d16923bdf85"

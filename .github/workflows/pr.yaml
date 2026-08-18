@@ -70,6 +70,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
+      security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
   # Supported toolchain. "Release" and both "sanitiser" configurations build in parallel and fail-fast, so one broken

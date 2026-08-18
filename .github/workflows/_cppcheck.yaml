@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      security-events: write  # upload the cppcheck SARIF
     steps:
       # Audit rather than block, deliberately. This job gates the builds, so an egress rule that turns out to be one
       # endpoint short would stop every merge rather than one job. Tighten it once the audit output for a cache-miss
@@ -65,4 +66,14 @@ jobs:
       # Findings fail the job. The rule selection and the reasoning behind it live in the script and in
       # .cppcheck-suppressions.
       - name: Run cppcheck
-        run: bash .github/scripts/lint/run-cppcheck.sh
+        run: bash .github/scripts/lint/run-cppcheck.sh cppcheck.sarif
+
+      # continue-on-error because a pull request from a fork gets a read-only token: the upload would fail there and
+      # take a merge gate down with it, and the findings are in the job log either way.
+      - name: Upload cppcheck results
+        if: always() && hashFiles('cppcheck.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          sarif_file: cppcheck.sarif
+          category: cppcheck

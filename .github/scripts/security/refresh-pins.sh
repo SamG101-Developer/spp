@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Recompute the pins this repository records for the code
-# it downloads, and rewrite the files holding them.
+# Recompute the pins this repository records for the code it
+# downloads, and rewrite the files holding them.
 set -euo pipefail
 
 MANIFEST=".github/dependencies.toml"
@@ -15,23 +15,26 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# Authorization helper for the GitHub tokens to get injected
-# into commands / requests.
+# Authorization helper for the GitHub tokens to get injected into
+# commands / requests.
 auth=()
 if [ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]; then
   auth=(-H "Authorization: Bearer ${GH_TOKEN:-$GITHUB_TOKEN}")
 fi
 
-# General purpose secure fetch command, forcing https and
-# retry options. Adds all subsequent text after it.
+# General purpose secure fetch command, forcing https and retry
+# options. Adds all subsequent text after it.
 fetch() { curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL --retry 3 --retry-all-errors "$@"; }
 
-# Everything below addresses the manifest by dotted path, and both directions go through pins.py, so the rules about
-# what a pin may contain are enforced in one place rather than restated here as a regex.
+# Everything below addresses the manifest by dotted path,
+# and both directions go through pins.py, so the rules
+# about what a pin may contain are enforced in one place
+# rather than restated here as a regex.
 pinned() { python3 "$PINS" get "$1"; }
 
-# Rewrite one value in the manifest. Paths are never invented: pins.py fails on a path that is not already there,
-# which is what catches this script and the manifest drifting apart.
+# Rewrite one value in the manifest. Paths are never invented:
+# pins.py fails on a path that is not already there, which is
+# what catches this script and the manifest drifting apart.
 set_pin() {
   local path="$1" val="$2" old
   if [ -z "$val" ]; then
@@ -53,9 +56,9 @@ set_pin() {
   echo " -> ${val}"
 }
 
-# <owner/repo> <tag> <asset-name> -> the asset's sha256,
-# or nothing when that tag publishes no such asset. The
-# digest is served by the release API.
+# <owner/repo> <tag> <asset-name> -> the asset's sha256, or
+# nothing when that tag publishes no such asset. The digest
+# is served by the release API.
 asset_digest() {
   fetch "${auth[@]}" "https://api.github.com/repos/$1/releases/tags/$2" 2> /dev/null \
     | python3 -c '
@@ -68,13 +71,13 @@ for a in json.load(sys.stdin).get("assets", []):
 ' "$3"
 }
 
-# For all the small libs, begin the standardised fresh logic. The list comes from the manifest, so a library added
-# there is picked up here without touching this script.
+# For all the small libs, begin the standardised fresh logic.
+# The list comes from the manifest, so a library added there
+# is picked up here without touching this script.
 echo "dependency commits (${MANIFEST})"
 while IFS=$'\t' read -r -u 3 name repo _commit _flags; do
 
-  # Try to read from the target repo, to get the newest
-  # hash.
+  # Try to read from the target repo, to get the newest hash.
   sha="$(git ls-remote "$repo" HEAD 2> /dev/null | cut -f 1)"
   if [ "${#sha}" -ne 40 ]; then
     echo "::error::could not resolve HEAD for ${repo}"
@@ -84,22 +87,20 @@ while IFS=$'\t' read -r -u 3 name repo _commit _flags; do
   set_pin "library.${name}.commit" "$sha"
 done 3< <(python3 "$PINS" libraries)
 
-# Do the google-test-parallel suite manually.
+# GOOGLE-TEST-PARALLEL
 echo
 echo "gtest-parallel (${MANIFEST})"
 set_pin pin.gtest-parallel.commit "$(git ls-remote https://github.com/google/gtest-parallel.git HEAD 2> /dev/null | cut -f 1)"
 
-# Do the llvm.sh installer manually.
+# LLVM.SH
 echo
 echo "apt.llvm.org installer (${MANIFEST})"
 fetch -o "$tmp/llvm.sh" https://apt.llvm.org/llvm.sh
 set_pin pin.llvm-sh.sha256 "$(sha256sum "$tmp/llvm.sh" | cut -d ' ' -f 1)"
 
-# The OSV is more complex so has different logic.
+# OSV SCANNER
 echo
 echo "osv-scanner (${MANIFEST})"
-# Unlike the libraries, this one tracks published releases rather than a branch tip: it is a tool the pipeline runs,
-# not a dependency it links, so the useful question is which version is current rather than what landed on main.
 osv_tag="$(fetch "${auth[@]}" https://api.github.com/repos/google/osv-scanner/releases/latest \
   | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag_name",""))')"
 if [ -z "$osv_tag" ]; then
@@ -110,7 +111,7 @@ else
   set_pin pin.osv-scanner.sha256 "$(asset_digest google/osv-scanner "$osv_tag" osv-scanner_linux_amd64)"
 fi
 
-# Same shape as osv-scanner: a published release rather than a branch tip, because it is a tool the pipeline runs.
+# GITLEAKS
 echo
 echo "gitleaks (${MANIFEST})"
 gitleaks_tag="$(fetch "${auth[@]}" https://api.github.com/repos/gitleaks/gitleaks/releases/latest \
@@ -126,8 +127,7 @@ else
   echo "        CI scan run the same rules"
 fi
 
-# Tracks release tags rather than the branch tip: it is a tool the pipeline runs, and a dev build of an analyser that
-# gates every merge is not what this wants. The repository redirects from danmar/cppcheck, so it is addressed by id.
+# CPPCHECK
 echo
 echo "cppcheck (${MANIFEST})"
 cppcheck_tag="$(fetch "${auth[@]}" 'https://api.github.com/repositories/143131/tags?per_page=1' \
@@ -141,13 +141,12 @@ else
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
 fi
 
+# BOOST
 echo
 echo "prebuilt Boost (${MANIFEST})"
 boost="$(pinned pin.boost.version)"
 set_pin pin.boost.sha256-linux \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-24.04-gcc-static+shared-x86.tar.gz")"
-# There is no 24.04 arm64 build upstream, and none is needed: only the headers are used, so the 22.04 tarball is what
-# the arm64 runners take. Keep this in step with the case block in install-boost.sh.
 set_pin pin.boost.sha256-linux-arm64 \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-22.04-gcc-static+shared-aarch64.tar.gz")"
 set_pin pin.boost.sha256-macos \
@@ -155,6 +154,7 @@ set_pin pin.boost.sha256-macos \
 set_pin pin.boost.sha256-windows \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-windows-2025-msvc-static-x86.tar.gz")"
 
+# LLVM (WINDOWS)
 echo
 echo "Windows LLVM (checked, not refreshed)"
 win_tag="$(pinned pin.llvm-win.tag)"
