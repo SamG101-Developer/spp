@@ -1,7 +1,13 @@
+# general setup files
 .idea
 .gitignore
 *.spp
 
+# documentation folders/files
 docs/build/
 docs/source/compiler-api/
 __pycache__/
+
+# lychee link-check cache (nightly workflow)
+.lycheecache
+lychee-report.md
