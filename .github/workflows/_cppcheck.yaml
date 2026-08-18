@@ -32,8 +32,8 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Load pinned versions
-        run: bash .github/scripts/lib/load-versions.sh
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
 
       # Keyed on the pinned commit and on the script that decides how it is built, so a change to either rebuilds and
       # anything else reuses the tree.

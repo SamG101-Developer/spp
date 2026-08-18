@@ -31,9 +31,8 @@ runs:
   using: composite
   steps:
     # Cache-key versions and toolchain pins all live in .github/dependencies.toml.
-    - name: Load pinned versions
-      shell: bash
-      run: bash .github/scripts/lib/load-versions.sh
+    - name: Set up Python and load pins
+      uses: ./.github/actions/setup-python
 
     # Runner images ship an older CMake (3.31.x); the project needs the pinned one to
     # satisfy cmake_minimum_required() in CMakeLists.txt.

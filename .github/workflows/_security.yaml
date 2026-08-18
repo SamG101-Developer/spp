@@ -39,8 +39,8 @@ jobs:
 
       # setup-toolchain loads the manifest itself, but not until after its own `with:` has been evaluated, so the
       # loader runs here as well to put GCC_VERSION within reach of the step below.
-      - name: Load pinned versions
-        run: bash .github/scripts/lib/load-versions.sh
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
 
       # CodeQL analyses the blocking toolchain's build, so it tracks GCC_VERSION rather than naming a compiler of its
       # own. No compiler cache: a cache hit skips the real compiler, and the extractor never sees the translation unit.
@@ -102,8 +102,8 @@ jobs:
 
       # This job installs no toolchain, but the scanner's pinned release and digest live in the manifest with
       # everything else, so the loader still has to run before the installation step can read them.
-      - name: Load pinned versions
-        run: bash .github/scripts/lib/load-versions.sh
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
 
       - name: Install osv-scanner
         run: bash .github/scripts/security/install-osv-scanner.sh
@@ -163,8 +163,8 @@ jobs:
           persist-credentials: false
 
       # No toolchain here either, but the scanner's release and digest live in the manifest with everything else.
-      - name: Load pinned versions
-        run: bash .github/scripts/lib/load-versions.sh
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
 
       - name: Install gitleaks
         run: bash .github/scripts/security/install-gitleaks.sh

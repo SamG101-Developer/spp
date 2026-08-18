@@ -15,9 +15,8 @@ runs:
   using: composite
   steps:
     # Cache-key versions and toolchain pins all live in ".github/dependencies.toml".
-    - name: Load pinned versions
-      shell: bash
-      run: bash .github/scripts/lib/load-versions.sh
+    - name: Set up Python and load pins
+      uses: ./.github/actions/setup-python
 
     - name: Cache gtest-parallel
       id: gtp-cache

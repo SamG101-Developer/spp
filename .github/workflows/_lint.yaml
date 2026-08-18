@@ -73,15 +73,9 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # Read the Python version from the environment variables.
-      - name: Load pinned versions
-        run: bash .github/scripts/lib/load-versions.sh
-
-      # Set up python for the pre-commit to actually run.
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+      # Installs the pinned Python that pre-commit itself runs under, and publishes the pins.
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
 
       # Run the pre-commit steps.
       - name: Run pre-commit

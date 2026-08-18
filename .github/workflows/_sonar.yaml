@@ -44,8 +44,8 @@ jobs:
 
       # setup-toolchain loads the manifest itself, but not until after its own `with:` has been evaluated, so the
       # loader runs here as well to put GCC_VERSION within reach of the step below and of the cache key further down.
-      - name: Load pinned versions
-        run: bash .github/scripts/lib/load-versions.sh
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
 
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
