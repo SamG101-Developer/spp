@@ -1,0 +1,58 @@
+name: PR Title
+
+# Standalone, and deliberately not part of the PR pipeline. A title can change without the commit changing, so this
+# has to run on `edited`; putting `edited` on pr.yaml instead made every title tweak cancel the in-flight run through
+# that workflow's cancel-in-progress, taking a 90-minute CodeQL job with it.
+#
+# It is its own required status check. pr.yaml no longer checks the title at all, so this is the only thing enforcing
+# it: add "PR Title Format" to the branch protection rule alongside "CI Success".
+
+on:
+  pull_request:
+    types: [ opened, edited, reopened ]
+
+permissions: { }
+
+# Keyed on the pull request rather than the ref: consecutive edits supersede each other, and cancelling this costs
+# nothing because it takes seconds.
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: PR Title Format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      # Enforce the regex rules on the PR title and description.
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            core
+          requireScope: false
+          subjectPattern: '^[a-z][a-z0-9 .-]*$'
+          subjectPatternError: "The description must match the regex."
