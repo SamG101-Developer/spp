@@ -1,7 +1,8 @@
 name: lint
 
-# The two inexpensive gates, run side by side. Both must pass before anything expensive starts, so a malformed PR title
-# costs seconds rather than a full compilation. Check the pr title and description for simple uniform conformance rules.
+# The cheap gate: pre-commit over the whole tree. It runs before anything expensive starts, so a formatting slip costs
+# seconds rather than a full compilation. The PR title check lives in pr_title.yaml, which needs an `edited` trigger
+# this workflow's caller must not have.
 
 on:
   workflow_call: { }
@@ -9,47 +10,6 @@ on:
 permissions: { }
 
 jobs:
-  # The PR title must have the common format of "type: summary", and the description must be all lowercase, with simple
-  # punctuation.
-  pr-title:
-    name: PR Title Format
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      pull-requests: read
-    steps:
-      # Secure the runner from external packages or actions.
-      - name: Harden Runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
-        with:
-          egress-policy: block
-          disable-sudo: true
-          allowed-endpoints: >
-            api.github.com:443
-            objects.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-
-      # Enforce the regex rules on the PR title and description.
-      - name: Check PR title
-        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          types: |
-            feat
-            fix
-            perf
-            refactor
-            docs
-            test
-            build
-            ci
-            core
-          requireScope: false
-          subjectPattern: '^[a-z][a-z0-9 .-]*$'
-          subjectPatternError: "The description must match the regex."
-
   # The "pre-commit" step runs the pre-commit-config.yaml file, which runs the simple linting such as missing or extra
   # newlines, whitespace, yaml/toml/jaon/action checks, cmake formatting, etc.
   pre-commit:

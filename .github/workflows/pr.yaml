@@ -2,7 +2,7 @@ name: PR
 
 on:
   pull_request:
-    types: [ opened, synchronize, reopened, edited ]
+    types: [ opened, synchronize, reopened ]
   merge_group: { }
   workflow_dispatch: { }
 
@@ -53,17 +53,17 @@ jobs:
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha || github.sha }}
 
-  # PR title check and pre-commit, side by side.
+  # pre-commit over the whole tree. The PR title is checked by pr_title.yaml, which needs an `edited`
+  # trigger this workflow deliberately does not have.
   lint:
     name: Lint
     permissions:
       contents: read
-      pull-requests: read
     uses: ./.github/workflows/_lint.yaml
 
-  # Static analysis, gating the builds. Ordered after `lint` so a malformed PR title still fails in seconds rather
-  # than behind half a minute of analysis, and before the builds so five toolchains are not spent on code that
-  # cppcheck already rejects.
+  # Static analysis, gating the builds. Ordered after `lint` so a formatting slip still fails in seconds rather than
+  # behind half a minute of analysis, and before the builds so five toolchains are not spent on code that cppcheck
+  # already rejects.
   cppcheck:
     name: Static Analysis
     needs: [ changes, lint ]
@@ -153,7 +153,6 @@ jobs:
     name: Claude Review
     if: |
       github.event_name == 'pull_request'
-      && github.event.action != 'edited'
       && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: read
@@ -164,8 +163,8 @@ jobs:
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-  # The single required status check for branch protection. Fails if any needed job failed or was cancelled; passes when
-  # they all succeeded or were skipped.
+  # One of the two required status checks for branch protection, the other being "PR Title Format" from
+  # pr_title.yaml. Fails if any needed job failed or was cancelled; passes when they all succeeded or were skipped.
   ci-success:
     name: CI Success
     if: ${{ always() }}
