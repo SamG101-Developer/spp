@@ -12,6 +12,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
@@ -224,13 +225,27 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   const auto llvm_type = codegen::GetLlvmTypeOf(
     *Type, *sm->CurrentScope, ctx);
 
-  // Generate the value in a constant context. Can be nullptr from
-  // "cmp" generic parameter placeholder -> use the null value for
-  // the type.
+  // Generate the value in a constant context. A "cmp" generic
+  // parameter reaches here through a placeholder with no "Value"
+  // of its own, so what it was bound to has to be read back
+  // off the symbol the instantiation's own scope registered.
   ctx->InConstantContext = true;
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
-  const auto val = Value != nullptr
-    ? var_sym->CompTimeValue->Stage11_CodeGen(sm, meta, ctx)
+  const auto generic_arg = Value == nullptr and var_sym->MemInfo->AstCompTime != nullptr
+    ? var_sym->MemInfo->AstCompTime->To<GenericArgumentCompKeywordAst>()
+    : nullptr;
+
+  // A binding that is still a name stands for another parameter
+  // rather than for a value, so there is nothing to emit for it.
+  // The same test that decides an instantiation is not concrete.
+  const auto bound_val = generic_arg != nullptr and generic_arg->Val->To<IdentifierAst>() == nullptr
+    ? static_cast<Ast*>(generic_arg->Val.get())
+    : Value != nullptr
+    ? var_sym->CompTimeValue.get()
+    : nullptr;
+
+  const auto val = bound_val != nullptr
+    ? bound_val->Stage11_CodeGen(sm, meta, ctx)
     : llvm::Constant::getNullValue(llvm_type);
   ctx->InConstantContext = false;
 
