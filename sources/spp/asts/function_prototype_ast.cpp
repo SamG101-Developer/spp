@@ -187,25 +187,32 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     // const auto is_coro = To<CoroutinePrototypeAst>() != nullptr;
     // Todo: Captures, NoFree (in non "del" methods), NoSync, NoRecurse (detect recursion in stage7)
     //  ZExt, SExt?
+    const auto deref_bytes = [&](TypeAst const &param_type) -> std::uint64_t {
+      const auto pointee = codegen::GetLlvmTypeOf(*param_type.WithoutConvention(), *sm->CurrentScope, ctx);
+      return pointee != nullptr and pointee->isSized()
+        ? ctx->Module->getDataLayout().getTypeAllocSize(pointee).getFixedValue()
+        : 0;
+    };
 
     for (const auto i : genex::views::iota(FnParamGroup->Params.Len())) {
       const auto j = static_cast<unsigned>(i);
-      if (FnParamGroup->Params[i]->Type->GetConvention() == nullptr) {
+      auto const &param_type = *FnParamGroup->Params[i]->Type;
+      if (param_type.GetConvention() == nullptr) {
         func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
+        continue;
       }
-      else if (FnParamGroup->Params[i]->Type->GetConvention()->To<ConventionRefAst>()) {
-        func->Target->addParamAttr(j, llvm::Attribute::NonNull);
-        func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
-        func->Target->addParamAttr(j, llvm::Attribute::ReadOnly);
-        func->Target->addParamAttr(j, llvm::Attribute::Dereferenceable);
-        // if (not is_coro) func->Target->addParamAttr(j, llvm::Attribute::NoCapture);
+
+      const auto is_ref = param_type.GetConvention()->To<ConventionRefAst>() != nullptr;
+      const auto is_mut = param_type.GetConvention()->To<ConventionMutAst>() != nullptr;
+      if (not is_ref and not is_mut) { continue; }
+
+      func->Target->addParamAttr(j, llvm::Attribute::NonNull);
+      func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
+      func->Target->addParamAttr(j, is_ref ? llvm::Attribute::ReadOnly : llvm::Attribute::NoAlias);
+      if (const auto bytes = deref_bytes(param_type); bytes > 0) {
+        func->Target->addDereferenceableParamAttr(j, bytes);
       }
-      else if (FnParamGroup->Params[i]->Type->GetConvention()->To<ConventionMutAst>()) {
-        func->Target->addParamAttr(j, llvm::Attribute::NonNull);
-        func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
-        func->Target->addParamAttr(j, llvm::Attribute::NoAlias);
-        func->Target->addParamAttr(j, llvm::Attribute::Dereferenceable);
-      }
+      // if (is_ref and not is_coro) func->Target->addParamAttr(j, llvm::Attribute::NoCapture);
     }
 
     // "noundef" is meaningless on a "void" return (there is no value to be
