@@ -138,6 +138,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
   // template, below) asks this one for it.
   _OwnerCtx = ctx;
   _GenOnceLowered->Stage10_PreCodeGen(sm, meta, ctx);
+  _ForceInlineBorrowedYield(*_GenOnceLowered);
 
   // An instantiation is a clone of this prototype holding its own
   // analysed body, so it needs a lowering, and a declaration, of
@@ -155,6 +156,10 @@ auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
 
     auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
     sub_target->GenerateLlvmDeclaration(&tm, meta, ctx);
+    if (const auto sub_coro = sub.Proto->To<CoroutinePrototypeAst>();
+      sub_coro != nullptr and sub_coro->_GenOnceLowered != nullptr) {
+      sub_coro->_ForceInlineBorrowedYield(*sub_coro->_GenOnceLowered);
+    }
   }
 
   return nullptr;
@@ -357,6 +362,25 @@ auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce()
   // at the coroutine it came from: that is where Stage10 stamps
   // the owning context "OwnerCtx" reads back.
   _GenOnceLowered->SetNonGenericImpl(this);
+}
+
+auto spp::asts::CoroutinePrototypeAst::_ForceInlineBorrowedYield(
+  SubroutinePrototypeAst const &lowered) const
+  -> void {
+  // A "GenOnce" that yields a borrow hands back the address of something the body built, and a body that yields a
+  // view over its argument ("fwd_ref", "slice_ref") has nowhere to build it but its own frame. That was sound while
+  // this was a coroutine, because the frame is elided into the caller's and outlives the yield; it is not sound once
+  // the same body is an ordinary call, whose frame dies at the return.
+  //
+  // Forcing the inline gives the storage back to the caller, which is where the borrow's lifetime says it belongs.
+  // It also restores the code that is meant to come out of one of these: the view is promoted out of memory
+  // entirely, leaving the pointer it was built from, so "arr.eq" is the "memcmp" it reads as rather than a chain of
+  // calls through a struct. Left out of line, the stores into the view are deleted as writes to a dying frame, and
+  // what remains is an empty function returning a dangling pointer.
+  if (_YieldType == nullptr or _YieldType->GetConvention() == nullptr) { return; }
+  const auto llvm_func = lowered.GetLlvmFunc();
+  if (llvm_func == nullptr or llvm_func->Target == nullptr) { return; }
+  llvm_func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
 }
 
 SPP_MOD_END
