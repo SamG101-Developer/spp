@@ -58,6 +58,7 @@ jobs:
         with:
           languages: c-cpp
           build-mode: manual
+          config-file: ./.github/codeql-config.yaml
           queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
 
       # Configure the cmake build specifically in debug mode.
