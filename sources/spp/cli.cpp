@@ -199,7 +199,7 @@ auto spp::cli::handle_run(
   Str const &mode)
   -> void {
   // Build the project first (skip VCS).
-  handle_build(mode, true);
+  handle_build(mode, false);
 
   // A build that did not get as far as linking has said why
   // already, so there is nothing to add here beyond not
