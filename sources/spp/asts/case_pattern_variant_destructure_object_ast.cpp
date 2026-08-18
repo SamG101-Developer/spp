@@ -213,7 +213,12 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       "case.pattern.is" + uid);
 
     // Set the alloca into the flow symbol (more precisely
-    // typed).
+    // typed). The flow symbol shares the condition symbol's llvm
+    // info up to this point, so it is given its own here: writing
+    // the payload address through the shared info would narrow the
+    // condition symbol itself onto the payload for the remainder of
+    // the enclosing function.
+    _FlowSym->LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
     _FlowSym->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
       _CondSym->LlvmInfo->Alloca, llvm_variant_ty,
       "case.pattern.payload" + uid, ctx);
