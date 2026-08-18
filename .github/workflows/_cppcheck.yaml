@@ -1,0 +1,68 @@
+name: cppcheck
+
+# Static analysis gate. This sits between the cheap PR checks and the builds on purpose: it costs about half a minute
+# once cppcheck is cached, and there is no sense spending build minutes across five toolchains on code that static
+# analysis already rejects.
+
+on:
+  workflow_call: { }
+
+permissions: { }
+
+jobs:
+  cppcheck:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      # Audit rather than block, deliberately. This job gates the builds, so an egress rule that turns out to be one
+      # endpoint short would stop every merge rather than one job. Tighten it once the audit output for a cache-miss
+      # run confirms what the cppcheck build actually reaches for.
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Load pinned versions
+        run: bash .github/scripts/lib/load-versions.sh
+
+      # Keyed on the pinned commit and on the script that decides how it is built, so a change to either rebuilds and
+      # anything else reuses the tree.
+      - name: Cache cppcheck
+        id: cppcheck-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.tools/cppcheck
+          key: cppcheck-${{ runner.os }}-${{ env.CPPCHECK_COMMIT }}-${{ hashFiles('.github/scripts/lint/install-cppcheck.sh') }}
+
+      # Only needed to build cppcheck itself, so both of these are skipped entirely on a cache hit. The runner's own
+      # GCC compiles it; this job never configures the project, so no project toolchain is set up here.
+      - name: Install CMake & Ninja (cache miss)
+        if: steps.cppcheck-cache.outputs.cache-hit != 'true'
+        uses: lukka/get-cmake@e6906078ebd1ccb8ce51ab4626ac46a1b5a517e3
+        with:
+          cmakeVersion: ${{ env.CMAKE_VERSION }}
+          ninjaVersion: ${{ env.NINJA_VERSION }}
+
+      - name: Build cppcheck (cache miss)
+        if: steps.cppcheck-cache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/lint/install-cppcheck.sh
+
+      - name: Expose cppcheck
+        run: echo "$SPP_CPPCHECK_PREFIX/bin" >> "$GITHUB_PATH"
+
+      - name: Check version
+        run: cppcheck --version
+
+      # Findings fail the job. The rule selection and the reasoning behind it live in the script and in
+      # .cppcheck-suppressions.
+      - name: Run cppcheck
+        run: bash .github/scripts/lint/run-cppcheck.sh
