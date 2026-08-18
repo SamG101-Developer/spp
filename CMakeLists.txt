@@ -148,6 +148,7 @@ target_link_libraries(
   LLVMCoroutines
   LLVMipo
   LLVMPasses
+  LLVMLinker
   Threads::Threads
   mimalloc
   unordered_dense::unordered_dense
