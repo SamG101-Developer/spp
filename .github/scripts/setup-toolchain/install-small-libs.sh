@@ -3,10 +3,6 @@
 # commit and install it into SPP_LOCAL_PREFIX, which the
 # calling step caches as a single tree. This is for all
 # libraries except for LLVM and Boost (different installation).
-#
-# Bumping: run .github/scripts/security/refresh-pins.sh,
-# which rewrites the shas below to each repository's current
-# default HEAD, then review and commit the diff.
 set -euo pipefail
 
 PREFIX="$SPP_LOCAL_PREFIX"
@@ -27,10 +23,8 @@ fi
 # disable the tests / benchmarks), builds it with Ninja,
 # and installs it into the system.
 cmake_install() {
-  local url="$1" sha="$2"
-  shift 2
-  local name
-  name="$(basename "$url" .git)"
+  local name="$1" url="$2" sha="$3"
+  shift 3
 
   # A pinned checkout rather than a branch clone. GitHub
   # will serve any reachable commit to a depth-1 fetch, so
@@ -49,20 +43,13 @@ cmake_install() {
   cmake --build "$name/build" --target install
 }
 
-# Install all the libraries from github that are cmake
-# compatible.
-cmake_install https://github.com/martinus/unordered_dense.git c4d143b6bbe7c4b2b5700fc26c96ef90d11cb66e
-cmake_install https://github.com/microsoft/mimalloc.git fc1e2acbced0b3e893da1a1375e02ac159d0423f \
-  -DMI_SECURE=OFF
-cmake_install https://github.com/nlohmann/json.git cdf52ae9bef77a0844e02e42df6d2df83a55c4b9 \
-  -DJSON_BuildTests=OFF
-cmake_install https://github.com/marzer/tomlplusplus.git 1e8829b793b66ad17011732a146b8077d379b011
-cmake_install https://github.com/Neargye/magic_enum.git 591b64351ea8442f8b8fa044ff335d6943e8e6e0 \
-  -DMAGIC_ENUM_OPT_BUILD_TESTS=OFF -DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF
-cmake_install https://github.com/CLIUtils/CLI11.git 60492bddb50422f32cfa33c1365b96ebee4205ca \
-  -DCLI11_BUILD_TESTS=OFF -DCLI11_BUILD_EXAMPLES=OFF
-cmake_install https://github.com/ericniebler/range-v3.git 108f93c279c8f9cec175dac361084983d0176e99 \
-  -DRANGE_V3_TESTS=OFF -DRANGE_V3_EXAMPLES=OFF -DRANGE_V3_DOCS=OFF
-cmake_install https://github.com/SamG101-Developer/googletest.git 2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361
-cmake_install https://github.com/SamG101-Developer/ColEx.git d84ca4f8dd153086342c719fc3ebad53c73faa42
-cmake_install https://github.com/SamG101-Developer/GenEx.git 50e0530f47de8bda75dcc76fb0206728370d5d48
+# Every library, its commit and its flags come from the
+# manifest, in the order listed there. Read on descriptor 3
+# so that nothing inside the loop can consume the record
+# stream by reading stdin.
+while IFS=$'\t' read -r -u 3 name repo commit flagstr; do
+  # Word-splitting the flags is the point; pins.py rejects a
+  # flag containing whitespace so that this stays safe.
+  read -ra flags <<< "$flagstr"
+  cmake_install "$name" "$repo" "$commit" ${flags[@]+"${flags[@]}"}
+done 3< <(python3 .github/scripts/lib/pins.py libraries)
