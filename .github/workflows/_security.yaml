@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # setup-toolchain loads versions.env itself, but not until after its own `with:` has been evaluated, so the
+      # setup-toolchain loads the manifest itself, but not until after its own `with:` has been evaluated, so the
       # loader runs here as well to put GCC_VERSION within reach of the step below.
       - name: Load pinned versions
         run: bash .github/scripts/lib/load-versions.sh
@@ -100,7 +100,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # This job installs no toolchain, but the scanner's pinned release and digest live in versions.env with
+      # This job installs no toolchain, but the scanner's pinned release and digest live in the manifest with
       # everything else, so the loader still has to run before the installation step can read them.
       - name: Load pinned versions
         run: bash .github/scripts/lib/load-versions.sh
@@ -152,7 +152,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # No toolchain here either, but the scanner's release and digest live in versions.env with everything else.
+      # No toolchain here either, but the scanner's release and digest live in the manifest with everything else.
       - name: Load pinned versions
         run: bash .github/scripts/lib/load-versions.sh
 

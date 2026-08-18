@@ -14,7 +14,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # Cache-key versions and toolchain pins all live in ".github/versions.env".
+    # Cache-key versions and toolchain pins all live in ".github/dependencies.toml".
     - name: Load pinned versions
       shell: bash
       run: bash .github/scripts/lib/load-versions.sh

@@ -22,7 +22,7 @@ verified_fetch() {
   local url="$1" dest="$2" want="$3" got
 
   if [ -z "$want" ]; then
-    echo "::error::no sha256 is pinned for ${url}; add one to .github/versions.env"
+    echo "::error::no sha256 is pinned for ${url}; add one to .github/dependencies.toml"
     return 1
   fi
 

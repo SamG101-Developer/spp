@@ -1,0 +1,136 @@
+# Every version, commit and digest the pipeline depends on. Loaded by .github/scripts/lib/pins.py and refreshed by
+# .github/scripts/security/refresh-pins.sh.
+#
+# Each [pin.<name>] table exports its version/commit/tag/asset/sha256 keys into the job environment as
+# <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
+
+[pin.gcc]
+version = "16"
+
+[pin.libstdcxx-gcc]
+version = "16.2"
+
+[pin.cmake]
+version = "4.4.0"
+
+[pin.ninja]
+version = "1.13.2"
+
+[pin.python]
+version = "3.14"
+
+[pin.llvm-lib]
+version = "23"
+
+# apt.llvm.org's installer, fetched and then run as root by the Clang and LLVM steps.
+[pin.llvm-sh]
+sha256 = "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae"
+
+# The asset name is not derivable from the tag: llvmorg-23.1.0-rc3 ships clang+llvm-23.0.0.3-*.
+[pin.llvm-win]
+tag = "llvmorg-23.1.0-rc3"
+asset = "clang+llvm-23.0.0.3-x86_64-pc-windows-msvc.tar.xz"
+sha256 = "9465632c6d96e65ab6b7f6fbf7ae447621803982b2348483221812bbf4c8b6af"
+
+# Prebuilt from MarkusJx/prebuilt-boost, so one digest per runner. Keep in step with the case block in
+# install-boost.sh: there is no 24.04 arm64 build upstream, so arm64 takes the 22.04 tarball.
+[pin.boost]
+version = "1.91.0"
+sha256-linux = "24b11fd9c9287389491c16d1e22522ab7d6adaaf1fd80af1ece2436e5dd883d9"
+sha256-linux-arm64 = "c888304ea2f244f87e28044e1be35d82236e8c118d5811892583a9e360795058"
+sha256-macos = "3b249cddee3fde8c20427b4ff93e18c2d88b8fb3bfeb2861081e8d16923bdf85"
+sha256-windows = "bf4b5ec8893a25cd5be1cda3a33f020ae925919a8ad6296b289d0787892db395"
+
+[pin.doxygen]
+version = "1.17.0"
+sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
+
+# Executed by python3 against the built test binary, so pinned by commit.
+[pin.gtest-parallel]
+commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
+
+# Tools the pipeline runs, tracking published releases rather than a branch tip.
+[pin.osv-scanner]
+version = "2.5.0"
+sha256 = "edcfc41d257db36148f065055655fe3fcfc434b0b423ea67468a84c207524e0c"
+
+# Keep the version in step with the gitleaks rev in .pre-commit-config.yaml.
+[pin.gitleaks]
+version = "8.30.1"
+sha256 = "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+
+# Built from source: distro packages are years behind and cannot parse C++20 modules. Pinned by commit because
+# GitHub's generated tag archives are not byte-stable.
+[pin.cppcheck]
+version = "2.21.1"
+commit = "904cfdcf774c44b17db789c8a212e2f1c69fc833"
+
+# Install prefixes, exported as SPP_<KEY>_PREFIX. {home} expands at load time.
+[prefix]
+local = "{home}/.local"
+doxygen = "{home}/.tools/doxygen"
+llvm-win = "{home}/llvm"
+cppcheck = "{home}/.tools/cppcheck"
+
+# The header/CMake dependencies, installed in order by install-small-libs.sh.
+[[library]]
+name = "unordered_dense"
+repo = "https://github.com/martinus/unordered_dense.git"
+commit = "c4d143b6bbe7c4b2b5700fc26c96ef90d11cb66e"
+
+[[library]]
+name = "mimalloc"
+repo = "https://github.com/microsoft/mimalloc.git"
+commit = "fc1e2acbced0b3e893da1a1375e02ac159d0423f"
+cmake-flags = ["-DMI_SECURE=OFF"]
+
+[[library]]
+name = "json"
+repo = "https://github.com/nlohmann/json.git"
+commit = "cdf52ae9bef77a0844e02e42df6d2df83a55c4b9"
+cmake-flags = ["-DJSON_BuildTests=OFF"]
+
+[[library]]
+name = "tomlplusplus"
+repo = "https://github.com/marzer/tomlplusplus.git"
+commit = "1e8829b793b66ad17011732a146b8077d379b011"
+
+[[library]]
+name = "magic_enum"
+repo = "https://github.com/Neargye/magic_enum.git"
+commit = "591b64351ea8442f8b8fa044ff335d6943e8e6e0"
+cmake-flags = [
+  "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
+  "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
+]
+
+[[library]]
+name = "CLI11"
+repo = "https://github.com/CLIUtils/CLI11.git"
+commit = "60492bddb50422f32cfa33c1365b96ebee4205ca"
+cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
+
+[[library]]
+name = "range-v3"
+repo = "https://github.com/ericniebler/range-v3.git"
+commit = "108f93c279c8f9cec175dac361084983d0176e99"
+cmake-flags = [
+  "-DRANGE_V3_TESTS=OFF",
+  "-DRANGE_V3_EXAMPLES=OFF",
+  "-DRANGE_V3_DOCS=OFF",
+]
+
+[[library]]
+name = "googletest"
+repo = "https://github.com/SamG101-Developer/googletest.git"
+commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
+
+[[library]]
+name = "ColEx"
+repo = "https://github.com/SamG101-Developer/ColEx.git"
+commit = "d84ca4f8dd153086342c719fc3ebad53c73faa42"
+
+[[library]]
+name = "GenEx"
+repo = "https://github.com/SamG101-Developer/GenEx.git"
+commit = "50e0530f47de8bda75dcc76fb0206728370d5d48"

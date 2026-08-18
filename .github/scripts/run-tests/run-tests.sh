@@ -21,7 +21,7 @@ fi
 runner="${RUNNER_TEMP}/gtest-parallel/gtest-parallel"
 if ! [ -f "$runner" ]; then
   echo "::error::gtest-parallel not found at $runner; the cache entry for GTEST_PARALLEL_COMMIT is incomplete."
-  echo "::error::Delete it from the repository's Actions caches, or move the pin in .github/versions.env."
+  echo "::error::Delete it from the repository's Actions caches, or move the pin in .github/dependencies.toml."
   exit 1
 fi
 

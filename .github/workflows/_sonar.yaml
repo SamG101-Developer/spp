@@ -37,7 +37,7 @@ jobs:
       - name: Restore source mtimes
         uses: ./.github/actions/restore-mtimes
 
-      # setup-toolchain loads versions.env itself, but not until after its own `with:` has been evaluated, so the
+      # setup-toolchain loads the manifest itself, but not until after its own `with:` has been evaluated, so the
       # loader runs here as well to put GCC_VERSION within reach of the step below and of the cache key further down.
       - name: Load pinned versions
         run: bash .github/scripts/lib/load-versions.sh

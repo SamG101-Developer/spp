@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.tools/cppcheck
-          key: cppcheck-${{ runner.os }}-${{ env.CPPCHECK_COMMIT }}-${{ hashFiles('.github/scripts/lint/install-cppcheck.sh') }}
+          key: cppcheck-${{ runner.os }}-${{ env.CPPCHECK_COMMIT }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lint/install-cppcheck.sh') }}
 
       # Only needed to build cppcheck itself, so both of these are skipped entirely on a cache hit. The runner's own
       # GCC compiles it; this job never configures the project, so no project toolchain is set up here.

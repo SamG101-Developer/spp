@@ -30,7 +30,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # Cache-key versions and toolchain pins all live in .github/versions.env.
+    # Cache-key versions and toolchain pins all live in .github/dependencies.toml.
     - name: Load pinned versions
       shell: bash
       run: bash .github/scripts/lib/load-versions.sh
@@ -150,14 +150,14 @@ runs:
     # The remaining libraries are header/CMake projects: check out,
     # install, cache. The key is content-addressed on the three
     # files that decide what the tree contains and where it goes:
-    # install-small-libs.sh, versions.env and load-versions.sh.
+    # install-small-libs.sh, dependencies.toml and pins.py.
     - name: Cache small libraries
       if: inputs.dependencies == 'true'
       id: libs-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.local
-        key: spp-libs-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/versions.env', '.github/scripts/lib/load-versions.sh', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
+        key: spp-libs-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
 
     - name: Clone & install small libraries (cache miss)
       if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'

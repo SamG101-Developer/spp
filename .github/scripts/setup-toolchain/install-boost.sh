@@ -30,7 +30,7 @@ case "${RUNNER_OS}/${RUNNER_ARCH}" in
     # and the digest check below is the only thing standing
     # between CI and whatever the CDN decides to serve.
     echo "::error::no Boost asset is pinned for ${RUNNER_OS}/${RUNNER_ARCH}"
-    echo "::error::Add one to .github/scripts/setup-toolchain/install-boost.sh, .github/versions.env and refresh-pins.sh."
+    echo "::error::Add one to .github/scripts/setup-toolchain/install-boost.sh, .github/dependencies.toml and refresh-pins.sh."
     exit 1
     ;;
 esac
