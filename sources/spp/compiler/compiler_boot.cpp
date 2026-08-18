@@ -382,7 +382,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
 
-  if (std::getenv("SPP_SKIP_O3") == nullptr) { codegen::RunOptimizationPipeline(lto_module.get()); }
+  codegen::RunOptimizationPipeline(lto_module.get());
 
   // See "ScrubCorruptLifetimeIntrinsics": the names llvm builds
   // for these come out with trailing garbage in this build, and
