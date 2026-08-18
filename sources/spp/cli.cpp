@@ -201,8 +201,29 @@ auto spp::cli::handle_run(
   // Build the project first (skip VCS).
   handle_build(mode, true);
 
-  // Run the executable.
-  // TODO
+  // A build that did not get as far as linking has said why
+  // already, so there is nothing to add here beyond not
+  // trying to run something that was never produced.
+  const auto cwd = std::filesystem::current_path();
+  const auto exe_file = cwd / OUT_FOLDER / compiler::ExecutableName(cwd);
+  if (not std::filesystem::exists(exe_file)) {
+    std::cerr << "Error: No executable was built at '" << utils::files::DisplayString(exe_file) << "'.\n";
+    return;
+  }
+
+  // Pull the returned status code from the run process (ie
+  // the compiled s++ code), and exit with that code, after
+  // displaying the output message.
+  std::cout << "Running: " << utils::files::DisplayString(exe_file) << std::endl;
+  std::cout.flush();
+
+  const auto status = std::system(utils::files::NativeString(exe_file).c_str());
+  const auto exited_normally = (status & 0x7F) == 0;
+  const auto exit_code = exited_normally ? (status >> 8) & 0xFF : status;
+
+  if (not exited_normally) { std::cerr << "Program terminated abnormally (status " << status << ").\n"; }
+  else if (exit_code != 0) { std::cerr << "Program exited with code " << exit_code << ".\n"; }
+  std::exit(exit_code);
 }
 
 auto spp::cli::handle_clean(
