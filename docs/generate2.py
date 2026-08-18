@@ -74,21 +74,15 @@ class DocumentGenerator:
 
         # The Doxyfile's INPUT, XML_OUTPUT and INPUT_FILTER paths are all relative to docs/, so doxygen has to be run
         # from there regardless of where this script was invoked from.
-        subprocess.run(
-            ["doxygen", str(self.doxygen_config)], check=True, cwd=self.docs_dir
-        )
+        subprocess.run(["doxygen", str(self.doxygen_config)], check=True, cwd=self.docs_dir)
 
         if not any(self.doxygen_xml_dir.glob("*.xml")):
             raise RuntimeError(f"doxygen produced no XML in {self.doxygen_xml_dir}")
 
     def generate_compiler_api(self) -> None:
-        headers = sorted(
-            h for h in self.src_dir.rglob("*") if h.suffix in HEADER_SUFFIXES
-        )
+        headers = sorted(h for h in self.src_dir.rglob("*") if h.suffix in HEADER_SUFFIXES)
         if not headers:
-            raise RuntimeError(
-                f"no {'/'.join(HEADER_SUFFIXES)} headers found under {self.src_dir}"
-            )
+            raise RuntimeError(f"no {'/'.join(HEADER_SUFFIXES)} headers found under {self.src_dir}")
 
         # Map every header onto a dotted module name, and register it up the package chain.
         suffix_of: dict[str, str] = {}
@@ -99,9 +93,7 @@ class DocumentGenerator:
 
         # A package page lists its own modules and its sub-packages, so the toctree is navigable from the root down.
         for package, children in self.module_map.items():
-            self._write_toctree(
-                self.api_dir / f"{package}.rst", package, "=", sorted(children)
-            )
+            self._write_toctree(self.api_dir / f"{package}.rst", package, "=", sorted(children))
 
         for module, suffix in suffix_of.items():
             # breathe resolves doxygenfile against the path doxygen recorded, which STRIP_FROM_PATH reduces to a path
@@ -113,15 +105,11 @@ class DocumentGenerator:
                 f.write(f".. doxygenfile:: {file_path}\n")
                 f.write("   :project: s++\n")
 
-        self._write_toctree(
-            self.api_dir / "index.rst", "s++ Compiler API", "=", ["spp"], maxdepth=2
-        )
+        self._write_toctree(self.api_dir / "index.rst", "s++ Compiler API", "=", ["spp"], maxdepth=2)
 
     def run_sphinx(self, builder: str, strict: bool) -> Path:
         if builder not in SPHINX_BUILDERS:
-            raise RuntimeError(
-                f"unknown builder {builder!r} (expected one of {', '.join(sorted(SPHINX_BUILDERS))})"
-            )
+            raise RuntimeError(f"unknown builder {builder!r} (expected one of {', '.join(sorted(SPHINX_BUILDERS))})")
         name = SPHINX_BUILDERS[builder]
 
         out_dir = self.build_dir / name
@@ -140,9 +128,7 @@ class DocumentGenerator:
         subprocess.run(command, check=True, cwd=self.docs_dir)
         return out_dir
 
-    def generate(
-        self, skip_doxygen: bool = False, strict: bool = False, builder: str = "html"
-    ) -> None:
+    def generate(self, skip_doxygen: bool = False, strict: bool = False, builder: str = "html") -> None:
         # Wipe the generated tree so pages for deleted headers do not linger. The spec tree is entirely hand-written and
         # is never touched.
         shutil.rmtree(self.api_dir, ignore_errors=True)
@@ -152,9 +138,7 @@ class DocumentGenerator:
 
         if skip_doxygen:
             if not any(self.doxygen_xml_dir.glob("*.xml")):
-                raise RuntimeError(
-                    f"--skip-doxygen given but no existing XML in {self.doxygen_xml_dir}"
-                )
+                raise RuntimeError(f"--skip-doxygen given but no existing XML in {self.doxygen_xml_dir}")
         else:
             self.run_doxygen()
 
@@ -165,15 +149,9 @@ class DocumentGenerator:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "--skip-doxygen", action="store_true", help="reuse the existing doxygen XML"
-    )
-    parser.add_argument(
-        "--strict", action="store_true", help="treat Sphinx warnings as errors"
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--skip-doxygen", action="store_true", help="reuse the existing doxygen XML")
+    parser.add_argument("--strict", action="store_true", help="treat Sphinx warnings as errors")
     parser.add_argument(
         "--builder",
         default="html",
@@ -183,9 +161,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        DocumentGenerator().generate(
-            skip_doxygen=args.skip_doxygen, strict=args.strict, builder=args.builder
-        )
+        DocumentGenerator().generate(skip_doxygen=args.skip_doxygen, strict=args.strict, builder=args.builder)
     except (subprocess.CalledProcessError, RuntimeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

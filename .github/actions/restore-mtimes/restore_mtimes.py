@@ -24,9 +24,7 @@ import sys
 
 
 def git(*args: str) -> str:
-    return subprocess.run(
-        ["git", *args], capture_output=True, text=True, check=True
-    ).stdout
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
 
 def main() -> int:
@@ -84,9 +82,7 @@ def main() -> int:
     print(f"restored mtimes on {stamped}/{total} tracked files")
     if pending:
         # Shallow clones cannot reach the commit that introduced these paths.
-        print(
-            f"{len(pending)} file(s) not found in the fetched history", file=sys.stderr
-        )
+        print(f"{len(pending)} file(s) not found in the fetched history", file=sys.stderr)
     return 0
 
 
