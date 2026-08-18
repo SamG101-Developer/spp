@@ -23,8 +23,12 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
 
       # Enforce the regex rules on the PR title and description.
       - name: Check PR title
