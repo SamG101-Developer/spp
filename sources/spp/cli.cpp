@@ -28,7 +28,7 @@ inline constexpr spp::Str MAIN_FILE = "main.spp";
 inline constexpr spp::Str CONFIG_FILE = "spp.toml";
 
 inline const spp::Str MAIN_FILE_CONTENTS = R"(
-    fun main(args: Vec[Str]) -> Void {
+    fun main() -> Void {
         std::io::println("Hello world!")
     })";
 
