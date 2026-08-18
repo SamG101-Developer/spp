@@ -1,0 +1,29 @@
+name: setup-python
+description: >-
+  Install the pinned Python, then publish every pin in .github/dependencies.toml into the job environment.
+
+inputs:
+  load-versions:
+    description: "Run load-versions.sh afterwards. Off for a job that wants the interpreter but not the environment."
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # Bash, not pins.py: the interpreter that would read the manifest is the thing being installed.
+    - name: Read pinned Python version
+      shell: bash
+      run: bash .github/scripts/lib/python-version.sh
+
+    # Every script under .github/scripts is written for this version and formatted for it, so the runner's own
+    # python3 is not good enough: ubuntu-24.04 ships 3.12, which cannot parse 3.14 syntax.
+    - name: Install Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: ${{ env.SPP_PYTHON_VERSION }}
+
+    - name: Load pinned versions
+      if: inputs.load-versions == 'true'
+      shell: bash
+      run: bash .github/scripts/lib/load-versions.sh
