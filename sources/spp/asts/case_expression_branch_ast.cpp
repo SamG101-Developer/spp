@@ -295,15 +295,14 @@ auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) const
   -> llvm::Value* {
-  // The "case c { ... }" form desugars to a branch with no operator and a synthesised "true" pattern (see
-  // "CaseExpressionAst::NewNonPatternMatch"), meaning "taken when c is true". What it tests is therefore the
-  // condition itself - generating the pattern gives the constant "true", which is taken whatever "c" says.
-  //
-  // The condition's *value* is used rather than its ast: the case expression has already generated it, and
-  // generating it again would run whatever side effects it has a second time. Analysing it again is not an option
-  // either - a condition holding an "is" expression binds names, which cannot be bound twice.
+  // The "case c { ... }" form desugars to a branch with no
+  // operator and a synthesised "true" pattern, meaning "taken
+  // when c is true". Skip the pattern codegen.
   const auto tests_condition_directly =
-    Op == nullptr and not Patterns.IsEmpty() and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+    Op == nullptr
+    and not Patterns.IsEmpty()
+    and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+
   if (tests_condition_directly and meta->LlvmCaseCondition != nullptr) {
     return meta->LlvmCaseCondition;
   }
