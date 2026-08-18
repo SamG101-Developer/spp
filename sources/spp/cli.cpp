@@ -143,9 +143,9 @@ auto spp::cli::handle_vcs()
       std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
     }
     else {
-      // std::system(("git -C " + utils::files::NativeString(repo_folder) + " pull origin " + repo_branch).c_str());
-      // std::system(("git -C " + utils::files::NativeString(repo_folder) + " checkout " + repo_branch).c_str());
-      // std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
+      std::system(("git -C " + utils::files::NativeString(repo_folder) + " pull origin " + repo_branch).c_str());
+      std::system(("git -C " + utils::files::NativeString(repo_folder) + " checkout " + repo_branch).c_str());
+      std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
     }
 
     // Copy all DLLs from the VCS's FFI folder into this project's FFI folder.
