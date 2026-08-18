@@ -219,7 +219,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   const auto is_expr = meta->AssignmentTarget != nullptr
     or LoweredFromIsExpr
     or LoweredFromTryOperator;
-  Cond->Stage11_CodeGen(sm, meta, ctx);
+  const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
 
   // Get the function, and create the end basic block. We
   // define "entry" and "end" zones for the "case" expression,
@@ -264,6 +264,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   // patterns to use.
   meta->Save();
   meta->CaseCondition = Cond.get();
+  meta->LlvmCaseCondition = llvm_cond;
   meta->LlvmEndBB = case_end_bb;
   meta->LlvmPhi = phi;
 
