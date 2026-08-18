@@ -25,9 +25,10 @@ Auto-fixes in place. Exit code 1 if any file was modified.
 """
 
 from __future__ import annotations
+
 import re
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 INCLUDE_RE = re.compile(r"^\s*#\s*include\b")
 IMPORT_RE = re.compile(r"^\s*(?:export\s+)?import\b")
@@ -37,10 +38,10 @@ MODULE_FRAGMENT_RE = re.compile(r"^\s*module\s*;\s*$")
 
 def import_key(line: str) -> tuple:
     """Sort imports hierarchically, like a directory tree."""
-    stripped = line.strip().rstrip(';').strip()
-    name = re.sub(r'^(?:export\s+)?import\s+', '', stripped)
-    parts = name.split('.')
-    branch = parts[1] if len(parts) > 1 else ''
+    stripped = line.strip().rstrip(";").strip()
+    name = re.sub(r"^(?:export\s+)?import\s+", "", stripped)
+    parts = name.split(".")
+    branch = parts[1] if len(parts) > 1 else ""
     tail = tuple(parts[2:]) if len(parts) > 2 else ()
     group = 0 if name.startswith("spp.") else 1
     return group, branch, len(parts), tail, name
@@ -51,8 +52,8 @@ def include_key(line: str) -> tuple:
     stripped = line.strip()
     match = re.search(r'include\s*[<"]([^>"]+)[>"]', stripped)
     name = match.group(1) if match else stripped
-    parts = name.split('/')
-    branch = parts[0] if parts else ''
+    parts = name.split("/")
+    branch = parts[0] if parts else ""
     tail = tuple(parts[1:]) if len(parts) > 1 else ()
     return branch, len(parts), tail, name
 
@@ -99,16 +100,16 @@ def process(text: str) -> str:
 def main(argv: list[str]) -> int:
     changed = False
     for path in argv[1:]:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             original = f.read()
         fixed = process(original)
         if fixed != original:
-            with open(path, 'w', encoding='utf-8') as f:
+            with open(path, "w", encoding="utf-8") as f:
                 f.write(fixed)
-            print(f'sorted imports: {path}')
+            print(f"sorted imports: {path}")
             changed = True
     return 1 if changed else 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main(sys.argv))

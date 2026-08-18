@@ -31,7 +31,9 @@ repos:
       - id: check-shebang-scripts-are-executable
       - id: check-illegal-windows-names
       - id: forbid-submodules
-#      - id: no-commit-to-branch
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: [ --branch, master ]
 #      - id: check-json
 #      - id: check-symlinks
 
@@ -64,6 +66,27 @@ repos:
   #      - id: clang-tidy
   #      - id: oclint
   #      - id: uncrustify
+
+  # PYTHON CHECKS
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 65dbdb59d2f2d9c3bdc343c566821ad3319ddaa3  # v0.16.3
+    hooks:
+      - id: ruff-check
+        args: [ --fix ]
+      - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: b84c4a0a90bd58c7d82ae8f0d4d5e77b1ddd3ce6  # 0.12.5
+    hooks:
+      - id: uv-lock
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: 3a6eb0fadf60b3cccfd80bad9dbb6fae7e47b316  # v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
+      - id: text-unicode-replacement-char
 
   # CMake CHECKS
 

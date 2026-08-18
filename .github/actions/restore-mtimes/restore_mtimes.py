@@ -47,8 +47,14 @@ def main() -> int:
     # `core.quotepath=off` keeps non-ASCII paths byte-identical to `ls-files`.
     log = subprocess.Popen(
         [
-            "git", "-c", "core.quotepath=off", "log",
-            "--format=@%at", "--name-only", "--no-renames", "HEAD",
+            "git",
+            "-c",
+            "core.quotepath=off",
+            "log",
+            "--format=@%at",
+            "--name-only",
+            "--no-renames",
+            "HEAD",
         ],
         stdout=subprocess.PIPE,
         text=True,
@@ -78,7 +84,9 @@ def main() -> int:
     print(f"restored mtimes on {stamped}/{total} tracked files")
     if pending:
         # Shallow clones cannot reach the commit that introduced these paths.
-        print(f"{len(pending)} file(s) not found in the fetched history", file=sys.stderr)
+        print(
+            f"{len(pending)} file(s) not found in the fetched history", file=sys.stderr
+        )
     return 0
 
 

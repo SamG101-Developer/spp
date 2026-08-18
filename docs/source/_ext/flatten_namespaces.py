@@ -125,7 +125,7 @@ def flatten(app: Sphinx, doctree: nodes.document) -> None:
             replacement.extend(group.entities)
 
         index = parent.index(desc)
-        parent[index:index + 1] = replacement
+        parent[index : index + 1] = replacement
 
 
 def _ancestors(node: nodes.Node):
