@@ -149,6 +149,10 @@ target_link_libraries(
   LLVMipo
   LLVMPasses
   LLVMLinker
+  LLVMTarget
+  LLVMX86CodeGen
+  LLVMX86Desc
+  LLVMX86Info
   Threads::Threads
   mimalloc
   unordered_dense::unordered_dense
