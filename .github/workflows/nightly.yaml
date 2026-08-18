@@ -9,6 +9,8 @@ on:
     - cron: '0 4 * * *'  # 04:00 UTC daily
   workflow_dispatch: { }
 
+permissions: { }
+
 concurrency:
   group: nightly
   cancel-in-progress: false

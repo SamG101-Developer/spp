@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [ opened, synchronize, ready_for_review, reopened ]
 
+permissions: { }
+
 # A new push makes the in-flight review stale, so drop it rather than post twice.
 concurrency:
   group: claude-review-${{ github.event.pull_request.number }}

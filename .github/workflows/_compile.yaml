@@ -42,6 +42,8 @@ on:
         type: boolean
         default: true
 
+permissions: { }
+
 jobs:
   compile:
     # The main compilation jobs handles the cmake config + build, caching and incremental build management, and running

@@ -9,6 +9,8 @@ on:
         type: boolean
         default: false
 
+permissions: { }
+
 jobs:
   docs:
     # Build the documentation using the custom python script that already exists in the "docs" folder. The python env

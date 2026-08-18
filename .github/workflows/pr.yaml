@@ -6,6 +6,8 @@ on:
   merge_group: { }
   workflow_dispatch: { }
 
+permissions: { }
+
 concurrency:
   # One group per PR branch / dispatch ref / merge-queue ref.
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}

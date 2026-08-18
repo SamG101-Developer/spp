@@ -11,6 +11,8 @@ on:
       SONAR_TOKEN:
         required: true
 
+permissions: { }
+
 jobs:
   sonar:
     name: SonarQube Cloud

@@ -6,6 +6,8 @@ name: lint
 on:
   workflow_call: { }
 
+permissions: { }
+
 jobs:
   # The PR title must have the common format of "type: summary", and the description must be all lowercase, with simple
   # punctuation.
