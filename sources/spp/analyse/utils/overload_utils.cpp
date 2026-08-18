@@ -97,6 +97,19 @@ namespace {
     const auto comp_sym = caller_scope.GetVarSymbol(as_id.get());
     return comp_sym != nullptr and comp_sym->IsGeneric;
   }
+
+  /**
+   * Whether a prototype's signature is written in terms of @c Self , and so reads differently per implementer.
+   */
+  auto SignatureNamesSelf(
+    spp::asts::FunctionPrototypeAst const &fn_proto)
+    -> bool {
+    const auto names_self = [](spp::asts::TypeAst const &type) {
+      return genex::any_of(type.Iterator(), [](auto const &part) { return part->Name == "Self"; });
+    };
+    return names_self(*fn_proto.ReturnType)
+      or genex::any_of(fn_proto.FnParamGroup->GetNonSelfParams(), [&](auto const *p) { return names_self(*p->Type); });
+  }
 }
 
 auto spp::analyse::utils::overload_utils::DetermineOverload(
@@ -182,6 +195,25 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       generic_bindings::NameGnArgs(*gn_args, *gn_params, *fn_proto->Name, *sm, *meta);
       gn_args->MergeGenerics(RetrieveOwnerGenericArgs(candidate.FwdType, meta));
       gn_args->MergeGenerics(std::move(candidate.SupGenerics->Args));
+
+      // Todo: Heavily document this, but effectively, it allows the Writer::write_all() to be used, calling
+      //  self.write(), but using the *implementers* write() method, not the abstract one on Write.
+      const auto declared_self = fn_scope->GetEnclosingSelfType(*meta);
+      const auto declared_self_sym = declared_self != nullptr
+        ? fn_scope->GetTypeSymbol(declared_self.get())
+        : nullptr;
+      const auto declared_on_abstract = declared_self_sym != nullptr and declared_self_sym->LinkedScope != nullptr
+        and not type_utils::GetUnimplementedAbstractMethods(*declared_self_sym->LinkedScope).IsEmpty();
+
+      if (declared_self != nullptr and (SignatureNamesSelf(*fn_proto) or declared_on_abstract)) {
+        auto receiver = fn_owner_type->WithConvention(nullptr);
+        if (not TypeEq(*declared_self, *receiver, *fn_scope, *sm->CurrentScope)) {
+          auto self_arg = Vec<Unique<asts::GenericArgumentAst>>();
+          self_arg.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+            asts::generate::common_types::SelfType(0), nullptr, std::move(receiver)));
+          gn_args->MergeGenerics(std::move(self_arg));
+        }
+      }
 
       InferAllGenerics(
         *fn_proto, *fn_params, *fn_args, *gn_args, is_variadic_fn, fn_scope, sm, meta);
@@ -495,6 +527,25 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
     for (auto *p : new_fn_proto->FnParamGroup->GetNonSelfParams()) {
       p->Type = p->Type->SubstituteGenerics(combined_generics.GetAllArgs());
       p->Type->Stage7_AnalyseSemantics(&tm, meta);
+    }
+
+    // "self" is typed as "Self", so only a substitution that pins
+    // "Self" to the receiver has anything to rewrite here. The
+    // symbol bound from the type has to be rewritten with it: this
+    // clone inherited the template's, and Stage6, which is what sets
+    // it, only ever runs on the template. Retypes the "self" symbol
+    // basically.
+    if (const auto self_param = new_fn_proto->FnParamGroup->GetSelfParam(); self_param != nullptr) {
+      auto substituted_self = self_param->Type->SubstituteGenerics(combined_generics.GetAllArgs());
+      if (not substituted_self->IsSelfType()) {
+        substituted_self->Stage7_AnalyseSemantics(&tm, meta);
+        self_param->Type = substituted_self;
+        const auto self_name = self_param->ExtractName();
+        if (const auto self_sym = new_fn_scope->Children[0]->GetVarSymbol(self_name.get(), true);
+          self_sym != nullptr) {
+          self_sym->Type = substituted_self->WithConvention(asts::AstClone(self_param->Conv));
+        }
+      }
     }
     new_fn_proto->VariadicPackType = asts::AstClone(variadic_pack_type);
 
