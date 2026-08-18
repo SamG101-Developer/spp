@@ -22,10 +22,14 @@ static auto print_stacktrace_for_sigsegv(void *user_data, const char *reason, bo
 }
 
 auto main(const std::int32_t, char **argv) -> int {
+#ifdef NDEBUG
+  mi_option_disable(mi_option_show_stats);
+  mi_option_disable(mi_option_verbose);
+#endif
   // Temporary test code to test a small project.
   llvm::install_fatal_error_handler(print_stacktrace_for_sigsegv);
   std::filesystem::current_path(std::filesystem::absolute(argv[0]).parent_path().parent_path() / "project");
-  spp::cli::handle_run("dev");
+  spp::cli::handle_run("rel");
   // spp::cli::run_cli(argc, argv);
   return 0;
 }
