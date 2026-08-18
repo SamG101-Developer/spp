@@ -242,6 +242,20 @@ export namespace spp::codegen::func_impls {
   auto simple_coro_view_slice(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void;
 
   /**
+   * Shared tail of the "fwd_ref"/"fwd_mut" of a contiguous collection: "(&self) -> GenOnce[&View[T]]" (or
+   * "&mut View[T]"). Packages @p data and @p length into the "View[T]" the collection forwards to, and yields its
+   * address, suspending once (matching "GenOnce").
+   */
+  auto simple_coro_contiguous_fwd(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Value *data, llvm::Value *length) -> void;
+
+  /** Shared codegen for "Arr[T, n]::fwd_ref"/"fwd_mut"; see @c simple_coro_contiguous_fwd . */
+  auto simple_coro_array_fwd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void;
+
+  /** Shared codegen for "Vec[T, A]::fwd_ref"/"fwd_mut"; see @c simple_coro_contiguous_fwd . */
+  auto simple_coro_vector_fwd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void;
+
+  /**
    * Shared codegen for "View[T]::index_ref"/"index_mut": "(&self, index: USize) -> Indexed[&T]" (or "&mut T").
    * "Indexed[T]" is just "GenOnce[T]" under a clearer name. Bounds-checks "index" against "self.length"; if out of
    * bounds, traps immediately (matching the "will abort if the index is out of bounds" contract - no message, since

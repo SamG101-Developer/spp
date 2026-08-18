@@ -5,6 +5,7 @@ module spp.codegen.llvm_func_impls;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_variadic_ast;
@@ -211,8 +212,21 @@ auto spp::codegen::func_impls::simple_intrinsic_binop(
     : ty;
 
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{operand_ty, operand_ty});
-  const auto lhs = llvm::cast<llvm::Value>(fn->arg_begin());
-  auto rhs = llvm::cast<llvm::Value>(fn->arg_begin() + 1);
+
+  // A borrowed operand arrives as the address of the value rather than the value. Every comparison takes its two the
+  // that way ("eq(this: &T, that: &T)"), where the arithmetic ones take theirs by value ("add(this: T, that: T)"), so
+  // an operand is only usable as it arrives when its own parameter says it is - applying the operation to the two
+  // addresses instead asks where the operands live rather than what they are, and for two distinct temporaries that
+  // folds to a constant.
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto operand_of = [&](llvm::Value *arg, asts::FunctionParameterAst const &param) {
+    if (param.Type->GetConvention() == nullptr) { return arg; }
+    const auto value_ty = GetLlvmTypeOf(*param.Type->WithoutConvention(), *sm->CurrentScope, ctx);
+    return llvm::cast<llvm::Value>(ctx->Builder.CreateLoad(value_ty, arg, "intrinsic.operand"));
+  };
+
+  const auto lhs = operand_of(fn->arg_begin(), *params[0]);
+  auto rhs = operand_of(fn->arg_begin() + 1, *params[1]);
 
   // A shift is the one binary operation whose two operands are separately typed in the source ("bit_shl[T, U](this: T,
   // by: U)"), because a shift distance is a count rather than a value of the thing being shifted. Llvm requires both
@@ -654,14 +668,16 @@ auto spp::codegen::func_impls::simple_coro_view_iter(
 
 auto spp::codegen::func_impls::simple_coro_non_null_fwd(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void {
-  // The NonNull[T] type can forward to &T/&mut T - modelled
-  // as a pointer to the T type, stored within the NonNull[T].
-  // However, because the NonNull type is lowered as a pointer,
-  // we can just return "self".
+  // The NonNull[T] type can forward to &T/&mut T - modelled as a
+  // pointer to the T type, stored within the NonNull[T]. Use two
+  // loads, because there are two levels to go through: "NonNull[T]"
+  // lowers to a pointer, but this takes it as "&self", so the
+  // parameter is a pointer to *that*.
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.fwd.self");
+  const auto self_slot = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.fwd.self");
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_slot, "non_null.fwd.data");
 
   struct CustomExpr : asts::ExpressionAst {
     decltype(self_ptr) &SelfPtr;
@@ -694,10 +710,12 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "view.self" + uid);
 
-  // Extract the "from" and "upto" from the symbol's alloca
-  // storage in the symbol table.
-  const auto from_param = proto->FnParamGroup->Params[0]->ExtractName();
-  const auto upto_param = proto->FnParamGroup->Params[1]->ExtractName();
+  // Extract the "from" and "upto" from the symbol's alloca storage in the symbol table. Taken from the parameters
+  // without "self", because "self" is a parameter too - indexing the whole group reads "self" as "from" and "from" as
+  // "upto", which slices from wherever the view happens to be stored.
+  const auto value_params = proto->FnParamGroup->GetNonSelfParams();
+  const auto from_param = value_params[0]->ExtractName();
+  const auto upto_param = value_params[1]->ExtractName();
 
   const auto from_alloca = sm->CurrentScope->GetVarSymbol(from_param.get(), true)->LlvmInfo->Alloca;
   const auto upto_alloca = sm->CurrentScope->GetVarSymbol(upto_param.get(), true)->LlvmInfo->Alloca;
@@ -775,6 +793,118 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
   mock_gen->Stage11_CodeGen(sm, meta, ctx);
 }
 
+auto spp::codegen::func_impls::simple_coro_contiguous_fwd(
+  SPP_LLVM_FUNC_INFO,
+  LlvmCtx *const ctx,
+  llvm::Value *const data,
+  llvm::Value *const length)
+  -> void {
+  // The view type is taken from what the coroutine yields rather than rebuilt from the element type, because what is
+  // written here has to be the same "View[T]" the caller resolved - a freshly built one has no symbol in this scope.
+  const auto uid = "." + utils::Uid();
+  auto view_type = proto->ReturnType->WithoutConvention();
+  if (const auto yield_arg = view_type->LastTypePart()->GnArgGroup->TypeAt("Yield"); yield_arg != nullptr) {
+    view_type = yield_arg->Val->WithoutConvention();
+  }
+
+  const auto view_type_sym = sm->CurrentScope->GetTypeSymbol(view_type.get());
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+  const auto data_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 0);
+  const auto length_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 1);
+
+  struct CustomExpr final : asts::ExpressionAst {
+    SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+
+    llvm::Value *_Data;
+    llvm::Value *_Length;
+    llvm::StructType *_ViewTy;
+    std::uint32_t _DataIdx;
+    std::uint32_t _LengthIdx;
+    Str _Uid;
+
+    CustomExpr(
+      llvm::Value *const data, llvm::Value *const length, llvm::StructType *const view_ty,
+      const std::uint32_t data_idx, const std::uint32_t length_idx, Str uid)
+      : _Data(data), _Length(length), _ViewTy(view_ty), _DataIdx(data_idx), _LengthIdx(length_idx),
+        _Uid(std::move(uid)) {}
+
+    auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *, LlvmCtx *ctx) -> llvm::Value* override {
+      const auto view = LlvmEntryAlloca(_ViewTy, "fwd.view" + _Uid, ctx);
+      ctx->Builder.CreateStore(
+        _Data, ctx->Builder.CreateStructGEP(_ViewTy, view, _DataIdx, "fwd.view.data_ptr" + _Uid));
+      ctx->Builder.CreateStore(
+        _Length, ctx->Builder.CreateStructGEP(_ViewTy, view, _LengthIdx, "fwd.view.length_ptr" + _Uid));
+      return view;
+    }
+  };
+
+  const auto mock_gen = MakeUnique<asts::GenExpressionAst>(
+    nullptr, nullptr, MakeUnique<CustomExpr>(data, length, view_llvm_type, data_idx, length_idx, uid));
+  mock_gen->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto spp::codegen::func_impls::simple_coro_array_fwd(
+  SPP_LLVM_FUNC_INFO,
+  LlvmCtx *const ctx)
+  -> void {
+  // "Arr[T, n]" lowers to an llvm "[n x T]" held inline, so the view over it is the array's own address paired with
+  // the length the type itself carries. Nothing is read out of "self": the borrow it arrives as is already the
+  // address of the first element.
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto uid = "." + utils::Uid();
+  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "array.fwd.self" + uid);
+
+  const auto arr_type = self_sym->Type->WithoutConvention();
+  const auto arr_type_sym = sm->CurrentScope->GetTypeSymbol(arr_type.get());
+  const auto arr_llvm_type = llvm::cast<llvm::ArrayType>(GetLlvmType(*arr_type_sym, ctx));
+
+  const auto data = ctx->Builder.CreateConstInBoundsGEP2_64(
+    arr_llvm_type, self_ptr, 0, 0, "array.fwd.data" + uid);
+  const auto length = llvm::ConstantInt::get(
+    llvm::Type::getInt64Ty(*ctx->Context), arr_llvm_type->getNumElements());
+  simple_coro_contiguous_fwd(sm, proto, meta, ctx, data, length);
+}
+
+auto spp::codegen::func_impls::simple_coro_vector_fwd(
+  SPP_LLVM_FUNC_INFO,
+  LlvmCtx *const ctx)
+  -> void {
+  // A vector's elements live in its "buffer", a "RawBuf[T, A]" whose first attribute is the pointer to them. The live
+  // region is "[0, length)": "start" only ever moves for the by-value move-iterator, which consumes the vector, so no
+  // forwarded view can observe it non-zero.
+  using analyse::utils::type_utils::GetAllAttrs;
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto uid = "." + utils::Uid();
+  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vector.fwd.self" + uid);
+
+  const auto vec_type = self_sym->Type->WithoutConvention();
+  const auto vec_type_sym = sm->CurrentScope->GetTypeSymbol(vec_type.get());
+  const auto vec_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*vec_type_sym, ctx));
+  const auto buffer_idx = GetPhysicalFieldIndex(*vec_type_sym->LlvmInfo, 0);
+  const auto length_idx = GetPhysicalFieldIndex(*vec_type_sym->LlvmInfo, 1);
+
+  // The buffer lays its own fields out independently of the vector's, so its pointer is reached through its own map
+  // rather than assumed to have stayed first.
+  const auto buffer_type_sym = spp::get<1>(GetAllAttrs(*vec_type, *sm)[0]);
+  const auto buffer_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*buffer_type_sym, ctx));
+  const auto buffer_ptr_idx = GetPhysicalFieldIndex(*buffer_type_sym->LlvmInfo, 0);
+
+  const auto buffer = ctx->Builder.CreateStructGEP(
+    vec_llvm_type, self_ptr, buffer_idx, "vector.fwd.buffer" + uid);
+  const auto data = ctx->Builder.CreateLoad(
+    ptr_ty, ctx->Builder.CreateStructGEP(buffer_llvm_type, buffer, buffer_ptr_idx, "vector.fwd.data_ptr" + uid),
+    "vector.fwd.data" + uid);
+  const auto length = ctx->Builder.CreateLoad(
+    i64_ty, ctx->Builder.CreateStructGEP(vec_llvm_type, self_ptr, length_idx, "vector.fwd.length_ptr" + uid),
+    "vector.fwd.length" + uid);
+  simple_coro_contiguous_fwd(sm, proto, meta, ctx, data, length);
+}
+
 auto spp::codegen::func_impls::simple_coro_view_index(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void {
   // To index a view, we need to GEP in the "from" and
@@ -785,10 +915,25 @@ auto spp::codegen::func_impls::simple_coro_view_index(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "view.self" + uid);
 
-  // Extract the "idx" from the symbol's alloca storage in
-  // the symbol table.
-  const auto idx_param = proto->FnParamGroup->Params[0]->ExtractName();
+  // Extract the "index" from the symbol's alloca storage in the symbol table. Taken from the parameters without
+  // "self", because "self" is a parameter too - indexing the whole group reads "self" as the index, and steps into
+  // the view by wherever it happens to be stored.
+  const auto idx_param = proto->FnParamGroup->GetNonSelfParams()[0]->ExtractName();
   const auto idx_alloca = sm->CurrentScope->GetVarSymbol(idx_param.get(), true)->LlvmInfo->Alloca;
+
+  // The element being indexed lives in the buffer the view spans, not in the view itself, so the view's own fields
+  // have to be read to reach it: its data pointer to step from, its length to check against.
+  const auto view_type = self_sym->Type->WithoutConvention();
+  const auto view_type_sym = sm->CurrentScope->GetTypeSymbol(view_type.get());
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+
+  const auto elem_type_arg = view_type->LastTypePart()->GnArgGroup->TypeAt("T");
+  const auto elem_llvm_type = elem_type_arg != nullptr
+    ? GetLlvmTypeOf(*elem_type_arg->Val, *sm->CurrentScope, ctx)
+    : llvm::Type::getInt8Ty(*ctx->Context);
+
+  const auto data_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 0);
+  const auto length_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 1);
 
   struct CustomExpr : asts::ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
@@ -796,29 +941,51 @@ auto spp::codegen::func_impls::simple_coro_view_index(
     decltype(idx_alloca) &_IdxAlloca;
     decltype(self_ptr) &_SelfPtr;
     decltype(uid) &_Uid;
+    llvm::StructType *_ViewTy;
+    llvm::Type *_ElemTy;
+    std::uint32_t _DataIdx;
+    std::uint32_t _LengthIdx;
 
     CustomExpr(
-      decltype(idx_alloca) &idx_alloca, decltype(self_ptr) &self_ptr, decltype(uid) &uid) :
-      _IdxAlloca(idx_alloca), _SelfPtr(self_ptr), _Uid(uid) {}
+      decltype(idx_alloca) &idx_alloca, decltype(self_ptr) &self_ptr, decltype(uid) &uid,
+      llvm::StructType *view_ty, llvm::Type *elem_ty, const std::uint32_t data_idx, const std::uint32_t length_idx) :
+      _IdxAlloca(idx_alloca), _SelfPtr(self_ptr), _Uid(uid), _ViewTy(view_ty), _ElemTy(elem_ty), _DataIdx(data_idx),
+      _LengthIdx(length_idx) {}
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
-      // Read the integer value from these alloca storages, and
-      // use them for the GEP slicing. The borrow returned points
-      // to the same memory as the "self" view, just indexed.
-      const auto idx_val = ctx->Builder.CreateLoad(
-        llvm::Type::getInt64Ty(*ctx->Context), _IdxAlloca, "view.slice.idx_val" + _Uid);
+      const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+      const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+      const auto idx_val = ctx->Builder.CreateLoad(i64_ty, _IdxAlloca, "view.index.idx_val" + _Uid);
 
-      // Perform the GEP index to index the view whilst pointing
-      // to the same storage.
-      const auto slice = ctx->Builder.CreateGEP(
-        llvm::Type::getInt8Ty(*ctx->Context), _SelfPtr, {idx_val}, "view.slice.slice" + _Uid);
+      // The data the view spans and how much of it there is, read out of the view's own two fields.
+      const auto self_data = ctx->Builder.CreateLoad(
+        ptr_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _DataIdx, "view.index.data_ptr" + _Uid),
+        "view.index.data" + _Uid);
+      const auto self_length = ctx->Builder.CreateLoad(
+        i64_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _LengthIdx, "view.index.length_ptr" + _Uid),
+        "view.index.length" + _Uid);
 
-      return slice;
+      // Out of bounds traps rather than returning something: the contract is that an out-of-range index aborts, and
+      // there is no s++-level string to report from down here.
+      const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+      const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "view.index.ok" + _Uid, fn);
+      const auto oob_bb = llvm::BasicBlock::Create(*ctx->Context, "view.index.oob" + _Uid, fn);
+      ctx->Builder.CreateCondBr(
+        ctx->Builder.CreateICmpULT(idx_val, self_length, "view.index.in_bounds" + _Uid), ok_bb, oob_bb);
+
+      ctx->Builder.SetInsertPoint(oob_bb);
+      ctx->Builder.CreateIntrinsic(llvm::Intrinsic::trap, {}, {}, {}, "");
+      ctx->Builder.CreateUnreachable();
+
+      // Indexed over the element type, so one step of the index advances by one element rather than by one byte.
+      ctx->Builder.SetInsertPoint(ok_bb);
+      return ctx->Builder.CreateGEP(_ElemTy, self_data, {idx_val}, "view.index.elem_ptr" + _Uid);
     }
   };
 
   const auto mock_gen = MakeUnique<asts::GenExpressionAst>(
-    nullptr, nullptr, MakeUnique<CustomExpr>(idx_alloca, self_ptr, uid));
+    nullptr, nullptr, MakeUnique<CustomExpr>(
+      idx_alloca, self_ptr, uid, view_llvm_type, elem_llvm_type, data_idx, length_idx));
   mock_gen->Stage11_CodeGen(sm, meta, ctx);
 }
 
@@ -1789,43 +1956,23 @@ auto spp::codegen::func_impls::std_array_reverse_iter_mov(
 }
 
 auto spp::codegen::func_impls::std_array_fwd_ref(
-  SPP_LLVM_FUNC_INFO,
-  LlvmCtx *,
-  llvm::Type *)
-  -> void {
-  // We have an [T x n] LLVM array, and are "viewing" into it.
-  // Return a { ptr, len } "View" struct
-  // TODO
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  simple_coro_array_fwd(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_array_fwd_mut(
-  SPP_LLVM_FUNC_INFO,
-  LlvmCtx *,
-  llvm::Type *)
-  -> void {
-  // We have an [T x n] LLVM array, and are "viewing" into it.
-  // Return a { ptr, len } "View" struct
-  // TODO
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  simple_coro_array_fwd(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_vector_fwd_ref(
-  SPP_LLVM_FUNC_INFO,
-  LlvmCtx *,
-  llvm::Type *)
-  -> void {
-  // We have an [T x n] LLVM array, and are "viewing" into it.
-  // Return a { ptr, len } "View" struct
-  // TODO
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  simple_coro_vector_fwd(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_vector_fwd_mut(
-  SPP_LLVM_FUNC_INFO,
-  LlvmCtx *,
-  llvm::Type *)
-  -> void {
-  // We have an [T x n] LLVM array, and are "viewing" into it.
-  // Return a { ptr, len } "View" struct
-  // TODO
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  simple_coro_vector_fwd(sm, proto, meta, ctx);
 }
 
 auto spp::codegen::func_impls::std_generator_send(
