@@ -65,4 +65,10 @@ private:
    * analysis.
    */
   auto _LowerGenOnce() -> void;
+
+  /**
+   * Mark @p lowered @c alwaysinline when this coroutine yields a borrow, so that the storage the borrow points at
+   * ends up in the caller's frame - where the yield's lifetime says it belongs, and where it can be promoted away.
+   */
+  auto _ForceInlineBorrowedYield(SubroutinePrototypeAst const &lowered) const -> void;
 };
