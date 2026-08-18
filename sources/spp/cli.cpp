@@ -18,6 +18,7 @@ import spp.lex.tokens;
 import spp.utils.files;
 import cli11;
 import genex;
+import sys;
 import tomlpp;
 
 inline constexpr spp::Str OUT_FOLDER = "out";
@@ -216,6 +217,16 @@ auto spp::cli::handle_run(
   // displaying the output message.
   std::cout << "Running: " << utils::files::DisplayString(exe_file) << std::endl;
   std::cout.flush();
+
+  // Home the cursor, wipe the screen and then the scrollback, so
+  // the program's own output is all that is on the console, rather
+  // than the tail of the build that produced it. This is the byte
+  // sequence "clear" sends: without the ED 3, the erased lines stay
+  // in the scrollback and the console still reads as uncleared.
+  if (sys::isatty(sys::fileno(sys::stdout)) != 0) {
+    std::cout << "\033[H\033[2J\033[3J";
+    std::cout.flush();
+  }
 
   const auto status = std::system(utils::files::NativeString(exe_file).c_str());
   const auto exited_normally = (status & 0x7F) == 0;

@@ -60,9 +60,9 @@ export namespace sys {
   using ::flock;
   using ::ssize_t;
 
-  FILE *stdout = LEGACY_STDERR;
+  FILE *stdout = LEGACY_STDOUT;
   FILE *stdin = LEGACY_STDIN;
-  FILE *stderr = LEGACY_STDOUT;
+  FILE *stderr = LEGACY_STDERR;
   const short F_WRLCK = LEGACY_FWRLCK;
   const short F_RDLCK = LEGACY_FRDLCK;
   const int O_RDWR = LEGACY_ORDWR;
