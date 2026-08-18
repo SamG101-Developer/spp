@@ -61,11 +61,22 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/_lint.yaml
 
+  # Static analysis, gating the builds. Ordered after `lint` so a malformed PR title still fails in seconds rather
+  # than behind half a minute of analysis, and before the builds so five toolchains are not spent on code that
+  # cppcheck already rejects.
+  cppcheck:
+    name: Static Analysis
+    needs: [ changes, lint ]
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_cppcheck.yaml
+
   # Supported toolchain. "Release" and both "sanitiser" configurations build in parallel and fail-fast, so one broken
   # variant stops the others immediately.
   build-test:
     name: Build & Test
-    needs: [ changes ]
+    needs: [ changes, cppcheck ]
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
@@ -85,7 +96,7 @@ jobs:
   # never block a merge.
   build-test-extra:
     name: Build & Test (non-blocking)
-    needs: [ changes ]
+    needs: [ changes, cppcheck ]
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
@@ -157,7 +168,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, build-test, docs, security ] # sonar
+    needs: [ changes, lint, cppcheck, build-test, docs, security ] # sonar
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: { }

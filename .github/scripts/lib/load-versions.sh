@@ -14,6 +14,7 @@ is_allowed_key() {
     BOOST_SHA256_LINUX | BOOST_SHA256_LINUX_ARM64) return 0 ;;
     BOOST_SHA256_MACOS | BOOST_SHA256_WINDOWS | BOOST_VERSION) return 0 ;;
     CMAKE_VERSION | GCC_VERSION | LIBSTDCXX_GCC_VERSION) return 0 ;;
+    CPPCHECK_COMMIT | CPPCHECK_VERSION) return 0 ;;
     DOXYGEN_SHA256 | DOXYGEN_VERSION) return 0 ;;
     GITLEAKS_SHA256 | GITLEAKS_VERSION) return 0 ;;
     GTEST_PARALLEL_COMMIT) return 0 ;;
@@ -57,7 +58,9 @@ done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$VERSIONS")
   #   - SPP_LOCAL_PREFIX     the small CMake libraries, cached as one tree (spp-libs-*)
   #   - SPP_DOXYGEN_PREFIX   doxygen, cached on its own by release version (doxygen-*)
   #   - SPP_LLVM_WIN_PREFIX  the Windows clang+llvm tarball, cached by version (llvm-win-*)
+  #   - SPP_CPPCHECK_PREFIX  cppcheck, built from source and cached by commit (cppcheck-*)
   echo "SPP_LOCAL_PREFIX=$HOME/.local"
   echo "SPP_DOXYGEN_PREFIX=$HOME/.tools/doxygen"
   echo "SPP_LLVM_WIN_PREFIX=$HOME/llvm"
+  echo "SPP_CPPCHECK_PREFIX=$HOME/.tools/cppcheck"
 } >> "$GITHUB_ENV"

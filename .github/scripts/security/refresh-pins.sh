@@ -140,6 +140,21 @@ else
   echo "        CI scan run the same rules"
 fi
 
+# Tracks release tags rather than the branch tip: it is a tool the pipeline runs, and a dev build of an analyser that
+# gates every merge is not what this wants. The repository redirects from danmar/cppcheck, so it is addressed by id.
+echo
+echo "cppcheck (${VERSIONS})"
+cppcheck_tag="$(fetch "${auth[@]}" 'https://api.github.com/repositories/143131/tags?per_page=1' \
+  | python3 -c 'import json,sys; t=json.load(sys.stdin); print(t[0]["name"] if t else "")')"
+if [ -z "$cppcheck_tag" ]; then
+  echo "::error::could not read the latest cppcheck tag"
+  status=1
+else
+  set_pin CPPCHECK_VERSION "$cppcheck_tag"
+  set_pin CPPCHECK_COMMIT "$(fetch "${auth[@]}" "https://api.github.com/repositories/143131/git/ref/tags/${cppcheck_tag}" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
+fi
+
 echo
 echo "prebuilt Boost (${VERSIONS})"
 boost="$(pinned BOOST_VERSION)"
