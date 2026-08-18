@@ -124,6 +124,22 @@ else
   set_pin OSV_SCANNER_SHA256 "$(asset_digest google/osv-scanner "$osv_tag" osv-scanner_linux_amd64)"
 fi
 
+# Same shape as osv-scanner: a published release rather than a branch tip, because it is a tool the pipeline runs.
+echo
+echo "gitleaks (${VERSIONS})"
+gitleaks_tag="$(fetch "${auth[@]}" https://api.github.com/repos/gitleaks/gitleaks/releases/latest \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag_name",""))')"
+if [ -z "$gitleaks_tag" ]; then
+  echo "::error::could not read the latest gitleaks release"
+  status=1
+else
+  set_pin GITLEAKS_VERSION "${gitleaks_tag#v}"
+  set_pin GITLEAKS_SHA256 \
+    "$(asset_digest gitleaks/gitleaks "$gitleaks_tag" "gitleaks_${gitleaks_tag#v}_linux_x64.tar.gz")"
+  echo "  note: move the gitleaks rev in .pre-commit-config.yaml to ${gitleaks_tag} as well, so the hook and the"
+  echo "        CI scan run the same rules"
+fi
+
 echo
 echo "prebuilt Boost (${VERSIONS})"
 boost="$(pinned BOOST_VERSION)"

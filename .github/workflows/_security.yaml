@@ -120,3 +120,90 @@ jobs:
         with:
           sarif_file: osv.sarif
           category: osv-scanner
+
+  secrets:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read          # read the tree and its history
+      security-events: write  # upload the gitleaks SARIF
+    steps:
+      # Everything this job reaches for is a GitHub endpoint, so it can afford the blocking policy rather than the
+      # audit one: the scanner binary, the repository and the SARIF upload are the whole of its egress.
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      # Full history unconditionally. The nightly scan reads every reachable commit, and a depth chosen by an
+      # expression is a trap here: `inputs.full-scan && 0 || 1` evaluates to 1 either way, because 0 is falsy.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # No toolchain here either, but the scanner's release and digest live in versions.env with everything else.
+      - name: Load pinned versions
+        run: bash .github/scripts/lib/load-versions.sh
+
+      - name: Install gitleaks
+        run: bash .github/scripts/security/install-gitleaks.sh
+
+      # `dir` on a push, `git` on the nightly. See the script for why a secret is fatal where a CVE is a warning.
+      - name: Scan for secrets
+        run: bash .github/scripts/security/scan-secrets.sh gitleaks.sarif ${{ inputs.full-scan && 'git' || 'dir' }}
+
+      # Uploaded even when the scan failed, because a failed scan is precisely the one whose findings are worth
+      # reading, but only when a report exists: without the guard a missing file fails here and buries the real error.
+      - name: Upload gitleaks results
+        if: always() && hashFiles('gitleaks.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+  # Only a pull request has a base to diff the dependency graph against, so this is skipped on the nightly run.
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read  # read the dependency graph for both sides of the diff
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Blocks a pull request that introduces a high-severity advisory or a copyleft dependency. The licence list
+      # matters here specifically: this project ships under a dual licence, so a GPL dependency is not merely a
+      # preference to argue about but a thing that would make the commercial half unshippable.
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
+        with:
+          fail-on-severity: high
+          deny-licenses: AGPL-1.0-or-later, AGPL-3.0-or-later, GPL-2.0-or-later, GPL-3.0-or-later, LGPL-3.0-or-later
+          comment-summary-in-pr: never
