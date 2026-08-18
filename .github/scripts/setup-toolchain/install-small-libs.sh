@@ -6,6 +6,17 @@
 set -euo pipefail
 
 PREFIX="$SPP_LOCAL_PREFIX"
+
+# Read the manifest before leaving the repository root: pins.py
+# resolves .github/dependencies.toml relative to the working
+# directory, and a failure here has to stop the script rather
+# than leave the loop below with nothing to install.
+records="$(python3 .github/scripts/lib/pins.py libraries)"
+if [ -z "$records" ]; then
+  echo "install-small-libs: the manifest lists no libraries" >&2
+  exit 1
+fi
+
 mkdir -p "$PREFIX" "${RUNNER_TEMP}/libs"
 cd "${RUNNER_TEMP}/libs"
 
@@ -52,4 +63,9 @@ while IFS=$'\t' read -r -u 3 name repo commit flagstr; do
   # flag containing whitespace so that this stays safe.
   read -ra flags <<< "$flagstr"
   cmake_install "$name" "$repo" "$commit" ${flags[@]+"${flags[@]}"}
-done 3< <(python3 .github/scripts/lib/pins.py libraries)
+done 3<<< "$records"
+
+# Written last, and read back by check-small-libs.sh: the
+# prefix only counts as installed once every record above
+# has been through cmake_install.
+printf '%s\n' "$records" > "$PREFIX/.spp-libs-stamp"
