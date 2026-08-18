@@ -28,6 +28,63 @@ jobs:
     with:
       full-scan: true
 
+  # Link rot is driven by time rather than by commits: a URL that worked when it was written stops working because
+  # something at the other end moved, on a day nobody here pushed anything.
+  links:
+    name: Check Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Restore link cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .lycheecache
+          key: lychee-${{ github.run_id }}
+          restore-keys: lychee-
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8
+        with:
+          # 429 is accepted because the README's badge hosts rate-limit anonymous CI traffic, and a nightly that cries
+          # wolf about shields.io gets ignored, which costs more than the check is worth. A genuine 404 still fails.
+          args: >-
+            --cache
+            --max-cache-age 1d
+            --no-progress
+            --max-retries 3
+            --accept '200..=299,429'
+            --exclude-path .vale
+            --exclude-path tests/gtest-parallel
+            --exclude-path docs/build
+            './**/*.md'
+            './docs/source/**/*.rst'
+          output: lychee-report.md
+          fail: true
+
+      # The report says which link broke and where, which the job log buries; it is small, so it is kept either way.
+      - name: Upload link report
+        if: always() && hashFiles('lychee-report.md') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: lychee-report
+          path: lychee-report.md
+          retention-days: 14
+          if-no-files-found: ignore
+
   # Superseded entries are never read again but still count against the repository's 10GB budget until they are
   # evicted: every compiler cache behind the newest one on its branch, every dependency tree whose key hash has moved
   # on, and every Doxygen build older than the pinned release. Prune them once they are stale.
