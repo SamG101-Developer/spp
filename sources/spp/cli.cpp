@@ -205,7 +205,7 @@ auto spp::cli::handle_run(
   // already, so there is nothing to add here beyond not
   // trying to run something that was never produced.
   const auto cwd = std::filesystem::current_path();
-  const auto exe_file = cwd / OUT_FOLDER / compiler::ExecutableName(cwd);
+  const auto exe_file = cwd / OUT_FOLDER / compiler::CompilerBoot::ExecutableName(cwd);
   if (not std::filesystem::exists(exe_file)) {
     std::cerr << "Error: No executable was built at '" << utils::files::DisplayString(exe_file) << "'.\n";
     return;
