@@ -37,12 +37,10 @@ auto spp::utils::ProgressBar::Finish() const
   -> void {
   if (not _Enabled) { return; }
 
-  constexpr auto bar_width = 50;
-  char bar[bar_width + 1];
-  std::fill_n(bar, bar_width, '=');
-  bar[bar_width] = '\0';
-
-  std::printf("\r%-20s [%s] 100%%\n", _Label.c_str(), bar);
+  // Erased rather than left completed on screen, so only one bar is ever visible and the console is clean by the
+  // time anything else writes to it - the build's own output, or the program it goes on to run.
+  constexpr auto line_width = 90;
+  std::printf("\r%*s\r", line_width, "");
   std::fflush(nullptr);
 }
 
