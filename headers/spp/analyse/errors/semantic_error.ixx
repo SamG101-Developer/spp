@@ -75,6 +75,7 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppCoroutineContainsReturnStatementError;
   SPP_EXP_CLS struct SppFunctionSubroutineMissingReturnStatementError;
   SPP_EXP_CLS struct SppSuperimpositionCyclicExtensionError;
+  SPP_EXP_CLS struct SppTypeAliasCyclicError;
   SPP_EXP_CLS struct SppSuperimpositionDoubleExtensionError;
   SPP_EXP_CLS struct SppSuperimpositionSelfExtensionError;
   SPP_EXP_CLS struct SppSuperimpositionExtensionMethodInvalidError;
@@ -406,6 +407,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFunctionSubroutineMissingReturnState
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionCyclicExtensionError final : SemanticError {
   explicit SppSuperimpositionCyclicExtensionError(asts::Ast const &first_extension,
     asts::Ast const &second_extension);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppTypeAliasCyclicError final : SemanticError {
+  explicit SppTypeAliasCyclicError(asts::Ast const &first_alias,
+    asts::Ast const &cyclic_alias);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionDoubleExtensionError final : SemanticError {

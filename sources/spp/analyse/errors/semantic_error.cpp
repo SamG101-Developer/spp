@@ -853,6 +853,17 @@ spp::analyse::errors::SppSuperimpositionCyclicExtensionError::SppSuperimposition
     "Break the cycle by adjusting the extensions.");
 }
 
+spp::analyse::errors::SppTypeAliasCyclicError::SppTypeAliasCyclicError(
+  asts::Ast const &first_alias,
+  asts::Ast const &cyclic_alias) {
+  AddHeaders(89, "Type Alias Cyclic Error");
+  AddCtxForErr(&first_alias, "Alias chain starts here");
+  AddErr(&cyclic_alias, "Alias closing the cycle introduced here");
+  AddFooter(
+    "This alias resolves back to one it is already defined in terms of, so it names no real type.",
+    "Break the cycle by pointing one of the aliases at a class.");
+}
+
 spp::analyse::errors::SppSuperimpositionDoubleExtensionError::SppSuperimpositionDoubleExtensionError(
   asts::Ast const &first_extension,
   asts::Ast const &second_extension) {
