@@ -61,7 +61,7 @@ namespace spp::analyse::utils::monomorphization_utils {
       dst.InternalTable.DeepCopyFrom(src.InternalTable);
       if (not recurse) { return; }
       for (auto i = 0uz; i < dst.Children.Len() and i < src.Children.Len(); ++i) {
-        GiveScopeOwnSyms(*dst.Children[i], *src.Children[i], true);
+        GiveScopeOwnSyms(*dst.Children[i].get(), *src.Children[i].get(), true);
       }
     }
 
