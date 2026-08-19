@@ -8,6 +8,5 @@ docs/build/
 docs/source/compiler-api/
 __pycache__/
 
-# lychee link-check cache (nightly workflow)
+# lychee link-check cache (pre-commit hook)
 .lycheecache
-lychee-report.md
