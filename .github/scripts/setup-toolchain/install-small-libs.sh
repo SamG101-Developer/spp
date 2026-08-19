@@ -4,8 +4,10 @@
 # calling step caches as a single tree. This is for all
 # libraries except for LLVM and Boost (different installation).
 set -euo pipefail
+source .github/scripts/lib/llvm-prefix.sh
 
 PREFIX="$SPP_LOCAL_PREFIX"
+llvm_dir="$(llvm_prefix)"
 
 # Read the manifest before leaving the repository root: pins.py
 # resolves .github/dependencies.toml relative to the working
@@ -22,11 +24,9 @@ cd "${RUNNER_TEMP}/libs"
 
 if [ "$RUNNER_OS" = "Windows" ]; then
   PREFIX="$(cygpath -m "$PREFIX")"
-  llvm_prefix="$(cygpath -m "$SPP_LLVM_WIN_PREFIX")"
-  export CMAKE_PREFIX_PATH="$PREFIX;${BOOST_ROOT};$llvm_prefix"
+  export CMAKE_PREFIX_PATH="$PREFIX;${BOOST_ROOT};$llvm_dir"
 else
-  llvm_prefix="${LLVM_PREFIX:-/usr/lib/llvm-${LLVM_LIB_VERSION}}"
-  export CMAKE_PREFIX_PATH="$PREFIX${BOOST_ROOT:+:$BOOST_ROOT}:$llvm_prefix"
+  export CMAKE_PREFIX_PATH="$PREFIX${BOOST_ROOT:+:$BOOST_ROOT}:$llvm_dir"
 fi
 
 # The cmake install helper checks the repo out at the given

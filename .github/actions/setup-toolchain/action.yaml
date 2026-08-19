@@ -146,6 +146,22 @@ runs:
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-windows.sh
 
+    # macOS gets the release tarball too: brew has no llvm@23, so the
+    # clang installed above is a whole major version behind the LLVM the
+    # project links against.
+    - name: Cache LLVM dev libraries (macOS)
+      if: inputs.dependencies == 'true' && runner.os == 'macOS'
+      id: llvm-mac-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/llvm
+        key: llvm-mac-${{ env.LLVM_MAC_SHA256 }}
+
+    - name: Install LLVM dev libraries (macOS, cache miss)
+      if: inputs.dependencies == 'true' && runner.os == 'macOS' && steps.llvm-mac-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-llvm-macos.sh
+
     # The remaining libraries are header/CMake projects: check out,
     # install, cache. The key is content-addressed on the three
     # files that decide what the tree contains and where it goes:

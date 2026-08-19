@@ -11,7 +11,6 @@ prefix="$(brew --prefix "$formula")"
   echo "CC=${prefix}/bin/clang"
   echo "CXX=${prefix}/bin/clang++"
   echo "LDFLAGS=-L${prefix}/lib/c++ -Wl,-rpath,${prefix}/lib/c++"
-  echo "LLVM_PREFIX=${prefix}"
 } >> "$GITHUB_ENV"
 resource_dir="$("${prefix}/bin/clang" -print-resource-dir)"
 sed "s|\"\.\./\.\./|\"${prefix}/|g" \

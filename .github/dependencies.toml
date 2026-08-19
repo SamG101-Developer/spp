@@ -4,7 +4,6 @@
 # Each [pin.<name>] table exports its version/commit/tag/asset/sha256 keys into the job environment as
 # <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
 
-# Also the libstdc++ Clang borrows on Linux, installed as g++-<version>, so it is a major version only.
 [pin.gcc]
 version = "16"
 
@@ -20,18 +19,29 @@ version = "3.14"
 [pin.llvm-lib]
 version = "23"
 
-# apt.llvm.org's installer, fetched and then run as root by the Clang and LLVM steps.
+# apt.llvm.org's installer, fetched and then run as root
+# by the Clang and LLVM steps.
 [pin.llvm-sh]
 sha256 = "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae"
 
-# The asset name is not derivable from the tag: llvmorg-23.1.0-rc3 ships clang+llvm-23.0.0.3-*.
+# The asset name is not derivable from the tag:
+# llvmorg-23.1.0-rc3 ships clang+llvm-23.0.0.3-*.
 [pin.llvm-win]
 tag = "llvmorg-23.1.0-rc3"
 asset = "clang+llvm-23.0.0.3-x86_64-pc-windows-msvc.tar.xz"
 sha256 = "9465632c6d96e65ab6b7f6fbf7ae447621803982b2348483221812bbf4c8b6af"
 
-# Prebuilt from MarkusJx/prebuilt-boost, so one digest per runner. Keep in step with the case block in
-# install-boost.sh: there is no 24.04 arm64 build upstream, so arm64 takes the 22.04 tarball.
+# Homebrew has no llvm@23 formula (llvm is still 22.1.x),
+# so macOS takes its dev libraries off the same release as
+# Windows rather than off the brew clang it compiles with.
+[pin.llvm-mac]
+tag = "llvmorg-23.1.0-rc3"
+asset = "LLVM-23.1.0-rc3-macOS-ARM64.tar.xz"
+sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
+
+# Prebuilt from MarkusJx/prebuilt-boost, so one digest per
+# runner. There is no 24.04 arm64 build upstream, so arm64
+# takes the 22.04 tarball.
 [pin.boost]
 version = "1.91.0"
 osv-ecosystem = "OSS-Fuzz"
@@ -45,27 +55,32 @@ sha256-windows = "bf4b5ec8893a25cd5be1cda3a33f020ae925919a8ad6296b289d0787892db3
 version = "1.17.0"
 sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
 
-# Executed by python3 against the built test binary, so pinned by commit.
+# Executed by python3 against the built test binary,
+# so pinned by commit.
 [pin.gtest-parallel]
 commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 
-# Tools the pipeline runs, tracking published releases rather than a branch tip.
+# Tools the pipeline runs, tracking published releases
+# rather than a branch tip.
 [pin.osv-scanner]
 version = "2.5.0"
 sha256 = "edcfc41d257db36148f065055655fe3fcfc434b0b423ea67468a84c207524e0c"
 
-# Keep the version in step with the gitleaks rev in .pre-commit-config.yaml.
+# Keep the version in step with the gitleaks rev in
+# .pre-commit-config.yaml.
 [pin.gitleaks]
 version = "8.30.1"
 sha256 = "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
 
-# Built from source: distro packages are years behind and cannot parse C++20 modules. Pinned by commit because
+# Built from source: distro packages are years behind and
+# cannot parse C++20 modules. Pinned by commit because
 # GitHub's generated tag archives are not byte-stable.
 [pin.cppcheck]
 version = "2.21.1"
 commit = "904cfdcf774c44b17db789c8a212e2f1c69fc833"
 
-# Install prefixes, exported as SPP_<KEY>_PREFIX. {home} expands at load time.
+# Install prefixes, exported as SPP_<KEY>_PREFIX. {home}
+# expands at load time.
 [runner]
 linux = "ubuntu-24.04"
 linux-arm = "ubuntu-24.04-arm"
@@ -76,9 +91,11 @@ windows = "windows-2025"
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
 llvm-win = "{home}/llvm"
+llvm-mac = "{home}/llvm"
 cppcheck = "{home}/.tools/cppcheck"
 
-# The header/CMake dependencies, installed in order by install-small-libs.sh.
+# The header/CMake dependencies, installed in order by
+# install-small-libs.sh.
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
