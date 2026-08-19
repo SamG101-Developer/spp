@@ -29,23 +29,29 @@ namespace spp::codegen {
   auto EmitObjectFile(void *llvm_module, char const *path) -> bool;
 
   /**
-   * Drop calls to @c llvm.lifetime.* declarations that llvm no longer recognises as intrinsics.
+   * Give back their real names to the @c llvm.* declarations that llvm no longer recognises as intrinsics.
    *
    * @n
-   * Workaround, not a fix. Intrinsic names are being built with trailing garbage in this build - "llvm.lifetime.end"
-   * comes out as "llvm.lifetime.endntry\0\0..." - and a name that matches no intrinsic is emitted as a call to an
-   * ordinary external symbol, which nothing defines, so the link fails. A lifetime marker carries no semantics of its
-   * own (it only tells the optimizer when a stack slot is dead), so removing the calls costs nothing but stack-slot
-   * sharing, where leaving them costs the executable.
+   * Workaround, not a fix. Every intrinsic name longer than fifteen characters is stored with trailing garbage in
+   * this build - "llvm.coro.suspend" comes out as "llvm.coro.suspend405\0\0..." padded to thirty-one bytes - so
+   * @c getIntrinsicID reads @c not_intrinsic and the declaration becomes an ordinary external symbol nothing
+   * defines. The damage is not confined to the link: the coroutine passes recognise "llvm.coro.id" (twelve
+   * characters) and "llvm.coro.begin" (fifteen) but not "llvm.coro.suspend", so they see a coroutine with no suspend
+   * points, flatten it instead of splitting it, and leave a generator returning a pointer to its own dead frame.
+   *
+   * @n
+   * The prefix is always intact, so the real name is recovered by finding the longest prefix llvm still resolves to
+   * an intrinsic, and rebuilding the declaration under it - a fresh @c llvm::Function recomputes its intrinsic id
+   * from its name. Truncating at the first unprintable byte would not do: the garbage is sometimes printable.
    *
    * @n
    * The real problem is upstream: a string handed to llvm is read back with the wrong length, which also shows up in
    * printed attribute lists and in the module's own target triple. Once that is resolved this should go.
    *
-   * @param[in,out] llvm_module The @c llvm::Module to scrub, as an opaque pointer.
-   * @return How many calls were dropped.
+   * @param[in,out] llvm_module The @c llvm::Module to repair, as an opaque pointer.
+   * @return How many declarations were renamed.
    */
-  auto ScrubCorruptLifetimeIntrinsics(void *llvm_module) -> unsigned long;
+  auto RepairMisnamedIntrinsics(void *llvm_module) -> unsigned long;
 
   /**
    * Add a C @c main to @p llvm_module that calls @p spp_main_name , so the program has an entry point of the shape a

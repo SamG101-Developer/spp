@@ -175,42 +175,97 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // "res()" sends nothing, so there is simply no store to make:
   // there is no such thing as a void value to write into the
   // slot, and asking for one ("getNullValue" of a void type)
-  // is itself invalid.
+  // is itself invalid. The receiver is an argument of the
+  // mapped ".send()" call too, and is not one of these.
   const auto &args_group = _MappedFunc->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>()->FnArgGroup;
-  if (not args_group->Args.IsEmpty()) {
+  const auto send_arg = std::ranges::find_if(
+    args_group->Args, [](auto const &x) { return x->GetSelfType() == nullptr; });
+
+  if (send_arg != args_group->Args.end()) {
     const auto llvm_send_slot = ctx->Builder.CreateStructGEP(
       llvm_gen_state_ty, llvm_generator_env->State,
       std::to_underlying(codegen::LlvmGeneratorStateStructFields::SEND_SLOT), "gen.send.slot");
-    const auto llvm_send_value = args_group->Args[0]->Stage11_CodeGen(sm, meta, ctx);
+    const auto llvm_send_value = (*send_arg)->Stage11_CodeGen(sm, meta, ctx);
     ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
   }
 
-  // Step 2: Invoke the llvm coroutine intrinsic, allowing
-  // program to resume the coroutine execution, to get the
-  // next value.
+  // The yielded value is read with the yield type's own layout, because that is what the "gen" expression stored
+  // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
+  // and storing those into a narrower binding writes past it.
+  const auto uid = spp::utils::Uid(this);
+  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+  auto [_, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
+    *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
+  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*yield_type, *sm->CurrentScope, ctx);
+
+  const auto read_yielded_val = [&] {
+    const auto llvm_yield_slot = ctx->Builder.CreateStructGEP(
+      llvm_gen_state_ty, llvm_generator_env->State,
+      std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT), "gen.yield.slot");
+    return ctx->Builder.CreateLoad(llvm_yield_ty, llvm_yield_slot, "gen.yield.value");
+  };
+
+  // A "GenOnce" is guaranteed to yield exactly once before it completes, so there is no exhausted case to report and
+  // nothing to resume past: the value is already in the slot, put there by the ramp running up to the first suspend.
+  if (is_once) { return read_yielded_val(); }
+
+  // Otherwise the result says whether the generator had a value at all, so completion has to be tested before it is
+  // read. A coroutine parked on its final suspend has already run its body to the end and left nothing in the slot.
+  const auto llvm_done = ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_done, {}, {llvm_generator_env->Handle}, {}, "gen.done" + uid);
+
+  const auto llvm_func_target = ctx->Builder.GetInsertBlock()->getParent();
+  const auto yielded_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.yielded" + uid, llvm_func_target);
+  const auto exhausted_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.exhausted" + uid, llvm_func_target);
+  const auto joined_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.joined" + uid, llvm_func_target);
+  ctx->Builder.CreateCondBr(llvm_done, exhausted_bb, yielded_bb);
+
+  // The result type is "Yield or None", so both edges tag their way into it.
+  const auto res_type = InferType(sm, meta);
+  const auto llvm_res_ty = codegen::GetLlvmTypeOf(*res_type, *sm->CurrentScope, ctx);
+  const auto none_type = generate::common_types::None(PosStart());
+  const auto yield_tag = codegen::GetVariantIndexOfMember(*res_type, *yield_type, *sm->CurrentScope);
+  const auto none_tag = codegen::GetVariantIndexOfMember(*res_type, *none_type, *sm->CurrentScope);
+
+  const auto bad_shape_msg = Str(
+    "The result of a resumption is not the \"Yield or None\" variant it has to be, so there is no discriminant to "
+    "tag the yielded value or the exhausted case into");
+  RaiseIf<analyse::errors::SppInternalCompilerError>(
+    llvm_res_ty == nullptr or not yield_tag.has_value() or not none_tag.has_value(),
+    {sm->CurrentScope}, ERR_ARGS(*this, bad_shape_msg));
+
+  // Read before resuming, not after. The ramp already ran the body up to its first suspend, so the value waiting in
+  // the slot is this resumption's; resuming first would step over it and hand back the following one.
+  ctx->Builder.SetInsertPoint(yielded_bb);
+  const auto llvm_yielded_val = read_yielded_val();
   ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle}, {}, "");
+  const auto llvm_some = codegen::BuildVariant(llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx);
+  const auto some_from_bb = ctx->Builder.GetInsertBlock();
+  ctx->Builder.CreateBr(joined_bb);
 
-  // Step 3: Get the yielded value from the generator state,
-  // and pass return it as the result of this operation.
-  const auto llvm_yield_slot = ctx->Builder.CreateStructGEP(
-    llvm_gen_state_ty, llvm_generator_env->State,
-    std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT), "gen.yield.slot");
-  const auto llvm_yielded_val = ctx->Builder.CreateLoad(
-    codegen::GetLlvmGeneratorStateYieldSlotType(ctx), llvm_yield_slot, "gen.yield.value");
-  return llvm_yielded_val;
+  ctx->Builder.SetInsertPoint(exhausted_bb);
+  const auto llvm_none = codegen::BuildVariant(nullptr, llvm_res_ty, *none_tag, "gen.none" + uid, ctx);
+  const auto none_from_bb = ctx->Builder.GetInsertBlock();
+  ctx->Builder.CreateBr(joined_bb);
+
+  ctx->Builder.SetInsertPoint(joined_bb);
+  const auto llvm_res = ctx->Builder.CreatePHI(llvm_res_ty, 2, "gen.res" + uid);
+  llvm_res->addIncoming(llvm_some, some_from_bb);
+  llvm_res->addIncoming(llvm_none, none_from_bb);
+  return llvm_res;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
-  // Get the generator type.
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
-  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-  auto [_, yield_type, _] = GetGenAndYieldTypes(
-    *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
-  return yield_type;
+  // The mapped ".send()" call is what says how much a resumption tells the caller: "Gen" declares it as
+  // "Generated[Yield or None]", because a "Gen" may be exhausted, and "GenOnce" as "Generated[Yield]", because it
+  // cannot be. Reading it off the declaration keeps the two in step instead of deciding it a second time here.
+  // "Generated" is the compiler-known wrapper the coroutine machinery travels in, and is unwrapped on the way out.
+  const auto send_type = _MappedFunc->InferType(sm, meta);
+  return send_type->LastTypePart()->GnArgGroup->TypeAt("Yield")->Val;
 }
 
 SPP_MOD_END

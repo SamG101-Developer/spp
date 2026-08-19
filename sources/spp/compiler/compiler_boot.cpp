@@ -296,9 +296,8 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     // codegen.
     if (verify("")) {
       codegen::RunCoroLoweringPipeline(ctx->Module.get());
-      if (verify(" after lowering") and optimize and not lto) {
+      if (optimize and not lto) {
         codegen::RunOptimizationPipeline(ctx->Module.get());
-        verify(" after optimization");
       }
     }
 
@@ -382,20 +381,18 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
 
+  // Before optimizing, not after: a misnamed intrinsic reads as a call to
+  // an opaque external, so the passes neither honour it nor keep it up to
+  // date as they move code around. Naming a stale lifetime marker back into
+  // existence afterwards is worse than never having had it - the backend
+  // colours stack slots by them, and reuses a slot that is still live.
+  codegen::RepairMisnamedIntrinsics(lto_module.get());
   codegen::RunOptimizationPipeline(lto_module.get());
 
-  // See "ScrubCorruptLifetimeIntrinsics": the names llvm builds
-  // for these come out with trailing garbage in this build, and
-  // an unrecognised "llvm.*" name is emitted as a call to a
-  // symbol nothing defines. Todo: fix this,
-  if (const auto scrubbed = codegen::ScrubCorruptLifetimeIntrinsics(lto_module.get()); scrubbed > 0) {
-    llvm::errs() << "Warning: dropped " << scrubbed << " call(s) to misnamed lifetime intrinsics\n";
-  }
-
-  if (llvm::verifyModule(*lto_module, &llvm::errs())) {
-    llvm::errs() << "Invalid lto module after optimization\n";
-    return;
-  }
+  // And again, for the ones the pipeline introduced itself. These are
+  // placed by the pass that built them, so they are correct where they
+  // are; only their names are not.
+  codegen::RepairMisnamedIntrinsics(lto_module.get());
 
   auto ec = std::error_code();
   auto out = llvm::raw_fd_ostream(

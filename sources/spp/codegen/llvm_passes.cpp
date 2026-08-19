@@ -1,6 +1,7 @@
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/PassManager.h>
@@ -19,6 +20,36 @@
 #include <spp/codegen/llvm_passes.hpp>
 
 namespace {
+  /** What every intrinsic name starts with, and the shortest a prefix can usefully be trimmed to. */
+  constexpr auto kIntrinsicPrefix = llvm::StringLiteral("llvm.");
+
+  /** How many repair-then-lower rounds the coroutine pipeline is allowed; see @c RunCoroLoweringPipeline . */
+  constexpr auto kMaxCoroLoweringRounds = 4U;
+
+  /** Intrinsics that only hint at what the optimizer may do; see @c RepairMisnamedIntrinsics . */
+  constexpr auto kHintIntrinsicPrefix = llvm::StringLiteral("llvm.lifetime.");
+
+  /**
+   * Erase @p fn and every call to it. Only done when every use is a plain call: anything else means this is not the
+   * shape being worked around, and it is left alone to fail visibly rather than be quietly changed.
+   * @param[in,out] fn The declaration to drop.
+   * @return @c true if it was dropped.
+   */
+  auto DropCallsTo(
+    llvm::Function *fn)
+    -> bool {
+    auto calls = llvm::SmallVector<llvm::CallBase*>();
+    for (auto *user : fn->users()) {
+      const auto call = llvm::dyn_cast<llvm::CallBase>(user);
+      if (call == nullptr or call->getCalledFunction() != fn) { return false; }
+      calls.push_back(call);
+    }
+
+    for (auto *call : calls) { call->eraseFromParent(); }
+    fn->eraseFromParent();
+    return true;
+  }
+
   /**
    * The one target machine every module is built against, created on first use. Registering the native target is done
    * here rather than at start-up so that nothing has to remember to do it before the first module is made.
@@ -61,23 +92,34 @@ auto spp::codegen::RunCoroLoweringPipeline(
   -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
-  auto loop_am = llvm::LoopAnalysisManager();
-  auto func_am = llvm::FunctionAnalysisManager();
-  auto cgscc_am = llvm::CGSCCAnalysisManager();
-  auto module_am = llvm::ModuleAnalysisManager();
+  // See "RepairMisnamedIntrinsics". A misnamed intrinsic is invisible to
+  // these passes, so the names are put back before each run - and it takes
+  // more than one run, because the passes lower one intrinsic into another
+  // ("coro.resume" becomes "coro.subfn.addr") and the replacement is
+  // misnamed in its turn, leaving the next pass nothing to work on. Settles
+  // in three rounds; the bound is there so a repair that never reaches a
+  // fixed point cannot spin.
+  for (auto round = 0U; round < kMaxCoroLoweringRounds; ++round) {
+    if (RepairMisnamedIntrinsics(&llvm_mod) == 0 and round > 0) { break; }
 
-  auto pass_builder = llvm::PassBuilder();
-  pass_builder.registerModuleAnalyses(module_am);
-  pass_builder.registerCGSCCAnalyses(cgscc_am);
-  pass_builder.registerFunctionAnalyses(func_am);
-  pass_builder.registerLoopAnalyses(loop_am);
-  pass_builder.crossRegisterProxies(loop_am, func_am, cgscc_am, module_am);
+    auto loop_am = llvm::LoopAnalysisManager();
+    auto func_am = llvm::FunctionAnalysisManager();
+    auto cgscc_am = llvm::CGSCCAnalysisManager();
+    auto module_am = llvm::ModuleAnalysisManager();
 
-  // O0 - "the minimal semantically required passes". Coroutine
-  // lowering is a correctness requirement.
-  auto module_pm = pass_builder.buildO0DefaultPipeline(llvm::OptimizationLevel::O0);
-  module_pm.addPass(llvm::createModuleToPostOrderCGSCCPassAdaptor(llvm::CoroAnnotationElidePass()));
-  module_pm.run(llvm_mod, module_am);
+    auto pass_builder = llvm::PassBuilder();
+    pass_builder.registerModuleAnalyses(module_am);
+    pass_builder.registerCGSCCAnalyses(cgscc_am);
+    pass_builder.registerFunctionAnalyses(func_am);
+    pass_builder.registerLoopAnalyses(loop_am);
+    pass_builder.crossRegisterProxies(loop_am, func_am, cgscc_am, module_am);
+
+    // O0 - "the minimal semantically required passes". Coroutine
+    // lowering is a correctness requirement.
+    auto module_pm = pass_builder.buildO0DefaultPipeline(llvm::OptimizationLevel::O0);
+    module_pm.addPass(llvm::createModuleToPostOrderCGSCCPassAdaptor(llvm::CoroAnnotationElidePass()));
+    module_pm.run(llvm_mod, module_am);
+  }
 }
 
 auto spp::codegen::RunOptimizationPipeline(
@@ -190,41 +232,73 @@ auto spp::codegen::EmitCEntryPoint(
   return true;
 }
 
-auto spp::codegen::ScrubCorruptLifetimeIntrinsics(
+auto spp::codegen::RepairMisnamedIntrinsics(
   void *llvm_module)
   -> unsigned long {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
-  // Bin off a load of corrupted things.
-  // Todo: Extremely hazardous band-aid, as I don't actually
-  //  know that they do.
+  // Collected first, because the repair adds to and removes from
+  // the function list that this is walking.
   auto broken = llvm::SmallVector<llvm::Function*>();
   for (auto &fn : llvm_mod) {
     if (not fn.isDeclaration() or not fn.getName().starts_with("llvm.")) { continue; }
-    if (not fn.getReturnType()->isVoidTy()) { continue; }
-    const auto unrecognised = fn.getIntrinsicID() == llvm::Intrinsic::not_intrinsic;
-    if (unrecognised or fn.getName().starts_with("llvm.lifetime.")) { broken.push_back(&fn); }
+    if (fn.getIntrinsicID() == llvm::Intrinsic::not_intrinsic) { broken.push_back(&fn); }
   }
 
-  auto scrubbed = 0UL;
+  auto repaired = 0UL;
   for (auto *fn : broken) {
-    // Only dropped when every use is a plain call to it. Anything else
-    // means this is not the shape being worked around, and it is left
-    // alone to fail visibly rather than be quietly changed.
-    auto calls = llvm::SmallVector<llvm::CallBase*>();
-    auto only_calls = true;
-    for (auto *user : fn->users()) {
-      const auto call = llvm::dyn_cast<llvm::CallBase>(user);
-      if (call != nullptr and call->getCalledFunction() == fn) { calls.push_back(call); }
-      else { only_calls = false; }
+    // The longest prefix llvm resolves is the real name. Going longest-first
+    // keeps the overload suffix on the mangled ones ("llvm.lifetime.start.p0"
+    // resolves, and so would "llvm.lifetime.start" on its own); going one
+    // character at a time is what stops printable garbage being taken for
+    // part of the name, which a scan for the first unprintable byte would do.
+    const auto name = fn->getName();
+    auto real_name = llvm::StringRef();
+    for (auto len = name.size(); len > kIntrinsicPrefix.size(); --len) {
+      const auto candidate = name.substr(0, len);
+      if (llvm::Intrinsic::lookupIntrinsicID(candidate) == llvm::Intrinsic::not_intrinsic) { continue; }
+      real_name = candidate;
+      break;
     }
-    if (not only_calls) { continue; }
+    if (real_name.empty()) { continue; }
 
-    for (auto *call : calls) { call->eraseFromParent(); }
+    // Hints are dropped rather than renamed. A lifetime marker says nothing
+    // about what the program computes - only which stack slots are dead
+    // where - and one that has been invisible to the passes has not been
+    // kept up to date by them, so naming it back into existence tells the
+    // backend to colour a slot that is still live. Losing the hint costs
+    // slot sharing; honouring a stale one costs the program.
+    if (real_name.starts_with(kHintIntrinsicPrefix)) {
+      if (DropCallsTo(fn)) { repaired += 1; }
+      continue;
+    }
+
+    // A declaration under the real name may already be here, from a call
+    // site whose name survived. Reusing it is the point - two declarations
+    // of one intrinsic would leave the second renamed and unrecognised
+    // again. Only ever reused when the types agree; a mismatch is not the
+    // shape being worked around, so it is left to fail visibly.
+    auto *fixed = llvm_mod.getFunction(real_name);
+    if (fixed != nullptr and fixed->getFunctionType() != fn->getFunctionType()) { continue; }
+    if (fixed == nullptr) {
+      fixed = llvm::Function::Create(
+        fn->getFunctionType(), llvm::GlobalValue::ExternalLinkage, real_name, &llvm_mod);
+      fixed->copyAttributesFrom(fn);
+    }
+
+    // Nothing is gained by a rename that llvm reads back as broken as what
+    // it replaced, and the old declaration is worth keeping in that case so
+    // the failure is still visible downstream.
+    if (fixed->getIntrinsicID() == llvm::Intrinsic::not_intrinsic) {
+      if (fixed != fn and fixed->use_empty()) { fixed->eraseFromParent(); }
+      continue;
+    }
+
+    fn->replaceAllUsesWith(fixed);
     fn->eraseFromParent();
-    scrubbed += calls.size();
+    repaired += 1;
   }
-  return scrubbed;
+  return repaired;
 }
 
 auto spp::codegen::EmitObjectFile(

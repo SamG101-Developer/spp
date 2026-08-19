@@ -31,6 +31,35 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+namespace {
+  /**
+   * The runtime's allocator, as the module sees it. A coroutine frame is allocated and released by the coroutine
+   * itself rather than through the s++ allocator types, because the size is not known until llvm has laid the frame
+   * out - there is no s++ expression to hand a "USize" to at this point, only the "llvm.coro.size" intrinsic.
+   * Todo: Move this to stack not heap allocation.
+   * @param[in,out] ctx The context whose module the declaration belongs to.
+   * @return The "sppc_malloc" declaration, taking a byte count and returning the storage.
+   */
+  auto CoroFrameAllocFn(
+    spp::codegen::LlvmCtx *ctx)
+    -> llvm::Function* {
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    const auto size_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
+    return llvm::cast<llvm::Function>(ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
+  }
+
+  /** The release half of @c CoroFrameAllocFn ; takes the storage that "llvm.coro.free" handed back. */
+  auto CoroFrameFreeFn(
+    spp::codegen::LlvmCtx *ctx)
+    -> llvm::Function* {
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
+    const auto fn_ty = llvm::FunctionType::get(void_ty, {ptr_ty}, false);
+    return llvm::cast<llvm::Function>(ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
+  }
+}
+
 SPP_MOD_BEGIN
 spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
   decltype(Annotations) &&annotations,
@@ -193,6 +222,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   if (llvm_func_target == nullptr) {
     const auto final_scope = sm->CurrentScope->FinalChildScope();
     while (sm->CurrentScope != final_scope) { sm->MoveToNextScope(false); }
+    sm->MoveOutOfCurrentScope();
+    _CodeGenGenericSubstitutions(sm, meta, ctx);
     return nullptr;
   }
   llvm_func_target->setPresplitCoroutine();
@@ -206,6 +237,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // coroutine id, size and begin. These form the "boot"
   // instructions for the coroutine.
   const auto llvm_i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+  const auto llvm_i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
   const auto llvm_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto llvm_coro_align = llvm::ConstantInt::get(llvm_i32_ty, alignof(std::max_align_t));
 
@@ -229,22 +261,28 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   const auto coro_need_alloc = ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_alloc, {}, {coro_id}, {}, "coro.need.alloc" + uid);
 
-  const auto alloc_trap_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.alloc.trap" + uid, llvm_func_target);
+  const auto dyn_alloc_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.dyn.alloc" + uid, llvm_func_target);
   const auto begin_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.begin.block" + uid, llvm_func_target);
-  ctx->Builder.CreateCondBr(coro_need_alloc, alloc_trap_bb, begin_bb);
+  ctx->Builder.CreateCondBr(coro_need_alloc, dyn_alloc_bb, begin_bb);
 
-  // Elision declined, so the frame would have to be heap allocated - which this language does not do for coroutines.
-  // Reaching here means a generator outlived the frame that owns it, which the analyser is meant to have rejected, so
-  // trap rather than quietly allocating.
-  ctx->Builder.SetInsertPoint(alloc_trap_bb);
-  ctx->Builder.CreateIntrinsic(llvm::Intrinsic::trap, {}, {}, {}, "");
-  ctx->Builder.CreateUnreachable();
+  // The size is only known once the frame has been laid out,
+  // which is why it is an intrinsic and not a constant here.
+  ctx->Builder.SetInsertPoint(dyn_alloc_bb);
+  const auto coro_size = ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_size, {llvm_i64_ty}, {}, {}, "coro.size" + uid);
+  const auto coro_alloc_mem = ctx->Builder.CreateCall(
+    CoroFrameAllocFn(ctx), {coro_size}, "coro.alloc.mem" + uid);
+  ctx->Builder.CreateBr(begin_bb);
 
-  // The frame is provided from outside, so "llvm.coro.begin" is handed a null pointer: there is exactly one live
-  // predecessor here (the trap block does not fall through), so no phi is needed to merge an allocated one in.
+  // Null on the non-allocating edge: that is what tells llvm the
+  // frame was provided rather than allocated, and is the value
+  // that survives when the frame is elided into the caller.
   ctx->Builder.SetInsertPoint(begin_bb);
+  const auto coro_mem = ctx->Builder.CreatePHI(llvm_ptr_ty, 2, "coro.frame.mem" + uid);
+  coro_mem->addIncoming(llvm_null_ptr, entry_bb);
+  coro_mem->addIncoming(coro_alloc_mem, dyn_alloc_bb);
   const auto coro_handle = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_begin, {}, {coro_id, llvm_null_ptr}, {}, "coro.begin" + uid);
+    llvm::Intrinsic::coro_begin, {}, {coro_id, coro_mem}, {}, "coro.begin" + uid);
 
   // Generate the function's parameters and generic parameters
   // into the coroutine. This will add the param alloca instructions
@@ -286,17 +324,44 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     Impl->Stage11_CodeGen(sm, meta, ctx);
   }
 
-  // Running off the end of the body is the same as being destroyed, so fall through into the cleanup edge (unless
-  // the body already terminated its block, eg with a return).
+  // Running off the end of the body is the coroutine completing, and completing is a suspend like any other - marked
+  // final. It has to be a suspend rather than a fall-through into cleanup, because "llvm.coro.done" is what tells a
+  // consumer there is nothing left to resume, and it only ever reads true of a coroutine parked on a final suspend.
+  // Freeing the frame here instead would leave the consumer asking a destroyed frame whether it was finished.
+  //
+  // Llvm's switch abi for the final suspend: 1 destroys, and anything else (the default) parks. Case 0 is a resume of
+  // an already-finished coroutine, which is undefined behaviour rather than something to lower, so it is unreachable.
   if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
-    ctx->Builder.CreateBr(cleanup_bb);
+    const auto llvm_i8_ty = llvm::Type::getInt8Ty(*ctx->Context);
+    const auto final_suspend = ctx->Builder.CreateIntrinsic(
+      llvm::Intrinsic::coro_suspend, {},
+      {llvm::ConstantTokenNone::get(*ctx->Context), ctx->Builder.getTrue()}, {}, "coro.final.suspend" + uid);
+
+    const auto final_resume_bb = llvm::BasicBlock::Create(
+      *ctx->Context, "coro.final.resume" + uid, llvm_func_target);
+    const auto final_switch = ctx->Builder.CreateSwitch(final_suspend, suspend_bb, 2);
+    final_switch->addCase(llvm::ConstantInt::get(llvm_i8_ty, 0), final_resume_bb);
+    final_switch->addCase(llvm::ConstantInt::get(llvm_i8_ty, 1), cleanup_bb);
+
+    ctx->Builder.SetInsertPoint(final_resume_bb);
+    ctx->Builder.CreateUnreachable();
   }
 
-  // Cleanup: the destroy edge of every suspend switch. There is no matching "llvm.coro.free" because nothing was ever
-  // allocated - the frame belongs to the caller, and is released with the caller's own frame. The block exists to give
-  // the destroy edge somewhere to go before the final suspend.
+  // Cleanup: the destroy edge of every suspend switch, and where the frame is released. "llvm.coro.free" hands back
+  // the pointer that "llvm.coro.begin" was given, or null when the frame was never allocated - elided into the
+  // caller, in which case it goes away with the caller's own frame and there is nothing to free here. That is why
+  // the free is guarded rather than unconditional.
   cleanup_bb->insertInto(llvm_func_target);
   ctx->Builder.SetInsertPoint(cleanup_bb);
+  const auto coro_free_mem = ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_free, {}, {coro_id, coro_handle}, {}, "coro.free.mem" + uid);
+  const auto coro_was_alloced = ctx->Builder.CreateIsNotNull(coro_free_mem, "coro.was.alloced" + uid);
+
+  const auto free_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.free" + uid, llvm_func_target);
+  ctx->Builder.CreateCondBr(coro_was_alloced, free_bb, suspend_bb);
+
+  ctx->Builder.SetInsertPoint(free_bb);
+  ctx->Builder.CreateCall(CoroFrameFreeFn(ctx), {coro_free_mem});
   ctx->Builder.CreateBr(suspend_bb);
 
   // Final suspend: end the coroutine and return the handle. Like the cleanup block, this was created detached so a
@@ -327,6 +392,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
 
   meta->Restore();
   sm->MoveOutOfCurrentScope();
+  _CodeGenGenericSubstitutions(sm, meta, ctx);
   return nullptr;
 }
 
