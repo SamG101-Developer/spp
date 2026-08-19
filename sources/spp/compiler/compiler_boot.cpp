@@ -309,7 +309,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     auto ec = std::error_code();
     auto out = llvm::raw_fd_ostream(
-      file.native_encoded_string(), ec,
+      utils::files::NativeString(file), ec,
       static_cast<llvm::sys::fs::OpenFlags>(0));
     ctx->Module->print(out, nullptr);
     out.flush();
@@ -399,7 +399,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
 
   auto ec = std::error_code();
   auto out = llvm::raw_fd_ostream(
-    (out_path / "lto.ll").native_encoded_string(), ec,
+    utils::files::NativeString(out_path / "lto.ll"), ec,
     static_cast<llvm::sys::fs::OpenFlags>(0));
   lto_module->print(out, nullptr);
   out.flush();
@@ -409,7 +409,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // executable out of, and the ir is the whole of what it produces.
   if (not has_entry_point) { return; }
   const auto object_file = out_path / "spp.o";
-  if (not codegen::EmitObjectFile(lto_module.get(), object_file.native_encoded_string().c_str())) { return; }
+  if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
   _LinkExecutable(object_file);
 }
 
@@ -424,19 +424,19 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   const auto lib_dir = out_dir / "lib";
   std::filesystem::create_directories(lib_dir);
 
-  auto command = Str("cc -o ") + exe_file.native_encoded_string() + " " + object_file.native_encoded_string();
+  auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
   for (auto const &lib : _FfiLibraries(out_dir.parent_path())) {
     // Staged beside the executable rather than linked where it
     // sits, so that what the loader needs travels with what
     // was built and the path baked into it is a relative one.
     const auto staged = lib_dir / lib.filename();
     std::filesystem::copy_file(lib, staged, std::filesystem::copy_options::overwrite_existing);
-    command += " " + staged.native_encoded_string();
+    command += " " + utils::files::NativeString(staged);
 
     // What the loader asks for at run time is the library's so
     // name, not the name of the file it was linked from, and
     // a runtime shipped as "sppc.so" calls itself "libsppc.so".
-    const auto name = staged.filename().native_encoded_string();
+    const auto name = utils::files::NativeString(staged.filename());
     if (not name.starts_with("lib")) {
       std::filesystem::copy_file(
         staged, lib_dir / ("lib" + name), std::filesystem::copy_options::overwrite_existing);
