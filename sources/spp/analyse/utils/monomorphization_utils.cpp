@@ -308,7 +308,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   const auto new_cls_sym = MakeShared<scopes::TypeSymbol>(
     name_clone, new_cls_scope->AstNode->To<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->CurrentScope,
     old_cls_scope->Parent, old_cls_sym->IsGeneric, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
-  new_cls_sym->CopyableBaseSym = old_cls_sym;
+  new_cls_sym->DerivesFromSym = old_cls_sym;
 
   new_cls_sym->IsConcrete = genex::all_of(
     type_part.GnArgGroup->Args | genex::views::ptr, [&](auto const *arg) {
@@ -321,27 +321,26 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
       return true;
     });
 
-  new_cls_sym->ZeroTypeBaseSym = old_cls_sym;
   new_cls_scope_ptr->TySym = new_cls_sym;
 
-  // Handle the possible "alias" logic. If there is an alias statement, clone it for modification.
-  auto new_alias_stmt = asts::AstClone(old_cls_sym->AliasStmt);
-  if (new_alias_stmt) {
-    new_alias_stmt->MappedOldType = new_alias_stmt->MappedOldType->SubstituteGenerics(
-      type_part.GnArgGroup->GetAllArgs());
-    new_alias_stmt->OldType = new_alias_stmt->MappedOldType;
-    new_alias_stmt->OldType->Stage7_AnalyseSemantics(sm, meta);
+  // An instantiation of a generic alias is the same alias under substituted arguments, so it gets its own
+  // description rather than a clone of the syntax that produced it - only the resolved target actually differs.
+  auto new_alias = Shared<scopes::AliasInfo>(nullptr);
+  if (old_cls_sym->Alias != nullptr) {
+    new_alias = MakeShared<scopes::AliasInfo>(*old_cls_sym->Alias);
+    new_alias->Resolved = old_cls_sym->Alias->Resolved->SubstituteGenerics(type_part.GnArgGroup->GetAllArgs());
+    new_alias->Resolved->Stage7_AnalyseSemantics(sm, meta);
     // TODO: Remove generic parameters that have been given arguments (not always all generic args).
     //  Move the argument filter out of the recursive alias searcher and reuse it here.
   }
 
   // 2. Attach the instantiation to the scope tree. An aliased type is attached where the alias was written, so that the
   // alias and the type it maps to are reachable from each other; anything else sits beside its own template.
-  if (new_alias_stmt) {
-    new_alias_stmt->GetAstScope()->Parent->AddTypeSymbol(new_cls_sym);
-    new_alias_stmt->_TrackingScope->AddTypeSymbol(new_cls_sym);
-    new_alias_stmt->_TrackingScope->Children.EmplaceBack(std::move(new_cls_scope));
-    new_cls_sym->AliasStmt = std::move(new_alias_stmt);
+  if (new_alias != nullptr) {
+    new_alias->DeclScope->AddTypeSymbol(new_cls_sym);
+    new_alias->TrackingScope->AddTypeSymbol(new_cls_sym);
+    new_alias->TrackingScope->Children.EmplaceBack(std::move(new_cls_scope));
+    new_cls_sym->Alias = std::move(new_alias);
   }
   else {
     new_cls_scope_ptr->Parent->AddTypeSymbol(new_cls_sym);
@@ -491,17 +490,17 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
 
   // 4. Substitute the bindings into what the clone inherited: the block's "type" aliases and its "cmp" constants.
   for (auto const &scoped_sym : new_sup_scope_ptr->AllTypeSymbols(true)) {
-    if (scoped_sym->AliasStmt == nullptr) { continue; }
-    auto old_type_sub = scoped_sym->AliasStmt->OldType->SubstituteGenerics(generic_args.GetAllArgs());
+    if (scoped_sym->Alias == nullptr) { continue; }
+    auto old_type_sub = scoped_sym->Alias->Resolved->SubstituteGenerics(generic_args.GetAllArgs());
     // old_type_sub->Stage7_AnalyseSemantics(&tm, meta);  // Todo: Why is this commented?
     const auto old_type_sub_sym = new_sup_scope_ptr->GetTypeSymbol(old_type_sub.get());
 
-    scoped_sym->AliasStmt->OldType = std::move(old_type_sub);
-    scoped_sym->AliasStmt->MappedOldType = scoped_sym->AliasStmt->OldType;
-    if (scoped_sym->AliasStmt->GetAstScope()) {
-      // "Self" doesn't have a scope on it.
-      scoped_sym->AliasStmt->GetAstScope()->Parent = new_sup_scope_ptr;
-    }
+    // Its own description rather than the one it was cloned holding: that one still describes the template, and is
+    // shared with it, so substituting into it in place would rewrite the template's own meaning.
+    auto substituted = MakeShared<scopes::AliasInfo>(*scoped_sym->Alias);
+    substituted->Resolved = std::move(old_type_sub);
+    substituted->DeclScope = new_sup_scope_ptr;
+    scoped_sym->Alias = std::move(substituted);
 
     if (old_type_sub_sym != nullptr) {
       old_type_sub_sym->AliasedBySyms.PushBack(scoped_sym->SharedFromThis<scopes::TypeSymbol>());

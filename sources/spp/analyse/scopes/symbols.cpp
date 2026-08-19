@@ -105,12 +105,12 @@ auto spp::analyse::scopes::TypeSymbol::IsCopyable() const
   -> bool {
   // A zero type is copyable by definition - there is nothing to move.
   return IsDirectlyCopyable or IsDirectlyZeroType
-    or (CopyableBaseSym != nullptr and CopyableBaseSym->IsCopyable());
+    or (DerivesFromSym != nullptr and DerivesFromSym->IsCopyable());
 }
 
 auto spp::analyse::scopes::TypeSymbol::IsZeroType() const
   -> bool {
-  return IsDirectlyZeroType or (ZeroTypeBaseSym != nullptr and ZeroTypeBaseSym->IsZeroType());
+  return IsDirectlyZeroType or (DerivesFromSym != nullptr and DerivesFromSym->IsZeroType());
 }
 
 auto spp::analyse::scopes::VariableSymbol::BoundCompValue() const
@@ -193,13 +193,14 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   GenericConstraints(that.GenericConstraints),
   GenericVal(that.GenericVal),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
-  CopyableBaseSym(that.CopyableBaseSym),
+  DerivesFromSym(that.DerivesFromSym),
   Visibility(that.Visibility),
   Convention(asts::AstClone(that.Convention)),
   GenericImpl(that.GenericImpl),
-  IsDirectlyZeroType(that.IsDirectlyZeroType),
-  ZeroTypeBaseSym(that.ZeroTypeBaseSym) {
-  AliasStmt = asts::AstClone(that.AliasStmt);
+  IsDirectlyZeroType(that.IsDirectlyZeroType) {
+  // Shared rather than cloned: an alias's description is fixed once resolved, and an instantiation of a generic
+  // alias builds its own (see "CreateGenericClsScope") rather than mutating one it was handed.
+  Alias = that.Alias;
   LlvmInfo = that.LlvmInfo;
 }
 
@@ -208,7 +209,7 @@ spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
 auto spp::analyse::scopes::TypeSymbol::NeedsDeepCopy() const
   -> bool {
   // Only an alias is rewritten per instantiation.
-  return AliasStmt != nullptr;
+  return Alias != nullptr;
 }
 
 auto spp::analyse::scopes::TypeSymbol::operator==(
@@ -228,9 +229,9 @@ auto spp::analyse::scopes::TypeSymbol::AsClassSymbol() const
 auto spp::analyse::scopes::TypeSymbol::FqName(
   const bool ignore_dollar) const
   -> Shared<asts::TypeAst> {
-  // For aliases, return the fully qualified name of the aliased type.
-  if (AliasStmt != nullptr) {
-    return AliasStmt->MappedOldType;
+  // An alias is transparent, so it answers with the type it resolves to rather than with its own name.
+  if (Alias != nullptr) {
+    return Alias->Resolved;
   }
 
   // If the type is generic, or is "Self", return the name as-is.

@@ -1299,8 +1299,8 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   // How to extract generic parameters from a type symbol: alias, then type, otherwise none (generic).
   const auto NO_PARAMS = asts::GenericParameterGroupAst::NewEmpty();
   const auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
-    return ts.AliasStmt
-      ? ts.AliasStmt->GnParamGroup.get()
+    return ts.Alias
+      ? ts.Alias->Params.get()
       : ts.Type
       ? ts.Type->GnParamGroup.get()
       : NO_PARAMS.get();
@@ -1324,11 +1324,10 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   // Get the next type in the search, and its symbol.
   auto old_type = alias_stmt.OldType;
   auto old_sym = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get());
-  auto use_stmt_propagating_generics = static_cast<asts::GenericArgumentGroupAst*>(nullptr);
 
   // If this is a use statement to a class, then grab its generics and return immediately.
   // For example, use Vec::Vec => type Vec[T, A: ... = ...] = Vec::Vec[T=T, A=A]
-  if (from_use_stmt and old_sym->AliasStmt == nullptr) {
+  if (from_use_stmt and old_sym->Alias == nullptr) {
     auto generic_params = old_sym->Type->GnParamGroup;
     old_type = old_type->WithGenerics(asts::GenericArgumentGroupAst::FromParams(*generic_params));
     return {old_type, generic_params, old_sym->LinkedScope};
@@ -1338,37 +1337,45 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   auto final_generic_params = asts::GenericParameterGroupAst::NewEmptyShared();
   tracking_scope = old_sym->ScopeDefinedIn;
 
+  // The walk below has no base case beyond "the next name is not an alias", so an alias that leads back to one
+  // already being followed is followed forever. Statements are what is recorded rather than symbols, because a
+  // statement is what the source wrote and so is what the error can point at; the starting one is seeded so that a
+  // self-alias ("type A = A") is caught on its first step rather than on its second.
+  auto followed_aliases = Vec{&alias_stmt};
+
   while (true) {
-    // If there are generics to propagate from a use statement, apply them now, then reset the propagation.
-    if (use_stmt_propagating_generics) {
-      old_type = old_type->WithGenerics(asts::AstClone(use_stmt_propagating_generics));
-      use_stmt_propagating_generics = nullptr;
-    }
+    // A "use" alias declares no parameters of its own - it renames a type without reshaping it - so arguments
+    // written at the use site belong to whatever it names rather than being bound here. Every other alias binds
+    // them to the parameters it declares, which is what naming and substituting them does.
+    const auto passes_generics_through = old_sym->Alias != nullptr and old_sym->Alias->FromUseStmt;
 
-    // If this alias is from a use statement, we need to propagate its generics for the next alias search.
-    if (old_sym->AliasStmt and old_sym->AliasStmt->IsFromUseStatement()) {
-      use_stmt_propagating_generics = old_type->LastTypePart()->GnArgGroup.get();
-      if (use_stmt_propagating_generics->Args.IsEmpty()) { use_stmt_propagating_generics = nullptr; }
-      tracking_scope = old_sym->ScopeDefinedIn;
-    }
-
-    // Name the generics for this alias, and shift into the next scope.
-    else {
+    if (not passes_generics_through) {
       NameGnArgs(*old_type->LastTypePart()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
-      if (old_sym->AliasStmt) {
-        final_generic_params = filter_params(*old_sym->AliasStmt->GnParamGroup, *old_type->LastTypePart()->GnArgGroup);
+      if (old_sym->Alias) {
+        final_generic_params = filter_params(*old_sym->Alias->Params, *old_type->LastTypePart()->GnArgGroup);
       }
       old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
       *generic_args += *old_type->LastTypePart()->GnArgGroup;
-      tracking_scope = old_sym->ScopeDefinedIn;
     }
+    tracking_scope = old_sym->ScopeDefinedIn;
 
-    if (old_sym->AliasStmt == nullptr) { break; }
+    if (old_sym->Alias == nullptr) { break; }
+    RaiseIf<errors::SppTypeAliasCyclicError>(
+      genex::contains(followed_aliases, old_sym->Alias->Stmt),
+      {sm->CurrentScope}, ERR_ARGS(alias_stmt, *old_sym->Alias->Stmt));
+    followed_aliases.EmplaceBack(old_sym->Alias->Stmt);
 
-    old_type = old_sym->AliasStmt->OldType;
+    // Follow the alias, handing the arguments straight on when it is one that passes them through.
+    auto const *carried = old_type->LastTypePart()->GnArgGroup.get();
+    const auto carries_generics = passes_generics_through and not carried->Args.IsEmpty();
+    old_type = carries_generics
+      ? old_sym->Alias->Written->WithGenerics(asts::AstClone(carried))
+      : old_sym->Alias->Written;
     old_sym = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get());
-    if (old_sym->AliasStmt == nullptr and (use_stmt_propagating_generics == nullptr or use_stmt_propagating_generics->
-      Args.IsEmpty())) { break; }
+
+    // Arguments just handed on still have to be bound by whatever received them, so the walk goes round once more
+    // even when that is a class rather than another alias.
+    if (old_sym->Alias == nullptr and not carries_generics) { break; }
   }
 
   old_type = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get())->FqName()->WithGenerics(

@@ -36,10 +36,6 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
   StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
   SPP_GCC_VTABLE_FIX
 
-  analyse::scopes::Scope *_TrackingScope = nullptr;
-
-  Shared<TypeAst> MappedOldType = nullptr; // TODO: Hide with accessors?
-
   /**
    * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
    */
@@ -69,8 +65,10 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
   Unique<TokenAst> TokAssign;
 
   /**
-   * The old (fully qualified) type that this type statement is defining. For example, for
-   * @code type Str = std::Str@endcode, the fully qualified type is @c std::Str.
+   * The type this statement aliases, as it was written: the @c std::Str of @code type Str = std::Str@endcode . What
+   * it resolves to once the chain of aliases behind it has been followed is not kept here but on the symbol, as
+   * @c analyse::scopes::AliasInfo::Resolved - one piece of syntax, one meaning, and neither rewritten to hold the
+   * other at some point in the walk.
    */
   Shared<TypeAst> OldType;
 
@@ -126,8 +124,6 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
 
   SPP_ATTR_NODISCARD auto IsFromUseStatement() const
     -> bool;
-
-  auto CleanUp() -> void;
 
 private:
   bool _Generated = false;

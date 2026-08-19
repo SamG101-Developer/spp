@@ -86,7 +86,7 @@ auto spp::analyse::scopes::ScopeManager::MoveToNextScope(
   CurrentScope = *++_It;
   while (ignore_alias_class_scopes and CurrentScope->TySym != nullptr
     and
-    CurrentScope->TySym->AliasStmt != nullptr) {
+    CurrentScope->TySym->Alias != nullptr) {
     CurrentScope = *++_It;
   }
   return CurrentScope;

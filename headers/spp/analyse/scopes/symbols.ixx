@@ -18,10 +18,12 @@ namespace spp::asts {
   SPP_EXP_CLS struct TypeAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
   SPP_EXP_CLS struct TypeStatementAst;
+  SPP_EXP_CLS struct GenericParameterGroupAst;
 }
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
+  SPP_EXP_CLS struct AliasInfo;
   SPP_EXP_CLS struct Symbol;
   SPP_EXP_CLS struct NamespaceSymbol;
   SPP_EXP_CLS struct TypeSymbol;
@@ -161,6 +163,42 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     -> asts::ExpressionAst*;
 };
 
+/**
+ * Everything an alias is: the type it was written as, the type that turns out to be, and the parameters it declares
+ * of its own. An alias is transparent - it introduces a second name for a type rather than a type of its own - so
+ * @c Resolved is what every consumer of the symbol actually means by it, and is the only field most of them read.
+ *
+ * @n
+ * Held as a value on the symbol rather than as a pointer to the statement that produced it. The statement belongs to
+ * the module tree, and an instantiation of a generic alias has no statement of its own to point at - it is the same
+ * alias under substituted arguments, which is a new @c AliasInfo and not a new piece of syntax.
+ */
+SPP_EXP_CLS struct spp::analyse::scopes::AliasInfo {
+  /** The target as written ("SizedIntegerUnsigned[8_u32]"), before any alias in the chain has been followed. */
+  Shared<asts::TypeAst> Written;
+
+  /** What @c Written names once every alias in the chain has been followed ("SizedInteger[w=8_u32, signed=false]").
+   *  Seeded with @c Written and refined during resolution, so it is never null: analysing an alias's target reads
+   *  this off the very symbol still being resolved. */
+  Shared<asts::TypeAst> Resolved;
+
+  /** The parameters the alias declares itself: the "T" of @code type MyVec[T] = Vec[T]@endcode . */
+  Shared<asts::GenericParameterGroupAst> Params;
+
+  /** The scope the final target was found in, which is where an instantiation of this alias is attached. */
+  Scope *TrackingScope = nullptr;
+
+  /** The scope the alias was written in. */
+  Scope *DeclScope = nullptr;
+
+  /** Whether a @c use statement produced this alias; generics propagate differently along such a link. */
+  bool FromUseStmt = false;
+
+  /** The statement this describes, for diagnostics. Not owned: the module tree owns it, and an instantiation shares
+   *  the statement of the alias it was instantiated from. */
+  asts::TypeStatementAst *Stmt = nullptr;
+};
+
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   SPP_GCC_VTABLE_FIX
 
@@ -201,12 +239,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   bool IsDirectlyCopyable = false;
 
   /**
-   * The symbol this one derives its copyability from, if it is not directly copyable itself: the template a generic
-   * substitution was made from, or the type an alias resolves to. Held as a symbol rather than as a closure over one
-   * so that copying a @c TypeSymbol copies what it means - a closure capturing the symbol it describes would go on
-   * describing the symbol it was copied from, which is what stops a symbol table from being deep-copied.
+   * The symbol this one takes its derived properties from - copyability, zero-type-ness - when it does not carry
+   * them itself: the template a generic substitution was made from, or the type an alias resolves to. Held as a
+   * symbol rather than as a closure over one so that copying a @c TypeSymbol copies what it means - a closure
+   * capturing the symbol it describes would go on describing the symbol it was copied from, which is what stops a
+   * symbol table from being deep-copied.
    */
-  Shared<TypeSymbol> CopyableBaseSym;
+  Shared<TypeSymbol> DerivesFromSym;
 
   asts::utils::Visibility Visibility;
 
@@ -216,16 +255,14 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   Shared<codegen::LlvmTypeSymInfo> LlvmInfo;
 
-  Unique<asts::TypeStatementAst> AliasStmt;
+  /** Set when this symbol names an alias rather than a class; see @c AliasInfo . */
+  Shared<AliasInfo> Alias;
 
   Vec<Shared<TypeSymbol>> AliasedBySyms;
 
   bool IsDirectlyZeroType;
 
-  /**
-   * The symbol this one derives its zero-type-ness from. See @c CopyableBaseSym.
-   */
-  Shared<TypeSymbol> ZeroTypeBaseSym;
+
 
   TypeSymbol(
     Shared<asts::TypeIdentifierAst> name,
