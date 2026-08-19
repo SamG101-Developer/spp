@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
+import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
@@ -144,6 +145,10 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
+  if (_FlowSym != nullptr and _CondSym != nullptr) {
+    _FlowSym->MemInfo->FillFromSnapshot(_CondSym->MemInfo->Snapshot());
+  }
+
   // Forward memory checking to the mapped let statement.
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
@@ -195,9 +200,17 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     SPP_ASSERT(llvm_variant_ty != nullptr);
 
     // Find the index in the variant's member types, of the
-    // member type being flowed into.
-    const auto tag = codegen::GetVariantIndexOfMember(
-      *_CondSym->Type, *Type->WithoutConvention(), *sm->CurrentScope);
+    // member type being flowed into. A variant can hold a borrow
+    // as a member in its own right ("&S32 or None", which is what
+    // resuming a "Gen[&S32]" gives), and then the convention is
+    // part of what identifies the member rather than something
+    // attached to the pattern, so the exact type is tried first.
+    auto tag = codegen::GetVariantIndexOfMember(
+      *_CondSym->Type, *Type, *sm->CurrentScope);
+    if (not tag.has_value()) {
+      tag = codegen::GetVariantIndexOfMember(
+        *_CondSym->Type, *Type->WithoutConvention(), *sm->CurrentScope);
+    }
     SPP_ASSERT(tag.has_value());
 
     // Next, get the actual tag value from the variant that is
