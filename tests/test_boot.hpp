@@ -16,7 +16,7 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
   constexpr auto fp = "../../tests/test_outputs";
 
   if (add_main) {
-    code = "fun main(args: Vec[Str]) -> Void { }\n" + code;
+    code = "fun main() -> Void { }\n" + code;
   }
 
   // Ensure the output directory exists before opening the lock file inside it.
