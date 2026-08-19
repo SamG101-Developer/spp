@@ -51,51 +51,62 @@ namespace spp::codegen {
     using analyse::utils::type_utils::TypeEq;
     using namespace asts::generate::common_types_precompiled;
 
+    if (const auto param_sym = sm.CurrentScope->GetTypeSymbol(&type);
+      param_sym != nullptr and param_sym->IsGeneric and param_sym->LinkedScope != nullptr
+      and param_sym->LinkedScope->TySym != nullptr and param_sym->LinkedScope->TySym != param_sym) {
+      return LayoutOf(sm, *param_sym->LinkedScope->TySym->FqName());
+    }
+
     // Borrows (mapped to pointers) are pointer-sized.
     if (type.GetConvention() != nullptr) {
       return ScalarLayout(sizeof(void*));
     }
 
+    const auto IsScalar = [&sm](asts::TypeAst const &candidate, asts::TypeAst const &name) {
+      const auto name_sym = sm.GlobalScope->GetTypeSymbol(&name);
+      return name_sym != nullptr and TypeEq(candidate, *name_sym->FqName(), *sm.CurrentScope, *sm.GlobalScope);
+    };
+
     // Void is 0 bytes.
-    if (TypeEq(*type.WithoutGenerics(), *VOID, *sm.CurrentScope, *sm.CurrentScope)) { return Layout{0, 1}; }
+    if (IsScalar(type, *VOID)) { return Layout{0, 1}; }
 
     // Boolean is 1 byte.
-    if (TypeEq(*type.WithoutGenerics(), *BOOL, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(1); }
+    if (IsScalar(type, *BOOL)) { return ScalarLayout(1); }
 
     // 8-bit numbers are 1 byte.
-    if (TypeEq(*type.WithoutGenerics(), *S8, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(1); }
-    if (TypeEq(*type.WithoutGenerics(), *U8, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(1); }
-    if (TypeEq(*type.WithoutGenerics(), *F8, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(1); }
+    if (IsScalar(type, *S8)) { return ScalarLayout(1); }
+    if (IsScalar(type, *U8)) { return ScalarLayout(1); }
+    if (IsScalar(type, *F8)) { return ScalarLayout(1); }
 
     // 16-bit numbers are 2 bytes.
-    if (TypeEq(*type.WithoutGenerics(), *S16, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(2); }
-    if (TypeEq(*type.WithoutGenerics(), *U16, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(2); }
-    if (TypeEq(*type.WithoutGenerics(), *F16, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(2); }
+    if (IsScalar(type, *S16)) { return ScalarLayout(2); }
+    if (IsScalar(type, *U16)) { return ScalarLayout(2); }
+    if (IsScalar(type, *F16)) { return ScalarLayout(2); }
 
     // 32-bit numbers are 4 bytes.
-    if (TypeEq(*type.WithoutGenerics(), *S32, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(4); }
-    if (TypeEq(*type.WithoutGenerics(), *U32, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(4); }
-    if (TypeEq(*type.WithoutGenerics(), *F32, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(4); }
+    if (IsScalar(type, *S32)) { return ScalarLayout(4); }
+    if (IsScalar(type, *U32)) { return ScalarLayout(4); }
+    if (IsScalar(type, *F32)) { return ScalarLayout(4); }
 
     // 64-bit numbers are 8 bytes.
-    if (TypeEq(*type.WithoutGenerics(), *S64, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(8); }
-    if (TypeEq(*type.WithoutGenerics(), *U64, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(8); }
-    if (TypeEq(*type.WithoutGenerics(), *F64, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(8); }
+    if (IsScalar(type, *S64)) { return ScalarLayout(8); }
+    if (IsScalar(type, *U64)) { return ScalarLayout(8); }
+    if (IsScalar(type, *F64)) { return ScalarLayout(8); }
 
     // 128-bit numbers are 16 bytes.
-    if (TypeEq(*type.WithoutGenerics(), *S128, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(16); }
-    if (TypeEq(*type.WithoutGenerics(), *U128, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(16); }
-    if (TypeEq(*type.WithoutGenerics(), *F128, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(16); }
+    if (IsScalar(type, *S128)) { return ScalarLayout(16); }
+    if (IsScalar(type, *U128)) { return ScalarLayout(16); }
+    if (IsScalar(type, *F128)) { return ScalarLayout(16); }
 
     // 256-bit numbers are 32 bytes (aligned to 16, the widest alignment the target specifies).
-    if (TypeEq(*type.WithoutGenerics(), *S256, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(32); }
-    if (TypeEq(*type.WithoutGenerics(), *U256, *sm.CurrentScope, *sm.CurrentScope)) { return ScalarLayout(32); }
+    if (IsScalar(type, *S256)) { return ScalarLayout(32); }
+    if (IsScalar(type, *U256)) { return ScalarLayout(32); }
 
     // Sizes based on pointer size.
-    if (TypeEq(*type.WithoutGenerics(), *SSIZE, *sm.CurrentScope, *sm.CurrentScope)) {
+    if (IsScalar(type, *SSIZE)) {
       return ScalarLayout(sizeof(std::size_t));
     }
-    if (TypeEq(*type.WithoutGenerics(), *USIZE, *sm.CurrentScope, *sm.CurrentScope)) {
+    if (IsScalar(type, *USIZE)) {
       return ScalarLayout(sizeof(std::size_t));
     }
 
@@ -108,6 +119,12 @@ namespace spp::codegen {
       TypeEq(*type.WithoutGenerics(), *FUN_REF, *sm.CurrentScope, *sm.CurrentScope) or
       type.IsCompilerGeneratedType()) {
       return Layout{.Size = 2 * sizeof(void*), .Align = alignof(void*)};
+    }
+
+    // "NonNull[T]" is lowered to a bare llvm pointer rather than to a struct wrapping one (see
+    // "RegisterLlvmTypeInfo"), so it measures as a pointer; walking its attributes would measure it as empty.
+    if (TypeEq(*type.WithoutGenerics(), *NON_NULL, *sm.CurrentScope, *sm.CurrentScope)) {
+      return ScalarLayout(sizeof(void*));
     }
 
     // A generator is *not* a fat pointer: it is the bare
@@ -153,7 +170,7 @@ namespace spp::codegen {
       const auto payload_elem_size = std::min(max_align, 16uz);
       const auto payload_size = (max_size + payload_elem_size - 1) / payload_elem_size * payload_elem_size;
       const auto tag_layout = ScalarLayout(sizeof(std::size_t));
-      return AggregateLayout(Vec<Layout>{tag_layout, Layout{.Size = payload_size, .Align = payload_elem_size}});
+      return AggregateLayout(Vec{tag_layout, Layout{.Size = payload_size, .Align = payload_elem_size}});
     }
 
     // A type with no scope behind it has no attributes to walk;
@@ -164,7 +181,7 @@ namespace spp::codegen {
     // out for real anyway)
     const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
     if (type_sym == nullptr or type_sym->LinkedScope == nullptr) {
-      return Layout{0, 1};
+      return Layout{.Size = 0, .Align = 1};
     }
 
     // Otherwise lay out the attributes of the struct/class, in
