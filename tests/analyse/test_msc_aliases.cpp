@@ -22,8 +22,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let a = A(b=MyVec[Bool]::from([true, false, true]))
-        let b = A(b=Vec[Bool]::from([false, false]))
+        let a = A(b=MyVec[Bool]::from(&[true, false, true]))
+        let b = A(b=Vec[Bool]::from(&[false, false]))
     }
 )");
 
@@ -67,11 +67,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let v = MyVec[S32]::from([1, 2, 3, 4, 5])
+        let v = MyVec[S32]::from(&[1, 2, 3, 4, 5])
         let mut len = v.test()
         len = 0_uz
 
-        let v = Vec[Bool]::from([true, false])
+        let v = Vec[Bool]::from(&[true, false])
         let mut len = v.test()
         len = 0_uz
     }
@@ -162,10 +162,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> MyVec[Bool] {
         ret case true {
-            MyVec[Bool]::from([true, false])
+            MyVec[Bool]::from(&[true, false])
         }
         else {
-            Vec[Bool]::from([false, true])
+            Vec[Bool]::from(&[false, true])
         }
     }
 )");
@@ -198,8 +198,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        g(MyVec[Bool]::from([true, false, true]))
-        g(Vec[Bool]::from([false, true]))
+        g(MyVec[Bool]::from(&[true, false, true]))
+        g(Vec[Bool]::from(&[false, true]))
     }
 )");
 
@@ -496,8 +496,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut v: MyVec[Bool]
-        v = MyVec[Bool]::from([true, false])
-        v = Vec[Bool]::from([false, true])
+        v = MyVec[Bool]::from(&[true, false])
+        v = Vec[Bool]::from(&[false, true])
     }
 )");
 
@@ -526,8 +526,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[ZZ] = Vec[ZZ]
 
     fun f() -> Void {
-        let mut v: MyVec[Bool] = MyVec[Bool]::from([true, false])
-        v = Vec[Bool]::from([false, true])
+        let mut v: MyVec[Bool] = MyVec[Bool]::from(&[true, false])
+        v = Vec[Bool]::from(&[false, true])
     }
 )");
 
