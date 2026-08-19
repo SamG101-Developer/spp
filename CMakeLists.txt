@@ -5,9 +5,14 @@ project(spp)
 # Set the C++ standard and other compiler options & flags.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
-set(CMAKE_AR gcc-ar)
-set(CMAKE_RANLIB gcc-ranlib)
-set(CMAKE_NM gcc-nm)
+
+# The LTO-aware binutils wrappers only exist for GCC; clang and MSVC
+# runners have no plain gcc-ar, and archiving fails if they are forced.
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set(CMAKE_AR gcc-ar)
+  set(CMAKE_RANLIB gcc-ranlib)
+  set(CMAKE_NM gcc-nm)
+endif ()
 
 # Local dev builds against a custom GCC at /usr/local/gcc-dev; CI passes
 # -DSPP_USE_DEV_RPATH=OFF so it doesn't bake in a path that isn't on the runner.
@@ -41,7 +46,9 @@ if (SPP_SANITIZER)
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
 endif ()
 
-set(CMAKE_LINKER_TYPE LLD)
+if (NOT APPLE)
+  set(CMAKE_LINKER_TYPE LLD)
+endif ()
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
