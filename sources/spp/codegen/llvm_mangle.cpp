@@ -7,7 +7,10 @@ import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.identifier_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_ast;
 import genex;
 
@@ -95,6 +98,16 @@ auto spp::codegen::mangle::mangle_fun_name(
     | genex::views::join_with('#')
     | genex::to<Str>();
 
+  // Fix for static methods as they were missing separation for
+  // mangling (was merging multiple generic implementations).
+  const auto owner_generic_args = owner_scope.GetGenerics();
+  const auto owner_generics = owner_generic_args
+    | genex::views::transform([](auto const &arg) { return arg->ToString(); })
+    | genex::to<Vec>()
+    | genex::views::join_with(',')
+    | genex::to<Str>();
+  const auto owner_name = owner_generics.empty() ? Str() : "#[" + owner_generics + "]";
+
   // Append the module name and function name.
-  return mod_name + "#" + fun_proto.Name->Val + "#" + fun_sig;
+  return mod_name + "#" + fun_proto.Name->Val + owner_name + "#" + fun_sig;
 }
