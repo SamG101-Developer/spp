@@ -536,6 +536,24 @@ auto spp::asts::generate::common_types::ForwardRefType(std::size_t pos, Shared<T
   return type;
 }
 
+auto spp::asts::generate::common_types::NonNullType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("NonNull"), std::move(generics));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("pointer")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("mem")), nullptr),
+    std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(
+    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
+    std::move(type));
+  return type;
+}
+
 auto spp::asts::generate::common_types::ForwardMutType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   auto generics_lst = UniqueVec<GenericArgumentAst>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
