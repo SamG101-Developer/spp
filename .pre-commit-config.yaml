@@ -4,21 +4,7 @@ default_language_version:
   python: python3.14
 exclude: '^\.vale/'
 repos:
-  - repo: local
-    hooks:
-      - id: sort-cpp-imports
-        name: sort C++ module imports
-        entry: python3 .github/precommit/sort_imports.py
-        language: python
-        files: \.(hpp|cpp|ixx)$
-
-      - id: pins
-        name: validate dependency manifest
-        entry: python3 .github/scripts/lib/pins.py check -q
-        language: python
-        pass_filenames: false
-        files: '^\.github/(dependencies\.toml|workflows/|actions/|scripts/lib/pins\.py)'
-
+  # GENERAL CHECKS
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # v6.0.0
     hooks:
@@ -41,8 +27,8 @@ repos:
       - id: detect-private-key
       - id: no-commit-to-branch
         args: [ --branch, master ]
-#      - id: check-json
-#      - id: check-symlinks
+  #      - id: check-json
+  #      - id: check-symlinks
 
   - repo: meta
     hooks:
@@ -51,28 +37,20 @@ repos:
 
   # C++ CHECKS
 
-#  - repo: https://github.com/pocc/pre-commit-hooks
-#    rev: 0c2dfae267d798c9adff7b86976fa602aa0999b7
-#    hooks:
-#      - id: cppcheck
-#        args:
-#          - --enable=all
-#          - --inline-suppr
-#          - --suppressions-list=.cppcheck-suppressions
-#          - --check-level=exhaustive
-#          - --std=c++26
-#          - --language=c++
-#          - --error-exitcode=1
-#          - -Iheaders
-#          - '--template={file}:{line}:{column}: {severity}: {message} [{id}]'
-#          - '--template-location={file}:{line}:{column}: note: {info}'
-  #      - id: cpplint
-  #        args: [-Iheaders]
-  #        args: [ --style=file ]
-  #      - id: clang-format
-  #      - id: clang-tidy
-  #      - id: oclint
-  #      - id: uncrustify
+  - repo: local
+    hooks:
+      - id: sort-cpp-imports
+        name: sort C++ module imports
+        entry: python3 .github/precommit/sort_imports.py
+        language: python
+        files: \.(hpp|cpp|ixx)$
+
+      - id: pins
+        name: validate dependency manifest
+        entry: python3 .github/scripts/lib/pins.py check -q
+        language: python
+        pass_filenames: false
+        files: '^\.github/(dependencies\.toml|workflows/|actions/|scripts/lib/pins\.py)'
 
   # PYTHON CHECKS
 
@@ -163,6 +141,15 @@ repos:
     rev: ade0f95ddcf661c697d4670d2cfcbe95d0048a0a  # v0.9.3
     hooks:
       - id: taplo-format
+
+  # LINK ROT
+
+  - repo: https://github.com/lycheeverse/lychee
+    rev: 2bba271688c1abb1503097a064e6c3bc1d1b6a9b
+    hooks:
+      - id: lychee
+        args: [ LYCHEE_VERSION=0.24.2, --no-progress, --cache, --max-cache-age, 1d, --max-retries, "3", --accept, "200..=299,429" ]
+        files: \.(md|rst)$
 
   # VCS HYGIENE
 
