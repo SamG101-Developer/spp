@@ -4,11 +4,9 @@
 # Each [pin.<name>] table exports its version/commit/tag/asset/sha256 keys into the job environment as
 # <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
 
+# Also the libstdc++ Clang borrows on Linux, installed as g++-<version>, so it is a major version only.
 [pin.gcc]
 version = "16"
-
-[pin.libstdcxx-gcc]
-version = "16.2"
 
 [pin.cmake]
 version = "4.4.0"
