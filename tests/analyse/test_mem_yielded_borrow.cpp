@@ -412,3 +412,74 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         generator_ref_2.res()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstYieldedBorrow,
+    test_valid_memory_partial_move_from_owned_yielded_value, R"(
+    cls A {
+        !public a: Str
+    }
+
+    cor g() -> Gen[A] { }
+
+    fun f() -> Void {
+        let mut generator = g()
+        let b = case generator.res() of {
+            is A(a) { a }
+            else { Str::from("nothing") }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstYieldedBorrow,
+    test_valid_memory_copy_attribute_from_yielded_borrow_directly, R"(
+    cls A {
+        !public a: U32
+    }
+
+    cor g() -> Gen[&A] { }
+
+    fun f() -> Void {
+        let mut generator = g()
+        let b = case generator.res() of {
+            is &A(a) { a }
+            else { 0_u32 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstYieldedBorrow,
+    test_valid_memory_copy_attribute_from_yielded_borrow_via_variable, R"(
+    cls A {
+        !public a: U32
+    }
+
+    cor g() -> Gen[&A] { }
+
+    fun f() -> Void {
+        let mut generator = g()
+        let a = generator.res()
+        let b = case a of {
+            is &A(..) { a.a }
+            else { 0_u32 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstYieldedBorrow,
+    test_valid_memory_assign_narrowed_yielded_borrow_to_outer_binding, R"(
+    fun f() -> Void {
+        let mut v = Vec[Str]()
+        let mut i = v.iter_mut()
+        loop true {
+            let mut e2: &mut Str
+            let e1 = i.res()
+            case e1 of {
+                is &mut Str(..) { e2 = e1 }
+            }
+        }
+    }
+)");

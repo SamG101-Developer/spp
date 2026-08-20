@@ -181,6 +181,11 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
     _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
     _FlowSym->Type = Type;
+
+    if (Type->GetConvention() != nullptr) {
+      const auto borrow_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed) ? : _CondSym->ScopeDefinedIn;
+      _FlowSym->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
+    }
     sm->CurrentScope->AddVarSymbol(_FlowSym);
     effective_val = uid_name.get();
   }
