@@ -219,7 +219,11 @@ namespace spp::analyse::utils::monomorphization_utils {
         if (scoped_sym->Type == nullptr) { continue; }
         scoped_sym->Type = scoped_sym->Type->SubstituteGenerics(generic_args);
         if (meta->CurrentStage > 5) {
-          AnalyseSubstitutedType(*scoped_sym->Type, tm, meta, true, false);
+          // Note: DO NOT inline "analysed_type", because the scoped_sym->Type
+          // can change during the analysis that uses it, leaving the original
+          // dereerence pointing to garbage.
+          const auto analysed_type = scoped_sym->Type;
+          AnalyseSubstitutedType(*analysed_type, tm, meta, true, false);
         }
       }
     }
