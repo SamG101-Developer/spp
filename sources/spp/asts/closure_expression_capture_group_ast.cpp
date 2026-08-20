@@ -105,15 +105,22 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   }
   for (auto const &cap : Captures) {
     if (cap->Conv != nullptr) {
-      // Mark the pins on the capture and the target.
+      // Mark the borrow on the closure's own copy of the symbol.
       const auto cap_val = cap->Val->To<IdentifierAst>();
-      auto cap_sym = sm->CurrentScope->GetVarSymbol(cap_val);
+      const auto cap_sym = sm->CurrentScope->GetVarSymbol(cap_val);
       cap_sym->MemInfo->AstBorrowed = {cap->Conv.get(), sm->CurrentScope};
-      // if (ass_sym != nullptr) { ass_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get()); }
-      // TODO: New escaping borrow system needs using here
 
-      cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap_val);
-      // cap_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get());
+      // The closure object outlives the expression that created it, so a borrowed capture escapes the frame in the
+      // same way a borrow passed into a coroutine call does. Bind it to the closure handle in both directions, so the
+      // captured value can't move whilst the closure holds it, and the closure itself can't move either.
+      const auto outer_cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap_val);
+      if (ass_sym != nullptr and outer_cap_sym != nullptr) {
+        const auto is_mut = *cap->Conv == ConventionTag::MUT;
+        ass_sym->MemInfo->AstContainedEscapingBorrows.PushBack(
+          {cap->Val.get(), is_mut, meta->CurrentLambdaOuterScope});
+        outer_cap_sym->MemInfo->AstContainersOfEscapingBorrows.PushBack(
+          {ass_sym->Name.get(), cap->Val.get()});
+      }
     }
     else {
       // Mark the symbol from the outer context as moved.
