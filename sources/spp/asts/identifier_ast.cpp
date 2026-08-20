@@ -22,6 +22,30 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+namespace {
+  /**
+   * The symbols whose compile-time values are currently being resolved. A "cmp" constant is resolved by walking the
+   * identifiers its value names, so a constant that reaches itself is a cycle and therefore an error.
+   */
+  thread_local spp::Vec<spp::analyse::scopes::VariableSymbol const*> _ResolvingCompTimeSyms;
+
+  /**
+   * Push a symbol onto the resolution stack for as long as the enclosing block runs, including when it is left by a
+   * thrown semantic error - a caught error must not leave the stack claiming a resolution is still in progress.
+   */
+  struct ResolvingCompTimeSymGuard {
+    explicit ResolvingCompTimeSymGuard(
+      spp::analyse::scopes::VariableSymbol const *const sym) { _ResolvingCompTimeSyms.EmplaceBack(sym); }
+
+    ~ResolvingCompTimeSymGuard() { _ResolvingCompTimeSyms.PopBack(); }
+
+    ResolvingCompTimeSymGuard(ResolvingCompTimeSymGuard const&) = delete;
+    ResolvingCompTimeSymGuard(ResolvingCompTimeSymGuard&&) = delete;
+    auto operator=(ResolvingCompTimeSymGuard const&) -> ResolvingCompTimeSymGuard& = delete;
+    auto operator=(ResolvingCompTimeSymGuard&&) -> ResolvingCompTimeSymGuard& = delete;
+  };
+}
+
 SPP_MOD_BEGIN
 auto spp::asts::IdentifierAst::FromType(
   TypeAst const &val)
@@ -163,8 +187,16 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
     var_sym != nullptr and var_sym->CompTimeValue == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*this));
 
+  // A constant whose value reaches its own symbol again has
+  // no value to resolve to: the walk below would re-enter
+  // here for the same symbol and never terminate.
+  RaiseIf<SppCompileTimeConstantError>(
+    genex::contains(_ResolvingCompTimeSyms, var_sym.get()),
+    {sm->CurrentScope}, ERR_ARGS(*this));
+
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.
+  const auto guard = ResolvingCompTimeSymGuard(var_sym.get());
   var_sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
 }
 
