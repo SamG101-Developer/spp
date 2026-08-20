@@ -120,11 +120,21 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
       {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_moved));
   }
 
-  // Check we aren't trying to move an escaping borrow (unless copyable).
+  // Check we aren't trying to move an escaping borrow
+  // (unless copyable).
   if (check_move and moves_value and not var_sym->MemInfo->AstContainersOfEscapingBorrows.IsEmpty()) {
     const auto [where_contained, _] = var_sym->MemInfo->AstContainersOfEscapingBorrows[0];
     Raise<errors::SppMovingEscapingBorrowedMemoryError>(
       {sm.CurrentScope}, ERR_ARGS(*where_contained, move_ast));
+  }
+
+  // Check we aren't trying to move the container of an
+  // escaping borrow (unless copyable). The container keeps
+  // the borrows alive, so moving it propagates them out of
+  // the frame that owns the borrowed values.
+  if (check_move and moves_value and not var_sym->MemInfo->AstContainedEscapingBorrows.IsEmpty()) {
+    Raise<errors::SppMovingEscapingBorrowedMemoryError>(
+      {sm.CurrentScope}, ERR_ARGS(*var_sym->Name, move_ast));
   }
 
   // Check we aren't trying to move a comptime constant (unless copyable).
