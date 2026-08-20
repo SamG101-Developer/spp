@@ -415,21 +415,6 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     IsTypeBorrowed(*ReturnType, *sm),
     {sm->CurrentScope}, ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
 
-  using analyse::utils::func_utils::CheckForConflictingOverload;
-  using analyse::errors::SppFunctionPrototypeConflictError;
-
-  const auto mod_ctx = _Ctx->To<ModulePrototypeAst>();
-  const auto type_scope = mod_ctx
-    ? sm->CurrentScope->ParentModule()
-    : _Ctx->GetAstScope()->GetTypeSymbol(AstName(_Ctx).get())->LinkedScope;
-
-  // Error if there are conflicts.
-  // Todo: Maybe need 2 scopes if the conflict is across
-  //  modules (if possible, esp in sup-blocks)?
-  const auto conflict = CheckForConflictingOverload(*sm->CurrentScope, type_scope, *this, *sm, meta);
-  RaiseIf<SppFunctionPrototypeConflictError>(
-    conflict, {sm->CurrentScope}, ERR_ARGS(*conflict, *this));
-
   sm->MoveOutOfCurrentScope();
 }
 
@@ -457,6 +442,21 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   }
   ReturnType->ResetCache();
   ReturnType->Stage7_AnalyseSemantics(sm, meta);
+
+  const auto mod_ctx = _Ctx->To<ModulePrototypeAst>();
+  const auto type_scope = mod_ctx
+    ? sm->CurrentScope->ParentModule()
+    : _Ctx->GetAstScope()->GetTypeSymbol(AstName(_Ctx).get())->LinkedScope;
+
+  // Error if there are conflicts. This has to run here rather
+  // than in stage 5, because sup scopes are only attached once
+  // every module has finished stage 5, so a type's methods
+  // aren't reachable from its class scope until now.
+  // Todo: Maybe need 2 scopes if the conflict is across
+  //  modules (if possible, esp in sup-blocks)?
+  const auto conflict = CheckForConflictingOverload(*sm->CurrentScope, type_scope, *this, *sm, meta);
+  RaiseIf<SppFunctionPrototypeConflictError>(
+    conflict, {sm->CurrentScope}, ERR_ARGS(*conflict, *this));
 
   // New version
   if (const auto self_param = FnParamGroup->GetSelfParam()) {

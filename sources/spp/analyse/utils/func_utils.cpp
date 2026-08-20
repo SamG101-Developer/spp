@@ -63,6 +63,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.subroutine_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
@@ -99,6 +100,38 @@ namespace {
     auto operator=(ScopeParentSwap const&) -> ScopeParentSwap& = delete;
     auto operator=(ScopeParentSwap&&) -> ScopeParentSwap& = delete;
   };
+
+  /**
+   * Get the "sup" block a function prototype was declared in, or @c nullptr for a free function (whose context is the
+   * module prototype, which superimposes nothing).
+   */
+  auto _SupBlockOf(
+    spp::asts::FunctionPrototypeAst const &fn)
+    -> spp::asts::Ast* {
+    auto *ctx = fn.GetAstCtx();
+    if (ctx == nullptr) { return nullptr; }
+    const auto is_sup = ctx->To<spp::asts::SupPrototypeFunctionsAst>() != nullptr
+      or ctx->To<spp::asts::SupPrototypeExtensionAst>() != nullptr;
+    return is_sup ? ctx : nullptr;
+  }
+
+  /**
+   * Determine whether two "sup" blocks can ever apply to the same instantiation. Blocks over the same generic type can
+   * carry disjoint constraints ("sup [T: Integer] Atom[T]" against "sup [T: FloatingPoint] Atom[T]"), which makes them
+   * specializations that never both attach to one type, so their members never see each other.
+   */
+  auto _SupBlocksOverlap(
+    spp::asts::Ast *const sup_a,
+    spp::asts::Ast *const sup_b)
+    -> bool {
+    // Free functions, and members of one block, always share a context.
+    if (sup_a == nullptr or sup_b == nullptr or sup_a == sup_b) { return true; }
+
+    auto generics = spp::analyse::utils::type_utils::GenericInferenceMap();
+    return spp::analyse::utils::type_utils::RelaxedTypeEq(
+      *spp::asts::AstName(sup_a), *spp::asts::AstName(sup_b),
+      *sup_a->GetAstScope(), *sup_b->GetAstScope(), generics);
+  }
 }
 
 auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
@@ -398,6 +431,7 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
   // Get the methods that belong to this type, or any
   // of its supertypes.
   const auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
+  const auto new_sup = _SupBlockOf(new_fn);
 
   // Check for an overload conflict with all functions
   // of the same name.
@@ -406,6 +440,13 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
     // base class (override) or is the same object.
     if (old_fn == &new_fn) { continue; }
     if (old_fn == CheckForConflictingOverride(this_scope, old_scope, new_fn, sm, meta, old_scope)) { continue; }
+
+    // Ignore if the two methods come from "sup" blocks that
+    // are disjoint specializations of the same type, such as
+    // "sup [T: Integer] Atom[T]" against "sup [T: FloatingPoint]
+    // Atom[T]". These never apply to the same instantiation,
+    // so they aren't overloads of each other.
+    if (not _SupBlocksOverlap(new_sup, _SupBlockOf(*old_fn))) { continue; }
 
     // Ignore if the return types are different.
     if (not TypeEq(*new_fn.ReturnType, *old_fn->ReturnType, this_scope, *old_scope)) { continue; }
