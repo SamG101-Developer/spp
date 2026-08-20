@@ -14,6 +14,7 @@ import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_index_ast;
@@ -139,8 +140,16 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     return;
   }
 
-  // Check the memory of the lhs. Async can move this LHS.
+  // A dereference copies out of the borrow its lhs produced, so the value this expression is being assigned to holds
+  // a copy and not the borrow. Any escaping borrow the lhs establishes on the way ("xs[i]@" resolving through the
+  // "index_ref" coroutine) belongs to that temporary, not to the assignment target, so clear the target while the lhs
+  // is checked - otherwise the target is recorded as containing a borrow it never receives, and nothing ever releases
+  // it.
+  const auto saved_assignment_target = meta->AssignmentTarget;
+  if (Op->To<PostfixExpressionOperatorDerefAst>() != nullptr) { meta->AssignmentTarget = nullptr; }
   if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
+  meta->AssignmentTarget = saved_assignment_target;
+
   meta->Save();
   meta->PostfixExpressionLhs = Lhs.get();
   if (Lhs->To<IdentifierAst>() != nullptr) {

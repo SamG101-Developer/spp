@@ -122,18 +122,11 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   }
 
   // Variable symbols' memory info structs contain the escaping borrow containers, and the contained escaping borrows.
-  // At the end of a scope, we need to check, for every symbol, if it contains any escaping borrows. If the
-  // containment happened in this scope, then we need to free the escaping borrows, as the container is now out of
-  // scope.
-  //
-  // Todo: this should key on where the *container* was declared, not on where the borrow was established - a handle
-  //  declared outside ("let h: Gen[..]" then "{ h = c(&p) }") carries the borrow on past this point. Changing it
-  //  needs the transient-handle problem solved first: a non-coroutine target ("let b = case .. { xs[i]@ }") is
-  //  currently recorded as containing the borrow its temporary made, and would then never release it.
-  for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
-    auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows
-      | genex::views::filter([&](auto const &x) { return spp::get<2>(x) == sm->CurrentScope; })
-      | genex::to<Vec>();
+  // At the end of a scope, every symbol declared *in* this scope dies, so the escaping borrows it holds are released
+  // with it. What matters is where the container was declared, not where the borrow was established: a handle
+  // declared further out ("let h: Gen[..]" and then "{ h = c(&p) }") carries the borrow on past this point.
+  for (auto const &sym : sm->CurrentScope->AllVarSymbols(true)) {
+    auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows;
 
     for (auto const &ceb : contained_escaping_borrows) {
       sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
