@@ -113,7 +113,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // Check the memory of each member.
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
 
-  // If the final expression of the inner scope is being used (ie assigned or outer variable), then memory check it.
+  // If the final expression of the inner scope is being used
+  // (ie assigned or outer variable), then memory check it.
   if (const auto move = meta->AssignmentTarget; not Members.IsEmpty() and move != nullptr) {
     if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
       ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
@@ -124,6 +125,11 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // At the end of a scope, we need to check, for every symbol, if it contains any escaping borrows. If the
   // containment happened in this scope, then we need to free the escaping borrows, as the container is now out of
   // scope.
+  //
+  // Todo: this should key on where the *container* was declared, not on where the borrow was established - a handle
+  //  declared outside ("let h: Gen[..]" then "{ h = c(&p) }") carries the borrow on past this point. Changing it
+  //  needs the transient-handle problem solved first: a non-coroutine target ("let b = case .. { xs[i]@ }") is
+  //  currently recorded as containing the borrow its temporary made, and would then never release it.
   for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
     auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows
       | genex::views::filter([&](auto const &x) { return spp::get<2>(x) == sm->CurrentScope; })
@@ -131,26 +137,15 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 
     for (auto const &ceb : contained_escaping_borrows) {
       sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
-      const auto b = AstCloneShared(spp::get<0>(ceb)->To<IdentifierAst>());
-      if (b == nullptr) { continue; }
-      sm->CurrentScope->GetVarSymbol(b.get())->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
+      const auto borrow = spp::get<0>(ceb);
+      const auto borrowed_sym = sm->CurrentScope->GetVarSymbolOutermost(*borrow).first;
+      if (borrowed_sym == nullptr) { continue; }
+      borrowed_sym->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
         [&](auto info) {
           return *spp::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
         });
     }
   }
-
-  // Any escaping borrows that were defined in this scope need to be freed.
-  // for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
-  //     auto escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows; // Copy
-  //     for (auto const &eb : escaping_borrows) {
-  //         auto const &[ast, _, scope] = eb;
-  //         if (scope != sm->CurrentScope) { continue; }
-  //         sym->MemInfo->AstContainedEscapingBorrows.erase(
-  //             std::ranges::remove(sym->MemInfo->AstContainedEscapingBorrows, eb).begin(),
-  //             sym->MemInfo->AstContainedEscapingBorrows.end());
-  //     }
-  // }
 
   sm->MoveOutOfCurrentScope();
 }

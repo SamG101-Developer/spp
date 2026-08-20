@@ -30,6 +30,28 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
+namespace {
+  /**
+   * Compare two escaping-borrow container lists by the memory regions they name, rather than by ast identity. Each
+   * branch of a "case" builds its own ast nodes, so the same borrow written in two branches is two pointers but one
+   * region, and only the region is what makes the branches agree or disagree.
+   */
+  auto EscapingBorrowContainersDiffer(
+    spp::Vec<spp::Tup<spp::asts::Ast const*, spp::asts::Ast const*>> const &lhs,
+    spp::Vec<spp::Tup<spp::asts::Ast const*, spp::asts::Ast const*>> const &rhs)
+    -> bool {
+    const auto regions = [](auto const &list) {
+      auto out = spp::Vec<spp::Str>();
+      for (auto const &[container, borrow] : list) {
+        out.EmplaceBack(container->ToString() + " <- " + borrow->ToString());
+      }
+      genex::actions::sort(out);
+      return out;
+    };
+    return regions(lhs) != regions(rhs);
+  }
+}
+
 auto spp::analyse::utils::mem_utils::MemRegionOverlap(
   asts::Ast const &ast_1,
   asts::Ast const &ast_2)
@@ -224,6 +246,7 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
       sym->MemInfo->AstMoved = {old_mem_status.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
       sym->MemInfo->AstPartialMoves = old_mem_status.AstPartialMoves;
       sym->MemInfo->AstContainedEscapingBorrows = old_mem_status.AstContainedEscapingBorrows;
+      sym->MemInfo->AstContainersOfEscapingBorrows = old_mem_status.AstContainersOfEscapingBorrows;
       sym->MemInfo->InitializationCounter = old_mem_status.InitializationCounter;
 
       // Save this memory status for subsequent inter-branch status comparisons.
@@ -268,6 +291,7 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     sym->MemInfo->AstMoved = {first_branch_mem_info.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
     sym->MemInfo->AstPartialMoves = first_branch_mem_info.AstPartialMoves;
     sym->MemInfo->AstContainedEscapingBorrows = first_branch_mem_info.AstContainedEscapingBorrows;
+    sym->MemInfo->AstContainersOfEscapingBorrows = first_branch_mem_info.AstContainersOfEscapingBorrows;
     sym->MemInfo->InitializationCounter = first_branch_mem_info.InitializationCounter;
 
     // Check the new memory status for each symbol is consistent across all branches that don't terminate.
@@ -293,8 +317,13 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
         sym->MemInfo->IsInconsistentlyPartiallyMoved = {first_branch, branch};
       }
 
-      // Check for consistent escaping borrows.
-      if (first_branch_mem_info.AstContainedEscapingBorrows != branch_memory_info_list.AstContainedEscapingBorrows) {
+      // Check for consistent escaping borrows, from both ends of the link: a symbol can be the coroutine handle that
+      // holds the borrows, or the owner of the memory they borrow, and only the second is what a later use of that
+      // memory (eg moving it) is checked against.
+      if (first_branch_mem_info.AstContainedEscapingBorrows != branch_memory_info_list.AstContainedEscapingBorrows
+        or EscapingBorrowContainersDiffer(
+          first_branch_mem_info.AstContainersOfEscapingBorrows,
+          branch_memory_info_list.AstContainersOfEscapingBorrows)) {
         sym->MemInfo->IsInconsistentlyBorrowEscaping = {first_branch, branch};
       }
     }

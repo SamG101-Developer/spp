@@ -200,6 +200,11 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
   Vec<Tup<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
 
   /**
+   * List of containers holding an escaping borrow of the owning @c MemoryInfo's symbol at the time of the snapshot.
+   */
+  Vec<Tup<asts::Ast const*, asts::Ast const*>> AstContainersOfEscapingBorrows;
+
+  /**
    * The @c initialization_counter that was present in the owning @c MemoryInfo at the time of the snapshot.
    */
   std::size_t InitializationCounter;

@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
@@ -132,18 +133,46 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     not IsPrimaryExprTypeValid(*Cond, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Cond));
 
+  // Every branch is analysed from the memory state the case
+  // was entered with. A branch is one alternative, not a
+  // continuation of the one before it, so initializing an
+  // immutable "let" in one branch must not read as a second
+  // initialization in the next.
+  const auto pre_branch_state = sm->CurrentScope->AllVarSymbols()
+    | genex::views::transform([](auto *x) { return MakePair(x, x->MemInfo->Snapshot()); })
+    | genex::to<Vec>();
+  auto post_first_branch_state = decltype(pre_branch_state)();
+
   // Analyse eac branch of the case expression.
   for (auto const &branch : Branches) {
-    // Check the "else" branch is the last branch (also checks there is only 1 "else" branch).
+    // Check the "else" branch is the last branch (also checks
+    // there is only 1 "else" branch).
     RaiseIf<SppCaseBranchElseNotLastError>(
       branch->Patterns[0]->To<CasePatternVariantElseAst>() and branch != Branches.Back(),
       {sm->CurrentScope}, ERR_ARGS(*branch, *Branches.Back()));
 
     // Analyse the branch.
+    for (auto const &[sym, snapshot] : pre_branch_state) {
+      sym->MemInfo->FillFromSnapshot(snapshot);
+    }
+
     meta->Save();
     meta->CaseCondition = Cond.get();
     branch->Stage7_AnalyseSemantics(sm, meta);
     meta->Restore();
+
+    // Keep the first branch's resulting state as the one the
+    // code after the case continues from, matching how stage 8
+    // resolves the post-case state.
+    if (post_first_branch_state.IsEmpty()) {
+      post_first_branch_state = pre_branch_state
+        | genex::views::transform([](auto const &x) { return MakePair(x.first, x.first->MemInfo->Snapshot()); })
+        | genex::to<Vec>();
+    }
+  }
+
+  for (auto const &[sym, snapshot] : post_first_branch_state) {
+    sym->MemInfo->FillFromSnapshot(snapshot);
   }
 
   // Move out of the case expression scope.
