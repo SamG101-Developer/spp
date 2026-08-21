@@ -508,9 +508,8 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform signed division on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::divides);
-  return nullptr;
+  // Perform signed division on two integer literals, exactly.
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv_assign(
@@ -528,9 +527,8 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform unsigned division on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::divides);
-  return nullptr;
+  // Perform unsigned division on two integer literals, exactly.
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv_assign(
@@ -548,9 +546,8 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_srem(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform signed remainder on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::modulus);
-  return nullptr;
+  // Perform signed remainder on two integer literals, exactly.
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() % rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_srem_assign(
@@ -568,9 +565,8 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_urem(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform unsigned remainder on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::modulus);
-  return nullptr;
+  // Perform unsigned remainder on two integer literals, exactly.
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() % rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_urem_assign(

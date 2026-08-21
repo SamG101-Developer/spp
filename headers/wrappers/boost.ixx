@@ -77,6 +77,9 @@ export namespace boost {
 
   // DO NOT REMOVE ANY OF THESE (BOOST INTERNAL USAGE)
   using ::boost::multiprecision::backends::cpp_int_backend;
+  using ::boost::multiprecision::backends::eval_divide;
+  using ::boost::multiprecision::backends::eval_modulus;
+  using ::boost::multiprecision::backends::eval_qr;
   using ::boost::multiprecision::backends::eval_left_shift;
   using ::boost::multiprecision::backends::eval_right_shift;
   using ::boost::multiprecision::backends::eval_get_sign;
@@ -96,6 +99,8 @@ export namespace boost {
 export using ::boost::multiprecision::operator+;
 export using ::boost::multiprecision::operator-;
 export using ::boost::multiprecision::operator*;
+export using ::boost::multiprecision::operator/;
+export using ::boost::multiprecision::operator%;
 export using ::boost::multiprecision::operator<<;
 
 SPECIALIZE_OP(std::plus, +)
