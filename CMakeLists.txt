@@ -5,6 +5,7 @@ project(spp)
 # Set the C++ standard and other compiler options & flags.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 # The LTO-aware binutils wrappers only exist for GCC; clang and MSVC
 # runners have no plain gcc-ar, and archiving fails if they are forced.
@@ -137,11 +138,16 @@ target_compile_features(
   ${PROJECT_NAME}_lib
   PRIVATE $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>
 )
+
 target_compile_options(
   ${PROJECT_NAME}_lib
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>
 )
-target_compile_definitions(${PROJECT_NAME}_lib PRIVATE ${LLVM_DEFINITIONS_LIST})
+
+target_compile_definitions(
+  ${PROJECT_NAME}_lib
+  PRIVATE ${LLVM_DEFINITIONS_LIST})
+
 target_include_directories(
   ${PROJECT_NAME}_lib
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers
