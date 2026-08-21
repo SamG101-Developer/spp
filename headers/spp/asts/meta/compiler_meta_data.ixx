@@ -112,6 +112,15 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Vec<TypeAst*> CmpGnTypeArgs;
   Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;
+
+  /**
+   * Whether the comp-time frame currently being resolved has hit a @c ret . A @c ret nested inside a @c case branch
+   * has to stop the statement loop that contains the @c case , or the statements after it go on resolving and
+   * overwrite @c CmpResult with a value the call never reached. Like @c CmpResult it is deliberately not saved and
+   * restored, so that it passes back up; the function implementation opens and closes a frame around it.
+   */
+  bool CmpReturned = false;
+
   bool IgnoreAccessModifierViolations;
   bool AllowAbstractType;
 

@@ -160,7 +160,9 @@ auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // If there is no expression, then return nullptr.
+  // Mark the frame as returned either way, so the statements after the "case" this "ret" may sit inside are not
+  // resolved on top of it.
+  meta->CmpReturned = true;
   if (Expr == nullptr) { return; }
 
   // Resolve the expression.

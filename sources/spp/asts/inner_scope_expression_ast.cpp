@@ -150,9 +150,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
   // Comptime resolve each member of the inner scope.
   sm->MoveToNextScope();
   for (auto const &m : this->Members) {
-    const auto did_ret = m->template To<RetStatementAst>() != nullptr;
     m->Stage9_CompTimeResolve(sm, meta);
-    if (did_ret) { break; }
+    if (meta->CmpReturned) { break; }
   }
 
   // Exit the scope.
