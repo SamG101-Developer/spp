@@ -200,6 +200,20 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
+    test_valid_postfix_func_call_async_by_value, R"(
+    fun a(b: S32) -> Void { }
+
+    fun f() -> Void {
+        let x = 123
+        async a(x)
+    }
+)");
+
+// Red: an async call lowers to "Fut[T]::async_(a, ..args)", and the variadic pack drops each argument's convention, so
+// "Ts" infers as "Tup[S32]" against the mock's own "FunRef[Args=Tup[&S32], Out=Void]" and the "F: FunMov[(Ts), T]"
+// constraint is not satisfied. See the Todo in "func_utils.cpp".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_async_correct_pins, R"(
     fun a(b: &S32) -> Void { }
 
@@ -490,6 +504,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut x = g("hello")
         x = ()
+    }
+)");
+
+// Red: the tuple the variadic arguments collapse into is never memory-checked, so moving the same object into two
+// variadic calls goes unreported. See the Todo in "func_utils.cpp".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorFunctionCallAst,
+    test_invalid_variadic_pack_reuses_moved_argument,
+    SppUninitializedMemoryUseError, R"(
+    fun g[..Ts](..a: Ts) -> Void {
+        ret
+    }
+
+    fun f() -> Void {
+        let x = Str::from("hi")
+        g(x)
+        g(x)
     }
 )");
 
