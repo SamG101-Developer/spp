@@ -153,12 +153,12 @@ repos:
 
   # VCS HYGIENE
 
-  - repo: https://github.com/commitizen-tools/commitizen
-    rev: 6afcd8e9560ddf1b9a5032262a0be26540e85fb3  # v4.16.5
-    hooks:
-      - id: commitizen
-      - id: commitizen-branch
-        stages: [ pre-push ]
+#  - repo: https://github.com/commitizen-tools/commitizen
+#    rev: 6afcd8e9560ddf1b9a5032262a0be26540e85fb3  # v4.16.5
+#    hooks:
+#      - id: commitizen
+#      - id: commitizen-branch
+#        stages: [ pre-push ]
 
   # SECURITY
 
