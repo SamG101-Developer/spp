@@ -105,26 +105,56 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *)
   -> void {
+  // Check the written value is one the type can hold.
+  Type = Type.empty() ? "s32" : Type;
+  ValidateBounds(*this, *sm);
+}
+
+auto spp::asts::IntegerLiteralAst::BigVal() const
+  -> boost::BigInt {
   //
   using spp::utils::strings::NormaliseIntegerString;
-  using analyse::errors::SppIntegerOutOfBoundsError;
 
-  // For oct, we need to change "0o" to "0" for boost compatibility. Replace "o" with "0".
+  // Same normalisation Stage7 does: "0o" is spelled "00" for boost, and the sign is a separate token.
   auto data = Val->TokenData;
   data |= genex::actions::replace('o', '0');
-
-  // Get the lower and upper bounds as big ints.
-  Type = Type.empty() ? "s32" : Type;
-  auto const &[lower, upper] = kIntegerBounds.at(Type);
-  auto mapped_val = boost::BigInt(NormaliseIntegerString(data));
+  auto value = boost::BigInt(NormaliseIntegerString(data));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
-    mapped_val.backend().negate();
+    value.backend().negate();
   }
+  return value;
+}
 
-  // Check if the value is within the bounds.
+auto spp::asts::IntegerLiteralAst::ValidateBounds(
+  Ast const &owner,
+  ScopeManager const &sm) const
+  -> void {
+  //
+  using analyse::errors::SppIntegerOutOfBoundsError;
+
+  // A value the type cannot hold is the same error whether it was written down or computed by comp-time arithmetic:
+  // the literal that would carry it does not exist.
+  auto const &[lower, upper] = kIntegerBounds.at(Type);
+  const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
-    mapped_val.compare(lower) < 0 or mapped_val.compare(upper) > 0,
-    {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, Type));
+    value.compare(lower) < 0 or value.compare(upper) > 0,
+    {sm.CurrentScope}, ERR_ARGS(owner, value, lower, upper, Type));
+}
+
+auto spp::asts::IntegerLiteralAst::FromBigVal(
+  boost::BigInt const &value,
+  Str const &type)
+  -> Unique<IntegerLiteralAst> {
+  // The sign travels as its own token, so the value token carries the magnitude alone.
+  const auto is_negative = value.sign() < 0;
+  auto magnitude = value;
+  if (is_negative) { magnitude.backend().negate(); }
+
+  auto sign_tok = is_negative
+    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::tok_to_string(lex::SppTokenType::TK_SUB))
+    : nullptr;
+  auto val_tok = MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, magnitude.str());
+  return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
 }
 
 auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(

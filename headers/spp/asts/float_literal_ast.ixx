@@ -6,6 +6,7 @@ import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.traits;
 import spp.utils.types;
+import boost;
 import llvm;
 import std;
 
@@ -91,6 +92,31 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   template <typename T> requires utils::traits::floating_point<T>
   auto CppVal() const -> T;
+
+  /**
+   * The exact value of this literal. Comp-time arithmetic works in this rather than in a fixed-width C++ float, so
+   * that a result the type cannot hold arrives as a value the compiler can reject rather than as an infinity.
+   * @return The literal's value.
+   */
+  SPP_ATTR_NODISCARD auto BigVal() const -> boost::BigDec;
+
+  /**
+   * Build a literal of the given type carrying an exact value, with the sign as its own token. The value is not range
+   * checked here - what produced it has no scope to report an error against - so a caller that can compute an out of
+   * range value pairs this with @c ValidateBounds .
+   * @param value The value the literal is to carry.
+   * @param type The float type name ("f32", "f64", ...).
+   * @return The literal.
+   */
+  static auto FromBigVal(boost::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
+
+  /**
+   * Raise if this literal's value is one its type cannot hold. A written literal is checked when it is analysed; one
+   * that comp-time arithmetic produced is checked where that arithmetic is invoked from.
+   * @param owner The ast to report the error against.
+   * @param sm The scope manager, for error reporting.
+   */
+  auto ValidateBounds(Ast const &owner, ScopeManager const &sm) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

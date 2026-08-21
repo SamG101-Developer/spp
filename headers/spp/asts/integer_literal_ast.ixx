@@ -8,6 +8,7 @@ import spp.codegen.llvm_ctx;
 import spp.lex.tokens;
 import spp.utils.traits;
 import spp.utils.types;
+import boost;
 import llvm;
 import std;
 
@@ -69,6 +70,32 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
   template <typename T> requires utils::traits::integral<T>
   auto CppVal() const -> T;
+
+  /**
+   * The exact value of this literal, at whatever width it takes. Comp-time arithmetic works in this rather than in a
+   * fixed-width C++ type, so that a result which does not fit is a result the compiler can see and reject rather than
+   * one that silently wrapped on the way out.
+   * @return The literal's value.
+   */
+  SPP_ATTR_NODISCARD auto BigVal() const -> boost::BigInt;
+
+  /**
+   * Build a literal of the given type carrying an exact value, with the sign as its own token. The value is not
+   * range checked here - what produced it has no scope to report an error against - so a caller that can compute an
+   * out of range value pairs this with @c ValidateBounds .
+   * @param value The value the literal is to carry.
+   * @param type The integer type name ("s32", "u8", ...).
+   * @return The literal.
+   */
+  static auto FromBigVal(boost::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
+
+  /**
+   * Raise if this literal's value is one its type cannot hold. A written literal is checked when it is analysed; one
+   * that comp-time arithmetic produced is checked where that arithmetic is invoked from.
+   * @param owner The ast to report the error against.
+   * @param sm The scope manager, for error reporting.
+   */
+  auto ValidateBounds(Ast const &owner, ScopeManager const &sm) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IntegerLiteralAst)

@@ -140,8 +140,7 @@ namespace ops {
 #define SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, Ty, CppTy)                                             \
   if (lhs.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(lhs.CppVal<CppTy>(), rhs.CppVal<CppTy>());                               \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<std::size_t>(result))); \
-    return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), Str(lhs.Type));                 \
+    return asts::IntegerLiteralAst::FromBigVal(boost::BigInt(result), lhs.Type);                            \
   }
 
 #define SPP_STANDARD_BINARY_INT_OP_RETURN_BOOL_HANDLER(Op, Ty, CppTy)                              \
@@ -155,15 +154,13 @@ namespace ops {
 #define SPP_STANDARD_UNARY_INT_OP_RETURN_INT_HANDLER(Op, Ty, CppTy)                                              \
   if (val.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(val.CppVal<CppTy>());                                                    \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<std::size_t>(result))); \
-    return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), Str(val.Type));                  \
+    return asts::IntegerLiteralAst::FromBigVal(boost::BigInt(result), val.Type);                             \
   }
 
 #define SPP_STANDARD_BINARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, Ty, CppTy)                                         \
   if (lhs.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(lhs.CppVal<CppTy>(), rhs.CppVal<CppTy>());                               \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<double>(result))); \
-    return asts::FloatLiteralAst::FromSingleTok(nullptr, std::move(val_tok), Str(lhs.Type));                 \
+    return asts::FloatLiteralAst::FromBigVal(boost::BigDec(static_cast<double>(result)), lhs.Type);         \
   }
 
 #define SPP_STANDARD_BINARY_FLOAT_OP_RETURN_BOOL_HANDLER(Op, Ty, CppTy)                            \
@@ -177,8 +174,7 @@ namespace ops {
 #define SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, Ty, CppTy)                                          \
   if (val.Type == Ty) {                                                                                        \
     const auto result = Op<CppTy>()(val.CppVal<CppTy>());                                                    \
-    auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", static_cast<double>(result))); \
-    return asts::FloatLiteralAst::FromSingleTok(nullptr, std::move(val_tok), Str(val.Type));                 \
+    return asts::FloatLiteralAst::FromBigVal(boost::BigDec(static_cast<double>(result)), val.Type);          \
   }
 
 /*
@@ -452,9 +448,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_add(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform addition on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::plus);
-  return nullptr;
+  // Perform addition on two integer literals. The arithmetic is exact rather than done in a fixed-width C++ type: a
+  // result the type cannot hold has to stay visible for the caller to reject, not silently wrap on the way out.
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_add_assign(
@@ -472,9 +468,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_sub(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform subtraction on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::minus);
-  return nullptr;
+  // Perform subtraction on two integer literals. The arithmetic is exact rather than done in a fixed-width C++ type: a
+  // result the type cannot hold has to stay visible for the caller to reject, not silently wrap on the way out.
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sub_assign(
@@ -492,9 +488,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_mul(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform multiplication on two integer literals.
-  SPP_STANDARD_BINARY_INT_OP_RET_INT(std::multiplies);
-  return nullptr;
+  // Perform multiplication on two integer literals. The arithmetic is exact rather than done in a fixed-width C++ type: a
+  // result the type cannot hold has to stay visible for the caller to reject, not silently wrap on the way out.
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_mul_assign(
@@ -591,9 +587,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_urem_assign(
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sneg(
   asts::IntegerLiteralAst const &val)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform signed negation on an integer literal.
-  SPP_STANDARD_UNARY_SIGNED_INT_OP_RET_INT(std::negate);
-  return nullptr;
+  // Perform signed negation on an integer literal, exactly - negating the most negative value of a type does not
+  // fit that type, and that has to remain visible.
+  return asts::IntegerLiteralAst::FromBigVal(-val.BigVal(), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl(
@@ -717,9 +713,10 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not_assign(
 auto spp::analyse::utils::cmp_utils::std_intrinsics_abs(
   asts::IntegerLiteralAst const &val)
   -> Unique<asts::IntegerLiteralAst> {
-  // Perform absolute value on an integer literal.
-  SPP_STANDARD_UNARY_SIGNED_INT_OP_RET_INT(ops::abs);
-  return nullptr;
+  // Perform absolute value on an integer literal, exactly - the magnitude of the most negative value of a type does
+  // not fit that type, and that has to remain visible.
+  const auto value = val.BigVal();
+  return asts::IntegerLiteralAst::FromBigVal(value.sign() < 0 ? -value : value, val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_eq(
@@ -940,9 +937,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
   asts::FloatLiteralAst const &lhs,
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
-  // Perform addition on two float literals.
-  SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(std::plus);
-  return nullptr;
+  // Perform addition on two float literals. The arithmetic is exact rather than done in a fixed-width C++ float: a
+  // result the type cannot hold has to stay a value the caller can reject, not become an infinity.
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd_assign(
@@ -961,9 +958,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub(
   asts::FloatLiteralAst const &lhs,
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
-  // Perform subtraction on two float literals.
-  SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(std::minus);
-  return nullptr;
+  // Perform subtraction on two float literals. The arithmetic is exact rather than done in a fixed-width C++ float: a
+  // result the type cannot hold has to stay a value the caller can reject, not become an infinity.
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub_assign(
@@ -982,9 +979,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul(
   asts::FloatLiteralAst const &lhs,
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
-  // Perform multiplication on two float literals.
-  SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(std::multiplies);
-  return nullptr;
+  // Perform multiplication on two float literals. The arithmetic is exact rather than done in a fixed-width C++ float: a
+  // result the type cannot hold has to stay a value the caller can reject, not become an infinity.
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul_assign(
@@ -1044,17 +1041,16 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_frem_assign(
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fneg(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
-  // Perform negation on a float literal.
-  SPP_STANDARD_UNARY_FLOAT_OP(std::negate);
-  return nullptr;
+  // Perform negation on a float literal, exactly.
+  return asts::FloatLiteralAst::FromBigVal(-val.BigVal(), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fabs(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
-  // Perform absolute value on a float literal.
-  SPP_STANDARD_UNARY_FLOAT_OP(ops::fabs);
-  return nullptr;
+  // Perform absolute value on a float literal, exactly.
+  const auto value = val.BigVal();
+  return asts::FloatLiteralAst::FromBigVal(value.sign() < 0 ? -value : value, val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax_val(

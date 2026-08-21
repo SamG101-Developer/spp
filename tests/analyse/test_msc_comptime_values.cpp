@@ -324,3 +324,129 @@ SPP_TEST_CMP_VALUES(
   cmp fun sum3(..xs: S32) -> S32 { ret xs.0 + xs.1 + xs.2 }
   cmp a: S32 = sum3(1, 2, 3)
 )", {"a", "6_s32"});
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_overflow_from_addition,
+  SppIntegerOutOfBoundsError, R"(
+  cmp x: S32 = 2000000000
+  cmp y: S32 = 2000000000
+  cmp z: S32 = x + y
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_overflow_from_addition_unsigned,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: U8 = 200_u8 + 100_u8
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_overflow_from_addition_signed_upper_bound,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: S8 = 127_s8 + 1_s8
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_underflow_from_subtraction_unsigned,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: U8 = 0_u8 - 1_u8
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_overflow_from_multiplication,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: S8 = 100_s8 * 2_s8
+)");
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_negative_arithmetic_results, R"(
+  cmp a: S32 = 5 - 7
+  cmp b: S32 = 3 * 0 - 4
+  cmp c: S32 = 0 - 2147483648
+)", {"a", "-2_s32"}, {"b", "-4_s32"}, {"c", "-2147483648_s32"});
+
+// ===== Overflow =====
+
+// Comp-time arithmetic is exact, so a result the type cannot hold is a result the compiler can see. It is the same
+// error a written literal of that value gets; only where the value came from differs.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_integer_overflow_from_addition,
+  SppIntegerOutOfBoundsError, R"(
+  cmp x: S32 = 2000000000
+  cmp y: S32 = 2000000000
+  cmp z: S32 = x + y
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_integer_overflow_unsigned,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: U8 = 200_u8 + 100_u8
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_integer_overflow_signed_upper_bound,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: S8 = 127_s8 + 1_s8
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_integer_underflow_unsigned,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: U8 = 0_u8 - 1_u8
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_integer_overflow_from_multiplication,
+  SppIntegerOutOfBoundsError, R"(
+  cmp a: S8 = 100_s8 * 2_s8
+)");
+
+// A float that overflows its type is the same story, under the float bounds error.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_overflow_from_addition,
+  SppFloatOutOfBoundsError, R"(
+  cmp a: F32 = 300000000000000000000000000000000000000.0 + 300000000000000000000000000000000000000.0
+)");
+
+// ===== Results that are values, not overflows =====
+
+// A negative result used to render through a "size_t" cast, so "5 - 7" resolved to 18446744073709551614.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_negative_integer_results, R"(
+  cmp a: S32 = 5 - 7
+  cmp b: S32 = 3 * 0 - 4
+  cmp c: S32 = 0 - 7 / 2
+)", {"a", "-2_s32"}, {"b", "-4_s32"}, {"c", "-3_s32"});
+
+// A whole-number float result used to render as its digits repeated either side of the point, so "2.0 * 3.5"
+// resolved to 7.7 rather than 7.0.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_float_arithmetic, R"(
+  cmp a: F32 = 1.5 + 2.25
+  cmp b: F32 = 1.5 - 2.25
+  cmp c: F32 = 2.0 * 3.5
+  cmp d: F64 = 1.0_f64 / 4.0_f64
+)", {"a", "3.75_f32"}, {"b", "-0.75_f32"}, {"c", "7.0_f32"}, {"d", "0.25_f64"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_integer_division_and_bitwise, R"(
+  cmp band: S32 = 12 & 10
+  cmp bior: S32 = 12 | 10
+  cmp bxor: S32 = 12 ^ 10
+  cmp div: S32 = 7 / 2
+  cmp rem: S32 = 7 % 2
+)", {"band", "8_s32"}, {"bior", "14_s32"}, {"bxor", "6_s32"}, {"div", "3_s32"}, {"rem", "1_s32"});

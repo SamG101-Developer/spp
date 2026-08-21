@@ -16,6 +16,7 @@ import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.expression_ast;
+import spp.asts.float_literal_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -36,6 +37,7 @@ import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.integer_literal_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -309,6 +311,19 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
   fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
   meta->Restore();
+
+  // Every function reaches comp-time resolution through here, so this is where an integer result is checked against
+  // what its type can hold. Comp-time arithmetic is exact, so a result that does not fit arrives intact rather than
+  // having wrapped on the way out. Checking per call - rather than once at the end - is what makes it agree with the
+  // same expression at runtime: an intermediate that overflows overflows either way.
+  const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
+  if (const auto int_result = meta->CmpResult != nullptr ? meta->CmpResult->To<IntegerLiteralAst>() : nullptr) {
+    int_result->ValidateBounds(*owner, *sm);
+  }
+  else if (const auto flt_result = meta->CmpResult != nullptr ? meta->CmpResult->To<FloatLiteralAst>() : nullptr) {
+    flt_result->ValidateBounds(*owner, *sm);
+  }
+
 
   if (revoke) {
     _OverloadInfo.reset();

@@ -93,7 +93,9 @@ export namespace boost {
   using ::boost::multiprecision::number_kind_floating_point;
 }
 
+export using ::boost::multiprecision::operator+;
 export using ::boost::multiprecision::operator-;
+export using ::boost::multiprecision::operator*;
 export using ::boost::multiprecision::operator<<;
 
 SPECIALIZE_OP(std::plus, +)

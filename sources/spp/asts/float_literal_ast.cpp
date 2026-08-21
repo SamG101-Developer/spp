@@ -37,8 +37,9 @@ auto spp::asts::FloatLiteralAst::FromSingleTok(
   Str &&type)
   -> Unique<FloatLiteralAst> {
   // Split the token data into integer and fractional parts.
-  auto int_part = token->TokenData.substr(0, token->TokenData.find('.'));
-  auto frac_part = token->TokenData.substr(token->TokenData.find('.') + 1);
+  const auto point = token->TokenData.find('.');
+  auto int_part = point == Str::npos ? token->TokenData : token->TokenData.substr(0, point);
+  auto frac_part = point == Str::npos ? Str("0") : token->TokenData.substr(point + 1);
   return MakeUnique<FloatLiteralAst>(
     std::move(tok_sign),
     MakeUnique<TokenAst>(token->PosStart(), lex::SppTokenType::LX_NUMBER, std::move(int_part)),
@@ -121,22 +122,63 @@ auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *)
   -> void {
+  // Check the written value is one the type can hold.
+  Type = Type.empty() ? "f32" : Type;
+  ValidateBounds(*this, *sm);
+}
+
+auto spp::asts::FloatLiteralAst::BigVal() const
+  -> boost::BigDec {
   //
   using spp::utils::strings::NormalizeFloatString;
+
+  // The sign is a separate token, so it is applied after the digits are read.
+  auto value = boost::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
+  if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
+    value = -value;
+  }
+  return value;
+}
+
+auto spp::asts::FloatLiteralAst::ValidateBounds(
+  Ast const &owner,
+  ScopeManager const &sm) const
+  -> void {
+  //
   using analyse::errors::SppFloatOutOfBoundsError;
 
-  // Get the lower and upper bounds as big floats.
-  Type = Type.empty() ? "f32" : Type;
+  // A value the type cannot hold is the same error whether it was written down or computed by comp-time arithmetic.
   auto const &[lower, upper] = kFloatBounds.at(Type);
-  auto mapped_val = boost::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
-  if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
-    mapped_val = -mapped_val;
-  }
-
-  // Check if the value is within the bounds.
+  const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
-    mapped_val.compare(lower) < 0 or mapped_val.compare(upper) > 0,
-    {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, Type));
+    value.compare(lower) < 0 or value.compare(upper) > 0,
+    {sm.CurrentScope}, ERR_ARGS(owner, value, lower, upper, Type));
+}
+
+auto spp::asts::FloatLiteralAst::FromBigVal(
+  boost::BigDec const &value,
+  Str const &type)
+  -> Unique<FloatLiteralAst> {
+  // "str" gives the shortest exact decimal, which omits the fractional part entirely for a whole number - and the
+  // literal always carries one.
+  // Todo: a magnitude large or small enough that "str" switches to exponent form has no literal spelling at all,
+  //  because a float literal is an integer part and a fractional part with no exponent.
+  const auto is_negative = value.sign() < 0;
+  const auto digits = (is_negative ? -value : value).str();
+  const auto point = digits.find('.');
+
+  auto int_part = point == Str::npos ? digits : digits.substr(0, point);
+  auto frac_part = point == Str::npos ? Str("0") : digits.substr(point + 1);
+
+  auto sign_tok = is_negative
+    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::tok_to_string(lex::SppTokenType::TK_SUB))
+    : nullptr;
+  return MakeUnique<FloatLiteralAst>(
+    std::move(sign_tok),
+    MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::move(int_part)),
+    MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_DOT, "."),
+    MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::move(frac_part)),
+    Str(type));
 }
 
 auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
