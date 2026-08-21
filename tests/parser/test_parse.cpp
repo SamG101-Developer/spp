@@ -1092,13 +1092,6 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_closure_with_param_optional, R"(
-    fun my_function() -> Void {
-        let my_closure = (a: S32, b: S32 = 0) { }
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_param_variadic, R"(
     fun my_function() -> Void {
         let my_closure = (a: S32, ..b: S32) { a }

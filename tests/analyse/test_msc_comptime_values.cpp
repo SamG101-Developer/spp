@@ -1,0 +1,253 @@
+#include "../test_macros.hpp"
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_literal, R"(
+  cmp a: S32 = 42
+  cmp b: U64 = 7_u64
+)", {"a", "42_s32"}, {"b", "7_u64"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_float_literal, R"(
+  cmp a: F32 = 1.5
+  cmp b: F64 = 2.25_f64
+)", {"a", "1.5_f32"}, {"b", "2.25_f64"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_byte_and_string_literal, R"(
+  cmp a: U8 = b'x'
+  cmp b: &StrView = "hi"
+)", {"a", "b'x'"}, {"b", "\"hi\""});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_arithmetic, R"(
+  cmp a: S32 = 6 * 7
+  cmp b: S32 = 10 - 4
+)", {"a", "42_s32"}, {"b", "6_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_operator_precedence, R"(
+  cmp a: S32 = 2 + 3 * 4
+  cmp b: S32 = (2 + 3) * 4
+)", {"a", "14_s32"}, {"b", "20_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_boolean_expression, R"(
+  cmp a: Bool = 1 < 2
+  cmp b: Bool = 2 < 1
+  cmp c: Bool = 1 < 2 and 3 > 4
+)", {"a", "true"}, {"b", "false"}, {"c", "false"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_keyword_not_postfix, R"(
+  cmp a: Bool = (1 < 2).not
+  cmp b: Bool = (1 > 2).not
+)", {"a", "false"}, {"b", "true"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_array_literal, R"(
+  cmp a: Arr[S32, 3_uz] = [1, 2, 3]
+)", {"a", "[1_s32, 2_s32, 3_s32, ]"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_tuple_literal_and_element_access, R"(
+  cmp a: (S32, Bool) = (7, true)
+  cmp b: S32 = a.0
+  cmp c: Bool = a.1
+)", {"a", "(7_s32, true, )"}, {"b", "7_s32"}, {"c", "true"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_object_initializer_and_attribute_access, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+
+  cmp p: Point = Point(x=3, y=4)
+  cmp a: S32 = p.x
+  cmp b: S32 = p.y
+  cmp c: S32 = Point(x=1, y=2).y
+)", {"a", "3_s32"}, {"b", "4_s32"}, {"c", "2_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_chain_of_references, R"(
+  cmp a: S32 = 1
+  cmp b: S32 = a + 1
+  cmp c: S32 = b + a
+  cmp d: S32 = c * b
+)", {"a", "1_s32"}, {"b", "2_s32"}, {"c", "3_s32"}, {"d", "6_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_composite_referencing_another_constant, R"(
+  cmp a: S32 = 7
+  cmp arr: Arr[S32, 2_uz] = [a, a]
+  cmp tup: (S32, S32) = (a, 2)
+)", {"arr", "[7_s32, 7_s32, ]"}, {"tup", "(7_s32, 2_s32, )"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_function_call, R"(
+  cmp fun double(x: S32) -> S32 { ret x * 2 }
+  cmp a: S32 = double(21)
+)", {"a", "42_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_function_call_keyword_arguments, R"(
+  cmp fun sub(a: S32, b: S32) -> S32 { ret a - b }
+  cmp in_order: S32 = sub(a=10, b=1)
+  cmp reordered: S32 = sub(b=1, a=10)
+)", {"in_order", "9_s32"}, {"reordered", "9_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_function_call_default_parameter, R"(
+  cmp fun add(a: S32, b: S32 = 5) -> S32 { ret a + b }
+  cmp defaulted: S32 = add(1)
+  cmp given: S32 = add(1, 100)
+)", {"defaulted", "6_s32"}, {"given", "101_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_let_statements, R"(
+  cmp fun f(n: S32) -> S32 {
+    let a = n + 1
+    let b = a * 2
+    ret b
+  }
+
+  cmp a: S32 = f(3)
+)", {"a", "8_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_boolean_form_with_return, R"(
+  cmp fun f(n: S32) -> S32 {
+    case n < 5 { ret 111 }
+    ret 222
+  }
+
+  cmp taken: S32 = f(1)
+  cmp not_taken: S32 = f(9)
+)", {"taken", "111_s32"}, {"not_taken", "222_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_of_literal_patterns, R"(
+  cmp fun pick(n: S32) -> S32 {
+    ret case n of {
+      == 1 { 10 }
+      == 2 { 20 }
+      else { 30 }
+    }
+  }
+
+  cmp first: S32 = pick(1)
+  cmp second: S32 = pick(2)
+  cmp fallback: S32 = pick(9)
+)", {"first", "10_s32"}, {"second", "20_s32"}, {"fallback", "30_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_of_tuple_destructure, R"(
+  cmp fun pick(t: (S32, S32)) -> S32 {
+    ret case t of {
+      is (1, y) { y }
+      else { 0 }
+    }
+  }
+
+  cmp matched: S32 = pick((1, 5))
+  cmp unmatched: S32 = pick((2, 5))
+)", {"matched", "5_s32"}, {"unmatched", "0_s32"});
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_loop_in_comptime_function,
+  SppInvalidComptimeOperationError, R"(
+  cmp fun f(n: S32) -> S32 {
+    let mut acc = 0
+    let mut i = 0
+    loop i < n {
+      acc = acc + i
+      i = i + 1
+    }
+    ret acc
+  }
+
+  cmp a: S32 = f(5)
+)");
+
+// Indexing resolves through the "index_ref" coroutine, which is not a comp-time operation.
+// Todo: This needs to change, because ofc it is obvious it can work.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_array_index_in_comptime,
+  SppCompileTimeConstantError, R"(
+  cmp arr: Arr[S32, 3_uz] = [10, 20, 30]
+  cmp a: S32 = arr[1_uz]@
+)");
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_recursive_function_call, R"(
+  cmp fun fib(n: U64) -> U64 {
+    case n < 2_u64 { ret n }
+    ret fib(n - 1_u64) + fib(n - 2_u64)
+  }
+
+  cmp base: U64 = fib(1_u64)
+  cmp small: U64 = fib(3_u64)
+  cmp a: U64 = fib(10_u64)
+)", {"base", "1_u64"}, {"small", "2_u64"}, {"a", "55_u64"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_recursive_function_call_with_locals, R"(
+  cmp fun sum_to(n: S32) -> S32 {
+    let doubled = n * 2
+    case n < 1 { ret 0 }
+    ret sum_to(n - 1) + doubled
+  }
+
+  cmp a: S32 = sum_to(4)
+)", {"a", "20_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_recursive_fibonacci_accumulator, R"(
+  cmp fun fib_acc(n: U64, a: U64, b: U64) -> U64 {
+    case n == 0_u64 { ret a }
+    ret fib_acc(n - 1_u64, b, a + b)
+  }
+
+  cmp fib50: U64 = fib_acc(50_u64, 0_u64, 1_u64)
+  cmp fib90: U64 = fib_acc(90_u64, 0_u64, 1_u64)
+)", {"fib50", "12586269025_u64"}, {"fib90", "2880067194370816120_u64"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_expression_as_module_level_value, R"(
+  cmp a: S32 = case 1 of {
+    == 1 { 10 }
+    else { 30 }
+  }
+)", {"a", "10_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_variadic_parameter_elements, R"(
+  cmp fun sum3(..xs: S32) -> S32 { ret xs.0 + xs.1 + xs.2 }
+  cmp a: S32 = sum3(1, 2, 3)
+)", {"a", "6_s32"});
