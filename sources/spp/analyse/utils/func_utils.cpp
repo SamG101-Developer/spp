@@ -689,6 +689,19 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     }
     if (matched) { continue; }
 
+    // A variadic parameter the call gave nothing to must receive
+    // an empty pack. This is because if we have a variadic generic
+    // for a variadic function parameter: `fun f[..Ts](..a: Ts)` -
+    // then no argument leaves `Ts` as "uninferred". Instead, force
+    // `Tup[]`.
+    if (param->To<asts::FunctionParameterVariadicAst>() != nullptr) {
+      auto empty_pack = MakeUnique<asts::TupleLiteralAst>(
+        nullptr, UniqueVec<asts::ExpressionAst>(), nullptr);
+      ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
+        param_name, nullptr, nullptr, std::move(empty_pack)));
+      continue;
+    }
+
     // Leftover optional parameters inject their argument into the
     // callsite (unlike Python, which executes once for all func
     // calls).
