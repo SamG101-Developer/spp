@@ -151,10 +151,21 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Combine the case expression with the pattern to determine if this branch should be taken, at compile-time.
+  // Combine the case expression with the pattern to determine
+  // if this branch should be taken, at compile-time.
   sm->MoveToNextScope();
-  for (auto const &pattern : Patterns) {
-    pattern->Stage9_CompTimeResolve(sm, meta);
+  const auto tests_condition_directly =
+    Op == nullptr
+    and not Patterns.IsEmpty()
+    and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+
+  for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
+    auto *tested = tests_condition_directly and meta->CaseCondition != nullptr
+      ? static_cast<Ast*>(meta->CaseCondition)
+      : i < _PatternComparisons.Len() and _PatternComparisons[i] != nullptr
+      ? static_cast<Ast*>(_PatternComparisons[i].get())
+      : static_cast<Ast*>(pattern);
+    tested->Stage9_CompTimeResolve(sm, meta);
 
     // Determine if this branch is not a match (false).
     const auto cmp_pat_bool = meta->CmpResult ? meta->CmpResult->To<BooleanLiteralAst>() : nullptr;

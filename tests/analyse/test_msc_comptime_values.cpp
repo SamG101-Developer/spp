@@ -172,6 +172,79 @@ SPP_TEST_CMP_VALUES(
   cmp unmatched: S32 = pick((2, 5))
 )", {"matched", "5_s32"}, {"unmatched", "0_s32"});
 
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_let_tuple_destructure, R"(
+  cmp fun f(t: (S32, S32)) -> S32 {
+    let (a, b) = t
+    ret a + b
+  }
+
+  cmp a: S32 = f((3, 4))
+)", {"a", "7_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_let_object_destructure, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+
+  cmp fun f(p: Point) -> S32 {
+    let Point(x, y) = p
+    ret x * y
+  }
+
+  cmp a: S32 = f(Point(x=3, y=4))
+)", {"a", "12_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_let_array_destructure, R"(
+  cmp fun f(a: Arr[S32, 3_uz]) -> S32 {
+    let [p, q, r] = a
+    ret p + q + r
+  }
+
+  cmp a: S32 = f([1, 2, 3])
+)", {"a", "6_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_of_object_destructure, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+
+  cmp fun f(p: Point) -> S32 {
+    ret case p of {
+      is Point(x=1, y) { y }
+      is Point(x, y) { x + y }
+      else { 0 }
+    }
+  }
+
+  cmp matched: S32 = f(Point(x=1, y=5))
+  cmp fallthrough: S32 = f(Point(x=2, y=5))
+)", {"matched", "5_s32"}, {"fallthrough", "7_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_of_array_destructure, R"(
+  cmp fun f(a: Arr[S32, 3_uz]) -> S32 {
+    ret case a of {
+      is [1, b, c] { b + c }
+      is [p, q, r] { p * q * r }
+      else { 0 }
+    }
+  }
+
+  cmp matched: S32 = f([1, 2, 3])
+  cmp fallthrough: S32 = f([2, 3, 4])
+)", {"matched", "5_s32"}, {"fallthrough", "24_s32"});
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_loop_in_comptime_function,

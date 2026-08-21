@@ -665,7 +665,8 @@ auto spp::analyse::scopes::Scope::GetEnclosingSelfType(
       current_scope = current_scope->Parent;
       continue;
     }
-    return asts::AstName(current_scope->AstNode);
+
+    return current_scope->AstNode != nullptr ? asts::AstName(current_scope->AstNode) : nullptr;
   }
   return nullptr;
 }
