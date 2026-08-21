@@ -518,6 +518,11 @@ auto spp::asts::SupPrototypeExtensionAst::CheckSelfExtension(
   using analyse::errors::SppSuperimpositionSelfExtensionError;
   using analyse::utils::type_utils::TypeEq;
 
+  // Optimization as $Types can never extend themselves, given
+  // that they are compiler generated.
+  // Todo: Apply to cyclic and double extension checks too?
+  if (Name->IsCompilerGeneratedType()) { return; }
+
   // Check if the superimposition is extending itself.
   RaiseIf<SppSuperimpositionSelfExtensionError>(
     TypeEq(*Name, *SuperClass, check_scope, check_scope), {&check_scope},
