@@ -853,6 +853,31 @@ spp::analyse::errors::SppSuperimpositionCyclicExtensionError::SppSuperimposition
     "Break the cycle by adjusting the extensions.");
 }
 
+spp::analyse::errors::SppShiftAmountOutOfBoundsError::SppShiftAmountOutOfBoundsError(
+  asts::Ast const &operation,
+  asts::Ast const &amount,
+  const StrView type,
+  const std::size_t width) {
+  AddHeaders(91, "Shift Amount Out Of Bounds Error");
+  AddCtxForErr(&amount, "Shift amount introduced here");
+  AddErr(&operation, "Shift attempted here");
+  const auto width_str = std::to_string(width);
+  AddFooter(
+    "Shifting by " + width_str + " or more discards every bit of a " + Str(type) + ", so the shift has no meaningful result.",
+    "Use a shift amount in the range [0, " + width_str + ").");
+}
+
+spp::analyse::errors::SppDivisionByZeroError::SppDivisionByZeroError(
+  asts::Ast const &operation,
+  asts::Ast const &divisor) {
+  AddHeaders(90, "Division By Zero Error");
+  AddCtxForErr(&divisor, "Divisor evaluates to zero here");
+  AddErr(&operation, "Division attempted here");
+  AddFooter(
+    "Dividing by zero has no result to compute, so this operation has no value.",
+    "Guard the divisor, or use a divisor that cannot be zero.");
+}
+
 spp::analyse::errors::SppTypeAliasCyclicError::SppTypeAliasCyclicError(
   asts::Ast const &first_alias,
   asts::Ast const &cyclic_alias) {

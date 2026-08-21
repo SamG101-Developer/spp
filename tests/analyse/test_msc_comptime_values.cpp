@@ -370,10 +370,6 @@ SPP_TEST_CMP_VALUES(
   cmp c: S32 = 0 - 2147483648
 )", {"a", "-2_s32"}, {"b", "-4_s32"}, {"c", "-2147483648_s32"});
 
-// ===== Overflow =====
-
-// Comp-time arithmetic is exact, so a result the type cannot hold is a result the compiler can see. It is the same
-// error a written literal of that value gets; only where the value came from differs.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_integer_overflow_from_addition,
@@ -411,7 +407,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   cmp a: S8 = 100_s8 * 2_s8
 )");
 
-// A float that overflows its type is the same story, under the float bounds error.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_float_overflow_from_addition,
@@ -419,9 +414,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   cmp a: F32 = 300000000000000000000000000000000000000.0 + 300000000000000000000000000000000000000.0
 )");
 
-// ===== Results that are values, not overflows =====
-
-// A negative result used to render through a "size_t" cast, so "5 - 7" resolved to 18446744073709551614.
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_negative_integer_results, R"(
@@ -430,8 +422,6 @@ SPP_TEST_CMP_VALUES(
   cmp c: S32 = 0 - 7 / 2
 )", {"a", "-2_s32"}, {"b", "-4_s32"}, {"c", "-3_s32"});
 
-// A whole-number float result used to render as its digits repeated either side of the point, so "2.0 * 3.5"
-// resolved to 7.7 rather than 7.0.
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_float_arithmetic, R"(
@@ -450,3 +440,72 @@ SPP_TEST_CMP_VALUES(
   cmp div: S32 = 7 / 2
   cmp rem: S32 = 7 % 2
 )", {"band", "8_s32"}, {"bior", "14_s32"}, {"bxor", "6_s32"}, {"div", "3_s32"}, {"rem", "1_s32"});
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_integer_division_by_zero,
+  SppDivisionByZeroError, R"(
+  cmp a: S32 = 7 / 0
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_integer_remainder_by_zero,
+  SppDivisionByZeroError, R"(
+  cmp a: S32 = 7 % 0
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_division_by_zero,
+  SppDivisionByZeroError, R"(
+  cmp a: F32 = 7.0 / 0.0
+)");
+
+// The divisor being a constant rather than a written zero makes no difference - it is resolved by the time the
+// operation is reached.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_division_by_zero_constant,
+  SppDivisionByZeroError, R"(
+  cmp d: S32 = 0
+  cmp a: S32 = 7 / d
+)");
+
+// Dividing the most negative value by -1 has no representable result, which the bounds check already covers.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_division_overflow,
+  SppIntegerOutOfBoundsError, R"(
+  cmp m: S32 = 0 - 2147483648
+  cmp a: S32 = m / (0 - 1)
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_shift_left_by_type_width,
+  SppShiftAmountOutOfBoundsError, R"(
+  cmp a: S32 = 1 << 32_u32
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_shift_left_beyond_type_width,
+  SppShiftAmountOutOfBoundsError, R"(
+  cmp a: S32 = 1 << 100_u32
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_shift_right_beyond_type_width,
+  SppShiftAmountOutOfBoundsError, R"(
+  cmp a: S32 = 256 >> 40_u32
+)");
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_shifts_within_type_width, R"(
+  cmp a: S32 = 1 << 4_u32
+  cmp b: S32 = 1 << 31_u32
+  cmp c: S32 = 256 >> 4_u32
+)", {"a", "16_s32"}, {"b", "-2147483648_s32"}, {"c", "16_s32"});

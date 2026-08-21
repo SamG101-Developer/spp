@@ -19,6 +19,16 @@ private:
 
   FunctionPrototypeAst *_ProtoPtr = nullptr;
 
+  auto _ValidateZeroDivision(
+    Vec<Unique<ExpressionAst>> const &args,
+    ScopeManager const *sm) const
+    -> void;
+
+  auto _ValidateShiftAmount(
+    Vec<Unique<ExpressionAst>> const &args,
+    ScopeManager const *sm) const
+    -> void;
+
 public:
   static auto NewEmpty() -> Unique<FunctionImplementationLoweredAst>;
 

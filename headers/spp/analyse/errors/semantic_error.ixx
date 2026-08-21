@@ -76,6 +76,8 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppFunctionSubroutineMissingReturnStatementError;
   SPP_EXP_CLS struct SppSuperimpositionCyclicExtensionError;
   SPP_EXP_CLS struct SppTypeAliasCyclicError;
+  SPP_EXP_CLS struct SppDivisionByZeroError;
+  SPP_EXP_CLS struct SppShiftAmountOutOfBoundsError;
   SPP_EXP_CLS struct SppSuperimpositionDoubleExtensionError;
   SPP_EXP_CLS struct SppSuperimpositionSelfExtensionError;
   SPP_EXP_CLS struct SppSuperimpositionExtensionMethodInvalidError;
@@ -220,6 +222,15 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
   explicit SppFloatOutOfBoundsError(asts::Ast const &literal, boost::BigDec const &value,
     boost::BigDec const &lower, boost::BigDec const &upper, StrView what);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDivisionByZeroError final : SemanticError {
+  explicit SppDivisionByZeroError(asts::Ast const &operation, asts::Ast const &divisor);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppShiftAmountOutOfBoundsError final : SemanticError {
+  explicit SppShiftAmountOutOfBoundsError(asts::Ast const &operation, asts::Ast const &amount, StrView type,
+    std::size_t width);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIntegerOutOfBoundsError final : SemanticError {
