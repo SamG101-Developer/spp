@@ -245,7 +245,6 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
   // a reference, so there's no reference-unwrapping ambiguity.
   const auto uid = "." + utils::Uid();
   const auto that_param = proto->FnParamGroup->GetAllParams().Back();
-  const auto that_sym = sm->CurrentScope->GetVarSymbol(that_param->ExtractName().get());
   const auto operand_ty = GetLlvmTypeOf(*that_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
@@ -276,7 +275,6 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
   // reference down to plain "T", not a raw pointer type.
   const auto uid = "." + utils::Uid();
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
-  const auto this_sym = sm->CurrentScope->GetVarSymbol(this_param->ExtractName().get());
   const auto operand_ty = GetLlvmTypeOf(*this_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
@@ -1925,7 +1923,6 @@ auto spp::codegen::func_impls::std_intrinsics_fpclass(
   // "(value: T, flag: S32) -> Bool"; "ty" (per the dispatcher) is the return type "Bool" (i1) - "T" is read off the
   // "value" parameter instead.
   const auto value_param = proto->FnParamGroup->GetAllParams()[0];
-  const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
   const auto value_ty = GetLlvmTypeOf(*value_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto uid = "." + utils::Uid();
@@ -2537,7 +2534,6 @@ auto spp::codegen::func_impls::std_threading_atomic_store_inner(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   const auto val_param = proto->FnParamGroup->GetAllParams()[1];
-  const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
   const auto val_ty = GetLlvmTypeOf(*val_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
