@@ -728,15 +728,13 @@ auto spp::analyse::utils::func_utils::IsTargetCallable(
   asts::meta::CompilerMetaData *meta)
   -> Shared<const asts::TypeAst> {
   // Get the type of the expression, then find its functional
-  // type.
+  // type. The functional type is the "FunRef|FunMut|FunMov" the
+  // expression is or superimposes - a generic gets its one from
+  // the constraints - and is null for anything not callable,
+  // which the caller reports as "no valid signatures".
   using type_utils::GetFunctionalType;
-  auto expr_type = expr.InferType(&sm, meta);
-  auto func_type = GetFunctionalType(*expr_type, *sm.CurrentScope);
-
-  // Return the expr_type unless its generic, in which case
-  // return the "func_type" -> got from constraints.
-  const auto is_generic = sm.CurrentScope->GetTypeSymbol(expr_type.get())->IsGeneric;
-  return is_generic ? func_type : expr_type;
+  const auto expr_type = expr.InferType(&sm, meta);
+  return GetFunctionalType(*expr_type, *sm.CurrentScope);
 }
 
 auto spp::analyse::utils::func_utils::CreateCallablePrototype(
