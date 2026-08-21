@@ -63,8 +63,8 @@ commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 # Tools the pipeline runs, tracking published releases
 # rather than a branch tip.
 [pin.osv-scanner]
-version = "2.5.0"
-sha256 = "edcfc41d257db36148f065055655fe3fcfc434b0b423ea67468a84c207524e0c"
+version = "2.5.1"
+sha256 = "f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be"
 
 # Keep the version in step with the gitleaks rev in
 # .pre-commit-config.yaml.
@@ -99,18 +99,18 @@ cppcheck = "{home}/.tools/cppcheck"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "c4d143b6bbe7c4b2b5700fc26c96ef90d11cb66e"
+commit = "d25f0f60e6cdb0a34575c666921f2c50db313a21"
 
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "fc1e2acbced0b3e893da1a1375e02ac159d0423f"
+commit = "cd69707c3ca01a4c5fb358e8b92a710554f15356"
 cmake-flags = ["-DMI_SECURE=OFF"]
 
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "cdf52ae9bef77a0844e02e42df6d2df83a55c4b9"
+commit = "734fd305a19995673c5b83b4a30c06a96ff5c9b0"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -130,7 +130,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "60492bddb50422f32cfa33c1365b96ebee4205ca"
+commit = "c1cfe00d2f3d862aecfe6e69ec810414d5f4c906"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
@@ -151,9 +151,9 @@ commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
 [[library]]
 name = "ColEx"
 repo = "https://github.com/SamG101-Developer/ColEx.git"
-commit = "d84ca4f8dd153086342c719fc3ebad53c73faa42"
+commit = "b63d168ebb1b6286ba51033f9ee387910c7e5400"
 
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "50e0530f47de8bda75dcc76fb0206728370d5d48"
+commit = "df07b87ae33bd9fd040d3cdb999cacf68a068f6f"
