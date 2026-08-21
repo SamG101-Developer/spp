@@ -49,10 +49,17 @@ namespace spp::cli {
   SPP_EXP_FUN auto get_system_shared_library_extension()
     -> Str;
 
+  /**
+   * Compile a single module of code as a throwaway project, for the test suite.
+   * @param mode The build mode ("dev" or "rel").
+   * @param main_code The source of the module to compile.
+   * @return The values the module's compile-time constants resolved to, by name; see
+   * @c Compiler::CompTimeConstants . Empty when the module declares none.
+   */
   SPP_EXP_FUN auto unit_test(
     Str const &mode,
     Str &&main_code)
-    -> void;
+    -> Map<Str, Str>;
 
   auto format_default_file_contents(
     StrView contents)

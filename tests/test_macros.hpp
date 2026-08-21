@@ -68,3 +68,16 @@ using sys::S_ISDIR;
     TEST(group, name) {                                                             \
         EXPECT_THROW(build_temp_project(code, false), spp::analyse::errors::error); \
     }
+
+#define SPP_TEST_CMP_VALUES(group, name, code, ...)                                          \
+    TEST(group, name) {                                                                      \
+        const auto actual = build_temp_project(code);                                         \
+        for (auto const &[key, expected] : std::map<spp::Str, spp::Str>{__VA_ARGS__}) {      \
+            const auto it = actual.find(key);                                                 \
+            if (it == actual.end()) {                                                         \
+                ADD_FAILURE() << "no compile-time constant named '" << key << "'";            \
+                continue;                                                                     \
+            }                                                                                 \
+            EXPECT_EQ(it->second, expected) << "compile-time constant '" << key << "'";       \
+        }                                                                                     \
+    }

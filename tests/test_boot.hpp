@@ -8,10 +8,18 @@ import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.utils.files;
+import spp.utils.types;
 import std;
 import sys;
 
-inline auto build_temp_project(std::string code, const bool add_main = true) -> void {
+/**
+ * Compile one module of code as a throwaway project.
+ * @param code The module source.
+ * @param add_main Whether to prepend an empty "main", which an executable project needs.
+ * @return The values the module's compile-time constants resolved to, by name. Reading a "cmp" back is the only way a
+ * test can check what comp-time resolution computed rather than merely that it finished; see SPP_TEST_CMP_VALUES.
+ */
+inline auto build_temp_project(std::string code, const bool add_main = true) -> spp::Map<spp::Str, spp::Str> {
   const auto cwd = std::filesystem::current_path();
   constexpr auto fp = "../../tests/test_outputs";
 
@@ -43,8 +51,9 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
   // Build the project.
   std::filesystem::create_directories(cwd / fp / "src");
   std::filesystem::current_path(cwd / fp);
+  auto comp_time_constants = spp::Map<spp::Str, spp::Str>();
   try {
-    spp::cli::unit_test("rel", std::move(code));
+    comp_time_constants = spp::cli::unit_test("rel", std::move(code));
   }
   catch (const spp::analyse::errors::SemanticError &e) {
     std::cout << e.what() << std::endl;
@@ -64,4 +73,5 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
 
   spp::analyse::scopes::ScopeManager::Cleanup();
   std::filesystem::current_path(cwd);
+  return comp_time_constants;
 }

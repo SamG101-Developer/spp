@@ -5,6 +5,9 @@ module;
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
     if (not handle_validate(is_exe)) { return; }
 
+#define SPP_VALIDATE_STRUCTURE_OR(is_exe, ...) \
+    if (not handle_validate(is_exe)) { return __VA_ARGS__; }
+
 #define SPP_CLI_NULL \
     bp::v1::std_out > bp::v1::null
 
@@ -391,19 +394,22 @@ auto spp::cli::get_system_shared_library_extension()
 auto spp::cli::unit_test(
   Str const &mode,
   Str &&main_code)
-  -> void {
+  -> Map<Str, Str> {
   // Validate the project structure first.
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_STRUCTURE_OR(false, {});
 
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
   std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_STRUCTURE_OR(false, {});
 
   // Compile the code.
-  const auto m = mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL;
+  const auto m = mode == "dev"
+    ? compiler::Compiler::Mode::DEV
+    : compiler::Compiler::Mode::REL;
   const auto c = compiler::Compiler::ForUnitTests(m, std::move(main_code));
   c->Compile();
+  return c->CompTimeConstants();
 }
 
 auto spp::cli::format_default_file_contents(
