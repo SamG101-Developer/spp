@@ -46,8 +46,10 @@ permissions: { }
 
 jobs:
   compile:
-    # The main compilation jobs handles the cmake config + build, caching and incremental build management, and running
-    # the tests against the built with upload of a failure log if any tests fail.
+    # The main compilation jobs handles the cmake config +
+    # build, caching and incremental build management, and
+    # running the tests against the built with upload of a
+    # failure log if any tests fail.
     name: ${{ inputs.compiler }}${{ inputs.version && format('-{0}', inputs.version) || '' }} · ${{ matrix.variant.name }}
     runs-on: ${{ inputs.os }}
     timeout-minutes: 120
@@ -59,7 +61,8 @@ jobs:
         variant: ${{ fromJSON(inputs.variants) }}
 
     env:
-      # Inert for a non-sanitiser variant, so they are set unconditionally.
+      # Inert for a non-sanitiser variant, so they are set
+      # unconditionally.
       ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:detect_leaks=1:strict_string_checks=1"
       UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
       TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
@@ -73,7 +76,8 @@ jobs:
         with:
           egress-policy: audit
 
-      # Provide the ability to git-checkout external packages and actions.
+      # Provide the ability to git-checkout external packages
+      # and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -90,7 +94,8 @@ jobs:
           version: ${{ inputs.version }}
           cache-key-suffix: ${{ matrix.variant.name }}
 
-      # Falls back to the newest tree for this variant on this branch, then on the base branch.
+      # Falls back to the newest tree for this variant on this
+      # branch, then on the base branch.
       - name: Restore build tree
         if: inputs.cache-build-tree
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -101,6 +106,7 @@ jobs:
 
       # Launch the cmake configuration steps.
       - name: Configure
+        id: configure
         uses: ./.github/actions/configure-cmake
         with:
           build-type: ${{ matrix.variant.build-type }}
@@ -110,9 +116,11 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      # Save the build tree to the cache.
+      # Save the build tree to the cache. A tree whose configure
+      # failed is worse than no tree: its cached check results
+      # come back on every later run.
       - name: Save build tree
-        if: ${{ !cancelled() && inputs.cache-build-tree }}
+        if: ${{ !cancelled() && inputs.cache-build-tree && steps.configure.outcome == 'success' }}
         continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
@@ -124,7 +132,8 @@ jobs:
         if: inputs.run-tests
         uses: ./.github/actions/run-tests
 
-      # If any tests failed, then upload the log as an artefact so it can be downloaded for analysis.
+      # If any tests failed, then upload the log as an artefact
+      # so it can be downloaded for analysis.
       - name: Upload test logs on failure
         if: failure() && inputs.run-tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

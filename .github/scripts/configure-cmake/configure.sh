@@ -49,13 +49,49 @@ args+=(-DCMAKE_MAKE_PROGRAM="$NINJA")
 
 # Launch the cmake configuration script into the "build"
 # folder. Ninja must be used for the c++ module support.
-# shellcheck disable=SC2086
-cmake -S . -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-  -DCMAKE_C_FLAGS="$FORTIFY_OFF" \
-  -DCMAKE_CXX_FLAGS="$FORTIFY_OFF" \
-  -DSPP_WERROR=ON \
-  -DSPP_BUILD_TESTS=ON \
-  -DSPP_USE_DEV_RPATH=OFF \
-  "${args[@]}" \
-  $EXTRA_FLAGS
+run_configure() {
+  # shellcheck disable=SC2086
+  cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    -DCMAKE_C_FLAGS="$FORTIFY_OFF" \
+    -DCMAKE_CXX_FLAGS="$FORTIFY_OFF" \
+    -DSPP_WERROR=ON \
+    -DSPP_BUILD_TESTS=ON \
+    -DSPP_USE_DEV_RPATH=OFF \
+    "${args[@]}" \
+    $EXTRA_FLAGS
+}
+
+# A restored tree carries the results of every compile check
+# the last configure ran, as cache entries that are only ever
+# computed once. One bad configure - a half-installed toolchain,
+# a compiler that was not on PATH yet - therefore fails every
+# later run identically, with no output, because the failed
+# check is read from the cache instead of being redone. Retry
+# from a clean tree when the tree came out of the cache.
+restored=false
+if [ -f build/CMakeCache.txt ]; then
+  restored=true
+fi
+
+if run_configure; then
+  exit 0
+fi
+
+if [ "$restored" = true ]; then
+  echo "configure: failed against the restored build tree; retrying from a clean one" >&2
+  rm -rf build
+  if run_configure; then
+    exit 0
+  fi
+fi
+
+# The command line and output of every try_compile lands here,
+# which is where a find_package() that failed on a compile check
+# says what actually went wrong.
+log="build/CMakeConfigureLog.yaml"
+if [ -f "$log" ]; then
+  echo "configure: last 300 lines of ${log}" >&2
+  tail -n 300 "$log" >&2
+fi
+exit 1
