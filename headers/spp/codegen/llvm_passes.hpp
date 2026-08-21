@@ -6,16 +6,20 @@
 
 namespace spp::codegen {
   /**
-   * The one target every module is built for. Hard-coded rather than read from the host, because cross-compilation
-   * has to name a target either way and the answer wants to be the same in every place that asks.
+   * The one target every module is built for: the host llvm was configured for, asked of llvm rather than named here,
+   * so a build on another architecture emits for that architecture instead of for whatever this file used to say. It
+   * is read back off the target machine, not off the host directly, so that it cannot disagree with the data layout
+   * below. Cross-compilation will have to make this a parameter; until then "the target" and "the host" are the same
+   * thing.
+   * @return The normalised triple string, or an empty string if the target is not registered in this build of llvm.
    */
-  constexpr auto kTargetTriple = "x86_64-pc-linux-gnu";
+  auto HostTargetTripleString() -> char const*;
 
   /**
-   * The data layout string of @c kTargetTriple : how wide each type is, what it is aligned to, and how a struct's
-   * fields are packed. Every module has to carry it, because without one llvm falls back to a default layout that is
-   * not the target's, and every size and offset computed from a module - a struct's field offsets, the byte count of
-   * a "dereferenceable", the size an allocation asks for - is computed against whatever the module says.
+   * The data layout string of @c HostTargetTripleString : how wide each type is, what it is aligned to, and how a
+   * struct's fields are packed. Every module has to carry it, because without one llvm falls back to a default layout
+   * that is not the target's, and every size and offset computed from a module - a struct's field offsets, the byte
+   * count of a "dereferenceable", the size an allocation asks for - is computed against whatever the module says.
    * @return The layout string, or an empty string if the target is not registered in this build of llvm.
    */
   auto HostDataLayoutString() -> char const*;

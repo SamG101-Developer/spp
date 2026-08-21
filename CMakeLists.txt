@@ -64,6 +64,16 @@ find_package(GenEx CONFIG REQUIRED)
 find_package(ColEx CONFIG REQUIRED)
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 
+# Configure LLVM for the correct architecture/system.
+if (NOT LLVM_NATIVE_ARCH IN_LIST LLVM_TARGETS_TO_BUILD)
+  message(FATAL_ERROR
+    "This LLVM (${LLVM_PACKAGE_VERSION}) was built without its own host "
+    "backend ${LLVM_NATIVE_ARCH};  it has ${LLVM_TARGETS_TO_BUILD}. "
+    "Nothing here can emit an object file for this machine."
+  )
+endif ()
+llvm_map_components_to_libnames(LLVM_NATIVE_LIBS nativecodegen)
+
 # Collect all source files and create the library.
 file(GLOB_RECURSE MODULE_FILES CONFIGURE_DEPENDS "headers/*.ixx")
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
@@ -157,9 +167,7 @@ target_link_libraries(
   LLVMPasses
   LLVMLinker
   LLVMTarget
-  LLVMX86CodeGen
-  LLVMX86Desc
-  LLVMX86Info
+  ${LLVM_NATIVE_LIBS}
   Threads::Threads
   mimalloc
   unordered_dense::unordered_dense

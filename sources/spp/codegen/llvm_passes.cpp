@@ -12,6 +12,8 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
+#include <llvm/TargetParser/Host.h>
+#include <llvm/TargetParser/Triple.h>
 #include <llvm/Transforms/Coroutines/CoroAnnotationElide.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
 #include <llvm/Transforms/IPO/Internalize.h>
@@ -51,6 +53,16 @@ namespace {
   }
 
   /**
+   * The triple the host llvm was configured for, normalised once. Read from llvm rather than written down, so an
+   * arm64 or a windows build asks its own backend for a layout and a code generator instead of x86's.
+   */
+  auto HostTriple()
+    -> llvm::Triple const& {
+    static const auto triple = llvm::Triple(llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple()));
+    return triple;
+  }
+
+  /**
    * The one target machine every module is built against, created on first use. Registering the native target is done
    * here rather than at start-up so that nothing has to remember to do it before the first module is made.
    */
@@ -61,10 +73,10 @@ namespace {
       llvm::InitializeNativeTargetAsmPrinter();
 
       auto error = std::string();
-      const auto triple = llvm::Triple(spp::codegen::kTargetTriple);
+      const auto &triple = HostTriple();
       const auto *target = llvm::TargetRegistry::lookupTarget(triple, error);
       if (target == nullptr) {
-        llvm::errs() << "No llvm target for " << spp::codegen::kTargetTriple << ": " << error << "\n";
+        llvm::errs() << "No llvm target for " << triple.str() << ": " << error << "\n";
         return nullptr;
       }
 
@@ -76,6 +88,20 @@ namespace {
     }();
     return machine;
   }
+}
+
+auto spp::codegen::HostTargetTripleString()
+  -> char const* {
+  // Off the machine rather than off "HostTriple" directly: a backend is
+  // allowed to answer with a triple other than the one it was looked up
+  // by, and the layout below comes from the same machine, so taking both
+  // from it is what keeps a module's triple and layout describing the
+  // same target.
+  static const auto triple = [] {
+    const auto *machine = HostTargetMachine();
+    return machine != nullptr ? machine->getTargetTriple().str() : std::string();
+  }();
+  return triple.c_str();
 }
 
 auto spp::codegen::HostDataLayoutString()
