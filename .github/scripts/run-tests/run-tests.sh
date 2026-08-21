@@ -6,8 +6,8 @@ set -euo pipefail
 # Ensure the test binary can be found following the build
 # stage. This is near enough guaranteed but a failsafe
 # catches any edge case scenarios.
-binary="build/tests/spp_tests"
-[ "$RUNNER_OS" = "Windows" ] && binary="build/tests/spp_tests.exe"
+binary="${PWD}/build/tests/spp_tests"
+[ "$RUNNER_OS" = "Windows" ] && binary="${PWD}/build/tests/spp_tests.exe"
 if ! [ -x "$binary" ]; then
   echo "::error::test binary not found at $binary"
   exit 1
@@ -25,11 +25,22 @@ if ! [ -f "$runner" ]; then
   exit 1
 fi
 
+# Resolve the log directory before the cd below, so it stays
+# where the artefact upload step expects it.
+mkdir -p "$OUTPUT_DIR"
+log_dir="$(cd "$OUTPUT_DIR" && pwd)"
+
+# The tests read and write their project fixture relative to
+# the cwd, so they must run from tests/test_outputs; this
+# mirrors .tools/run-unit-tests.sh.
+work_dir="${PWD}/tests/test_outputs"
+mkdir -p "$work_dir"
+cd "$work_dir"
+
 # Run the parallel testing suite through the downloaded
 # gtest-parallel script, setting the config options from
 # the env flags.
-mkdir -p "$OUTPUT_DIR"
 python3 "$runner" \
-  "./$binary" \
-  --output_dir="$OUTPUT_DIR" \
+  "$binary" \
+  --output_dir="$log_dir" \
   ${WORKERS:+--workers="$WORKERS"}

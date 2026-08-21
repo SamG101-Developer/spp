@@ -27,15 +27,15 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
     code = "fun main() -> Void { }\n" + code;
   }
 
-  // Ensure the output directory exists before opening the lock file inside it.
+  // Ensure the output directory exists before locking it.
   std::filesystem::create_directories(cwd / fp);
 
-  // Acquire the same cross-process file lock that ModuleTree uses, so that
-  // initialization (handle_init + handle_vcs) is serialized across parallel
-  // test workers. Use spp.toml as the sentinel: it is written by handle_init,
-  // so its absence means initialization has not completed.
-  const auto lock_path = spp::utils::files::NativeString(cwd / fp / ".lock");
-  const int init_lock_fd = sys::open(lock_path.c_str(), sys::O_RDWR | sys::O_CREAT);
+  // Serialize initialization (handle_init + handle_vcs) across parallel test workers. The lock is
+  // taken on the project directory itself rather than a lock file inside it, because handle_init
+  // refuses to run in a directory that is not empty. Use spp.toml as the sentinel: it is written by
+  // handle_init, so its absence means initialization has not completed.
+  const auto lock_path = spp::utils::files::NativeString(cwd / fp);
+  const int init_lock_fd = sys::open(lock_path.c_str(), sys::O_RDONLY);
   sys::flock(init_lock_fd, sys::LOCK_EX);
 
   if (not std::filesystem::exists(cwd / fp / "spp.toml")) {

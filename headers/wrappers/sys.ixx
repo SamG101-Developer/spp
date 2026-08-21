@@ -13,6 +13,7 @@ module;
 #define LEGACY_FWRLCK F_WRLCK
 #define LEGACY_FRDLCK F_RDLCK
 #define LEGACY_ORDWR O_RDWR
+#define LEGACY_ORDONLY O_RDONLY
 #define LEGACY_OCREAT O_CREAT
 #define LEGACY_SEEKSET SEEK_SET
 #define LEGACY_FSETLK F_SETLK
@@ -31,6 +32,7 @@ module;
 #undef F_WRLCK
 #undef F_RDLCK
 #undef O_RDWR
+#undef O_RDONLY
 #undef O_CREAT
 #undef SEEK_SET
 #undef F_SETLK
@@ -66,6 +68,7 @@ export namespace sys {
   const short F_WRLCK = LEGACY_FWRLCK;
   const short F_RDLCK = LEGACY_FRDLCK;
   const int O_RDWR = LEGACY_ORDWR;
+  const int O_RDONLY = LEGACY_ORDONLY;
   const int O_CREAT = LEGACY_OCREAT;
   const short SEEK_SET = LEGACY_SEEKSET;
   const int F_SETLK = LEGACY_FSETLK;
