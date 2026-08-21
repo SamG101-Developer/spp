@@ -16,10 +16,15 @@
     Raise<SppGeneratedCodeError>({s}, ERR_ARGS(*this, std::move(err_msg))); \
   }
 
-#define LIMIT(T)                                     \
-  spp::MakePair(                                     \
-    boost::BigInt(std::numeric_limits<T>::lowest()), \
-    boost::BigInt(std::numeric_limits<T>::max()))
+#define LIMIT_S(bits)                    \
+  spp::MakePair(                         \
+    -(boost::BigInt(1) << ((bits) - 1)), \
+    (boost::BigInt(1) << ((bits) - 1)) - 1)
+
+#define LIMIT_U(bits) \
+  spp::MakePair(      \
+    boost::BigInt(0), \
+    (boost::BigInt(1) << (bits)) - 1)
 
 #define LIMIT_F(T)                                                   \
   spp::MakePair(                                                     \

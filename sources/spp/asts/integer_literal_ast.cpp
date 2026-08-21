@@ -25,20 +25,20 @@ import sys;
 
 SPP_MOD_BEGIN
 static const auto kIntegerBounds = spp::utils::numbers::IntLimitMap{
-  {spp::Str("s8"), LIMIT(std::int8_t)},
-  {spp::Str("s16"), LIMIT(std::int16_t)},
-  {spp::Str("s32"), LIMIT(std::int32_t)},
-  {spp::Str("s64"), LIMIT(std::int64_t)},
-  {spp::Str("s128"), LIMIT(boost::int128_t)},
-  {spp::Str("s256"), LIMIT(boost::int256_t)},
-  {spp::Str("sz"), LIMIT(sys::ssize_t)},
-  {spp::Str("u8"), LIMIT(std::uint8_t)},
-  {spp::Str("u16"), LIMIT(std::uint16_t)},
-  {spp::Str("u32"), LIMIT(std::uint32_t)},
-  {spp::Str("u64"), LIMIT(std::uint64_t)},
-  {spp::Str("u128"), LIMIT(boost::uint128_t)},
-  {spp::Str("u256"), LIMIT(boost::uint256_t)},
-  {spp::Str("uz"), LIMIT(std::size_t)},
+  {spp::Str("s8"), LIMIT_S(8)},
+  {spp::Str("s16"), LIMIT_S(16)},
+  {spp::Str("s32"), LIMIT_S(32)},
+  {spp::Str("s64"), LIMIT_S(64)},
+  {spp::Str("s128"), LIMIT_S(128)},
+  {spp::Str("s256"), LIMIT_S(256)},
+  {spp::Str("sz"), LIMIT_S(sizeof(sys::ssize_t) * 8)},
+  {spp::Str("u8"), LIMIT_U(8)},
+  {spp::Str("u16"), LIMIT_U(16)},
+  {spp::Str("u32"), LIMIT_U(32)},
+  {spp::Str("u64"), LIMIT_U(64)},
+  {spp::Str("u128"), LIMIT_U(128)},
+  {spp::Str("u256"), LIMIT_U(256)},
+  {spp::Str("uz"), LIMIT_U(sizeof(std::size_t) * 8)},
 };
 
 spp::asts::IntegerLiteralAst::IntegerLiteralAst(
