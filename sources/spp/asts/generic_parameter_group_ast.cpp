@@ -244,7 +244,7 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
     for (auto const &constraint : p->Constraints->Constraints) {
       auto constraint_scope = sm->CurrentScope->GetTypeSymbol(constraint.get())->LinkedScope;
       for (auto const &dummy_scope : p->GetDummyScopes()) {
-        analyse::scopes::BumpScopeLinkageGeneration();
+        analyse::scopes::BumpTypeStructureGeneration();
         dummy_scope->DirectSupScopes.EmplaceBack(constraint_scope);
       }
     }

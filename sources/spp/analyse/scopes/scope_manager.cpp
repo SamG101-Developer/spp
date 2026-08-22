@@ -150,7 +150,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
   if (sup_scopes.IsEmpty()) { return; }
 
   // Clear the sup scopes list.
-  BumpScopeLinkageGeneration();
+  BumpTypeStructureGeneration();
   scope.DirectSupScopes.Clear();
   const auto fq_type = scope.TySym->FqName();
   auto const &cls_sym = scope.TySym;
@@ -204,7 +204,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     }
 
     // Register the super scope against the current scope.
-    BumpScopeLinkageGeneration();
+    BumpTypeStructureGeneration();
     scope.DirectSupScopes.EmplaceBack(new_sup_scope);
 
     // Register the super scope's class scope against the current scope, if it is different. This "difference" check
@@ -212,7 +212,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     const auto cls_scope_attached = new_cls_scope and scope.TySym != new_cls_scope->TySym;
     if (cls_scope_attached) {
       // Todo: is this definitely the generically substituted "new_cls_scope"?
-      BumpScopeLinkageGeneration();
+      BumpTypeStructureGeneration();
       scope.DirectSupScopes.EmplaceBack(new_cls_scope);
     }
 

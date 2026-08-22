@@ -822,6 +822,7 @@ namespace {
    * Starts at one so that a zero stamp means "never computed" rather than "computed before anything moved".
    */
   std::uint64_t _ScopeLinkageGeneration = 1;
+  std::uint64_t _TypeStructureGeneration = 1;
 }
 
 auto spp::analyse::scopes::ScopeLinkageGeneration()
@@ -831,5 +832,17 @@ auto spp::analyse::scopes::ScopeLinkageGeneration()
 
 auto spp::analyse::scopes::BumpScopeLinkageGeneration()
   -> void {
+  // A scope moving in the tree changes the method set too, so this is the coarser of the two.
   ++_ScopeLinkageGeneration;
+  ++_TypeStructureGeneration;
+}
+
+auto spp::analyse::scopes::TypeStructureGeneration()
+  -> std::uint64_t {
+  return _TypeStructureGeneration;
+}
+
+auto spp::analyse::scopes::BumpTypeStructureGeneration()
+  -> void {
+  ++_TypeStructureGeneration;
 }

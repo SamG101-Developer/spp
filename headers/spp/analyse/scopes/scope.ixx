@@ -63,6 +63,22 @@ namespace spp::analyse::scopes {
    */
   SPP_EXP_FUN
   auto BumpScopeLinkageGeneration() -> void;
+
+  /**
+   * A counter that changes whenever anything a type's method set is read off changes: its place in the scope tree, or
+   * which scopes are superimposed on it. Strictly coarser than @c ScopeLinkageGeneration - every re-parenting bumps
+   * this too - so the two are kept apart rather than shared. Attaching super scopes is common during monomorphization,
+   * and a fully qualified name does not depend on it; folding both into one counter retires those names for a change
+   * that cannot affect them.
+   */
+  SPP_EXP_FUN SPP_ATTR_HOT
+  auto TypeStructureGeneration() -> std::uint64_t;
+
+  /**
+   * Record that the scopes superimposed on a type have changed.
+   */
+  SPP_EXP_FUN
+  auto BumpTypeStructureGeneration() -> void;
 }
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {
