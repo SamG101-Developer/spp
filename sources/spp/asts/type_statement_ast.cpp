@@ -165,7 +165,8 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().get());
   _AliasSym->Type = final_sym->Type;
   _AliasSym->LinkedScope = final_sym->LinkedScope;
-  _AliasSym->DerivesFromSym = final_sym;
+  _AliasSym->InvalidateFqNameCache();
+  _AliasSym->DerivesFromSym = final_sym->SharedFromThis<analyse::scopes::TypeSymbol>();
   _AliasSym->Alias->Resolved = mapped_old_type;
   _AliasSym->Alias->TrackingScope = tracking_scope;
 
@@ -207,7 +208,8 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     const auto old_sym = sm->CurrentScope->GetTypeSymbol(alias.Resolved.get());
     _AliasSym->Type = old_sym->Type;
     _AliasSym->LinkedScope = old_sym->LinkedScope;
-    _AliasSym->DerivesFromSym = old_sym;
+    _AliasSym->InvalidateFqNameCache();
+    _AliasSym->DerivesFromSym = old_sym->SharedFromThis<analyse::scopes::TypeSymbol>();
     old_sym->AliasedBySyms.EmplaceBack(_AliasSym);
   }
   sm->MoveOutOfCurrentScope();

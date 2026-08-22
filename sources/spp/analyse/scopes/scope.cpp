@@ -95,10 +95,10 @@ auto spp::analyse::scopes::Scope::NewGlobal(
 auto spp::analyse::scopes::Scope::SearchSupScopesForVar(
   Scope const &scope,
   asts::IdentifierAst const *name)
-  -> Shared<VariableSymbol> {
+  -> VariableSymbol* {
   // Recursively search the super scopes for a variable symbol.
   for (auto const *sup_scope : scope.DirectSupScopes) {
-    if (auto sym = sup_scope->GetVarSymbol(name, true); sym != nullptr) { return sym; }
+    if (auto *sym = sup_scope->GetVarSymbol(name, true); sym != nullptr) { return sym; }
   }
 
   // No symbol was found, so return nullptr.
@@ -108,10 +108,10 @@ auto spp::analyse::scopes::Scope::SearchSupScopesForVar(
 auto spp::analyse::scopes::Scope::SearchSupScopesForType(
   Scope const &scope,
   asts::TypeIdentifierAst const *name)
-  -> Shared<TypeSymbol> {
+  -> TypeSymbol* {
   // Recursively search the super scopes for a type symbol.
   for (auto const *sup_scope : scope.DirectSupScopes) {
-    if (auto sym = sup_scope->GetTypeSymbol(name, true); sym != nullptr) { return sym; }
+    if (auto *sym = sup_scope->GetTypeSymbol(name, true); sym != nullptr) { return sym; }
   }
 
   // No symbol was found, so return nullptr.
@@ -131,21 +131,21 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
   auto shifted_scope = &scope;
 
   // Iterate to move through the namespace parts first.
-  for (auto const &ns_part : ns_parts) {
-    const auto sym = shifted_scope->GetNsSymbol(ns_part.get());
+  for (auto const *ns_part : ns_parts) {
+    const auto sym = shifted_scope->GetNsSymbol(ns_part);
     if (sym == nullptr) { break; }
     shifted_scope = sym->LinkedScope;
   }
 
   // Iterate through the type parts (except the final one) next.
-  for (auto const &type_part : type_parts | genex::views::drop_last(1)) {
-    const auto sym = shifted_scope->GetTypeSymbol(type_part.get());
+  for (auto const *type_part : type_parts | genex::views::drop_last(1)) {
+    const auto sym = shifted_scope->GetTypeSymbol(type_part);
     if (sym == nullptr or sym->IsGeneric) { break; }
     shifted_scope = sym->LinkedScope;
   }
 
   // Return the type scope, and the final type part.
-  auto final = type_parts.Back().get();
+  auto const *final = type_parts.Back();
   return {shifted_scope, final};
 }
 
@@ -205,7 +205,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
     | genex::views::transform([this](auto const &gen_arg) { return GetTypeSymbol(gen_arg->Val.get()); })
     | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsGeneric; })
-    | genex::views::transform([](auto const &sym) { return std::dynamic_pointer_cast<Symbol>(sym); })
+    | genex::views::transform([](auto const &sym) { return sym->template SharedFromThis<Symbol>(); })
     | genex::to<Vec>();
 
   const auto comp_syms = generics
@@ -215,7 +215,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
       return GetVarSymbol(gen_arg->Val->template To<asts::IdentifierAst>());
     })
     | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsGeneric; })
-    | genex::views::transform([](auto const &sym) { return std::dynamic_pointer_cast<Symbol>(sym); })
+    | genex::views::transform([](auto const &sym) { return sym->template SharedFromThis<Symbol>(); })
     | genex::to<Vec>();
 
   auto syms = type_syms;
@@ -385,7 +385,8 @@ auto spp::analyse::scopes::Scope::HasVarSymbol(
   asts::IdentifierAst const *sym_name,
   const bool exclusive) const
   -> bool {
-  // Check if getting the symbol returns nullptr or not.
+  // Check if getting the symbol returns nullptr or not. The
+  // lookup is borrowed, so this costs no refcount traffic.
   return GetVarSymbol(sym_name, exclusive) != nullptr;
 }
 
@@ -409,11 +410,11 @@ auto spp::analyse::scopes::Scope::GetVarSymbol(
   asts::IdentifierAst const *sym_name,
   const bool exclusive,
   const bool sup_scope_search) const
-  -> Shared<VariableSymbol> {
+  -> VariableSymbol* {
   // Get the symbol from the symbol table if it exists.
   if (sym_name == nullptr) { return nullptr; }
   const auto scope = this;
-  auto sym = InternalTable.VarTbl.Get(sym_name);
+  auto *sym = InternalTable.VarTbl.Get(sym_name);
 
   // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
   if (sym == nullptr and not exclusive and scope->Parent != nullptr) {
@@ -427,7 +428,7 @@ auto spp::analyse::scopes::Scope::GetVarSymbol(
 
   // Check for a linked aliased variable symbol.
   if (sym != nullptr and sym->AliasSym != nullptr) {
-    sym = sym->AliasSym;
+    sym = sym->AliasSym.get();
   }
 
   // Return the found symbol, or nullptr.
@@ -438,7 +439,7 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
   asts::TypeAst const *sym_name,
   const bool exclusive,
   const bool sup_scope_search) const
-  -> Shared<TypeSymbol> {
+  -> TypeSymbol* {
   // Adjust the scope for the namespace of the type identifier if there is one.
   if (sym_name == nullptr) { return nullptr; }
 
@@ -455,7 +456,7 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
   }
 
   // Get the symbol from the symbol table if it exists.
-  auto sym = scope->InternalTable.TypeTbl.Get(sym_name_extracted);
+  auto *sym = scope->InternalTable.TypeTbl.Get(sym_name_extracted);
 
   // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
   if (sym == nullptr and not exclusive and scope->Parent != nullptr) {
@@ -474,11 +475,11 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
 auto spp::analyse::scopes::Scope::GetNsSymbol(
   asts::IdentifierAst const *sym_name,
   const bool exclusive) const
-  -> Shared<NamespaceSymbol> {
+  -> NamespaceSymbol* {
   // Get the symbol from the symbol table if it exists.
   if (sym_name == nullptr) { return nullptr; }
   const auto scope = this;
-  auto sym = InternalTable.NsTbl.Get(sym_name);
+  auto *sym = InternalTable.NsTbl.Get(sym_name);
 
   // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
   if (sym == nullptr and not exclusive and scope->Parent != nullptr) {
@@ -491,7 +492,7 @@ auto spp::analyse::scopes::Scope::GetNsSymbol(
 
 auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
   asts::Ast const &expr) const
-  -> Pair<Shared<VariableSymbol>, Scope const*> {
+  -> Pair<VariableSymbol*, Scope const*> {
   // Define helper methods to check expression types.
   auto is_valid_postfix_expression = []<typename OpType>(auto *ast) -> bool {
     auto postfix_expr = ast->template To<asts::PostfixExpressionAst>();
@@ -805,7 +806,9 @@ auto spp::analyse::scopes::Scope::NameAsString() const
 
 auto spp::analyse::scopes::Scope::FixChildrenToParentPointer()
   -> void {
-  // Iterate all children, setting their parent pointer to this scope. Recurse into them.
+  // Iterate all children, setting their parent pointer to this scope. Recurse into them. This runs over a scope tree
+  // that has already been read from, so anything cached against the old shape of it has to go.
+  BumpScopeLinkageGeneration();
   for (auto const &child : Children) {
     child->Parent = this;
     child->FixChildrenToParentPointer();
@@ -813,3 +816,20 @@ auto spp::analyse::scopes::Scope::FixChildrenToParentPointer()
 }
 
 SPP_MOD_END
+
+namespace {
+  /**
+   * Starts at one so that a zero stamp means "never computed" rather than "computed before anything moved".
+   */
+  std::uint64_t _ScopeLinkageGeneration = 1;
+}
+
+auto spp::analyse::scopes::ScopeLinkageGeneration()
+  -> std::uint64_t {
+  return _ScopeLinkageGeneration;
+}
+
+auto spp::analyse::scopes::BumpScopeLinkageGeneration()
+  -> void {
+  ++_ScopeLinkageGeneration;
+}

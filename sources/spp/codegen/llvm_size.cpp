@@ -53,7 +53,7 @@ namespace spp::codegen {
 
     if (const auto param_sym = sm.CurrentScope->GetTypeSymbol(&type);
       param_sym != nullptr and param_sym->IsGeneric and param_sym->LinkedScope != nullptr
-      and param_sym->LinkedScope->TySym != nullptr and param_sym->LinkedScope->TySym != param_sym) {
+      and param_sym->LinkedScope->TySym != nullptr and param_sym->LinkedScope->TySym.get() != param_sym) {
       return LayoutOf(sm, *param_sym->LinkedScope->TySym->FqName());
     }
 

@@ -130,8 +130,10 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     : spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
 
   meta->Save();
-  meta->InferSource = {generic_infer_source.begin(), generic_infer_source.end()};
-  meta->InferTarget = {generic_infer_target.begin(), generic_infer_target.end()};
+  meta->InferSource = MakeShared<meta::GenericInferenceBindings>(
+    generic_infer_source.begin(), generic_infer_source.end());
+  meta->InferTarget = MakeShared<meta::GenericInferenceBindings>(
+    generic_infer_target.begin(), generic_infer_target.end());
   Type->Stage7_AnalyseSemantics(sm, meta);
   Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
   meta->Restore();

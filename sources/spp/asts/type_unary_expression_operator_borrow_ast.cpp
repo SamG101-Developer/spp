@@ -56,22 +56,22 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ToString() const
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::NsParts() const
-  -> Vec<Shared<const IdentifierAst>> {
+  -> Vec<IdentifierAst const*> {
   return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::NsParts()
-  -> Vec<Shared<IdentifierAst>> {
+  -> Vec<IdentifierAst*> {
   return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeParts() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
+  -> Vec<TypeIdentifierAst const*> {
   return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeParts()
-  -> Vec<Shared<TypeIdentifierAst>> {
+  -> Vec<TypeIdentifierAst*> {
   return {};
 }
 

@@ -193,15 +193,15 @@ auto spp::asts::TypePostfixExpressionAst::IsNeverType() const noexcept
 }
 
 auto spp::asts::TypePostfixExpressionAst::NsParts() const
-  -> Vec<Shared<const IdentifierAst>> {
+  -> Vec<IdentifierAst const*> {
   // Concatenate the lhs and rhs namespace parts.
-  auto parts = const_shared_cast(Lhs)->NsParts();
-  parts.AppendRange(const_shared_cast(TokOp)->NsParts());
+  auto parts = std::as_const(*Lhs).NsParts();
+  parts.AppendRange(std::as_const(*TokOp).NsParts());
   return parts;
 }
 
 auto spp::asts::TypePostfixExpressionAst::NsParts()
-  -> Vec<Shared<IdentifierAst>> {
+  -> Vec<IdentifierAst*> {
   // Concatenate the lhs and rhs namespace parts.
   auto parts = Lhs->NsParts();
   parts.AppendRange(TokOp->NsParts());
@@ -209,15 +209,15 @@ auto spp::asts::TypePostfixExpressionAst::NsParts()
 }
 
 auto spp::asts::TypePostfixExpressionAst::TypeParts() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
+  -> Vec<TypeIdentifierAst const*> {
   // Concatenate the lhs and rhs type parts.
-  auto parts = const_shared_cast(Lhs)->TypeParts();
-  parts.AppendRange(const_shared_cast(TokOp)->TypeParts());
+  auto parts = std::as_const(*Lhs).TypeParts();
+  parts.AppendRange(std::as_const(*TokOp).TypeParts());
   return parts;
 }
 
 auto spp::asts::TypePostfixExpressionAst::TypeParts()
-  -> Vec<Shared<TypeIdentifierAst>> {
+  -> Vec<TypeIdentifierAst*> {
   // Concatenate the lhs and rhs type parts.
   auto parts = Lhs->TypeParts();
   parts.AppendRange(TokOp->TypeParts());

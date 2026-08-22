@@ -32,16 +32,16 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
     -> bool = 0;
 
   SPP_ATTR_NODISCARD virtual auto NsParts() const
-    -> Vec<Shared<const IdentifierAst>> = 0;
+    -> Vec<IdentifierAst const*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto NsParts()
-    -> Vec<Shared<IdentifierAst>> = 0;
+    -> Vec<IdentifierAst*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> = 0;
+    -> Vec<TypeIdentifierAst const*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> = 0;
+    -> Vec<TypeIdentifierAst*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto LastTypePart() const
     -> TypeIdentifierAst const* = 0;

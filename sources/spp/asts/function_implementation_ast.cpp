@@ -52,7 +52,7 @@ auto spp::asts::FunctionImplementationAst::Stage9_CompTimeResolve(
   // A parameter resolves through the scope chain, so it can sit above the body's own scope and not be covered above.
   for (auto const &[arg_name, arg_comp] : meta->CmpArgs) {
     const auto arg_sym = sm->CurrentScope->GetVarSymbol(arg_name.get());
-    caller_values.EmplaceBack(arg_sym.get(), std::move(arg_sym->CompTimeValue));
+    caller_values.EmplaceBack(arg_sym, std::move(arg_sym->CompTimeValue));
     arg_sym->CompTimeValue = AstClone(arg_comp);
   }
 

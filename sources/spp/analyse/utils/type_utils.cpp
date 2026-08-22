@@ -57,6 +57,7 @@ import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.utils.algorithms;
+import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
@@ -92,7 +93,7 @@ namespace {
   auto GetAttrTypes(
     const spp::asts::ClassPrototypeAst *cls_proto,
     const spp::analyse::scopes::Scope *cls_scope,
-    spp::Vec<spp::Pair<spp::Shared<spp::analyse::scopes::TypeSymbol>, spp::asts::ClassAttributeAst*>> &attr_symbols)
+    spp::Vec<spp::Pair<spp::analyse::scopes::TypeSymbol*, spp::asts::ClassAttributeAst*>> &attr_symbols)
     -> void {
     // Get all attribute types, without recursion errors (this will
     // be handled elsewhere, so assume it has been checked already).
@@ -199,7 +200,7 @@ auto spp::analyse::utils::type_utils::TypeEq(
   // Only worth doing when the other side does name a class. Against a symbol that carries no prototype either (an
   // unbound generic parameter, most of all) the two match precisely by both being prototype-less, which is what lets
   // a method written in terms of "Self" register as overriding an abstract one; resolving would break that.
-  const auto resolve_self_sym = [](Shared<scopes::TypeSymbol> const &sym, Shared<scopes::TypeSymbol> const &other) {
+  const auto resolve_self_sym = [](scopes::TypeSymbol *const sym, scopes::TypeSymbol *const other) {
     return other != nullptr and other->Type != nullptr and sym != nullptr ? sym->AsClassSymbol() : sym;
   };
   if (lhs_type.IsSelfType()) { stripped_lhs_sym = resolve_self_sym(stripped_lhs_sym, stripped_rhs_sym); }
@@ -667,10 +668,10 @@ auto spp::analyse::utils::type_utils::IsTypeRecursive(
   // Get the attribute types recursively from the class prototype,
   // and check for a match with the class prototype. Use the source
   // type as this function is used for error reporting exclusively.
-  auto attr_info = Vec<Pair<Shared<scopes::TypeSymbol>, asts::ClassAttributeAst*>>{};
+  auto attr_info = Vec<Pair<scopes::TypeSymbol*, asts::ClassAttributeAst*>>{};
   GetAttrTypes(&type, sm.CurrentScope, attr_info);
   for (auto const &[attr_type_sym, attr_ast] : attr_info) {
-    if (attr_type_sym == type.GetClsSym()) {
+    if (attr_type_sym == type.GetClsSym().get()) {
       return attr_ast->Source.OriginalType;
     }
   }
@@ -1037,7 +1038,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
 auto spp::analyse::utils::type_utils::GetAllAttrs(
   asts::TypeAst const &type,
   scopes::ScopeManager const &sm)
-  -> Vec<Tup<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>> {
+  -> Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>> {
   // Get the symbol of the class type.
   const auto cls_sym = sm.CurrentScope->GetTypeSymbol(&type);
 
@@ -1054,7 +1055,7 @@ auto spp::analyse::utils::type_utils::GetAllAttrs(
     })
     | genex::to<Vec>();
 
-  auto extended_syms = Vec<Tup<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>{};
+  auto extended_syms = Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>>{};
   for (auto const &[sup_scope, syms] : all_syms) {
     for (auto const &sym : syms) {
       if (sym->IsGeneric) { continue; }
@@ -1077,19 +1078,54 @@ static auto SupMemberAsMethod(
   return nullptr;
 }
 
+namespace {
+  auto _UnimplementedAbstractMethodsCache() -> spp::Map<
+    spp::analyse::scopes::Scope const*,
+    spp::Pair<std::uint64_t, spp::Vec<spp::asts::FunctionPrototypeAst const*>>>& {
+    static auto cache = spp::Map<
+      spp::analyse::scopes::Scope const*,
+      spp::Pair<std::uint64_t, spp::Vec<spp::asts::FunctionPrototypeAst const*>>>();
+    return cache;
+  }
+}
+
+auto spp::analyse::utils::type_utils::ClearUnimplementedAbstractMethodsCache()
+  -> void {
+  _UnimplementedAbstractMethodsCache().clear();
+}
+
 auto spp::analyse::utils::type_utils::GetUnimplementedAbstractMethods(
   scopes::Scope const &type_scope)
   -> Vec<asts::FunctionPrototypeAst const*> {
   //
   using func_utils::SameSignature;
 
+  // Every mention of a type asks this, and the answer is a property of the type rather than of the mention: it is read
+  // off the methods of this scope and of the scopes above it, none of which change once the type is in place. The work
+  // is a signature comparison of every abstract method against every concrete one, so recomputing it per mention is
+  // what makes it one of the most expensive things in analysis.
+  //
+  // Keyed on the scope, and retired whenever the shape of the scope tree changes - which covers both a scope being
+  // re-parented and a type gaining or losing the super scopes its inherited methods come from, since both bump the
+  // linkage generation.
+  auto &cache = _UnimplementedAbstractMethodsCache();
+  const auto generation = scopes::ScopeLinkageGeneration();
+  if (const auto hit = cache.find(&type_scope); hit != cache.end() and hit->second.first == generation) {
+    return hit->second.second;
+  }
+
   // Skip on functional types because of the awkward difference with the base method having "args: Args" tuple of
   // args, and implementations having their own individual args.
   // Todo: Autopack and check?
+  const auto remember = [&](Vec<asts::FunctionPrototypeAst const*> answer) {
+    cache[&type_scope] = {generation, answer};
+    return answer;
+  };
+
   if (type_scope.TySym != nullptr) {
-    if (type_scope.TySym->Name->IsCompilerGeneratedType()) { return {}; }
+    if (type_scope.TySym->Name->IsCompilerGeneratedType()) { return remember({}); }
     if (const auto fq_name = type_scope.TySym->FqName(); fq_name != nullptr and IsTypeFunc(*fq_name, type_scope)) {
-      return {};
+      return remember({});
     }
   }
 
@@ -1119,19 +1155,30 @@ auto spp::analyse::utils::type_utils::GetUnimplementedAbstractMethods(
     }
   }
 
-  // A method stays abstract only while nothing anywhere on the type implements its signature.
+  // A method stays abstract only while nothing anywhere on the type implements its signature. "SameSignature" answers
+  // false for any two methods whose names differ, so only the concrete methods sharing a name with the abstract one can
+  // implement it; indexing them by name turns a scan of every method on the type into a scan of its overloads, which
+  // for a type with many single-overload methods is the difference between a square and a line.
+  auto concrete_by_name = Map<spp::utils::InternedId, Vec<Pair<scopes::Scope const*, asts::FunctionPrototypeAst const*>>>();
+  for (auto const &entry : methods) {
+    if (entry.second->AbstractAnnotation != nullptr) { continue; }
+    concrete_by_name[entry.second->Name->NameId()].EmplaceBack(entry);
+  }
+
   auto unimplemented = Vec<asts::FunctionPrototypeAst const*>();
   for (auto const &[abs_scope, abs_fn] : methods) {
     if (abs_fn->AbstractAnnotation == nullptr) { continue; }
-    const auto is_implemented = genex::any_of(methods, [&](auto const &other) {
-      return other.second->AbstractAnnotation == nullptr
-        and SameSignature(*other.second, *other.first, *abs_fn, *abs_scope);
-    });
+
+    const auto candidates = concrete_by_name.find(abs_fn->Name->NameId());
+    const auto is_implemented = candidates != concrete_by_name.end()
+      and genex::any_of(candidates->second, [&](auto const &other) {
+        return SameSignature(*other.second, *other.first, *abs_fn, *abs_scope);
+      });
 
     if (not is_implemented) { unimplemented.EmplaceBack(abs_fn); }
   }
 
-  return unimplemented;
+  return remember(std::move(unimplemented));
 }
 
 auto spp::analyse::utils::type_utils::GetAllAttrAsts(
@@ -1175,7 +1222,7 @@ auto spp::analyse::utils::type_utils::GetTypeSymOrError(
   }
 
   // Return the found type symbol.
-  return type_sym.get();
+  return type_sym;
 }
 
 auto spp::analyse::utils::type_utils::GetNsScopeOrError(

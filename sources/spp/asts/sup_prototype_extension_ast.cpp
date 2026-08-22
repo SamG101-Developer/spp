@@ -205,7 +205,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
   if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
     if (not base_cls_sym->IsGeneric) {
-      analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym.get()].EmplaceBack(sm->CurrentScope);
+      analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
     }
     else {
       analyse::scopes::ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);

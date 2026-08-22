@@ -64,23 +64,23 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ToString() const
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts() const
-  -> Vec<Shared<const IdentifierAst>> {
+  -> Vec<IdentifierAst const*> {
   return {};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts()
-  -> Vec<Shared<IdentifierAst>> {
+  -> Vec<IdentifierAst*> {
   return {};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
-  return {Name};
+  -> Vec<TypeIdentifierAst const*> {
+  return {Name.get()};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts()
-  -> Vec<Shared<TypeIdentifierAst>> {
-  return {Name};
+  -> Vec<TypeIdentifierAst*> {
+  return {Name.get()};
 }
 
 SPP_MOD_END

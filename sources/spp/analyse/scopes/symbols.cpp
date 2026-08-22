@@ -219,11 +219,12 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
 }
 
 auto spp::analyse::scopes::TypeSymbol::AsClassSymbol() const
-  -> Shared<TypeSymbol> {
-  // Already a class, or a name with nothing behind it either way.
-  const auto self = const_cast<TypeSymbol*>(this)->SharedFromThis<TypeSymbol>();
+  -> TypeSymbol* {
+  // Already a class, or a name with nothing behind it either way. The symbol answered with is owned by the table or by
+  // the scope it links to, both of which outlive any caller, so it is borrowed rather than owned.
+  const auto self = const_cast<TypeSymbol*>(this);
   if (Type != nullptr or LinkedScope == nullptr or LinkedScope->TySym == nullptr) { return self; }
-  return LinkedScope->TySym.get() == this ? self : LinkedScope->TySym;
+  return LinkedScope->TySym.get();
 }
 
 auto spp::analyse::scopes::TypeSymbol::FqName(
@@ -235,13 +236,20 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
   }
 
   // If the type is generic, or is "Self", return the name as-is.
-  if (IsGeneric or LinkedScope == nullptr or Name->Name == "Self") {
+  if (IsGeneric or LinkedScope == nullptr or Name->IsSelfType()) {
     return Name;
   }
 
   if (Name->IsCompilerGeneratedType()
     and (ignore_dollar or LinkedScope->Parent != LinkedScope->ParentModule())) {
     return Name;
+  }
+
+  // Everything above returns a name that already exists. What is left builds one, walking the scopes above the linked
+  // scope and minting an ast node per namespace part, so it is worth not doing twice: the walk reads only the shape of
+  // the scope tree, which is fixed until a scope is re-parented.
+  if (_CachedFqNameGen == ScopeLinkageGeneration()) {
+    return _CachedFqName;
   }
 
   // Fully qualify the name from the root scope.
@@ -259,7 +267,15 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
   }
 
   // Re-add the convention of the type if it exists.
-  return Convention ? qualified_name->WithConvention(asts::AstClone(Convention)) : qualified_name;
+  _CachedFqName = Convention ? qualified_name->WithConvention(asts::AstClone(Convention)) : qualified_name;
+  _CachedFqNameGen = ScopeLinkageGeneration();
+  return _CachedFqName;
+}
+
+auto spp::analyse::scopes::TypeSymbol::InvalidateFqNameCache() const
+  -> void {
+  _CachedFqName = nullptr;
+  _CachedFqNameGen = 0;
 }
 
 auto spp::analyse::scopes::TypeSymbol::BoundName() const

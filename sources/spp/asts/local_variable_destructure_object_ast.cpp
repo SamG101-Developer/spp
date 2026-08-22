@@ -177,7 +177,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _CondLet = MakeUnique<LetStatementInitializedAst>(
       nullptr, std::move(uid_var), nullptr, nullptr, AstClone(effective_val));
     _CondLet->Stage7_AnalyseSemantics(sm, meta);
-    _CondSym = sm->CurrentScope->GetVarSymbol(uid_name.get());
+    _CondSym = sm->CurrentScope->GetVarSymbol(uid_name.get())->SharedFromThis<analyse::scopes::VariableSymbol>();
     _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
     _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
     _FlowSym->Type = Type;

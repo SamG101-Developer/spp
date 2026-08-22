@@ -27,6 +27,14 @@ namespace spp::asts::meta {
   SPP_EXP_CLS struct LlvmLoopInfo;
   SPP_EXP_CLS struct CompilerMetaDataState;
   SPP_EXP_CLS struct CompilerMetaData;
+
+  /**
+   * Generic parameter names mapped to the types an object initializer infers their arguments from.
+   */
+  SPP_EXP_CLS
+  using GenericInferenceBindings = Map<
+    Shared<IdentifierAst>, Shared<TypeAst>,
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>>;
 }
 
 namespace spp::codegen {
@@ -79,12 +87,17 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   LoopExpressionAst *LoopCurrentAst;
   Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
   Shared<TypeAst> ObjectInitType;
-  Map<
-    Shared<IdentifierAst>, Shared<TypeAst>,
-    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferSource; // Todo: struct
-  Map<
-    Shared<IdentifierAst>, Shared<TypeAst>,
-    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferTarget; // Todo: struct
+  /**
+   * The object-initializer bindings a generic argument is inferred from, and the parameters they are inferred onto.
+   *
+   * @n
+   * Held behind a @c Shared , like @c LoopReturnTypes , because @c Save copies every field it tracks and these two are
+   * the only maps among them: a save that copied them element-wise would pay for a map of shared pointers on entry to
+   * every guarded region, and almost no region touches them. The only writer replaces the whole map rather than
+   * inserting into one, so sharing a map with a saved state can never let a region write through to it.
+   */
+  Shared<GenericInferenceBindings> InferSource;
+  Shared<GenericInferenceBindings> InferTarget;
   ExpressionAst *PostfixExpressionLhs;
   ExpressionAst *UnaryExpressionRhs;
   bool SkipTypeAnalysisGenericChecks;

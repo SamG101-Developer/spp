@@ -104,6 +104,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   meta->Save();
   meta->EnclosingFunctionScope = sm->CurrentScope; // this will be the closure-outer scope
   sm->CurrentScope->Parent = sm->CurrentScope->ParentModule();
+  analyse::scopes::BumpScopeLinkageGeneration();
 
   auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
     "closure-inner", {}, PosStart());

@@ -34,8 +34,8 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LoopCurrentAst = nullptr;
   LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
   ObjectInitType = nullptr;
-  InferSource = {};
-  InferTarget = {};
+  InferSource = MakeShared<GenericInferenceBindings>();
+  InferTarget = MakeShared<GenericInferenceBindings>();
   PostfixExpressionLhs = nullptr;
   UnaryExpressionRhs = nullptr;
   SkipTypeAnalysisGenericChecks = false;
@@ -108,9 +108,16 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LlvmCaseCondition = LlvmCaseCondition;
   s.LlvmPhi = LlvmPhi;
   s.LlvmLoopStack = LlvmLoopStack;
-  s.CmpArgs = std::move(CmpArgs);
-  s.CmpGnTypeArgs = std::move(CmpGnTypeArgs);
-  s.CmpGnCompArgs = std::move(CmpGnCompArgs);
+  // Swapped rather than move-assigned. Move-assignment destroys what the parked slot already holds and then takes
+  // this one's buffers, leaving both sides to allocate again next cycle - which is exactly what the pool is meant to
+  // avoid. Swapping hands the slot the live contents and hands this side the slot's dead ones, and clearing those
+  // frees the same objects at the same point a move-assignment would have, keeping the allocation on both sides.
+  CmpArgs.swap(s.CmpArgs);
+  CmpArgs.clear();
+  CmpGnTypeArgs.Swap(s.CmpGnTypeArgs);
+  CmpGnTypeArgs.Clear();
+  CmpGnCompArgs.Swap(s.CmpGnCompArgs);
+  CmpGnCompArgs.Clear();
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.AllowAbstractType = AllowAbstractType;
   s.ResolveBoundCompGenerics = ResolveBoundCompGenerics;
@@ -168,9 +175,12 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
-  CmpArgs = std::move(state.CmpArgs);
-  CmpGnTypeArgs = std::move(state.CmpGnTypeArgs);
-  CmpGnCompArgs = std::move(state.CmpGnCompArgs);
+  CmpArgs.swap(state.CmpArgs);
+  state.CmpArgs.clear();
+  CmpGnTypeArgs.Swap(state.CmpGnTypeArgs);
+  state.CmpGnTypeArgs.Clear();
+  CmpGnCompArgs.Swap(state.CmpGnCompArgs);
+  state.CmpGnCompArgs.Clear();
   // Note: CmpResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   AllowAbstractType = state.AllowAbstractType;

@@ -106,7 +106,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   // Numeric index access (for tuples).
   if (std::isdigit(Name->Val[0])) {
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
 
     // Check the lhs is a tuple/array (the only indexable types).
     RaiseIf<SppMemberAccessNonIndexableError>(

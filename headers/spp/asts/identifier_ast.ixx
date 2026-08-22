@@ -4,6 +4,7 @@ module;
 export module spp.asts.identifier_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.interner;
 import spp.utils.types;
 import llvm;
 import std;
@@ -84,9 +85,17 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, Enable
   SPP_ATTR_NODISCARD auto ToView() const noexcept
     -> StrView;
 
+  /**
+   * The identifier's name as an interned id. @c Val never changes once the node is built, so the id is assigned in the
+   * constructor and stands for the node's lifetime. Symbol tables key on this rather than on the string.
+   */
+  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT auto NameId() const noexcept
+    -> utils::InternedId { return _NameId; }
+
 private:
   std::size_t _Pos;
   std::size_t _ForTok = 0;
+  utils::InternedId _NameId;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

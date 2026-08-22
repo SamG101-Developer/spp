@@ -12,6 +12,23 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 SPP_MOD_BEGIN
+namespace {
+  /**
+   * Reduce a name ast to the key its table is indexed by. An identifier reduces to its interned id, which is fixed when
+   * the node is built; a type reduces to its name and generic arguments, which is only settled once the node has been
+   * analysed. Both are looked up through the table's heterogeneous key, so neither allocates.
+   */
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
+    spp::asts::IdentifierAst const *const sym_name) noexcept -> spp::utils::InternedId {
+    return sym_name->NameId();
+  }
+
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
+    spp::asts::TypeIdentifierAst const *const sym_name) -> spp::StrView {
+    return sym_name->ToView();
+  }
+}
+
 template <typename I, typename S>
 spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() :
   _Table() {
@@ -49,15 +66,15 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Add(
   I const *sym_name,
   Shared<S> const &sym)
   -> void {
-  // Add a symbol to the table. Use string_view for the
-  // find to avoid a copy.
-  const auto sv = sym_name->ToView();
-  auto it = _Table.find(sv);
+  // Add a symbol to the table, keyed heterogeneously so
+  // that nothing is materialised for the find.
+  const auto key = SymbolKey(sym_name);
+  auto it = _Table.find(key);
   if (it != _Table.end()) {
     it->second = sym;
   }
   else {
-    _Table.emplace(sv, sym);
+    _Table.emplace(key, sym);
   }
 }
 
@@ -66,7 +83,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Rem(
   I const *sym_name)
   -> Shared<S> {
   // Remove a symbol from the table.
-  auto it = _Table.find(sym_name->ToView());
+  auto it = _Table.find(SymbolKey(sym_name));
   if (it != _Table.end()) {
     auto sym = it->second;
     _Table.erase(it);
@@ -78,24 +95,24 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Rem(
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Get(
   I const *sym_name) const
-  -> Shared<S> {
-  // Get a symbol from the table. Use string_view to avoid
-  // a string copy per lookup.
+  -> S* {
+  // Get a symbol from the table, borrowed rather than owned,
+  // so a lookup costs no refcount traffic.
   if (sym_name == nullptr) { return nullptr; }
   if (_Table.empty()) { return nullptr; }
-  auto ptr = _Table.find(sym_name->ToView());
-  return ptr != _Table.end() ? ptr->second : nullptr;
+  auto ptr = _Table.find(SymbolKey(sym_name));
+  return ptr != _Table.end() ? ptr->second.get() : nullptr;
 }
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Has(
   I const *sym_name) const
   -> bool {
-  // Check if a symbol exists in the table.
+  // Check if a symbol exists in the table, without touching
+  // the symbol's refcount.
   if (sym_name == nullptr) { return false; }
   if (_Table.empty()) { return false; }
-  auto ptr = _Table.find(sym_name->ToView());
-  return ptr != _Table.end();
+  return _Table.contains(SymbolKey(sym_name));
 }
 
 template <typename I, typename S>

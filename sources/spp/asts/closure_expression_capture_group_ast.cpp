@@ -99,7 +99,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   CompilerMetaData *meta)
   -> void {
   // Any borrowed captures need pinning and marking as extended borrows.
-  auto ass_sym = Shared<analyse::scopes::VariableSymbol>(nullptr);
+  auto ass_sym = static_cast<analyse::scopes::VariableSymbol*>(nullptr);
   if (meta->AssignmentTarget != nullptr) {
     ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).first;
   }

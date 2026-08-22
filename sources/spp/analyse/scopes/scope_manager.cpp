@@ -131,7 +131,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
   // Handle type symbols.
   if (scope.TySym != nullptr) {
     const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics().get());
-    auto scopes = normal_sup_blocks[non_generic_sym.get()];
+    auto scopes = normal_sup_blocks[non_generic_sym];
     scopes.AppendRange(generic_sup_blocks);
     AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta, deferred);
   }
@@ -150,6 +150,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
   if (sup_scopes.IsEmpty()) { return; }
 
   // Clear the sup scopes list.
+  BumpScopeLinkageGeneration();
   scope.DirectSupScopes.Clear();
   const auto fq_type = scope.TySym->FqName();
   auto const &cls_sym = scope.TySym;
@@ -203,6 +204,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     }
 
     // Register the super scope against the current scope.
+    BumpScopeLinkageGeneration();
     scope.DirectSupScopes.EmplaceBack(new_sup_scope);
 
     // Register the super scope's class scope against the current scope, if it is different. This "difference" check
@@ -210,6 +212,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     const auto cls_scope_attached = new_cls_scope and scope.TySym != new_cls_scope->TySym;
     if (cls_scope_attached) {
       // Todo: is this definitely the generically substituted "new_cls_scope"?
+      BumpScopeLinkageGeneration();
       scope.DirectSupScopes.EmplaceBack(new_cls_scope);
     }
 
@@ -329,6 +332,7 @@ auto spp::analyse::scopes::ScopeManager::SelfProto() const
 
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   normal_sup_blocks.clear();
+  utils::type_utils::ClearUnimplementedAbstractMethodsCache();
   generic_sup_blocks.Clear();
   temp_scopes.Clear();
   asts::GenericParameterTypeAst::ClearDummyScopes();

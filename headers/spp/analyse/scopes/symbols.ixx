@@ -262,6 +262,15 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   bool IsDirectlyZeroType;
 
+  /**
+   * The result of the qualifying walk in @c FqName , and the scope-linkage generation it was computed under. The walk
+   * builds a namespace-qualified ast chain from the scopes above @c LinkedScope , all of which are fixed once the
+   * symbol is in place, so the answer only changes when a scope moves in the tree - which the generation records. A
+   * zero generation means nothing is cached yet.
+   */
+  mutable Shared<asts::TypeAst> _CachedFqName;
+  mutable std::uint64_t _CachedFqNameGen = 0;
+
 
 
   TypeSymbol(
@@ -305,13 +314,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     -> bool;
 
   /**
-   * The fully qualified name of the type, as a type AST that re-resolves to this symbol from any scope.
-   * @param ignore_dollar Leave a compiler-generated ("$Func") mock as a bare, module-local name. Defaults to
-   * qualifying it like any other type: the name has to survive crossing a module boundary, because a function value
-   * bound to a generic ("mod_a::a(b)" binding "F = mod_b::$B") is resolved in the caller's scope during inference,
-   * before any generic substitution runs. Only opt out where a bare name is genuinely wanted.
-   */
-  /**
    * The symbol for the class this one names. Usually that is this symbol; the exception is a symbol that stands in for
    * a class without carrying its prototype - @c "Self", which links to the class's scope but has a null @c Type (see
    * @c AddSelfTypeSym ). Anything wanting the class rather than the name has to come through here, because reading
@@ -325,8 +327,22 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
    * @return The class's symbol, or this symbol when it is already one (or names nothing at all).
    */
   SPP_ATTR_NODISCARD auto AsClassSymbol() const
-    -> Shared<TypeSymbol>;
+    -> TypeSymbol*;
 
+  /**
+   * Discard this symbol's cached fully qualified name. Needed when @c LinkedScope is re-pointed after the symbol has
+   * been built, which changes the chain the name is read off without moving any scope in the tree.
+   */
+  auto InvalidateFqNameCache() const
+    -> void;
+
+  /**
+   * The fully qualified name of the type, as a type AST that re-resolves to this symbol from any scope.
+   * @param ignore_dollar Leave a compiler-generated ("$Func") mock as a bare, module-local name. Defaults to
+   * qualifying it like any other type: the name has to survive crossing a module boundary, because a function value
+   * bound to a generic ("mod_a::a(b)" binding "F = mod_b::$B") is resolved in the caller's scope during inference,
+   * before any generic substitution runs. Only opt out where a bare name is genuinely wanted.
+   */
   SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = false) const
     -> Shared<asts::TypeAst>;
 

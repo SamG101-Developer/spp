@@ -45,6 +45,19 @@ import std;
 namespace spp::analyse::utils::monomorphization_utils {
   namespace {
     /**
+     * The final type part of a name, as an owning pointer. The part accessors hand back borrowed pointers, because
+     * almost every caller only reads through them, but a symbol keeps its name for as long as it lives; the part is
+     * held by the name it was read out of, so ownership is recovered from the node rather than by cloning it, which
+     * would leave the symbol naming a node that compares equal to the written type without being it.
+     */
+    auto NameLastTypePart(
+      asts::TypeAst const &name)
+      -> Shared<asts::TypeIdentifierAst> {
+      auto *const part = const_cast<asts::TypeAst&>(name).LastTypePart();
+      return static_shared_cast<asts::TypeIdentifierAst>(part->shared_from_this());
+    }
+
+    /**
      * Give a scope its own copy of the symbols it was cloned from. A clone starts out sharing the template's symbol
      * objects (see @c Scope 's copy constructor), so it must be handed its own before anything substitutes a binding
      * into one, or it would rewrite the template's symbol and leave the template - and every other instantiation -
@@ -88,7 +101,7 @@ namespace spp::analyse::utils::monomorphization_utils {
         // "Self" should not be looked up and changed.
         if (type_arg->Val->IsSelfType()) {
           return MakeShared<scopes::TypeSymbol>(
-            type_arg->Name->TypeParts().Back(), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
+            NameLastTypePart(*type_arg->Name), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
             true);
         }
 
@@ -96,7 +109,7 @@ namespace spp::analyse::utils::monomorphization_utils {
 
         // Build the type symbol for the generic type argument.
         auto sym = MakeShared<scopes::TypeSymbol>(
-          type_arg->Name->TypeParts().Back(), true_val_sym ? true_val_sym->Type : nullptr,
+          NameLastTypePart(*type_arg->Name), true_val_sym ? true_val_sym->Type : nullptr,
           true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true,
           true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
           asts::AstClone(type_arg->Val->GetConvention()));
@@ -510,6 +523,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
       old_type_sub_sym->AliasedBySyms.PushBack(scoped_sym->SharedFromThis<scopes::TypeSymbol>());
       scoped_sym->Type = old_type_sub_sym->Type;
       scoped_sym->LinkedScope = old_type_sub_sym->LinkedScope;
+      scoped_sym->InvalidateFqNameCache();
     }
   }
   SubstituteVarSymTypes(*new_sup_scope_ptr, generic_args.GetAllArgs(), &tm, meta);

@@ -121,7 +121,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   // CreateAndAnalysePatternEqFuncs* and the member-access bindings inside _MappedLet resolve against the narrowed
   // variant type (Pass[T] rather than the outer declared type Res[T,E] for example).
   const auto cond_as_id = meta->CaseCondition->To<IdentifierAst>();
-  _CondSym = cond_as_id != nullptr ? sm->CurrentScope->GetVarSymbol(cond_as_id) : nullptr;
+  auto *const cond_sym = cond_as_id != nullptr ? sm->CurrentScope->GetVarSymbol(cond_as_id) : nullptr;
+  _CondSym = cond_sym != nullptr ? cond_sym->SharedFromThis<analyse::scopes::VariableSymbol>() : nullptr;
   if (_CondSym != nullptr and IsTypeVariant(*_CondSym->Type, *sm->CurrentScope)) {
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*_CondSym->Type, *Type, *sm->CurrentScope, *sm->CurrentScope),

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbol_table;
+import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -31,12 +32,46 @@ namespace spp::asts {
   SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
+namespace spp::analyse::scopes {
+  /**
+   * How a symbol-name ast reduces to the key its table is indexed by. Only the key's type and its hashing live here;
+   * the reduction itself needs the ast definitions, so it sits alongside the table's member definitions.
+   */
+  template <typename I>
+  struct SymbolTableKeyOf;
+
+  /**
+   * A plain identifier is indexed by its interned id. @c IdentifierAst::Val never changes once the node is built, so
+   * the id is fixed at construction and the table never has to hash a string.
+   */
+  template <>
+  struct SymbolTableKeyOf<asts::IdentifierAst> {
+    using Type = utils::InternedId;
+    using Hasher = Hash<utils::InternedId>;
+    using Eq = std::equal_to<>;
+  };
+
+  /**
+   * A type is indexed by its name together with its generic arguments, so that @c Vec[Str] and @c Vec[U8] are distinct
+   * entries. That key is derived from a mutable subtree rather than fixed at construction, so it stays a string until
+   * the generic argument group's mutations are funnelled through an interface that can invalidate a cached id.
+   */
+  template <>
+  struct SymbolTableKeyOf<asts::TypeIdentifierAst> {
+    using Type = Str;
+    using Hasher = TransparentStringHash;
+    using Eq = std::equal_to<>;
+  };
+}
+
 SPP_EXP_CLS
 
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-  Map<Str, Shared<S>, TransparentStringHash, std::equal_to<>> _Table;
+  using Key = typename SymbolTableKeyOf<I>::Type;
+
+  Map<Key, Shared<S>, typename SymbolTableKeyOf<I>::Hasher, typename SymbolTableKeyOf<I>::Eq> _Table;
 
 public:
   IndividualSymbolTable();
@@ -69,10 +104,18 @@ public:
 
   auto Rem(I const *sym_name) -> Shared<S>;
 
+  /**
+   * Look a symbol up, without taking ownership of it. The table owns every symbol it holds for as long as it holds it,
+   * so a borrowed pointer is what almost every caller wants; minting a @c Shared costs an atomic pair per lookup, and a
+   * lookup that walks a scope chain performs one per scope. The callers that do need ownership call
+   * @c Symbol::SharedFromThis on the result.
+   * @param sym_name The name to look up.
+   * @return The symbol, or @c nullptr if this table does not hold it.
+   */
   SPP_ATTR_NODISCARD SPP_ATTR_HOT
-  auto Get(I const *sym_name) const -> Shared<S>;
+  auto Get(I const *sym_name) const -> S*;
 
-  SPP_ATTR_NODISCARD
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT
   auto Has(I const *sym_name) const -> bool;
 
   SPP_ATTR_NODISCARD

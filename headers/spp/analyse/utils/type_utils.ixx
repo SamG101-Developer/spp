@@ -320,7 +320,14 @@ namespace spp::analyse::utils::type_utils {
   SPP_EXP_FUN auto GetAllAttrs(
     asts::TypeAst const &type,
     scopes::ScopeManager const &sm)
-    -> Vec<Tup<Shared<asts::IdentifierAst>, Shared<scopes::TypeSymbol>, scopes::Scope*>>;
+    -> Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>>;
+
+  /**
+   * Drop everything @c GetUnimplementedAbstractMethods has remembered. Its cache is keyed on scope addresses, so it
+   * must not outlive the scopes it names - a later run allocating a scope at a freed address would otherwise be
+   * handed the old scope's answer.
+   */
+  SPP_EXP_FUN auto ClearUnimplementedAbstractMethodsCache() -> void;
 
   /**
    * Collect the methods that are visible on a type but left unimplemented, that is, the methods declared with the

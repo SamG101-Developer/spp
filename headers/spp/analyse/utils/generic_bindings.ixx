@@ -23,12 +23,14 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::generic_bindings {
+  SPP_EXP_CLS
   using InferenceSourceMap = Map<
     Shared<asts::IdentifierAst>,
     Shared<asts::TypeAst>,
     spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
+  SPP_EXP_CLS
   using InferenceTargetMap = Map<
     Shared<asts::IdentifierAst>,
     Shared<asts::TypeAst>,
@@ -53,11 +55,18 @@ namespace spp::analyse::utils::generic_bindings {
     -> void;
 
 
+  /**
+   * @param infer_source The types generic arguments are inferred from, and @p infer_target the parameters they are
+   * inferred onto. Both are taken as owning pointers, by value, and must stay that way: the first thing this function
+   * does is clear @c meta.InferSource and @c meta.InferTarget , which are normally the very maps these name. Holding a
+   * reference to them instead - or a reference to the caller's @c Shared - leaves the reads further down pointing at a
+   * map that the clear has already destroyed.
+   */
   SPP_EXP_FUN auto InferGnArgs(
     asts::GenericParameterGroupAst const &p_group,
     asts::GenericArgumentGroupAst &a_group,
-    InferenceSourceMap infer_source,
-    InferenceTargetMap infer_target,
+    Shared<InferenceSourceMap> infer_source,
+    Shared<InferenceTargetMap> infer_target,
     Shared<asts::Ast> const &owner,
     scopes::Scope const &owner_scope,
     Shared<asts::IdentifierAst> const &variadic_fn_param_name,

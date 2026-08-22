@@ -155,7 +155,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
   if (_HasAnalysed) { return; }
   RaiseIf<SppHigherOrderGenericsNotSupportedError>(
-    Name == "Self" and (GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty()),
+    Name == "Self" and GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
   if (Name == "Self" and meta->CurrentStage < 9) {
     _HasAnalysed = true;
@@ -359,12 +359,12 @@ auto spp::asts::TypeIdentifierAst::IsSelfType() const noexcept
 }
 
 auto spp::asts::TypeIdentifierAst::NsParts() const
-  -> Vec<Shared<const IdentifierAst>> {
+  -> Vec<IdentifierAst const*> {
   return {};
 }
 
 auto spp::asts::TypeIdentifierAst::NsParts()
-  -> Vec<Shared<IdentifierAst>> {
+  -> Vec<IdentifierAst*> {
   return {};
 }
 
@@ -374,13 +374,13 @@ auto spp::asts::TypeIdentifierAst::MarkSourceWritten()
 }
 
 auto spp::asts::TypeIdentifierAst::TypeParts() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
-  return Vec{dynamic_shared_cast<const TypeIdentifierAst>(shared_from_this())};
+  -> Vec<TypeIdentifierAst const*> {
+  return {this};
 }
 
 auto spp::asts::TypeIdentifierAst::TypeParts()
-  -> Vec<Shared<TypeIdentifierAst>> {
-  return Vec{dynamic_shared_cast<TypeIdentifierAst>(shared_from_this())};
+  -> Vec<TypeIdentifierAst*> {
+  return {this};
 }
 
 auto spp::asts::TypeIdentifierAst::LastTypePart() const
@@ -520,9 +520,13 @@ auto spp::asts::TypeIdentifierAst::AnkerlHash() const
 
 auto spp::asts::TypeIdentifierAst::ToView() const
   -> StrView {
+  if (GnArgGroup == nullptr or GnArgGroup->Args.IsEmpty()) {
+    return Name;
+  }
+
   if (_CachedStringification.empty() or not _HasAnalysed) {
     _CachedStringification = Name;
-    if (GnArgGroup != nullptr) { _CachedStringification.append(GnArgGroup->ToString()); }
+    _CachedStringification.append(GnArgGroup->ToString());
   }
   return _CachedStringification;
 }

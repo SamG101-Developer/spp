@@ -616,8 +616,8 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
 auto spp::analyse::utils::generic_bindings::InferGnArgs(
   asts::GenericParameterGroupAst const &p_group,
   asts::GenericArgumentGroupAst &a_group,
-  InferenceSourceMap infer_source,
-  InferenceTargetMap infer_target,
+  Shared<InferenceSourceMap> infer_source,
+  Shared<InferenceTargetMap> infer_target,
   Shared<asts::Ast> const &owner,
   scopes::Scope const &owner_scope,
   Shared<asts::IdentifierAst> const &variadic_fn_param_name,
@@ -629,8 +629,8 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
   using errors::SppTypeMismatchError;
   using type_utils::TypeEq;
 
-  meta.InferSource = {};
-  meta.InferTarget = {};
+  meta.InferSource = MakeShared<asts::meta::GenericInferenceBindings>();
+  meta.InferTarget = MakeShared<asts::meta::GenericInferenceBindings>();
 
   if (is_tuple_owner or p_group.Params.IsEmpty()) { return; }
 
@@ -661,10 +661,10 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
 
   // First inference comes from the infer source and target
   // maps.
-  for (auto const &[target_name, target_type] : infer_target) {
-    if (not infer_source.contains(target_name)) { continue; }
+  for (auto const &[target_name, target_type] : *infer_target) {
+    if (not infer_source->contains(target_name)) { continue; }
     CollectDirectInferences(
-      infer_source.at(target_name), target_type, target_name, type_p_names, variadic_type_p_names, comp_p_names,
+      infer_source->at(target_name), target_type, target_name, type_p_names, variadic_type_p_names, comp_p_names,
       variadic_fn_param_name, owner_scope, sm, bindings);
   }
 

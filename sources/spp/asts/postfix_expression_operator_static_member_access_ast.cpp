@@ -81,7 +81,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
   // Handle types on the left-hand-side of a static member access.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
-    _LhsTypeSym = lhs_type_sym.get();
+    _LhsTypeSym = lhs_type_sym;
 
     // Check the target field exists on the type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
@@ -98,7 +98,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
           | genex::to<Vec>();
         RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
       }
-      _LhsTypeSym = lhs_fwd_ref_type_sym.get();
+      _LhsTypeSym = lhs_fwd_ref_type_sym;
     }
 
     // Check there is only 1 target field on the type at the highest level.

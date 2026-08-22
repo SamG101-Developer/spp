@@ -57,7 +57,8 @@ spp::asts::IdentifierAst::IdentifierAst(
   const std::size_t pos,
   decltype(Val) val) :
   Val(std::move(val)),
-  _Pos(pos) {
+  _Pos(pos),
+  _NameId(utils::Intern(Val)) {
 }
 
 auto spp::asts::IdentifierAst::MappedFromTok(
@@ -93,7 +94,7 @@ auto spp::asts::IdentifierAst::operator==(
 auto spp::asts::IdentifierAst::EqualsIdentifier(
   IdentifierAst const &other) const
   -> Ordering {
-  if (Val == other.Val) {
+  if (_NameId == other._NameId) {
     return Ordering::equal;
   }
   return Ordering::less;
@@ -151,19 +152,15 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
   // Check there is a symbol with the same name in the
   // current scope. Also check for invalid "self" (just
   // a custom error for "self" in a non-method context).
-  if (not sm->CurrentScope->HasVarSymbol(this) and not sm->CurrentScope->HasNsSymbol(this)) {
+  const auto sym = sm->CurrentScope->GetVarSymbol(this);
+  if (sym == nullptr and not sm->CurrentScope->HasNsSymbol(this)) {
     RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
     RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
   }
 
-  // Enforce module-level visibility on the accessed
-  // symbol. Todo: Change above HasSymbol to GetSymbol
-  // and reuse it here - halves the number of symbol
-  // lookups.
-  if (const auto sym = sm->CurrentScope->GetVarSymbol(this)) {
-    if (sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
-      CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
-    }
+  // Enforce module-level visibility on the accessed symbol.
+  if (sym != nullptr and sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
+    CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
   }
 }
 
@@ -191,12 +188,12 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
   // no value to resolve to: the walk below would re-enter
   // here for the same symbol and never terminate.
   RaiseIf<SppCompileTimeConstantError>(
-    genex::contains(_ResolvingCompTimeSyms, var_sym.get()),
+    genex::contains(_ResolvingCompTimeSyms, var_sym),
     {sm->CurrentScope}, ERR_ARGS(*this));
 
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.
-  const auto guard = ResolvingCompTimeSymGuard(var_sym.get());
+  const auto guard = ResolvingCompTimeSymGuard(var_sym);
   var_sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
 }
 
@@ -284,7 +281,9 @@ auto spp::asts::IdentifierAst::ToFuncIdentifier() const
 
 auto spp::asts::IdentifierAst::AnkerlHash() const
   -> std::size_t {
-  return Hash<Str>()(Val);
+  // Consistent with "EqualsIdentifier", which decides equality
+  // on the id, and a multiply rather than a pass over the string.
+  return Hash<utils::InternedId>()(_NameId);
 }
 
 auto spp::asts::IdentifierAst::ExprParts() const

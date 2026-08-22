@@ -49,16 +49,16 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
   SPP_AST_KEY_FUNCTIONS;
 
   SPP_ATTR_NODISCARD auto NsParts() const
-    -> Vec<Shared<const IdentifierAst>> override;
+    -> Vec<IdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto NsParts()
-    -> Vec<Shared<IdentifierAst>> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto LastTypePart() const
     -> TypeIdentifierAst const* override { return Name.get(); }

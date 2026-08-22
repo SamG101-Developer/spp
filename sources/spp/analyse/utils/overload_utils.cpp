@@ -415,8 +415,10 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
   // parameters.
   InferGnArgs(
     *fn_proto.GnParamGroup, gn_args,
-    {generic_infer_source.begin(), generic_infer_source.end()},
-    {generic_infer_target.begin(), generic_infer_target.end()},
+    MakeShared<generic_bindings::InferenceSourceMap>(
+      generic_infer_source.begin(), generic_infer_source.end()),
+    MakeShared<generic_bindings::InferenceTargetMap>(
+      generic_infer_target.begin(), generic_infer_target.end()),
     meta->PostfixExpressionLhs->InferType(sm, meta),
     *fn_scope,
     is_variadic_fn ? fn_proto.FnParamGroup->GetVariadicParams()->ExtractName() : nullptr,

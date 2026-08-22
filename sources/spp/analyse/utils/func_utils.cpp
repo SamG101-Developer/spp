@@ -90,10 +90,18 @@ namespace {
     spp::analyse::scopes::Scope *Scope;
     spp::analyse::scopes::Scope *Original;
 
-    ScopeParentSwap(spp::analyse::scopes::Scope *const scope, spp::analyse::scopes::Scope *const replacement) :
-      Scope(scope), Original(scope->Parent) { scope->Parent = replacement; }
+    ScopeParentSwap(
+      spp::analyse::scopes::Scope *const scope,
+      spp::analyse::scopes::Scope *const replacement) :
+      Scope(scope), Original(scope->Parent) {
+      scope->Parent = replacement;
+      spp::analyse::scopes::BumpScopeLinkageGeneration();
+    }
 
-    ~ScopeParentSwap() { Scope->Parent = Original; }
+    ~ScopeParentSwap() {
+      Scope->Parent = Original;
+      spp::analyse::scopes::BumpScopeLinkageGeneration();
+    }
 
     ScopeParentSwap(ScopeParentSwap const&) = delete;
     ScopeParentSwap(ScopeParentSwap&&) = delete;

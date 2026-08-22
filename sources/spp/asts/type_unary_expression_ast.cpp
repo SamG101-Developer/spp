@@ -163,28 +163,28 @@ auto spp::asts::TypeUnaryExpressionAst::IsSelfType() const noexcept
 }
 
 auto spp::asts::TypeUnaryExpressionAst::NsParts() const
-  -> Vec<Shared<const IdentifierAst>> {
-  auto parts = const_shared_cast(Op)->NsParts();
-  parts.AppendRange(const_shared_cast(Rhs)->NsParts());
+  -> Vec<IdentifierAst const*> {
+  auto parts = std::as_const(*Op).NsParts();
+  parts.AppendRange(std::as_const(*Rhs).NsParts());
   return parts;
 }
 
 auto spp::asts::TypeUnaryExpressionAst::NsParts()
-  -> Vec<Shared<IdentifierAst>> {
+  -> Vec<IdentifierAst*> {
   auto parts = Op->NsParts();
   parts.AppendRange(Rhs->NsParts());
   return parts;
 }
 
 auto spp::asts::TypeUnaryExpressionAst::TypeParts() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
-  auto parts = const_shared_cast(Op)->TypeParts();
-  parts.AppendRange(const_shared_cast(Rhs)->TypeParts());
+  -> Vec<TypeIdentifierAst const*> {
+  auto parts = std::as_const(*Op).TypeParts();
+  parts.AppendRange(std::as_const(*Rhs).TypeParts());
   return parts;
 }
 
 auto spp::asts::TypeUnaryExpressionAst::TypeParts()
-  -> Vec<Shared<TypeIdentifierAst>> {
+  -> Vec<TypeIdentifierAst*> {
   auto parts = Op->TypeParts();
   parts.AppendRange(Rhs->TypeParts());
   return parts;

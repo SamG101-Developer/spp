@@ -286,7 +286,7 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   // itself: there is no prototype on it to read a layout
   // from, and the guard below would turn it away.
   const auto linked_sym = type_sym.AsClassSymbol();
-  if (linked_sym.get() != &type_sym) {
+  if (linked_sym != &type_sym) {
     // Stand-ins can name each other - the "Self" of a scope
     // whose class scope carries another "Self" - and following
     // the chain would then never end. Same guard, and for the
