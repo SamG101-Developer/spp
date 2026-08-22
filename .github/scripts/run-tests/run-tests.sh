@@ -37,12 +37,15 @@ work_dir="${PWD}/tests/test_outputs"
 mkdir -p "$work_dir"
 cd "$work_dir"
 
+# Seed the fixture serially before the parallel sweep, so the
+# [vcs] clone happens once in a phase where git is the only
+# thing that can fail, rather than inside whichever worker
+# process reaches it first.
+"$binary" --gtest_filter=SppBootstrap.Fixture
+
 # Run the parallel testing suite through the downloaded
 # gtest-parallel script, setting the config options from
-# the env flags. The fixture, including the [vcs] clone, is
-# created by the first test to reach build_temp_project;
-# there is no CLI seed step because build/spp is not wired
-# to run_cli.
+# the env flags.
 status=0
 python3 "$runner" \
   "$binary" \

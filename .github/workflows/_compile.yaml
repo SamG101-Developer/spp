@@ -127,13 +127,6 @@ jobs:
           path: build
           key: ${{ env.CACHE_KEY }}-${{ github.sha }}
 
-      # TEMP : Investigate where the vcs folder is.
-      - name: Debug over SSH
-        if: ${{ runner.os == 'Linux' && matrix.variant.name == 'release' && inputs.run-tests }}
-        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113
-        with:
-          limit-access-to-actor: true
-
       # Launch the specialised parallel googletest script.
       - name: Run tests
         if: inputs.run-tests
