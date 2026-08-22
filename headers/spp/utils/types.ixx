@@ -14,14 +14,14 @@ export namespace std {
   template <typename T>
   struct bit_shl {
     constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
-      return lhs << rhs;
+      return static_cast<T>(lhs << rhs);
     }
   };
 
   template <typename T>
   struct bit_shr {
     constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
-      return lhs >> rhs;
+      return static_cast<T>(lhs >> rhs);
     }
   };
 
