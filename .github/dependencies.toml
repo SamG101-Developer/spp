@@ -99,7 +99,7 @@ cppcheck = "{home}/.tools/cppcheck"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "d25f0f60e6cdb0a34575c666921f2c50db313a21"
+commit = "22a6a61f8bcc22931a9ea684f95677f9e02058ec"
 
 [[library]]
 name = "mimalloc"
@@ -151,9 +151,9 @@ commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
 [[library]]
 name = "ColEx"
 repo = "https://github.com/SamG101-Developer/ColEx.git"
-commit = "b63d168ebb1b6286ba51033f9ee387910c7e5400"
+commit = "e22ac31b8a1465230af19f5c1f80e61d71a22e57"
 
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "df07b87ae33bd9fd040d3cdb999cacf68a068f6f"
+commit = "616babed473e0cfb75a90ba7e3a3e7e1198ff534"
