@@ -77,23 +77,45 @@ export namespace boost {
 
   // DO NOT REMOVE ANY OF THESE (BOOST INTERNAL USAGE)
   using ::boost::multiprecision::backends::cpp_int_backend;
+  using ::boost::multiprecision::backends::eval_add;
+  using ::boost::multiprecision::backends::eval_subtract;
+  using ::boost::multiprecision::backends::eval_multiply;
   using ::boost::multiprecision::backends::eval_divide;
   using ::boost::multiprecision::backends::eval_modulus;
-  using ::boost::multiprecision::backends::eval_qr;
   using ::boost::multiprecision::backends::eval_left_shift;
   using ::boost::multiprecision::backends::eval_right_shift;
+  using ::boost::multiprecision::backends::eval_qr;
   using ::boost::multiprecision::backends::eval_get_sign;
   using ::boost::multiprecision::backends::eval_complement;
   using ::boost::multiprecision::backends::eval_ldexp;
   using ::boost::multiprecision::backends::eval_frexp;
-  using ::boost::multiprecision::backends::eval_multiply;
-  using ::boost::multiprecision::backends::eval_add;
-  using ::boost::multiprecision::backends::eval_subtract;
+  using ::boost::multiprecision::backends::eval_ceil;
+  using ::boost::multiprecision::backends::eval_floor;
+  using ::boost::multiprecision::backends::eval_trunc;
+  using ::boost::multiprecision::backends::eval_abs;
+  using ::boost::multiprecision::backends::eval_fabs;
+  using ::boost::multiprecision::backends::eval_bitwise_and;
+  using ::boost::multiprecision::backends::eval_bitwise_or;
+  using ::boost::multiprecision::backends::eval_bitwise_xor;
+  using ::boost::multiprecision::backends::eval_bit_flip;
   using ::boost::multiprecision::backends::divide_unsigned_helper;
 
   using ::boost::multiprecision::number_category;
   using ::boost::multiprecision::number_kind_integer;
   using ::boost::multiprecision::number_kind_floating_point;
+
+  using ::boost::multiprecision::fmax;
+  using ::boost::multiprecision::fmin;
+  using ::boost::multiprecision::fmod;
+
+  using ::boost::multiprecision::floor;
+  using ::boost::multiprecision::ceil;
+  using ::boost::multiprecision::trunc;
+  using ::boost::multiprecision::round;
+  using ::boost::multiprecision::abs;
+  using ::boost::multiprecision::fabs;
+  using ::boost::multiprecision::min;
+  using ::boost::multiprecision::max;
 }
 
 export using ::boost::multiprecision::operator+;
@@ -101,7 +123,18 @@ export using ::boost::multiprecision::operator-;
 export using ::boost::multiprecision::operator*;
 export using ::boost::multiprecision::operator/;
 export using ::boost::multiprecision::operator%;
+export using ::boost::multiprecision::operator~;
+export using ::boost::multiprecision::operator|;
+export using ::boost::multiprecision::operator&;
+export using ::boost::multiprecision::operator^;
 export using ::boost::multiprecision::operator<<;
+export using ::boost::multiprecision::operator>>;
+export using ::boost::multiprecision::operator==;
+export using ::boost::multiprecision::operator!=;
+export using ::boost::multiprecision::operator<;
+export using ::boost::multiprecision::operator>;
+export using ::boost::multiprecision::operator<=;
+export using ::boost::multiprecision::operator>=;
 
 SPECIALIZE_OP(std::plus, +)
 SPECIALIZE_OP(std::minus, -)
