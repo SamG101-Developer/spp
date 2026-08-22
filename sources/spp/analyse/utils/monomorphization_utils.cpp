@@ -258,6 +258,36 @@ namespace spp::analyse::utils::monomorphization_utils {
     }
 
     /**
+     * The instantiations of generic "sup" blocks built so far, keyed by the template block, the type it is being
+     * attached to, and the name the generic arguments substitute into. Building one clones a scope, gives it its own
+     * symbols and substitutes every binding into them, and the super-scope attachment pass runs more than once over
+     * the same type - once in bulk and again on demand - so without this the same instantiation is built repeatedly
+     * and the earlier copies are left orphaned in the scope tree, walked by every traversal that follows.
+     */
+    auto SupScopeInstantiations()
+      -> spp::Map<Str, Tup<scopes::Scope*, scopes::Scope*>>& {
+      static auto cache = spp::Map<Str, Tup<scopes::Scope*, scopes::Scope*>>();
+      return cache;
+    }
+
+    /**
+     * Build the key for one instantiation. The two scopes go in as raw bytes rather than as digits, so the key costs
+     * one allocation and cannot be ambiguous between a pointer and the name that follows it.
+     */
+    auto SupScopeInstantiationKey(
+      void const *const tmpl,
+      void const *const owner,
+      StrView name)
+      -> Str {
+      auto key = Str();
+      key.reserve(sizeof(tmpl) + sizeof(owner) + name.size());
+      key.append(reinterpret_cast<char const*>(&tmpl), sizeof(tmpl));
+      key.append(reinterpret_cast<char const*>(&owner), sizeof(owner));
+      key.append(name);
+      return key;
+    }
+
+    /**
      * Rewrite a "sup" block's scope name for an instantiation, so that the substituted block is named after the
      * arguments it was created for rather than the template's parameters.
      * @param old_sup_scope_name The template block's scope name.
@@ -467,6 +497,11 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericFunScope(
   return new_fun_scope_ptr;
 }
 
+auto spp::analyse::utils::monomorphization_utils::ClearSupScopeInstantiations()
+  -> void {
+  SupScopeInstantiations().clear();
+}
+
 auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
   scopes::Scope &old_sup_scope,
   scopes::Scope &new_cls_scope,
@@ -475,13 +510,22 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
   scopes::ScopeManager const *sm,
   asts::meta::CompilerMetaData *meta)
   -> Tup<scopes::Scope*, scopes::Scope*> {
+  // 0. An instantiation is decided entirely by the template block, the type it is for, and the arguments substituted
+  // into its name, so one that has already been built is the answer rather than the seed for another.
+  const auto substituted_name = SubstituteSupScopeName(
+    std::get<scopes::ScopeBlockName>(old_sup_scope.Name).Name, generic_args);
+  const auto instantiation_key = SupScopeInstantiationKey(&old_sup_scope, &new_cls_scope, substituted_name);
+  auto &instantiations = SupScopeInstantiations();
+  if (const auto hit = instantiations.find(instantiation_key); hit != instantiations.end()) {
+    return hit->second;
+  }
+
   // 1. Clone the template's scope. Only the block's own symbols are copied, not its subtree: the members below it are
   // functions, and each is instantiated in its own right by "CreateGenericFunScope" when it is called.
   auto new_sup_scope = MakeUnique<scopes::Scope>(old_sup_scope);
   auto new_sup_scope_ptr = new_sup_scope.get();
   GiveScopeOwnSyms(*new_sup_scope_ptr, old_sup_scope, false);
-  std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).Name =
-    SubstituteSupScopeName(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).Name, generic_args);
+  std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).Name = substituted_name;
 
   // A "cmp" on a generic "sup" block mangles to "<module>#<name>": "mangle_mod_name" drops every "<...>" scope, so
   // neither the block nor its generic arguments reach the name, and one written constant is one global however many
@@ -536,5 +580,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
     super_cls_scope = new_cls_scope.GetTypeSymbol(new_fq_super_type.get())->LinkedScope;
   }
 
-  return {new_sup_scope_ptr, super_cls_scope};
+  const auto result = Tup<scopes::Scope*, scopes::Scope*>{new_sup_scope_ptr, super_cls_scope};
+  instantiations.emplace(instantiation_key, result);
+  return result;
 }

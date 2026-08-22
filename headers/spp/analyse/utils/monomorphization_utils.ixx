@@ -92,6 +92,12 @@ namespace spp::analyse::utils::monomorphization_utils {
    * @param meta The compiler meta data.
    * @return The scope created for the instantiation, and the scope of its substituted super class if it extends one.
    */
+  /**
+   * Drop every generic "sup" block instantiation remembered by @c CreateGenericSupScope . The cache names scopes by
+   * address, so it must not outlive them.
+   */
+  SPP_EXP_FUN auto ClearSupScopeInstantiations() -> void;
+
   SPP_EXP_FUN auto CreateGenericSupScope(
     scopes::Scope &old_sup_scope,
     scopes::Scope &new_cls_scope,
