@@ -4,6 +4,8 @@ module;
 
 #if SPP_COMPILER_CLANG && SPP_PLATFORM_UNIX
 #include <bits/floatn-common.h>
+#elif SPP_COMPILER_GCC
+#include <stdfloat>
 #endif
 
 export module spp.utils.types;
@@ -25,12 +27,24 @@ export namespace std {
     }
   };
 
-#if SPP_COMPILER_CLANG
+#if SPP_COMPILER_GCC
+  using ::std::float16_t;
+  using ::std::float32_t;
+  using ::std::float64_t;
+  using ::std::float128_t;
+#elif SPP_COMPILER_CLANG
   using float16_t = _Float16;
   using float32_t = _Float32;
   using float64_t = _Float64;
   using float128_t = __float128;
 #endif
+  inline auto to_string(const float16_t x) -> std::string {
+    return std::to_string(static_cast<double>(x));
+  }
+
+  inline auto to_string(const float128_t x) -> std::string {
+    return std::to_string(static_cast<double>(x));
+  }
 }
 
 namespace spp {
@@ -91,9 +105,6 @@ namespace spp {
   SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
   using Function = std::function<Sig>;
 
-  SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
-  using FunctionRef = std::function_ref<Sig>;
-
   SPP_EXP_FUN template <std::size_t N, typename... Ts>
   auto get(Tup<Ts...> const &tup) -> decltype(auto) {
     return std::get<N>(tup);
@@ -144,6 +155,10 @@ namespace spp {
   // Deduction guide for variadic arguments / init list
   template <typename T, typename A = std::allocator<T>>
   Vec(std::initializer_list<T>, A const & = A()) -> Vec<T, A>;
+
+  // Deduction guide for element and length
+  template <typename T, typename A = std::allocator<T>>
+  Vec(std::size_t, T, A const & = A()) -> Vec<T, A>;
 }
 
 SPP_EXP_CLS template <typename T, typename A>
@@ -335,13 +350,13 @@ public:
   }
 
   template <typename R>
-    requires (std::ranges::range<R>
-      and std::constructible_from<value_type, std::ranges::range_value_t<R>>
-    )
+    requires (std::ranges::range<R> and std::constructible_from<value_type, std::ranges::range_value_t<R>>)
   SPP_ATTR_ALWAYS_INLINE
   auto AppendRange(R &&range) {
-    _Vec.insert(_Vec.end(), std::make_move_iterator(std::ranges::begin(range)),
-                std::make_move_iterator(std::ranges::end(range)));
+    _Vec.insert(
+      _Vec.end(),
+      std::make_move_iterator(std::ranges::begin(range)),
+      std::make_move_iterator(std::ranges::end(range)));
   }
 
   SPP_ATTR_ALWAYS_INLINE
@@ -399,3 +414,5 @@ public:
 private:
   underlying_type _Vec;
 };
+
+static_assert(std::ranges::contiguous_range<spp::Vec<int>>);

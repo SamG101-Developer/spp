@@ -8,6 +8,7 @@ project(spp)
 # module for the version specified above, and setting the
 # threading library preference.
 set(CMAKE_CXX_MODULE_STD ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 # The LTO-aware binutils wrappers only exist for GCC; clang
