@@ -78,6 +78,7 @@ export namespace sys {
   std::function<int(mode_t)> S_ISDIR = [](const mode_t mode) {
     return LEGACY_S_ISDIR(mode);
   };
+  const int DEFAULT_FILE_MODE = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
   const int LOCK_EX = LEGACY_LOCK_EX;
   const int LOCK_SH = LEGACY_LOCK_SH;
   const int LOCK_UN = LEGACY_LOCK_UN;
