@@ -36,7 +36,7 @@
 #if defined(__clang__)
   #undef  SPP_COMPILER_CLANG
   #define SPP_COMPILER_CLANG 1
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && !defined(__clang__)
   #undef  SPP_COMPILER_GCC
   #define SPP_COMPILER_GCC 1
 #elif defined(_MSC_VER)
