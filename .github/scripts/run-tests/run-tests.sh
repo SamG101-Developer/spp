@@ -7,17 +7,9 @@ set -euo pipefail
 # stage. This is near enough guaranteed but a failsafe
 # catches any edge case scenarios.
 binary="${PWD}/build/tests/spp_tests"
-cli="${PWD}/build/spp"
-if [ "$RUNNER_OS" = "Windows" ]; then
-  binary="${binary}.exe"
-  cli="${cli}.exe"
-fi
+[ "$RUNNER_OS" = "Windows" ] && binary="${PWD}/build/tests/spp_tests.exe"
 if ! [ -x "$binary" ]; then
   echo "::error::test binary not found at $binary"
-  exit 1
-fi
-if ! [ -x "$cli" ]; then
-  echo "::error::spp cli not found at $cli"
   exit 1
 fi
 
@@ -45,21 +37,24 @@ work_dir="${PWD}/tests/test_outputs"
 mkdir -p "$work_dir"
 cd "$work_dir"
 
-# Enforce the vcs checks here as-well as test boot, because
-# I don't know where the failure is happening from, so just
-# guard everywhere.
-[ -f spp.toml ] || "$cli" init
-[ -n "$(ls -A vcs 2>/dev/null)" ] || "$cli" vcs
-
-if [ -z "$(find vcs -name '*.spp' -print -quit)" ]; then
-  echo "::error::no .spp modules under ${work_dir}/vcs; the [vcs] clone did not land"
-  exit 1
-fi
-
 # Run the parallel testing suite through the downloaded
 # gtest-parallel script, setting the config options from
-# the env flags.
+# the env flags. The fixture, including the [vcs] clone, is
+# created by the first test to reach build_temp_project;
+# there is no CLI seed step because build/spp is not wired
+# to run_cli.
+status=0
 python3 "$runner" \
   "$binary" \
   --output_dir="$log_dir" \
-  ${WORKERS:+--workers="$WORKERS"}
+  ${WORKERS:+--workers="$WORKERS"} || status=$?
+
+# Guard here as well as in test boot: an empty vcs/ passes the
+# compiler's structure validation, so on its own it surfaces
+# only as every std symbol being undefined in every test.
+if [ -z "$(find vcs -name '*.spp' -print -quit 2>/dev/null)" ]; then
+  echo "::error::no .spp modules under ${work_dir}/vcs; the [vcs] clone did not land, so every std symbol was undefined"
+  exit 1
+fi
+
+exit "$status"
