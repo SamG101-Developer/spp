@@ -227,8 +227,8 @@ auto spp::asts::TypePostfixExpressionAst::TypeParts()
 auto spp::asts::TypePostfixExpressionAst::LastTypePart() const
   -> TypeIdentifierAst const* {
   // The operator's part (if any) is appended last; otherwise the final part comes from the lhs.
-  if (auto const *op_part = const_shared_cast(TokOp)->LastTypePart()) { return op_part; }
-  return const_shared_cast(Lhs)->LastTypePart();
+  if (auto const *op_part = std::as_const(*TokOp).LastTypePart()) { return op_part; }
+  return std::as_const(*Lhs).LastTypePart();
 }
 
 auto spp::asts::TypePostfixExpressionAst::LastTypePart()

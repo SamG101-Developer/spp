@@ -193,7 +193,7 @@ auto spp::asts::TypeUnaryExpressionAst::TypeParts()
 auto spp::asts::TypeUnaryExpressionAst::LastTypePart() const
   -> TypeIdentifierAst const* {
   // Unary operators (namespace, borrow) contribute no type parts, so the final part is always the rhs's.
-  return const_shared_cast(Rhs)->LastTypePart();
+  return std::as_const(*Rhs).LastTypePart();
 }
 
 auto spp::asts::TypeUnaryExpressionAst::LastTypePart()
@@ -236,7 +236,10 @@ auto spp::asts::TypeUnaryExpressionAst::WithConvention(
 
 auto spp::asts::TypeUnaryExpressionAst::WithoutGenerics() const
   -> Shared<TypeAst> {
-  // Todo: using the cache breaks.
+  // Todo: using the cache breaks. Caching this shares one wrapper between every caller, and the wrapper shares "Op"
+  // with this node, so a caller that writes through the result writes into the original and into every other caller's
+  // copy. Enabling it compiles and runs this project correctly, so if it still breaks it is on an input not covered
+  // here; validate against the full corpus before turning it on.
   return MakeShared<TypeUnaryExpressionAst>(Op, Rhs->WithoutGenerics());
 }
 
