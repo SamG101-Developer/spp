@@ -27,6 +27,8 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
    */
   Unique<TokenAst> TokBool;
 
+  static auto FromCppVal(bool val) -> Unique<BooleanLiteralAst>;
+
   /**
    * Construct the BooleanLiteralAst with the arguments matching the members.
    * @param[in] tok_bool The token that represents the boolean literal.

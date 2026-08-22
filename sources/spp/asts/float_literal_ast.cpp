@@ -23,14 +23,6 @@ import boost;
 import llvm;
 
 SPP_MOD_BEGIN
-static const auto kFloatBounds = spp::utils::numbers::FloatLimitMap{
-  {spp::Str("f8"), spp::MakePair(boost::BigDec("-448"), boost::BigDec("448"))},
-  {spp::Str("f16"), LIMIT_F(std::float16_t)},
-  {spp::Str("f32"), LIMIT_F(std::float32_t)},
-  {spp::Str("f64"), LIMIT_F(std::float64_t)},
-  {spp::Str("f128"), LIMIT_F(std::float128_t)}
-};
-
 auto spp::asts::FloatLiteralAst::FromSingleTok(
   decltype(TokSign) &&tok_sign,
   Unique<TokenAst> &&token,
@@ -148,7 +140,7 @@ auto spp::asts::FloatLiteralAst::ValidateBounds(
   using analyse::errors::SppFloatOutOfBoundsError;
 
   // A value the type cannot hold is the same error whether it was written down or computed by comp-time arithmetic.
-  auto const &[lower, upper] = kFloatBounds.at(Type);
+  auto const &[lower, upper] = kBounds.at(Type);
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
     value.compare(lower) < 0 or value.compare(upper) > 0,

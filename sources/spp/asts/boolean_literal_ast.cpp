@@ -16,6 +16,12 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
+auto spp::asts::BooleanLiteralAst::FromCppVal(
+  const bool val)
+  -> Unique<BooleanLiteralAst> {
+  return val ? True(0) : False(0);
+}
+
 spp::asts::BooleanLiteralAst::BooleanLiteralAst(
   decltype(TokBool) &&tok_bool) :
   TokBool(std::move(tok_bool)) {

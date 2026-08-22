@@ -1,16 +1,19 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 export module spp.asts.integer_literal_ast;
 import spp.asts.literal_ast;
 import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
 import spp.lex.tokens;
+import spp.utils.numbers;
 import spp.utils.traits;
 import spp.utils.types;
 import boost;
 import llvm;
 import std;
+import sys;
 
 namespace spp::asts {
   SPP_EXP_CLS struct IntegerLiteralAst;
@@ -19,6 +22,23 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
+  inline static const auto kBounds = spp::utils::numbers::IntLimitMap{
+    {spp::Str("s8"), LIMIT_S(8)},
+    {spp::Str("s16"), LIMIT_S(16)},
+    {spp::Str("s32"), LIMIT_S(32)},
+    {spp::Str("s64"), LIMIT_S(64)},
+    {spp::Str("s128"), LIMIT_S(128)},
+    {spp::Str("s256"), LIMIT_S(256)},
+    {spp::Str("sz"), LIMIT_S(sizeof(sys::ssize_t) * 8)},
+    {spp::Str("u8"), LIMIT_U(8)},
+    {spp::Str("u16"), LIMIT_U(16)},
+    {spp::Str("u32"), LIMIT_U(32)},
+    {spp::Str("u64"), LIMIT_U(64)},
+    {spp::Str("u128"), LIMIT_U(128)},
+    {spp::Str("u256"), LIMIT_U(256)},
+    {spp::Str("uz"), LIMIT_U(sizeof(std::size_t) * 8)},
+  };
+
   SPP_GCC_VTABLE_FIX
 
   /**

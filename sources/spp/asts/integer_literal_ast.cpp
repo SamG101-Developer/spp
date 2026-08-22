@@ -24,23 +24,6 @@ import llvm;
 import sys;
 
 SPP_MOD_BEGIN
-static const auto kIntegerBounds = spp::utils::numbers::IntLimitMap{
-  {spp::Str("s8"), LIMIT_S(8)},
-  {spp::Str("s16"), LIMIT_S(16)},
-  {spp::Str("s32"), LIMIT_S(32)},
-  {spp::Str("s64"), LIMIT_S(64)},
-  {spp::Str("s128"), LIMIT_S(128)},
-  {spp::Str("s256"), LIMIT_S(256)},
-  {spp::Str("sz"), LIMIT_S(sizeof(sys::ssize_t) * 8)},
-  {spp::Str("u8"), LIMIT_U(8)},
-  {spp::Str("u16"), LIMIT_U(16)},
-  {spp::Str("u32"), LIMIT_U(32)},
-  {spp::Str("u64"), LIMIT_U(64)},
-  {spp::Str("u128"), LIMIT_U(128)},
-  {spp::Str("u256"), LIMIT_U(256)},
-  {spp::Str("uz"), LIMIT_U(sizeof(std::size_t) * 8)},
-};
-
 spp::asts::IntegerLiteralAst::IntegerLiteralAst(
   decltype(TokSign) &&tok_sign,
   decltype(Val) &&val,
@@ -134,7 +117,7 @@ auto spp::asts::IntegerLiteralAst::ValidateBounds(
 
   // A value the type cannot hold is the same error whether it was written down or computed by comp-time arithmetic:
   // the literal that would carry it does not exist.
-  auto const &[lower, upper] = kIntegerBounds.at(Type);
+  auto const &[lower, upper] = kBounds.at(Type);
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
     value.compare(lower) < 0 or value.compare(upper) > 0,

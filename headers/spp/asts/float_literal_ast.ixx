@@ -1,9 +1,11 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 export module spp.asts.float_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.numbers;
 import spp.utils.traits;
 import spp.utils.types;
 import boost;
@@ -22,6 +24,14 @@ namespace spp::asts {
  * @c _f64. No postfix defaults the type to @c std::BigDec.
  */
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
+  inline static const auto kBounds = spp::utils::numbers::FloatLimitMap{
+    {spp::Str("f8"), spp::MakePair(boost::BigDec("-448"), boost::BigDec("448"))},
+    {spp::Str("f16"), LIMIT_F(std::float16_t)},
+    {spp::Str("f32"), LIMIT_F(std::float32_t)},
+    {spp::Str("f64"), LIMIT_F(std::float64_t)},
+    {spp::Str("f128"), LIMIT_F(std::float128_t)}
+  };
+
   SPP_GCC_VTABLE_FIX
 
   /**
