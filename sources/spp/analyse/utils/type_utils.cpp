@@ -1109,7 +1109,7 @@ auto spp::analyse::utils::type_utils::GetUnimplementedAbstractMethods(
   // re-parented and a type gaining or losing the super scopes its inherited methods come from, since both bump the
   // linkage generation.
   auto &cache = _UnimplementedAbstractMethodsCache();
-  const auto generation = scopes::ScopeLinkageGeneration();
+  const auto generation = scopes::TypeStructureGeneration();
   if (const auto hit = cache.find(&type_scope); hit != cache.end() and hit->second.first == generation) {
     return hit->second.second;
   }
