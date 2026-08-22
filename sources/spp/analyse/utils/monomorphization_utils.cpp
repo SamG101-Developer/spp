@@ -288,6 +288,26 @@ namespace spp::analyse::utils::monomorphization_utils {
     }
 
     /**
+     * The type written in a "sup" block's scope name, parsed once per distinct spelling. The name is text, so reading a
+     * type out of it means lexing and parsing - and the same handful of block names is re-read for every instantiation
+     * built from them, which is thousands of round trips through the parser for a few hundred distinct strings.
+     *
+     * @n
+     * Safe to keep, because parsing is decided entirely by the text, and the only thing done with the result is
+     * @c SubstituteGenerics , which builds a new tree rather than writing into this one.
+     */
+    auto ParsedSupScopeType(
+      Str const &text)
+      -> asts::TypeAst const& {
+      static auto cache = spp::Map<Str, Unique<asts::TypeAst>>();
+      auto it = cache.find(text);
+      if (it == cache.end()) {
+        it = cache.emplace(text, INJECT_CODE(text, parse_type_expression)).first;
+      }
+      return *it->second;
+    }
+
+    /**
      * Rewrite a "sup" block's scope name for an instantiation, so that the substituted block is named after the
      * arguments it was created for rather than the template's parameters.
      * @param old_sup_scope_name The template block's scope name.
@@ -306,14 +326,14 @@ namespace spp::analyse::utils::monomorphization_utils {
 
       // A "sup-functions" block names one type; a "sup-extension" block names the type and its super class.
       if (not parts[1].contains(" ext ")) {
-        const auto t = INJECT_CODE(parts[1], parse_type_expression)->SubstituteGenerics(generic_args.GetAllArgs());
+        const auto t = ParsedSupScopeType(parts[1]).SubstituteGenerics(generic_args.GetAllArgs());
         return parts[0] + "#" + t->ToString() + "#" + parts[2];
       }
 
-      const auto t = INJECT_CODE(parts[1].substr(0, parts[1].find(" ext ")), parse_type_expression)
-        ->SubstituteGenerics(generic_args.GetAllArgs());
-      const auto u = INJECT_CODE(parts[1].substr(parts[1].find(" ext ") + 5), parse_type_expression)
-        ->SubstituteGenerics(generic_args.GetAllArgs());
+      const auto t = ParsedSupScopeType(parts[1].substr(0, parts[1].find(" ext ")))
+        .SubstituteGenerics(generic_args.GetAllArgs());
+      const auto u = ParsedSupScopeType(parts[1].substr(parts[1].find(" ext ") + 5))
+        .SubstituteGenerics(generic_args.GetAllArgs());
       return parts[0] + "#" + t->ToString() + " ext " + u->ToString() + "#" + parts[2];
     }
   }
