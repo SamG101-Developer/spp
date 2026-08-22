@@ -125,9 +125,12 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
   // Note: the sole caller (GetTypeSymbol) only reaches here for non-TypeIdentifier types, so there is always at least
   // one namespace or nested-type part to shift through.
 
-  // Get the namespace and type parts, to get the scopes.
-  const auto ns_parts = fq_type.NsParts();
-  const auto type_parts = fq_type.TypeParts();
+  // Get the namespace and type parts, to get the scopes. Filled through the appending form, so a type of any depth
+  // costs one allocation per list rather than one per level of the chain.
+  auto ns_parts = Vec<asts::IdentifierAst const*>();
+  auto type_parts = Vec<asts::TypeIdentifierAst const*>();
+  fq_type.NsPartsInto(ns_parts);
+  fq_type.TypePartsInto(type_parts);
   auto shifted_scope = &scope;
 
   // Iterate to move through the namespace parts first.

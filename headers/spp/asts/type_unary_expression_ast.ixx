@@ -74,6 +74,12 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_ATTR_NODISCARD auto IsSelfType() const noexcept
     -> bool override;
 
+  auto NsPartsInto(Vec<IdentifierAst const*> &out) const
+    -> void override;
+
+  auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const
+    -> void override;
+
   SPP_ATTR_NODISCARD auto NsParts() const
     -> Vec<IdentifierAst const*> override;
 

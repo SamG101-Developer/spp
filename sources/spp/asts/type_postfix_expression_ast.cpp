@@ -195,8 +195,8 @@ auto spp::asts::TypePostfixExpressionAst::IsNeverType() const noexcept
 auto spp::asts::TypePostfixExpressionAst::NsParts() const
   -> Vec<IdentifierAst const*> {
   // Concatenate the lhs and rhs namespace parts.
-  auto parts = std::as_const(*Lhs).NsParts();
-  parts.AppendRange(std::as_const(*TokOp).NsParts());
+  auto parts = Vec<IdentifierAst const*>();
+  NsPartsInto(parts);
   return parts;
 }
 
@@ -211,8 +211,8 @@ auto spp::asts::TypePostfixExpressionAst::NsParts()
 auto spp::asts::TypePostfixExpressionAst::TypeParts() const
   -> Vec<TypeIdentifierAst const*> {
   // Concatenate the lhs and rhs type parts.
-  auto parts = std::as_const(*Lhs).TypeParts();
-  parts.AppendRange(std::as_const(*TokOp).TypeParts());
+  auto parts = Vec<TypeIdentifierAst const*>();
+  TypePartsInto(parts);
   return parts;
 }
 
@@ -302,6 +302,22 @@ auto spp::asts::TypePostfixExpressionAst::ResetCache()
   -> void {
   // Forward into the LHS to reach the inner TypeIdentifierAst.
   Lhs->ResetCache();
+}
+
+auto spp::asts::TypePostfixExpressionAst::NsPartsInto(
+  Vec<IdentifierAst const*> &out) const
+  -> void {
+  // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
+  std::as_const(*Lhs).NsPartsInto(out);
+  std::as_const(*TokOp).NsPartsInto(out);
+}
+
+auto spp::asts::TypePostfixExpressionAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*> &out) const
+  -> void {
+  // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
+  std::as_const(*Lhs).TypePartsInto(out);
+  std::as_const(*TokOp).TypePartsInto(out);
 }
 
 SPP_MOD_END

@@ -80,4 +80,15 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts()
   return {};
 }
 
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsPartsInto(
+  Vec<IdentifierAst const*> &out) const
+  -> void {
+  out.EmplaceBack(Ns.get());
+}
+
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*>&) const
+  -> void {
+}
+
 SPP_MOD_END

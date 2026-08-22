@@ -83,4 +83,15 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts()
   return {Name.get()};
 }
 
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsPartsInto(
+  Vec<IdentifierAst const*>&) const
+  -> void {
+}
+
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*> &out) const
+  -> void {
+  out.EmplaceBack(Name.get());
+}
+
 SPP_MOD_END

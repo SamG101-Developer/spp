@@ -531,4 +531,15 @@ auto spp::asts::TypeIdentifierAst::ToView() const
   return _CachedStringification;
 }
 
+auto spp::asts::TypeIdentifierAst::NsPartsInto(
+  Vec<IdentifierAst const*>&) const
+  -> void {
+}
+
+auto spp::asts::TypeIdentifierAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*> &out) const
+  -> void {
+  out.EmplaceBack(this);
+}
+
 SPP_MOD_END

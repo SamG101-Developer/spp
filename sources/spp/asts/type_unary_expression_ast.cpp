@@ -164,8 +164,8 @@ auto spp::asts::TypeUnaryExpressionAst::IsSelfType() const noexcept
 
 auto spp::asts::TypeUnaryExpressionAst::NsParts() const
   -> Vec<IdentifierAst const*> {
-  auto parts = std::as_const(*Op).NsParts();
-  parts.AppendRange(std::as_const(*Rhs).NsParts());
+  auto parts = Vec<IdentifierAst const*>();
+  NsPartsInto(parts);
   return parts;
 }
 
@@ -178,8 +178,8 @@ auto spp::asts::TypeUnaryExpressionAst::NsParts()
 
 auto spp::asts::TypeUnaryExpressionAst::TypeParts() const
   -> Vec<TypeIdentifierAst const*> {
-  auto parts = std::as_const(*Op).TypeParts();
-  parts.AppendRange(std::as_const(*Rhs).TypeParts());
+  auto parts = Vec<TypeIdentifierAst const*>();
+  TypePartsInto(parts);
   return parts;
 }
 
@@ -272,6 +272,22 @@ auto spp::asts::TypeUnaryExpressionAst::ResetCache()
   -> void {
   // Forward into the RHS to reach the inner TypeIdentifierAst.
   Rhs->ResetCache();
+}
+
+auto spp::asts::TypeUnaryExpressionAst::NsPartsInto(
+  Vec<IdentifierAst const*> &out) const
+  -> void {
+  // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
+  std::as_const(*Op).NsPartsInto(out);
+  std::as_const(*Rhs).NsPartsInto(out);
+}
+
+auto spp::asts::TypeUnaryExpressionAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*> &out) const
+  -> void {
+  // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
+  std::as_const(*Op).TypePartsInto(out);
+  std::as_const(*Rhs).TypePartsInto(out);
 }
 
 SPP_MOD_END

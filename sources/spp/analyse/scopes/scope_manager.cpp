@@ -333,6 +333,7 @@ auto spp::analyse::scopes::ScopeManager::SelfProto() const
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   normal_sup_blocks.clear();
   utils::type_utils::ClearUnimplementedAbstractMethodsCache();
+  utils::monomorphization_utils::ClearSupScopeInstantiations();
   generic_sup_blocks.Clear();
   temp_scopes.Clear();
   asts::GenericParameterTypeAst::ClearDummyScopes();
