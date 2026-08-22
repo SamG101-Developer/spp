@@ -129,7 +129,7 @@ jobs:
 
       # TEMP : Investigate where the vcs folder is.
       - name: Debug over SSH
-        if: ${{ vars.SPP_TMATE_DEBUG == '1' && runner.os == 'Linux' && matrix.variant.name == 'release' && inputs.run-tests }}
+        if: ${{ runner.os == 'Linux' && matrix.variant.name == 'release' && inputs.run-tests }}
         uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113
         with:
           limit-access-to-actor: true
