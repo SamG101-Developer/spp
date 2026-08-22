@@ -294,7 +294,10 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     }
   }
 
+  // The stringification is dropped rather than kept, because this pass is what settles the value it was built from;
+  // the next reader rebuilds it once and every reader after that shares it, for as long as the value stands.
   _HasAnalysed = true;
+  _Resolved = true;
   _CachedStringification.clear();
 }
 
@@ -427,22 +430,25 @@ auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
   -> Shared<TypeAst> {
   if (args.IsEmpty() or GnArgGroup == nullptr) { return AstClone(this); }
 
-  // Get the generic type and comp arguments, split and transformed.
-  auto gen_type_args = Vec<Pair<TypeIdentifierAst*, ExpressionAst*>>{};
-  auto gen_comp_args = Vec<Pair<TypeIdentifierAst*, ExpressionAst*>>{};
+  // Check whether this type is itself one of the parameters
+  // being substituted.
   for (auto const &arg : args) {
-    if (auto const *type_kw_arg = arg->To<GenericArgumentTypeKeywordAst>()) {
-      gen_type_args.EmplaceBack(type_kw_arg->Name->ToUnchecked<TypeIdentifierAst>(), type_kw_arg->Val.get());
-    }
-    else if (auto const *comp_kw_arg = arg->To<GenericArgumentCompKeywordAst>()) {
-      gen_comp_args.EmplaceBack(comp_kw_arg->Name->ToUnchecked<TypeIdentifierAst>(), comp_kw_arg->Val.get());
+    auto const *type_kw_arg = arg->To<GenericArgumentTypeKeywordAst>();
+    if (type_kw_arg == nullptr) { continue; }
+    if (*this == *type_kw_arg->Name->ToUnchecked<TypeIdentifierAst>()) {
+      return AstClone(type_kw_arg->Val->ToUnchecked<TypeAst>());
     }
   }
 
-  // Check if this type directly matches any generic type argument name.
-  for (auto const &[gen_arg_name, gen_arg_val] : gen_type_args) {
-    if (*this == *gen_arg_name) {
-      return AstClone(gen_arg_val->ToUnchecked<TypeAst>());
+  // Nothing below this point applies to a type with no arguments
+  // of its own: there is nothing to substitute into.
+  if (GnArgGroup->Args.IsEmpty()) { return AstClone(this); }
+
+  // Get the generic comp arguments, split and transformed.
+  auto gen_comp_args = Vec<Pair<TypeIdentifierAst*, ExpressionAst*>>{};
+  for (auto const &arg : args) {
+    if (auto const *comp_kw_arg = arg->To<GenericArgumentCompKeywordAst>()) {
+      gen_comp_args.EmplaceBack(comp_kw_arg->Name->ToUnchecked<TypeIdentifierAst>(), comp_kw_arg->Val.get());
     }
   }
 
@@ -524,7 +530,7 @@ auto spp::asts::TypeIdentifierAst::ToView() const
     return Name;
   }
 
-  if (_CachedStringification.empty() or not _HasAnalysed) {
+  if (_CachedStringification.empty() or not _Resolved) {
     _CachedStringification = Name;
     _CachedStringification.append(GnArgGroup->ToString());
   }

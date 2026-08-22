@@ -61,6 +61,7 @@ spp::analyse::scopes::Scope::Scope(Scope const &other) :
   NsSym(other.NsSym),
   NonGenericScope(other.NonGenericScope),
   _ErrorFormatter(nullptr) {
+  BumpTypeLookupGeneration();
   InternalTable.ShallowCopyFrom(other.InternalTable);
 
   // Copy the children recursively.
@@ -76,13 +77,15 @@ spp::analyse::scopes::Scope::~Scope() = default;
 auto spp::analyse::scopes::Scope::NewGlobal(
   compiler::Module const &mod)
   -> Shared<Scope> {
-  // Create a new global scope (no parent or ast for the global scope).
+  // Create a new global scope (no parent or ast for the global
+  // scope). This is a master scope for all scope managers.
   auto scope_name = ScopeBlockName::FromParts(
     "__global__", {}, 0);
   auto glob_scope = MakeShared<Scope>(
     std::move(scope_name), nullptr, nullptr, mod.error_formatter.get());
 
-  // Inject the "_global" namespace symbol into this scope (makes lookups orthogonal).
+  // Inject the "_global" namespace symbol into this scope to make
+  // lookups orthogonal.
   auto glob_ns_sym_name = MakeShared<asts::IdentifierAst>(0uz, "_global");
   auto glob_ns_sym = MakeShared<NamespaceSymbol>(
     std::move(glob_ns_sym_name), glob_scope.get());
@@ -122,11 +125,13 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
   Scope const &scope,
   asts::TypeAst const &fq_type)
   -> Pair<const Scope*, asts::TypeIdentifierAst const*> {
-  // Note: the sole caller (GetTypeSymbol) only reaches here for non-TypeIdentifier types, so there is always at least
+  // Note: the sole caller (GetTypeSymbol) only reaches here
+  // for non-TypeIdentifier types, so there is always at least
   // one namespace or nested-type part to shift through.
 
-  // Get the namespace and type parts, to get the scopes. Filled through the appending form, so a type of any depth
-  // costs one allocation per list rather than one per level of the chain.
+  // Get the namespace and type parts, to get the scopes. Use
+  // the appending form, so a type of any depth only uses one
+  // allocation per list rather than one per level of the chain.
   auto ns_parts = Vec<asts::IdentifierAst const*>();
   auto type_parts = Vec<asts::TypeIdentifierAst const*>();
   fq_type.NsPartsInto(ns_parts);
@@ -154,7 +159,8 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
 
 auto spp::analyse::scopes::Scope::GetErrorFormatter() const
   -> spp::utils::errors::ErrorFormatter* {
-  // Return this scope's error formatter, or the parent's if it doesn't exist.
+  // Return this scope's error formatter, or the parent's if
+  // it doesn't exist.
   const auto this_formatter = _ErrorFormatter;
   return this_formatter != nullptr ? this_formatter : Parent->GetErrorFormatter();
 }
@@ -174,9 +180,12 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
       | genex::to<Vec>();
 
     for (auto const &t : all_type_syms) {
-      // Self (and anything else with neither a scope nor a recorded value) has no concrete value to pre-seed. A symbol
-      // bound to another generic parameter has no scope either, but its recorded value still names the binding, and
-      // dropping it would leave the parameter unsubstituted downstream.
+      // Self (and anything else with neither a scope nor a
+      // recorded value) has no concrete value to pre-seed.
+      // A symbol bound to another generic parameter has no
+      // scope either, but its recorded value still names
+      // the binding, and dropping it would leave the parameter
+      // unsubstituted downstream.
       if (t->LinkedScope == nullptr and t->GenericVal == nullptr) { continue; }
       if (genex::contains(type_names, *t->Name, genex::meta::deref)) { continue; }
       syms.EmplaceBack(asts::GenericArgumentTypeKeywordAst::FromSym(*t));
@@ -203,7 +212,8 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
   Vec<asts::GenericArgumentAst*> const &generics,
   Shared<asts::TypeAst> const &ignore) const
   -> Vec<Shared<Symbol>> {
-  // Convert the provided generic arguments into symbols. Todo: filter to "is_generic"?
+  // Convert the provided generic arguments into symbols.
+  // Todo: filter to "is_generic"?
   const auto type_syms = generics
     | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
     | genex::views::transform([this](auto const &gen_arg) { return GetTypeSymbol(gen_arg->Val.get()); })
@@ -224,7 +234,8 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
   auto syms = type_syms;
   syms.AppendRange(comp_syms);
 
-  // Reuse above logic to collect generic symbols from the ancestor scopes.
+  // Reuse above logic to collect generic symbols from the
+  // ancestor scopes.
   const auto scopes = Ancestors()
     | genex::views::take_while([](auto *scope) { return not std::holds_alternative<ScopeIdentifierName>(scope->Name); })
     | genex::to<Vec>();
@@ -280,6 +291,7 @@ auto spp::analyse::scopes::Scope::AddTypeSymbol(
   Shared<TypeSymbol> const &sym)
   -> void {
   // Add a type symbol to the corresponding symbol table.
+  BumpTypeLookupGeneration();
   InternalTable.TypeTbl.Add(sym->Name.get(), sym);
 }
 
@@ -297,6 +309,7 @@ auto spp::analyse::scopes::Scope::AddTypeSymbolCheckConflict(
   }
 
   // Add a type symbol to the corresponding symbol table.
+  BumpTypeLookupGeneration();
   InternalTable.TypeTbl.Add(sym->Name.get(), sym);
 }
 
@@ -318,6 +331,7 @@ auto spp::analyse::scopes::Scope::RemTypeSymbol(
   asts::TypeIdentifierAst const *sym_name)
   -> Shared<TypeSymbol> {
   // Remove a type symbol from the corresponding symbol table.
+  BumpTypeLookupGeneration();
   return InternalTable.TypeTbl.Rem(sym_name);
 }
 
@@ -458,18 +472,31 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
     sym_name_extracted = sym_name_extracted_;
   }
 
+  const auto generation = TypeLookupGeneration();
+  const auto cacheable = not exclusive and sup_scope_search;
+  if (auto *cached = static_cast<TypeSymbol*>(nullptr);
+    cacheable and sym_name->TryCachedLookup(this, generation, cached)) {
+    return cached;
+  }
+
   // Get the symbol from the symbol table if it exists.
   auto *sym = scope->InternalTable.TypeTbl.Get(sym_name_extracted);
 
-  // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
+  // If the symbol doesn't exist, and this is a non-exclusive
+  // search, check the parent scope.
   if (sym == nullptr and not exclusive and scope->Parent != nullptr) {
     sym = scope->Parent->GetTypeSymbol(sym_name_extracted, exclusive);
   }
 
-  // If the symbol still hasn't been found, check the super scopes for it.
+  // If the symbol still hasn't been found, check the super
+  // scopes for it.
   if (sym == nullptr and sup_scope_search) {
     sym = SearchSupScopesForType(*scope, sym_name_extracted);
   }
+
+  // Remember the answer against this scope, so the next ask
+  // of the same question is a pointer comparison.
+  if (cacheable) { sym_name->RememberLookup(this, generation, sym); }
 
   // Return the found symbol, or nullptr.
   return sym;
@@ -484,7 +511,8 @@ auto spp::analyse::scopes::Scope::GetNsSymbol(
   const auto scope = this;
   auto *sym = InternalTable.NsTbl.Get(sym_name);
 
-  // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
+  // If the symbol doesn't exist, and this is a non-exclusive
+  // search, check the parent scope.
   if (sym == nullptr and not exclusive and scope->Parent != nullptr) {
     sym = scope->Parent->GetNsSymbol(sym_name, exclusive);
   }
@@ -826,6 +854,7 @@ namespace {
    */
   std::uint64_t _ScopeLinkageGeneration = 1;
   std::uint64_t _TypeStructureGeneration = 1;
+  std::uint64_t _TypeLookupGeneration = 1;
 }
 
 auto spp::analyse::scopes::ScopeLinkageGeneration()
@@ -835,9 +864,11 @@ auto spp::analyse::scopes::ScopeLinkageGeneration()
 
 auto spp::analyse::scopes::BumpScopeLinkageGeneration()
   -> void {
-  // A scope moving in the tree changes the method set too, so this is the coarser of the two.
+  // A scope moving in the tree changes the method set and what a
+  // lookup finds, so this is the coarsest of the three.
   ++_ScopeLinkageGeneration;
   ++_TypeStructureGeneration;
+  ++_TypeLookupGeneration;
 }
 
 auto spp::analyse::scopes::TypeStructureGeneration()
@@ -848,4 +879,15 @@ auto spp::analyse::scopes::TypeStructureGeneration()
 auto spp::analyse::scopes::BumpTypeStructureGeneration()
   -> void {
   ++_TypeStructureGeneration;
+  ++_TypeLookupGeneration;
+}
+
+auto spp::analyse::scopes::TypeLookupGeneration()
+  -> std::uint64_t {
+  return _TypeLookupGeneration;
+}
+
+auto spp::analyse::scopes::BumpTypeLookupGeneration()
+  -> void {
+  ++_TypeLookupGeneration;
 }

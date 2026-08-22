@@ -61,6 +61,15 @@ spp::asts::IdentifierAst::IdentifierAst(
   _NameId(utils::Intern(Val)) {
 }
 
+spp::asts::IdentifierAst::IdentifierAst(
+  const std::size_t pos,
+  decltype(Val) val,
+  const utils::InternedId name_id) :
+  Val(std::move(val)),
+  _Pos(pos),
+  _NameId(name_id) {
+}
+
 auto spp::asts::IdentifierAst::MappedFromTok(
   TokenAst const &tok,
   decltype(Val) val)
@@ -118,9 +127,8 @@ auto spp::asts::IdentifierAst::PosEnd() const
 
 auto spp::asts::IdentifierAst::Clone() const
   -> Unique<Ast> {
-  return MakeUnique<IdentifierAst>(
-    _Pos,
-    Str(Val));
+  // The copy spells the same name, so it carries the id over rather than interning the string again.
+  return Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
 }
 
 auto spp::asts::IdentifierAst::ToString() const

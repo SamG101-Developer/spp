@@ -79,6 +79,16 @@ namespace spp::analyse::scopes {
    */
   SPP_EXP_FUN
   auto BumpTypeStructureGeneration() -> void;
+
+  /**
+   * A counter that changes whenever a type lookup could resolve differently: a symbol added or removed, a scope
+   * re-parented, or a super scope attached.
+   */
+  SPP_EXP_FUN SPP_ATTR_HOT
+  auto TypeLookupGeneration() -> std::uint64_t;
+
+  SPP_EXP_FUN
+  auto BumpTypeLookupGeneration() -> void;
 }
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {

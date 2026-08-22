@@ -28,6 +28,17 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, Enable
     std::size_t pos,
     decltype(Val) val);
 
+private:
+  /**
+   * Use the pre-known interned identifier if there is one, for edxample from a clone.
+   */
+  IdentifierAst(
+    std::size_t pos,
+    decltype(Val) val,
+    utils::InternedId name_id);
+
+public:
+
   static auto MappedFromTok(
     TokenAst const &tok,
     decltype(Val) val)
