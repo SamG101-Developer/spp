@@ -39,6 +39,11 @@ tag = "llvmorg-23.1.0-rc3"
 asset = "LLVM-23.1.0-rc3-macOS-ARM64.tar.xz"
 sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
 
+# macOS toolchains are tied to the Xcode app on the runner image.
+# Pin the developer directory explicitly so CI does not drift when GitHub updates the image.
+[pin.xcode]
+developer-dir = "/Applications/Xcode_16.4.app/Contents/Developer"
+
 # Prebuilt from MarkusJx/prebuilt-boost, so one digest per
 # runner. There is no 24.04 arm64 build upstream, so arm64
 # takes the 22.04 tarball.

@@ -65,6 +65,14 @@ runs:
       run: bash .github/scripts/setup-toolchain/install-clang-linux.sh
 
     # macOS + Clang
+    - name: Select Xcode
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        sudo xcode-select -s "$XCODE_DEVELOPER_DIR"
+        xcode-select -p
+        xcodebuild -version
+
     - name: Install Clang (macOS, brew)
       if: inputs.compiler == 'clang' && runner.os == 'macOS'
       shell: bash
