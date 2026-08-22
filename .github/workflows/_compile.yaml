@@ -112,7 +112,7 @@ jobs:
           build-type: ${{ matrix.variant.build-type }}
           sanitizer: ${{ matrix.variant.sanitizer }}
 
-      # Build the cmake project with the parallel flag set.
+      # Build the cmake project with the parallel flag set. CI.
       - name: Build
         run: cmake --build build --parallel
 
