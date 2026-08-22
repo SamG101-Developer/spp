@@ -106,7 +106,7 @@ auto spp::asts::UseStatementVariableAst::Stage3_GenTopLvlAliases(
     _Conversion->Type = scope->GetTypeSymbol(old_var_sym->Type.get())->FqName(false);
     old_var_sym->Type = _Conversion->Type;
 
-    _Conversion->_AliasSym->AliasSym = old_var_sym;
+    _Conversion->_AliasSym->AliasSym = old_var_sym->SharedFromThis<analyse::scopes::VariableSymbol>();
     _Conversion->_AliasSym->Type = _Conversion->Type;
     _Conversion->Stage3_GenTopLvlAliases(sm, meta);
     return;

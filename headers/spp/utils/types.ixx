@@ -2,7 +2,7 @@ module;
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
 
-#if SPP_COMPILER_CLANG
+#if SPP_COMPILER_CLANG && SPP_PLATFORM_UNIX
 #include <bits/floatn-common.h>
 #endif
 
