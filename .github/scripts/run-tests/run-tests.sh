@@ -7,9 +7,17 @@ set -euo pipefail
 # stage. This is near enough guaranteed but a failsafe
 # catches any edge case scenarios.
 binary="${PWD}/build/tests/spp_tests"
-[ "$RUNNER_OS" = "Windows" ] && binary="${PWD}/build/tests/spp_tests.exe"
+cli="${PWD}/build/spp"
+if [ "$RUNNER_OS" = "Windows" ]; then
+  binary="${binary}.exe"
+  cli="${cli}.exe"
+fi
 if ! [ -x "$binary" ]; then
   echo "::error::test binary not found at $binary"
+  exit 1
+fi
+if ! [ -x "$cli" ]; then
+  echo "::error::spp cli not found at $cli"
   exit 1
 fi
 
@@ -36,6 +44,17 @@ log_dir="$(cd "$OUTPUT_DIR" && pwd)"
 work_dir="${PWD}/tests/test_outputs"
 mkdir -p "$work_dir"
 cd "$work_dir"
+
+# Enforce the vcs checks here as-well as test boot, because
+# I don't know where the failure is happening from, so just
+# guard everywhere.
+[ -f spp.toml ] || "$cli" init
+[ -n "$(ls -A vcs 2>/dev/null)" ] || "$cli" vcs
+
+if [ -z "$(find vcs -name '*.spp' -print -quit)" ]; then
+  echo "::error::no .spp modules under ${work_dir}/vcs; the [vcs] clone did not land"
+  exit 1
+fi
 
 # Run the parallel testing suite through the downloaded
 # gtest-parallel script, setting the config options from

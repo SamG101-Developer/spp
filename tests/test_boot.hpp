@@ -30,23 +30,35 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
   // Ensure the output directory exists before locking it.
   std::filesystem::create_directories(cwd / fp);
 
-  // Serialize initialization (handle_init + handle_vcs) across parallel test workers. The lock is
-  // taken on the project directory itself rather than a lock file inside it, because handle_init
-  // refuses to run in a directory that is not empty. Use spp.toml as the sentinel: it is written by
-  // handle_init, so its absence means initialization has not completed.
+  // Serialize initialization (handle_init + handle_vcs) across
+  // parallel test workers. The lock is taken on the project
+  // directory itself rather than a lock file inside it, because
+  // handle_init refuses to run in a directory that is not empty.
   const auto lock_path = spp::utils::files::NativeString(cwd / fp);
   const int init_lock_fd = sys::open(lock_path.c_str(), sys::O_RDONLY);
   sys::flock(init_lock_fd, sys::LOCK_EX);
 
-  if (not std::filesystem::exists(cwd / fp / "spp.toml")) {
-    std::filesystem::current_path(cwd / fp);
-    spp::cli::handle_init();
-    spp::cli::handle_vcs();
-    std::filesystem::current_path(cwd);
-  }
+  // Temporary enforcement check because the GitHub runner has
+  // some strange behaviour with not cloning the vcs libraries
+  // for the unit tests (the stl),
+  const auto vcs_empty = [&] {
+    const auto vcs = cwd / fp / "vcs";
+    return not std::filesystem::exists(vcs) or std::filesystem::is_empty(vcs);
+  };
+  std::filesystem::current_path(cwd / fp);
+  if (not std::filesystem::exists("spp.toml")) { spp::cli::handle_init(); }
+  if (vcs_empty()) { spp::cli::handle_vcs(); }
+  std::filesystem::current_path(cwd);
 
   sys::flock(init_lock_fd, sys::LOCK_UN);
   sys::close(init_lock_fd);
+
+  // Failure if the vcs pull failed, stopping the test suite early
+  // as there is no point running it without the stl linked.
+  if (vcs_empty()) {
+    std::cerr << "FATAL: no [vcs] dependencies in the test fixture; the clone into vcs/ failed.\n";
+    std::exit(1);
+  }
 
   // Build the project.
   std::filesystem::create_directories(cwd / fp / "src");

@@ -16,8 +16,14 @@ namespace spp::cli {
   SPP_EXP_FUN auto handle_init()
     -> void;
 
+  /**
+   * Clone or update every repository in the project's [vcs] section into the "vcs" folder.
+   * @return @c true when every repository was fetched; @c false when any git invocation failed or a repository is
+   * missing afterwards. A caller that compiles against these sources must not proceed on @c false, because an empty
+   * "vcs" folder still passes @c handle_validate and only shows up as every imported symbol being undefined.
+   */
   SPP_EXP_FUN auto handle_vcs()
-    -> void;
+    -> bool;
 
   SPP_EXP_FUN auto handle_build(
     Str const &mode,

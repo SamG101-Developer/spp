@@ -45,6 +45,23 @@ inline const spp::Str CONFIG_FILE_CONTENTS = R"(
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
+namespace {
+  /**
+   * Run a git invocation, reporting a non-zero exit rather than discarding it. A failed fetch leaves the "vcs" folder
+   * empty, which every later stage accepts, so the only symptom is that each imported symbol becomes undefined.
+   * @param args The arguments to pass to git.
+   * @return @c true when git exited cleanly.
+   */
+  auto RunGit(spp::Str const &args) -> bool {
+    const auto command = "git " + args;
+    if (const auto status = std::system(command.c_str()); status != 0) {
+      std::cerr << "Error: git failed (" << status << "): " << command << "\n";
+      return false;
+    }
+    return true;
+  }
+}
+
 auto spp::cli::run_cli(
   const std::int32_t argc,
   char **argv)
@@ -58,7 +75,7 @@ auto spp::cli::run_cli(
      ->callback(handle_init);
 
   app.add_subcommand("vcs", "Initialize version control for the project")
-     ->callback(handle_vcs);
+     ->callback([] { if (not handle_vcs()) { throw CLI::RuntimeError(1); } });
 
   app.add_subcommand("build", "Build the project")
      ->callback([&mode] { handle_build(mode); })
@@ -116,16 +133,16 @@ auto spp::cli::handle_init()
 }
 
 auto spp::cli::handle_vcs()
-  -> void {
+  -> bool {
   // Validate the project structure first.
   using namespace std::string_literals;
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_STRUCTURE_OR(false, false);
 
   // Parse the spp.toml config file and get the optional "vcs" section.
   const auto toml = toml::parse_file(CONFIG_FILE);
   if (not toml.contains("vcs")) {
     std::cout << "Error: No [vcs] section found in spp.toml.\n";
-    return;
+    return false;
   }
 
   // Move into the VCS folder.
@@ -133,22 +150,29 @@ auto spp::cli::handle_vcs()
   std::filesystem::current_path(cwd / VCS_FOLDER);
 
   // Iterate over the vcs section and clone/update the repositories.
+  auto ok = true;
   auto vcs = toml["vcs"].as_table();
   for (auto [key, info] : *vcs) {
     auto repo_name = Str(key);
     auto repo_url = (*info.as_table())["git"].value<Str>().value();
     auto repo_branch = (*info.as_table())["branch"].value<Str>().value_or("master");
     auto repo_folder = cwd / VCS_FOLDER / repo_name;
+    auto repo_target = utils::files::NativeString(repo_folder);
 
     // Repo doesn't exist locally => clone it.
     if (not std::filesystem::exists(repo_folder)) {
-      std::system(
-        ("git clone --branch " + repo_branch + " " + repo_url + " " + utils::files::NativeString(repo_folder)).c_str());
+      if (not RunGit("clone --branch " + repo_branch + " " + repo_url + " " + repo_target)) {
+        ok = false;
+        continue;
+      }
       std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
     }
     else {
-      std::system(("git -C " + utils::files::NativeString(repo_folder) + " pull origin " + repo_branch).c_str());
-      std::system(("git -C " + utils::files::NativeString(repo_folder) + " checkout " + repo_branch).c_str());
+      if (not RunGit("-C " + repo_target + " pull origin " + repo_branch) or
+        not RunGit("-C " + repo_target + " checkout " + repo_branch)) {
+        ok = false;
+        continue;
+      }
       std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
     }
 
@@ -165,6 +189,7 @@ auto spp::cli::handle_vcs()
 
   // Move back into the original working directory.
   std::filesystem::current_path(cwd);
+  return ok;
 }
 
 auto spp::cli::handle_build(
@@ -178,8 +203,12 @@ auto spp::cli::handle_build(
   const auto cwd = std::filesystem::current_path();
   std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
 
-  // Handle VCS if not skipped.
-  if (not skip_vcs) { handle_vcs(); }
+  // Handle VCS if not skipped. Building against a half-fetched "vcs" folder reports every imported symbol as
+  // undefined rather than the fetch failure that caused it, so stop here instead.
+  if (not skip_vcs and not handle_vcs()) {
+    std::cerr << "Error: Aborting the build; the [vcs] dependencies could not be fetched.\n";
+    return;
+  }
 
   // Revalidate (after including the VCS folders).
   SPP_VALIDATE_STRUCTURE(false);
