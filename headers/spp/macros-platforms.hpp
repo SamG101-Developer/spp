@@ -34,14 +34,14 @@
 #define SPP_COMPILER_MSVC  0
 
 #if defined(__clang__)
-    #undef  SPP_COMPILER_CLANG
-    #define SPP_COMPILER_CLANG 1
+  #undef  SPP_COMPILER_CLANG
+  #define SPP_COMPILER_CLANG 1
 #elif defined(__GNUC__)
   #undef  SPP_COMPILER_GCC
   #define SPP_COMPILER_GCC 1
 #elif defined(_MSC_VER)
-    #undef  SPP_COMPILER_MSVC
-    #define SPP_COMPILER_MSVC 1
+  #undef  SPP_COMPILER_MSVC
+  #define SPP_COMPILER_MSVC 1
 #else
-    #error "SPP: Unsupported compiler"
+  #error "SPP: Unsupported compiler"
 #endif
