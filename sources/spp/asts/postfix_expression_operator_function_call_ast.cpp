@@ -12,6 +12,7 @@ import spp.analyse.utils.func_utils;
 import spp.analyse.utils.monomorphization_utils;
 import spp.analyse.utils.overload_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
 import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.coroutine_prototype_ast;
@@ -196,6 +197,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     FnArgGroup->Args[0]->Conv = AstClone(self_param->Conv);
   }
   FnArgGroup->Args = std::move(overload.FnArgs->Args);
+
+  // A unit test belongs to the harness, not to the program. Calling one would run it as part of whatever called it,
+  // and there is no sensible meaning for that, so the call is rejected wherever it appears.
+  if (const auto unit_test = _OverloadInfo->Proto->TestAnnotation;
+    unit_test != nullptr and not meta->IsTestHarness) {
+    Raise<analyse::errors::SppUnitTestNotCallableError>(
+      {sm->CurrentScope}, ERR_ARGS(*this, *unit_test));
+  }
 
   // Check that if we are in a cmp context, that the overload is also cmp.
   RaiseIf<SppInvalidComptimeOperationError>(
