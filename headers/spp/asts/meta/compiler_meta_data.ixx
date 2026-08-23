@@ -135,6 +135,12 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   bool CmpReturned = false;
 
   bool IgnoreAccessModifierViolations;
+
+  /**
+   * Whether the module being analysed is the entry point a test build generates. Only there may a unit test be called:
+   * it is the one caller that is supposed to run them.
+   */
+  bool IsTestHarness = false;
   bool AllowAbstractType;
 
   /**
