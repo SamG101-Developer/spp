@@ -682,15 +682,19 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
       if (inferred_type == nullptr) { continue; }
 
       // Build the candidate list from the type and all
-      // subtypes.
+      // subtypes. Each candidate carries the scope its
+      // name resolves in: a sup type's name can hold a
+      // "Self" (as in "S32 ext Ord[Rhs=Self]"), which
+      // only has a symbol inside that sup scope, not in
+      // the calling scope.
       const auto concrete_sym = sm.CurrentScope->GetTypeSymbol(inferred_type.get());
-      auto candidates = Vec<Shared<asts::TypeAst>>{};
+      auto candidates = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
       if (concrete_sym != nullptr and not concrete_sym->IsGeneric) {
-        candidates.EmplaceBack(concrete_sym->FqName());
+        candidates.EmplaceBack(concrete_sym->FqName(), sm.CurrentScope);
         if (concrete_sym->LinkedScope != nullptr) {
           for (auto const *sup_scope : concrete_sym->LinkedScope->SupScopes()) {
             if (sup_scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr) { continue; }
-            candidates.EmplaceBack(sup_scope->TySym->FqName());
+            candidates.EmplaceBack(sup_scope->TySym->FqName(), sup_scope);
           }
         }
       }
@@ -700,12 +704,12 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
         // match.
         auto temp_gs = type_utils::GenericInferenceMap();
         auto matched = false;
-        for (auto const &candidate : candidates) {
+        for (auto const &[candidate, candidate_scope] : candidates) {
           temp_gs.clear();
           if (type_utils::RelaxedTypeEq(
             *candidate->WithoutConvention(),
             *constraint->WithoutConvention(),
-            *sm.CurrentScope, owner_scope, temp_gs, true, false)) {
+            *candidate_scope, owner_scope, temp_gs, true, false)) {
             matched = true;
             break;
           }

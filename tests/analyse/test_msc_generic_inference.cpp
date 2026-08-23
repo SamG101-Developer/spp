@@ -360,3 +360,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f(1, 2, 3)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericInference_Constraints,
+    test_valid_infer_against_constraint_with_self_in_sup_name, R"(
+    fun g() -> Void {
+        loop x in std::range::Range[S32]::between(0, 5) { }
+    }
+)");
