@@ -338,7 +338,25 @@ auto spp::analyse::utils::type_utils::TypeFwdEq(
   const auto &fwd_target = is_both_ref ? FWD_REF : FWD_MUT;
   const auto arg_bare = arg_type.WithoutConvention();
   const auto arg_bare_sym = arg_scope.GetTypeSymbol(arg_bare.get());
-  if (arg_bare_sym->IsGeneric) { return false; }
+  if (arg_bare_sym == nullptr or arg_bare_sym->IsGeneric) { return false; }
+
+  // An argument that already names the parameter's own class is
+  // not forwarded to it. The loop below reaches the parameter's
+  // type again by going around the cycle - "NonNull" forwards to
+  // "&T", and "&mut NonNull[T]" against a "&mut NonNull[T]"
+  // parameter comes back a match - and the caller then rewrites
+  // the argument to "x.fwd_ref()", so what the callee is handed
+  // is the pointee instead of the slot the argument named. Also
+  // messes up the memory analysis as it uses the non-symbolic
+  // function call otherwise.
+  const auto param_bare = param_type.WithoutConvention();
+  const auto param_bare_sym = param_scope.GetTypeSymbol(param_bare.get());
+  if (param_bare_sym != nullptr and arg_bare_sym->LinkedScope != nullptr
+    and arg_bare_sym->LinkedScope->NonGenericScope == (param_bare_sym->LinkedScope != nullptr
+      ? param_bare_sym->LinkedScope->NonGenericScope
+      : nullptr)) {
+    return false;
+  }
 
   // Get all the super types that we want to consider. This is
   // what we will search in for the `FwdXXX` types.
@@ -402,6 +420,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
   // match: "sup[T] T { ... }" matches all types. Record the generic
   // in the map too.
   const auto stripped_rhs_sym = rhs_scope.GetTypeSymbol(stripped_rhs.get());
+  if (stripped_rhs_sym == nullptr) { return false; }
   if (stripped_rhs_sym->IsGeneric) {
     const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
     generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
@@ -418,6 +437,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
   // The same as above, but for the left-hand-side: auto match on a
   // direct generic and record the mapping.
   const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs.get());
+  if (stripped_lhs_sym == nullptr) { return false; }
   if (stripped_lhs_sym->IsGeneric) {
     const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
     generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
