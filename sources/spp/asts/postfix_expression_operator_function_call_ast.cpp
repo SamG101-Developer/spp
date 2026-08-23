@@ -200,10 +200,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 
   // A unit test belongs to the harness, not to the program. Calling one would run it as part of whatever called it,
   // and there is no sensible meaning for that, so the call is rejected wherever it appears.
-  if (const auto unit_test = _OverloadInfo->Proto->TestAnnotation;
-    unit_test != nullptr and not meta->IsTestHarness) {
+  if (const auto test_annotation = _OverloadInfo->Proto->TestAnnotation;
+    test_annotation != nullptr and not meta->IsTestHarness) {
     Raise<analyse::errors::SppUnitTestNotCallableError>(
-      {sm->CurrentScope}, ERR_ARGS(*this, *unit_test));
+      {sm->CurrentScope}, ERR_ARGS(*this, *test_annotation));
   }
 
   // Check that if we are in a cmp context, that the overload is also cmp.
