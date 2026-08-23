@@ -187,9 +187,10 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     var_sym->LlvmInfo->Alloca = alloca;
   }
 
-  // Generate the initializer expression. A function/closure parameter has no initializer expression to codegen -
-  // its value is an already-generated llvm::Argument (see FunctionParameterGroupAst::Stage11_CodeGen) - so that
-  // takes priority over evaluating "LetStatementValue".
+  // Generate the initializer expression. A function/closure
+  // parameter has no initializer expression to codegen - its
+  // value is an already-generated llvm::Argument, so that takes
+  // priority over evaluating "LetStatementValue".
   if (meta->LetStatementPrecomputedValue != nullptr and not is_void) {
     ctx->Builder.CreateStore(meta->LetStatementPrecomputedValue, alloca);
   }
@@ -198,16 +199,29 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
     meta->LlvmAssignmentTarget = alloca;
 
-    // Fix variable shadowing, where a newer version of the symbol is
-    // gotten because stage7 added it, when we are trying to use the
-    // original.
+    // Fix variable shadowing, where a newer version of the
+    // symbol is gotten because stage7 added it, when we are
+    // trying to use the original.
     const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
     const auto shadowed = sm->CurrentScope->RemVarSymbol(sym_name);
 
-    const auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
+    auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
     if (shadowed != nullptr) { sm->CurrentScope->AddVarSymbol(shadowed); }
 
-    // Skip storing Void (created via generic implementation analysis).
+    // The declared type may be a variant that the initializer
+    // is only a member of ("let x: Opt[S32] = Some(val=1)"),
+    // in which case the value has to be tagged and copied into
+    // the payload. Storing it raw put the member at offset zero,
+    // on top of the tag, so the slot read back as whatever the
+    // member's first bytes happened to be.
+    if (not is_void and meta->LetStatementExplicitType != nullptr) {
+      llvm_val = codegen::CoerceToVariant(
+        llvm_val, *meta->LetStatementExplicitType, *meta->LetStatementValue->InferType(sm, meta),
+        *sm->CurrentScope, "local.variant" + uid, ctx);
+    }
+
+    // Skip storing Void (created via generic implementation
+    // analysis).
     if (not is_void) { ctx->Builder.CreateStore(llvm_val, alloca); }
     meta->Restore();
   }
@@ -218,7 +232,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
 
 auto spp::asts::LocalVariableSingleIdentifierAst::ExtractNames() const
   -> Vec<Shared<IdentifierAst>> {
-  // Return the single name as a vector that can get appended to from nesting.
+  // Return the single name as a vector that can get appended to
+  // from nesting.
   return {Name};
 }
 
