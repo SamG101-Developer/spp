@@ -101,6 +101,8 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppAnnotationTargetNotAnAnnotationError;
   SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
   SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
+  SPP_EXP_CLS struct SppUnitTestInvalidSignatureError;
+  SPP_EXP_CLS struct SppUnitTestNotCallableError;
   SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
   SPP_EXP_CLS struct SppAccessViolationError;
   SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
@@ -529,6 +531,15 @@ SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError
 SPP_EXP_CLS struct spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError final : SemanticError {
   explicit SppCalledAnnotationAppliedToInvalidAstError(asts::Ast const &invalid_ast, asts::Ast const &annotation_call,
     asts::Ast const &annotation_definition);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestInvalidSignatureError final : SemanticError {
+  explicit SppUnitTestInvalidSignatureError(asts::Ast const &annotation, asts::Ast const &fun_name,
+    StrView requirement);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestNotCallableError final : SemanticError {
+  explicit SppUnitTestNotCallableError(asts::Ast const &call_site, asts::Ast const &annotation);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidBinaryFoldExpressionError final : SemanticError {

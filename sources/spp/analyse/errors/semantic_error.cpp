@@ -1142,6 +1142,33 @@ spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnno
     "Remove the annotation, or add the AST's type to the annotation's targets.");
 }
 
+spp::analyse::errors::SppUnitTestInvalidSignatureError::SppUnitTestInvalidSignatureError(
+  asts::Ast const &annotation,
+  asts::Ast const &fun_name,
+  const StrView requirement) {
+  AddHeaders(92, "Unit Test Invalid Signature Error");
+  AddCtxForErr(&annotation, "Marked as a unit test here");
+  AddErr(&fun_name, "Unit test declared here");
+  AddFooter(
+    "A unit test is run by the test harness, which has nothing to pass it and nowhere to put a result, so it must be "
+    + INLINE_NOTE("a plain 'fun' taking no parameters and returning 'Void'") + ". This one " + INLINE_NOTE(requirement)
+    + ".",
+    "Remove the " + INLINE_HELP("unit_test") + " annotation, or change the signature to " + INLINE_HELP(
+      "fun name() -> Void") + ".");
+}
+
+spp::analyse::errors::SppUnitTestNotCallableError::SppUnitTestNotCallableError(
+  asts::Ast const &call_site,
+  asts::Ast const &annotation) {
+  AddHeaders(93, "Unit Test Not Callable Error");
+  AddCtxForErr(&annotation, "Marked as a unit test here");
+  AddErr(&call_site, "Called here");
+  AddFooter(
+    "A unit test is only ever entered by the test harness. Calling one from s++ code would run it as part of the "
+    "program rather than as part of the suite.",
+    "Move the shared code into an ordinary function and call that from both.");
+}
+
 spp::analyse::errors::SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldExpressionError(
   asts::Ast const &expr,
   asts::Ast const &tup_type,
