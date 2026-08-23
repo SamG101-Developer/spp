@@ -149,7 +149,8 @@ auto spp::codegen::RunCoroLoweringPipeline(
 }
 
 auto spp::codegen::RunOptimizationPipeline(
-  void *llvm_module)
+  void *llvm_module,
+  const unsigned opt_level)
   -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
@@ -168,8 +169,20 @@ auto spp::codegen::RunOptimizationPipeline(
   // The per-module pipeline, which is also what the combined
   // module gets: once the modules are linked there is only one
   // of them, and the ordinary pipeline is what sees across the
-  // file boundaries that used to separate them.
-  auto module_pm = pass_builder.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
+  // file boundaries that used to separate them. O0 has to go
+  // through its own builder - the per-module one asserts on it.
+  const auto level = [opt_level] {
+    switch (opt_level) {
+      case 0: return llvm::OptimizationLevel::O0;
+      case 1: return llvm::OptimizationLevel::O1;
+      case 2: return llvm::OptimizationLevel::O2;
+      default: return llvm::OptimizationLevel::O3;
+    }
+  }();
+
+  auto module_pm = opt_level == 0
+    ? pass_builder.buildO0DefaultPipeline(level)
+    : pass_builder.buildPerModuleDefaultPipeline(level);
   module_pm.run(llvm_mod, module_am);
 }
 

@@ -258,8 +258,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   utils::ProgressBar &bar,
   ModuleTree &tree,
   analyse::scopes::ScopeManager *sm,
-  const bool optimize,
-  const bool lto)
+  const unsigned opt_level)
   -> void {
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
@@ -294,11 +293,10 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     // Run the coroutine and optimization pipelines over verified
     // codegen.
+    // Coroutine lowering only: optimizing a module here would be undone by optimizing the combined module below, and
+    // every build reaches that now.
     if (verify("")) {
       codegen::RunCoroLoweringPipeline(ctx->Module.get());
-      if (optimize and not lto) {
-        codegen::RunOptimizationPipeline(ctx->Module.get());
-      }
     }
 
     // Written last, so the file on disk is the module as it will
@@ -322,12 +320,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     std::abort();
   }
 
-  // Run the link-time optimization now that all modules have
-  // been built. This means we don't have top copy definitions
-  // into every module; just declaration stubs.
-  if (optimize and lto) {
-    _LinkTimeOptimize(out_path);
-  }
+  // Link every module together now that all of them have been
+  // built.
+  _LinkTimeOptimize(out_path, opt_level);
 }
 
 auto spp::compiler::CompilerBoot::ExecutableName(
@@ -345,7 +340,8 @@ auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
 }
 
 auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
-  std::filesystem::path const &out_path)
+  std::filesystem::path const &out_path,
+  const unsigned opt_level)
   -> void {
   // Guard.
   if (_LlvmCtxs.IsEmpty()) { return; }

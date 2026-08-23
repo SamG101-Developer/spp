@@ -77,11 +77,13 @@ namespace spp::codegen {
   auto RunCoroLoweringPipeline(void *llvm_module) -> void;
 
   /**
-   * Run the full optimization pipeline over a module. Separate from the coroutine lowering above, which is a
-   * correctness step that has to happen either way - this one only changes how optimal the resulting codegen is.
+   * Run the optimization pipeline over a module. Separate from the coroutine lowering above, which is a correctness
+   * step that has to happen either way - this one only changes how optimal the resulting codegen is.
    * @param llvm_module The @c llvm::Module to run over, as an opaque pointer (see the note above).
+   * @param opt_level 0 for none, through to 3 for full. Level 0 still runs a pipeline, because "no optimization" is
+   * itself a pipeline in llvm ("buildO0DefaultPipeline"), and the per-module builder rejects being asked for O0.
    */
-  auto RunOptimizationPipeline(void *llvm_module) -> void;
+  auto RunOptimizationPipeline(void *llvm_module, unsigned opt_level) -> void;
 
   /**
    * Copy @p src_module into @p dest_module, so that the optimizer can see across what were separate modules. Every
