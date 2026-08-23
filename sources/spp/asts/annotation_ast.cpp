@@ -223,6 +223,13 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType.get())->IsDirectlyZeroType = true;
   }
 
+  // Mark a function as being a "unit test" (makes it non-callable etc).
+  else if (fq_name == A::kTest) {
+    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
+    if (fun_ctx) { fun_ctx->TestAnnotation = this; }
+    if (fun_ctx) { fun_ctx->Visibility = {utils::Visibility::kPublic, this}; }
+  }
+
   // Mark a function as being inlinable via llvm.
   else if (fq_name == A::kLlvmInline) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();

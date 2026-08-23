@@ -107,6 +107,7 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
   ast->TemperatureAnnotation = TemperatureAnnotation;
   ast->FfiAnnotation = FfiAnnotation;
   ast->BuiltinAnnotation = BuiltinAnnotation;
+  ast->TestAnnotation = TestAnnotation;
   ast->InlineAnnotation = InlineAnnotation;
   ast->Visibility = Visibility;
   ast->_LlvmFunc = _LlvmFunc;

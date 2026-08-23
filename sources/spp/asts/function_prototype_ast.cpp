@@ -76,6 +76,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   TemperatureAnnotation(nullptr),
   FfiAnnotation(nullptr),
   BuiltinAnnotation(nullptr),
+  TestAnnotation(nullptr),
   InlineAnnotation({nullptr, ""}),
   Annotations(std::move(annotations)),
   TokCmp(std::move(tok_cmp)),

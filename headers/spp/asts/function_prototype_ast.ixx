@@ -73,6 +73,12 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   AnnotationAst *BuiltinAnnotation;
 
   /**
+   * Optional @c \@test annotation. This is used to indicate that the function is a unit test, forcing extra analysis
+   * and making it non-callable by s++ code.
+   */
+  AnnotationAst *TestAnnotation;
+
+  /**
    * Optional @c \@always_inline, @c \@inline, or @c \@no_inline annotation. This is used to indicate that the
    * function should be inlined, or not inlined, or always inlined.
    */
