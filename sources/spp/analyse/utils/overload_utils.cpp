@@ -205,9 +205,14 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       const auto declared_on_abstract = declared_self_sym != nullptr and declared_self_sym->LinkedScope != nullptr
         and not type_utils::GetUnimplementedAbstractMethods(*declared_self_sym->LinkedScope).IsEmpty();
 
+      auto self_pin = Shared<asts::TypeAst>(nullptr);
       if (declared_self != nullptr and (SignatureNamesSelf(*fn_proto) or declared_on_abstract)) {
         auto receiver = fn_owner_type->WithConvention(nullptr);
         if (not TypeEq(*declared_self, *receiver, *fn_scope, *sm->CurrentScope)) {
+          const auto receiver_sym = sm->CurrentScope->GetTypeSymbol(receiver->WithoutGenerics().get());
+          if (not receiver->IsSelfType() and receiver_sym != nullptr and not receiver_sym->IsGeneric) {
+            self_pin = receiver;
+          }
           auto self_arg = Vec<Unique<asts::GenericArgumentAst>>();
           self_arg.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
             asts::generate::common_types::SelfType(0), nullptr, std::move(receiver)));
@@ -217,6 +222,16 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
 
       InferAllGenerics(
         *fn_proto, *fn_params, *fn_args, *gn_args, is_variadic_fn, fn_scope, sm, meta);
+
+      // Inference rebuilds the argument list from the prototype's
+      // generic parameters, so the pin above - whose name is not
+      // one of them - is dropped on the way out. Put it back.
+      if (self_pin != nullptr) {
+        auto self_arg = Vec<Unique<asts::GenericArgumentAst>>();
+        self_arg.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+          asts::generate::common_types::SelfType(0), nullptr, std::move(self_pin)));
+        gn_args->MergeGenerics(std::move(self_arg));
+      }
 
       // "InferAllGenerics" has run "NameFnArgs", so the trailing
       // arguments of a variadic call are already collapsed into one
