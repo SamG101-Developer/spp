@@ -420,7 +420,7 @@ auto spp::cli::get_system_shared_library_extension()
 #endif
 }
 
-auto spp::cli::unit_test(
+auto spp::cli::run_cpp_google_test(
   Str const &mode,
   Str &&main_code)
   -> Map<Str, Str> {
@@ -436,7 +436,7 @@ auto spp::cli::unit_test(
   const auto m = mode == "dev"
     ? compiler::Compiler::Mode::DEV
     : compiler::Compiler::Mode::REL;
-  const auto c = compiler::Compiler::ForUnitTests(m, std::move(main_code));
+  const auto c = compiler::Compiler::ForCppGoogleTest(m, std::move(main_code));
   c->Compile();
   return c->CompTimeConstants();
 }

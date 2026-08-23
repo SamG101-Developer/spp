@@ -72,7 +72,7 @@ public:
 
   explicit Compiler(Mode mode, BuildType build_type);
 
-  static auto ForUnitTests(Mode mode, Str &&main_code) -> Unique<Compiler>;
+  static auto ForCppGoogleTest(Mode mode, Str &&main_code) -> Unique<Compiler>;
 
   ~Compiler();
 

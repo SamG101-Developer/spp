@@ -62,7 +62,7 @@ namespace spp::cli {
    * @return The values the module's compile-time constants resolved to, by name; see
    * @c Compiler::CompTimeConstants . Empty when the module declares none.
    */
-  SPP_EXP_FUN auto unit_test(
+  SPP_EXP_FUN auto run_cpp_google_test(
     Str const &mode,
     Str &&main_code)
     -> Map<Str, Str>;

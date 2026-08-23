@@ -80,7 +80,7 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
   std::filesystem::current_path(cwd / fp);
   auto comp_time_constants = spp::Map<spp::Str, spp::Str>();
   try {
-    comp_time_constants = spp::cli::unit_test("rel", std::move(code));
+    comp_time_constants = spp::cli::run_cpp_google_test("rel", std::move(code));
   }
   catch (const spp::analyse::errors::SemanticError &e) {
     std::cout << e.what() << std::endl;
