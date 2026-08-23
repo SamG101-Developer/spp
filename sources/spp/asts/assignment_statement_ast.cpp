@@ -23,7 +23,9 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 
 SPP_MOD_BEGIN
@@ -276,7 +278,19 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
       meta->LlvmAssignmentTarget = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
     }
 
-    const auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
+    auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
+
+    // Just like a "let" with a declared type: the target may be
+    // a variant the value is only a member of, in which case it
+    // is tagged and copied into the payload rather than written
+    // raw over the slot (which would land the member on top of
+    // the tag).
+    if (const auto target_type = Lhs[i]->InferType(sm, meta); target_type != nullptr) {
+      llvm_rhs = codegen::CoerceToVariant(
+        llvm_rhs, *target_type, *Rhs[i]->InferType(sm, meta),
+        *sm->CurrentScope, "assign.variant." + spp::utils::Uid(this), ctx);
+    }
+
     meta->Restore();
     llvm_rhs_vals.EmplaceBack(llvm_rhs);
   }
