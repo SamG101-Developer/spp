@@ -241,8 +241,11 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     | genex::to<Vec>();
 
   for (auto const *scope : scopes) {
+    // "Self" is never carried across. Every scope that needs one
+    // registers its own, naming the type it belongs to. Adding it
+    // here causes shadowing issues or mistypes.
     for (auto const &sym : scope->AllTypeSymbols(true)
-         | genex::views::filter([](auto const &s) { return s->IsGeneric; })) {
+         | genex::views::filter([](auto const &s) { return s->IsGeneric and s->Name->Name != "Self"; })) {
       auto clone = std::make_shared<TypeSymbol>(sym->Name, nullptr, nullptr, nullptr, nullptr, true);
       clone->IsDirectlyCopyable = sym->IsDirectlyCopyable;
       clone->IsDirectlyZeroType = sym->IsDirectlyZeroType;
