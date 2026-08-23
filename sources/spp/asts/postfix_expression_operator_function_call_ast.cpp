@@ -460,7 +460,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       : nullptr;
     const auto param_type = param_type_sym != nullptr ? param_type_sym->FqName() : nullptr;
 
-    if (param_type != nullptr and sm->CurrentScope->GetTypeSymbol(param_type.get()) != nullptr) {
+    // Only a by-value parameter is ever widened. A borrowed one
+    // receives a pointer to something that is already the variant,
+    // so there is nothing to tag and copy.
+    const auto param_is_borrow = i < fn_params.Len() and (
+      fn_params[i]->To<FunctionParameterSelfAst>() != nullptr
+        ? fn_params[i]->To<FunctionParameterSelfAst>()->Conv != nullptr
+        : fn_params[i]->Type->GetConvention() != nullptr);
+
+    if (param_type != nullptr and not param_is_borrow
+      and sm->CurrentScope->GetTypeSymbol(param_type.get()) != nullptr) {
       llvm_arg = codegen::CoerceToVariant(
         llvm_arg, *param_type, *arg->InferType(sm, meta),
         *sm->CurrentScope, "arg.variant" + uid, ctx);
