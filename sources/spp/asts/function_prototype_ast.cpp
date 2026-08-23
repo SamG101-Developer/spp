@@ -523,6 +523,7 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_utils::TypeEq;
 
   // Move into the function scope, as it is now ready for
   // semantic analysis.
@@ -530,6 +531,24 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
   // SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
+
+  // A unit test is entered by the test harness, which has nothing to pass it and nowhere to put a result, so its
+  // signature is fixed. Checked here rather than where the annotation binds, because that runs per-annotation and has
+  // no view of the rest of the prototype.
+  if (TestAnnotation != nullptr) {
+    using analyse::errors::SppUnitTestInvalidSignatureError;
+    using generate::common_types_precompiled::VOID;
+    const auto bad = [&](const StrView requirement) {
+      Raise<SppUnitTestInvalidSignatureError>(
+        {sm->CurrentScope}, ERR_ARGS(*TestAnnotation, *Name, requirement));
+    };
+    if (TokCmp != nullptr) { bad("is a 'cmp' function"); }
+    if (not FnParamGroup->Params.IsEmpty()) { bad("declares parameters"); }
+    if (not GnParamGroup->Params.IsEmpty()) { bad("declares generic parameters"); }
+    if (not TypeEq(*ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope)) {
+      bad("does not return 'Void'");
+    }
+  }
 
   // Repeated convention check for generic substitutions.
   RaiseIf<SppSecondClassBorrowViolationError>(
