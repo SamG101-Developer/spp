@@ -368,3 +368,30 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop x in std::range::Range[S32]::between(0, 5) { }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericInference_Constraints,
+    test_valid_generic_inherited_method_pins_self_to_implementer, R"(
+    cls Base { }
+
+    sup Base {
+        !public !abstract_method
+        fun speak(&self) -> Void { }
+
+        !public !virtual_method
+        fun speak_gen[T](&self) -> Void {
+            self.speak()
+        }
+    }
+
+    cls Derived { }
+
+    sup Derived ext Base {
+        fun speak(&self) -> Void { }
+    }
+
+    fun g() -> Void {
+        let d = Derived()
+        d.speak_gen[S32]()
+    }
+)");
