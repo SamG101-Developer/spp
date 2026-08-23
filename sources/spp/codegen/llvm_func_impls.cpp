@@ -351,13 +351,13 @@ auto spp::codegen::func_impls::simple_intrinsic_conv(
 
 auto spp::codegen::func_impls::simple_intrinsic_is_const(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const bool is_float, const double value) -> void {
-  // "ty" (per the dispatcher) is the declared return type, "Bool" (i1) here - the operand's real type (T) is read
-  // off "self" instead ("is_zero(&self) -> Bool" et al).
   using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
-  const auto operand_ty = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(self_sym->Type.get()), ctx);
-  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{operand_ty});
-  const auto operand = fn->arg_begin();
+  const auto operand_ty = GetLlvmTypeOf(*self_sym->Type->WithoutConvention(), *sm->CurrentScope, ctx);
+  const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
+  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ptr_ty});
+  const auto operand = ctx->Builder.CreateLoad(operand_ty, fn->arg_begin(), "intrinsic.operand" + uid);
   const auto name = "result" + utils::Uid();
   const auto result = is_float
     ? ctx->Builder.CreateFCmpOEQ(operand, llvm::ConstantFP::get(operand_ty, value), name)
@@ -2373,7 +2373,13 @@ auto spp::codegen::func_impls::std_raw_buf_place_at(
   const auto element_sym = sm->CurrentScope->GetVarSymbol(element_param->ExtractName().get());
   const auto element_val = ctx->Builder.CreateLoad(elem_ty, element_sym->LlvmInfo->Alloca, "raw_buf.place_at.element");
 
-  const auto elem_addr = ctx->Builder.CreateGEP(elem_ty, self_ptr, index_val, "raw_buf.place_at.elem_addr");
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto data_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 0);
+  const auto buf_ptr = ctx->Builder.CreateLoad(
+    ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.place_at.buf_ptr" + uid),
+    "raw_buf.place_at.buf" + uid);
+
+  const auto elem_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, index_val, "raw_buf.place_at.elem_addr");
   ctx->Builder.CreateStore(element_val, elem_addr);
   ctx->Builder.CreateRetVoid();
 }
@@ -2405,8 +2411,14 @@ auto spp::codegen::func_impls::std_raw_buf_shift(
   const auto upto_val = ctx->Builder.CreateLoad(usize_ty, upto_sym->LlvmInfo->Alloca, "raw_buf.shift.upto");
   const auto count_val = ctx->Builder.CreateLoad(usize_ty, count_sym->LlvmInfo->Alloca, "raw_buf.shift.count");
 
-  const auto src_addr = ctx->Builder.CreateGEP(elem_ty, self_ptr, from_val, "raw_buf.shift.src");
-  const auto dst_addr = ctx->Builder.CreateGEP(elem_ty, self_ptr, upto_val, "raw_buf.shift.dst");
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto data_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 0);
+  const auto buf_ptr = ctx->Builder.CreateLoad(
+    ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.shift.buf_ptr" + uid),
+    "raw_buf.shift.buf" + uid);
+
+  const auto src_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, from_val, "raw_buf.shift.src");
+  const auto dst_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, upto_val, "raw_buf.shift.dst");
 
   auto const &dl = ctx->Module->getDataLayout();
   const auto elem_size = dl.getTypeAllocSize(elem_ty).getFixedValue();
