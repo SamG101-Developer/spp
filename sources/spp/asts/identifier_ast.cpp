@@ -17,6 +17,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func;
+import spp.codegen.llvm_type;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
@@ -256,7 +257,7 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   // onto by a case pattern. These carry no llvm type of its own under opaque pointers, so the load goes through the
   // symbol's own type instead of through the instruction that produced the address.
   if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
-    const auto llvm_type = sm->CurrentScope->GetTypeSymbol(var_sym->Type.get())->LlvmInfo->LlvmType;
+    const auto llvm_type = codegen::GetLlvmTypeOf(*var_sym->Type, *sm->CurrentScope, ctx);
     SPP_ASSERT(llvm_type != nullptr);
     return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
   }

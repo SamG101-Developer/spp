@@ -230,7 +230,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
       }
 
       EnsureLlvmTypeComplete(*member_sym, member_sm, ctx);
-      const auto member_llvm_type = GetLlvmType(*member_sym, ctx);
+      const auto member_llvm_type = GetLlvmTypeOf(*member, *scope, ctx);
       if (member_llvm_type == nullptr or not member_llvm_type->isSized()) { continue; }
       max_size = std::max(max_size, dl.getTypeAllocSize(member_llvm_type).getFixedValue());
       max_align = std::max(max_align, dl.getABITypeAlign(member_llvm_type).value());
