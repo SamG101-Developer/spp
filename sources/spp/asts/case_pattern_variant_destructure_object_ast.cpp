@@ -231,16 +231,55 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       llvm_tag, llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag),
       "case.pattern.is" + uid);
 
-    // Set the alloca into the flow symbol (more precisely
-    // typed). The flow symbol shares the condition symbol's llvm
-    // info up to this point, so it is given its own here: writing
-    // the payload address through the shared info would narrow the
-    // condition symbol itself onto the payload for the remainder of
-    // the enclosing function.
+    // Set the alloca into the flow symbol (more precisely typed).
+    // The flow symbol shares the condition symbol's llvm info up
+    // to this point, so it is given its own here: writing the
+    // payload address through the shared info would narrow the
+    // condition symbol itself onto the payload for the remainder
+    // of the enclosing function.
     _FlowSym->LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
     _FlowSym->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
       _CondSym->LlvmInfo->Alloca, llvm_variant_ty,
       "case.pattern.payload" + uid, ctx);
+  }
+
+  // A condition that is not a plain identifier has no symbol to
+  // flow-type - "self@" is a deref, not a name - but its
+  // discriminant still has to be checked.
+  else if (meta->CaseCondition != nullptr and meta->LlvmCaseCondition != nullptr) {
+    using analyse::utils::type_utils::IsTypeVariant;
+    const auto cond_type = meta->CaseCondition->InferType(sm, meta);
+    const auto bare_cond_type = cond_type != nullptr ? cond_type->WithoutConvention() : nullptr;
+
+    if (bare_cond_type != nullptr and IsTypeVariant(*bare_cond_type, *sm->CurrentScope)) {
+      auto tag = codegen::GetVariantIndexOfMember(*bare_cond_type, *Type, *sm->CurrentScope);
+      if (not tag.has_value()) {
+        tag = codegen::GetVariantIndexOfMember(
+          *bare_cond_type, *Type->WithoutConvention(), *sm->CurrentScope);
+      }
+
+      // The condition was generated once by the enclosing "case",
+      // so it is read rather than rebuilt: it may be the variant
+      // value itself, or a pointer to it when the condition was
+      // reached through a borrow.
+      auto llvm_tag = static_cast<llvm::Value*>(nullptr);
+      if (tag.has_value() and meta->LlvmCaseCondition->getType()->isPointerTy()) {
+        const auto llvm_variant_ty = sm->CurrentScope->GetTypeSymbol(
+          bare_cond_type.get())->LlvmInfo->LlvmType;
+        llvm_tag = codegen::LoadVariantTag(
+          meta->LlvmCaseCondition, llvm_variant_ty, "case.pattern.tag" + uid, ctx);
+      }
+      else if (tag.has_value() and meta->LlvmCaseCondition->getType()->isStructTy()) {
+        llvm_tag = ctx->Builder.CreateExtractValue(
+          meta->LlvmCaseCondition, 0, "case.pattern.tag" + uid);
+      }
+
+      if (llvm_tag != nullptr) {
+        llvm_tag_check = ctx->Builder.CreateICmpEQ(
+          llvm_tag, llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag),
+          "case.pattern.is" + uid);
+      }
+    }
   }
 
   // Run the codegen on the transformed "let" ast to introduce symbols into the llvm function.
