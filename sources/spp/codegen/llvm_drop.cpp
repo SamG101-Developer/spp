@@ -173,19 +173,24 @@ auto spp::codegen::EmitDiscardedValueDrop(
   asts::meta::CompilerMetaData *meta,
   LlvmCtx *ctx)
   -> void {
-  // A statement that produced nothing, or that ended the block, leaves nothing to destroy here.
+  // A statement that produced nothing, or that ended the
+  // block, leaves nothing to destroy here.
   if (value == nullptr) { return; }
   const auto block = ctx->Builder.GetInsertBlock();
   if (block == nullptr or block->hasTerminator()) { return; }
 
-  // Same rule as for a named local: an unwalked body's memory state means nothing, so nothing is destroyed from it.
+  // Same rule as for a named local: an unwalked body's memory
+  // state means nothing, so nothing is destroyed from it.
   if (meta->EnclosingFunctionScope != nullptr and not meta->EnclosingFunctionScope->BodyMemoryAnalysed) { return; }
   if (type_sym.Convention != nullptr) { return; }
   if (not analyse::utils::drop_utils::NeedsDrop(type_sym, *sm, meta)) { return; }
 
-  // The value is an ssa value rather than storage, and destroying one needs an address to work through, so it is
-  // parked in a slot of its own first. The slot is reused across iterations, which is safe because the value it
-  // holds is destroyed before the statement that produced it is reached again.
+  // The value is an ssa value rather than storage, and
+  // destroying one needs an address to work through, so it
+  // is parked in a slot of its own first. The slot is reused
+  // across iterations, which is safe because the value it
+  // holds is destroyed before the statement that produced
+  // it is reached again.
   const auto uid = "." + spp::utils::Uid();
   const auto slot = LlvmEntryAlloca(value->getType(), "drop.temp" + uid, ctx);
   ctx->Builder.CreateStore(value, slot);
@@ -217,7 +222,6 @@ auto spp::codegen::EmitScopeDrops(
   //  enclosing function scope is not the one either mark lands on. Removing this guard segfaults the compiled
   //  program, so the leak is the conservative half of a real bug, not a missing optimisation.
   if (meta->EnclosingFunctionScope != nullptr and not meta->EnclosingFunctionScope->BodyMemoryAnalysed) { return; }
-
 
   // Reverse declaration order. The symbol table yields its
   // entries in insertion order, which for locals is the
