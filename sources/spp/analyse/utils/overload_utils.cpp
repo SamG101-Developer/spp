@@ -716,9 +716,13 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
   const auto invalid_args = func_arg_names
     | genex::views::not_in(func_param_names, genex::meta::deref, genex::meta::deref)
     | genex::to<Vec>();
+
+  const auto param_ctx = func_params->Params.IsEmpty()
+    ? static_cast<asts::Ast const*>(func_params)
+    : static_cast<asts::Ast const*>(func_params->Params[0].get());
   RaiseIf<SppArgumentNameInvalidError>(
     not invalid_args.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(*func_params->Params[0], "parameter", *invalid_args[0], "argument"));
+    ERR_ARGS(*param_ctx, "parameter", *invalid_args[0], "argument"));
 
   // Check for missing parameters that don't have a
   // corresponding argument.

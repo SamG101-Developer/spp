@@ -82,3 +82,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+    AstReturnStatementAst,
+    test_valid_ret_generic_instantiated_at_void, R"(
+    fun f() -> Res[Void, Str] {
+        ret Pass[Void]()
+    }
+
+    fun main() -> Void {
+        f().unwrap()
+    }
+)");

@@ -210,8 +210,17 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
     meta->AssignmentTarget = MakeShared<IdentifierAst>(PosStart(), "$ret");
   }
 
+  // The expression is always code-generated, even when its value
+  // is discarded below, because it may have side effects that
+  // have to happen before the function returns.
   const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
-  ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
+
+  // A generic function instantiated so that its return type is
+  // "Void" lowers to an LLVM function returning void, but its
+  // body still reads "ret <expr>". Map to llvm's ret void.
+  ctx->Builder.GetInsertBlock()->getParent()->getReturnType()->isVoidTy()
+    ? ctx->Builder.CreateRetVoid()
+    : ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
   meta->Restore();
 
   return nullptr;

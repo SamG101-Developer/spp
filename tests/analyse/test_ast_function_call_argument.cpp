@@ -329,3 +329,27 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f(a=&mut a)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    FunctionCallArgumentAst,
+    test_invalid_void_value_as_argument,
+    SppInvalidVoidValueError, R"(
+    fun g() -> Void { }
+
+    fun takes(a: Bool) -> Void { }
+
+    fun f() -> Void {
+        takes(g())
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    FunctionCallArgumentAst,
+    test_invalid_arg_name_against_stripped_void_param,
+    SppArgumentNameInvalidError, R"(
+    fun takes(x: Void) -> Void { }
+
+    fun f() -> Void {
+        takes(a=1)
+    }
+)");
