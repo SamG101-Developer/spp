@@ -262,19 +262,20 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       // so it is read rather than rebuilt: it may be the variant
       // value itself, or a pointer to it when the condition was
       // reached through a borrow.
+      const auto llvm_variant_ty = sm->CurrentScope->GetTypeSymbol(
+        bare_cond_type.get())->LlvmInfo->LlvmType;
+
       auto llvm_tag = static_cast<llvm::Value*>(nullptr);
       if (tag.has_value() and meta->LlvmCaseCondition->getType()->isPointerTy()) {
-        const auto llvm_variant_ty = sm->CurrentScope->GetTypeSymbol(
-          bare_cond_type.get())->LlvmInfo->LlvmType;
         llvm_tag = codegen::LoadVariantTag(
           meta->LlvmCaseCondition, llvm_variant_ty, "case.pattern.tag" + uid, ctx);
       }
-      else if (tag.has_value() and meta->LlvmCaseCondition->getType()->isStructTy()) {
+      else if (tag.has_value() and meta->LlvmCaseCondition->getType() == llvm_variant_ty) {
         llvm_tag = ctx->Builder.CreateExtractValue(
           meta->LlvmCaseCondition, 0, "case.pattern.tag" + uid);
       }
 
-      if (llvm_tag != nullptr) {
+      if (llvm_tag != nullptr and llvm_tag->getType() == codegen::GetVariantTagType(ctx)) {
         llvm_tag_check = ctx->Builder.CreateICmpEQ(
           llvm_tag, llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag),
           "case.pattern.is" + uid);
