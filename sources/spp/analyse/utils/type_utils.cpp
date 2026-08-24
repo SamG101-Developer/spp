@@ -213,6 +213,14 @@ auto spp::analyse::utils::type_utils::TypeEq(
   if (check_variant and TypeVariantEq(lhs_type, rhs_type, lhs_scope, rhs_scope)) { return true; }
   if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
+  // Todo: document this.
+  if (stripped_lhs_sym != nullptr and stripped_rhs_sym != nullptr
+    and stripped_lhs_sym->IsGeneric and stripped_rhs_sym->IsGeneric
+    and (stripped_lhs_sym->Type == nullptr or stripped_rhs_sym->Type == nullptr)
+    and *stripped_lhs_sym->Name == *stripped_rhs_sym->Name) {
+    return true;
+  }
+
   // If the stripped types are not equal, check function-mock and
   // forwarding compatibility before returning false. A "$" mock type
   // is a function value: match it structurally against the target
