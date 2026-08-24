@@ -14,6 +14,15 @@ namespace spp::codegen {
   };
 
   SPP_EXP_CLS struct LlvmVarSymInfo {
+    /**
+     * The LLVM allocation handle for the local variable being represented by a variable symbol.
+     */
     llvm::Value *Alloca = nullptr;
+
+    /**
+     * For a local that is potentially moved from (in an @c case branch), we need to decide at runtime if we are to
+     * destroy the stack allocation or not. This flag controls that.
+     */
+    llvm::Value *DropFlag = nullptr;
   };
 }

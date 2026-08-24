@@ -50,6 +50,13 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   llvm::BasicBlock *EndBB;
   llvm::PHINode *Phi;
   llvm::Value *EnteredFlag;
+
+  /**
+   * The scope the loop statement itself is written in - the first scope an @c exit or a @c skip is *not* leaving.
+   * Every scope between the jump and this one is being left without reaching its end, so their drops are emitted at
+   * the jump instead; this is where that walk stops.
+   */
+  analyse::scopes::Scope const *ScopeContainingLoop;
 };
 
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {

@@ -94,3 +94,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         f().unwrap()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+    AstReturnStatementAst,
+    test_valid_ret_does_not_destroy_returned_value, R"(
+    cls A { }
+
+    sup A ext Del {
+        fun del(&mut self) -> Void { }
+    }
+
+    fun f() -> A {
+        let scratch = A()
+        let out = A()
+        ret out
+    }
+
+    fun main() -> Void {
+        let r = f()
+    }
+)");

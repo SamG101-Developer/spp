@@ -200,6 +200,15 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope const &scope)
     -> bool;
 
+  /**
+   * Whether @p type is @c std::generator::Gen or @c std::generator::GenOnce - a handle to a coroutine frame. Only the
+   * type itself is considered, not anything it superimposes.
+   */
+  SPP_EXP_FUN auto IsTypeGen(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> bool;
+
   SPP_EXP_FUN auto IsTypeNever(
     asts::TypeAst const &type,
     scopes::Scope const &scope)

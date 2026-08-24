@@ -5,6 +5,7 @@ module spp.codegen.llvm_func_impls;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_parameter_group_ast;
@@ -23,6 +24,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_func;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_mangle;
@@ -2432,8 +2434,68 @@ auto spp::codegen::func_impls::std_raw_buf_shift(
 
 auto spp::codegen::func_impls::std_raw_buf_clear_range(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  // Todo: no-op stub - see the header doc comment. Destroying "[start, start + count)" in place needs per-element
-  // destructor calls, which nothing in the compiler can emit yet.
+  //
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_TYPE;
+  const auto uid = "." + utils::Uid();
+  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
+  const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get());
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "raw_buf.clear.self" + uid);
+
+  const auto elem_ty_spp = SelfTypeName(*self_ty_sym)->LastTypePart()->GnArgGroup->TypeAt("T")->Val
+                                                     ->WithoutConvention();
+  const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
+
+  // An element that owns nothing has no destructor to run,
+  // so the whole loop collapses to nothing rather than to
+  // a loop with an empty body.
+  if (not analyse::utils::drop_utils::NeedsDrop(*elem_ty_sym, *sm, meta)) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+
+  const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
+  const auto start_param = proto->FnParamGroup->GetNonSelfParams()[0];
+  const auto count_param = proto->FnParamGroup->GetNonSelfParams()[1];
+  const auto start_sym = sm->CurrentScope->GetVarSymbol(start_param->ExtractName().get());
+  const auto count_sym = sm->CurrentScope->GetVarSymbol(count_param->ExtractName().get());
+  const auto usize_ty = GetLlvmTypeOf(*start_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
+  const auto start_val = ctx->Builder.CreateLoad(usize_ty, start_sym->LlvmInfo->Alloca, "raw_buf.clear.start");
+  const auto count_val = ctx->Builder.CreateLoad(usize_ty, count_sym->LlvmInfo->Alloca, "raw_buf.clear.count");
+
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto data_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 0);
+  const auto buf_ptr = ctx->Builder.CreateLoad(
+    ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.clear.buf_ptr" + uid),
+    "raw_buf.clear.buf" + uid);
+
+  // Walk "[start, start + count)" one element at a time,
+  // destroying each in place. The counter runs from zero
+  // rather than from "start" so the exit test is against
+  // "count" directly.
+  const auto func = ctx->Builder.GetInsertBlock()->getParent();
+  const auto cond_bb = llvm::BasicBlock::Create(*ctx->Context, "raw_buf.clear.cond" + uid, func);
+  const auto body_bb = llvm::BasicBlock::Create(*ctx->Context, "raw_buf.clear.body" + uid, func);
+  const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "raw_buf.clear.done" + uid, func);
+  const auto entry_bb = ctx->Builder.GetInsertBlock();
+  ctx->Builder.CreateBr(cond_bb);
+
+  ctx->Builder.SetInsertPoint(cond_bb);
+  const auto index = ctx->Builder.CreatePHI(usize_ty, 2, "raw_buf.clear.i" + uid);
+  index->addIncoming(llvm::ConstantInt::get(usize_ty, 0), entry_bb);
+  ctx->Builder.CreateCondBr(
+    ctx->Builder.CreateICmpULT(index, count_val, "raw_buf.clear.more" + uid), body_bb, done_bb);
+
+  ctx->Builder.SetInsertPoint(body_bb);
+  const auto elem_index = ctx->Builder.CreateAdd(start_val, index, "raw_buf.clear.idx" + uid);
+  const auto elem_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, elem_index, "raw_buf.clear.elem" + uid);
+  EmitDrop(*elem_ty_sym, elem_addr, sm, meta, ctx);
+  const auto next = ctx->Builder.CreateAdd(index, llvm::ConstantInt::get(usize_ty, 1), "raw_buf.clear.next" + uid);
+  index->addIncoming(next, ctx->Builder.GetInsertBlock());
+  ctx->Builder.CreateBr(cond_bb);
+
+  ctx->Builder.SetInsertPoint(done_bb);
   ctx->Builder.CreateRetVoid();
 }
 
@@ -2495,8 +2557,20 @@ auto spp::codegen::func_impls::std_mem_ops_replace(
 
 auto spp::codegen::func_impls::std_mem_ops_drop_in_place(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  // Todo: no-op stub - same blocker as "std_raw_buf_clear_range" (see its comment): no destructor-dispatch codegen
-  //  exists anywhere in the compiler yet for this to call into.
+  // "ptr" is "&mut T" - a borrow, so its slot holds the
+  // address of the value rather than the value (see
+  // "std_mem_ops_replace" for the same shape). That
+  // address is what the value is destroyed through.
+  const auto ptr_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto ptr_sym = sm->CurrentScope->GetVarSymbol(ptr_param->ExtractName().get());
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto target_ptr = ctx->Builder.CreateLoad(ptr_ty, ptr_sym->LlvmInfo->Alloca, "drop_in_place.ptr");
+
+  // The pointee type is the "T" this instantiation was
+  // made for.
+  const auto t_ast = asts::TypeIdentifierAst::FromString("T");
+  const auto t_sym = sm->CurrentScope->GetTypeSymbol(t_ast.get());
+  EmitDrop(*t_sym, target_ptr, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
 }
 

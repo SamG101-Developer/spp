@@ -19,6 +19,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import spp.utils.ptr;
 import genex;
@@ -168,9 +169,38 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
   auto ret_val = static_cast<llvm::Value*>(nullptr);
-  for (auto const &m : this->Members) {
+  for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
     ret_val = m->Stage11_CodeGen(sm, meta, ctx);
+
+    // A statement whose value nothing takes owns that value,
+    // and no scope exit covers it because it was never bound
+    // to anything. The final statement is exempt: its value
+    // is the one this scope hands out, and whoever receives
+    // it owns it from there.
+    if (i + 1 == Members.Len() or ret_val == nullptr) { continue; }
+
+    // Inference is not a passive read at this point: asking
+    // a "case" for its type is what raises the missing-else
+    // diagnostic, which has already been decided for this
+    // body at stage 7 and must not be decided again here.
+    meta->Save();
+    meta->IgnoreMissingElseBranchForInference = true;
+    auto const value_type = m->InferType(sm, meta);
+    meta->Restore();
+    if (value_type == nullptr) { continue; }
+
+    const auto value_type_sym = sm->CurrentScope->GetTypeSymbol(value_type.get());
+    if (value_type_sym == nullptr) { continue; }
+    codegen::EmitDiscardedValueDrop(*value_type_sym, ret_val, sm, meta, ctx);
   }
+
+  // Everything the scope owns is destroyed as it is left,
+  // in reverse declaration order. A local the scope yields
+  // is exempt, because its receiver takes ownership of it.
+  const auto yielded = Members.IsEmpty()
+    ? nullptr
+    : sm->CurrentScope->GetVarSymbol(Members.Back()->To<IdentifierAst>(), true);
+  codegen::EmitScopeDrops(*sm->CurrentScope, yielded, sm, meta, ctx);
 
   // Exit the scope.
   sm->MoveOutOfCurrentScope();

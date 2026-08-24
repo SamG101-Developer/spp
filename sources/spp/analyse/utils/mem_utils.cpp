@@ -219,7 +219,17 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
 
   // Create a map of the symbols' memory  information before any branches are analysed.
   auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
-  auto vs = sm->CurrentScope->AllVarSymbols();
+
+  // The lookup walks ancestors and super scopes, which
+  // can reach one symbol by more than one route, and
+  // every list below is built with one entry per branch
+  // per occurrence. Deduplicate.
+  auto vs = Vec<scopes::VariableSymbol*>();
+  auto seen_syms = Set<scopes::VariableSymbol*>();
+  for (auto *sym : sm->CurrentScope->AllVarSymbols()) {
+    if (seen_syms.insert(sym).second) { vs.EmplaceBack(sym); }
+  }
+
   auto pre_analysis_mem_info = vs
     | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
     | genex::to<Vec>();
@@ -294,10 +304,10 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     sym->MemInfo->AstContainersOfEscapingBorrows = first_branch_mem_info.AstContainersOfEscapingBorrows;
     sym->MemInfo->InitializationCounter = first_branch_mem_info.InitializationCounter;
 
-    // Check the new memory status for each symbol is consistent across all branches that don't terminate.
+    // Check the new memory status for each symbol is
+    // consistent across all branches that don't terminate.
     auto applicable_branch_memory_info_lists = branches_memory_info_lists
-      | genex::views::drop_last(1)
-      | genex::views::remove_if([&](auto const &x) { return x.first->Body->Terminates(); })
+      | genex::views::remove_if([&](auto const &x) { return x.first == nullptr or x.first->Body->Terminates(); })
       | genex::to<Vec>();
 
     for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {

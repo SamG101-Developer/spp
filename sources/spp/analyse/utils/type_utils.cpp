@@ -64,22 +64,6 @@ import genex;
 import std;
 
 namespace {
-  auto IsTypeGen(
-    spp::asts::TypeAst const &type,
-    spp::analyse::scopes::Scope const &scope)
-    -> bool {
-    // Check the type against "std::generator::Gen[T]" or
-    // "std::generator::GenOnce[T]". This only considers the
-    // type directly, not any supertypes.
-    using spp::asts::generate::common_types_precompiled::GEN;
-    using spp::asts::generate::common_types_precompiled::GEN_ONCE;
-    using spp::analyse::utils::type_utils::TypeEq;
-
-    return
-      TypeEq(*type.WithoutGenerics(), *GEN, scope, scope) or
-      TypeEq(*type.WithoutGenerics(), *GEN_ONCE, scope, scope);
-  }
-
   auto IsTypeTry(
     spp::asts::TypeAst const &type,
     spp::analyse::scopes::Scope const &scope)
@@ -591,6 +575,21 @@ auto spp::analyse::utils::type_utils::IsTypeBool(
   // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::BOOL;
   return TypeEq(type, *BOOL, scope, scope);
+}
+
+auto spp::analyse::utils::type_utils::IsTypeGen(
+  asts::TypeAst const &type,
+  scopes::Scope const &scope)
+  -> bool {
+  // Check the type against "std::generator::Gen[T]" or
+  // "std::generator::GenOnce[T]". This only considers the
+  // type directly, not any supertypes.
+  using asts::generate::common_types_precompiled::GEN;
+  using asts::generate::common_types_precompiled::GEN_ONCE;
+
+  return
+    TypeEq(*type.WithoutGenerics(), *GEN, scope, scope) or
+    TypeEq(*type.WithoutGenerics(), *GEN_ONCE, scope, scope);
 }
 
 auto spp::analyse::utils::type_utils::IsTypeVoid(

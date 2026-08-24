@@ -16,6 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import genex;
 import llvm;
@@ -162,6 +163,9 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   // no phi node is involved.
   if (has_skip) {
     const auto &target = meta->LlvmLoopStack[num_loops - num_exits - 1];
+    codegen::EmitUnwindDrops(
+        *sm->CurrentScope, target.ScopeContainingLoop,
+        false, nullptr, sm, meta, ctx);
     ctx->Builder.CreateBr(target.CondBB);
     return nullptr;
   }
@@ -170,17 +174,27 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   // innermost loop, N being the number of exit tokens. The exited
   // loop's phi node collects the yielded value from this edge.
   const auto &target = meta->LlvmLoopStack[num_loops - num_exits];
+
+  // The jump skips every scope end between here and the loop, so
+  // their drops run at the jump instead. This happens before the
+  // phi edge is recorded, so the incoming block is whatever the
+  // drops left the builder inserting into.
+  codegen::EmitUnwindDrops(
+    *sm->CurrentScope, target.ScopeContainingLoop,
+    false, nullptr, sm, meta, ctx);
+
   if (target.Phi != nullptr) {
     const auto incoming_val = llvm_val;
     const auto incoming_bb = ctx->Builder.GetInsertBlock();
     target.Phi->addIncoming(
-      incoming_val != nullptr ? incoming_val : llvm::UndefValue::get(target.Phi->getType()), incoming_bb);
+      incoming_val != nullptr ? incoming_val : llvm::UndefValue::get(target.Phi->getType()),
+      incoming_bb);
   }
 
   // Finally, branch to the end of the loop as a fallback. Todo:
-  // not sure if this is needed? Can llvm can confirm termination?
-  // The value isn't returned here because it goes through the PHI
-  // and the "loop" ast handles the value return to the target.
+  //  not sure if this is needed? Can llvm can confirm termination?
+  //  The value isn't returned here because it goes through the PHI
+  //  and the "loop" ast handles the value return to the target.
   ctx->Builder.CreateBr(target.EndBB);
   return nullptr;
 }

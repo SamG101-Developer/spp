@@ -14,6 +14,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 
@@ -224,6 +225,14 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // analysis).
     if (not is_void) { ctx->Builder.CreateStore(llvm_val, alloca); }
     meta->Restore();
+  }
+
+  // A local whose destruction the analyser could not settle
+  // statically records here that it now holds a value; the
+  // moves that may take it away clear the same flag, and the
+  // scope exit tests it (used for "potentially moved" objects).
+  if (not meta->LetStatementFromUninitialized) {
+    codegen::EmitDropFlagSet(*var_sym, ctx);
   }
 
   // Alloca already added; return nullptr.

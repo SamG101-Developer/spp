@@ -581,6 +581,7 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Check the memory for the parameter group and implementation.
+  sm->CurrentScope->BodyMemoryAnalysed = true;
   FnParamGroup->Stage8_CheckMemory(sm, meta);
   Impl->Stage8_CheckMemory(sm, meta);
 
@@ -704,6 +705,12 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
     // the author to the rule.
     meta->AllowAbstractType = true;
     sub.Proto->Stage7_AnalyseSemantics(&tm, meta);
+
+    tm.Reset(sub.WalkScope());
+    tm.MoveToNextScope();
+    tm.CurrentScope->BodyMemoryAnalysed = true;
+    sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
+    sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
     meta->Restore();
   }
 }

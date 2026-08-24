@@ -94,48 +94,60 @@ namespace spp::analyse::scopes {
 SPP_EXP_CLS class spp::analyse::scopes::Scope {
 public:
   /**
-     * The name of the scope. This will be either an @c Shared<IdentifierAst> (functions, modules), an
-     * @c Shared<TypeIdentifierAst> (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is
-     * stored in a @c std::variant to allow for easy type-safe access to the underlying type.
-     */
+   * The name of the scope. This will be either an @c Shared<IdentifierAst> (functions, modules), an
+   * @c Shared<TypeIdentifierAst> (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is
+   * stored in a @c std::variant to allow for easy type-safe access to the underlying type.
+   */
   ScopeName Name;
 
   /**
-     * The parent scope. It is a raw pointer as the parents "own" their children, and the children do not own their
-     * parents. The parent will be @c nullptr for the global scope.
-     */
+   * The parent scope. It is a raw pointer as the parents "own" their children, and the children do not own their
+   * parents. The parent will be @c nullptr for the global scope.
+   */
   Scope *Parent;
 
   /**
-     * The child scopes. These are owned by the parent scope, and are stored as @c Unique to ensure proper
-     * memory management. This allows for an easy traversal of the scope hierarchy.
-     */
+   * The child scopes. These are owned by the parent scope, and are stored as @c Unique to ensure proper
+   * memory management. This allows for an easy traversal of the scope hierarchy.
+   */
   Vec<std::unique_ptr<Scope>> Children;
 
   /**
-     * Top level scopes register their AST with the scope. This is useful for error reporting, as it allows for easy
-     * access to the AST node that the scope represents. This will be @c nullptr for non-top level scopes. Typically,
-     * the AST will need to be cast back to its original type.
-     */
+   * Top level scopes register their AST with the scope. This is useful for error reporting, as it allows for easy
+   * access to the AST node that the scope represents. This will be @c nullptr for non-top level scopes. Typically,
+   * the AST will need to be cast back to its original type.
+   */
   asts::Ast *AstNode;
 
   /**
-     * The (potential) type symbol that represents this scope. This will be @c nullptr for non-type scopes (eg
-     * functions, modules, blocks).
-     */
+   * The (potential) type symbol that represents this scope. This will be @c nullptr for non-type scopes (eg
+   * functions, modules, blocks).
+   */
   std::shared_ptr<TypeSymbol> TySym;
 
   /**
-     * The (potential) namespace symbol that represents this scope. This will be @c nullptr for non-namespace scopes
-     * (eg functions, classes, blocks). Note that a namespace is a module.
-     */
+   * The (potential) namespace symbol that represents this scope. This will be @c nullptr for non-namespace scopes
+   * (eg functions, classes, blocks). Note that a namespace is a module.
+   */
   std::shared_ptr<NamespaceSymbol> NsSym;
 
   /**
-     * The scope representing the non-generic version of this scope. If this scope isn't a generic substitution, then
-     * the non-generic scope is the scope itself. For @c Vec[Str], the non-generic scope is @c Vec.
-     */
+   * The scope representing the non-generic version of this scope. If this scope isn't a generic substitution, then
+   * the non-generic scope is the scope itself. For @c Vec[Str], the non-generic scope is @c Vec.
+   */
   Scope *NonGenericScope;
+
+  /**
+   * Whether Stage8 walked the function body this scope belongs to, and so whether the memory state of the symbols
+   * below it means anything. An unwalked body's symbols read as untouched - every parameter still initialized,
+   * nothing ever moved - which is indistinguishable from a body that genuinely moves nothing, so code generation
+   * destroys nothing in a body nobody has walked rather than destroying values that body had already handed away.
+   *
+   * @n
+   * Set for written functions and for generic instantiations. Closure bodies are the gap: see the Todo in
+   * @c codegen::EmitScopeDrops .
+   */
+  bool BodyMemoryAnalysed = false;
 
   Vec<Scope*> DirectSupScopes;
 

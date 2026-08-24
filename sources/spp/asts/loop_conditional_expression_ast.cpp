@@ -217,7 +217,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   meta->Save();
   meta->LlvmEndBB = loop_end_bb;
   meta->LlvmPhi = phi;
-  meta->LlvmLoopStack.EmplaceBack(loop_cond_bb, loop_end_bb, phi, entered_flag);
+  meta->LlvmLoopStack.EmplaceBack(loop_cond_bb, loop_end_bb, phi, entered_flag, sm->CurrentScope);
   meta->AssignmentTargetType = ret_type;
 
   // Generate the condition. This block is branched back to at the end of every iteration, so the condition is

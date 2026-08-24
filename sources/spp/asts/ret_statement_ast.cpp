@@ -24,6 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -185,6 +186,9 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
 
   // Use the return void instruction if there is no return value.
   if (Expr == nullptr) {
+    codegen::EmitUnwindDrops(
+        *sm->CurrentScope, meta->EnclosingFunctionScope,
+        true, nullptr, sm, meta, ctx);
     ctx->Builder.CreateRetVoid();
     return nullptr;
   }
@@ -214,6 +218,15 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   // is discarded below, because it may have side effects that
   // have to happen before the function returns.
   const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
+
+  // Returning jumps over every scope end between here and the
+  // function's own, so the drops those would have run are run
+  // here instead. The returned value is exempt: the caller
+  // takes ownership of it.
+  const auto returned = sm->CurrentScope->GetVarSymbol(Expr->To<IdentifierAst>(), false);
+  codegen::EmitUnwindDrops(
+    *sm->CurrentScope, meta->EnclosingFunctionScope,
+    true, returned, sm, meta, ctx);
 
   // A generic function instantiated so that its return type is
   // "Void" lowers to an LLVM function returning void, but its
