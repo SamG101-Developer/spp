@@ -1095,7 +1095,7 @@ auto spp::parse::ParserSpp::parse_inner_scope_expression(auto &&parser)
 auto spp::parse::ParserSpp::parse_statement()
   -> Unique<asts::StatementAst> {
   PARSE_ALTERNATE(
-    p1, asts::StatementAst, parse_use_statement, parse_use_var_statement, parse_type_statement, parse_let_statement,
+    p1, asts::StatementAst, parse_type_statement, parse_let_statement,
     parse_ret_statement, parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement,
     parse_assignment_statement, parse_gen_unroll_expression, parse_expression);
   return FORWARD_AST(p1);
