@@ -108,7 +108,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_mut_1 = object.custom_iter_mut()
         let generator_mut_2 = object.custom_iter_mut()
@@ -125,7 +125,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_mut = object.custom_iter_mut()
         let generator_ref = object.custom_iter_ref()
@@ -142,7 +142,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_ref = object.custom_iter_ref()
         let generator_mut = object.custom_iter_mut()
@@ -158,7 +158,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_ref_1 = object.custom_iter_ref()
         let generator_ref_2 = object.custom_iter_ref()
@@ -175,7 +175,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let mut generator_mut = object.custom_iter_mut()
         let generator_ref = object.custom_iter_ref()
@@ -192,7 +192,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_ref = object.custom_iter_ref()
         let mut generator_mut = object.custom_iter_mut()
@@ -209,7 +209,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let mut generator_mut_1 = object.custom_iter_mut()
         let mut generator_mut_2 = object.custom_iter_mut()
@@ -226,7 +226,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_mut: Gen[&mut Str, Void]
         case true {
@@ -246,7 +246,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_ref: Gen[&Str, Void]
         case true {
@@ -266,7 +266,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let generator_mut_1: Gen[&mut Str, Void]
         case true {
@@ -285,7 +285,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let object = MyType()
         let mut generator_ref_1: Gen[&Str, Void]
         case true {
@@ -305,7 +305,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let mut generator_mut = object.custom_iter_mut()
         let x = generator_mut.res()
@@ -325,7 +325,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         let mut generator_ref = object.custom_iter_ref()
         let x = generator_ref.res()
@@ -346,7 +346,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         loop true {
             let generator_mut = object.custom_iter_mut()
@@ -365,7 +365,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         loop true {
             let generator_ref = object.custom_iter_ref()
@@ -384,7 +384,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let mut object = MyType()
         loop true {
             let generator_mut_1 = object.custom_iter_mut()
@@ -403,7 +403,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let object = MyType()
         loop true {
             let generator_ref_1 = object.custom_iter_ref()

@@ -11,7 +11,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void { }
+    fun test_fn() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -30,7 +30,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
         b.f()
     }
@@ -56,7 +56,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         t.f()
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
         g(&b)
     }
@@ -85,7 +85,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun h(b: B) -> Void { }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
         h(b)
     }
@@ -107,7 +107,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
     }
 )");
@@ -133,7 +133,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self, a: S32) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
     }
 )");
@@ -153,7 +153,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     sup B ext A { }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
     }
 )");
@@ -179,7 +179,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
     }
 )");
@@ -209,7 +209,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun g(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let c = C()
     }
 )");
@@ -226,7 +226,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let a = A()
     }
 )");
@@ -245,7 +245,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun g(a: A) -> Void { }
 
-    fun test() -> Void { }
+    fun test_fn() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -267,7 +267,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun g(&self) -> A { }
     }
 
-    fun test() -> Void { }
+    fun test_fn() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -283,7 +283,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void { }
+    fun test_fn() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -298,7 +298,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let a: A
     }
 )");
@@ -317,7 +317,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(b: B[A]) -> Void { }
 
-    fun test() -> Void { }
+    fun test_fn() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -334,7 +334,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun g(a: &A) -> Void { }
 
-    fun test() -> Void { }
+    fun test_fn() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -351,7 +351,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     type AliasA = A
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let a = AliasA()
     }
 )");
@@ -373,7 +373,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     type AliasB = B
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = AliasB()
     }
 )");
@@ -396,7 +396,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     type AliasB = B
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = AliasB()
     }
 )");
@@ -415,7 +415,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     type AliasA[T] = A[T]
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let a = AliasA[S32]()
     }
 )");
@@ -432,7 +432,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let a = A[S32]()
     }
 )");
@@ -453,7 +453,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B[S32]()
         b.f()
     }
@@ -472,7 +472,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g[T](t: T) -> T { ret t }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let x = g(123)
     }
 )");
@@ -491,7 +491,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun g[T]() -> Void { }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         g[A]()
     }
 )");
@@ -509,7 +509,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B[A]()
     }
 )");
@@ -527,7 +527,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void { }
+    fun test_fn() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -548,7 +548,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     cls C[T: A = B] { }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let c = C()
     }
 )");
@@ -570,7 +570,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> S32 or Bool { ret 123 }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
     }
 )");
@@ -592,7 +592,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Gen[S32] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
     }
 )");
@@ -608,7 +608,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let a = A()
         a.f()
     }
@@ -624,7 +624,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let a = A()
         a.f()
     }

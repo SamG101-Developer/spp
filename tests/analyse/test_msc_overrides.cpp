@@ -24,7 +24,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
         b.f()
         b.f(A())
@@ -56,7 +56,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B[S32]()
         b.f()
         let mut x = b.f(1)
@@ -89,7 +89,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B[S32]()
         b.f()
         let mut x = b.f(1)
@@ -122,7 +122,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         cor c(&self) -> Gen[&T, Bool] { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B[S32]()
         let mut coroutine = b.c(123)
         coroutine.res(false)
@@ -154,7 +154,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self) -> Void { }
     }
 
-    fun test() -> Void {
+    fun test_fn() -> Void {
         let b = B()
         b.f("a")
     }
