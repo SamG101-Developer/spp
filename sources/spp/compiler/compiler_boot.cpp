@@ -12,16 +12,21 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.monomorphization_utils;
+import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.expression_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.string_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.compiler.module_tree;
 import spp.lex.lexer;
@@ -40,6 +45,7 @@ import llvm;
   PREP_SCOPE_MANAGER;                                                   \
   spp::compiler::CompilerBoot::_MoveScopeManagerToNs(sm, *mod_in_tree); \
   auto meta = spp::asts::meta::CompilerMetaData();                      \
+  meta.IsTestHarness = mod_in_tree->is_test_harness;                    \
   meta.CurrentStage = (s)
 
 SPP_MOD_BEGIN
@@ -61,8 +67,22 @@ auto spp::compiler::CompilerBoot::Parse(
   utils::ProgressBar &bar,
   ModuleTree &tree)
   -> void {
-  // Parsing stage.
+  // Parsing stage. Do the filtering for the test hardness
+  // modules, depending on the how the compiler has been
+  // invoked.
   for (auto const &mod : tree) {
+    if (mod->is_test_harness) { continue; }
+    mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
+    _Modules.EmplaceBack(mod->module_ast.get());
+    bar.Next();
+  }
+
+  for (auto const &mod : tree) {
+    if (not mod->is_test_harness) { continue; }
+    mod->code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
+    mod->tokens = lex::Lexer(mod->code, true).Lex();
+    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
+      mod->tokens, utils::files::DisplayString(mod->path));
     mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
     _Modules.EmplaceBack(mod->module_ast.get());
     bar.Next();
@@ -383,7 +403,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // existence afterwards is worse than never having had it - the backend
   // colours stack slots by them, and reuses a slot that is still live.
   codegen::RepairMisnamedIntrinsics(lto_module.get());
-  codegen::RunOptimizationPipeline(lto_module.get());
+  codegen::RunOptimizationPipeline(lto_module.get(), opt_level);
 
   // And again, for the ones the pipeline introduced itself. These are
   // placed by the pass that built them, so they are correct where they
@@ -515,21 +535,84 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
   sm->Reset();
 }
 
+auto spp::compiler::CompilerBoot::_GenerateTestHarness(
+  ModuleTree &tree,
+  const StrView name_filter,
+  const StrView group_filter,
+  std::size_t &out_count)
+  -> Str {
+  // The annotation is matched on its written name rather than
+  // on a resolved symbol, because this runs before anything
+  // is analysed - the tests have to be known in order to write
+  // the entry point that reaches them. Todo: Make this better.
+  const auto test_annotation_of = [](asts::FunctionPrototypeAst const *fun) -> asts::AnnotationAst const* {
+    for (auto const &a : fun->Annotations) {
+      const auto written = a->Name->ToString();
+      if (written == "test" or written.ends_with("::test")) { return a.get(); }
+    }
+    return nullptr;
+  };
+
+  // A group is only read off the keyword form, which mirrors
+  // how "!ffi" reads its symbol. An unmarked test belongs to
+  // the group its module names.
+  const auto group_of = [](asts::AnnotationAst const *annotation, Str const &fallback) -> Str {
+    if (annotation->FnArgGroup == nullptr) { return fallback; }
+    const auto arg = annotation->FnArgGroup->At("group");
+    if (arg == nullptr) { return fallback; }
+    const auto literal = arg->Val->To<asts::StringLiteralAst>();
+    if (literal == nullptr) { return fallback; }
+    const auto written = literal->CppVal();
+    return written.empty() ? fallback : written;
+  };
+
+  auto body = Str();
+  auto count = 0uz;
+  TestNames.Clear();
+  for (auto const &mod : tree) {
+    if (mod->is_test_harness or mod->module_ast == nullptr) { continue; }
+
+    auto const &ns_parts = mod->ns_parts;
+    auto ns = Str();
+    for (auto const &part : ns_parts) { ns += part + "::"; }
+    const auto module_group = ns_parts.IsEmpty() ? Str() : ns_parts.Back();
+
+    for (auto *member : asts::AstBody(mod->module_ast.get())) {
+      const auto fun = member->To<asts::FunctionPrototypeAst>();
+      if (fun == nullptr) { continue; }
+      const auto annotation = test_annotation_of(fun);
+      if (annotation == nullptr) { continue; }
+
+      const auto fq_name = ns + fun->Name->Val;
+      const auto group = group_of(annotation, module_group);
+      if (not name_filter.empty() and not StrView(fq_name).contains(name_filter)) { continue; }
+      if (not group_filter.empty() and group != group_filter) { continue; }
+
+      const auto len = std::to_string(fq_name.length());
+      body += "  case run_all or (only.len() == " + len + "_uz and only.ends_with(\"" + fq_name + "\")) {\n";
+      body += "    std::console::println(\"[RUN  ] " + group + " :: " + fq_name + "\")\n";
+      body += "    " + fq_name + "()\n";
+      body += "    std::console::println(\"[  OK ] " + group + " :: " + fq_name + "\")\n";
+      body += "  }\n";
+      TestNames.EmplaceBack(fq_name);
+      ++count;
+    }
+  }
+
+  out_count = count;
+  return Str("fun main() -> Void {\n")
+    + "  let only = std::process::get_env(\"SPP_TEST_ONLY\").unwrap_or(Str::from(\"\"))\n"
+    + "  let run_all = only.len() == 0_uz\n"
+    + body
+    + "  std::console::println(\"[ DONE ]\")\n}\n";
+}
+
 auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
   analyse::scopes::ScopeManager *sm,
   Module const &mod)
   -> void {
-  using namespace std::string_literals;
-  // Create the module namespace as a list of strings.
-  auto mod_ns = Vec<Str>(mod.path.begin(), mod.path.end());
-  if (genex::contains(mod_ns, "src"_str)) {
-    const auto src_index = genex::find(mod_ns, "src"_str) - mod_ns.begin() + 1z;
-    mod_ns = Vec(mod_ns.begin() + src_index, mod_ns.end());
-    mod_ns.Back().erase(mod_ns.Back().length() - 4);
-  }
-  else {
-    mod_ns = Vec{mod_ns[mod_ns.Len() - 2]};
-  }
+  //
+  auto const &mod_ns = mod.ns_parts;
 
   // Iterate over the parts of the module namespace.
   for (auto const &part : mod_ns) {

@@ -34,6 +34,18 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     std::filesystem::path const &project_root)
     -> Str;
 
+  /** Only tests whose fully qualified name contains this are built into the harness; empty builds all. */
+  Str TestNameFilter;
+
+  /** Only tests in this group are built into the harness; empty builds all. */
+  Str TestGroupFilter;
+
+  /** How many tests the generated harness ended up running. */
+  std::size_t TestCount = 0;
+
+  /** The fully qualified name of each test the harness runs, in the order it runs them. */
+  Vec<Str> TestNames;
+
   auto Lex(
     utils::ProgressBar &bar,
     ModuleTree &tree)
@@ -111,19 +123,11 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     analyse::scopes::ScopeManager *sm)
     -> void;
 
-  /**
-   * @param[in] optimize Whether to run the optimization pipeline before the ir is written out. Off for a dev build,
-   * where the unoptimized ir is what makes the generated code readable against its source.
-   * @param[in] lto Whether that pipeline runs over every module combined into one rather than over each separately.
-   * Combining is what lets a call into another source file be inlined: on its own, a module holds nothing but a
-   * declaration of it.
-   */
   auto Stage11_CodeGen(
     utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm,
-    bool optimize,
-    bool lto)
+    unsigned opt_level)
     -> void;
 
 private:
@@ -154,7 +158,8 @@ private:
    * @param[in] out_path The directory the per-module ir was written to.
    */
   auto _LinkTimeOptimize(
-    std::filesystem::path const &out_path)
+    std::filesystem::path const &out_path,
+    unsigned opt_level)
     -> void;
 
   /**
@@ -172,6 +177,21 @@ private:
   SPP_ATTR_NODISCARD static auto _FfiLibraries(
     std::filesystem::path const &project_root)
     -> Vec<std::filesystem::path>;
+
+  /**
+   * The source of the entry point a test build is run through: a "main" that calls every discovered unit test in turn,
+   * naming each one before it runs so that a test which takes the process down with it is still identifiable.
+   * @param[in] tree The modules already parsed, searched for functions carrying the "unit_test" annotation.
+   * @param[in] name_filter Only tests whose fully qualified name contains this are included; empty includes all.
+   * @param[in] group_filter Only tests whose group equals this are included; empty includes all.
+   * @param[out] out_count How many tests the generated harness runs.
+   */
+  auto _GenerateTestHarness(
+    ModuleTree &tree,
+    StrView name_filter,
+    StrView group_filter,
+    std::size_t &out_count)
+    -> Str;
 
   static auto _MoveScopeManagerToNs(
     analyse::scopes::ScopeManager *sm,

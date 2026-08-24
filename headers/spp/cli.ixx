@@ -38,11 +38,30 @@ namespace spp::cli {
     Str const &mode)
     -> void;
 
-  SPP_EXP_FUN auto handle_test()
+  /**
+   * Build the project together with its "tst" folder and run the unit tests it declares.
+   * @param[in] name_filter Only run tests whose fully qualified name contains this; empty runs all.
+   * @param[in] group_filter Only run tests in this group; empty runs all.
+   * @param[in] libs Also run the unit tests of these [vcs] libraries, named as their folder under "vcs".
+   * @param[in] all_libs Also run the unit tests of every [vcs] library.
+   */
+  SPP_EXP_FUN auto handle_test(
+    Str const &name_filter = "",
+    Str const &group_filter = "",
+    Vec<Str> const &libs = {},
+    bool all_libs = false)
     -> void;
 
+  /**
+   * Check the current directory has the structure a project needs, reporting anything missing.
+   * @param[in] is_exe Whether this project is entered through a "src/main.spp"; a library is not.
+   * @param[in] create_missing Whether to create the optional folders ("out", "vcs", "ffi", "tst") that are absent.
+   * False when checking somebody else's project - a dependency's checkout is not this build's to write into.
+   * @return @c true when the structure is sound.
+   */
   SPP_EXP_FUN auto handle_validate(
-    bool is_exe)
+    bool is_exe,
+    bool create_missing = true)
     -> bool;
 
   SPP_EXP_FUN auto handle_version()

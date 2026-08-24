@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.compiler;
+import spp.compiler.module_tree;
 import spp.utils.types;
 import std;
 
@@ -12,7 +13,6 @@ namespace spp::analyse::scopes {
 namespace spp::compiler {
   SPP_EXP_CLS class Compiler;
   SPP_EXP_CLS struct CompilerBoot;
-  SPP_EXP_CLS struct ModuleTree;
 }
 
 inline constexpr auto kCompilerStageNames = std::array{
@@ -51,7 +51,13 @@ private:
 
   Unique<analyse::scopes::ScopeManager> m_scope_manager;
 
-  bool m_for_unit_tests = false;
+  bool m_for_cpp_google_test = false;
+
+  /** How many unit tests the generated harness runs. Read off the boot once parsing has written the harness. */
+  std::size_t m_test_count = 0;
+
+  /** The names of those tests, kept past @c Cleanup so the driver can re-run them one at a time. */
+  Vec<Str> m_test_names;
 
   /**
    * The compile-time constants the main module declared, and the values they resolved to, rendered as the source text
@@ -70,13 +76,30 @@ private:
 public:
   Compiler() = default; // TODO: Private
 
-  explicit Compiler(Mode mode, BuildType build_type);
+  /**
+   * @param[in] mode Whether to build for development or release.
+   * @param[in] build_type Whether the project produces an executable or a library.
+   * @param[in] tests Which "tst" folders to compile alongside the sources. Empty for an ordinary build.
+   */
+  explicit Compiler(Mode mode, BuildType build_type, TestScope const &tests = {});
 
   static auto ForCppGoogleTest(Mode mode, Str &&main_code) -> Unique<Compiler>;
 
   ~Compiler();
 
   auto Compile() -> void;
+
+  /**
+   * Restrict which unit tests the generated harness runs. Must be set before @c Compile , because the filters are
+   * applied while the harness is written rather than when it runs.
+   */
+  auto SetTestFilters(Str name_filter, Str group_filter) -> void;
+
+  /** How many unit tests the generated harness ended up running. Valid once @c Compile has run. */
+  SPP_ATTR_NODISCARD auto TestCount() const -> std::size_t;
+
+  /** The fully qualified name of each test the harness runs. Valid once @c Compile has run. */
+  SPP_ATTR_NODISCARD auto TestNames() const -> Vec<Str> const&;
 
   /**
    * The values the main module's compile-time constants resolved to, by name. This is the only way to observe what

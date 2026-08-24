@@ -28,6 +28,15 @@ inline constexpr spp::Str OUT_FOLDER = "out";
 inline constexpr spp::Str SRC_FOLDER = "src";
 inline constexpr spp::Str VCS_FOLDER = "vcs";
 inline constexpr spp::Str FFI_FOLDER = "ffi";
+inline constexpr spp::Str TST_FOLDER = "tst";
+
+/**
+ * Iterate a directory that may not be there. The optional folders are only created inside this project, so a
+ * dependency legitimately has none of them and walking one must not throw.
+ */
+static auto SafeDirectoryIterator(std::filesystem::path const &dir) -> std::filesystem::directory_iterator {
+  return std::filesystem::exists(dir) ? std::filesystem::directory_iterator(dir) : std::filesystem::directory_iterator();
+}
 inline constexpr spp::Str MAIN_FILE = "main.spp";
 inline constexpr spp::Str CONFIG_FILE = "spp.toml";
 
@@ -66,10 +75,18 @@ auto spp::cli::run_cli(
   const std::int32_t argc,
   char **argv)
   -> std::int32_t {
-  // Create the CLI object and require that a subcommand is provided.
+  // Create the CLI object and require that a subcommand
+  // is provided.
   auto app = CLI::App("SPP build tool", "spp");
   app.require_subcommand(1);
-  auto mode = Str();
+
+  // One variable per subcommand, each holding its own
+  // default. A single shared one takes whichever default
+  // was declared last, so "spp build" with no "-m" ran
+  // with an empty mode and was rejected as invalid.
+  auto build_mode = Str("dev");
+  auto run_mode = Str("dev");
+  auto clean_mode = Str("all");
 
   app.add_subcommand("init", "Initialize the new project")
      ->callback(handle_init);
@@ -78,25 +95,46 @@ auto spp::cli::run_cli(
      ->callback([] { if (not handle_vcs()) { throw CLI::RuntimeError(1); } });
 
   app.add_subcommand("build", "Build the project")
-     ->callback([&mode] { handle_build(mode); })
-     ->add_option("-m,--mode", mode, "Build mode (dev or rel)")
+     ->callback([&build_mode] { handle_build(build_mode); })
+     ->add_option("-m,--mode", build_mode, "Build mode (dev or rel)")
      ->check(CLI::IsMember({"dev", "rel"}))
      ->default_val("dev");
 
   app.add_subcommand("run", "Run the project")
-     ->callback([&mode] { handle_run(mode); })
-     ->add_option("-m,--mode", mode, "Run mode (dev or rel)")
+     ->callback([&run_mode] { handle_run(run_mode); })
+     ->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
      ->check(CLI::IsMember({"dev", "rel"}))
      ->default_val("dev");
 
   app.add_subcommand("clean", "Clean the project")
-     ->callback([&mode] { handle_clean(mode); })
-     ->add_option("-m,--mode", mode, "Clean mode (dev, rel or all)")
+     ->callback([&clean_mode] { handle_clean(clean_mode); })
+     ->add_option("-m,--mode", clean_mode, "Clean mode (dev, rel or all)")
      ->check(CLI::IsMember({"dev", "rel", "all"}))
      ->default_val("all");
 
-  app.add_subcommand("test", "Test the project")
-     ->callback(handle_test);
+  auto test_name_filter = spp::Str();
+  auto test_group_filter = spp::Str();
+  auto test_libs = std::vector<spp::Str>();
+  auto test_all_libs = false;
+  const auto test_cmd = app.add_subcommand("test", "Test the project");
+  test_cmd->add_option(
+    "-f,--filter", test_name_filter,
+    "Only run tests whose fully qualified name contains this");
+  test_cmd->add_option(
+    "-g,--group", test_group_filter,
+    "Only run tests in this group");
+  test_cmd->add_option(
+    "-l,--lib", test_libs,
+    "Also run the unit tests of this [vcs] library (repeatable)");
+  test_cmd->add_flag(
+    "--all-libs", test_all_libs,
+    "Also run the unit tests of every [vcs] library");
+
+  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs] {
+    handle_test(
+      test_name_filter, test_group_filter,
+      Vec(test_libs.begin(), test_libs.end()), test_all_libs);
+  });
 
   app.add_subcommand("validate", "Validate the project")
      ->callback([] { handle_validate(false); });
@@ -123,6 +161,7 @@ auto spp::cli::handle_init()
   std::filesystem::create_directory(cwd / SRC_FOLDER);
   std::filesystem::create_directory(cwd / VCS_FOLDER);
   std::filesystem::create_directory(cwd / FFI_FOLDER);
+  std::filesystem::create_directory(cwd / TST_FOLDER);
 
   // Add the key files into the directory structure.
   std::filesystem::create_directory(cwd / SRC_FOLDER / cwd.filename());
@@ -138,12 +177,11 @@ auto spp::cli::handle_vcs()
   using namespace std::string_literals;
   SPP_VALIDATE_STRUCTURE_OR(false, false);
 
-  // Parse the spp.toml config file and get the optional "vcs" section.
+  // Parse the spp.toml config file and get the optional "vcs"
+  // section. A project with no dependencies has nothing to
+  // fetch, which is a successful outcome rather than a failure.
   const auto toml = toml::parse_file(CONFIG_FILE);
-  if (not toml.contains("vcs")) {
-    std::cout << "Error: No [vcs] section found in spp.toml.\n";
-    return false;
-  }
+  if (not toml.contains("vcs")) { return true; }
 
   // Move into the VCS folder.
   const auto cwd = std::filesystem::current_path();
@@ -202,6 +240,11 @@ auto spp::cli::handle_build(
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
   std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
+
+  // Remove the executable first, so a build that fails leaves
+  // nothing behind for "run" to pick up and execute as if it
+  // were the build that just happened.
+  std::filesystem::remove(cwd / OUT_FOLDER / compiler::CompilerBoot::ExecutableName(cwd));
 
   // Handle VCS if not skipped. Building against a half-fetched "vcs" folder reports every imported symbol as
   // undefined rather than the fetch failure that caused it, so stop here instead.
@@ -283,16 +326,108 @@ auto spp::cli::handle_clean(
   }
 }
 
-auto spp::cli::handle_test()
+auto spp::cli::handle_test(
+  Str const &name_filter,
+  Str const &group_filter,
+  Vec<Str> const &libs,
+  const bool all_libs)
   -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
-  // TODO
+  // Fetch the dependencies, as an ordinary build does: a
+  // test build compiles the same sources plus the "tst"
+  // folder.
+  if (not handle_vcs()) {
+    std::cerr << "Error: Aborting the test build; the [vcs] dependencies could not be fetched.\n";
+    return;
+  }
+  SPP_VALIDATE_STRUCTURE(false);
+
+  const auto cwd = std::filesystem::current_path();
+  std::filesystem::create_directory(cwd / OUT_FOLDER / "dev");
+
+  // Remove the executable before building, so a build that
+  // fails to link cannot leave the previous one behind to be
+  // run and reported as a pass.
+  const auto exe_file = cwd / OUT_FOLDER / compiler::CompilerBoot::ExecutableName(cwd);
+  std::filesystem::remove(exe_file);
+
+  for (auto const &lib : libs) {
+    if (std::filesystem::is_directory(cwd / VCS_FOLDER / lib)) { continue; }
+    std::cerr << "Error: No library named '" << lib << "' under '" << VCS_FOLDER << "'.\n";
+    std::exit(1);
+  }
+
+  auto scope = compiler::TestScope{.project = true, .all_libs = all_libs, .libs = libs};
+  auto c = compiler::Compiler(
+    compiler::Compiler::Mode::REL, compiler::Compiler::BuildType::EXE, scope);
+  c.SetTestFilters(name_filter, group_filter);
+  c.Compile();
+
+  if (c.TestCount() == 0) {
+    std::cerr << "No unit tests matched. Mark a function in 'tst' with '!test'";
+    if (not name_filter.empty() or not group_filter.empty()) { std::cerr << ", or relax the filter"; }
+    std::cerr << ".\n";
+    std::exit(1);
+  }
+
+  if (not std::filesystem::exists(exe_file)) {
+    std::cerr << "Error: No test executable was built at '" << utils::files::DisplayString(exe_file) << "'.\n";
+    std::exit(1);
+  }
+
+  // One process for the whole suite first: that is the fast
+  // path, and when everything passes it is all that runs.
+  std::cout << "Running " << c.TestCount() << " test(s)." << std::endl;
+  std::cout.flush();
+
+  const auto exe = utils::files::NativeString(exe_file);
+
+  // The selector is set on the command rather than in this
+  // process, so nothing has to be unset afterwards and the
+  // whole-suite run is plain.
+  const auto run = [&exe](Str const &only) {
+    const auto command = only.empty() ? exe : "SPP_TEST_ONLY=" + only + " " + exe;
+    const auto status = std::system(command.c_str());
+    const auto exited_normally = (status & 0x7F) == 0;
+    return exited_normally ? (status >> 8) & 0xFF : -1;
+  };
+
+  if (run("") == 0) {
+    std::cout << "All " << c.TestCount() << " test(s) passed." << std::endl;
+    return;
+  }
+
+  // Something took the shared run down with it - an assertion
+  // aborts the process, and so does a miscompiled test - so
+  // everything ordered behind it never ran. Re-run them a
+  // process each, so one casualty costs one result rather than
+  // the rest of the suite.
+  std::cout << "\nA test did not finish. Re-running each test in its own process.\n" << std::endl;
+  std::cout.flush();
+
+  auto failed = Vec<Str>();
+  for (auto const &name : c.TestNames()) {
+    if (run(name) != 0) { failed.EmplaceBack(name); }
+  }
+
+  std::cout << "\n" << (c.TestCount() - failed.Len()) << "/" << c.TestCount() << " test(s) passed." << std::endl;
+  if (failed.IsEmpty()) {
+    // Every test passes on its own, so what failed is something
+    // they share rather than any one of them.
+    std::cerr << "The suite failed as a whole but every test passes alone - suspect shared state or the harness.\n";
+    std::exit(1);
+  }
+
+  std::cerr << "Failed:\n";
+  for (auto const &name : failed) { std::cerr << "  " << name << "\n"; }
+  std::exit(1);
 }
 
 auto spp::cli::handle_validate(
-  const bool is_exe)
+  const bool is_exe,
+  const bool create_missing)
   -> bool {
   using namespace std::string_literals;
 
@@ -311,18 +446,26 @@ auto spp::cli::handle_validate(
     return false;
   }
 
-  // Create the other folders if they don't exist.
-  if (not std::filesystem::exists(cwd / OUT_FOLDER)) {
-    std::filesystem::create_directory(cwd / OUT_FOLDER);
-  }
-  if (not std::filesystem::exists(cwd / VCS_FOLDER)) {
-    std::filesystem::create_directory(cwd / VCS_FOLDER);
-  }
-  if (not std::filesystem::exists(cwd / FFI_FOLDER)) {
-    std::filesystem::create_directory(cwd / FFI_FOLDER);
+  // Create the other folders if they don't exist, but only in this
+  // project - a dependency's checkout is a fetched artifact, and
+  // filling it with empty folders makes its working tree dirty.
+  if (create_missing) {
+    if (not std::filesystem::exists(cwd / OUT_FOLDER)) {
+      std::filesystem::create_directory(cwd / OUT_FOLDER);
+    }
+    if (not std::filesystem::exists(cwd / VCS_FOLDER)) {
+      std::filesystem::create_directory(cwd / VCS_FOLDER);
+    }
+    if (not std::filesystem::exists(cwd / FFI_FOLDER)) {
+      std::filesystem::create_directory(cwd / FFI_FOLDER);
+    }
+    if (not std::filesystem::exists(cwd / TST_FOLDER)) {
+      std::filesystem::create_directory(cwd / TST_FOLDER);
+    }
   }
 
-  // Parse the spp.toml config file and get the optional "project" section.
+  // Parse the spp.toml config file and get the optional "project"
+  // section.
   const auto toml = toml::parse_file(CONFIG_FILE);
   if (not toml.contains("project")) {
     std::cout << "Error: No [project] section found in spp.toml.\n";
@@ -360,15 +503,16 @@ auto spp::cli::handle_validate(
   }
 
   // For the VCS folders, validate each VCS entry (if it exists).
-  for (auto const &vcs_dir : std::filesystem::directory_iterator(cwd / VCS_FOLDER)) {
-    std::filesystem::current_path(cwd / vcs_dir);
-    handle_validate(build_type == "exe");
+  for (auto const &vcs_dir : SafeDirectoryIterator(cwd / VCS_FOLDER)) {
+    if (not vcs_dir.is_directory()) { continue; }
+    std::filesystem::current_path(vcs_dir.path());
+    handle_validate(false, false);
     std::filesystem::current_path(cwd);
   }
 
   // Check the FFI subfolders are structured properly.
   const auto ext = get_system_shared_library_extension();
-  for (auto const &ffi_dir : std::filesystem::directory_iterator(cwd / FFI_FOLDER)) {
+  for (auto const &ffi_dir : SafeDirectoryIterator(cwd / FFI_FOLDER)) {
     if (not std::filesystem::is_directory(ffi_dir)) {
       std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(
         ffi_dir.path().filename()) + "\n";
