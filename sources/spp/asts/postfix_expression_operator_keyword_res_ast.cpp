@@ -121,11 +121,6 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // store the potential argument into the send slot of the
   // env, resume the coroutine, then use the yielded value.
 
-  // The slots are fields of the generator state *struct*, so
-  // reaching one is a struct GEP: the source element type has
-  // to be the struct, and the field index an "i32".
-  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
-
   // Step 0: Retrieve the correct generator environment from
   // the llvm context, keyed by the address of the generator's
   // storage. The left-hand-side is not necessarily a bare
@@ -157,13 +152,9 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     const auto llvm_handle = ctx->Builder.CreateLoad(
       llvm::PointerType::get(*ctx->Context, 0), llvm_handle_ptr, "gen.handle");
 
-    const auto llvm_promise_align = llvm::ConstantInt::get(
-      llvm::Type::getInt32Ty(*ctx->Context), alignof(std::max_align_t));
     rebuilt_generator = MakeUnique<codegen::LlvmGenerator>();
     rebuilt_generator->Handle = llvm_handle;
-    rebuilt_generator->State = ctx->Builder.CreateIntrinsic(
-      llvm::Intrinsic::coro_promise, {}, {llvm_handle, llvm_promise_align, ctx->Builder.getFalse()}, {},
-      "gen.state");
+    rebuilt_generator->State = codegen::GetLlvmGeneratorStateFromHandle(llvm_handle, ctx);
   }
 
   const auto &llvm_generator_env = rebuilt_generator != nullptr
@@ -182,9 +173,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     args_group->Args, [](auto const &x) { return x->GetSelfType() == nullptr; });
 
   if (send_arg != args_group->Args.end()) {
-    const auto llvm_send_slot = ctx->Builder.CreateStructGEP(
-      llvm_gen_state_ty, llvm_generator_env->State,
-      std::to_underlying(codegen::LlvmGeneratorStateStructFields::SEND_SLOT), "gen.send.slot");
+    const auto llvm_send_slot = codegen::GetLlvmGeneratorSlotPtr(
+      llvm_generator_env->State, codegen::LlvmGeneratorStateStructFields::SEND_SLOT, "gen.send.slot", ctx);
     const auto llvm_send_value = (*send_arg)->Stage11_CodeGen(sm, meta, ctx);
     ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
   }
@@ -199,9 +189,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*yield_type, *sm->CurrentScope, ctx);
 
   const auto read_yielded_val = [&] {
-    const auto llvm_yield_slot = ctx->Builder.CreateStructGEP(
-      llvm_gen_state_ty, llvm_generator_env->State,
-      std::to_underlying(codegen::LlvmGeneratorStateStructFields::YIELD_SLOT), "gen.yield.slot");
+    const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
+      llvm_generator_env->State, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT, "gen.yield.slot", ctx);
     return ctx->Builder.CreateLoad(llvm_yield_ty, llvm_yield_slot, "gen.yield.value");
   };
 

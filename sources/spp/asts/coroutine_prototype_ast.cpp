@@ -237,25 +237,27 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // Firstly, emit the llvm coroutine intrinsics for the
   // coroutine id, size and begin. These form the "boot"
   // instructions for the coroutine.
-  const auto llvm_i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
   const auto llvm_i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
   const auto llvm_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto llvm_coro_align = llvm::ConstantInt::get(llvm_i32_ty, alignof(std::max_align_t));
+  const auto llvm_coro_align = codegen::GetLlvmGeneratorFrameAlign(ctx);
 
   // The generator environment holding the yield and send
   // slots, which "gen" and "res" load/store/GEP through.
   const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
   const auto llvm_gen_state = ctx->Builder.CreateAlloca(
     llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
+  // The same alignment "GetLlvmGeneratorFrameAlign" reports, because "llvm.coro.promise" reads the promise back out
+  // of the frame on that assumption.
   llvm_gen_state->setAlignment(llvm::Align(alignof(std::max_align_t)));
 
-  // "llvm.coro.id" is "[token] (i32, ptr, ptr, ptr)". The
-  // trailing two pointer operands (coroaddr, fnaddrs) are
-  // unused here, but they are still operands: they have to
-  // be null pointer *constants*.
+  // "llvm.coro.id" is "[token] (i32, ptr, ptr, ptr)". The third operand is the coroutine's own address, which is what
+  // identifies this coroutine to the elision pass: given it, "CoroElide" can recognise a frame whose lifetime is
+  // contained in its caller and place it in the caller's stack frame instead of allocating one. Passing null there
+  // leaves every frame on the heap. The fourth (fnaddrs) is filled in by "CoroSplit" once the resume and destroy
+  // functions exist, so it stays a null constant here.
   const auto llvm_null_ptr = llvm::ConstantPointerNull::get(llvm_ptr_ty);
   const auto coro_id = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_id, {}, {llvm_coro_align, llvm_gen_state, llvm_null_ptr, llvm_null_ptr}, {},
+    llvm::Intrinsic::coro_id, {}, {llvm_coro_align, llvm_gen_state, llvm_func_target, llvm_null_ptr}, {},
     "coro.id" + uid);
 
   // Guard the frame allocation with "llvm.coro.alloc".
@@ -330,21 +332,11 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // consumer there is nothing left to resume, and it only ever reads true of a coroutine parked on a final suspend.
   // Freeing the frame here instead would leave the consumer asking a destroyed frame whether it was finished.
   //
-  // Llvm's switch abi for the final suspend: 1 destroys, and anything else (the default) parks. Case 0 is a resume of
-  // an already-finished coroutine, which is undefined behaviour rather than something to lower, so it is unreachable.
+  // Resuming a coroutine that has already finished is undefined behaviour rather than something to lower, so the
+  // block the suspend leaves the builder in - the one a resume would return to - is unreachable.
   if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
-    const auto llvm_i8_ty = llvm::Type::getInt8Ty(*ctx->Context);
-    const auto final_suspend = ctx->Builder.CreateIntrinsic(
-      llvm::Intrinsic::coro_suspend, {},
-      {llvm::ConstantTokenNone::get(*ctx->Context), ctx->Builder.getTrue()}, {}, "coro.final.suspend" + uid);
-
-    const auto final_resume_bb = llvm::BasicBlock::Create(
-      *ctx->Context, "coro.final.resume" + uid, llvm_func_target);
-    const auto final_switch = ctx->Builder.CreateSwitch(final_suspend, suspend_bb, 2);
-    final_switch->addCase(llvm::ConstantInt::get(llvm_i8_ty, 0), final_resume_bb);
-    final_switch->addCase(llvm::ConstantInt::get(llvm_i8_ty, 1), cleanup_bb);
-
-    ctx->Builder.SetInsertPoint(final_resume_bb);
+    codegen::EmitLlvmGeneratorSuspend(
+      true, suspend_bb, cleanup_bb, "coro.final.suspend" + uid, "coro.final.resume" + uid, ctx);
     ctx->Builder.CreateUnreachable();
   }
 

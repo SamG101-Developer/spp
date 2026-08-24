@@ -529,11 +529,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         llvm_call, {handle_idx}, "coro.handle" + uid);
     }
 
-    const auto llvm_promise_align = llvm::ConstantInt::get(
-      llvm::Type::getInt32Ty(*ctx->Context), alignof(std::max_align_t));
-    const auto llvm_gen_state = ctx->Builder.CreateIntrinsic(
-      llvm::Intrinsic::coro_promise, {}, {llvm_coro_handle, llvm_promise_align, ctx->Builder.getFalse()}, {},
-      "coro.gen.state" + uid);
+    const auto llvm_gen_state = codegen::GetLlvmGeneratorStateFromHandle(llvm_coro_handle, ctx);
 
     if (meta->LlvmAssignmentTarget != nullptr) {
       auto generator = MakeUnique<codegen::LlvmGenerator>();
