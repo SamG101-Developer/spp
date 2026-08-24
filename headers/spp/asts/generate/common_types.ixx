@@ -115,6 +115,10 @@ namespace spp::asts::generate::common_types {
     std::size_t pos)
     -> Shared<TypeAst>;
 
+  SPP_EXP_FUN auto DelType(
+    std::size_t pos)
+    -> Shared<TypeAst>;
+
   SPP_EXP_FUN auto ArrayType(
     std::size_t pos,
     Shared<TypeAst> elem_type,

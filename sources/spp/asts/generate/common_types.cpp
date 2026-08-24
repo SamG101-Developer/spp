@@ -229,6 +229,14 @@ auto spp::asts::generate::common_types::CopyType(std::size_t pos) -> Shared<Type
   FINISH_TYPE();
 }
 
+auto spp::asts::generate::common_types::DelType(std::size_t pos) -> Shared<TypeAst> {
+  MAKE_TYPE("Del");
+  ADD_NAMESPACE("del");
+  ADD_NAMESPACE("ops");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
+}
+
 auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAst> elem_type,
   Unique<ExpressionAst> &&size) -> Shared<TypeAst> {
   MAKE_GENERICS()
