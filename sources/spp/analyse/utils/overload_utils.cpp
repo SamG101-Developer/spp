@@ -208,9 +208,19 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       auto self_pin = Shared<asts::TypeAst>(nullptr);
       if (declared_self != nullptr and (SignatureNamesSelf(*fn_proto) or declared_on_abstract)) {
         auto receiver = fn_owner_type->WithConvention(nullptr);
-        if (not TypeEq(*declared_self, *receiver, *fn_scope, *sm->CurrentScope)) {
-          const auto receiver_sym = sm->CurrentScope->GetTypeSymbol(receiver->WithoutGenerics().get());
-          if (not receiver->IsSelfType() and receiver_sym != nullptr and not receiver_sym->IsGeneric) {
+
+        // "Self" only stands for the receiver when the receiver
+        // really is an implementer of the class the method was
+        // declared on. For example, avoid forwarding types
+        // incorrectly triggering this.
+        const auto receiver_sym = sm->CurrentScope->GetTypeSymbol(receiver->WithoutGenerics().get());
+        const auto receiver_implements_declarer = receiver_sym != nullptr and receiver_sym->LinkedScope != nullptr
+          and genex::any_of(receiver_sym->LinkedScope->SupTypes(), [&](auto const &sup) {
+            return TypeEq(*declared_self, *sup, *fn_scope, *receiver_sym->LinkedScope);
+          });
+
+        if (receiver_implements_declarer and not TypeEq(*declared_self, *receiver, *fn_scope, *sm->CurrentScope)) {
+          if (not receiver->IsSelfType() and not receiver_sym->IsGeneric) {
             self_pin = receiver;
           }
           auto self_arg = Vec<Unique<asts::GenericArgumentAst>>();
@@ -789,6 +799,12 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
     // one, so the argument becomes that call. This is the
     // argument-position counterpart of a method being called on
     // the value its receiver forwards to.
+    //
+    // Todo: an argument accepted by the relaxed match above never reaches here, because that branch and this one are
+    //  alternatives. A parameter written as "&Self" is relaxed-matched against anything, so "eq(&self, that: &Self)"
+    //  on a "StrView" takes a "&Str" unforwarded and reads it through "StrView"'s "{ptr, length}" shape - which is
+    //  why "Str == Str" is false for equal strings. Moving the check out of the "else" is not enough on its own;
+    //  "TypeFwdEq" also returns false for this pair and it is not yet clear why.
     else if (type_utils::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
       if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
         arg->Val = std::move(fwd_call);

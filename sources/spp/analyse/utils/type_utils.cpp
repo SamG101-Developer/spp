@@ -61,6 +61,7 @@ import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
+import std;
 
 namespace {
   auto IsTypeGen(
