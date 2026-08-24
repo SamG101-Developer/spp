@@ -124,7 +124,9 @@ spp::compiler::ModuleTree::ModuleTree(
 
   // Measure every module's namespace now that all the roots
   // are known.
-  for (auto const &m : m_modules) { m->ns_parts = NamespaceOf(m->path); }
+  for (auto const &m : m_modules) {
+    m->ns_parts = m->is_test_harness ? Vec{Str("main")} : NamespaceOf(m->path);
+  }
 
   Lock();
   for (auto &&m : m_modules) {
@@ -143,6 +145,7 @@ auto spp::compiler::ModuleTree::NamespaceOf(
   // above it because it is not in the list at all.
   auto best_rel = std::filesystem::path();
   auto best_len = 0uz;
+  auto best_is_tst = false;
   for (auto const &root : m_source_roots) {
     const auto rel = module_path.lexically_relative(root);
     if (rel.empty() or *rel.begin() == "..") { continue; }
@@ -150,6 +153,7 @@ auto spp::compiler::ModuleTree::NamespaceOf(
     if (len < best_len) { continue; }
     best_len = len;
     best_rel = rel;
+    best_is_tst = root.filename() == "tst";
   }
 
   // Under no source root: an ffi stub, namespaced by the
@@ -162,6 +166,7 @@ auto spp::compiler::ModuleTree::NamespaceOf(
 
   for (auto const &part : best_rel) { parts.EmplaceBack(spp::utils::files::NativeString(part)); }
   parts.Back().erase(parts.Back().length() - 4);
+  if (best_is_tst) { parts.Insert(parts.begin() + (parts.IsEmpty() ? 0z : 1z), Str("tst")); }
   return parts;
 }
 

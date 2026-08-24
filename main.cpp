@@ -6,29 +6,24 @@ import std.compat;
 import mimalloc;
 #endif
 
-#include <execinfo.h>
-
-static auto print_stacktrace_for_sigsegv(void *user_data, const char *reason, bool gen_crash_diag) -> void {
-  void *array[10];
-
-  // get void*'s for all entries on the stack
-  const std::size_t size = backtrace(array, 10);
-
-  // print out all the frames to stderr
-  std::printf("Error: signal SIGSEGV:\n");
-  std::printf("Reason: %s\n", reason);
-  std::printf("Backtrace:\n");
-  backtrace_symbols_fd(array, static_cast<int>(size), 2);
-}
-
 auto main(const std::int32_t argc, char **argv) -> int {
 #ifdef NDEBUG
   mi_option_disable(mi_option_show_stats);
   mi_option_disable(mi_option_verbose);
 #endif
+
   // Temporary test code to test a small project.
-  llvm::install_fatal_error_handler(print_stacktrace_for_sigsegv);
-  std::filesystem::current_path(std::filesystem::absolute(argv[0]).parent_path().parent_path() / "project");
+  std::filesystem::current_path(
+    std::filesystem::absolute(argv[0]).parent_path().parent_path() / "project");
+
+  // Bare invocation runs the corpus, which is what this binary is mostly used for by hand. Anything else goes to the
+  // cli, which requires a subcommand and would otherwise reject an empty argv. The mode matches what "spp run" itself
+  // defaults to, so the two are the same thing.
+  if (argc < 2) {
+    spp::cli::handle_run("dev");
+    return 0;
+  }
+
   spp::cli::run_cli(argc, argv);
   return 0;
 }
