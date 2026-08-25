@@ -7,6 +7,7 @@ import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.utils.visibility;
 import spp.codegen.llvm_sym_info;
+import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
@@ -67,7 +68,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symb
       return shared_from_this();
     }
     else {
-      return std::static_pointer_cast<Derived>(shared_from_this());
+      return spp::static_shared_cast<Derived>(shared_from_this());
     }
   }
 };
@@ -233,6 +234,14 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   Scope *ScopeModule;
 
   bool IsGeneric = false;
+
+  /**
+   * Whether this names a variadic generic parameter (@c "..Ts"), which stands for however many arguments are left
+   * rather than for exactly one. Only meaningful alongside @c IsGeneric . Written as the last argument of a variadic
+   * type it swallows the remainder, which is what lets @c "Tup[Ts]" name a tuple of any size where @c "Tup[T, U, V]"
+   * names a three element one and nothing else.
+   */
+  bool IsVariadic = false;
 
   /**
    * Whether this names a real type the whole way down. False only for a generic instantiation built from arguments

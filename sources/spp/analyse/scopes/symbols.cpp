@@ -190,6 +190,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   ScopeDefinedIn(that.ScopeDefinedIn),
   ScopeModule(that.ScopeModule),
   IsGeneric(that.IsGeneric),
+  IsVariadic(that.IsVariadic),
   GenericConstraints(that.GenericConstraints),
   GenericVal(that.GenericVal),
   IsDirectlyCopyable(that.IsDirectlyCopyable),

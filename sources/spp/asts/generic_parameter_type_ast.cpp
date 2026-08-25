@@ -12,6 +12,7 @@ import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -54,6 +55,7 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
     AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(),
     sm->CurrentScope, nullptr, true, false, Visibility::kPublic,
     nullptr, Constraints->Constraints);
+  sym->IsVariadic = To<GenericParameterTypeVariadicAst>() != nullptr;
   sm->CurrentScope->AddTypeSymbol(sym);
   dummy_scope->TySym = sym;
 
