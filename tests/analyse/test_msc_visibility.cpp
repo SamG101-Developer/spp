@@ -17,8 +17,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMscVisibility,
     test_invalid_visibility_access_private_type_member_diff_ctx_diff_module,
     SppAccessViolationError, R"(
-    fun function(a: std::threading::mutex::Mutex) -> Void {
-        let x = a.id
+    fun function(a: std::char::Char) -> Void {
+        let x = a.inner
     }
 )");
 
@@ -26,9 +26,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMscVisibility,
     test_invalid_visibility_access_private_type_member_same_ctx_diff_module,
     SppAccessViolationError, R"(
-    sup std::threading::mutex::Mutex {
+    sup std::char::Char {
         fun function(&self) -> Void {
-            let x = self.id
+            let x = self.inner
         }
     }
 )");
