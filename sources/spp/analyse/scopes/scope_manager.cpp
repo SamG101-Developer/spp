@@ -15,7 +15,9 @@ import spp.asts.cmp_statement_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.module_member_ast;
@@ -31,6 +33,35 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.utils.error_formatter;
 import genex;
+
+namespace {
+  auto GetSupGenericParamsFromScope(
+    spp::analyse::scopes::Scope const &sup_scope)
+    -> spp::asts::GenericParameterGroupAst const* {
+    //
+    using namespace spp::asts;
+    if (auto const *fns = sup_scope.AstNode->To<SupPrototypeFunctionsAst>(); fns != nullptr) {
+      return fns->GnParamGroup.get();
+    }
+    if (auto const *ext = sup_scope.AstNode->To<SupPrototypeExtensionAst>(); ext != nullptr) {
+      return ext->GnParamGroup.get();
+    }
+    return nullptr;
+  }
+
+  auto SupConstrainsItsParams(
+    spp::analyse::scopes::Scope const &sup_scope)
+    -> bool {
+    //
+    auto const *params = GetSupGenericParamsFromScope(sup_scope);
+    if (params == nullptr) { return false; }
+
+    return genex::any_of(params->GetTypeParams(), [](auto const *p) {
+      return not p->Constraints->Constraints.IsEmpty();
+    });
+  }
+
+}
 
 SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeManager::ScopeManager(
@@ -194,6 +225,17 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
       new_sup_scope = sup_scope;
       new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass.get())->LinkedScope : nullptr;
       sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
+
+      // Nothing bound, so there is no substitution to record - but a constraint declared here still has to be
+      // checked. A variadic parameter is what reaches this: it stands for a list of types, so the match binds it to
+      // nothing, while "sup [..T: Copy] Tup[T]" still constrains every element it swallowed. Deferred in the bulk
+      // pass and checked inline on demand, for the same reasons as the branch above.
+      if (SupConstrainsItsParams(*sup_scope)) {
+        if (deferred != nullptr) { defer_constraint = true; }
+        else if (auto _ = GenericInferenceMap(); not RelaxedTypeEq(
+          *fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *new_sup_scope,
+          _, false, true, true)) { continue; }
+      }
     }
 
     // Prevent double inheritance, cyclic inheritance and self extension.

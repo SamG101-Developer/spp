@@ -192,6 +192,7 @@ namespace spp::analyse::utils::monomorphization_utils {
      * are, so the checks that assume that order are relaxed for them: an instantiation may name an abstract type before
      * the implementation that satisfies it is attached, and a "sup" block's super class is as visible from the
      * instantiation as it was from the template. The relaxations only ever loosen what the caller already allows.
+     *
      * @param type The substituted type to analyse.
      * @param tm The scope manager to analyse it through.
      * @param meta The compiler meta data.
@@ -208,6 +209,7 @@ namespace spp::analyse::utils::monomorphization_utils {
       meta->Save();
       meta->AllowAbstractType = meta->AllowAbstractType or allow_abstract;
       meta->IgnoreAccessModifierViolations = meta->IgnoreAccessModifierViolations or ignore_access;
+      meta->SkipSubstitutedConstraintChecks = true;
       type.Stage7_AnalyseSemantics(tm, meta);
       meta->Restore();
     }

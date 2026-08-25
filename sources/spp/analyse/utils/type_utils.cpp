@@ -49,6 +49,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
+import spp.asts.type_unary_expression_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
@@ -92,6 +93,97 @@ namespace {
       attr_symbols.EmplaceBack(type_sym, member);
       GetAttrTypes(type_sym->Type, type_sym->LinkedScope, attr_symbols);
     }
+  }
+
+  /** How two written generic argument lists line up, for the type they were both written for. */
+  struct ArgListArity {
+    /** Whether the two lengths can describe the same type at all. */
+    bool Compatible;
+
+    /** How many leading arguments are compared one against one; anything past this is the pack. */
+    std::size_t FixedLen;
+
+    /** The variadic parameter the right-hand-side's trailing argument names, if it names one. */
+    spp::analyse::scopes::TypeSymbol *Pack;
+  };
+
+  /**
+   * Line up the written generic arguments of two types.
+   * @param proto The prototype both lists were written for, whose parameters say whether it is variadic at all.
+   * @param lhs_args The left-hand-side's written arguments.
+   * @param rhs_args The right-hand-side's written arguments, the side a pack may be written on.
+   * @param rhs_scope The scope the right-hand-side's arguments are named in.
+   */
+  auto MatchArgListArity(
+    spp::asts::ClassPrototypeAst const *proto,
+    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> const &lhs_args,
+    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> const &rhs_args,
+    spp::analyse::scopes::Scope const &rhs_scope)
+    -> ArgListArity {
+    //
+    using namespace spp::asts;
+
+    // The trailing argument is a pack only when it names a
+    // variadic parameter that is still unbound.
+    auto *pack = static_cast<spp::analyse::scopes::TypeSymbol*>(nullptr);
+    if (not rhs_args.IsEmpty()) {
+      if (auto const *last = rhs_args.Back()->To<GenericArgumentTypeAst>(); last != nullptr) {
+        const auto sym = rhs_scope.GetTypeSymbol(last->Val->WithoutGenerics().get(), false);
+        if (sym != nullptr and sym->IsGeneric and sym->IsVariadic) { pack = sym; }
+      }
+    }
+
+    // A pack absorbs the remainder, so the only requirement
+    // is that the arguments it does not cover are all there.
+    if (pack != nullptr) {
+      const auto fixed_len = rhs_args.Len() - 1;
+      return {
+        .Compatible = lhs_args.Len() >= fixed_len,
+        .FixedLen = std::min(fixed_len, lhs_args.Len()),
+        .Pack = pack
+      };
+    }
+
+    // Without one, a variadic prototype's two lists have to
+    // be the same length, or the shorter would be read as a
+    // prefix of the longer. A fixed prototype needs no check:
+    // its parameters already fix the length.
+    const auto is_variadic = proto != nullptr and proto->GnParamGroup->GetVariadicParams() != nullptr;
+    return {
+      .Compatible = not is_variadic or lhs_args.Len() == rhs_args.Len(),
+      .FixedLen = std::min(lhs_args.Len(), rhs_args.Len()),
+      .Pack = nullptr
+    };
+  }
+
+  /**
+   * Whether every element a pack swallowed satisfies the pack's own constraints. A variadic parameter constrains each
+   * of the types it stands for rather than the list as a whole, so "sup [..T: Copy] Tup[T]" attaches to a tuple only
+   * when every one of its elements is copyable.
+   *
+   * @param pack The variadic parameter's symbol, which carries the constraints.
+   * @param lhs_args The written arguments the pack was matched against.
+   * @param fixed_len How many of those are covered one for one, and so are not part of the pack.
+   * @param pack_scope The scope the constraints are named in.
+   * @param arg_scope The scope the arguments are named in.
+   */
+  auto PackConstraintsSatisfied(
+    spp::analyse::scopes::TypeSymbol const &pack,
+    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> const &lhs_args,
+    const std::size_t fixed_len,
+    spp::analyse::scopes::Scope const &pack_scope,
+    spp::analyse::scopes::Scope const &arg_scope)
+    -> bool {
+    //
+    using spp::analyse::utils::type_utils::ConstraintEq;
+    if (pack.GenericConstraints.IsEmpty()) { return true; }
+
+    for (auto i = fixed_len; i < lhs_args.Len(); ++i) {
+      auto const *type_arg = lhs_args[i]->To<spp::asts::GenericArgumentTypeAst>();
+      if (type_arg == nullptr) { continue; }
+      if (not ConstraintEq(pack.GenericConstraints, *type_arg->Val, pack_scope, arg_scope)) { return false; }
+    }
+    return true;
   }
 }
 
@@ -222,17 +314,11 @@ auto spp::analyse::utils::type_utils::TypeEq(
   auto &lhs_generics = lhs_type.LastTypePart()->GnArgGroup->Args;
   auto &rhs_generics = rhs_type.LastTypePart()->GnArgGroup->Args;
 
-  // Special case for variadic parameter types. Their lengths must
-  // be the same before comparisons are considered, so a longer
-  // arg-list doesn't get cut off and assumed equal.
-  const auto temp_type_proto = lhs_sym->Type;
-  if (temp_type_proto and not temp_type_proto->GnParamGroup->Params.IsEmpty()) {
-    if (temp_type_proto->GnParamGroup->Params.Back()->To<asts::FunctionParameterVariadicAst>() != nullptr) {
-      if (lhs_generics.Len() != rhs_generics.Len()) {
-        return false;
-      }
-    }
-  }
+  // Line the two argument lists up. A variadic type ("Tup") takes any number of arguments, so a longer list must not
+  // be cut off against a shorter one and assumed equal; a trailing argument naming a variadic parameter is the one
+  // that legitimately covers a remainder.
+  const auto arity = MatchArgListArity(lhs_sym->Type, lhs_generics, rhs_generics, rhs_scope);
+  if (not arity.Compatible) { return false; }
 
   // Ensure each generic argument is symbolically equal to the
   // other. Split on the type/comp argument type, and we can
@@ -462,14 +548,20 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
   auto &lhs_generics = lhs_type.LastTypePart()->GnArgGroup->Args;
   auto &rhs_generics = rhs_type.LastTypePart()->GnArgGroup->Args;
 
-  // Special case for variadic parameter types. Their lengths must
-  // be the same before comparisons are considered, so a longer
-  // arg-list doesn't get cut off and assumed equal.
-  const auto temp_type_proto = stripped_lhs_sym->Type;
-  if (temp_type_proto and not temp_type_proto->GnParamGroup->Params.IsEmpty()) {
-    if (temp_type_proto->GnParamGroup->Params.Back()->To<asts::FunctionParameterVariadicAst>() != nullptr) {
-      if (lhs_generics.Len() != rhs_generics.Len()) { return false; }
-    }
+  // Line the two argument lists up, so that "Tup[T, U, V]" stops
+  // matching a two element tuple, while a trailing argument naming
+  // a variadic parameter ("sup [..Ts] Tup[Ts]") goes on covering a
+  // list of any length.
+  const auto arity = MatchArgListArity(
+    stripped_lhs_sym->Type, lhs_generics, rhs_generics, rhs_scope);
+  if (not arity.Compatible) { return false; }
+
+  // Every element the pack swallows has to satisfy the pack's own
+  // constraints, one at a time: "sup [..Ts: Copy] Tup[Ts]" says
+  // every element is copyable, not that the tuple is.
+  if (check_constraints and arity.Pack != nullptr
+    and not PackConstraintsSatisfied(*arity.Pack, lhs_generics, arity.FixedLen, rhs_scope, lhs_scope)) {
+    return false;
   }
 
   // Ensure each generic argument is symbolically equal to the
@@ -1201,7 +1293,8 @@ auto spp::analyse::utils::type_utils::GetUnimplementedAbstractMethods(
   // false for any two methods whose names differ, so only the concrete methods sharing a name with the abstract one can
   // implement it; indexing them by name turns a scan of every method on the type into a scan of its overloads, which
   // for a type with many single-overload methods is the difference between a square and a line.
-  auto concrete_by_name = Map<spp::utils::InternedId, Vec<Pair<scopes::Scope const*, asts::FunctionPrototypeAst const*>>>();
+  auto concrete_by_name = Map<
+    spp::utils::InternedId, Vec<Pair<scopes::Scope const*, asts::FunctionPrototypeAst const*>>>();
   for (auto const &entry : methods) {
     if (entry.second->AbstractAnnotation != nullptr) { continue; }
     concrete_by_name[entry.second->Name->NameId()].EmplaceBack(entry);
@@ -1439,12 +1532,13 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
     const auto passes_generics_through = old_sym->Alias != nullptr and old_sym->Alias->FromUseStmt;
 
     if (not passes_generics_through) {
-      NameGnArgs(*old_type->LastTypePart()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+      const auto is_tuple = IsTupSymbol(*old_sym);
+      NameGnArgs(*old_type->LastTypePart()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, is_tuple);
       if (old_sym->Alias) {
         final_generic_params = filter_params(*old_sym->Alias->Params, *old_type->LastTypePart()->GnArgGroup);
       }
       old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
-      *generic_args += *old_type->LastTypePart()->GnArgGroup;
+      if (not is_tuple) { *generic_args += *old_type->LastTypePart()->GnArgGroup; }
     }
     tracking_scope = old_sym->ScopeDefinedIn;
 
@@ -1472,7 +1566,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
 
   auto &temp = *old_type->LastTypePart()->GnArgGroup;
   NameGnArgs(
-    temp, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+    temp, *extract_params(*old_sym), *old_type, *sm, *meta, IsTupSymbol(*old_sym));
   old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
   return {old_type, final_generic_params, tracking_scope};
 }
@@ -1498,8 +1592,6 @@ auto spp::analyse::utils::type_utils::GetFieldIndexInType(
   }
 
   return base + all_attrs.Len();
-
-  // return genex::position(all_attrs, genex::operations::eq_fixed(field_name), [](auto &&attr) -> decltype(auto) { return *attr.first->Name; });
 }
 
 auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(

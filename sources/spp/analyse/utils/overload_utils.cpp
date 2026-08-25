@@ -55,6 +55,20 @@ import sys;
   }
 
 namespace {
+  auto NamedArgsOnly(
+    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> &&args)
+    -> spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> {
+    //
+    using namespace spp::asts;
+    auto out = spp::Vec<spp::Unique<GenericArgumentAst>>();
+    for (auto &&arg : args) {
+      const auto named = arg->To<GenericArgumentTypeKeywordAst>() != nullptr
+        or arg->To<GenericArgumentCompKeywordAst>() != nullptr;
+      if (named) { out.EmplaceBack(std::move(arg)); }
+    }
+    return out;
+  }
+
   /**
    * Determine whether a (stripped) parameter type refers to a generic that is "rigid" at the call site: ie a
    * generic parameter belonging to a scope that encloses the caller, and so is already fixed rather than being
@@ -388,7 +402,7 @@ auto spp::analyse::utils::overload_utils::RetrieveOwnerGenericArgs(
   // A forwarding type stands in for the owner, so its
   // generics are the ones that count.
   if (fwd_type != nullptr) {
-    return std::move(fwd_type->LastTypePart()->GnArgGroup->Args);
+    return NamedArgsOnly(std::move(fwd_type->LastTypePart()->GnArgGroup->Args));
   }
 
   // Otherwise take them from the type the call was made
@@ -397,7 +411,7 @@ auto spp::analyse::utils::overload_utils::RetrieveOwnerGenericArgs(
   const auto is_postfix = meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>();
   const auto is_type = is_postfix ? asts::AstCloneShared(is_postfix->Lhs->To<asts::TypeAst>()) : nullptr;
   if (is_type != nullptr) {
-    return std::move(is_type->LastTypePart()->GnArgGroup->Args);
+    return NamedArgsOnly(std::move(is_type->LastTypePart()->GnArgGroup->Args));
   }
 
   return {};

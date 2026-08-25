@@ -143,6 +143,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   bool IgnoreAccessModifierViolations;
 
+  bool SkipSubstitutedConstraintChecks = false;
+
   /**
    * Whether the module being analysed is the entry point a test build generates. Only there may a unit test be called:
    * it is the one caller that is supposed to run them.

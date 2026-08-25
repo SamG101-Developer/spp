@@ -266,7 +266,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   // Enforce generic constraints from the pre-analysis stage (CurrentStage >= 8) onwards, not just the main analysis
   // stage. Sup scopes are fully loaded by the end of stage 5, so constraints can be reliably checked here, and some
   // need to be done before stage 7 for order agnostic behaviour.
-  if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 8) {
+  if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= 8 and not meta->SkipSubstitutedConstraintChecks) {
     EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
   }
 

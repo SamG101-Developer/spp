@@ -579,7 +579,8 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
     if (matching.IsEmpty()) { continue; }
 
     const auto arg_sym = sm.CurrentScope->GetTypeSymbol(matching[0]->Val.get());
-    auto *const con_scope = arg_sym != nullptr and arg_sym->LinkedScope != nullptr
+    if (arg_sym == nullptr) { continue; }
+    const auto con_scope = arg_sym->LinkedScope != nullptr
       ? arg_sym->LinkedScope
       : sm.CurrentScope;
     auto con_sm = scopes::ScopeManager(sm.GlobalScope, con_scope);
