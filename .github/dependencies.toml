@@ -108,7 +108,7 @@ cppcheck = "{home}/.tools/cppcheck"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "22a6a61f8bcc22931a9ea684f95677f9e02058ec"
+commit = "a544c8e8e7fc4c97100c33698405271139a844ec"
 
 [[library]]
 name = "mimalloc"
@@ -119,7 +119,7 @@ cmake-flags = ["-DMI_SECURE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "734fd305a19995673c5b83b4a30c06a96ff5c9b0"
+commit = "01853ed6bcf9ebe88ec2e248ea757b86417b1487"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -160,9 +160,9 @@ commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
 [[library]]
 name = "ColEx"
 repo = "https://github.com/SamG101-Developer/ColEx.git"
-commit = "e22ac31b8a1465230af19f5c1f80e61d71a22e57"
+commit = "e459d12f816d5c91de9d1c008450866a0e13bfa6"
 
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "616babed473e0cfb75a90ba7e3a3e7e1198ff534"
+commit = "b41101df78b7f022d13957ccf5f49a9e124d7356"
