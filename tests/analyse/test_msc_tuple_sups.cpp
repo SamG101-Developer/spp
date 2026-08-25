@@ -76,7 +76,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let t = (1_u64, "hello", false)
+        let t = (1_u64, Str::from("hello"), false)
         t.f()
     }
 )");
@@ -92,10 +92,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t1 = (1_u64, 2_u32, 3_u16)
         t1.f()
 
-        let t2 = (1_u64, 2_u32, 3_u16, "hello", false)
+        let t2 = (1_u64, 2_u32, 3_u16, Str::from("hello"), false)
         t2.f()
 
-        let t3 = (1_u64, 2_u32, 3_u16, "hello", false, 10.5)
+        let t3 = (1_u64, 2_u32, 3_u16, Str::from("hello"), false, 10.5)
         t3.f()
 
         let t4 = (false,)
