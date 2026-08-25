@@ -26,7 +26,11 @@
     boost::BigInt(0), \
     (boost::BigInt(1) << (bits)) - 1)
 
-#define LIMIT_F(T)                                                   \
-  spp::MakePair(                                                     \
-    boost::BigDec(std::to_string(std::numeric_limits<T>::lowest())), \
-    boost::BigDec(std::to_string(std::numeric_limits<T>::max())))
+#define LIMIT_F_MAG(T)                                          \
+  ((((boost::BigInt(1) << std::numeric_limits<T>::digits) - 1)  \
+    << (std::numeric_limits<T>::max_exponent - std::numeric_limits<T>::digits)).str())
+
+#define LIMIT_F(T)                              \
+  spp::MakePair(                                \
+    boost::BigDec(("-" + LIMIT_F_MAG(T)).c_str()), \
+    boost::BigDec(LIMIT_F_MAG(T).c_str()))
