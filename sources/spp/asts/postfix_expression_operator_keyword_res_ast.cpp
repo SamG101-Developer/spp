@@ -31,6 +31,7 @@ import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
+import genex;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
@@ -169,7 +170,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // is itself invalid. The receiver is an argument of the
   // mapped ".send()" call too, and is not one of these.
   const auto &args_group = _MappedFunc->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>()->FnArgGroup;
-  const auto send_arg = std::ranges::find_if(
+  const auto send_arg = genex::find_if(
     args_group->Args, [](auto const &x) { return x->GetSelfType() == nullptr; });
 
   if (send_arg != args_group->Args.end()) {

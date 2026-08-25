@@ -1,5 +1,6 @@
 module spp.utils.strings;
 import boost;
+import genex;
 
 static auto DecodeEscapeChar(
   const char c)
@@ -135,10 +136,9 @@ auto spp::utils::strings::NormaliseAnyString(
   const StrView s1)
   -> Str {
   // Strip all underscore characters from the input string.
-  auto out = Str();
-  out.reserve(s1.length());
-  std::ranges::copy_if(s1, std::back_inserter(out), [](const char c) { return c != '_'; });
-  return out;
+  return s1
+    | genex::views::filter([](const char c) { return c != '_'; })
+    | genex::to<Str>();
 }
 
 auto spp::utils::strings::DecodeCharLiteral(
