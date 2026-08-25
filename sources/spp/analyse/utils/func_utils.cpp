@@ -655,6 +655,11 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     p_names |= genex::actions::pop_front();
 
     // The variadic parameter requires a tuple of the remaining arguments.
+    // Todo: The pack drops each argument's convention, because a tuple literal has no way to hold a borrow (borrows
+    //  are second-class, so "(&x, 1)" is a syntax error). That makes "Ts" infer as "Tup[S32]" where the callee sees
+    //  "&S32", which is what stops "async a(&x)" resolving against "F: FunMov[(Ts), T]" - the mock's own function
+    //  type keeps the convention. It also means the pack is never memory-checked, so a moved-from argument passed
+    //  variadically twice goes unreported.
     if (p_names.IsEmpty() and is_variadic) {
       auto elems = a_group.Args
         | genex::views::move

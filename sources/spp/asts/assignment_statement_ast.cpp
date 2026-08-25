@@ -197,8 +197,10 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     rhs_expr->Stage8_CheckMemory(sm, meta);
     meta->Restore();
 
-    // Fully validate the memory of the right-hand-side expression, marking the move.
-    ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, meta);
+    // Fully validate the memory of the right-hand-side expression, marking the move. A value carrying escaping
+    // borrows is let through here, because "PreventBorrowLifetimeExtension" below weighs the destination against
+    // those borrows rather than refusing the move on sight.
+    ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, meta, false);
 
     if (IsAttr(lhs_expr, sm)) {
       const auto pf = lhs_expr->To<PostfixExpressionAst>();

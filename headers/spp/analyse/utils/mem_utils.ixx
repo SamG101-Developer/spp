@@ -68,6 +68,12 @@ namespace spp::analyse::utils::mem_utils {
    * @throw spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError If an inconsistently initialized symbol
    * is used.
    */
+  /**
+   * @param check_escaping_borrow_move Whether moving a value that carries escaping borrows is refused outright. Left
+   * on everywhere the destination goes unweighed; turned off by a caller that follows this with
+   * @c PreventBorrowLifetimeExtension , which compares the destination's lifetime against the borrows' own and is the
+   * more precise answer.
+   */
   SPP_EXP_FUN auto ValidateSymbolMemory(
     asts::ExpressionAst &value_ast,
     asts::Ast const &move_ast,
@@ -76,7 +82,8 @@ namespace spp::analyse::utils::mem_utils {
     bool check_partial_move,
     bool check_move_from_borrowed_ctx,
     bool mark_moves,
-    asts::meta::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta,
+    bool check_escaping_borrow_move = true)
     -> void;
 
   SPP_EXP_FUN auto ValidateInconsistentMemory(
