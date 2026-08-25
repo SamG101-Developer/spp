@@ -130,9 +130,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         gen 1
     }
 
-    fun f() -> Void {
+    fun f() -> Opt[Void] {
         let mut a = g()
-        let b: S32 = a.res(false)
+        let b: S32 = a.res(false)?
     }
 )");
 

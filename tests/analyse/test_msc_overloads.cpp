@@ -303,10 +303,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Two methods that differ only in their `self` convention do not conflict.
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestOverloads_SupBlocks,
-    test_valid_overload_different_self_conventions, R"(
+    test_valid_overload_different_self_conventions,
+    SppFunctionPrototypeConflictError, R"(
     cls A { }
     sup A {
         fun f(&self) -> Void { }
@@ -317,7 +317,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// A method subroutine and coroutine with the same value signature do not conflict.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestOverloads_SupBlocks,
     test_valid_overload_subroutine_and_coroutine, R"(

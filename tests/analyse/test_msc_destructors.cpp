@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     cls A { }
 
     cls Holder {
-        inner: A
+        !public inner: A
     }
 
     sup A ext std::ops::del::Del {

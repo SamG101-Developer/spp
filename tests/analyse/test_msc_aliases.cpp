@@ -341,11 +341,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
-    fun f(s: Str, t: Str) -> Void {
-        case s is Str(mut bytes) {
+    cls A {
+        !public bytes: Vec[U8]
+    }
+    type MyA = A
+
+    fun f(s: MyA, t: A) -> Void {
+        case s is MyA(mut bytes) {
             bytes = Vec[U8]::new()
         }
-        case t is Str(mut bytes) {
+        case t is A(mut bytes) {
             bytes = Vec[U8]::new()
         }
     }
@@ -355,16 +360,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCaseDestructureObjectTypeAlias,
     test_valid_alias_complex, R"(
     cls A[T] {
-        buffer: std::mem::raw_buf::RawBuf[U8]
+        !public buffer: Vec[T]
+        !public flag: Bool
     }
     type MyVec[ZZ] = A[ZZ]
 
     fun f(v: MyVec[U8], v2: MyVec[U8]) -> Void {
         case v is MyVec[U8](mut buffer, ..) {
-            buffer = std::mem::raw_buf::RawBuf[U8]()
+            buffer = Vec[U8]::new()
         }
         case v2 is A[U8](mut buffer, ..) {
-            buffer = std::mem::raw_buf::RawBuf[U8]()
+            buffer = Vec[U8]::new()
         }
     }
 )");
@@ -382,11 +388,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_simple, R"(
     cls A {
-        bytes: Vec[U8]
+        !public bytes: Vec[U8]
     }
+    type MyA = A
 
-    fun f(s: A) -> Void {
-        let A(mut bytes) = s
+    fun f(s: MyA) -> Void {
+        let MyA(mut bytes) = s
         bytes = Vec[U8]::new()
     }
 )");
@@ -394,11 +401,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLocalVariableDestructureObjectTypeAlias,
     test_valid_alias_complex, R"(
-    type MyVec[ZZ] = Vec[ZZ]
+    cls A[T] {
+        !public buffer: Vec[T]
+        !public flag: Bool
+    }
+    type MyVec[ZZ] = A[ZZ]
 
     fun f(v: MyVec[U8]) -> Void {
-        let MyVec[U8](mut buf) = v
-        buf = Slice[U8]()
+        let MyVec[U8](mut buffer, ..) = v
+        buffer = Vec[U8]::new()
     }
 )");
 
