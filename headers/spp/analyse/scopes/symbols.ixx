@@ -177,25 +177,45 @@ SPP_EXP_CLS struct spp::analyse::scopes::AliasInfo {
   /** The target as written ("SizedIntegerUnsigned[8_u32]"), before any alias in the chain has been followed. */
   Shared<asts::TypeAst> Written;
 
-  /** What @c Written names once every alias in the chain has been followed ("SizedInteger[w=8_u32, signed=false]").
-   *  Seeded with @c Written and refined during resolution, so it is never null: analysing an alias's target reads
-   *  this off the very symbol still being resolved. */
+  /**
+   * What @c Written names once every alias in the chain has been followed ("SizedInteger[w=8_u32, signed=false]").
+   * Seeded with @c Written and refined during resolution, so it is never null: analysing an alias's target reads
+   * this off the very symbol still being resolved.
+   */
   Shared<asts::TypeAst> Resolved;
 
-  /** The parameters the alias declares itself: the "T" of @code type MyVec[T] = Vec[T]@endcode . */
+  /**
+   * The parameters the alias declares itself: the "T" of @code type MyVec[T] = Vec[T]@endcode .
+   */
   Shared<asts::GenericParameterGroupAst> Params;
 
-  /** The scope the final target was found in, which is where an instantiation of this alias is attached. */
+  /**
+   * The scope the final target was found in, which is where an instantiation of this alias is attached.
+   */
   Scope *TrackingScope = nullptr;
 
-  /** The scope the alias was written in. */
+  /**
+   * The scope the alias was written in.
+   */
   Scope *DeclScope = nullptr;
 
-  /** Whether a @c use statement produced this alias; generics propagate differently along such a link. */
+  /**
+   * Whether a @c use statement produced this alias; generics propagate differently along such a link.
+   */
   bool FromUseStmt = false;
 
-  /** The statement this describes, for diagnostics. Not owned: the module tree owns it, and an instantiation shares
-   *  the statement of the alias it was instantiated from. */
+  /**
+   * Whether @c Params was adopted from the target rather than written on the alias itself, which a @c use statement
+   * does to carry the target's parameters across. Adopted parameters name their constraint and @c cmp types in the
+   * target's file, so they only resolve against @c TrackingScope ; ones the alias declared itself name them in its
+   * own file, and resolve against the statement's own scope.
+   */
+  bool ParamsFromTarget = false;
+
+  /**
+   * The statement this describes, for diagnostics. Not owned: the module tree owns it, and an instantiation shares
+   * the statement of the alias it was instantiated from.
+   */
   asts::TypeStatementAst *Stmt = nullptr;
 };
 
@@ -270,8 +290,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
    */
   mutable Shared<asts::TypeAst> _CachedFqName;
   mutable std::uint64_t _CachedFqNameGen = 0;
-
-
 
   TypeSymbol(
     Shared<asts::TypeIdentifierAst> name,

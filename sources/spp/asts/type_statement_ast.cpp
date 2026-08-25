@@ -174,6 +174,7 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
     GnParamGroup = attach_generics;
     GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
     _AliasSym->Alias->Params = GnParamGroup;
+    _AliasSym->Alias->ParamsFromTarget = true;
   }
   sm->MoveOutOfCurrentScope();
 }
@@ -201,7 +202,7 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
   const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(alias.Resolved->WithoutGenerics().get(), false);
   if (not stripped_old_sym->IsGeneric) {
     auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, alias.TrackingScope);
-    GnParamGroup->Stage4_QualifyTypes(&tm, meta);
+    GnParamGroup->Stage4_QualifyTypes(alias.ParamsFromTarget ? &tm : sm, meta);
     alias.Resolved->Stage4_QualifyTypes(&tm, meta); // Qualify from scope of lowest level alias
     alias.Resolved->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
 

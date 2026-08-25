@@ -111,3 +111,19 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f[T](a: MyVec[T]) -> Void { }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeStatementAst,
+    test_valid_type_statement_comp_param_alias_to_foreign_module, R"(
+    type HeapArr[T, cmp n: USize] = Single[Arr[T, n]]
+
+    fun f(a: HeapArr[Bool, 4_uz]) -> Void { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeStatementAst,
+    test_valid_type_statement_constrained_param_alias_to_foreign_module, R"(
+    type CopyBox[T: Copy] = Single[T]
+
+    fun f(a: CopyBox[Bool]) -> Void { }
+)");
