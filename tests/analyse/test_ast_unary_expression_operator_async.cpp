@@ -67,6 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_async_method_call, R"(
     cls A { }
     sup A {
+        !public
         fun method(&self) -> Str { ret Str::from("hello") }
     }
     fun g() -> Void {

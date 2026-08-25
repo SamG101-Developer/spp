@@ -29,7 +29,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_ref_infer_type, R"(
     fun f(a: Vec[S32]) -> Void {
-        let x: &S32 = a[0_uz to 2_uz]
+        let x: &View[S32] = a[0_uz to 2_uz]
     }
 )");
 

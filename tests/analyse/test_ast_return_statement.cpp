@@ -98,6 +98,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
 SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     AstReturnStatementAst,
     test_valid_ret_does_not_destroy_returned_value, R"(
+    use std::ops::del::Del
+
     cls A { }
 
     sup A ext Del {
