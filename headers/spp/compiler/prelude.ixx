@@ -20,6 +20,7 @@ use std::annotations::Annotation
 use std::string::Str
 use std::string_view::StrView
 use std::boolean::Bool
+use std::char::Char
 use std::number::U8
 use std::number::U16
 use std::number::U32
