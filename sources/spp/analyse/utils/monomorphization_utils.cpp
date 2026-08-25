@@ -395,7 +395,15 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   auto new_alias = Shared<scopes::AliasInfo>(nullptr);
   if (old_cls_sym->Alias != nullptr) {
     new_alias = MakeShared<scopes::AliasInfo>(*old_cls_sym->Alias);
-    new_alias->Resolved = old_cls_sym->Alias->Resolved->SubstituteGenerics(type_part.GnArgGroup->GetAllArgs());
+
+    // A tuple's arguments are deliberately left positional. Workaround:
+    if (is_tuple) {
+      new_alias->Resolved = asts::AstCloneShared(old_cls_sym->Alias->Resolved.get());
+      new_alias->Resolved->LastTypePart()->GnArgGroup = asts::AstClone(type_part.GnArgGroup);
+    }
+    else {
+      new_alias->Resolved = old_cls_sym->Alias->Resolved->SubstituteGenerics(type_part.GnArgGroup->GetAllArgs());
+    }
     new_alias->Resolved->Stage7_AnalyseSemantics(sm, meta);
     // TODO: Remove generic parameters that have been given arguments (not always all generic args).
     //  Move the argument filter out of the recursive alias searcher and reuse it here.
