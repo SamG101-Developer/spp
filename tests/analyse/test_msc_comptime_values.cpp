@@ -367,8 +367,15 @@ SPP_TEST_CMP_VALUES(
   test_negative_arithmetic_results, R"(
   cmp a: S32 = 5 - 7
   cmp b: S32 = 3 * 0 - 4
-  cmp c: S32 = 0 - 2147483648
+  cmp c: S32 = -2147483648
 )", {"a", "-2_s32"}, {"b", "-4_s32"}, {"c", "-2147483648_s32"});
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_minimum_via_unrepresentable_intermediate,
+  SppIntegerOutOfBoundsError, R"(
+  cmp c: S32 = 0 - 2147483648
+)");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
@@ -462,8 +469,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   cmp a: F32 = 7.0 / 0.0
 )");
 
-// The divisor being a constant rather than a written zero makes no difference - it is resolved by the time the
-// operation is reached.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_division_by_zero_constant,
@@ -472,7 +477,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   cmp a: S32 = 7 / d
 )");
 
-// Dividing the most negative value by -1 has no representable result, which the bounds check already covers.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_division_overflow,
