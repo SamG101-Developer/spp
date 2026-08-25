@@ -293,7 +293,8 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform bitwise left shift on two integer literals. S++ forces U32 too (safe).
-  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() << rhs.CppVal<std::uint32_t>(), lhs.Type);
+  return asts::IntegerLiteralAst::FromWrappedBigVal(
+    lhs.BigVal() << rhs.CppVal<std::uint32_t>(), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl_assign(

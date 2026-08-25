@@ -98,7 +98,8 @@ auto spp::asts::IntegerLiteralAst::BigVal() const
   //
   using spp::utils::strings::NormaliseIntegerString;
 
-  // Same normalisation Stage7 does: "0o" is spelled "00" for boost, and the sign is a separate token.
+  // Same normalisation Stage7 does: "0o" is spelled "00"
+  // for boost, and the sign is a separate token.
   auto data = Val->TokenData;
   data |= genex::actions::replace('o', '0');
   auto value = boost::BigInt(NormaliseIntegerString(data));
@@ -115,8 +116,8 @@ auto spp::asts::IntegerLiteralAst::ValidateBounds(
   //
   using analyse::errors::SppIntegerOutOfBoundsError;
 
-  // A value the type cannot hold is the same error whether it was written down or computed by comp-time arithmetic:
-  // the literal that would carry it does not exist.
+  // A value the type cannot hold is the same error whether
+  // it was written down or computed by comp-time maths.
   auto const &[lower, upper] = kBounds.at(Type);
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
@@ -128,7 +129,8 @@ auto spp::asts::IntegerLiteralAst::FromBigVal(
   boost::BigInt const &value,
   Str const &type)
   -> Unique<IntegerLiteralAst> {
-  // The sign travels as its own token, so the value token carries the magnitude alone.
+  // The sign travels as its own token, so the value token
+  // carries the magnitude alone.
   const auto is_negative = value.sign() < 0;
   auto magnitude = value;
   if (is_negative) { magnitude.backend().negate(); }
@@ -140,11 +142,29 @@ auto spp::asts::IntegerLiteralAst::FromBigVal(
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
 }
 
+auto spp::asts::IntegerLiteralAst::FromWrappedBigVal(
+  boost::BigInt const &value,
+  Str const &type)
+  -> Unique<IntegerLiteralAst> {
+  //
+  auto const &[lower, upper] = kBounds.at(type);
+  const auto modulus = boost::BigInt(upper - lower + 1);
+
+  // Take the value within the span, then read it back where
+  // the type puts it: a pattern past the top of the range
+  // is the negative one the same bits stand for.
+  auto wrapped = boost::BigInt(value % modulus);
+  if (wrapped.sign() < 0) { wrapped = boost::BigInt(wrapped + modulus); }
+  if (wrapped.compare(upper) > 0) { wrapped = boost::BigInt(wrapped - modulus); }
+  return FromBigVal(wrapped, type);
+}
+
 auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *,
   CompilerMetaData *meta)
   -> void {
-  // Clone and return the float literal as is for compile-time resolution.
+  // Clone and return the float literal as is for compile-time
+  // resolution.
   meta->CmpResult = AstClone(this);
 }
 
@@ -160,9 +180,9 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-  // If come from stage10 cmp statement, register the int
-  // type here, in case it hasn't been reached yet by the
-  // class prototypes.
+  // If come from stage10 cmp statement, register the int type
+  // here, in case it hasn't been reached yet by the class
+  // prototypes.
   if (llvm_type == nullptr) {
     codegen::RegisterLlvmTypeInfo(type_sym->Type, *sm, ctx);
     llvm_type = codegen::GetLlvmType(*type_sym, ctx);

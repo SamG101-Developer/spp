@@ -110,6 +110,15 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   static auto FromBigVal(boost::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
 
   /**
+   * Build a literal the way a bit operation produces one: the value is taken within the type's own width and read
+   * back under the type's signedness, rather than kept at whatever width the exact result needed.
+   * @param value The exact value the operation produced.
+   * @param type The integer type name ("s32", "u8", ...).
+   * @return The literal, carrying the value as the type reads it.
+   */
+  static auto FromWrappedBigVal(boost::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
+
+  /**
    * Raise if this literal's value is one its type cannot hold. A written literal is checked when it is analysed; one
    * that comp-time arithmetic produced is checked where that arithmetic is invoked from.
    * @param owner The ast to report the error against.
