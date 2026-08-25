@@ -294,8 +294,8 @@ auto spp::analyse::utils::generic_bindings::NameGnArgs(
 
   // Recombine the named arguments back into the original argument
   // group.
-  std::ranges::move(comp_args->Args, std::back_inserter(a_group.Args));
-  std::ranges::move(type_args->Args, std::back_inserter(a_group.Args));
+  a_group.Args.AppendRange(std::move(comp_args->Args));
+  a_group.Args.AppendRange(std::move(type_args->Args));
 
   // Build index map once for O(n). This maximizes the efficiency of
   // the sorting. Apply the sorting to the arguments to keep them in
