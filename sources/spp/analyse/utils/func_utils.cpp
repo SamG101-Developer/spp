@@ -622,8 +622,6 @@ auto spp::analyse::utils::func_utils::EnforceNoInvalidFnArgs(
     ERR_ARGS(*params[0], "fn param", *invalid_arg_names[0], "fn arg"));
 }
 
-
-
 auto spp::analyse::utils::func_utils::NameFnArgs(
   asts::FunctionCallArgumentGroupAst &a_group,
   asts::FunctionParameterGroupAst const &p_group,
