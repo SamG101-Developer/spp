@@ -123,6 +123,8 @@ SPP_EXP_CLS struct
 
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
   auto MarkFromUseStatement() -> void;
 
   SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;

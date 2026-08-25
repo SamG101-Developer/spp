@@ -160,9 +160,9 @@ commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
 [[library]]
 name = "ColEx"
 repo = "https://github.com/SamG101-Developer/ColEx.git"
-commit = "e459d12f816d5c91de9d1c008450866a0e13bfa6"
+commit = "02f3634266ee43e91cf7ee85559c429a70c01d0a"
 
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "b41101df78b7f022d13957ccf5f49a9e124d7356"
+commit = "7915b49539f910a78c19f448b55083eace33b03a"

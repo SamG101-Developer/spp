@@ -181,4 +181,13 @@ auto spp::asts::UseStatementVariableAst::Stage10_PreCodeGen(
   return _Conversion->Stage10_PreCodeGen(sm, meta, ctx);
 }
 
+auto spp::asts::UseStatementVariableAst::Stage11_CodeGen(
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx)
+  -> llvm::Value* {
+  // Code gen for the conversion AST.
+  return _Conversion->Stage11_CodeGen(sm, meta, ctx);
+}
+
 SPP_MOD_END

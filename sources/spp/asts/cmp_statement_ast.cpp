@@ -328,6 +328,24 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
+auto spp::asts::CmpStatementAst::Stage11_CodeGen(
+  ScopeManager *sm,
+  CompilerMetaData *,
+  codegen::LlvmCtx *)
+  -> llvm::Value* {
+  // Everything a "cmp" statement emits was already emitted by
+  // stage 10, but the scope stage 2 gave it (and the scopes its
+  // value owns) still have to be stepped over here, or every
+  // sibling after it walks into the wrong scope.
+  if (_Scope != nullptr) {
+    sm->MoveToNextScope();
+    SPP_ASSERT(sm->CurrentScope == _Scope);
+    sm->ExhaustScope();
+    sm->MoveOutOfCurrentScope();
+  }
+  return nullptr;
+}
+
 auto spp::asts::CmpStatementAst::MarkFromUseStatement()
   -> void {
   _FromUseStatement = true;

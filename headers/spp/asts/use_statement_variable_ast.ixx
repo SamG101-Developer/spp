@@ -77,6 +77,8 @@ SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, Modu
 
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
 private:
   /**
    * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
