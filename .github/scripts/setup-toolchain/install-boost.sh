@@ -8,28 +8,47 @@ set -euo pipefail
 source .github/scripts/lib/verified-fetch.sh
 
 base="https://github.com/MarkusJx/prebuilt-boost/releases/download/${BOOST_VERSION}"
-case "${RUNNER_OS}/${RUNNER_ARCH}" in
-  Windows/X64)
-    url="$base/boost-${BOOST_VERSION}-windows-2025-msvc-static-x86.tar.gz"
-    sha="$BOOST_SHA256_WINDOWS"
-    ;;
-  macOS/ARM64)
-    url="$base/boost-${BOOST_VERSION}-macos-15-clang-static%2Bshared-aarch64.tar.gz"
-    sha="$BOOST_SHA256_MACOS"
-    ;;
-  Linux/X64)
+
+# Keyed on the image rather than on RUNNER_OS/RUNNER_ARCH,
+# because those cannot tell 22.04 from 24.04 or a 2022 image
+# from a 2025 one, and the tarballs are not interchangeable
+# across either: each is built against that image's libstdc++
+# or msvc runtime.
+if [ -z "${SPP_RUNNER_IMAGE:-}" ]; then
+  echo "::error::SPP_RUNNER_IMAGE is not set; setup-toolchain must be given its runner-image input"
+  exit 1
+fi
+
+case "$SPP_RUNNER_IMAGE" in
+  ubuntu-24.04)
     url="$base/boost-${BOOST_VERSION}-ubuntu-24.04-gcc-static%2Bshared-x86.tar.gz"
-    sha="$BOOST_SHA256_LINUX"
+    sha="$BOOST_SHA256_UBUNTU_2404"
     ;;
-  Linux/ARM64)
+  ubuntu-22.04)
+    url="$base/boost-${BOOST_VERSION}-ubuntu-22.04-gcc-static%2Bshared-x86.tar.gz"
+    sha="$BOOST_SHA256_UBUNTU_2204"
+    ;;
+  ubuntu-24.04-arm | ubuntu-22.04-arm)
     url="$base/boost-${BOOST_VERSION}-ubuntu-22.04-gcc-static%2Bshared-aarch64.tar.gz"
-    sha="$BOOST_SHA256_LINUX_ARM64"
+    sha="$BOOST_SHA256_UBUNTU_2204_ARM64"
+    ;;
+  macos-15)
+    url="$base/boost-${BOOST_VERSION}-macos-15-clang-static%2Bshared-aarch64.tar.gz"
+    sha="$BOOST_SHA256_MACOS_15"
+    ;;
+  windows-2025)
+    url="$base/boost-${BOOST_VERSION}-windows-2025-msvc-static-x86.tar.gz"
+    sha="$BOOST_SHA256_WINDOWS_2025"
+    ;;
+  windows-2022)
+    url="$base/boost-${BOOST_VERSION}-windows-2022-msvc-static-x86.tar.gz"
+    sha="$BOOST_SHA256_WINDOWS_2022"
     ;;
   *)
     # Never guess: an unpinned asset is an unverified download,
     # and the digest check below is the only thing standing
     # between CI and whatever the CDN decides to serve.
-    echo "::error::no Boost asset is pinned for ${RUNNER_OS}/${RUNNER_ARCH}"
+    echo "::error::no Boost asset is pinned for ${SPP_RUNNER_IMAGE}"
     echo "::error::Add one to .github/scripts/setup-toolchain/install-boost.sh, .github/dependencies.toml and refresh-pins.sh."
     exit 1
     ;;

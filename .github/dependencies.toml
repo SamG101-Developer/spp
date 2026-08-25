@@ -45,16 +45,17 @@ sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
 developer-dir = "/Applications/Xcode_16.4.app/Contents/Developer"
 
 # Prebuilt from MarkusJx/prebuilt-boost, so one digest per
-# runner. There is no 24.04 arm64 build upstream, so arm64
-# takes the 22.04 tarball.
+# runner.
 [pin.boost]
 version = "1.91.0"
 osv-ecosystem = "OSS-Fuzz"
 osv-name = "boost"
-sha256-linux = "24b11fd9c9287389491c16d1e22522ab7d6adaaf1fd80af1ece2436e5dd883d9"
-sha256-linux-arm64 = "c888304ea2f244f87e28044e1be35d82236e8c118d5811892583a9e360795058"
-sha256-macos = "3b249cddee3fde8c20427b4ff93e18c2d88b8fb3bfeb2861081e8d16923bdf85"
-sha256-windows = "bf4b5ec8893a25cd5be1cda3a33f020ae925919a8ad6296b289d0787892db395"
+sha256-ubuntu-2404 = "24b11fd9c9287389491c16d1e22522ab7d6adaaf1fd80af1ece2436e5dd883d9"
+sha256-ubuntu-2204 = "5788a48747c7ebd35c6110059bf963fb61bdf2dea7ff952e3fdd2385064f3863"
+sha256-ubuntu-2204-arm64 = "c888304ea2f244f87e28044e1be35d82236e8c118d5811892583a9e360795058"
+sha256-macos-15 = "3b249cddee3fde8c20427b4ff93e18c2d88b8fb3bfeb2861081e8d16923bdf85"
+sha256-windows-2025 = "bf4b5ec8893a25cd5be1cda3a33f020ae925919a8ad6296b289d0787892db395"
+sha256-windows-2022 = "05fc1dc2ee5783a7e191c331d076b3ab569a67c5d6dde615cdf3c03ce616d9e2"
 
 [pin.doxygen]
 version = "1.17.0"
@@ -89,8 +90,11 @@ commit = "904cfdcf774c44b17db789c8a212e2f1c69fc833"
 [runner]
 linux = "ubuntu-24.04"
 linux-arm = "ubuntu-24.04-arm"
+linux-old = "ubuntu-22.04"
+linux-old-arm = "ubuntu-22.04-arm"
 macos = "macos-15"
 windows = "windows-2025"
+windows-old = "windows-2022"
 
 [prefix]
 local = "{home}/.local"

@@ -105,17 +105,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16" }
-          - { os: ubuntu-24.04, compiler: clang, version: "23" }
-          - { os: macos-15, compiler: clang, version: "" }
-          - { os: windows-2025, compiler: msvc, version: "" }
-          - { os: windows-2025, compiler: clang-cl, version: "" }
+          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", cache-tree: true }
+          - { os: ubuntu-24.04-arm, compiler: clang, version: "23", cache-tree: true }
+          - { os: ubuntu-24.04, compiler: clang, version: "23", cache-tree: true }
+          - { os: ubuntu-22.04, compiler: gcc, version: "16", cache-tree: false }
+          - { os: ubuntu-22.04-arm, compiler: gcc, version: "16", cache-tree: false }
+          - { os: macos-15, compiler: clang, version: "", cache-tree: true }
+          - { os: windows-2025, compiler: msvc, version: "", cache-tree: true }
+          - { os: windows-2025, compiler: clang-cl, version: "", cache-tree: true }
+          - { os: windows-2022, compiler: msvc, version: "", cache-tree: false }
     uses: ./.github/workflows/_compile.yaml
     with:
       os: ${{ matrix.os }}
       compiler: ${{ matrix.compiler }}
       version: ${{ matrix.version }}
       fail-fast: false
+      cache-build-tree: ${{ matrix.cache-tree }}
       variants: '[{"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""}]'
 
   # Independent of the compilation chain: doc breakage is worth hearing about even while the build is still running.

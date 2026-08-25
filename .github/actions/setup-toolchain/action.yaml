@@ -4,6 +4,9 @@ description: >-
   compiler cache and the project's dependencies.
 
 inputs:
+  runner-image:
+    description: "Runner image."
+    required: true
   compiler:
     description: "Compiler family to install: gcc, clang, msvc or clang-cl."
     required: true
@@ -110,9 +113,9 @@ runs:
         path: |
           ~/.ccache
           ~/.cache/sccache
-        key: cc-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
+        key: cc-${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
         restore-keys: |
-          cc-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
+          cc-${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
 
     - name: Disable compiler cache
       if: inputs.compiler-cache != 'true'
@@ -124,6 +127,8 @@ runs:
     - name: Install Boost (prebuilt)
       if: inputs.dependencies == 'true'
       shell: bash
+      env:
+        SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
       run: bash .github/scripts/setup-toolchain/install-boost.sh
 
     - name: Install LLVM dev libraries (prebuilt, apt.llvm.org)
@@ -181,7 +186,7 @@ runs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.local
-        key: spp-libs-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
+        key: spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
 
     # A restored tree is only usable if the install that filled it ran to
     # the end; a half-installed prefix otherwise looks like a hit forever

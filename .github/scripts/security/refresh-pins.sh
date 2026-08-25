@@ -145,14 +145,18 @@ fi
 echo
 echo "prebuilt Boost (${MANIFEST})"
 boost="$(pinned pin.boost.version)"
-set_pin pin.boost.sha256-linux \
+set_pin pin.boost.sha256-ubuntu-2404 \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-24.04-gcc-static+shared-x86.tar.gz")"
-set_pin pin.boost.sha256-linux-arm64 \
+set_pin pin.boost.sha256-ubuntu-2204 \
+  "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-22.04-gcc-static+shared-x86.tar.gz")"
+set_pin pin.boost.sha256-ubuntu-2204-arm64 \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-22.04-gcc-static+shared-aarch64.tar.gz")"
-set_pin pin.boost.sha256-macos \
+set_pin pin.boost.sha256-macos-15 \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-macos-15-clang-static+shared-aarch64.tar.gz")"
-set_pin pin.boost.sha256-windows \
+set_pin pin.boost.sha256-windows-2025 \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-windows-2025-msvc-static-x86.tar.gz")"
+set_pin pin.boost.sha256-windows-2022 \
+  "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-windows-2022-msvc-static-x86.tar.gz")"
 
 # LLVM (WINDOWS)
 echo

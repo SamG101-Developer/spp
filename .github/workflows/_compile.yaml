@@ -50,7 +50,7 @@ jobs:
     # build, caching and incremental build management, and
     # running the tests against the built with upload of a
     # failure log if any tests fail.
-    name: ${{ inputs.compiler }}${{ inputs.version && format('-{0}', inputs.version) || '' }} · ${{ matrix.variant.name }}
+    name: ${{ inputs.os }} · ${{ inputs.compiler }}${{ inputs.version && format('-{0}', inputs.version) || '' }} · ${{ matrix.variant.name }}
     runs-on: ${{ inputs.os }}
     timeout-minutes: 120
     permissions:
@@ -90,6 +90,7 @@ jobs:
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
+          runner-image: ${{ inputs.os }}
           compiler: ${{ inputs.compiler }}
           version: ${{ inputs.version }}
           cache-key-suffix: ${{ matrix.variant.name }}
