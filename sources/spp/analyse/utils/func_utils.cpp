@@ -408,7 +408,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
       for (auto &i : inner_scopes) {
         i.FwdType = asts::AstCloneShared(inner_type);
       }
-      std::ranges::move(inner_scopes, std::back_inserter(overload_scopes));
+      overload_scopes.AppendRange(std::move(inner_scopes));
     }
   }
 
