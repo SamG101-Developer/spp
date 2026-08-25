@@ -145,6 +145,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   using analyse::utils::monomorphization_utils::CreateGenericClsScope;
   using analyse::utils::type_utils::GetTypeSymOrError;
   using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
+  using analyse::utils::type_utils::IsTupSymbol;
   using analyse::utils::type_utils::TypeEq;
   using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
   using analyse::errors::SemanticError;
@@ -184,10 +185,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
   auto is_tuple = false;
   if (not type_sym->IsGeneric) {
-    is_tuple = ( {
-      const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
-      as_unary != nullptr and *as_unary == *TUP->ToUnchecked<TypeUnaryExpressionAst>();
-    });
+    is_tuple = IsTupSymbol(*type_sym);
 
     // Name all the generic arguments.
     NameGnArgs(

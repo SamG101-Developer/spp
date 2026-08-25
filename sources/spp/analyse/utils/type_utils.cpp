@@ -237,8 +237,10 @@ auto spp::analyse::utils::type_utils::TypeEq(
   // Ensure each generic argument is symbolically equal to the
   // other. Split on the type/comp argument type, and we can
   // do it positionally because analysis orders the args against
-  // the params. Todo: different lengths?
-  for (auto const &[lhs_generic, rhs_generic] : std::views::zip(lhs_generics, rhs_generics)) {
+  // the params.
+  for (auto i = 0uz; i < arity.FixedLen; ++i) {
+    auto const &lhs_generic = lhs_generics[i];
+    auto const &rhs_generic = rhs_generics[i];
     if (lhs_generic->To<asts::GenericArgumentTypeAst>()) {
       const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentTypeAst>();
       const auto rhs_generic_part = rhs_generic->To<asts::GenericArgumentTypeAst>();
@@ -473,8 +475,10 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
   // Ensure each generic argument is symbolically equal to the
   // other. Split on the type/comp argument type, and we can
   // do it positionally because analysis orders the args against
-  // the params. Todo: different lengths?
-  for (auto [lhs_generic, rhs_generic] : std::views::zip(lhs_generics, rhs_generics)) {
+  // the params.
+  for (auto i = 0uz; i < arity.FixedLen; ++i) {
+    auto const &lhs_generic = lhs_generics[i];
+    auto const &rhs_generic = rhs_generics[i];
     if (const auto rhs_generic_part_t = rhs_generic->To<asts::GenericArgumentTypeAst>()) {
       const auto rhs_generic_part = rhs_generic_part_t;
       const auto lhs_generic_part = lhs_generic->ToUnchecked<asts::GenericArgumentTypeAst>();
@@ -554,6 +558,16 @@ auto spp::analyse::utils::type_utils::IsTypeTup(
   // considers the type directly, not any supertypes.
   using asts::generate::common_types_precompiled::TUP;
   return TypeEq(*type.WithoutGenerics(), *TUP, scope, scope);
+}
+
+auto spp::analyse::utils::type_utils::IsTupSymbol(
+  scopes::TypeSymbol const &sym)
+  -> bool {
+  // Compared against the precompiled name rather than through a scope, because the symbol's own qualified name is
+  // already the answer: an alias for the tuple resolves to "std::tuple::Tup" just as the type itself does.
+  using asts::generate::common_types_precompiled::TUP;
+  const auto as_unary = dynamic_shared_cast<asts::TypeUnaryExpressionAst>(sym.FqName()->WithoutGenerics());
+  return as_unary != nullptr and *as_unary == *TUP->ToUnchecked<asts::TypeUnaryExpressionAst>();
 }
 
 auto spp::analyse::utils::type_utils::IsTypeVariant(

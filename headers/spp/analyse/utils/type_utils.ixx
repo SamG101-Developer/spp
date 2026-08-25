@@ -185,6 +185,10 @@ namespace spp::analyse::utils::type_utils {
     scopes::Scope const &scope)
     -> bool;
 
+  SPP_EXP_FUN auto IsTupSymbol(
+    scopes::TypeSymbol const &sym)
+    -> bool;
+
   SPP_EXP_FUN auto IsTypeVariant(
     asts::TypeAst const &type,
     scopes::Scope const &scope)
