@@ -3,6 +3,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.algorithms;
+import spp.utils.ptr;
 import spp.utils.types;
 import genex;
 import std;
@@ -82,7 +83,7 @@ struct spp::views::cast_shared_fn {
   GENEX_INLINE constexpr auto operator()(I first, S last) const {
     return genex::views::filter(
       genex::views::transform(std::move(first), std::move(last), [](auto &&v) -> Shared<To> {
-        return std::dynamic_pointer_cast<To>(v);
+        return spp::dynamic_shared_cast<To>(v);
       }), [](Shared<To> const &v) { return v != nullptr; });
   }
 
@@ -91,7 +92,7 @@ struct spp::views::cast_shared_fn {
   GENEX_INLINE constexpr auto operator()(Rng &&rng) const {
     return genex::views::filter(
       genex::views::transform(std::forward<Rng>(rng), [](auto &&v) -> Shared<To> {
-        return std::dynamic_pointer_cast<To>(v);
+        return spp::dynamic_shared_cast<To>(v);
       }), [](Shared<To> const &v) { return v != nullptr; });
   }
 
