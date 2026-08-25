@@ -31,12 +31,22 @@ tag = "llvmorg-23.1.0-rc3"
 asset = "clang+llvm-23.0.0.3-x86_64-pc-windows-msvc.tar.xz"
 sha256 = "9465632c6d96e65ab6b7f6fbf7ae447621803982b2348483221812bbf4c8b6af"
 
-# That Windows release is built against zlib, so its exported
-# LLVMSupport target names ZLIB::ZLIB and the runner image has
-# no zlib to resolve it with.
+# That Windows release names ZLIB::ZLIB, zstd::libzstd_static
+# and LibXml2::LibXml2 in its exported targets, and the runner
+# image has none of the three to resolve them with. Built from
+# source by install-llvm-deps-windows.sh. Pinned to release tags
+# rather than HEAD, so refresh-pins.sh leaves them alone.
 [pin.zlib]
 version = "1.3.1"
 commit = "51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf"
+
+[pin.zstd]
+version = "1.5.7"
+commit = "f8745da6ff1ad1e7bab384bd1f9d742439278e99"
+
+[pin.libxml2]
+version = "2.15.3"
+commit = "c94eb0210183b9d7cb43f8e7fddc6be55843ef49"
 
 # Homebrew has no llvm@23 formula (llvm is still 22.1.x),
 # so macOS takes its dev libraries off the same release as
@@ -108,7 +118,7 @@ local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
 llvm-win = "{home}/llvm"
 llvm-mac = "{home}/llvm"
-zlib-win = "{home}/zlib"
+llvm-deps-win = "{home}/llvm-deps"
 cppcheck = "{home}/.tools/cppcheck"
 
 # The header/CMake dependencies, installed in order by

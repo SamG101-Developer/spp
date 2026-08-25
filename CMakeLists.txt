@@ -60,7 +60,19 @@ endif ()
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
-find_package(ZLIB REQUIRED)
+# The prebuilt LLVM for Windows names ZLIB::ZLIB,
+# zstd::libzstd_static and LibXml2::LibXml2 in its exported
+# targets, but only tries to define them with non-REQUIRED
+# find_package() calls pointed at the machine that built it.
+# Resolving them first means a missing one is reported as the
+# missing library it is, rather than as an undefined target
+# inside LLVMExports.cmake. The apt and brew LLVMs find their
+# own system copies, so this is Windows-only.
+if (WIN32)
+  find_package(ZLIB REQUIRED)
+  find_package(zstd CONFIG REQUIRED)
+  find_package(LibXml2 CONFIG REQUIRED)
+endif ()
 find_package(LLVM 23.1.0 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)

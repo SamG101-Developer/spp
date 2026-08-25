@@ -159,12 +159,23 @@ runs:
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-windows.sh
 
-    # That release's exported targets name ZLIB::ZLIB, and the runner
-    # image has no zlib for find_package(LLVM) to resolve it against.
-    - name: Install zlib (Windows)
+    # That release's exported targets name ZLIB::ZLIB,
+    # zstd::libzstd_static and LibXml2::LibXml2, and the runner image
+    # has none of the three for find_package(LLVM) to resolve them
+    # against. Keyed on the script as well as the manifest: the flags
+    # it builds with decide what lands in the prefix.
+    - name: Cache LLVM's own dependencies (Windows)
       if: inputs.dependencies == 'true' && runner.os == 'Windows'
+      id: llvm-deps-win-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/llvm-deps
+        key: llvm-deps-win-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup-toolchain/install-llvm-deps-windows.sh') }}
+
+    - name: Install LLVM's own dependencies (Windows, cache miss)
+      if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-deps-win-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: bash .github/scripts/setup-toolchain/install-zlib-windows.sh
+      run: bash .github/scripts/setup-toolchain/install-llvm-deps-windows.sh
 
     # macOS gets the release tarball too: brew has no llvm@23, so the
     # clang installed above is a whole major version behind the LLVM the
