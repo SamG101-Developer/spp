@@ -159,6 +159,13 @@ runs:
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-windows.sh
 
+    # That release's exported targets name ZLIB::ZLIB, and the runner
+    # image has no zlib for find_package(LLVM) to resolve it against.
+    - name: Install zlib (Windows)
+      if: inputs.dependencies == 'true' && runner.os == 'Windows'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-zlib-windows.sh
+
     # macOS gets the release tarball too: brew has no llvm@23, so the
     # clang installed above is a whole major version behind the LLVM the
     # project links against.

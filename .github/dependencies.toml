@@ -31,6 +31,13 @@ tag = "llvmorg-23.1.0-rc3"
 asset = "clang+llvm-23.0.0.3-x86_64-pc-windows-msvc.tar.xz"
 sha256 = "9465632c6d96e65ab6b7f6fbf7ae447621803982b2348483221812bbf4c8b6af"
 
+# That Windows release is built against zlib, so its exported
+# LLVMSupport target names ZLIB::ZLIB and the runner image has
+# no zlib to resolve it with.
+[pin.zlib]
+version = "1.3.1"
+commit = "51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf"
+
 # Homebrew has no llvm@23 formula (llvm is still 22.1.x),
 # so macOS takes its dev libraries off the same release as
 # Windows rather than off the brew clang it compiles with.
@@ -101,6 +108,7 @@ local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
 llvm-win = "{home}/llvm"
 llvm-mac = "{home}/llvm"
+zlib-win = "{home}/zlib"
 cppcheck = "{home}/.tools/cppcheck"
 
 # The header/CMake dependencies, installed in order by

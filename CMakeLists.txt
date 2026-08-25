@@ -60,6 +60,7 @@ endif ()
 
 # Find dependencies.
 find_package(Boost 1.91.0 REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(LLVM 23.1.0 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
