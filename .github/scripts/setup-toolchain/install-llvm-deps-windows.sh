@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
-# The prebuilt LLVM for Windows is built against zlib, zstd and
-# libxml2, so LLVMExports.cmake gives LLVMSupport a ZLIB::ZLIB
-# and a zstd::libzstd_static, and LLVMWindowsManifest a
-# LibXml2::LibXml2. LLVMConfig.cmake only tries to resolve those
-# against the paths of the machine that built the release, and
-# the runner image carries none of the three, so find_package(LLVM)
-# dies on the undefined targets while reading the export file -
-# whether or not this project links the target that wants them.
-# Build all three into one prefix, which expose-prefixes.sh puts
-# on CMAKE_PREFIX_PATH.
+# The source-built dependencies that only Windows needs, into one
+# prefix that expose-prefixes.sh puts on CMAKE_PREFIX_PATH.
 set -euo pipefail
 
 prefix="$(cygpath -m "$SPP_LLVM_DEPS_WIN_PREFIX")"
@@ -19,7 +11,7 @@ mkdir -p "$work"
 
 # Check out at the pinned commit, configure, build, install.
 # The same shape as install-small-libs.sh, without the manifest
-# loop: these three are Windows-only, and each one needs its own
+# loop: these are Windows-only, and each one needs its own
 # flags and its own source directory.
 build() {
   local name="$1" url="$2" sha="$3" src="$4"
@@ -70,6 +62,11 @@ build libxml2 https://github.com/GNOME/libxml2.git "$LIBXML2_COMMIT" . \
   -DLIBXML2_WITH_PYTHON=OFF \
   -DLIBXML2_WITH_TESTS=OFF
 
+# BUILD_SHARED_LIBS=OFF is what puts PTW32_STATIC_LIB on the installed
+# targets' interface, so nothing downstream has to define it.
+build pthreads4w https://github.com/GerHobbelt/pthread-win32.git \
+  "$PTHREADS4W_COMMIT" .
+
 # None of this is worth having if find_package() cannot pick it
 # up, and a missing piece reads far better here than as an
 # undefined target 1000 lines into LLVMExports.cmake.
@@ -77,7 +74,9 @@ for path in \
   include/zlib.h \
   lib/zlib.lib \
   lib/cmake/zstd/zstdConfig.cmake \
-  lib/cmake/libxml2/libxml2-config.cmake; do
+  lib/cmake/libxml2/libxml2-config.cmake \
+  include/pthread.h \
+  lib/cmake/pthreads4w/pthreads4w-config.cmake; do
   if [ ! -f "${prefix}/${path}" ]; then
     echo "::error::install-llvm-deps-windows: ${path} is missing from ${prefix}"
     exit 1

@@ -48,6 +48,12 @@ commit = "f8745da6ff1ad1e7bab384bd1f9d742439278e99"
 version = "2.15.3"
 commit = "c94eb0210183b9d7cb43f8e7fddc6be55843ef49"
 
+# The <pthread.h> that MSVC does not ship, for pthread.ixx to wrap.
+# Pinned to this fork's HEAD: the release tags predate its CMake config.
+[pin.pthreads4w]
+version = "3.0.3"
+commit = "06e7608bfe926d2bd7176c0b02be0c98f40cced4"
+
 # Homebrew has no llvm@23 formula (llvm is still 22.1.x),
 # so macOS takes its dev libraries off the same release as
 # Windows rather than off the brew clang it compiles with.

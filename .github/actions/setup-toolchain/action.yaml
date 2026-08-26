@@ -159,12 +159,10 @@ runs:
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-windows.sh
 
-    # That release's exported targets name ZLIB::ZLIB,
-    # zstd::libzstd_static and LibXml2::LibXml2, and the runner image
-    # has none of the three for find_package(LLVM) to resolve them
-    # against. Keyed on the script as well as the manifest: the flags
-    # it builds with decide what lands in the prefix.
-    - name: Cache LLVM's own dependencies (Windows)
+    # Windows needs the LLVM dependencies individually, as they
+    # are not prepackaged on the system like Linux. Also add the
+    # Windows pthread equivalent too.
+    - name: Cache the Windows-only dependencies
       if: inputs.dependencies == 'true' && runner.os == 'Windows'
       id: llvm-deps-win-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -172,7 +170,7 @@ runs:
         path: ~/llvm-deps
         key: llvm-deps-win-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup-toolchain/install-llvm-deps-windows.sh') }}
 
-    - name: Install LLVM's own dependencies (Windows, cache miss)
+    - name: Install the Windows-only dependencies (cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-deps-win-cache.outputs.cache-hit != 'true'
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-deps-windows.sh
