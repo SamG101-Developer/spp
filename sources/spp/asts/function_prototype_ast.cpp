@@ -14,6 +14,7 @@ import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.builtins;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.instantiation_queue;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_implementation_ast;
@@ -581,9 +582,24 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Check the memory for the parameter group and implementation.
-  sm->CurrentScope->BodyMemoryAnalysed = true;
+  // "EnclosingFunctionScope" is set here as well as in stage 7,
+  // because the early-exit linearity check needs to know where to
+  // stop walking outwards.
+  meta->Save();
+  meta->EnclosingFunctionScope = sm->CurrentScope;
   FnParamGroup->Stage8_CheckMemory(sm, meta);
   Impl->Stage8_CheckMemory(sm, meta);
+
+  // A function whose body is not written in S++ is exempt: an
+  // intrinsic is implemented by code generation, an ffi function by
+  // a foreign library, and an abstract method by whoever overrides
+  // it. There is no body that could have consumed the parameters,
+  // so there is nothing to hold to the rule.
+  if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr) {
+    analyse::utils::linear_utils::CheckScopeExit(
+      *sm->CurrentScope, *Impl, "Function end", *sm, meta);
+  }
+  meta->Restore();
 
   // Move out of the function scope, as it is now complete.
   sm->MoveOutOfCurrentScope();
@@ -708,9 +724,14 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
 
     tm.Reset(sub.WalkScope());
     tm.MoveToNextScope();
-    tm.CurrentScope->BodyMemoryAnalysed = true;
+    meta->EnclosingFunctionScope = tm.CurrentScope;
     sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
     sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
+    if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
+      and sub.Proto->AbstractAnnotation == nullptr) {
+      analyse::utils::linear_utils::CheckScopeExit(
+        *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
+    }
     meta->Restore();
   }
 }

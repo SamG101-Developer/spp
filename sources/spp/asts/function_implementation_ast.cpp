@@ -30,6 +30,13 @@ auto spp::asts::FunctionImplementationAst::Clone() const
   return ast;
 }
 
+auto spp::asts::FunctionImplementationAst::DiscardsFinalMember() const
+  -> bool {
+  // Values leave a function through "ret", so the final statement
+  // of a body is discarded like every other statement in it.
+  return true;
+}
+
 auto spp::asts::FunctionImplementationAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)

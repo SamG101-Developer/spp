@@ -57,6 +57,15 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  /**
+   * Whether the value of the final statement in this scope goes nowhere. A block hands its final statement's value to
+   * whoever wrote the block, so normally the answer is no and that statement is exempt from the discarded-value check.
+   * A function body is the exception: S++ returns through @c ret , so a body's final statement is discarded like any
+   * other.
+   * @return Whether the final member is in discard position.
+   */
+  SPP_ATTR_NODISCARD virtual auto DiscardsFinalMember() const -> bool;
+
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
