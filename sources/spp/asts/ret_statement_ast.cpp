@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
@@ -24,7 +25,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_drop;
+import spp.codegen.llvm_defer;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -148,13 +149,21 @@ auto spp::asts::RetStatementAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // If there is no expression, then now ork needs to be done.
+  //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
-  if (Expr == nullptr) return;
 
   // Ensure the argument isn't moved or partially moved (for all conventions)
-  Expr->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, meta);
+  if (Expr != nullptr) {
+    Expr->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, meta);
+  }
+
+  // A "ret" leaves every scope up to the function at once, so no
+  // closing brace is ever reached for them and their own scope-exit
+  // checks never run against this path. Checked after the returned
+  // value moves, so returning a value counts as consuming it.
+  analyse::utils::linear_utils::CheckLiveUpToFunction(
+    *TokRet, "Return", *sm, meta);
 }
 
 auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
@@ -186,9 +195,8 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
 
   // Use the return void instruction if there is no return value.
   if (Expr == nullptr) {
-    codegen::EmitUnwindDrops(
-        *sm->CurrentScope, meta->EnclosingFunctionScope,
-        true, nullptr, sm, meta, ctx);
+    codegen::EmitDeferredUnwind(
+      *sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
     ctx->Builder.CreateRetVoid();
     return nullptr;
   }
@@ -219,14 +227,10 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   // have to happen before the function returns.
   const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
 
-  // Returning jumps over every scope end between here and the
-  // function's own, so the drops those would have run are run
-  // here instead. The returned value is exempt: the caller
-  // takes ownership of it.
-  const auto returned = sm->CurrentScope->GetVarSymbol(Expr->To<IdentifierAst>(), false);
-  codegen::EmitUnwindDrops(
-    *sm->CurrentScope, meta->EnclosingFunctionScope,
-    true, returned, sm, meta, ctx);
+  // The returned value is produced first, then every scope between here and the function's own runs what it deferred,
+  // then control leaves.
+  codegen::EmitDeferredUnwind(
+    *sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
 
   // A generic function instantiated so that its return type is
   // "Void" lowers to an LLVM function returning void, but its

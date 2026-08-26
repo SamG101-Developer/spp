@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
@@ -16,7 +17,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_drop;
+import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import genex;
 import llvm;
@@ -127,14 +128,25 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
-  if (Expr == nullptr) { return; }
 
   // Check the memory state of the expression if it is present.
   // Expression is being moved into outer context, so strict
   // memory checks.
-  Expr->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(
-    *Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
+  if (Expr != nullptr) {
+    Expr->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(
+      *Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
+  }
+
+  // Like a "ret", this leaves several scopes at once, so their
+  // closing braces are never reached on this path and their own
+  // checks never see it.
+  const auto exit_point = TokSeqExit.IsEmpty()
+    ? static_cast<Ast const*>(TokSkip.get())
+    : static_cast<Ast const*>(TokSeqExit.Back().get());
+  analyse::utils::linear_utils::CheckLiveUpToLoop(
+    *exit_point, TokSeqExit.IsEmpty() ? "Loop skip" : "Loop exit",
+    TokSeqExit.Len(), TokSkip != nullptr, *sm, meta);
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
@@ -163,9 +175,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   // no phi node is involved.
   if (has_skip) {
     const auto &target = meta->LlvmLoopStack[num_loops - num_exits - 1];
-    codegen::EmitUnwindDrops(
-        *sm->CurrentScope, target.ScopeContainingLoop,
-        false, nullptr, sm, meta, ctx);
+    codegen::EmitDeferredUnwind(
+      *sm->CurrentScope, target.ScopeContainingLoop, false, sm, meta, ctx);
     ctx->Builder.CreateBr(target.CondBB);
     return nullptr;
   }
@@ -175,13 +186,10 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   // loop's phi node collects the yielded value from this edge.
   const auto &target = meta->LlvmLoopStack[num_loops - num_exits];
 
-  // The jump skips every scope end between here and the loop, so
-  // their drops run at the jump instead. This happens before the
-  // phi edge is recorded, so the incoming block is whatever the
-  // drops left the builder inserting into.
-  codegen::EmitUnwindDrops(
-    *sm->CurrentScope, target.ScopeContainingLoop,
-    false, nullptr, sm, meta, ctx);
+  // The jump skips every scope end between here and the loop, so what those scopes deferred runs at the jump. This
+  // happens before the phi edge is recorded, so the incoming block is whatever it left the builder inserting into.
+  codegen::EmitDeferredUnwind(
+    *sm->CurrentScope, target.ScopeContainingLoop, false, sm, meta, ctx);
 
   if (target.Phi != nullptr) {
     const auto incoming_val = llvm_val;
