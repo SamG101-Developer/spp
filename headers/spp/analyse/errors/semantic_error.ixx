@@ -111,6 +111,11 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppHigherOrderGenericsNotSupportedError;
   SPP_EXP_CLS struct SppGeneratedCodeError;
   SPP_EXP_CLS struct SppCharLiteralOutOfBoundsError;
+  SPP_EXP_CLS struct SppLinearValueNotConsumedError;
+  SPP_EXP_CLS struct SppDiscardedValueError;
+  SPP_EXP_CLS struct SppLinearValueSkippedInDestructureError;
+  SPP_EXP_CLS struct SppDeferTerminatesError;
+  SPP_EXP_CLS struct SppDeferInCompileTimeFunctionError;
 
   SPP_EXP_CLS enum class ErrorInformationKind {
     HEADER, ERROR, CONTEXT, FOOTER,
@@ -136,6 +141,15 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
   auto AddHeaders(std::size_t err_code, Str &&msg) -> void;
 
   auto AddErr(asts::Ast const *ast, Str &&tag) -> void;
+
+  /**
+   * As @c AddErr , but marks the ast exactly as given rather than narrowing a call expression to its argument group.
+   * Use it when the error is about the expression as a whole - what its value is, or that nothing takes it - rather
+   * than about the call within it, where narrowing would point at the arguments and read as though they were at fault.
+   * @param ast The ast to mark.
+   * @param tag The message to attach to it.
+   */
+  auto AddErrExact(asts::Ast const *ast, Str &&tag) -> void;
 
   auto AddCtxForErr(asts::Ast const *ast, Str &&tag) -> void;
 
@@ -575,4 +589,26 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGeneratedCodeError final : SemanticE
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCharLiteralOutOfBoundsError final : SemanticError {
   explicit SppCharLiteralOutOfBoundsError(asts::Ast const &literal, std::uint32_t code_point);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueNotConsumedError final : SemanticError {
+  explicit SppLinearValueNotConsumedError(asts::Ast const &symbol_definition, asts::Ast const &exit_point,
+    StrView symbol_name, StrView type_name, StrView exit_what);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDiscardedValueError final : SemanticError {
+  explicit SppDiscardedValueError(asts::Ast const &expr, StrView type_name);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDeferTerminatesError final : SemanticError {
+  explicit SppDeferTerminatesError(asts::Ast const &tok_defer, asts::Ast const &expr);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompileTimeFunctionError final : SemanticError {
+  explicit SppDeferInCompileTimeFunctionError(asts::Ast const &tok_defer);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError final : SemanticError {
+  explicit SppLinearValueSkippedInDestructureError(asts::Ast const &skip, asts::Ast const &destructure,
+    StrView attr_name, StrView type_name);
 };

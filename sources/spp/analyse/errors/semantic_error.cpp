@@ -97,6 +97,16 @@ auto spp::analyse::errors::SemanticError::AddErr(
     std::move(tag), ""_str});
 }
 
+auto spp::analyse::errors::SemanticError::AddErrExact(
+  asts::Ast const *ast,
+  Str &&tag)
+  -> void {
+  // Add an error information entry for the given AST and tag, without narrowing a call to its argument group.
+  ErrorInfo.PushBack({
+    ast, ErrorInformationKind::ERROR,
+    std::move(tag), ""_str});
+}
+
 auto spp::analyse::errors::SemanticError::AddCtxForErr(
   asts::Ast const *ast,
   Str &&tag)
@@ -1267,6 +1277,68 @@ spp::analyse::errors::SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsE
     "A byte-prefixed char literal (" + INLINE_NOTE("b'...'") + ") must decode to a single byte, but this one decodes "
     "to a Unicode code point outside " + INLINE_NOTE("0..255") + ".",
     "Remove the " + INLINE_HELP("b") + " byte-prefix, or use a character whose code point fits in a single byte.");
+}
+
+spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+  asts::Ast const &symbol_definition,
+  asts::Ast const &exit_point,
+  const StrView symbol_name,
+  const StrView type_name,
+  const StrView exit_what) {
+  AddHeaders(94, "Linear Value Not Consumed Error");
+  AddCtxForErr(&symbol_definition, "Value of type " + INLINE_INFO(Str(type_name)) + " introduced here");
+  AddErr(&exit_point, Str(exit_what) + " reached with " + INLINE_INFO(Str(symbol_name)) + " still holding it");
+  AddFooter(
+    "A value of a non-" + INLINE_NOTE("Copy") + " type must be used exactly once, so no symbol can still own one "
+    "when its scope ends.",
+    "Move " + INLINE_HELP(Str(symbol_name)) + " into a consuming function, return it, or take it apart with "
+    + INLINE_HELP("let " + Str(type_name) + "(..) = " + Str(symbol_name)) + ".");
+}
+
+spp::analyse::errors::SppDiscardedValueError::SppDiscardedValueError(
+  asts::Ast const &expr,
+  const StrView type_name) {
+  AddHeaders(95, "Discarded Value Error");
+  AddErrExact(&expr, "Expression of type " + INLINE_INFO(Str(type_name)) + " produces a value nothing takes");
+  AddFooter(
+    "An expression in statement position produces a value that nothing consumes; only " + INLINE_NOTE("Void")
+    + " and " + INLINE_NOTE("Never") + " may be discarded.",
+    "Bind the value with " + INLINE_HELP("let") + ", return it with " + INLINE_HELP("ret") + ", or remove the "
+    "expression.");
+}
+
+spp::analyse::errors::SppLinearValueSkippedInDestructureError::SppLinearValueSkippedInDestructureError(
+  asts::Ast const &skip,
+  asts::Ast const &destructure,
+  const StrView attr_name,
+  const StrView type_name) {
+  AddHeaders(96, "Linear Value Skipped In Destructure Error");
+  AddCtxForErr(&destructure, "Destructure of " + INLINE_INFO(destructure.ToString()) + " here");
+  AddErr(&skip, "Skip covers " + INLINE_INFO(Str(attr_name)) + " of non-Copy type " + INLINE_INFO(Str(type_name)));
+  AddFooter(
+    "A destructure consumes the whole value, so an attribute a skip covers is discarded rather than used.",
+    "Bind " + INLINE_HELP(Str(attr_name)) + " explicitly in the destructure instead of skipping it.");
+}
+
+spp::analyse::errors::SppDeferTerminatesError::SppDeferTerminatesError(
+  asts::Ast const &tok_defer,
+  asts::Ast const &expr) {
+  AddHeaders(97, "Defer Terminates Error");
+  AddCtxForErr(&tok_defer, "Deferred here");
+  AddErrExact(&expr, "Expression leaves the scope rather than running in it");
+  AddFooter(
+    "A deferred expression runs because its scope is being left, so it cannot leave that scope itself.",
+    "Remove the " + INLINE_HELP("ret") + ", " + INLINE_HELP("exit") + " or " + INLINE_HELP("skip")
+    + " from the deferred expression.");
+}
+
+spp::analyse::errors::SppDeferInCompileTimeFunctionError::SppDeferInCompileTimeFunctionError(
+  asts::Ast const &tok_defer) {
+  AddHeaders(98, "Defer In Compile-Time Function Error");
+  AddErr(&tok_defer, "Deferred here, inside a function evaluated at compile time");
+  AddFooter(
+    "Compile-time evaluation has no scope exit to run a deferred expression at.",
+    "Run the expression where it is needed instead of deferring it, or make the function a runtime one.");
 }
 
 SPP_MOD_END
