@@ -18,52 +18,53 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import genex;
 
-auto spp::analyse::utils::drop_utils::FindDelOverload(
+auto spp::analyse::utils::drop_utils::FindDropOverload(
   scopes::TypeSymbol const &type_sym,
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *meta)
   -> asts::FunctionPrototypeAst* {
   //
   using type_utils::TypeEq;
-  using asts::generate::common_types_precompiled::DEL;
+  using asts::generate::common_types_precompiled::DROP;
 
   // A generic that was never bound, or a symbol with no
   // scope of its own, has no attributes and no methods
-  // to find. Todo: What if we constrain generic with Del?
+  // to find. Todo: What if we constrain generic with Drop?
   if (type_sym.LinkedScope == nullptr) { return nullptr; }
 
   // The type only has a destructor if it superimposes
-  // "Del" *directly*. This is checked before looking
+  // "Drop" *directly*. This is checked before looking
   // for the method, because a class is free to declare
-  // a method called "del" without meaning this at all.
-  const auto superimposes_del = genex::any_of(
+  // a method called "drop" without meaning this at all.
+  const auto superimposes_drop = genex::any_of(
     type_sym.LinkedScope->DirectSupScopes, [&](auto const *sup_scope) {
       if (sup_scope->TySym == nullptr) { return false; }
-      return TypeEq(*sup_scope->TySym->FqName(), *DEL, *sup_scope, *sm.CurrentScope);
+      return TypeEq(*sup_scope->TySym->FqName(), *DROP, *sup_scope, *sm.CurrentScope);
     });
-  if (not superimposes_del) { return nullptr; }
+  if (not superimposes_drop) { return nullptr; }
 
-  // Find the "del" the type actually inherits.
+  // Find the "drop" the type actually inherits.
   // "GetAllFunctionScopes" searches the sup scopes,
   // so an override on the type itself and an
   // implementation inherited from a type it extends
   // are both found here.
-  const auto del_name = asts::IdentifierAst(0, "del");
+  const auto drop_name = asts::IdentifierAst(0, "drop");
   const auto overloads = func_utils::GetAllFunctionScopes(
-    del_name, type_sym.LinkedScope, sm, meta);
+    drop_name, type_sym.LinkedScope, sm, meta);
 
   for (auto const &overload : overloads) {
-    // "Del::del" itself is abstract with an empty body:
-    // a type that superimposes "Del" but never overrides
-    // "del" resolves to it, and calling it would be a call
+    // "Drop::drop" itself is abstract with an empty body:
+    // a type that superimposes "Drop" but never overrides
+    // "drop" resolves to it, and calling it would be a call
     // into nothing.
     if (overload.Proto->AbstractAnnotation != nullptr) { continue; }
 
-    // The destructor is the "&mut self" overload taking
-    // nothing else. Anything else called "del" is an unrelated
-    // method that happens to share the name.
+    // Destroying a value consumes it, so the destructor is
+    // the "self" overload taking nothing else. Anything with
+    // a borrow convention, or with other parameters, is an
+    // unrelated method that happens to share the name.
     const auto self_param = overload.Proto->FnParamGroup->GetSelfParam();
-    if (self_param == nullptr or self_param->Conv == nullptr) { continue; }
+    if (self_param == nullptr or self_param->Conv != nullptr) { continue; }
     if (not overload.Proto->FnParamGroup->GetNonSelfParams().IsEmpty()) { continue; }
     return overload.Proto;
   }
@@ -88,7 +89,7 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
 
   // A destructor of its own settles it without having to
   // look at the attributes at all.
-  if (FindDelOverload(type_sym, sm, meta) != nullptr) { return true; }
+  if (FindDropOverload(type_sym, sm, meta) != nullptr) { return true; }
 
   // Otherwise the type is only worth dropping if something
   // it holds is. A type cannot contain itself by value, so the
