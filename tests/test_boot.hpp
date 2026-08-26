@@ -27,12 +27,14 @@ inline auto ensure_temp_project() -> void {
   std::filesystem::create_directories(cwd / fp);
 
   // Serialize initialization (handle_init + handle_vcs) across
-  // parallel test workers. The lock is taken on the project
-  // directory itself rather than a lock file inside it, because
-  // handle_init refuses to run in a directory that is not empty.
-  const auto lock_path = spp::utils::files::NativeString(cwd / fp);
-  const int init_lock_fd = sys::open(lock_path.c_str(), sys::O_RDONLY);
-  sys::flock(init_lock_fd, sys::LOCK_EX);
+  // parallel test workers. The lock lives in the temp directory
+  // rather than inside the fixture, because handle_init refuses
+  // to run in a directory that is not empty -- and it is a file
+  // rather than the fixture directory itself, because Windows
+  // cannot lock a directory at all. Workers of one run share a
+  // machine, so a machine-wide lock file is enough.
+  auto init_lock = spp::utils::files::FileLock();
+  init_lock.LockExclusive(std::filesystem::temp_directory_path() / "spp-test-fixture.lock");
 
   // Temporary enforcement check because the GitHub runner has
   // some strange behaviour with not cloning the vcs libraries
@@ -46,8 +48,7 @@ inline auto ensure_temp_project() -> void {
   if (vcs_empty()) { spp::cli::handle_vcs(); }
   std::filesystem::current_path(cwd);
 
-  sys::flock(init_lock_fd, sys::LOCK_UN);
-  sys::close(init_lock_fd);
+  init_lock.Unlock();
 
   // Failure if the vcs pull failed, stopping the test suite early
   // as there is no point running it without the stl linked.

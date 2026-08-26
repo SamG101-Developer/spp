@@ -4,6 +4,7 @@ module;
 export module spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.utils.error_formatter;
+import spp.utils.files;
 import spp.utils.types;
 import genex;
 import std;
@@ -85,12 +86,12 @@ private:
   std::filesystem::path m_ffi_path;
   std::filesystem::path m_tst_path;
   Vec<Unique<Module>> m_modules;
-  int m_lock_fd = -1;
+  utils::files::FileLock m_lock;
 
   auto Lock()
     -> void;
 
-  auto Unlock() const
+  auto Unlock()
     -> void;
 
 public:

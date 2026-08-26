@@ -6,7 +6,6 @@ import spp.asts.module_prototype_ast;
 import spp.utils.files;
 import genex;
 import std;
-import sys;
 
 SPP_MOD_BEGIN
 spp::compiler::Module::Module(
@@ -182,13 +181,11 @@ auto spp::compiler::ModuleTree::ForCppGoogleTest(
 }
 
 auto spp::compiler::ModuleTree::Lock() -> void {
-  m_lock_fd = sys::open(".lock", sys::O_RDWR | sys::O_CREAT, sys::DEFAULT_FILE_MODE);
-  sys::flock(m_lock_fd, sys::LOCK_SH);
+  m_lock.LockShared(".lock");
 }
 
-auto spp::compiler::ModuleTree::Unlock() const -> void {
-  sys::flock(m_lock_fd, sys::LOCK_UN);
-  sys::close(m_lock_fd);
+auto spp::compiler::ModuleTree::Unlock() -> void {
+  m_lock.Unlock();
 }
 
 auto spp::compiler::ModuleTree::begin()
