@@ -559,4 +559,13 @@ public:
 
 private:
   auto m_store_error(std::size_t pos, Str &&err_str) const -> bool;
+
+  /**
+   * Check whether a line feed sits between the token just parsed and the next one. Tokens otherwise skip line feeds
+   * freely, so the postfix operators that open with a bracket use this to stay on the line of what they apply to. A
+   * "(" or "[" starting a line begins a statement of its own - a tuple or array literal - and reading it as a call or
+   * an index would swallow the statement into the one above it.
+   * @return Whether a line feed is the next non-space token.
+   */
+  auto m_line_feed_ahead() const -> bool;
 };

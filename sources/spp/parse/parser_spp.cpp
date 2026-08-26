@@ -663,6 +663,7 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_early_return()
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_function_call()
   -> Unique<asts::PostfixExpressionOperatorFunctionCallAst> {
+  if (m_line_feed_ahead()) { return nullptr; }
   PARSE_OPTIONAL(p1, parse_generic_argument_group);
   PARSE_ONCE(p2, parse_function_call_argument_group);
   PARSE_OPTIONAL(p3, parse_fold_expression);
@@ -700,6 +701,7 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_keyword_res()
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_index()
   -> Unique<asts::PostfixExpressionOperatorIndexAst> {
+  if (m_line_feed_ahead()) { return nullptr; }
   PARSE_ONCE(p1, parse_token_left_square_bracket);
   PARSE_OPTIONAL(p2, parse_keyword_mut);
   PARSE_ONCE(p3, parse_expression);
@@ -709,6 +711,7 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_index()
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_slice()
   -> Unique<asts::PostfixExpressionOperatorSliceAst> {
+  if (m_line_feed_ahead()) { return nullptr; }
   PARSE_ONCE(p1, parse_token_left_square_bracket);
   PARSE_OPTIONAL(p2, parse_keyword_mut);
   PARSE_OPTIONAL(p3, parse_expression);
@@ -2794,6 +2797,15 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
   const auto pos = _Pos;
   ++_Pos;
   return CREATE_AST(asts::TokenAst, pos, mapped_tok, _Tokens[_Pos - 1].data.data());
+}
+
+auto spp::parse::ParserSpp::m_line_feed_ahead() const
+  -> bool {
+  auto pos = _Pos;
+  while (pos < _TokensLen and _Tokens[pos].type == lex::RawTokenType::TK_SPACE) {
+    ++pos;
+  }
+  return pos < _TokensLen and _Tokens[pos].type == lex::RawTokenType::TK_LINE_FEED;
 }
 
 auto spp::parse::ParserSpp::m_store_error(

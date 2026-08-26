@@ -23,3 +23,69 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = Str::from("hello")
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNonAmbiguousParse,
+    test_valid_tuple_literal_on_new_line_is_not_a_call, R"(
+    fun g() -> Void {
+        let mut x = {
+            let a = 1
+            (a, 9)
+        }
+        x = (2, 3)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNonAmbiguousParse,
+    test_valid_array_literal_on_new_line_is_not_an_index, R"(
+    fun g() -> Void {
+        let mut x = {
+            let a = 1
+            [a]
+        }
+        x = [2]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNonAmbiguousParse,
+    test_valid_call_arguments_span_lines, R"(
+    fun v(a: S32, b: S32) -> S32 {
+        ret a
+    }
+
+    fun g() -> Void {
+        let mut x = v(
+            1,
+            2)
+        x = 3
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNonAmbiguousParse,
+    test_valid_member_access_on_new_line, R"(
+    cls Foo { }
+
+    sup Foo {
+        !public fun bar(&self) -> S32 { ret 1 }
+    }
+
+    fun g() -> Void {
+        let foo = Foo()
+        let mut x = foo
+            .bar()
+        x = 2
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNonAmbiguousParse,
+    test_valid_index_on_new_line_is_a_new_statement, R"(
+    fun g() -> Void {
+        let mut x = 1
+        [x]
+        x = 2
+    }
+)");
