@@ -1,7 +1,7 @@
 module;
 #include <spp/macros-platforms.hpp>
 
-#if SPP_PLATFORM_WINDOWS
+#if SPP_PLATFORM_WINDOWS && !defined(_CRT_NONSTDC_NO_WARNINGS)
 #define _CRT_NONSTDC_NO_WARNINGS
 #endif
 
@@ -17,12 +17,6 @@ module;
 #include <direct.h>
 #include <io.h>
 #include <stddef.h>
-
-using ssize_t = ::ptrdiff_t;
-
-inline auto strcasecmp(const char *const lhs, const char *const rhs) -> int {
-  return ::_stricmp(lhs, rhs);
-}
 
 #define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
 #else
@@ -47,6 +41,22 @@ inline auto strcasecmp(const char *const lhs, const char *const rhs) -> int {
 export module sys;
 
 export namespace sys {
+#if SPP_PLATFORM_WINDOWS
+  // The CRT has none of these under their POSIX names: mode_t and
+  // ssize_t it never declares, and strcasecmp it spells _stricmp.
+  // They live here rather than in the global module fragment, which
+  // may hold preprocessor directives and nothing else.
+  using mode_t = unsigned short;
+  using ssize_t = ::ptrdiff_t;
+
+  inline auto strcasecmp(const char *const lhs, const char *const rhs) -> int {
+    return ::_stricmp(lhs, rhs);
+  }
+#else
+  using ::ssize_t;
+  using ::strcasecmp;
+#endif
+
   using ::close;
   using ::chdir;
   using ::fdopen;
@@ -55,10 +65,8 @@ export namespace sys {
   using ::open;
   using ::read;
   using ::rmdir;
-  using ::strcasecmp;
   using ::stat;
   using ::write;
-  using ::ssize_t;
 
   FILE *stdout = LEGACY_STDOUT;
   FILE *stdin = LEGACY_STDIN;
