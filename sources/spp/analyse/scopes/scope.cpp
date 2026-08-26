@@ -246,7 +246,9 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     // here causes shadowing issues or mistypes.
     for (auto const &sym : scope->AllTypeSymbols(true)
          | genex::views::filter([](auto const &s) { return s->IsGeneric and s->Name->Name != "Self"; })) {
-      auto clone = std::make_shared<TypeSymbol>(sym->Name, nullptr, nullptr, nullptr, nullptr, true);
+      auto clone = std::make_shared<TypeSymbol>(
+        sym->Name, nullptr, sym->Type == nullptr ? sym->LinkedScope : nullptr,
+        nullptr, nullptr, true);
       clone->IsDirectlyCopyable = sym->IsDirectlyCopyable;
       clone->IsDirectlyZeroType = sym->IsDirectlyZeroType;
       clone->GenericConstraints = sym->GenericConstraints;
