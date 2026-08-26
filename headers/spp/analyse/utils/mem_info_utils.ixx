@@ -74,14 +74,6 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
   Vec<asts::Ast const*> AstPartialMoves;
 
   /**
-   * Every ast that moves the value out of this symbol, paired with the scope the move was written in, accumulated
-   * across all the branches analysed rather than being restored per branch - so a symbol moved on only some paths
-   * still names all of them. Codegen clears the symbol's drop flag at each of these, which is how a conditionally
-   * moved value is destroyed exactly once.
-   */
-  Vec<Tup<asts::Ast const*, scopes::Scope*>> LlvmAstMoveSites;
-
-  /**
    * Borrows that this symbol, a [coroutine/async call]-handle, contain, escaping the typical inner frame lifetime
    * constraint.
    */

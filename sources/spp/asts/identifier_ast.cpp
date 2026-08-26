@@ -16,7 +16,6 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_drop;
 import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
 import spp.utils.strings;
@@ -235,17 +234,6 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   RaiseIf<SppInternalCompilerError>(
     var_sym->LlvmInfo->Alloca == nullptr, {sm->CurrentScope},
     ERR_ARGS(*this, "Target identifier has no allocation"));
-
-  // If the memory analysis recorded that this very use moves
-  // the value away, and the symbol is one whose destruction
-  // is decided at runtime, then reaching here is what makes
-  // it no longer this scope's to destroy.
-  const auto moves_here = genex::any_of(var_sym->MemInfo->LlvmAstMoveSites, [this](auto const &site) {
-    return spp::get<0>(site) == this->To<Ast>();
-  });
-  if (moves_here and codegen::NeedsDropFlag(*var_sym)) {
-    codegen::EmitDropFlagClear(*var_sym, ctx);
-  }
 
   // Handle local variable allocation extraction + load.
   // This is from normal "let" statements via their local

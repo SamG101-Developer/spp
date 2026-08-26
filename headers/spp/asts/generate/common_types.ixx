@@ -115,7 +115,7 @@ namespace spp::asts::generate::common_types {
     std::size_t pos)
     -> Shared<TypeAst>;
 
-  SPP_EXP_FUN auto DelType(
+  SPP_EXP_FUN auto DropType(
     std::size_t pos)
     -> Shared<TypeAst>;
 

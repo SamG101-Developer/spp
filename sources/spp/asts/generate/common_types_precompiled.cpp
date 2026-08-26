@@ -21,7 +21,7 @@ auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
   VOID = nullptr;
   NEVER = nullptr;
   COPY = nullptr;
-  DEL = nullptr;
+  DROP = nullptr;
   FWD_MUT = nullptr;
   FWD_REF = nullptr;
   NON_NULL = nullptr;
@@ -70,7 +70,7 @@ auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
   VOID = common_types::VoidType(0)->WithoutGenerics();
   NEVER = common_types::NeverType(0)->WithoutGenerics();
   COPY = common_types::CopyType(0)->WithoutGenerics();
-  DEL = common_types::DelType(0)->WithoutGenerics();
+  DROP = common_types::DropType(0)->WithoutGenerics();
   FWD_MUT = common_types::ForwardMutType(0, common_types::VoidType(0))->WithoutGenerics();
   FWD_REF = common_types::ForwardRefType(0, common_types::VoidType(0))->WithoutGenerics();
   NON_NULL = common_types::NonNullType(0, common_types::VoidType(0))->WithoutGenerics();

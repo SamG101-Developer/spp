@@ -9,6 +9,7 @@ import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.gen_expression_ast;
@@ -1994,6 +1995,25 @@ auto spp::codegen::func_impls::std_generator_once_send(
   ctx->Builder.CreateUnreachable();
 }
 
+auto spp::codegen::func_impls::std_generator_drop(
+  SPP_LLVM_FUNC_INFO,
+  LlvmCtx *ctx,
+  llvm::Type *)
+  -> void {
+  //
+  using asts::generate::common_types_precompiled::SELF_TYPE;
+
+  // A generator is a bare coroutine handle, and destroying one means destroying the frame it refers to - nothing else
+  // frees that frame. "self" is taken by move, so its slot holds the handle itself, and that slot is the address the
+  // destruction works through. "EmitDrop" is what knows to lower a generator to "llvm.coro.destroy", including the
+  // null check for a handle that was never assigned one.
+  const auto self_param = proto->FnParamGroup->GetSelfParam();
+  const auto self_sym = sm->CurrentScope->GetVarSymbol(self_param->ExtractName().get());
+  const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get());
+  EmitDrop(*self_ty_sym, self_sym->LlvmInfo->Alloca, sm, meta, ctx);
+  ctx->Builder.CreateRetVoid();
+}
+
 auto spp::codegen::func_impls::std_slot_get_ref(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
@@ -2553,6 +2573,20 @@ auto spp::codegen::func_impls::std_mem_ops_replace(
   const auto new_val = ctx->Builder.CreateLoad(ty, src_sym->LlvmInfo->Alloca, "mem.replace.new");
   ctx->Builder.CreateStore(new_val, dest_ptr);
   ctx->Builder.CreateRet(old_val);
+}
+
+auto spp::codegen::func_impls::std_mem_ops_drop(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot
+  // is what the destruction works through. This is the owning counterpart of "drop_in_place": the value is consumed by
+  // being passed in, so nothing is left behind in the caller for the destroyed storage to be read back out of.
+  const auto val_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
+
+  const auto t_ast = asts::TypeIdentifierAst::FromString("T");
+  const auto t_sym = sm->CurrentScope->GetTypeSymbol(t_ast.get());
+  EmitDrop(*t_sym, val_sym->LlvmInfo->Alloca, sm, meta, ctx);
+  ctx->Builder.CreateRetVoid();
 }
 
 auto spp::codegen::func_impls::std_mem_ops_drop_in_place(

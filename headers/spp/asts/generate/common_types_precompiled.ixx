@@ -26,7 +26,7 @@ namespace spp::asts::generate::common_types_precompiled {
   SPP_EXP_CMP Shared<TypeAst> VOID = nullptr;
   SPP_EXP_CMP Shared<TypeAst> NEVER = nullptr;
   SPP_EXP_CMP Shared<TypeAst> COPY = nullptr;
-  SPP_EXP_CMP Shared<TypeAst> DEL = nullptr;
+  SPP_EXP_CMP Shared<TypeAst> DROP = nullptr;
   SPP_EXP_CMP Shared<TypeAst> FWD_MUT = nullptr;
   SPP_EXP_CMP Shared<TypeAst> FWD_REF = nullptr;
   SPP_EXP_CMP Shared<TypeAst> NON_NULL = nullptr;

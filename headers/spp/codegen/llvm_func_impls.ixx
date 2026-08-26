@@ -438,6 +438,8 @@ export namespace spp::codegen::func_impls {
   auto std_vector_fwd_mut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto std_generator_send(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+
+  auto std_generator_drop(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_generator_once_send(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto std_slot_get_ref(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
@@ -498,6 +500,8 @@ export namespace spp::codegen::func_impls {
    * codegen anywhere yet, and "drop_in_place" is exactly the primitive that would need it. Once that exists, this
    * should run "T"'s destructor on the value behind "ptr" in place.
    */
+  auto std_mem_ops_drop(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+
   auto std_mem_ops_drop_in_place(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto std_threading_atomic_is_lock_free(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;

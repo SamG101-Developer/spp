@@ -137,18 +137,6 @@ public:
    */
   Scope *NonGenericScope;
 
-  /**
-   * Whether Stage8 walked the function body this scope belongs to, and so whether the memory state of the symbols
-   * below it means anything. An unwalked body's symbols read as untouched - every parameter still initialized,
-   * nothing ever moved - which is indistinguishable from a body that genuinely moves nothing, so code generation
-   * destroys nothing in a body nobody has walked rather than destroying values that body had already handed away.
-   *
-   * @n
-   * Set for written functions and for generic instantiations. Closure bodies are the gap: see the Todo in
-   * @c codegen::EmitScopeDrops .
-   */
-  bool BodyMemoryAnalysed = false;
-
   Vec<Scope*> DirectSupScopes;
 
   /**

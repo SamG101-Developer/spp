@@ -26,12 +26,6 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::MovedBy(
   -> void {
   AstMoved = {&ast, scope};
   AstInitialization = {nullptr, nullptr};
-
-  // Kept for codegen rather than for analysis, and so never
-  // rolled back with the rest of the state: a branch that is
-  // analysed and then restored still contains a move that can
-  // happen at runtime.
-  LlvmAstMoveSites.EmplaceBack(&ast, scope);
 }
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::RemovePartialMoves(

@@ -154,8 +154,11 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
   meta->AssignmentTarget = nullptr;
   meta->AssignmentTargetType = nullptr;
 
-  // Check the memory of the body of the closure.
+  // Check the memory of the body of the closure. A "ret" inside it
+  // leaves the closure, not the function the closure is written in,
+  // so the linearity walk has to stop here.
   sm->MoveToNextScope();
+  meta->EnclosingFunctionScope = sm->CurrentScope;
   Body->Stage8_CheckMemory(sm, meta);
 
   // Set the scope back.

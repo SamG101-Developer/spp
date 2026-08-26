@@ -22,7 +22,6 @@ import spp.asts.token_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import genex;
 
@@ -195,12 +194,6 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
     // Generate the function implementation. For abstract method,
     // shift scopes, as there is still a body, it's just empty.
     Impl->Stage11_CodeGen(sm, meta, ctx);
-
-    // The body's own locals were destroyed as it was left; what
-    // is left at this point is the parameters, which a by-value
-    // parameter owns and so must destroy. Borrowed parameters are
-    // skipped, as they never owned anything.
-    codegen::EmitScopeDrops(*sm->CurrentScope, nullptr, sm, meta, ctx);
 
     // Add a return instruction inside the function if there isn't
     // one (abstract methods will never be called due to previous
