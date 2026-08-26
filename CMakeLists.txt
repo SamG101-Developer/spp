@@ -11,6 +11,13 @@ set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+# /Zi routes debug info through one mspdbsrv, which sccache's
+# parallel cl invocations cannot share; /Z7 puts it in the
+# object files instead.
+set(
+  CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
+  "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
+
 # The LTO-aware binutils wrappers only exist for GCC; clang
 # and MSVC runners have no plain gcc-ar, and archiving fails
 # if they are forced.
