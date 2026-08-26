@@ -17,8 +17,13 @@ import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_destructure_array_ast;
+import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
+import spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts.case_pattern_variant_destructure_tuple_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
+import spp.asts.case_pattern_variant_single_identifier_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.let_statement_initialized_ast;
@@ -179,6 +184,43 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
+/**
+ * Whether this pattern takes a value out of the subject, rather than only testing it. A pattern that binds a name
+ * without a borrow convention takes what it names; a literal, an expression, a skip and an @c else all only look.
+ */
+static auto PatternBindsByMove(
+  spp::asts::CasePatternVariantAst const &pattern)
+  -> bool {
+  // A name binds what it is matched against, unless it asks for
+  // it through a borrow, which leaves the value where it was.
+  if (const auto single = pattern.To<spp::asts::CasePatternVariantSingleIdentifierAst>()) {
+    return single->Conv == nullptr;
+  }
+
+  // "x=<pattern>" and "x as y" bind whatever their value pattern
+  // binds.
+  if (const auto attr = pattern.To<spp::asts::CasePatternVariantDestructureAttributeBindingAst>()) {
+    return attr->Val != nullptr and PatternBindsByMove(*attr->Val);
+  }
+
+  // A destructure binds if any of its elements does. An empty one,
+  // or one made only of skips, is a shape test and takes nothing.
+  const auto any_elem_binds = [](auto const &elems) {
+    return genex::any_of(elems, [](auto const &e) { return PatternBindsByMove(*e); });
+  };
+  if (const auto obj = pattern.To<spp::asts::CasePatternVariantDestructureObjectAst>()) {
+    return any_elem_binds(obj->Elems);
+  }
+  if (const auto tup = pattern.To<spp::asts::CasePatternVariantDestructureTupleAst>()) {
+    return any_elem_binds(tup->Elems);
+  }
+  if (const auto arr = pattern.To<spp::asts::CasePatternVariantDestructureArrayAst>()) {
+    return any_elem_binds(arr->Elems);
+  }
+
+  return false;
+}
+
 auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
@@ -200,6 +242,42 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   ValidateInconsistentMemory(
     this, Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
   meta->Restore();
+
+  // TODO: Document this.
+  const auto binds_by_move = TokOf != nullptr and not LoweredFromIsExpr and genex::any_of(
+    Branches, [](auto const &branch) {
+      return genex::any_of(branch->Patterns, [](auto const &p) { return PatternBindsByMove(*p); });
+    });
+
+  if (binds_by_move) {
+    // A borrowed subject is not this scope's to give away.
+    const auto cond_type = Cond->InferType(sm, meta);
+    if (cond_type != nullptr and cond_type->GetConvention() == nullptr) {
+      // Copying leaves the original in place, so a copyable subject is never taken however its patterns bind. This
+      // is the guard "ValidateSymbolMemory" applies through "moves_value", and it has to be repeated here because
+      // marking the move directly is what skips it.
+      const auto cond_ty_sym = sm->CurrentScope->GetTypeSymbol(cond_type.get());
+      const auto cond_sym = sm->CurrentScope->GetVarSymbolOutermost(*Cond).first;
+      if (cond_sym != nullptr and cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
+        and spp::get<0>(cond_sym->MemInfo->AstBorrowed) == nullptr) {
+        // Marked directly rather than through "ValidateSymbolMemory", whose inconsistency checks run whatever flags
+        // it is given. Those checks are exactly what must not fire here: the branches having moved different parts of
+        // the subject stops meaning anything once the whole of it is taken, because all of it is gone either way. The
+        // subject was already validated as movable before the branches ran, so nothing is skipped by not repeating it.
+        // "case x of" takes the symbol itself; "case x.inner of" takes one region of it, which is a partial move like
+        // any other.
+        if (Cond->To<IdentifierAst>() != nullptr) {
+          cond_sym->MemInfo->MovedBy(*Cond, sm->CurrentScope);
+          cond_sym->MemInfo->AstPartialMoves.Clear();
+        }
+        else {
+          cond_sym->MemInfo->AstPartialMoves.EmplaceBack(Cond.get());
+        }
+        cond_sym->MemInfo->IsInconsistentlyMoved = std::nullopt;
+        cond_sym->MemInfo->IsInconsistentlyPartiallyMoved = std::nullopt;
+      }
+    }
+  }
 
   // Move out of the case expression scope.
   sm->MoveOutOfCurrentScope();
