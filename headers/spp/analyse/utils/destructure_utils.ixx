@@ -84,6 +84,24 @@ namespace spp::analyse::utils::destructure_utils {
     -> void;
 
   /**
+   * Consume the value a destructure took apart, for the direct-lowering path where no hidden temporary was bound. A
+   * destructure names every element of a value, so it takes the whole thing, not a part of it: @c "let Self(fd) = self"
+   * leaves @c self moved rather than partially moved. That is what lets a value whose attributes are all @c Copy be
+   * consumed at all - such a value has no attribute that could be moved off it, so partial moves alone could never
+   * account for it.
+   * @param[in] owner The destructure pattern, blamed for the move of the value.
+   * @param[in] from_case_pattern Whether the destructure came from a case pattern rather than a @c let .
+   * @param[in, out] sm The scope manager to get the symbol's memory information from.
+   * @param[in, out] meta Metadata to pass between ASTs, holding the value in @c LetStatementValue.
+   */
+  SPP_EXP_FUN auto ConsumeDestructureSource(
+    asts::Ast const &owner,
+    bool from_case_pattern,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void;
+
+  /**
    * Hand the comptime value of the destructured value to the destructure's hidden temporary, so that the expanded
    * @c let statements can index it. The owning @c let statement has already resolved the value into @c CmpResult (a
    * field @c CompilerMetaData::Save does not track), so the value is not resolved a second time here.

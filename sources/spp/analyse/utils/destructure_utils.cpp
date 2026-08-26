@@ -97,6 +97,42 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
   sym->MemInfo->InitializedBy(tmp_name, sm.CurrentScope);
 }
 
+auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
+  asts::Ast const &owner,
+  const bool from_case_pattern,
+  scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData *const meta)
+  -> void {
+  // Todo: A case-pattern destructure consumes its subject only on the branch whose pattern matches. Every branch of
+  //  a "case ... of" destructures, so the subject is consumed on all of them and the states agree; a branch that
+  //  matches without destructuring (a bare "else") does not, and the inconsistent-memory machinery has to reconcile
+  //  that against the branches that do. A binary "is" test must never consume - a "loop x is Pat(a)" re-tests "x"
+  //  every iteration - so this needs a discriminator between the two before it can be turned on.
+  if (from_case_pattern) { return; }
+
+  const auto val = meta->LetStatementValue;
+  if (val == nullptr or not IsDestructurePlaceExpression(*val)) { return; }
+
+  const auto sym = sm.CurrentScope->GetVarSymbolOutermost(*val).first;
+  if (sym == nullptr) { return; }
+
+  // Destructuring a borrow reads through it. The value behind it
+  // belongs to someone else, so it is not consumed here.
+  if (spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr) { return; }
+  if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
+
+  // "let Self(x) = self" takes the symbol itself, so the symbol is
+  // moved. "let Self(x) = self.inner" takes one region of it, which
+  // is a partial move like any other.
+  if (val->To<asts::IdentifierAst>() != nullptr) {
+    sym->MemInfo->MovedBy(owner, sm.CurrentScope);
+    sym->MemInfo->AstPartialMoves.Clear();
+  }
+  else {
+    sym->MemInfo->AstPartialMoves.EmplaceBack(val);
+  }
+}
+
 auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
   Shared<asts::IdentifierAst> const &tmp_name,
   scopes::ScopeManager &sm,
