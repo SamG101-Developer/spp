@@ -5,6 +5,7 @@ export module spp.analyse.utils.expr_utils;
 import spp.utils.types;
 
 namespace spp::analyse::scopes {
+  SPP_EXP_CLS class Scope;
   SPP_EXP_CLS struct ScopeManager;
   SPP_EXP_CLS struct NamespaceSymbol;
   SPP_EXP_CLS struct VariableSymbol;
@@ -12,10 +13,15 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts {
+  SPP_EXP_CLS struct Ast;
   SPP_EXP_CLS struct StatementAst;
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
+}
+
+namespace spp::asts::meta {
+  SPP_EXP_CLS struct CompilerMetaData;
 }
 
 namespace spp::analyse::utils::expr_utils {
@@ -33,6 +39,21 @@ namespace spp::analyse::utils::expr_utils {
   SPP_EXP_FUN auto ValidateNoUnreachableCode(
     Vec<asts::StatementAst*> const &members,
     scopes::ScopeManager const &sm)
+    -> void;
+
+  /**
+   * Reject a statement whose value nothing consumes. Ownership is linear, so a produced value has to go somewhere:
+   * only @c Void and @c Never - which produce nothing and never arrive respectively - may be written as a statement.
+   * @param member The statement in discard position.
+   * @param scope The scope @p member was written in, which its type is inferred against.
+   * @param sm The scope manager, used for its global scope and for error formatting.
+   * @param meta Associated metadata.
+   */
+  SPP_EXP_FUN auto ValidateDiscardedValue(
+    asts::Ast &member,
+    scopes::Scope *scope,
+    scopes::ScopeManager const &sm,
+    asts::meta::CompilerMetaData *meta)
     -> void;
 
   SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingIdentifierAndClosestOptions(
