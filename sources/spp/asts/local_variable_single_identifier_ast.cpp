@@ -14,7 +14,6 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 
@@ -119,8 +118,18 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   using analyse::utils::mem_utils::ValidateSymbolMemory;
   if (meta->LetStatementFromUninitialized) { return; }
 
-  // Check the value's memory.
+  // Check the value's memory. A variable does not hold anything until its value has been evaluated, so whatever the
+  // value does on the way - an early "ret" out of a "?", a "case" branch that returns - happens with this symbol still
+  // empty. Stage 7 fills the initialization ast in for error reporting, well before any of that is known, so it is
+  // taken back down for the duration of the value's own check and restored after: the linearity walk at a "ret" would
+  // otherwise report the variable being declared here as a value that "ret" abandoned.
+  const auto pre_sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
+  const auto pre_init = pre_sym != nullptr
+    ? pre_sym->MemInfo->AstInitialization
+    : decltype(pre_sym->MemInfo->AstInitialization)();
+  if (pre_sym != nullptr) { pre_sym->MemInfo->AstInitialization = {nullptr, nullptr}; }
   meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
+  if (pre_sym != nullptr) { pre_sym->MemInfo->AstInitialization = pre_init; }
 
   // Fix variable shadowing, where a newer version of the symbol is
   // gotten because stage7 added it, when we are trying to use the
@@ -225,14 +234,6 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // analysis).
     if (not is_void) { ctx->Builder.CreateStore(llvm_val, alloca); }
     meta->Restore();
-  }
-
-  // A local whose destruction the analyser could not settle
-  // statically records here that it now holds a value; the
-  // moves that may take it away clear the same flag, and the
-  // scope exit tests it (used for "potentially moved" objects).
-  if (not meta->LetStatementFromUninitialized) {
-    codegen::EmitDropFlagSet(*var_sym, ctx);
   }
 
   // Alloca already added; return nullptr.

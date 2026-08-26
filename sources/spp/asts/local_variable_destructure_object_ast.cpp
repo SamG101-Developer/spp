@@ -242,6 +242,12 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   if (_CondLet) { _CondLet->Stage8_CheckMemory(sm, meta); }
   // Check the memory state of the elements.
   for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
+
+  // Taking every element off a value takes the value, so the
+  // symbol holding it is left moved rather than partly moved.
+  if (_TmpName == nullptr) {
+    analyse::utils::destructure_utils::ConsumeDestructureSource(*this, _FromCasePattern, *sm, meta);
+  }
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(

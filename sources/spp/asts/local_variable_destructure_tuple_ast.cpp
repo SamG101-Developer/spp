@@ -208,6 +208,12 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage8_CheckMemory(
 
   // Check the memory state of the elements.
   for (auto &&ast : _NewAsts) { ast->Stage8_CheckMemory(sm, meta); }
+
+  // Taking every element off a value takes the value, so the
+  // symbol holding it is left moved rather than partly moved.
+  if (_TmpName == nullptr) {
+    analyse::utils::destructure_utils::ConsumeDestructureSource(*this, _FromCasePattern, *sm, meta);
+  }
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::Stage9_CompTimeResolve(
