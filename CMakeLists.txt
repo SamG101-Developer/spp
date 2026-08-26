@@ -101,51 +101,55 @@ file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
 add_library(${PROJECT_NAME}_lib)
 
 # Enable all warnings (SPP_WERROR => treating as errors).
-# -Wswitch-enum
-target_compile_options(
-  ${PROJECT_NAME}_lib
-  PRIVATE
-  -Wall
-  -Wextra
-  -Wcast-align
-  -Wcast-qual
-  -Wconversion
-  -Wsign-conversion
-  -Wsign-promo
-  -Wctor-dtor-privacy
-  -Winit-self
-  -Wold-style-cast
-  # -Wundef
-  -Wdisabled-optimization
-  -Wmissing-declarations
-  -Wmissing-include-dirs
-  -Wformat=2
-  -Wduplicated-cond
-  -Wduplicated-branches
-  -Wredundant-decls
-  -Wlogical-op
-  -Wuseless-cast
-  -Wdouble-promotion
-  -Wstrict-null-sentinel
-  -Wswitch-default
-  -Wsuggest-override
-  -Wzero-as-null-pointer-constant
-  -Wimplicit-fallthrough=5
-  -Wstrict-overflow=2
-  -Wnon-virtual-dtor
-  -Wunused
-  -Wno-maybe-uninitialized
-  -Wno-error=array-bounds
-  -Wno-error=overloaded-virtual
-  -Wno-null-dereference
-  -Wno-unknown-warning-option # for clang to ignore gcc-specific flags
-  -Wno-reserved-module-identifier
-  -Wno-pessimizing-move # for clang in parser
-  -Wodr
-)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  target_compile_options(${PROJECT_NAME}_lib PRIVATE /W4)
+else ()
+  # -Wswitch-enum
+  target_compile_options(
+    ${PROJECT_NAME}_lib
+    PRIVATE
+    -Wall
+    -Wextra
+    -Wcast-align
+    -Wcast-qual
+    -Wconversion
+    -Wsign-conversion
+    -Wsign-promo
+    -Wctor-dtor-privacy
+    -Winit-self
+    -Wold-style-cast
+    # -Wundef
+    -Wdisabled-optimization
+    -Wmissing-declarations
+    -Wmissing-include-dirs
+    -Wformat=2
+    -Wduplicated-cond
+    -Wduplicated-branches
+    -Wredundant-decls
+    -Wlogical-op
+    -Wuseless-cast
+    -Wdouble-promotion
+    -Wstrict-null-sentinel
+    -Wswitch-default
+    -Wsuggest-override
+    -Wzero-as-null-pointer-constant
+    -Wimplicit-fallthrough=5
+    -Wstrict-overflow=2
+    -Wnon-virtual-dtor
+    -Wunused
+    -Wno-maybe-uninitialized
+    -Wno-error=array-bounds
+    -Wno-error=overloaded-virtual
+    -Wno-null-dereference
+    -Wno-unknown-warning-option # for clang to ignore gcc-specific flags
+    -Wno-reserved-module-identifier
+    -Wno-pessimizing-move # for clang in parser
+    -Wodr
+  )
 
-if (SPP_WERROR)
-  target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
+  if (SPP_WERROR)
+    target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
+  endif ()
 endif ()
 
 target_sources(
