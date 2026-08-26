@@ -36,6 +36,8 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.boolean.Bool.ior", std_boolean_ior);
 
   SPP_DEFINE_BUILTIN_FUNC("std.generator.Gen.send", std_generator_send);
+  SPP_DEFINE_BUILTIN_FUNC("std.generator.Gen.drop", std_generator_drop);
+  SPP_DEFINE_BUILTIN_FUNC("std.generator.GenOnce.drop", std_generator_drop);
   SPP_DEFINE_BUILTIN_FUNC("std.generator.GenOnce.send", std_generator_once_send);
 
   SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.get_ref", std_slot_get_ref);
@@ -79,6 +81,7 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.mem.ops.align_of", std_mem_ops_align_of, true);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.align_of_val", std_mem_ops_align_of_val);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.replace", std_mem_ops_replace);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.drop", std_mem_ops_drop);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.drop_in_place", std_mem_ops_drop_in_place);
 
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.add", std_intrinsics_add);
