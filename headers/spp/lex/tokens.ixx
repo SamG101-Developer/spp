@@ -76,6 +76,7 @@ SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
   KW_RET,
   KW_EXIT,
   KW_SKIP,
+  KW_DEFER,
   KW_IS,
   KW_AS,
   KW_OR,
@@ -118,6 +119,7 @@ SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
   KW_RET,
   KW_EXIT,
   KW_SKIP,
+  KW_DEFER,
   KW_IS,
   KW_AS,
   KW_OR,
@@ -225,6 +227,7 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> S
     case SppTokenType::KW_RET: return "ret";
     case SppTokenType::KW_EXIT: return "exit";
     case SppTokenType::KW_SKIP: return "skip";
+    case SppTokenType::KW_DEFER: return "defer";
     case SppTokenType::KW_IS: return "is";
     case SppTokenType::KW_AS: return "as";
     case SppTokenType::KW_OR: return "or";

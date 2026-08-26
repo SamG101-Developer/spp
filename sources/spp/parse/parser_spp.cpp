@@ -1100,7 +1100,7 @@ auto spp::parse::ParserSpp::parse_statement()
   PARSE_ALTERNATE(
     p1, asts::StatementAst, parse_type_statement, parse_let_statement,
     parse_ret_statement, parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement,
-    parse_assignment_statement, parse_gen_unroll_expression, parse_expression);
+    parse_defer_statement, parse_assignment_statement, parse_gen_unroll_expression, parse_expression);
   return FORWARD_AST(p1);
 }
 
@@ -1145,6 +1145,13 @@ auto spp::parse::ParserSpp::parse_assignment_target_primary_expression()
   PARSE_ALTERNATE(
     p1, asts::PrimaryExpressionAst, parse_identifier, parse_self_identifier);
   return FORWARD_AST(p1);
+}
+
+auto spp::parse::ParserSpp::parse_defer_statement()
+  -> Unique<asts::DeferStatementAst> {
+  PARSE_ONCE(p1, parse_keyword_defer);
+  PARSE_ONCE(p2, parse_expression);
+  return CREATE_AST(asts::DeferStatementAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_ret_statement()
@@ -2670,6 +2677,12 @@ auto spp::parse::ParserSpp::parse_keyword_gen()
 auto spp::parse::ParserSpp::parse_keyword_with()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_WITH, lex::SppTokenType::KW_WITH); });
+  return FORWARD_AST(p1);
+}
+
+auto spp::parse::ParserSpp::parse_keyword_defer()
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_DEFER, lex::SppTokenType::KW_DEFER); });
   return FORWARD_AST(p1);
 }
 

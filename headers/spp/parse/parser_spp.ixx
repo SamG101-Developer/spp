@@ -137,6 +137,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorDerefAst;
   SPP_EXP_CLS struct ParenthesisedExpressionAst;
+  SPP_EXP_CLS struct DeferStatementAst;
   SPP_EXP_CLS struct RetStatementAst;
   SPP_EXP_CLS struct StatementAst;
   SPP_EXP_CLS struct TokenAst;
@@ -323,6 +324,7 @@ public:
   auto parse_assignment_target_primary_expression() -> Unique<asts::ExpressionAst>;
 
   auto parse_ret_statement() -> Unique<asts::RetStatementAst>;
+  auto parse_defer_statement() -> Unique<asts::DeferStatementAst>;
   auto parse_exit_statement() -> Unique<asts::LoopControlFlowStatementAst>;
   auto parse_exit_statement_with_value() -> Unique<asts::LoopControlFlowStatementAst>;
   auto parse_skip_statement() -> Unique<asts::LoopControlFlowStatementAst>;
@@ -544,6 +546,7 @@ public:
   auto parse_keyword_ret() -> Unique<asts::TokenAst>;
   auto parse_keyword_exit() -> Unique<asts::TokenAst>;
   auto parse_keyword_skip() -> Unique<asts::TokenAst>;
+  auto parse_keyword_defer() -> Unique<asts::TokenAst>;
   auto parse_keyword_is() -> Unique<asts::TokenAst>;
   auto parse_keyword_as() -> Unique<asts::TokenAst>;
   auto parse_keyword_or() -> Unique<asts::TokenAst>;
