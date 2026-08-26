@@ -103,8 +103,7 @@ auto spp::analyse::scopes::VariableSymbol::operator==(
 
 auto spp::analyse::scopes::TypeSymbol::IsCopyable() const
   -> bool {
-  // A zero type is copyable by definition - there is nothing to move.
-  return IsDirectlyCopyable or IsDirectlyZeroType
+  return IsDirectlyCopyable
     or (DerivesFromSym != nullptr and DerivesFromSym->IsCopyable());
 }
 
