@@ -14,6 +14,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   AssignmentTargetType = nullptr;
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
+  CaseConsumedSubject = nullptr;
   ClsSym = nullptr;
   EnclosingFunctionScope = nullptr;
   EnclosingFunctionFlavour = nullptr;
@@ -73,6 +74,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.AssignmentTargetType = AssignmentTargetType;
   s.IgnoreMissingElseBranchForInference = IgnoreMissingElseBranchForInference;
   s.CaseCondition = CaseCondition;
+  s.CaseConsumedSubject = CaseConsumedSubject;
   s.ClsSym = ClsSym;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   s.EnclosingFunctionScope = EnclosingFunctionScope;
@@ -139,6 +141,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AssignmentTargetType = std::move(state.AssignmentTargetType);
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
+  CaseConsumedSubject = state.CaseConsumedSubject;
   ClsSym = state.ClsSym;
   if (heavy) {
     EnclosingFunctionScope = state.EnclosingFunctionScope;

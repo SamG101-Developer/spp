@@ -33,11 +33,11 @@ auto spp::analyse::utils::drop_utils::FindDropOverload(
   if (type_sym.LinkedScope == nullptr) { return nullptr; }
 
   // The type only has a destructor if it superimposes
-  // "Drop" *directly*. This is checked before looking
-  // for the method, because a class is free to declare
-  // a method called "drop" without meaning this at all.
+  // "Drop". This is checked before looking for the method,
+  // because a class is free to declare a method called
+  // "drop" without meaning this at all.
   const auto superimposes_drop = genex::any_of(
-    type_sym.LinkedScope->DirectSupScopes, [&](auto const *sup_scope) {
+    type_sym.LinkedScope->SupScopes(), [&](auto const *sup_scope) {
       if (sup_scope->TySym == nullptr) { return false; }
       return TypeEq(*sup_scope->TySym->FqName(), *DROP, *sup_scope, *sm.CurrentScope);
     });

@@ -130,6 +130,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
     _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
     _FlowSym->Type = Type;
+    _FlowSym->IsFlowNarrowing = true;
 
     if (Type->GetConvention() != nullptr) {
       const auto borrow_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed) ? : _CondSym->ScopeDefinedIn;

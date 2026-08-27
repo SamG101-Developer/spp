@@ -66,6 +66,18 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Shared<TypeAst> AssignmentTargetType;
   bool IgnoreMissingElseBranchForInference;
   ExpressionAst *CaseCondition;
+
+  /**
+   * The symbol a surrounding @c "case ... of" takes when its patterns bind by move, while its branches are being
+   * walked. The take is marked once, after the branches, because they have to bind off the value first - but a @c ret
+   * or a loop jump inside a branch is checked before that happens, and would otherwise report the subject as a value
+   * the branch abandoned when the @c case is exactly what consumed it.
+   *
+   * @n
+   * Todo: Only the innermost such @c case is tracked, because @c Save copies one pointer. A @c ret inside an inner
+   *  @c case still reports an outer @c case 's subject.
+   */
+  Shared<IdentifierAst> CaseConsumedSubject;
   analyse::scopes::TypeSymbol *ClsSym;
   analyse::scopes::Scope *OverriddenScopeForClosure;
   analyse::scopes::Scope *EnclosingFunctionScope;
