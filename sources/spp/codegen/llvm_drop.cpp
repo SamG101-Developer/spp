@@ -82,8 +82,11 @@ auto spp::codegen::EmitDrop(
       // Destroying a value consumes it, so "drop" takes "self"
       // by move, which lowers to the value itself rather than
       // to a pointer to it. The value is loaded out of the
-      // storage this is destroying through.
-      const auto self_ty = GetLlvmType(type_sym, ctx);
+      // storage this is destroying through. Todo: Bandaid?
+      const auto fn_ty = drop_proto->GetLlvmFunc()->Target->getFunctionType();
+      const auto self_ty = fn_ty->getNumParams() > 0
+        ? fn_ty->getParamType(0)
+        : GetLlvmType(type_sym, ctx);
       const auto self_val = ctx->Builder.CreateLoad(self_ty, ptr, "drop.self" + uid);
       ctx->Builder.CreateCall(drop_func, {self_val});
     }
