@@ -40,6 +40,7 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
+import std;
 
 SPP_MOD_BEGIN
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -236,47 +237,54 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   Cond->Stage8_CheckMemory(sm, meta);
   ValidateSymbolMemory(*Cond, *Cond, *sm, true, true, false, false, meta);
 
-  // Validate the memory state across all branches (also calls stage 8 from within).
-  meta->Save();
-  meta->CaseCondition = Cond.get();
-  ValidateInconsistentMemory(
-    this, Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
-  meta->Restore();
-
-  // TODO: Document this.
+  // Whether this "case" takes its subject is decided before the branches run, because a "ret" or a loop jump inside
+  // one of them is checked while they run - and by then the subject has already been given up, even though the mark
+  // itself cannot be made until the branches have bound off it.
+  //
+  // A borrowed subject is not this scope's to give away, and copying leaves the original in place, so a copyable one
+  // is never taken however its patterns bind. That second guard is the one "ValidateSymbolMemory" applies through
+  // "moves_value", repeated here because marking the move directly is what skips it.
   const auto binds_by_move = TokOf != nullptr and not LoweredFromIsExpr and genex::any_of(
     Branches, [](auto const &branch) {
       return genex::any_of(branch->Patterns, [](auto const &p) { return PatternBindsByMove(*p); });
     });
 
-  if (binds_by_move) {
-    // A borrowed subject is not this scope's to give away.
-    const auto cond_type = Cond->InferType(sm, meta);
-    if (cond_type != nullptr and cond_type->GetConvention() == nullptr) {
-      // Copying leaves the original in place, so a copyable subject is never taken however its patterns bind. This
-      // is the guard "ValidateSymbolMemory" applies through "moves_value", and it has to be repeated here because
-      // marking the move directly is what skips it.
-      const auto cond_ty_sym = sm->CurrentScope->GetTypeSymbol(cond_type.get());
-      const auto cond_sym = sm->CurrentScope->GetVarSymbolOutermost(*Cond).first;
-      if (cond_sym != nullptr and cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
-        and spp::get<0>(cond_sym->MemInfo->AstBorrowed) == nullptr) {
-        // Marked directly rather than through "ValidateSymbolMemory", whose inconsistency checks run whatever flags
-        // it is given. Those checks are exactly what must not fire here: the branches having moved different parts of
-        // the subject stops meaning anything once the whole of it is taken, because all of it is gone either way. The
-        // subject was already validated as movable before the branches ran, so nothing is skipped by not repeating it.
-        // "case x of" takes the symbol itself; "case x.inner of" takes one region of it, which is a partial move like
-        // any other.
-        if (Cond->To<IdentifierAst>() != nullptr) {
-          cond_sym->MemInfo->MovedBy(*Cond, sm->CurrentScope);
-          cond_sym->MemInfo->AstPartialMoves.Clear();
-        }
-        else {
-          cond_sym->MemInfo->AstPartialMoves.EmplaceBack(Cond.get());
-        }
-        cond_sym->MemInfo->IsInconsistentlyMoved = std::nullopt;
-        cond_sym->MemInfo->IsInconsistentlyPartiallyMoved = std::nullopt;
-      }
+  const auto cond_type = binds_by_move ? Cond->InferType(sm, meta) : nullptr;
+  const auto cond_ty_sym = cond_type != nullptr ? sm->CurrentScope->GetTypeSymbol(cond_type.get()) : nullptr;
+  const auto cond_sym = cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
+    ? sm->CurrentScope->GetVarSymbolOutermost(*Cond).first
+    : nullptr;
+  const auto takes_subject = cond_sym != nullptr
+    and cond_type->GetConvention() == nullptr
+    and spp::get<0>(cond_sym->MemInfo->AstBorrowed) == nullptr;
+
+  // Validate the memory state across all branches (also calls stage 8 from within).
+  meta->Save();
+  meta->CaseCondition = Cond.get();
+  if (takes_subject) { meta->CaseConsumedSubject = cond_sym->Name; }
+  ValidateInconsistentMemory(
+    this, Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
+  meta->Restore();
+
+  // The mark is made here, after the branches have bound off the subject and outside the per-branch snapshots
+  // "ValidateInconsistentMemory" takes. That is what keeps the branches agreeing: every one of them, "else" included,
+  // leaves the subject in the same state, because none of them is what moved it.
+  //
+  // Marked directly rather than through "ValidateSymbolMemory", whose inconsistency checks run whatever flags it is
+  // given. Those checks are exactly what must not fire here: the branches having moved different parts of the subject
+  // stops meaning anything once the whole of it is taken, because all of it is gone either way.
+  if (takes_subject) {
+    // "case x of" takes the symbol itself; "case x.inner of" takes one region of it, which is a partial move like any
+    // other.
+    if (Cond->To<IdentifierAst>() != nullptr) {
+      cond_sym->MemInfo->MovedBy(*Cond, sm->CurrentScope);
+      cond_sym->MemInfo->AstPartialMoves.Clear();
     }
+    else {
+      cond_sym->MemInfo->AstPartialMoves.EmplaceBack(Cond.get());
+    }
+    cond_sym->MemInfo->IsInconsistentlyMoved = std::nullopt;
+    cond_sym->MemInfo->IsInconsistentlyPartiallyMoved = std::nullopt;
   }
 
   // Move out of the case expression scope.
