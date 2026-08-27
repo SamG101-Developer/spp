@@ -287,8 +287,8 @@ auto spp::analyse::utils::type_utils::TypeEq(
   // If the left-hand-side is a "Variant" type, check the member
   // types first; "Str or Bool" should accept "Str", and also
   // "Str or Bool or S32" should accept "Str or S32" (subset).
-  if (not ConventionEq(lhs_type, rhs_type)) { return false; }
   if (check_variant and TypeVariantEq(lhs_type, rhs_type, lhs_scope, rhs_scope)) { return true; }
+  if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
   // Todo: document this.
   if (stripped_lhs_sym != nullptr and stripped_rhs_sym != nullptr

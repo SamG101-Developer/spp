@@ -844,7 +844,8 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
     // that cannot be substituted because they can be anything,
     // so reverse type check them with the "relaxed" variation.
     // This is the only place this is required.
-    else if (not TypeEq(*p_type, *a_type, *fn_scope, *sm->CurrentScope)) {
+    else if (not type_utils::ConventionEq(*p_type, *a_type)
+      or not TypeEq(*p_type, *a_type, *fn_scope, *sm->CurrentScope)) {
       // If the parameter's type is a generic that is rigid at
       // the call site (defined in a scope enclosing the caller,
       // so already fixed), the argument must match it exactly.
