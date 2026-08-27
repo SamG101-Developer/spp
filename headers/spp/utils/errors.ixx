@@ -69,10 +69,12 @@ public:
 
   SPP_ATTR_COLD SPP_ATTR_NORETURN
   virtual auto Raise() -> void {
-    // Throw the error object.
-    this->_ErrObj->final_message = this->_ErrObj->messages
+    // Throw the error object. Terminated with an explicit reset: the
+    // message is written in colour, so the reset is needed so the
+    // console can go back to how it was once s++ is done.
+    this->_ErrObj->final_message = (this->_ErrObj->messages
       | genex::views::join_with('\n')
-      | genex::to<Str>();
+      | genex::to<Str>()) + "\x1b[0m";
     throw T(*_ErrObj);
   }
 };
