@@ -114,6 +114,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
   bool IsGeneric = false;
 
+  bool IsFlowNarrowing = false;
+
   asts::utils::Visibility Visibility;
 
   asts::AnnotationAst *VisibilityAnnotation = nullptr;

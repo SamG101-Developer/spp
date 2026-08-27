@@ -78,6 +78,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   ScopeDefinedIn(that.ScopeDefinedIn),
   IsMutable(that.IsMutable),
   IsGeneric(that.IsGeneric),
+  IsFlowNarrowing(that.IsFlowNarrowing),
   Visibility(that.Visibility),
   VisibilityAnnotation(that.VisibilityAnnotation),
   MemInfo(that.MemInfo->Clone()),

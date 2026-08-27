@@ -21,7 +21,7 @@ import std;
 
 namespace {
   using Saved = spp::Vec<spp::Pair<
-    spp::analyse::scopes::VariableSymbol*,
+    spp::Shared<spp::analyse::scopes::VariableSymbol>,
     spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot>>;
 
   /**
@@ -33,7 +33,9 @@ namespace {
   auto SnapshotFrom(spp::analyse::scopes::Scope const *from, spp::analyse::scopes::Scope const *boundary) -> Saved {
     auto saved = Saved();
     for (auto const *scope = from; scope != nullptr; scope = scope->Parent) {
-      for (auto *sym : scope->AllVarSymbols(true)) { saved.EmplaceBack(sym, sym->MemInfo->Snapshot()); }
+      for (auto *sym : scope->AllVarSymbols(true)) {
+        saved.EmplaceBack(sym->SharedFromThis<spp::analyse::scopes::VariableSymbol>(), sym->MemInfo->Snapshot());
+      }
       if (scope == boundary) { break; }
     }
     return saved;
@@ -52,6 +54,12 @@ auto spp::analyse::utils::linear_utils::IsLive(
   // an unbound generic, a compile-time constant (which has no
   // runtime existence), or a symbol with no type to reason about.
   if (sym.IsGeneric) { return false; }
+
+  // A flow-narrowing symbol is a view of another symbol's value,
+  // typed as whatever a pattern matched. It shares the storage
+  // rather than owning it, so the obligation stays with the symbol
+  // it narrows.
+  if (sym.IsFlowNarrowing) { return false; }
   if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
   if (sym.MemInfo->AstCompTime != nullptr) { return false; }
 
@@ -112,16 +120,9 @@ auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
   asts::Ast const &exit_point,
   scopes::ScopeManager &sm)
   -> void {
-  // A "defer" is a statement, so it is always a direct member of the inner scope it belongs to, and that ast is what
-  // the scope records as its node. There is nothing else to look in.
-  if (scope.AstNode == nullptr) { return; }
-  const auto body = scope.AstNode->To<asts::InnerScopeExpressionAst>();
-  if (body == nullptr) { return; }
-
   // Reverse order: the statements run last-registered-first, so a value deferred after another is released first.
-  for (auto i = body->Members.Len(); i > 0uz; --i) {
-    const auto stmt = body->Members[i - 1uz]->To<asts::DeferStatementAst>();
-    if (stmt == nullptr) { continue; }
+  for (auto i = scope.Deferred.Len(); i > 0uz; --i) {
+    const auto stmt = scope.Deferred[i - 1uz];
 
     // Resolved by name against this scope, so an instantiation's own copies of the symbols are the ones marked.
     for (auto const &name : stmt->Consumed) {
@@ -139,13 +140,23 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
   asts::Ast const &exit_point,
   const StrView exit_what,
   scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *)
+  asts::meta::CompilerMetaData *const meta)
   -> void {
   //
   using errors::SppLinearValueNotConsumedError;
 
   for (auto const *sym : scope.AllVarSymbols(true)) {
     if (not IsLive(*sym, sm)) { continue; }
+
+    // The subject of a surrounding "case ... of" that takes it has already been given up by the time a branch runs,
+    // even though the mark itself is not made until the branches are done. Leaving a branch early is not what
+    // abandoned it.
+    //
+    // Matched by name rather than by symbol, because a pattern that narrows the subject adds a flow-typed symbol of
+    // its own to the branch scope - same name, same storage, narrower type - and that one is what a check inside the
+    // branch actually finds.
+    if (meta != nullptr and meta->CaseConsumedSubject != nullptr and sym->Name != nullptr
+      and *sym->Name == *meta->CaseConsumedSubject) { continue; }
 
     // A symbol declared after the point control leaves from does not hold anything yet: a "ret" part-way through a
     // scope is reached before the "let"s below it ever run. Stage 7 fills the initialization ast in for every symbol
