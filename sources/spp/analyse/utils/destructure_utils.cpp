@@ -28,7 +28,8 @@ import llvm;
 auto spp::analyse::utils::destructure_utils::GetNestedBindingIdentifiers(
   Vec<Unique<asts::LocalVariableAst>> const &elems)
   -> Vec<Shared<asts::IdentifierAst>> {
-  // Recursively walk the destructure pattern to extract all identifiers.
+  // Recursively walk the destructure pattern to extract all
+  // identifiers.
   return elems
     | genex::views::transform(&asts::LocalVariableAst::ExtractNames)
     | genex::views::join
@@ -45,8 +46,10 @@ auto spp::analyse::utils::destructure_utils::UnmatchableSingleIdentifier(
 auto spp::analyse::utils::destructure_utils::IsDestructurePlaceExpression(
   asts::ExpressionAst const &expr)
   -> bool {
-  // Strip the member accesses off the expression: "a.b.c" becomes "a". Any other postfix operator (a function call,
-  // an early return etc) means the expression produces a new value rather than naming existing storage.
+  // Strip the member accesses off the expression: "a.b.c"
+  // becomes "a". Any other postfix operator (a function call,
+  // an early return etc) means the expression produces a new
+  // value rather than naming existing storage.
   auto cur = static_cast<asts::Ast const*>(&expr);
   while (auto const *postfix = cur->To<asts::PostfixExpressionAst>()) {
     if (postfix->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
@@ -62,17 +65,20 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
   Shared<asts::TypeAst> const &val_type,
   scopes::ScopeManager &sm)
   -> Shared<asts::IdentifierAst> {
-  // The "$" prefix cannot be written in user code, so the temporary can never collide with a real binding.
+  // The "$" prefix cannot be written in user code, so the
+  // temporary can never collide with a real binding.
   auto name = MakeShared<asts::IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid(&owner));
 
-  // Mirror the symbol an initialized single-identifier "let" would create.
+  // Mirror the symbol an initialized single-identifier "let"
+  // would create.
   const auto sym = MakeShared<scopes::VariableSymbol>(
     name, val_type, sm.CurrentScope, true);
   sym->MemInfo->AstInitialization = {name.get(), sm.CurrentScope};
   sym->MemInfo->AstInitializationOrigin = {name.get(), sm.CurrentScope};
   sym->MemInfo->InitializationCounter = 1;
 
-  // Carry the value's convention over, so that destructuring a borrow yields borrowed elements.
+  // Carry the value's convention over, so that destructuring
+  // a borrow yields borrowed elements.
   if (val_type->GetConvention() != nullptr) {
     sym->MemInfo->AstBorrowed = {val, sm.CurrentScope};
   }
@@ -87,8 +93,10 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *const meta)
   -> void {
-  // The value is moved into the temporary as a whole, so it is checked (and consumed) once here, rather than once per
-  // expanded "let". This traversal is also what walks the scopes the value created in stage 7.
+  // The value is moved into the temporary as a whole, so it
+  // is checked (and consumed) once here, rather than once
+  // per expanded "let". This traversal is also what walks
+  // the scopes the value created in stage 7.
   meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
   mem_utils::ValidateSymbolMemory(*meta->LetStatementValue, owner, sm, true, true, true, true, meta);
 
@@ -116,14 +124,14 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   const auto sym = sm.CurrentScope->GetVarSymbolOutermost(*val).first;
   if (sym == nullptr) { return; }
 
-  // Destructuring a borrow reads through it. The value behind it
-  // belongs to someone else, so it is not consumed here.
+  // Destructuring a borrow reads through it. The value behind
+  // it belongs to someone else, so it is not consumed here.
   if (spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr) { return; }
   if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
 
-  // "let Self(x) = self" takes the symbol itself, so the symbol is
-  // moved. "let Self(x) = self.inner" takes one region of it, which
-  // is a partial move like any other.
+  // "let Self(x) = self" takes the symbol itself, so the
+  // symbol is moved. "let Self(x) = self.inner" takes one
+  // region of it, which is a partial move like any other.
   if (val->To<asts::IdentifierAst>() != nullptr) {
     sym->MemInfo->MovedBy(owner, sm.CurrentScope);
     sym->MemInfo->AstPartialMoves.Clear();
@@ -138,8 +146,10 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *const meta)
   -> void {
-  // The owning "let" statement has already resolved the value, so the temporary takes a copy of that result rather
-  // than resolving the value a second time (which would walk the value's scopes twice).
+  // The owning "let" statement has already resolved the
+  // value, so the temporary takes a copy of that result
+  // rather than resolving the value a second time (which
+  // would walk the value's scopes twice).
   const auto sym = sm.CurrentScope->GetVarSymbol(tmp_name.get());
   sym->CompTimeValue = AstClone(meta->CmpResult);
 }
