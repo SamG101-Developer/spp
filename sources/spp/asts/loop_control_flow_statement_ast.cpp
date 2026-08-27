@@ -207,6 +207,12 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
+auto spp::asts::LoopControlFlowStatementAst::Terminates() const
+  -> bool {
+  // An "exit" or a "skip" always jumps, so nothing after it in this scope runs.
+  return true;
+}
+
 auto spp::asts::LoopControlFlowStatementAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *meta)

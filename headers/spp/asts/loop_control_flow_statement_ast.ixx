@@ -55,6 +55,14 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  /**
+   * Whether control leaves this scope here, which an @c exit or a @c skip always does. Without this the branch it sits
+   * in reads as falling through, so the memory state it left behind - values it moved before jumping - is applied to
+   * the code after the @c case , which then sees them as moved on a path that never ran.
+   * @return Always @c true .
+   */
+  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
