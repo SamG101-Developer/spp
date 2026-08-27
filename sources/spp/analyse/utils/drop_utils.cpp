@@ -27,6 +27,14 @@ auto spp::analyse::utils::drop_utils::FindDropOverload(
   using type_utils::TypeEq;
   using asts::generate::common_types_precompiled::DROP;
 
+  // A bound generic parameter stands for its argument: the
+  // symbol keeps the parameter's name ("T"), but the scope
+  // it links to is the argument's.
+  if (type_sym.IsGeneric and type_sym.LinkedScope != nullptr and type_sym.LinkedScope->TySym != nullptr
+    and type_sym.LinkedScope->TySym.get() != &type_sym) {
+    return FindDropOverload(*type_sym.LinkedScope->TySym, sm, meta);
+  }
+
   // A generic that was never bound, or a symbol with no
   // scope of its own, has no attributes and no methods
   // to find. Todo: What if we constrain generic with Drop?
@@ -85,7 +93,23 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   // managed by the handles owner (special management).
   if (type_sym.Convention != nullptr) { return false; }
   if (type_sym.LinkedScope == nullptr) { return false; }
+
+  // A bound generic parameter stands for its argument: the symbol keeps the parameter's name ("T"), but the scope it
+  // links to is the argument's. Everything below - copyability, the sup chain, the attributes - is a property of the
+  // type actually being destroyed rather than of the name it arrived under, so resolve through first. An unbound
+  // parameter has no linked scope and is handled by the check below.
+  if (type_sym.IsGeneric and type_sym.LinkedScope != nullptr and type_sym.LinkedScope->TySym != nullptr
+    and type_sym.LinkedScope->TySym.get() != &type_sym) {
+    return NeedsDrop(*type_sym.LinkedScope->TySym, sm, meta);
+  }
   if (type_utils::IsTypeGen(*type_sym.FqName(), *sm.CurrentScope)) { return true; }
+
+  // A copyable value owns nothing that has to be released: copying leaves the original in place, so there was never
+  // a single owner to answer for it. Checked before the overload lookup, which now walks the whole sup chain and so
+  // reaches the blanket "sup Copy ext Drop" for every copyable type. That impl exists so a "Drop" constraint accepts
+  // a number, not so that anything is emitted for one - its "self" is typed at "Copy", which no concrete value can
+  // be passed as by value.
+  if (type_sym.IsCopyable()) { return false; }
 
   // A destructor of its own settles it without having to
   // look at the attributes at all.
