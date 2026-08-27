@@ -143,7 +143,15 @@ auto spp::cli::run_cli(
      ->callback(handle_version);
 
   // Parse the command line arguments.
-  app.parse(argc, argv);
+  try {
+    app.parse(argc, argv);
+  }
+  catch (CLI::CallForHelp const &e) { return app.exit(e); }
+  catch (CLI::CallForAllHelp const &e) { return app.exit(e); }
+  catch (CLI::ParseError const &e) {
+    std::cerr << e.what() << "\n\n" << app.help();
+    return e.get_exit_code();
+  }
   return 0;
 }
 
