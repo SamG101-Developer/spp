@@ -14,6 +14,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
 
@@ -186,7 +187,10 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   -> llvm::Value* {
   // Create the alloca for the variable.
   const auto uid = "." + spp::utils::Uid(this);
-  const auto llvm_type = meta->LetStatementPrecomputedValue != nullptr
+  const auto borrows = Conv != nullptr;
+  const auto llvm_type = borrows
+    ? static_cast<llvm::Type*>(llvm::PointerType::get(*ctx->Context, 0))
+    : meta->LetStatementPrecomputedValue != nullptr
     ? meta->LetStatementPrecomputedValue->getType()
     : codegen::GetLlvmTypeOf(*meta->LetStatementExplicitType, *sm->CurrentScope, ctx);
   SPP_ASSERT(llvm_type != nullptr);
@@ -223,7 +227,11 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
     const auto shadowed = sm->CurrentScope->RemVarSymbol(sym_name);
 
-    auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
+    // What a borrow binds is the address of the value, not
+    // the value: the same lowering a borrow argument gets.
+    auto llvm_val = borrows
+      ? codegen::llvm_addr_of(*meta->LetStatementValue, sm, meta, ctx)
+      : meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
     if (shadowed != nullptr) { sm->CurrentScope->AddVarSymbol(shadowed); }
 
     // The declared type may be a variant that the initializer
@@ -232,7 +240,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // the payload. Storing it raw put the member at offset zero,
     // on top of the tag, so the slot read back as whatever the
     // member's first bytes happened to be.
-    if (not is_void and meta->LetStatementExplicitType != nullptr) {
+    if (not is_void and not borrows and meta->LetStatementExplicitType != nullptr) {
       llvm_val = codegen::CoerceToVariant(
         llvm_val, *meta->LetStatementExplicitType, *meta->LetStatementValue->InferType(sm, meta),
         *sm->CurrentScope, "local.variant" + uid, ctx);
