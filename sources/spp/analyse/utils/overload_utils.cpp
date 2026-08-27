@@ -590,6 +590,21 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
     }
     new_fn_proto->VariadicPackType = asts::AstClone(variadic_pack_type);
 
+    // A variadic parameter declares one element ("..b: T") but
+    // binds the whole tuple the call collapsed its trailing
+    // arguments into. Retyped here for the same reason "self"
+    // is above: this clone inherited the template's symbol, and
+    // stage 6, which types it, only runs on the template.
+    if (variadic_pack_type != nullptr) {
+      auto pack_type = asts::AstClone(variadic_pack_type);
+      pack_type->Stage7_AnalyseSemantics(&tm, meta);
+      const auto pack_name = new_fn_proto->FnParamGroup->GetVariadicParams()->ExtractName();
+      if (const auto pack_sym = new_fn_scope->Children[0]->GetVarSymbol(pack_name.get(), true);
+        pack_sym != nullptr) {
+        pack_sym->Type = std::move(pack_type);
+      }
+    }
+
     new_fn_proto->ReturnType = new_fn_proto->ReturnType->SubstituteGenerics(combined_generics.GetAllArgs());
     new_fn_proto->ReturnType->Stage7_AnalyseSemantics(&tm, meta);
 
