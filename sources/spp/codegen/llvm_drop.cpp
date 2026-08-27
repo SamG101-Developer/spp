@@ -87,9 +87,11 @@ auto spp::codegen::EmitDrop(
       const auto self_val = ctx->Builder.CreateLoad(self_ty, ptr, "drop.self" + uid);
       ctx->Builder.CreateCall(drop_func, {self_val});
     }
+    return;
   }
 
-  // Then the attributes, in reverse declaration order,
+  // Only a type that has no destructor of its own is destroyed
+  // attribute by attribute, in reverse declaration order,
   // mirroring the order they were initialized in.
   auto attrs = GetAllAttrs(*type_sym.FqName(), *sm);
   const auto struct_ty = GetLlvmType(type_sym, ctx);
