@@ -77,20 +77,25 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   CompilerMetaData *meta)
   -> void {
   //
+  using analyse::errors::SppDeferTerminatesError;
   using analyse::errors::SppTypeMismatchError;
   using analyse::utils::type_utils::GetTryType;
   using analyse::utils::type_utils::TypeEq;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
+  // A deferred expression runs at the exits of its scope,
+  // so the "ret" this lowers to would have to be emitted at
+  // each of them - returning out of the return that is
+  // already in progress.
+  RaiseIf<SppDeferTerminatesError>(
+    meta->WithinDeferTok != nullptr,
+    {sm->CurrentScope}, ERR_ARGS(*meta->WithinDeferTok, *this));
+
   const auto uid = "." + spp::utils::Uid(this);
   auto temp_name = MakeShared<IdentifierAst>(PosStart(), "$temp" + uid);
 
-  // Build the materializing left-hand-side to contain the lhs of
-  // the postfix expression.
-  // The copy bound here is the only one that ever gets analysed - the original is left alone by
-  // "PostfixExpressionAst::Stage7_AnalyseSemantics", so that the scopes the left-hand-side needs are created once,
-  // inside this lowering, where stage 8 will walk them. Hold on to it: it is now the only copy that can be asked for
-  // a type.
+  // Build the materializing left-hand-side to contain the
+  // lhs of the postfix expression.
   auto lhs_copy = AstClone(meta->PostfixExpressionLhs);
   const auto analysed_lhs = lhs_copy.get();
 
@@ -98,8 +103,8 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   auto let_stmt = MakeUnique<LetStatementInitializedAst>(
     nullptr, std::move(temp_var), nullptr, nullptr, std::move(lhs_copy));
 
-  // Test for if the `Try`-superimposed type is in the value state
-  // or not.
+  // Test for if the `Try`-superimposed type is in the value
+  // state or not.
   auto is_value_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_is_value"));
   auto is_value_target = MakeUnique<PostfixExpressionAst>(
@@ -110,9 +115,10 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   auto is_value_cond = MakeUnique<PostfixExpressionAst>(
     std::move(is_value_target), std::move(is_value_call));
 
-  // The function call for extracting the value state out of the
-  // `Try`-superimposed object, modelled as "{ $temp.op_as_value() }".
-  // Move the func call into an inner scope expression { } section.
+  // The function call for extracting the value state out of
+  // the `Try`-superimposed object, modelled as the expression
+  // "{ $temp.op_as_value() }". Move the func call into an
+  // inner scope expression { } section.
   auto output_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_as_value"));
   auto output_target = MakeUnique<PostfixExpressionAst>(
@@ -125,9 +131,10 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   output_members.EmplaceBack(MakeUnique<PostfixExpressionAst>(std::move(output_target), std::move(output_call)));
   auto output_body = MakeUnique<InnerScopeExpressionAst>(nullptr, std::move(output_members), nullptr);
 
-  // The function call for extracting the error state out of the
-  // `Try`-superimposed object, modelled as "{ $temp.op_as_residual() }".
-  // Move the func call into an inner scope expression { } section.
+  // The function call for extracting the error state out of
+  // the `Try`-superimposed object, modelled as the expression
+  // "{ $temp.op_as_residual() }". Move the func call into an
+  // inner scope expression { } section.
   auto residual_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_as_residual"));
   auto residual_target = MakeUnique<PostfixExpressionAst>(
@@ -148,24 +155,24 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   }
   auto residual_body = MakeUnique<InnerScopeExpressionAst>(nullptr, std::move(residual_statements), nullptr);
 
-  // Build the "else" branch with the residual unwrap, which will get
-  // returned/yielded (depending on the function flavour).
+  // Build the "else" branch with the residual unwrap, which will
+  // get returned/yielded (depending on the function flavour).
   auto else_patterns = Vec<Unique<CasePatternVariantAst>>();
   else_patterns.EmplaceBack(MakeUnique<CasePatternVariantElseAst>(nullptr));
   auto branches = Vec<Unique<CaseExpressionBranchAst>>();
   branches.EmplaceBack(
     MakeUnique<CaseExpressionBranchAst>(nullptr, std::move(else_patterns), nullptr, std::move(residual_body)));
 
-  // Build the `case` expression with the value "branch" as the main
-  // case body, and attach the else branch.
+  // Build the `case` expression with the value "branch" as the
+  // main case body, and attach the else branch.
   auto case_tok = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_CASE, "case");
   auto case_expr = CaseExpressionAst::NewNonPatternMatch(
     std::move(case_tok), std::move(is_value_cond), std::move(output_body), std::move(branches));
   case_expr->LoweredFromTryOperator = true;
 
-  // Wrap the two into one scope, so the temporary does not leak into
-  // the surrounding one and the whole lowering has a single AST for
-  // the later stages to forward to.
+  // Wrap the two into one scope, so the temporary does not leak
+  // into the surrounding one and the whole lowering has a single
+  // AST for the later stages to forward to.
   auto members = Vec<Unique<StatementAst>>();
   members.EmplaceBack(std::move(let_stmt));
   members.EmplaceBack(std::move(case_expr));
@@ -179,13 +186,16 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   _TransformedExpr->Stage7_AnalyseSemantics(sm, meta);
   meta->Restore();
 
-  // The "Try" checks run against the analysed copy, and so after the lowering rather than before it. Only that copy
-  // has been through stage 7, and an expression that has not cannot be asked for its type - a function call has no
-  // overload picked yet, so "_OverloadInfo" is still empty.
+  // The "Try" checks run against the analysed copy, and so after
+  // the lowering rather than before it. Only that copy has been
+  // through stage 7, and an expression that has not cannot be
+  // asked for its type - a function call has no overload picked
+  // yet, so "_OverloadInfo" is still empty.
   const auto lhs_type = analysed_lhs->InferType(sm, meta);
   const auto try_type = GetTryType(*lhs_type, *analysed_lhs, *sm, "early return");
   const auto residual_type = try_type->LastTypePart()->GnArgGroup->TypeAt("Residual")->Val;
 
+  // Todo: Tidy!
   // Subroutine return type check.
   if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     RaiseIf<SppTypeMismatchError>(
@@ -197,6 +207,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
         *analysed_lhs, *residual_type));
   }
 
+  // Todo: Tidy!
   // Coroutine return type check.
   else {
     auto [_, yield_type, _] = GetGenAndYieldTypes(
@@ -252,8 +263,9 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
     return transformed_type;
   }
 
-  // Before stage 7 there is no lowering yet, so fall back to reading it off the left-hand-side. This only works for
-  // an operand that some other path has already analysed.
+  // Before stage 7 there is no lowering yet, so fall back
+  // to reading it off the left-hand-side. This only works
+  // for an operand that some other path has already analysed.
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
   const auto try_type = GetTryType(*lhs_type, *lhs, *sm, "early return");

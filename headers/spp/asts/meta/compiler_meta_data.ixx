@@ -78,6 +78,14 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
    *  @c case still reports an outer @c case 's subject.
    */
   Shared<IdentifierAst> CaseConsumedSubject;
+
+  /**
+   * The @c defer keyword whose expression is currently being analysed, or @c nullptr outside one. A deferred
+   * expression runs because its scope is being left, so nothing inside it may leave that scope itself - and @c ?
+   * expands to a @c ret, so it is caught here rather than by @c Terminates , which reports only unconditional exits.
+   * Cleared when entering a closure body: a @c ? there returns from the closure, not from the deferring function.
+   */
+  TokenAst *WithinDeferTok = nullptr;
   analyse::scopes::TypeSymbol *ClsSym;
   analyse::scopes::Scope *OverriddenScopeForClosure;
   analyse::scopes::Scope *EnclosingFunctionScope;

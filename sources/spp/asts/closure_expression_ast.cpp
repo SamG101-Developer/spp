@@ -113,6 +113,12 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   meta->EnclosingFunctionRetType = {};
   meta->EnclosingFunctionSourceRetType = {};
 
+  // A "ret" or "?" in the body leaves the closure rather
+  // than the function the closure is written in, so a
+  // closure written inside a deferred expression is past
+  // the point that restriction applies to.
+  meta->WithinDeferTok = nullptr;
+
   // Add the inherited generics into the closure-inner scope.
   for (auto const &type_generic_sym : inherited_type_generics) {
     sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
@@ -129,8 +135,9 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   _RetType->Stage7_AnalyseSemantics(sm, meta);
   Source._OriginalRetType = _RetType;
 
-  // The return type is inferred rather than declared, so it never passes through the function prototype's return
-  // type borrow check.
+  // The return type is inferred rather than declared, so it
+  // never passes through the function prototype's return type
+  // borrow check.
   RaiseIf<SppSecondClassBorrowViolationError>(
     Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_RetType, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *_RetType, "function return type"));

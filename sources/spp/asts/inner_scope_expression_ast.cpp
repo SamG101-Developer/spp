@@ -207,6 +207,12 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
+  // Nothing has been reached in this scope yet. Cleared on entry
+  // rather than left from a previous walk, because a generic
+  // base and its instantiations share this scope object across
+  // separate codegen passes.
+  sm->CurrentScope->DeferredReached.Clear();
+
   // A statement's value is either bound or "Void", and a local
   // is either moved on or taken apart, because stage 8 rejects
   // anything else. So a scope leaves nothing behind to destroy,

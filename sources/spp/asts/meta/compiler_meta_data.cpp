@@ -75,6 +75,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.IgnoreMissingElseBranchForInference = IgnoreMissingElseBranchForInference;
   s.CaseCondition = CaseCondition;
   s.CaseConsumedSubject = CaseConsumedSubject;
+  s.WithinDeferTok = WithinDeferTok;
   s.ClsSym = ClsSym;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   s.EnclosingFunctionScope = EnclosingFunctionScope;
@@ -142,6 +143,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
   CaseConsumedSubject = state.CaseConsumedSubject;
+  WithinDeferTok = state.WithinDeferTok;
   ClsSym = state.ClsSym;
   if (heavy) {
     EnclosingFunctionScope = state.EnclosingFunctionScope;
