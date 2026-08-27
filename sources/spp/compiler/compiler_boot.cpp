@@ -604,7 +604,8 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
     + "  let only = std::process::get_env(\"SPP_TEST_ONLY\").unwrap_or(Str::from(\"\"))\n"
     + "  let run_all = only.len() == 0_uz\n"
     + body
-    + "  std::console::println(\"[ DONE ]\")\n}\n";
+    + "  std::console::println(\"[ DONE ]\")\n"
+    + "  std::mem::ops::drop(only)}\n";
 }
 
 auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
