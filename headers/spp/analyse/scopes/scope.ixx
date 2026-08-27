@@ -10,6 +10,7 @@ import sys;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
+  SPP_EXP_CLS struct DeferStatementAst;
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct IdentifierAst;
@@ -136,6 +137,17 @@ public:
    * the non-generic scope is the scope itself. For @c Vec[Str], the non-generic scope is @c Vec.
    */
   Scope *NonGenericScope;
+
+  /**
+   * The @c defer statements written directly in this scope, in the order they were reached. Leaving the scope runs
+   * them in reverse.
+   *
+   * @n
+   * Recorded here rather than being read back off @c AstNode , which cannot be trusted for this: some scopes are
+   * created against asts that do not outlive the analysis that made them, so the pointer is sometimes dangling and
+   * casting through it faults only when the freed storage happens to look wrong.
+   */
+  Vec<asts::DeferStatementAst*> Deferred;
 
   Vec<Scope*> DirectSupScopes;
 

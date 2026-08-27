@@ -17,6 +17,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 SPP_MOD_BEGIN
 spp::asts::DeferStatementAst::DeferStatementAst(
@@ -85,6 +86,11 @@ auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
+  //
+  auto saved = Vec<Pair<
+    Shared<analyse::scopes::VariableSymbol>,
+    analyse::utils::mem_info_utils::MemoryInfoSnapshot>>();
+
   // The expression has to be walked here, in the place it
   // is written, because the walk is what consumes the scopes
   // it owns. But it does not *run* here, so nothing it names
@@ -92,10 +98,19 @@ auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
   // the rest of the scope, which is the entire point of
   // deferring it. So the walk happens, and the memory state
   // it produced is rolled back.
-  auto saved = Vec<Pair<analyse::scopes::VariableSymbol*, analyse::utils::mem_info_utils::MemoryInfoSnapshot>>();
   for (auto const *scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
-    for (auto *sym : scope->AllVarSymbols(true)) { saved.EmplaceBack(sym, sym->MemInfo->Snapshot()); }
+    for (auto *sym : scope->AllVarSymbols(true)) {
+      saved.EmplaceBack(sym->SharedFromThis<analyse::scopes::VariableSymbol>(), sym->MemInfo->Snapshot());
+    }
     if (scope == meta->EnclosingFunctionScope) { break; }
+  }
+
+  // Registered where it is reached, so an exit written above
+  // this statement does not run it - which is what a "defer"
+  // means. Guarded against repeats because a loop body is
+  // walked twice, and the scope is the same one both times.
+  if (not genex::contains(sm->CurrentScope->Deferred, this)) {
+    sm->CurrentScope->Deferred.EmplaceBack(this);
   }
 
   Expr->Stage8_CheckMemory(sm, meta);

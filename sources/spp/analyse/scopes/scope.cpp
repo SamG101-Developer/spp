@@ -60,6 +60,7 @@ spp::analyse::scopes::Scope::Scope(Scope const &other) :
   TySym(other.TySym),
   NsSym(other.NsSym),
   NonGenericScope(other.NonGenericScope),
+  Deferred(other.Deferred),
   _ErrorFormatter(nullptr) {
   BumpTypeLookupGeneration();
   InternalTable.ShallowCopyFrom(other.InternalTable);
