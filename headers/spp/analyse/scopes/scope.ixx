@@ -149,6 +149,14 @@ public:
    */
   Vec<asts::DeferStatementAst*> Deferred;
 
+  /**
+   * The deferred statements of this scope that stage 11 has actually walked past, in the order it reached them. The
+   * @c Deferred list is complete by the time codegen starts, so an exit part-way through a scope would emit
+   * statements below it that never ran and whose values have no allocation yet. This is filled as the walk reaches
+   * each one, the way @c Deferred itself is filled during stage 8, so it always holds exactly what is live.
+   */
+  Vec<asts::DeferStatementAst*> DeferredReached;
+
   Vec<Scope*> DirectSupScopes;
 
   /**

@@ -1328,8 +1328,8 @@ spp::analyse::errors::SppDeferTerminatesError::SppDeferTerminatesError(
   AddErrExact(&expr, "Expression leaves the scope rather than running in it");
   AddFooter(
     "A deferred expression runs because its scope is being left, so it cannot leave that scope itself.",
-    "Remove the " + INLINE_HELP("ret") + ", " + INLINE_HELP("exit") + " or " + INLINE_HELP("skip")
-    + " from the deferred expression.");
+    "Remove the " + INLINE_HELP("ret") + ", " + INLINE_HELP("exit") + ", " + INLINE_HELP("skip") + " or "
+    + INLINE_HELP("?") + " from the deferred expression; handle the failure where the value is still in hand.");
 }
 
 spp::analyse::errors::SppDeferInCompileTimeFunctionError::SppDeferInCompileTimeFunctionError(
