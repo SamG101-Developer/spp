@@ -744,6 +744,17 @@ auto spp::analyse::utils::func_utils::IsTargetCallable(
   // the constraints - and is null for anything not callable,
   // which the caller reports as "no valid signatures".
   using type_utils::GetFunctionalType;
+
+  // A parameter declared against a generic is called through
+  // the interface its constraint promised, recorded on the
+  // symbol when the instantiation was made. Read before the
+  // type, which by then is whatever the generic was substituted
+  // with.
+  if (const auto sym = sm.CurrentScope->GetVarSymbolOutermost(expr).first;
+    sym != nullptr and sym->CallableAsType != nullptr) {
+    return sym->CallableAsType;
+  }
+
   const auto expr_type = expr.InferType(&sm, meta);
   return GetFunctionalType(*expr_type, *sm.CurrentScope);
 }

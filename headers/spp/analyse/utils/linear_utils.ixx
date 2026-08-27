@@ -44,6 +44,7 @@ namespace spp::analyse::utils::linear_utils {
   SPP_EXP_FUN auto CheckDeferredForScope(
     scopes::Scope const &scope,
     asts::Ast const &exit_point,
+    StrView exit_what,
     scopes::ScopeManager &sm)
     -> void;
 

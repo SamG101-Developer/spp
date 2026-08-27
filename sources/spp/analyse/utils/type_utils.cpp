@@ -901,6 +901,14 @@ auto spp::analyse::utils::type_utils::GetFunctionalType(
   //
   const auto type_sym = scope.GetTypeSymbol(&type);
 
+  // Callable quick-fix to use the constrained callable type
+  // rather than the genuine one for memory-analysis reasons;
+  // constraint of FunMov but passed as FunMut needs to still
+  // use the FunMov overload.
+  for (auto const &constraint : type_sym->GenericConstraints) {
+    if (IsTypeFunc(*constraint, scope)) { return constraint; }
+  }
+
   // Check the type itself and all its supertypes (a type
   // superimposing a function type is also callable).
   auto sup_types = Vec{type.shared_from_this()};

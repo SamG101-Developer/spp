@@ -116,6 +116,7 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppLinearValueSkippedInDestructureError;
   SPP_EXP_CLS struct SppDeferTerminatesError;
   SPP_EXP_CLS struct SppDeferInCompileTimeFunctionError;
+  SPP_EXP_CLS struct SppDeferConsumesMovedValueError;
 
   SPP_EXP_CLS enum class ErrorInformationKind {
     HEADER, ERROR, CONTEXT, FOOTER,
@@ -602,6 +603,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDiscardedValueError final : Semantic
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDeferTerminatesError final : SemanticError {
   explicit SppDeferTerminatesError(asts::Ast const &tok_defer, asts::Ast const &expr);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDeferConsumesMovedValueError final : SemanticError {
+  explicit SppDeferConsumesMovedValueError(asts::Ast const &deferred, asts::Ast const &consumed_at,
+    StrView symbol_name, StrView exit_what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompileTimeFunctionError final : SemanticError {

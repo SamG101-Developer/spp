@@ -156,7 +156,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // symbol holding borrows is not something this scope owes.
   if (not Terminates()) {
     analyse::utils::linear_utils::CheckDeferredForScope(
-      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, *sm);
+      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, "Scope end", *sm);
     analyse::utils::linear_utils::CheckScopeExit(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, "Scope end", *sm, meta);
   }

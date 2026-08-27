@@ -116,8 +116,9 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   if (FindDropOverload(type_sym, sm, meta) != nullptr) { return true; }
 
   // Otherwise the type is only worth dropping if something
-  // it holds is. A type cannot contain itself by value, so the
-  // recursion is bounded by the nesting depth of the type.
+  // it holds is. A type cannot contain itself by value, so
+  // the recursion is bounded by the nesting depth of the
+  // type.
   return genex::any_of(
     GetAllAttrs(*type_sym.FqName(), sm), [&](auto const &attr) {
       const auto attr_type_sym = std::get<1>(attr);

@@ -31,6 +31,7 @@ import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
@@ -568,6 +569,43 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
     for (auto *p : new_fn_proto->FnParamGroup->GetNonSelfParams()) {
       p->Type = p->Type->SubstituteGenerics(combined_generics.GetAllArgs());
       p->Type->Stage7_AnalyseSemantics(&tm, meta);
+    }
+
+    // A parameter declared against a generic keeps being callable
+    // through whatever its constraint promised, even though its type
+    // has just been rewritten to the argument. "F: FunMov" says the
+    // body may consume it once, and a "FunMut" satisfies that while
+    // also being callable through a borrow - so reading the substituted
+    // type would make this body consume the value here and borrow it
+    // in the next instantiation, which linear ownership cannot account
+    // for. Recorded against the symbol because the constraint lives on
+    // the template's generic parameter, which nothing in the
+    // instantiation refers to any more.
+    for (auto *p : new_fn_proto->FnParamGroup->GetNonSelfParams()) {
+      const auto declared = p->Source.OriginalType;
+      if (declared == nullptr) { continue; }
+
+      const auto gn_param = genex::find_if(
+        fn_proto->GnParamGroup->Params, [&](auto const &g) { return *g->Name == *declared; });
+      if (gn_param == fn_proto->GnParamGroup->Params.end()) { continue; }
+
+      const auto constraints = (*gn_param)->To<asts::GenericParameterTypeAst>();
+      if (constraints == nullptr or constraints->Constraints == nullptr) { continue; }
+
+      for (auto const &c : constraints->Constraints->Constraints) {
+        if (not type_utils::IsTypeFunc(*c, *new_fn_scope)) { continue; }
+        const auto sym = new_fn_scope->Children[0]->GetVarSymbol(p->ExtractName().get(), true);
+        if (sym == nullptr) { break; }
+
+        // Substituted the same way the parameter's own type is:
+        // the constraint is written in the template's terms
+        // ("FunMov[(T,), U]"), and what the call needs is this
+        // instantiation's argument and return types.
+        auto callable = c->SubstituteGenerics(combined_generics.GetAllArgs());
+        callable->Stage7_AnalyseSemantics(&tm, meta);
+        sym->CallableAsType = std::move(callable);
+        break;
+      }
     }
 
     // "self" is typed as "Self", so only a substitution that pins

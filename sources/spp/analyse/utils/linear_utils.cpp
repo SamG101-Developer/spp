@@ -118,17 +118,47 @@ auto spp::analyse::utils::linear_utils::IsLive(
 auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
   scopes::Scope const &scope,
   asts::Ast const &exit_point,
+  const StrView exit_what,
   scopes::ScopeManager &sm)
   -> void {
-  // Reverse order: the statements run last-registered-first, so a value deferred after another is released first.
+  // Reverse order: the statements run last-registered-first,
+  // so a value deferred after another is released first.
   for (auto i = scope.Deferred.Len(); i > 0uz; --i) {
     const auto stmt = scope.Deferred[i - 1uz];
 
-    // Resolved by name against this scope, so an instantiation's own copies of the symbols are the ones marked.
+    // Resolved by name against this scope, so that an
+    // instantiation's own copies of the symbols are the ones
+    // marked.
     for (auto const &name : stmt->Consumed) {
       const auto sym = scope.GetVarSymbolOutermost(*name).first;
       if (sym == nullptr) { continue; }
-      if (spp::get<0>(sym->MemInfo->AstMoved) != nullptr) { continue; }
+
+      // Running a deferred expression consumes what it names,
+      // so reaching this exit with the value already gone means
+      // it is consumed twice on this path. Raise memory error.
+      if (const auto where_moved = spp::get<0>(sym->MemInfo->AstMoved); where_moved != nullptr) {
+        Raise<errors::SppDeferConsumesMovedValueError>(
+          {sm.CurrentScope}, ERR_ARGS(*stmt, *where_moved, name->Val, exit_what));
+      }
+
+      // The same thing one branch at a time. A "case" leaves the
+      // state of its first branch behind, so a value consumed
+      // only in a later branch reads as live here while the
+      // inconsistency flag is what remembers the disagreement -
+      // and a deferred expression cannot be conditional,
+      // because there is no flag at runtime to make it so.
+      if (sym->MemInfo->IsInconsistentlyMoved.has_value()) {
+        const auto pair = *sym->MemInfo->IsInconsistentlyMoved;
+        Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
+          {sm.CurrentScope}, ERR_ARGS(*stmt, *pair.first, *pair.second, "moved"));
+      }
+
+      if (sym->MemInfo->IsInconsistentlyPartiallyMoved.has_value()) {
+        const auto pair = *sym->MemInfo->IsInconsistentlyPartiallyMoved;
+        Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
+          {sm.CurrentScope}, ERR_ARGS(*stmt, *pair.first, *pair.second, "partially moved"));
+      }
+
       sym->MemInfo->MovedBy(exit_point, sm.CurrentScope);
       sym->MemInfo->AstPartialMoves.Clear();
     }
@@ -202,7 +232,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToFunction(
 
   const auto saved = SnapshotFrom(sm.CurrentScope, meta->EnclosingFunctionScope);
   for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
-    CheckDeferredForScope(*scope, exit_point, sm);
+    CheckDeferredForScope(*scope, exit_point, exit_what, sm);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
     if (scope == meta->EnclosingFunctionScope) { break; }
   }
@@ -234,7 +264,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
       if (loops_seen > num_exits) { break; }
     }
 
-    CheckDeferredForScope(*scope, exit_point, sm);
+    CheckDeferredForScope(*scope, exit_point, exit_what, sm);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
     if (is_loop and loops_seen == num_exits and not has_skip) { break; }
     if (scope == meta->EnclosingFunctionScope) { break; }

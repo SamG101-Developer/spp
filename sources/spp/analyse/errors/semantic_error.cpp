@@ -1332,6 +1332,23 @@ spp::analyse::errors::SppDeferTerminatesError::SppDeferTerminatesError(
     + INLINE_HELP("?") + " from the deferred expression; handle the failure where the value is still in hand.");
 }
 
+spp::analyse::errors::SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
+  asts::Ast const &deferred,
+  asts::Ast const &consumed_at,
+  const StrView symbol_name,
+  const StrView exit_what) {
+  AddHeaders(99, "Defer Consumes Moved Value Error");
+  AddCtxForErr(&deferred, "Deferred here, so it runs at every exit of this scope");
+  AddErrExact(
+    &consumed_at, Str(exit_what) + " reached with " + INLINE_INFO(Str(symbol_name)) + " already consumed here");
+  AddFooter(
+    "A deferred expression is not conditional - it is emitted at every exit,\n\t"
+    "with nothing at runtime to record that one path already consumed the\n\t"
+    "value - so this one would consume it a second time.",
+    "Discharge " + INLINE_HELP(Str(symbol_name)) + " in each branch that does\n\t"
+    "not already consume it, rather than deferring it for all of them.");
+}
+
 spp::analyse::errors::SppDeferInCompileTimeFunctionError::SppDeferInCompileTimeFunctionError(
   asts::Ast const &tok_defer) {
   AddHeaders(98, "Defer In Compile-Time Function Error");

@@ -116,6 +116,16 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
   bool IsFlowNarrowing = false;
 
+  /**
+   * The functional type this symbol is called through, when that is not simply its own type. A parameter declared
+   * against a generic ("mut pred: F", with "F: FunMov") is callable through what its constraint promised, whatever
+   * the instantiation substituted for it - and a "FunMut" satisfies a "FunMov" constraint while also being callable
+   * through a borrow. Deciding from the substituted type instead made the same body consume the value in one
+   * instantiation and borrow it in another, which linear ownership cannot account for: the body would have to discard
+   * the value in one and must not in the other. Null for everything else, which is called through its own type.
+   */
+  Shared<const asts::TypeAst> CallableAsType;
+
   asts::utils::Visibility Visibility;
 
   asts::AnnotationAst *VisibilityAnnotation = nullptr;

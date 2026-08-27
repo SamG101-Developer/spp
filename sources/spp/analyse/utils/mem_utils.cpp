@@ -298,6 +298,10 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     // Reset the memory status of the symbols for the next branch
     // to analyse with the same original memory states.
     // Todo: Scopes need restoring properly too. (And rename to AstInit + Reformat).
+    // Built once per branch rather than once per symbol: it is the same map every time round, and rebuilding it
+    // inside the loop made recording one branch's states quadratic in the number of symbols in scope.
+    auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
+
     for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
       sym->MemInfo->AstInitialization = {
         old_mem_status.AstInitialization,
@@ -311,7 +315,6 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
 
       // Save this memory status for subsequent inter-branch
       // status comparisons.
-      auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
       sym_mem_info[sym].EmplaceBack(branch, new_symbol_mem_info_map[sym]);
     }
   }
@@ -343,10 +346,8 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
 
   // Check for consistency among the branches' symbols' memory
   // states.
-  auto current_branch = branches.begin();
   for (auto const &[sym, branches_memory_info_lists] : sym_mem_info) {
     auto first_branch_mem_info = first_branch_mem_info_getter(branches_memory_info_lists);
-    if (current_branch == branches.end() - 1 and skip_else) { break; }
 
     // Assuming all new memory states are consistent across
     // branches, update to the first "new" state list.
@@ -362,7 +363,10 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     // Check the new memory status for each symbol is
     // consistent across all branches that don't terminate.
     auto applicable_branch_memory_info_lists = branches_memory_info_lists
-      | genex::views::remove_if([&](auto const &x) { return x.first == nullptr or x.first->Body->Terminates(); })
+      | genex::views::remove_if([&](auto const &x) {
+        return x.first == nullptr or x.first->Body->Terminates()
+          or (skip_else and not branches.IsEmpty() and x.first == branches.Back());
+      })
       | genex::to<Vec>();
 
     for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
@@ -394,8 +398,6 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
         sym->MemInfo->IsInconsistentlyBorrowEscaping = {first_branch, branch};
       }
     }
-
-    ++current_branch;
   }
 }
 
