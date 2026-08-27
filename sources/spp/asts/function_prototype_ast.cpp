@@ -595,7 +595,8 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
   // a foreign library, and an abstract method by whoever overrides
   // it. There is no body that could have consumed the parameters,
   // so there is nothing to hold to the rule.
-  if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr) {
+  if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
+    and not Impl->Terminates()) {
     analyse::utils::linear_utils::CheckScopeExit(
       *sm->CurrentScope, *Impl, "Function end", *sm, meta);
   }
@@ -728,7 +729,7 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
     sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
     sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
     if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
-      and sub.Proto->AbstractAnnotation == nullptr) {
+      and sub.Proto->AbstractAnnotation == nullptr and not sub.Proto->Impl->Terminates()) {
       analyse::utils::linear_utils::CheckScopeExit(
         *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
     }
