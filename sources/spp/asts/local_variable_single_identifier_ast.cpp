@@ -136,7 +136,15 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // original.
   const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
   const auto shadowed = sm->CurrentScope->RemVarSymbol(sym_name);
-  ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, meta);
+
+  // A binding written with a borrow convention borrows its
+  // value rather than taking it: "is Some[T](&val)" looks at
+  // the payload, it does not move it off the subject. Without
+  // this, the read is recorded as a move whatever the binding
+  // says, which leaves the subject partially initialized.
+  const auto borrows = Conv != nullptr;
+  ValidateSymbolMemory(
+    *meta->LetStatementValue, *this, *sm, not borrows, true, not borrows, not borrows, meta);
   if (shadowed != nullptr) { sm->CurrentScope->AddVarSymbol(shadowed); }
 
   // Get the name or alias symbol to mark it as initialized.
