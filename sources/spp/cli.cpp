@@ -214,8 +214,8 @@ auto spp::cli::handle_vcs()
       std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
     }
     else {
-      if (not RunGit("-C " + repo_target + " pull origin " + repo_branch) or
-        not RunGit("-C " + repo_target + " checkout " + repo_branch)) {
+      if (not RunGit("-C " + repo_target + " checkout " + repo_branch) or
+        not RunGit("-C " + repo_target + " pull origin " + repo_branch)) {
         ok = false;
         continue;
       }
