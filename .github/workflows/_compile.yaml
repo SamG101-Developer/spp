@@ -95,6 +95,14 @@ jobs:
           version: ${{ inputs.version }}
           cache-key-suffix: ${{ matrix.variant.name }}
 
+      # Temporary: report which header pair loses the _SIZE_T
+      # guard race in the SDK's _stdio.h. Never fails the job.
+      - name: Debug SDK headers (macOS)
+        if: runner.os == 'macOS'
+        env:
+          SPP_RUNNER_IMAGE: ${{ inputs.os }}
+        run: bash .github/scripts/setup-toolchain/debug-sdk-macos.sh
+
       # Falls back to the newest tree for this variant on this
       # branch, then on the base branch.
       - name: Restore build tree
