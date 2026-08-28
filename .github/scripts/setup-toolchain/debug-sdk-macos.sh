@@ -95,5 +95,48 @@ for f in bare.cpp order.cpp; do
   "$CXX" -std=c++26 -E -dM "${probe}/${f}" 2>/dev/null | grep -c '^#define _SIZE_T$'
 done
 
+# Probes 1-3 run on brew clang's own default sysroot, which its
+# config file pins to the CommandLineTools SDK. CMake does not:
+# CMAKE_OSX_SYSROOT comes from xcrun, so the real build compiles
+# against the xcode-select'ed Xcode SDK instead. That is the SDK
+# the reported error came from, so repeat everything under it.
+section "brew clang config file (where the default sysroot is pinned)"
+cfg="$("$CXX" -v 2>&1 | sed -n 's/^Configuration file: //p')"
+echo "--- ${cfg:-<none>}"
+[ -n "$cfg" ] && [ -f "$cfg" ] && cat "$cfg"
+echo "--- CommandLineTools SDK version"
+plutil -extract ProductVersion raw \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/SDKSettings.plist 2>/dev/null \
+  || echo "(unreadable)"
+
+section "probes under the Xcode SDK that CMake actually uses"
+xcode_sdk="$(xcrun --show-sdk-path)"
+for f in bare.cpp order.cpp; do
+  echo "--- ${f} with -isysroot ${xcode_sdk}"
+  "$CXX" -std=c++26 -isysroot "$xcode_sdk" -fsyntax-only "${probe}/${f}" 2>&1 | head -n 30
+  echo "exit: ${PIPESTATUS[0]}"
+done
+echo "--- order.cppm with -isysroot ${xcode_sdk}"
+"$CXX" -std=c++26 -isysroot "$xcode_sdk" -x c++-module --precompile \
+  -o "${probe}/order-xcode.pcm" "${probe}/order.cppm" 2>&1 | head -n 30
+echo "exit: ${PIPESTATUS[0]}"
+
+# Whichever of the two above fails, this says which header the
+# guard came from: -H prints the include stack, and the last SDK
+# header entered before the error is the one that set _SIZE_T
+# without the typedef.
+section "include stack under the Xcode SDK, to the first error"
+"$CXX" -std=c++26 -isysroot "$xcode_sdk" -fsyntax-only -H -ferror-limit=1 \
+  "${probe}/bare.cpp" 2>&1 | grep -E '_size_t|_stdio|stddef|error' | head -n 40
+
+# The two SDK trees differ somewhere or both would build. Compare
+# the headers on the path to the failure.
+section "Xcode SDK vs CommandLineTools SDK headers"
+clt_sdk="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+for h in usr/include/sys/_types/_size_t.h usr/include/_bounds.h usr/include/_stdio.h usr/include/sys/cdefs.h; do
+  echo "--- ${h}"
+  diff "${clt_sdk}/${h}" "${xcode_sdk}/${h}" | head -n 25 || true
+done
+
 echo "::endgroup::"
 exit 0
