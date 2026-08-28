@@ -165,6 +165,17 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 
   // Determine the scope and get the type symbol.
   const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
+
+  // Using postfix type expression before stage 5 is
+  // currently an error because they aren't attached
+  // to types, via sup scopes, until stage 5.
+  RaiseIf<analyse::errors::SppFeatureNotYetSupportedError>(
+    scope->TySym != nullptr and meta->CurrentStage < 7.5
+    and scope->GetTypeSymbol(WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), false) == nullptr,
+    {sm->CurrentScope},
+    ERR_ARGS(
+      analyse::errors::NotYetSupportedFeature::NestedTypeBeforeSupScopes, *scope->TySym->Name, *this));
+
   const auto type_sym = GetTypeSymOrError(
     *scope, *WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), *sm, meta);
   if (Name == "Self") {

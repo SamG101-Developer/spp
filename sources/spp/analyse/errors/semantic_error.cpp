@@ -1332,6 +1332,34 @@ spp::analyse::errors::SppDeferTerminatesError::SppDeferTerminatesError(
     + INLINE_HELP("?") + " from the deferred expression; handle the failure where the value is still in hand.");
 }
 
+spp::analyse::errors::SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(
+  const NotYetSupportedFeature feature,
+  asts::Ast const &context,
+  asts::Ast const &site) {
+  // One entry per feature: what to underline, and what to say. Adding a feature is an enumerator and a case here.
+  struct Text { Str Ctx, Site, Note, Help; };
+  const auto text = [&]() -> Text {
+    switch (feature) {
+      case NotYetSupportedFeature::NestedTypeBeforeSupScopes:
+        return {
+          "Type named here",
+          "Nested type not available this early",
+          "A nested type is declared inside a " + INLINE_NOTE("sup") + " block, which only becomes part of its owner "
+          "once superimposition scopes are attached - and that happens in the same pass that resolves the types "
+          "written in a signature. Naming one here would need that pass split in two, which is not done yet.",
+          "Name the type the alias resolves to, or move the use into a function body, where it does work."};
+
+      default:
+        std::unreachable();
+    }
+  }();
+
+  AddHeaders(100, "Feature Not Yet Supported Error");
+  AddCtxForErr(&context, Str(text.Ctx));
+  AddErrExact(&site, Str(text.Site));
+  AddFooter(Str(text.Note), Str(text.Help));
+}
+
 spp::analyse::errors::SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
   asts::Ast const &deferred,
   asts::Ast const &consumed_at,

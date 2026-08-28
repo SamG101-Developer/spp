@@ -117,6 +117,19 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppDeferTerminatesError;
   SPP_EXP_CLS struct SppDeferInCompileTimeFunctionError;
   SPP_EXP_CLS struct SppDeferConsumesMovedValueError;
+  SPP_EXP_CLS struct SppFeatureNotYetSupportedError;
+
+  /**
+   * A feature the language means to have and does not have yet. Each one carries its own explanation of why it does
+   * not work today, so that reaching it reads as "not yet" rather than as a mistake in the code that reached it.
+   */
+  SPP_EXP_CLS enum class NotYetSupportedFeature {
+    /**
+     * Naming a type declared in a @c sup block from a place resolved before superimposition scopes are attached - a
+     * function signature, most often. See @c SppFeatureNotYetSupportedError for what it would take to lift.
+     */
+    NestedTypeBeforeSupScopes,
+  };
 
   SPP_EXP_CLS enum class ErrorInformationKind {
     HEADER, ERROR, CONTEXT, FOOTER,
@@ -603,6 +616,16 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDiscardedValueError final : Semantic
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDeferTerminatesError final : SemanticError {
   explicit SppDeferTerminatesError(asts::Ast const &tok_defer, asts::Ast const &expr);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFeatureNotYetSupportedError final : SemanticError {
+  /**
+   * @param feature Which unsupported feature was reached; selects the explanation.
+   * @param context The ast to point at for context - typically what the feature was used on.
+   * @param site The ast to point at as the error - typically where it was written.
+   */
+  explicit SppFeatureNotYetSupportedError(
+    NotYetSupportedFeature feature, asts::Ast const &context, asts::Ast const &site);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDeferConsumesMovedValueError final : SemanticError {
