@@ -605,12 +605,26 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
       p_cons.push_back(std::move(sub));
     }
 
-    // Raise an error if any constraint of this argument is not satisfied.
-    const auto unsatisfied = type_utils::EnforceGenericConstraintsOneArg(
-      p_cons, *matching[0]->Val, owner_scope, *sm.CurrentScope);
-    RaiseIf<SppGenericConstraintError>(
-      unsatisfied != nullptr, {&owner_scope, sm.CurrentScope},
-      ERR_ARGS(*unsatisfied, *matching[0]->Val));
+    // Handle variadic constraint checks. Todo: Expand docs
+    auto targets = Vec<asts::TypeAst const*>();
+    if (p_group.GetTypeParams()[i]->To<asts::GenericParameterTypeVariadicAst>() != nullptr) {
+      for (auto const *elem : matching[0]->Val->LastTypePart()->GnArgGroup->GetTypeArgs()) {
+        targets.EmplaceBack(elem->Val.get());
+      }
+    }
+    else {
+      targets.EmplaceBack(matching[0]->Val.get());
+    }
+
+    // Raise an error if any constraint of this argument is
+    // not satisfied.
+    for (auto const *target : targets) {
+      const auto unsatisfied = type_utils::EnforceGenericConstraintsOneArg(
+        p_cons, *target, owner_scope, *sm.CurrentScope);
+      RaiseIf<SppGenericConstraintError>(
+        unsatisfied != nullptr, {&owner_scope, sm.CurrentScope},
+        ERR_ARGS(*unsatisfied, *target));
+    }
   }
 }
 
