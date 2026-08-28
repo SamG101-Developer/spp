@@ -95,14 +95,6 @@ jobs:
           version: ${{ inputs.version }}
           cache-key-suffix: ${{ matrix.variant.name }}
 
-      # Temporary: report which header pair loses the _SIZE_T
-      # guard race in the SDK's _stdio.h. Never fails the job.
-      - name: Debug SDK headers (macOS)
-        if: runner.os == 'macOS'
-        env:
-          SPP_RUNNER_IMAGE: ${{ inputs.os }}
-        run: bash .github/scripts/setup-toolchain/debug-sdk-macos.sh
-
       # Falls back to the newest tree for this variant on this
       # branch, then on the base branch.
       - name: Restore build tree
@@ -123,7 +115,16 @@ jobs:
 
       # Build the cmake project with the parallel flag set. CI.
       - name: Build
+        id: build
         run: cmake --build build --parallel
+
+      # Temporary: the macOS _stdio.h failure reproduces only in the
+      # real build, so dump its command line. Never fails the job.
+      - name: Debug failed build (macOS)
+        if: failure() && steps.build.outcome == 'failure' && runner.os == 'macOS'
+        env:
+          SPP_RUNNER_IMAGE: ${{ inputs.os }}
+        run: bash .github/scripts/setup-toolchain/debug-sdk-macos.sh
 
       # Save the build tree to the cache. A tree whose configure
       # failed is worse than no tree: its cached check results
