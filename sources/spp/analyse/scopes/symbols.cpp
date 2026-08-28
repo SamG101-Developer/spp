@@ -5,6 +5,7 @@ module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
@@ -17,6 +18,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import spp.utils.ptr;
@@ -79,6 +81,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   IsMutable(that.IsMutable),
   IsGeneric(that.IsGeneric),
   IsFlowNarrowing(that.IsFlowNarrowing),
+  NarrowsSym(that.NarrowsSym),
   CallableAsType(that.CallableAsType),
   Visibility(that.Visibility),
   VisibilityAnnotation(that.VisibilityAnnotation),

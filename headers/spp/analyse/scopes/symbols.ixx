@@ -117,6 +117,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   bool IsFlowNarrowing = false;
 
   /**
+   * For a flow-narrowing symbol, the symbol it narrows: same name, same storage, wider type. Consuming through the
+   * narrowed name discharges the value itself, so a move recorded against this symbol is recorded against that one
+   * too - otherwise the original reads as live and is reported as never discharged at whatever exit follows.
+   */
+  Shared<VariableSymbol> NarrowsSym;
+
+  /**
    * The functional type this symbol is called through, when that is not simply its own type. A parameter declared
    * against a generic ("mut pred: F", with "F: FunMov") is callable through what its constraint promised, whatever
    * the instantiation substituted for it - and a "FunMut" satisfies a "FunMov" constraint while also being callable
