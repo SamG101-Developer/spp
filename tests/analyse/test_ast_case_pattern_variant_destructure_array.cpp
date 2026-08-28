@@ -1,83 +1,83 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_invalid_multiple_multi_skip,
-    SppMultipleRestPatternsError, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_invalid_multiple_multi_skip,
+  SppMultipleRestPatternsError, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [.., ..] { }
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_invalid_missing_value,
-    SppVariableArrayDestructureArraySizeMismatchError, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_invalid_missing_value,
+  SppVariableArrayDestructureArraySizeMismatchError, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [x] { }
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_invalid_extra_value,
-    SppVariableArrayDestructureArraySizeMismatchError, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_invalid_extra_value,
+  SppVariableArrayDestructureArraySizeMismatchError, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [x, y, z] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_value_only, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_value_only, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [x, y] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_value_and_single_skip, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_value_and_single_skip, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [x, _] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_value_and_unbound_multi_skip, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_value_and_unbound_multi_skip, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [x, ..] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_value_and_bound_multi_skip, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_value_and_bound_multi_skip, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [..x] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_value_before_and_after_bound_multi_skip, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_value_before_and_after_bound_multi_skip, R"(
     fun f(p: Arr[Str, 5_uz]) -> Void {
         case p is [a, ..b, c] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_literal_before_and_after_bound_multi_skip, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_literal_before_and_after_bound_multi_skip, R"(
     fun f(p: Arr[S32, 5_uz]) -> Void {
         case p is [1, ..b, 99] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_multiple_branches, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_multiple_branches, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p of {
             is [x, y] { }
@@ -87,24 +87,24 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_nested_array_in_array, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_nested_array_in_array, R"(
     fun f(p: Arr[Arr[Str, 2_uz], 2_uz]) -> Void {
         case p is [[a, b], [c, d]] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_nested_tuple_in_array, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_nested_tuple_in_array, R"(
     fun f(p: Arr[(Str, Str), 2_uz]) -> Void {
         case p is [(a, b), (c, d)] { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CasePatternVariantDestructureArrayAst,
-    test_valid_nested_object_in_array, R"(
+  CasePatternVariantDestructureArrayAst,
+  test_valid_nested_object_in_array, R"(
     cls Point {
         !public x: S32
         !public y: S32

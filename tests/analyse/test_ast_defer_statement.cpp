@@ -1,9 +1,5 @@
 #include "../test_macros.hpp"
 
-// Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp. The test project
-//  compiles std, so a SHOULD_PASS case fails on std rather than on its own code, and a SHOULD_FAIL case can throw the
-//  right error type for the wrong reason.
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   DeferStatementAst,
   test_valid_defer_discharges_at_scope_end, R"(
@@ -22,7 +18,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// The point of the feature: an early exit does not get to abandon what the scope was holding.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   DeferStatementAst,
   test_valid_defer_covers_early_return, R"(

@@ -275,9 +275,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// A binding written with a convention names the attribute rather than a copy of it, so its slot holds an address.
-// Stage 7 gave the symbol the borrow type all along, but codegen sized the slot from the initializer - so "x" held
-// the attribute's value, and writing through it stored into a number instead of into the attribute.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_bind_by_mut_borrow_and_write_through_it, R"(
@@ -297,7 +294,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// The immutable form of the same binding: readable through, and not writable.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_write_through_an_immutable_borrow_binding,
