@@ -115,16 +115,7 @@ jobs:
 
       # Build the cmake project with the parallel flag set. CI.
       - name: Build
-        id: build
         run: cmake --build build --parallel
-
-      # Temporary: the macOS _stdio.h failure reproduces only in the
-      # real build, so dump its command line. Never fails the job.
-      - name: Debug failed build (macOS)
-        if: failure() && steps.build.outcome == 'failure' && runner.os == 'macOS'
-        env:
-          SPP_RUNNER_IMAGE: ${{ inputs.os }}
-        run: bash .github/scripts/setup-toolchain/debug-sdk-macos.sh
 
       # Save the build tree to the cache. A tree whose configure
       # failed is worse than no tree: its cached check results
