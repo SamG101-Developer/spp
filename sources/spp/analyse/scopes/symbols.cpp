@@ -108,6 +108,30 @@ auto spp::analyse::scopes::VariableSymbol::operator==(
 
 auto spp::analyse::scopes::TypeSymbol::IsCopyable() const
   -> bool {
+  using asts::generate::common_types_precompiled::COPY;
+  using utils::type_utils::TypeEq;
+
+  // Todo: Clean this mess up.
+  // From the superimposition graph:
+  // "sup [..Items: Copy] Tup[Items] ext Copy" makes a
+  // tuple copyable only when its items are, and
+  // "PruneUnsatisfiedSupConstraints" already removes the
+  // attachment from the instantiations whose items do not
+  // satisfy it - so the graph is the thing that knows.
+  // "IsDirectlyCopyable" is set once against the template,
+  // before any argument exists, and cannot express a
+  // conditional answer.
+  const auto has_generic_args = Name != nullptr and Name->GnArgGroup != nullptr
+    and not Name->GnArgGroup->Args.IsEmpty();
+
+  if (has_generic_args and LinkedScope != nullptr) {
+    for (auto const *sup_scope : LinkedScope->SupScopesConst()) {
+      if (sup_scope->TySym == nullptr) { continue; }
+      if (TypeEq(*sup_scope->TySym->FqName(), *COPY, *sup_scope, *LinkedScope)) { return true; }
+    }
+    return false;
+  }
+
   return IsDirectlyCopyable
     or (DerivesFromSym != nullptr and DerivesFromSym->IsCopyable());
 }
