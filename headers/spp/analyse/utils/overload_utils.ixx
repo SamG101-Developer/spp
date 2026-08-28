@@ -60,38 +60,6 @@ namespace spp::analyse::utils::overload_utils {
     asts::meta::CompilerMetaData *meta)
     -> Pair<PassedOverload, bool>;
 
-  SPP_EXP_FUN auto PropagateMethodToFunction(
-    asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
-    asts::TypeAst const &fn_owner_type,
-    asts::IdentifierAst const &fn_name,
-    asts::PostfixExpressionAst const &cast_lhs,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> PropagatedMethodCall;
-
-  SPP_EXP_FUN auto RetrieveAllOverloads(
-    asts::IdentifierAst const *fn_name,
-    scopes::Scope const &fn_owner_scope,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> OverloadCandidates;
-
-  SPP_EXP_FUN auto RetrieveOwnerGenericArgs(
-    Shared<asts::TypeAst> const &fwd_type,
-    asts::meta::CompilerMetaData const *meta)
-    -> Vec<Unique<asts::GenericArgumentAst>>;
-
-  SPP_EXP_FUN auto InferAllGenerics(
-    asts::FunctionPrototypeAst const &fn_proto,
-    asts::FunctionParameterGroupAst const &fn_params,
-    asts::FunctionCallArgumentGroupAst &fn_args,
-    asts::GenericArgumentGroupAst &gn_args,
-    bool is_variadic_fn,
-    scopes::Scope const *fn_scope,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
-
   SPP_EXP_FUN auto PotentiallyGenerateGenericSubstitutedPrototype(
     asts::FunctionPrototypeAst *fn_proto,
     scopes::Scope const *fn_scope,
@@ -101,21 +69,4 @@ namespace spp::analyse::utils::overload_utils {
     asts::meta::CompilerMetaData *meta)
     -> Tup<asts::FunctionPrototypeAst*, scopes::Scope const*>;
 
-  SPP_EXP_FUN auto ValidateArgsMatchParams(
-    asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-    asts::FunctionPrototypeAst const &fn_proto,
-    scopes::Scope const *fn_scope,
-    asts::FunctionCallArgumentGroupAst const &func_args,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
-
-  SPP_EXP_FUN auto ManageMatchedOverloads(
-    asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-    Vec<PassedOverload> const &pass_overloads,
-    Vec<FailedOverload> const &fail_overloads,
-    asts::FunctionCallArgumentGroupAst const &arg_group,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
 }

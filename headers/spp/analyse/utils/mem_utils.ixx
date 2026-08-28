@@ -37,19 +37,6 @@ namespace spp::analyse::utils::mem_utils {
     -> bool;
 
   /**
-   * This function is another, slightly more relaxed memory region overlap check. It does the same as
-   * @ref memory_region_overlap, but only checks one way. This means that @c {a R_OVERLAP a.b} will result in a
-   * positive match, but @c {a.b R_OVERLAP a.b} will not.
-   * @param ast_1 The lhs AST to check for overlap.
-   * @param ast_2 The rhs AST to check for overlap.
-   * @return Whether the two memory regions overlap in the right direction.
-   */
-  SPP_EXP_FUN auto MemRegionRightOverlap(
-    asts::Ast const &ast_1,
-    asts::Ast const &ast_2)
-    -> bool;
-
-  /**
    * Many memory checks are performed here by analysing the ASTs present in the value's symbol, to ensure that memory
    * errors can be detected and prevented at compile time. There are flags for almost all the checks, as there are
    * scenarios where some of these checks need to be ignored.
@@ -67,8 +54,6 @@ namespace spp::analyse::utils::mem_utils {
    * @throw spp::analyse::errors::SppMoveFromBorrowedMemoryError If the value is moved from a borrowed context.
    * @throw spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError If an inconsistently initialized symbol
    * is used.
-   */
-  /**
    * @param check_escaping_borrow_move Whether moving a value that carries escaping borrows is refused outright. Left
    * on everywhere the destination goes unweighed; turned off by a caller that follows this with
    * @c PreventBorrowLifetimeExtension , which compares the destination's lifetime against the borrows' own and is the

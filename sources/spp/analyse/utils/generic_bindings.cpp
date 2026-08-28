@@ -53,6 +53,30 @@ import genex;
 
 namespace spp::analyse::utils::generic_bindings {
   namespace {
+    auto EnforceNoUninferredGnArgs(
+      Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
+      Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
+      scopes::Scope const &owner_scope,
+      Shared<asts::Ast> const &owner,
+      scopes::ScopeManager &sm)
+      -> void {
+      //
+      using errors::SppGenericParameterNotInferredError;
+
+      // Check for uninferred arguments.
+      const auto uninferred_params = p_names
+        | genex::views::not_in(i_names, genex::meta::deref, genex::meta::deref)
+        | genex::to<Vec>();
+
+      RaiseIf<SppGenericParameterNotInferredError>(
+        not uninferred_params.IsEmpty(), {sm.CurrentScope, &owner_scope},
+        ERR_ARGS(*uninferred_params[0], *owner));
+    }
+  }
+}
+
+namespace spp::analyse::utils::generic_bindings {
+  namespace {
     /**
      * Reject a keyword argument whose name is not one of the parameters.
      */
@@ -186,46 +210,50 @@ namespace spp::analyse::utils::generic_bindings {
   }
 }
 
-static auto CollectDirectInferences(
-  spp::Shared<spp::asts::TypeAst> const &source_type,
-  spp::Shared<spp::asts::TypeAst> const &target_type,
-  spp::Shared<spp::asts::IdentifierAst> const &target_name,
-  spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &type_p_names,
-  spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &variadic_type_p_names,
-  spp::Vec<spp::Shared<spp::asts::TypeIdentifierAst>> const &comp_p_names,
-  spp::Shared<spp::asts::IdentifierAst> const &variadic_fn_param_name,
-  spp::analyse::scopes::Scope const &owner_scope,
-  spp::analyse::scopes::ScopeManager &sm,
-  spp::analyse::utils::generic_bindings::GenericBindingSet &bindings)
-  -> void {
-  //
-  auto temp_gs = spp::analyse::utils::type_utils::GenericInferenceMap();
-  spp::analyse::utils::type_utils::RelaxedTypeEq(
-    *source_type->WithoutConvention(),
-    *target_type->WithoutConvention(),
-    *sm.CurrentScope, owner_scope, temp_gs, true);
+namespace spp::analyse::utils::generic_bindings {
+  namespace {
+    auto CollectDirectInferences(
+      Shared<asts::TypeAst> const &source_type,
+      Shared<asts::TypeAst> const &target_type,
+      Shared<asts::IdentifierAst> const &target_name,
+      Vec<Shared<asts::TypeIdentifierAst>> const &type_p_names,
+      Vec<Shared<asts::TypeIdentifierAst>> const &variadic_type_p_names,
+      Vec<Shared<asts::TypeIdentifierAst>> const &comp_p_names,
+      Shared<asts::IdentifierAst> const &variadic_fn_param_name,
+      scopes::Scope const &owner_scope,
+      scopes::ScopeManager &sm,
+      GenericBindingSet &bindings)
+      -> void {
+      //
+      auto temp_gs = spp::analyse::utils::type_utils::GenericInferenceMap();
+      spp::analyse::utils::type_utils::RelaxedTypeEq(
+        *source_type->WithoutConvention(),
+        *target_type->WithoutConvention(),
+        *sm.CurrentScope, owner_scope, temp_gs, true);
 
-  const auto is_variadic_param_slot =
-    variadic_fn_param_name != nullptr
-    and target_name != nullptr
-    and *target_name == *variadic_fn_param_name;
+      const auto is_variadic_param_slot =
+        variadic_fn_param_name != nullptr
+        and target_name != nullptr
+        and *target_name == *variadic_fn_param_name;
 
-  for (auto const &[inferred_name, inferred_val] : temp_gs) {
-    auto *typed = inferred_val->To<spp::asts::TypeAst>();
-    const auto declared_type = genex::contains(type_p_names, *inferred_name, genex::meta::deref);
-    const auto declared_comp = genex::contains(comp_p_names, *inferred_name, genex::meta::deref);
+      for (auto const &[inferred_name, inferred_val] : temp_gs) {
+        auto *typed = inferred_val->To<asts::TypeAst>();
+        const auto declared_type = genex::contains(type_p_names, *inferred_name, genex::meta::deref);
+        const auto declared_comp = genex::contains(comp_p_names, *inferred_name, genex::meta::deref);
 
-    if (declared_type) {
-      if (typed == nullptr) { continue; }
-      auto shared = typed->shared_from_this();
-      if (is_variadic_param_slot and not genex::contains(variadic_type_p_names, *inferred_name, genex::meta::deref)) {
-        auto const &inner = shared->LastTypePart()->GnArgGroup->Args[0];
-        shared = inner->ToUnchecked<spp::asts::GenericArgumentTypeAst>()->Val;
+        if (declared_type) {
+          if (typed == nullptr) { continue; }
+          auto shared = typed->shared_from_this();
+          if (is_variadic_param_slot and not genex::contains(variadic_type_p_names, *inferred_name, genex::meta::deref)) {
+            auto const &inner = shared->LastTypePart()->GnArgGroup->Args[0];
+            shared = inner->ToUnchecked<asts::GenericArgumentTypeAst>()->Val;
+          }
+          bindings.Add(inferred_name, std::move(shared));
+        }
+        else if (declared_comp) {
+          bindings.Add(inferred_name, inferred_val);
+        }
       }
-      bindings.Add(inferred_name, std::move(shared));
-    }
-    else if (declared_comp) {
-      bindings.Add(inferred_name, inferred_val);
     }
   }
 }
@@ -531,26 +559,6 @@ auto spp::analyse::utils::generic_bindings::GenericBindingSet::ToArgs(
 }
 
 SPP_MOD_END
-
-auto spp::analyse::utils::generic_bindings::EnforceNoUninferredGnArgs(
-  Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
-  Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
-  scopes::Scope const &owner_scope,
-  Shared<asts::Ast> const &owner,
-  scopes::ScopeManager &sm)
-  -> void {
-  //
-  using errors::SppGenericParameterNotInferredError;
-
-  // Check for uninferred arguments.
-  const auto uninferred_params = p_names
-    | genex::views::not_in(i_names, genex::meta::deref, genex::meta::deref)
-    | genex::to<Vec>();
-
-  RaiseIf<SppGenericParameterNotInferredError>(
-    not uninferred_params.IsEmpty(), {sm.CurrentScope, &owner_scope},
-    ERR_ARGS(*uninferred_params[0], *owner));
-}
 
 auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
   asts::GenericParameterGroupAst const &p_group,

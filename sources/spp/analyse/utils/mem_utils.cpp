@@ -31,61 +31,79 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
-namespace {
-  /**
-   * Compare two escaping-borrow container lists by the memory regions they name, rather than by ast identity. Each
-   * branch of a "case" builds its own ast nodes, so the same borrow written in two branches is two pointers but one
-   * region, and only the region is what makes the branches agree or disagree.
-   */
-  auto EscapingBorrowContainersDiffer(
-    spp::Vec<spp::Tup<spp::asts::Ast const*, spp::asts::Ast const*>> const &lhs,
-    spp::Vec<spp::Tup<spp::asts::Ast const*, spp::asts::Ast const*>> const &rhs)
-    -> bool {
-    const auto regions = [](auto const &list) {
-      auto out = spp::Vec<spp::Str>();
-      for (auto const &[container, borrow] : list) {
-        out.EmplaceBack(container->ToString() + " <- " + borrow->ToString());
+namespace spp::analyse::utils::mem_utils {
+  namespace {
+    /**
+     * Compare two escaping-borrow container lists by the memory regions they name, rather than by ast identity. Each
+     * branch of a "case" builds its own ast nodes, so the same borrow written in two branches is two pointers but one
+     * region, and only the region is what makes the branches agree or disagree.
+     */
+    auto EscapingBorrowContainersDiffer(
+      Vec<spp::Tup<asts::Ast const*, asts::Ast const*>> const &lhs,
+      Vec<spp::Tup<asts::Ast const*, asts::Ast const*>> const &rhs)
+      -> bool {
+      const auto regions = [](auto const &list) {
+        auto out = Vec<spp::Str>();
+        for (auto const &[container, borrow] : list) {
+          out.EmplaceBack(container->ToString() + " <- " + borrow->ToString());
+        }
+        genex::actions::sort(out);
+        return out;
+      };
+      return regions(lhs) != regions(rhs);
+    }
+
+    /**
+     * Raise if any borrow a value carries would out-live what it borrows from, once that value is held by @p lhs .
+     *
+     * @n
+     * A coroutine handle keeps the borrows its call was given alive for as long as the handle lives, so putting one
+     * into a symbol declared further out moves those borrows past the frame that owns what they point at. Each is
+     * checked on its own: one borrow out-living its source is enough, however many the handle carries.
+     *
+     * @param escaping_borrows The borrows the value carries.
+     * @param lhs The symbol the value is being put into.
+     * @param owner The ast to report the error against.
+     * @param sm The scope manager, for resolving each borrow's source.
+     */
+    auto EnforceEscapingBorrowsOutlive(
+      Vec<spp::Tup<asts::Ast const*, bool, scopes::Scope*>> const &escaping_borrows,
+      scopes::VariableSymbol const &lhs,
+      asts::Ast *owner,
+      scopes::ScopeManager const &sm)
+      -> void {
+      //
+      namespace errors = spp::analyse::errors;
+      const auto lhs_init_scope = lhs.ScopeDefinedIn;
+      if (lhs_init_scope == nullptr) { return; }
+
+      for (auto const &[e, _, _] : escaping_borrows) {
+        const auto source_sym = sm.CurrentScope->GetVarSymbolOutermost(*e).first;
+        if (source_sym == nullptr or source_sym->ScopeDefinedIn == nullptr) { continue; }
+
+        // The source out-lives the destination exactly when its scope is one the destination sits inside of, which is
+        // what finding it among the destination's ancestors says.
+        const auto found_at = genex::position(
+          lhs_init_scope->Ancestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
+        spp::RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
+          found_at < 0, {sm.CurrentScope}, ERR_ARGS(*owner, *lhs.Name, *e));
       }
-      genex::actions::sort(out);
-      return out;
-    };
-    return regions(lhs) != regions(rhs);
-  }
+    }
 
-  /**
-   * Raise if any borrow a value carries would out-live what it borrows from, once that value is held by @p lhs .
-   *
-   * @n
-   * A coroutine handle keeps the borrows its call was given alive for as long as the handle lives, so putting one
-   * into a symbol declared further out moves those borrows past the frame that owns what they point at. Each is
-   * checked on its own: one borrow out-living its source is enough, however many the handle carries.
-   *
-   * @param escaping_borrows The borrows the value carries.
-   * @param lhs The symbol the value is being put into.
-   * @param owner The ast to report the error against.
-   * @param sm The scope manager, for resolving each borrow's source.
-   */
-  auto EnforceEscapingBorrowsOutlive(
-    spp::Vec<spp::Tup<spp::asts::Ast const*, bool, spp::analyse::scopes::Scope*>> const &escaping_borrows,
-    spp::analyse::scopes::VariableSymbol const &lhs,
-    spp::asts::Ast *owner,
-    spp::analyse::scopes::ScopeManager const &sm)
-    -> void {
-    //
-    namespace errors = spp::analyse::errors;
-    const auto lhs_init_scope = lhs.ScopeDefinedIn;
-    if (lhs_init_scope == nullptr) { return; }
-
-    for (auto const &[e, _, _] : escaping_borrows) {
-      const auto source_sym = sm.CurrentScope->GetVarSymbolOutermost(*e).first;
-      if (source_sym == nullptr or source_sym->ScopeDefinedIn == nullptr) { continue; }
-
-      // The source out-lives the destination exactly when its scope is one the destination sits inside of, which is
-      // what finding it among the destination's ancestors says.
-      const auto found_at = genex::position(
-        lhs_init_scope->Ancestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
-      spp::RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
-        found_at < 0, {sm.CurrentScope}, ERR_ARGS(*owner, *lhs.Name, *e));
+    /**
+     * This function is another, slightly more relaxed memory region overlap check. It does the same as
+     * @ref memory_region_overlap, but only checks one way. This means that @c {a R_OVERLAP a.b} will result in a
+     * positive match, but @c {a.b R_OVERLAP a.b} will not.
+     * @param ast_1 The lhs AST to check for overlap.
+     * @param ast_2 The rhs AST to check for overlap.
+     * @return Whether the two memory regions overlap in the right direction.
+     */
+    auto MemRegionRightOverlap(
+      asts::Ast const &ast_1,
+      asts::Ast const &ast_2) -> bool {
+      const auto s1 = ast_1.ToString();
+      const auto s2 = ast_2.ToString();
+      return s2.starts_with(s1);
     }
   }
 }
@@ -97,14 +115,6 @@ auto spp::analyse::utils::mem_utils::MemRegionOverlap(
   const auto s1 = ast_1.ToString();
   const auto s2 = ast_2.ToString();
   return s1.starts_with(s2) or s2.starts_with(s1);
-}
-
-auto spp::analyse::utils::mem_utils::MemRegionRightOverlap(
-  asts::Ast const &ast_1,
-  asts::Ast const &ast_2) -> bool {
-  const auto s1 = ast_1.ToString();
-  const auto s2 = ast_2.ToString();
-  return s2.starts_with(s1);
 }
 
 auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(

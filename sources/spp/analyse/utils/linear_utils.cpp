@@ -19,100 +19,110 @@ import spp.asts.meta.compiler_meta_data;
 import genex;
 import std;
 
-namespace {
-  using Saved = spp::Vec<spp::Pair<
-    spp::Shared<spp::analyse::scopes::VariableSymbol>,
-    spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot>>;
+namespace spp::analyse::utils::linear_utils {
+  namespace {
+    using Saved = Vec<Pair<
+      Shared<scopes::VariableSymbol>,
+      mem_info_utils::MemoryInfoSnapshot>>;
 
-  /**
-   * Snapshot every symbol in the scopes an early exit is about to be checked against. Running a scope's deferred
-   * statements marks what they take, which is right for the path being left but wrong for everything after it: stage 8
-   * walks statements in order rather than following branches, so without this the code after the branch a "ret" sits
-   * in would read as though the deferred releases had already happened.
-   */
-  auto SnapshotFrom(spp::analyse::scopes::Scope const *from, spp::analyse::scopes::Scope const *boundary) -> Saved {
-    auto saved = Saved();
-    for (auto const *scope = from; scope != nullptr; scope = scope->Parent) {
-      for (auto *sym : scope->AllVarSymbols(true)) {
-        saved.EmplaceBack(sym->SharedFromThis<spp::analyse::scopes::VariableSymbol>(), sym->MemInfo->Snapshot());
+    /**
+     * Snapshot every symbol in the scopes an early exit is about to be checked against. Running a scope's deferred
+     * statements marks what they take, which is right for the path being left but wrong for everything after it: stage 8
+     * walks statements in order rather than following branches, so without this the code after the branch a "ret" sits
+     * in would read as though the deferred releases had already happened.
+     */
+    auto SnapshotFrom(scopes::Scope const *from, scopes::Scope const *boundary) -> Saved {
+      auto saved = Saved();
+      for (auto const *scope = from; scope != nullptr; scope = scope->Parent) {
+        for (auto *sym : scope->AllVarSymbols(true)) {
+          saved.EmplaceBack(sym->SharedFromThis<scopes::VariableSymbol>(), sym->MemInfo->Snapshot());
+        }
+        if (scope == boundary) { break; }
       }
-      if (scope == boundary) { break; }
+      return saved;
     }
-    return saved;
+
+    auto RestoreFrom(Saved const &saved) -> void {
+      for (auto const &[sym, snapshot] : saved) { sym->MemInfo->FillFromSnapshot(snapshot); }
+    }
+
+    /**
+     * Whether this symbol still owns a value that nothing has consumed. S++ ownership is linear: a value of a
+     * non-@c Copy type must be used exactly once, so a symbol reaching the end of its scope while still holding one is
+     * an error.
+     * @param sym The symbol being checked.
+     * @param sm The scope manager, positioned where the symbol's type resolves from.
+     * @return Whether the symbol still owns an unconsumed value.
+     */
+    auto IsLive(
+      scopes::VariableSymbol const &sym,
+      scopes::ScopeManager &sm)
+      -> bool {
+      // A symbol that never owned a value has nothing to answer for:
+      // an unbound generic, a compile-time constant (which has no
+      // runtime existence), or a symbol with no type to reason about.
+      if (sym.IsGeneric) { return false; }
+
+      // A flow-narrowing symbol is a view of another symbol's value,
+      // typed as whatever a pattern matched. It shares the storage
+      // rather than owning it, so the obligation stays with the symbol
+      // it narrows.
+      if (sym.IsFlowNarrowing) { return false; }
+      if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
+      if (sym.MemInfo->AstCompTime != nullptr) { return false; }
+
+      // Todo: A "$" name is a desugaring temporary - the iterator behind a "loop ... in", the subject a destructure was
+      //  bound to, the slot an early return writes through - and none of it is written by the programmer, so reporting it
+      //  blames code nobody can fix. Exempting it is a real gap rather than a nicety: "$_iter" holds an iterator that
+      //  genuinely goes unconsumed. The desugarings have to be made linear-correct, and then this goes away.
+      if (sym.Name != nullptr and sym.Name->Val.starts_with("$")) { return false; }
+
+      // A borrow points at a value that belongs to someone else, so
+      // consuming it is not this scope's job.
+      if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return false; }
+      if (sym.Type->GetConvention() != nullptr) { return false; }
+
+      // The value already left, whole.
+      if (spp::get<0>(sym.MemInfo->AstInitialization) == nullptr) { return false; }
+
+      // A symbol holding escaping borrows cannot be moved at all: the borrow rules forbid it, so that the borrow cannot
+      // outlive what it points at. Asking linearity to consume it would demand a move the language prohibits, which
+      // leaves no way to write the value at all. It owns nothing to account for in any case - what it holds is borrows,
+      // and those belong to whoever they point at. A "&mut"-capturing closure is the usual shape.
+      //
+      // Todo: A generator handle is a container of escaping borrows too, and it *does* own its coroutine frame, so this
+      //  exempts a real leak. Frames are not reachable through the lexical scope ends anyway, and need their own answer.
+      if (not sym.MemInfo->AstContainedEscapingBorrows.IsEmpty()) { return false; }
+
+      // Copying leaves the original in place, so a copyable value is
+      // never owed to anyone.
+      const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym.Type.get());
+      if (type_sym == nullptr or type_sym->IsCopyable()) { return false; }
+
+      // Taking every non-copyable attribute off a value leaves nothing
+      // of it to consume. The list has to be non-empty for this to mean
+      // anything: a type whose attributes are all copyable has no
+      // attribute that can be moved off, and would otherwise read as
+      // consumed from the moment it was created. Such a type is
+      // consumed by being destructured instead.
+      if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return true; }
+
+      const auto owner = sym.Name->ToString();
+      for (auto const &attr : type_utils::GetAllAttrs(*sym.Type, sm)) {
+        const auto attr_type_sym = spp::get<1>(attr);
+        if (attr_type_sym == nullptr or attr_type_sym->IsCopyable()) { continue; }
+
+        // Same string-prefix comparison the overlap checks use: a move
+        // of "a" covers "a.b", and a move of "a.b" covers "a.b" itself.
+        const auto region = owner + "." + spp::get<0>(attr)->ToString();
+        const auto covered = genex::any_of(
+          sym.MemInfo->AstPartialMoves, [&region](auto const *pm) { return region.starts_with(pm->ToString()); });
+        if (not covered) { return true; }
+      }
+
+      return false;
+    }
   }
-
-  auto RestoreFrom(Saved const &saved) -> void {
-    for (auto const &[sym, snapshot] : saved) { sym->MemInfo->FillFromSnapshot(snapshot); }
-  }
-}
-
-auto spp::analyse::utils::linear_utils::IsLive(
-  scopes::VariableSymbol const &sym,
-  scopes::ScopeManager &sm)
-  -> bool {
-  // A symbol that never owned a value has nothing to answer for:
-  // an unbound generic, a compile-time constant (which has no
-  // runtime existence), or a symbol with no type to reason about.
-  if (sym.IsGeneric) { return false; }
-
-  // A flow-narrowing symbol is a view of another symbol's value,
-  // typed as whatever a pattern matched. It shares the storage
-  // rather than owning it, so the obligation stays with the symbol
-  // it narrows.
-  if (sym.IsFlowNarrowing) { return false; }
-  if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
-  if (sym.MemInfo->AstCompTime != nullptr) { return false; }
-
-  // Todo: A "$" name is a desugaring temporary - the iterator behind a "loop ... in", the subject a destructure was
-  //  bound to, the slot an early return writes through - and none of it is written by the programmer, so reporting it
-  //  blames code nobody can fix. Exempting it is a real gap rather than a nicety: "$_iter" holds an iterator that
-  //  genuinely goes unconsumed. The desugarings have to be made linear-correct, and then this goes away.
-  if (sym.Name != nullptr and sym.Name->Val.starts_with("$")) { return false; }
-
-  // A borrow points at a value that belongs to someone else, so
-  // consuming it is not this scope's job.
-  if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return false; }
-  if (sym.Type->GetConvention() != nullptr) { return false; }
-
-  // The value already left, whole.
-  if (spp::get<0>(sym.MemInfo->AstInitialization) == nullptr) { return false; }
-
-  // A symbol holding escaping borrows cannot be moved at all: the borrow rules forbid it, so that the borrow cannot
-  // outlive what it points at. Asking linearity to consume it would demand a move the language prohibits, which
-  // leaves no way to write the value at all. It owns nothing to account for in any case - what it holds is borrows,
-  // and those belong to whoever they point at. A "&mut"-capturing closure is the usual shape.
-  //
-  // Todo: A generator handle is a container of escaping borrows too, and it *does* own its coroutine frame, so this
-  //  exempts a real leak. Frames are not reachable through the lexical scope ends anyway, and need their own answer.
-  if (not sym.MemInfo->AstContainedEscapingBorrows.IsEmpty()) { return false; }
-
-  // Copying leaves the original in place, so a copyable value is
-  // never owed to anyone.
-  const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym.Type.get());
-  if (type_sym == nullptr or type_sym->IsCopyable()) { return false; }
-
-  // Taking every non-copyable attribute off a value leaves nothing
-  // of it to consume. The list has to be non-empty for this to mean
-  // anything: a type whose attributes are all copyable has no
-  // attribute that can be moved off, and would otherwise read as
-  // consumed from the moment it was created. Such a type is
-  // consumed by being destructured instead.
-  if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return true; }
-
-  const auto owner = sym.Name->ToString();
-  for (auto const &attr : type_utils::GetAllAttrs(*sym.Type, sm)) {
-    const auto attr_type_sym = spp::get<1>(attr);
-    if (attr_type_sym == nullptr or attr_type_sym->IsCopyable()) { continue; }
-
-    // Same string-prefix comparison the overlap checks use: a move
-    // of "a" covers "a.b", and a move of "a.b" covers "a.b" itself.
-    const auto region = owner + "." + spp::get<0>(attr)->ToString();
-    const auto covered = genex::any_of(
-      sym.MemInfo->AstPartialMoves, [&region](auto const *pm) { return region.starts_with(pm->ToString()); });
-    if (not covered) { return true; }
-  }
-
-  return false;
 }
 
 auto spp::analyse::utils::linear_utils::CheckDeferredForScope(

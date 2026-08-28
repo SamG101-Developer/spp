@@ -49,83 +49,431 @@ import genex;
 import std;
 import sys;
 
+namespace spp::analyse::utils::overload_utils {
+  namespace {
+    auto NamedArgsOnly(
+      Vec<Unique<asts::GenericArgumentAst>> &&args)
+      -> Vec<Unique<asts::GenericArgumentAst>> {
+      //
+      using namespace spp::asts;
+      auto out = Vec<Unique<GenericArgumentAst>>();
+      for (auto &&arg : args) {
+        const auto named = arg->To<GenericArgumentTypeKeywordAst>() != nullptr
+          or arg->To<GenericArgumentCompKeywordAst>() != nullptr;
+        if (named) { out.EmplaceBack(std::move(arg)); }
+      }
+      return out;
+    }
+
+    /**
+     * Determine whether a (stripped) parameter type refers to a generic that is "rigid" at the call site: ie a
+     * generic parameter belonging to a scope that encloses the caller, and so is already fixed rather than being
+     * inferred/substituted for this particular call.
+     *
+     * When a parameter's type is such a rigid generic (eg calling @code slice_ref(from: I, into: I)@endcode from within
+     * a method of @code sup [V, I] SliceRef[V, I]@endcode), the argument must match that generic exactly. This is
+     * different from the "matches anything" behaviour of @code RelaxedTypeEq@endcode, which is only appropriate when a
+     * generic is genuinely free to be inferred for the call (eg a non-substitutable superclass generic in a sup-ext
+     * block, which is not visible as a generic from the caller's scope).
+     */
+    auto IsRigidGenericAtCaller(
+      asts::TypeAst const &param_type,
+      scopes::Scope const &caller_scope)
+      -> bool {
+      const auto stripped = param_type.WithoutGenerics()->WithoutConvention();
+      const auto sym = caller_scope.GetTypeSymbol(stripped.get());
+      return sym != nullptr and sym->IsGeneric;
+    }
+
+    /**
+     * Whether a name that @c RelaxedTypeEq had to bind in order to match is one the caller cannot choose. The same
+     * rigidity test as @c IsRigidGenericAtCaller, applied to the bindings the relaxed match produced rather than to the
+     * parameter's head type, so that a generic appearing *inside* a parameter type is covered too: the "w" of
+     * @code that: &SizedInteger[w=w, signed=false]@endcode is fixed by whoever instantiated the enclosing block, even
+     * though @c SizedInteger itself is not generic and the head-type test therefore says nothing about it.
+     *
+     * A generic that is genuinely free for the call - the callee's own parameter, or a superclass generic in a sup-ext
+     * block that is not visible from the caller - is not found as a generic here, so the relaxed match keeps working
+     * for the cases it exists to serve.
+     */
+    auto IsRigidBindingAtCaller(
+      asts::TypeIdentifierAst const &bound_name,
+      scopes::Scope const &caller_scope)
+      -> bool {
+      if (const auto type_sym = caller_scope.GetTypeSymbol(&bound_name); type_sym != nullptr) {
+        return type_sym->IsGeneric;
+      }
+      const auto as_id = asts::IdentifierAst::FromType(bound_name);
+      const auto comp_sym = caller_scope.GetVarSymbol(as_id.get());
+      return comp_sym != nullptr and comp_sym->IsGeneric;
+    }
+
+    /**
+     * Whether a prototype's signature is written in terms of @c Self , and so reads differently per implementer.
+     */
+    auto SignatureNamesSelf(
+      asts::FunctionPrototypeAst const &fn_proto)
+      -> bool {
+      const auto names_self = [](asts::TypeAst const &type) {
+        return genex::any_of(type.Iterator(), [](auto const &part) { return part->Name == "Self"; });
+      };
+      return names_self(*fn_proto.ReturnType)
+        or genex::any_of(fn_proto.FnParamGroup->GetNonSelfParams(), [&](auto const *p) { return names_self(*p->Type); });
+    }
+
+    auto RetrieveOwnerGenericArgs(
+      Shared<asts::TypeAst> const &fwd_type,
+      asts::meta::CompilerMetaData const *meta)
+      -> Vec<Unique<asts::GenericArgumentAst>> {
+      // A forwarding type stands in for the owner, so its
+      // generics are the ones that count.
+      if (fwd_type != nullptr) {
+        return NamedArgsOnly(std::move(fwd_type->LastTypePart()->GnArgGroup->Args));
+      }
+
+      // Otherwise take them from the type the call was made
+      // on, if it was made on one at all - a module-level
+      // function has no owner to inherit from.
+      const auto is_postfix = meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>();
+      const auto is_type = is_postfix ? asts::AstCloneShared(is_postfix->Lhs->To<asts::TypeAst>()) : nullptr;
+      if (is_type != nullptr) {
+        return NamedArgsOnly(std::move(is_type->LastTypePart()->GnArgGroup->Args));
+      }
+
+      return {};
+    }
+
+    auto RetrieveAllOverloads(
+      asts::IdentifierAst const *fn_name,
+      scopes::Scope const &fn_owner_scope,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta)
+      -> OverloadCandidates {
+      //
+      using func_utils::IsTargetCallable;
+      using func_utils::CreateCallablePrototype;
+
+      // For named functions (ie non-closures), get all the
+      // function overload implementation scopes.
+      auto all_overloads = fn_name
+        ? func_utils::GetAllFunctionScopes(*fn_name, &fn_owner_scope, *sm, meta)
+        : Vec<func_utils::FunctionOverload>{};
+      if (not all_overloads.IsEmpty()) {
+        return OverloadCandidates{false, nullptr, std::move(all_overloads)};
+      }
+
+      // If there are no scopes, assume that this is a closure
+      // (do functional type check).
+      const auto closure_fn_type = IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
+      if (closure_fn_type != nullptr) {
+        auto closure_fn_proto = CreateCallablePrototype(*closure_fn_type);
+        all_overloads.EmplaceBack(func_utils::FunctionOverload{
+          .FnScope = sm->CurrentScope,
+          .Proto = closure_fn_proto.get(),
+          .SupGenerics = asts::GenericArgumentGroupAst::NewEmpty(),
+          .FwdType = nullptr
+        });
+        return OverloadCandidates{true, std::move(closure_fn_proto), std::move(all_overloads)};
+      }
+
+      // Otherwise, there are no scopes (handled in caller).
+      return OverloadCandidates{false, nullptr, {}};
+    }
+
+    auto PropagateMethodToFunction(
+      asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
+      asts::TypeAst const &fn_owner_type,
+      asts::IdentifierAst const &fn_name,
+      asts::PostfixExpressionAst const &cast_lhs,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta)
+      -> PropagatedMethodCall {
+      //
+      using func_utils::ConvertMethodToFuncForm;
+
+      // Get the function conversion of the method (free
+      // function with self argument).
+      auto [transformed_lhs, transformed_fn_call] = ConvertMethodToFuncForm(
+        fn_owner_type, fn_name, cast_lhs, fn_call, *sm, meta);
+
+      // Determine the overload based off the function
+      // (uniform system).
+      meta->Save();
+      meta->PostfixExpressionLhs = transformed_lhs.get();
+      auto [overload, is_closure] = DetermineOverload(
+        *transformed_fn_call, sm, meta);
+      meta->Restore();
+
+      // Get the argument group with the "self" injection,
+      // and bind it to the function call.
+      fn_call.FnArgGroup = asts::AstClone(transformed_fn_call->FnArgGroup);
+
+      // Create a mock postfix based on the transformation.
+      transformed_lhs->Stage7_AnalyseSemantics(sm, meta);
+      auto pf = MakeUnique<asts::PostfixExpressionAst>(
+        std::move(transformed_lhs), std::move(transformed_fn_call));
+      return PropagatedMethodCall{std::move(overload), is_closure, std::move(pf)};
+    }
+
+    auto InferAllGenerics(
+      asts::FunctionPrototypeAst const &fn_proto,
+      asts::FunctionParameterGroupAst const &fn_params,
+      asts::FunctionCallArgumentGroupAst &fn_args,
+      asts::GenericArgumentGroupAst &gn_args,
+      const bool is_variadic_fn,
+      scopes::Scope const *fn_scope,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta)
+      -> void {
+      //
+      using generic_bindings::EnforceGenericConstraintsAllArgs;
+      using generic_bindings::InferGnArgs;
+      using func_utils::NameFnArgs;
+
+      // Name the positional function arguments. The generic arguments
+      // were named by the caller, which has to do it before it merges
+      // the owner's and the "sup" block's arguments in.
+      NameFnArgs(fn_args, fn_params, *sm, gn_args.GetAllArgs());
+
+      // The inference source is all the function arguments (except for
+      // "self")
+      auto generic_infer_source = fn_args.GetKeywordArgs()
+        | genex::views::remove_if([](auto const &a) { return a->Name->Val == "self"; })
+        | genex::views::transform([&](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
+        | genex::to<Vec>();
+
+      // The inference target is all of the function parameters (except
+      // for "self").
+      auto generic_infer_target = fn_params.GetNonSelfParams()
+        | genex::views::transform([](auto *x) { return MakePair(x->ExtractName(), x->Type); })
+        | genex::to<Vec>();
+
+      // Infer all of the generics from the function arguments and
+      // parameters.
+      InferGnArgs(
+        *fn_proto.GnParamGroup, gn_args,
+        MakeShared<generic_bindings::InferenceSourceMap>(
+          generic_infer_source.begin(), generic_infer_source.end()),
+        MakeShared<generic_bindings::InferenceTargetMap>(
+          generic_infer_target.begin(), generic_infer_target.end()),
+        meta->PostfixExpressionLhs->InferType(sm, meta),
+        *fn_scope,
+        is_variadic_fn ? fn_proto.FnParamGroup->GetVariadicParams()->ExtractName() : nullptr,
+        false, *sm, *meta);
+
+      EnforceGenericConstraintsAllArgs(
+        *fn_proto.GnParamGroup, gn_args, *fn_scope, *sm, *meta);
+    }
+
+    auto ValidateArgsMatchParams(
+      asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
+      asts::FunctionPrototypeAst const &fn_proto,
+      scopes::Scope const *fn_scope,
+      asts::FunctionCallArgumentGroupAst const &func_args,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta)
+      -> void {
+      //
+      using errors::SppArgumentNameInvalidError;
+      using errors::SppArgumentMissingError;
+      using errors::SppTypeMismatchError;
+      using type_utils::TypeEq;
+      using type_utils::RelaxedTypeEq;
+
+      // Check any params are "Void", pop them (indexes because
+      // of unique pointers).
+      for (auto &&i : genex::views::iota(0uz, fn_proto.FnParamGroup->Params.Len())) {
+        if (type_utils::IsTypeVoid(*fn_proto.FnParamGroup->Params[i]->Type, *fn_scope)) {
+          genex::actions::erase(
+            fn_proto.FnParamGroup->Params, fn_proto.FnParamGroup->Params.begin() + static_cast<sys::ssize_t>(i));
+        }
+      }
+
+      // Recreate the lists of function parameters, and their
+      // names ("Void" removed, generics etc).
+      const auto func_params = fn_proto.FnParamGroup.get();
+      const auto func_param_names = fn_proto.FnParamGroup->Params
+        | genex::views::transform([](auto &&x) { return x->ExtractName(); })
+        | genex::to<Vec>();
+      const auto func_param_names_req = fn_proto.FnParamGroup->GetRequiredParams()
+        | genex::views::transform([](auto &&x) { return x->ExtractName(); })
+        | genex::to<Vec>();
+      const auto func_arg_names = func_args.GetKeywordArgs()
+        | genex::views::transform([](auto const &x) { return x->Name.get(); })
+        | genex::to<Vec>();
+
+      // Check for any keyword arguments that don't have a
+      // corresponding parameter.
+      // Todo: Can we use: "analyse::utils::func_utils::enforce_no_invalid_fn_args()"?
+      const auto invalid_args = func_arg_names
+        | genex::views::not_in(func_param_names, genex::meta::deref, genex::meta::deref)
+        | genex::to<Vec>();
+
+      const auto param_ctx = func_params->Params.IsEmpty()
+        ? static_cast<asts::Ast const*>(func_params)
+        : static_cast<asts::Ast const*>(func_params->Params[0].get());
+      RaiseIf<SppArgumentNameInvalidError>(
+        not invalid_args.IsEmpty(), {sm->CurrentScope},
+        ERR_ARGS(*param_ctx, "parameter", *invalid_args[0], "argument"));
+
+      // Check for missing parameters that don't have a
+      // corresponding argument.
+      const auto missing_params = func_param_names_req
+        | genex::views::not_in(func_arg_names, genex::meta::deref, genex::meta::deref)
+        | genex::to<Vec>();
+      RaiseIf<SppArgumentMissingError>(
+        not missing_params.IsEmpty(), {sm->CurrentScope},
+        ERR_ARGS(*missing_params[0], "parameter", fn_call, "argument"));
+
+      // Type check the arguments against the parameters. Sort
+      // the arguments into parameter order first.
+      auto sorted_func_arguments = func_args.GetKeywordArgs();
+      genex::actions::sort(
+        sorted_func_arguments,
+        {}, [&](asts::FunctionCallArgumentKeywordAst *arg) {
+          return genex::position(func_param_names, [&arg](auto const &param) { return *arg->Name == *param; });
+        });
+
+      for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->GetAllParams())) {
+        auto p_type = fn_scope->GetTypeSymbol(param->Type.get())->FqName()->WithConvention(
+          asts::AstClone(param->Type->GetConvention()));
+        if (p_type->IsSelfType()) {
+          p_type = asts::AstClone(meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>()->Lhs->To<asts::TypeAst>())->
+            WithConvention(asts::AstClone(p_type->GetConvention()));
+        }
+
+        auto a_type = arg->InferType(sm, meta);
+        auto temp = type_utils::GenericInferenceMap();
+
+        if (const auto variadic_param = param->To<asts::FunctionParameterVariadicAst>(); variadic_param != nullptr) {
+          const auto variadic_gn_param = fn_proto.GetNonGenericImpl()->GnParamGroup->GetVariadicParams();
+          const auto orig_name = dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_param->Source.OriginalType);
+          const auto is_variadic_generic_type = variadic_gn_param != nullptr
+            and orig_name != nullptr
+            and *orig_name == *dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_gn_param->Name);
+
+          if (not is_variadic_generic_type) {
+            auto ts = Vec(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
+            p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
+            p_type->Stage7_AnalyseSemantics(sm, meta);
+          }
+        }
+
+        // Special case for "self" parameters.
+        if (const auto self_param = param->To<asts::FunctionParameterSelfAst>(); self_param != nullptr) {
+          arg->Conv = asts::AstClone(self_param->Conv);
+        }
+
+        // Regular parameter without arg folding. The double check is
+        // required for generics applied to the superclass in sup-ext
+        // that cannot be substituted because they can be anything,
+        // so reverse type check them with the "relaxed" variation.
+        // This is the only place this is required.
+        else if (not type_utils::ConventionEq(*p_type, *a_type)
+          or not TypeEq(*p_type, *a_type, *fn_scope, *sm->CurrentScope)) {
+          // If the parameter's type is a generic that is rigid at
+          // the call site (defined in a scope enclosing the caller,
+          // so already fixed), the argument must match it exactly.
+          const auto param_is_rigid_generic = IsRigidGenericAtCaller(
+            *p_type, *sm->CurrentScope);
+          const auto relaxed_matched = not param_is_rigid_generic
+            and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp);
+
+          // A relaxed match that only held because it bound a
+          // generic the caller cannot choose is not a match.
+          const auto relaxed_bound_rigid = relaxed_matched and genex::any_of(temp, [&](auto const &binding) {
+            return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
+          });
+
+          RaiseIf<SppTypeMismatchError>(
+            not relaxed_matched or relaxed_bound_rigid,
+            {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
+        }
+
+        // The argument may have matched its parameter by forwarding
+        // ("&Vec[T]" satisfying a "&View[T]" parameter), in which
+        // case the value the callee is handed is the forwarded-to
+        // one, so the argument becomes that call. This is the
+        // argument-position counterpart of a method being called on
+        // the value its receiver forwards to.
+        //
+        // Todo: an argument accepted by the relaxed match above never reaches here, because that branch and this one are
+        //  alternatives. A parameter written as "&Self" is relaxed-matched against anything, so "eq(&self, that: &Self)"
+        //  on a "StrView" takes a "&Str" unforwarded and reads it through "StrView"'s "{ptr, length}" shape - which is
+        //  why "Str == Str" is false for equal strings. Moving the check out of the "else" is not enough on its own;
+        //  "TypeFwdEq" also returns false for this pair and it is not yet clear why.
+        else if (type_utils::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
+          if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
+            arg->Val = std::move(fwd_call);
+          }
+        }
+      }
+    }
+
+    auto ManageMatchedOverloads(
+      asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
+      Vec<PassedOverload> const &pass_overloads,
+      Vec<FailedOverload> const &fail_overloads,
+      asts::FunctionCallArgumentGroupAst const &arg_group,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta)
+      -> void {
+      // If there are no pass overloads, raise an error.
+      using namespace std::string_literals;
+      if (pass_overloads.IsEmpty()) {
+        auto failed_signatures_and_errors = "\n" + (fail_overloads
+          | genex::views::transform([](auto const &f) {
+            return "    - "s + f.Proto->PrintSignature("") + ": "s + f.Reason;
+          })
+          | genex::views::intersperse("\n"_str)
+          | genex::views::join
+          | genex::to<Str>());
+
+        auto arg_usage_signature = arg_group.Args
+          | genex::views::transform([sm, meta](auto const &x) {
+            return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self";
+          })
+          | genex::views::intersperse(", "_str)
+          | genex::views::join
+          | genex::to<Str>();
+
+        auto sub_errors = fail_overloads
+          | genex::views::transform([](auto const &f) { return f.Error; })
+          | genex::to<Vec>();
+
+        Raise<errors::SppFunctionCallNoValidSignaturesError>(
+          {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature),
+          std::move(sub_errors));
+      }
+
+      // If there are multiple pass overloads, raise an error.
+      if (pass_overloads.Len() > 1) {
+        auto signatures = "\n" + (pass_overloads
+          | genex::views::transform([](auto const &x) { return "    - "s + x.Proto->PrintSignature(""); })
+          | genex::views::intersperse("\n"_str)
+          | genex::views::join
+          | genex::to<Str>());
+
+        auto arg_usage_signature = arg_group.Args
+          | genex::views::transform([sm, meta](auto const &x) {
+            return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self";
+          })
+          | genex::views::intersperse(", "_str)
+          | genex::views::join
+          | genex::to<Str>();
+
+        Raise<errors::SppFunctionCallOverloadAmbiguousError>(
+          {sm->CurrentScope}, ERR_ARGS(fn_call, signatures, arg_usage_signature));
+      }
+    }
+  }
+}
+
 #define SPP_FN_RES_ERR_WRAPPER(error_type, message)                          \
   catch (error_type const &e) {                                              \
     fail_overloads.EmplaceBack(FailedOverload{fn_proto, e.what(), message}); \
     while (meta->Depth() > original_meta_depth) { meta->Restore(); }         \
   }
-
-namespace {
-  auto NamedArgsOnly(
-    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> &&args)
-    -> spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> {
-    //
-    using namespace spp::asts;
-    auto out = spp::Vec<spp::Unique<GenericArgumentAst>>();
-    for (auto &&arg : args) {
-      const auto named = arg->To<GenericArgumentTypeKeywordAst>() != nullptr
-        or arg->To<GenericArgumentCompKeywordAst>() != nullptr;
-      if (named) { out.EmplaceBack(std::move(arg)); }
-    }
-    return out;
-  }
-
-  /**
-   * Determine whether a (stripped) parameter type refers to a generic that is "rigid" at the call site: ie a
-   * generic parameter belonging to a scope that encloses the caller, and so is already fixed rather than being
-   * inferred/substituted for this particular call.
-   *
-   * When a parameter's type is such a rigid generic (eg calling @code slice_ref(from: I, into: I)@endcode from within
-   * a method of @code sup [V, I] SliceRef[V, I]@endcode), the argument must match that generic exactly. This is
-   * different from the "matches anything" behaviour of @code RelaxedTypeEq@endcode, which is only appropriate when a
-   * generic is genuinely free to be inferred for the call (eg a non-substitutable superclass generic in a sup-ext
-   * block, which is not visible as a generic from the caller's scope).
-   */
-  auto IsRigidGenericAtCaller(
-    spp::asts::TypeAst const &param_type,
-    spp::analyse::scopes::Scope const &caller_scope)
-    -> bool {
-    const auto stripped = param_type.WithoutGenerics()->WithoutConvention();
-    const auto sym = caller_scope.GetTypeSymbol(stripped.get());
-    return sym != nullptr and sym->IsGeneric;
-  }
-
-  /**
-   * Whether a name that @c RelaxedTypeEq had to bind in order to match is one the caller cannot choose. The same
-   * rigidity test as @c IsRigidGenericAtCaller, applied to the bindings the relaxed match produced rather than to the
-   * parameter's head type, so that a generic appearing *inside* a parameter type is covered too: the "w" of
-   * @code that: &SizedInteger[w=w, signed=false]@endcode is fixed by whoever instantiated the enclosing block, even
-   * though @c SizedInteger itself is not generic and the head-type test therefore says nothing about it.
-   *
-   * A generic that is genuinely free for the call - the callee's own parameter, or a superclass generic in a sup-ext
-   * block that is not visible from the caller - is not found as a generic here, so the relaxed match keeps working
-   * for the cases it exists to serve.
-   */
-  auto IsRigidBindingAtCaller(
-    spp::asts::TypeIdentifierAst const &bound_name,
-    spp::analyse::scopes::Scope const &caller_scope)
-    -> bool {
-    if (const auto type_sym = caller_scope.GetTypeSymbol(&bound_name); type_sym != nullptr) {
-      return type_sym->IsGeneric;
-    }
-    const auto as_id = spp::asts::IdentifierAst::FromType(bound_name);
-    const auto comp_sym = caller_scope.GetVarSymbol(as_id.get());
-    return comp_sym != nullptr and comp_sym->IsGeneric;
-  }
-
-  /**
-   * Whether a prototype's signature is written in terms of @c Self , and so reads differently per implementer.
-   */
-  auto SignatureNamesSelf(
-    spp::asts::FunctionPrototypeAst const &fn_proto)
-    -> bool {
-    const auto names_self = [](spp::asts::TypeAst const &type) {
-      return genex::any_of(type.Iterator(), [](auto const &part) { return part->Name == "Self"; });
-    };
-    return names_self(*fn_proto.ReturnType)
-      or genex::any_of(fn_proto.FnParamGroup->GetNonSelfParams(), [&](auto const *p) { return names_self(*p->Type); });
-  }
-}
 
 auto spp::analyse::utils::overload_utils::DetermineOverload(
   asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
@@ -322,150 +670,6 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     fn_call.SetClosureDummyProto(std::move(candidates.ClosureProto));
   }
   return {std::move(pass_overloads[0]), candidates.IsClosure};
-}
-
-auto spp::analyse::utils::overload_utils::PropagateMethodToFunction(
-  asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
-  asts::TypeAst const &fn_owner_type,
-  asts::IdentifierAst const &fn_name,
-  asts::PostfixExpressionAst const &cast_lhs,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> PropagatedMethodCall {
-  //
-  using func_utils::ConvertMethodToFuncForm;
-
-  // Get the function conversion of the method (free
-  // function with self argument).
-  auto [transformed_lhs, transformed_fn_call] = ConvertMethodToFuncForm(
-    fn_owner_type, fn_name, cast_lhs, fn_call, *sm, meta);
-
-  // Determine the overload based off the function
-  // (uniform system).
-  meta->Save();
-  meta->PostfixExpressionLhs = transformed_lhs.get();
-  auto [overload, is_closure] = DetermineOverload(
-    *transformed_fn_call, sm, meta);
-  meta->Restore();
-
-  // Get the argument group with the "self" injection,
-  // and bind it to the function call.
-  fn_call.FnArgGroup = asts::AstClone(transformed_fn_call->FnArgGroup);
-
-  // Create a mock postfix based on the transformation.
-  transformed_lhs->Stage7_AnalyseSemantics(sm, meta);
-  auto pf = MakeUnique<asts::PostfixExpressionAst>(
-    std::move(transformed_lhs), std::move(transformed_fn_call));
-  return PropagatedMethodCall{std::move(overload), is_closure, std::move(pf)};
-}
-
-auto spp::analyse::utils::overload_utils::RetrieveAllOverloads(
-  asts::IdentifierAst const *fn_name,
-  scopes::Scope const &fn_owner_scope,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> OverloadCandidates {
-  //
-  using func_utils::IsTargetCallable;
-  using func_utils::CreateCallablePrototype;
-
-  // For named functions (ie non-closures), get all the
-  // function overload implementation scopes.
-  auto all_overloads = fn_name
-    ? func_utils::GetAllFunctionScopes(*fn_name, &fn_owner_scope, *sm, meta)
-    : Vec<func_utils::FunctionOverload>{};
-  if (not all_overloads.IsEmpty()) {
-    return OverloadCandidates{false, nullptr, std::move(all_overloads)};
-  }
-
-  // If there are no scopes, assume that this is a closure
-  // (do functional type check).
-  const auto closure_fn_type = IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
-  if (closure_fn_type != nullptr) {
-    auto closure_fn_proto = CreateCallablePrototype(*closure_fn_type);
-    all_overloads.EmplaceBack(func_utils::FunctionOverload{
-      .FnScope = sm->CurrentScope,
-      .Proto = closure_fn_proto.get(),
-      .SupGenerics = asts::GenericArgumentGroupAst::NewEmpty(),
-      .FwdType = nullptr
-    });
-    return OverloadCandidates{true, std::move(closure_fn_proto), std::move(all_overloads)};
-  }
-
-  // Otherwise, there are no scopes (handled in caller).
-  return OverloadCandidates{false, nullptr, {}};
-}
-
-auto spp::analyse::utils::overload_utils::RetrieveOwnerGenericArgs(
-  Shared<asts::TypeAst> const &fwd_type,
-  asts::meta::CompilerMetaData const *meta)
-  -> Vec<Unique<asts::GenericArgumentAst>> {
-  // A forwarding type stands in for the owner, so its
-  // generics are the ones that count.
-  if (fwd_type != nullptr) {
-    return NamedArgsOnly(std::move(fwd_type->LastTypePart()->GnArgGroup->Args));
-  }
-
-  // Otherwise take them from the type the call was made
-  // on, if it was made on one at all - a module-level
-  // function has no owner to inherit from.
-  const auto is_postfix = meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>();
-  const auto is_type = is_postfix ? asts::AstCloneShared(is_postfix->Lhs->To<asts::TypeAst>()) : nullptr;
-  if (is_type != nullptr) {
-    return NamedArgsOnly(std::move(is_type->LastTypePart()->GnArgGroup->Args));
-  }
-
-  return {};
-}
-
-auto spp::analyse::utils::overload_utils::InferAllGenerics(
-  asts::FunctionPrototypeAst const &fn_proto,
-  asts::FunctionParameterGroupAst const &fn_params,
-  asts::FunctionCallArgumentGroupAst &fn_args,
-  asts::GenericArgumentGroupAst &gn_args,
-  const bool is_variadic_fn,
-  scopes::Scope const *fn_scope,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> void {
-  //
-  using generic_bindings::EnforceGenericConstraintsAllArgs;
-  using generic_bindings::InferGnArgs;
-  using func_utils::NameFnArgs;
-
-  // Name the positional function arguments. The generic arguments
-  // were named by the caller, which has to do it before it merges
-  // the owner's and the "sup" block's arguments in.
-  NameFnArgs(fn_args, fn_params, *sm, gn_args.GetAllArgs());
-
-  // The inference source is all the function arguments (except for
-  // "self")
-  auto generic_infer_source = fn_args.GetKeywordArgs()
-    | genex::views::remove_if([](auto const &a) { return a->Name->Val == "self"; })
-    | genex::views::transform([&](auto const &x) { return MakePair(x->Name, x->Val->InferType(sm, meta)); })
-    | genex::to<Vec>();
-
-  // The inference target is all of the function parameters (except
-  // for "self").
-  auto generic_infer_target = fn_params.GetNonSelfParams()
-    | genex::views::transform([](auto *x) { return MakePair(x->ExtractName(), x->Type); })
-    | genex::to<Vec>();
-
-  // Infer all of the generics from the function arguments and
-  // parameters.
-  InferGnArgs(
-    *fn_proto.GnParamGroup, gn_args,
-    MakeShared<generic_bindings::InferenceSourceMap>(
-      generic_infer_source.begin(), generic_infer_source.end()),
-    MakeShared<generic_bindings::InferenceTargetMap>(
-      generic_infer_target.begin(), generic_infer_target.end()),
-    meta->PostfixExpressionLhs->InferType(sm, meta),
-    *fn_scope,
-    is_variadic_fn ? fn_proto.FnParamGroup->GetVariadicParams()->ExtractName() : nullptr,
-    false, *sm, *meta);
-
-  EnforceGenericConstraintsAllArgs(
-    *fn_proto.GnParamGroup, gn_args, *fn_scope, *sm, *meta);
 }
 
 auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedPrototype(
@@ -681,206 +885,4 @@ auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedP
   }
 
   return {fn_proto, fn_scope};
-}
-
-auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
-  asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-  Vec<PassedOverload> const &pass_overloads,
-  Vec<FailedOverload> const &fail_overloads,
-  asts::FunctionCallArgumentGroupAst const &arg_group,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> void {
-  // If there are no pass overloads, raise an error.
-  using namespace std::string_literals;
-  if (pass_overloads.IsEmpty()) {
-    auto failed_signatures_and_errors = "\n" + (fail_overloads
-      | genex::views::transform([](auto const &f) {
-        return "    - "s + f.Proto->PrintSignature("") + ": "s + f.Reason;
-      })
-      | genex::views::intersperse("\n"_str)
-      | genex::views::join
-      | genex::to<Str>());
-
-    auto arg_usage_signature = arg_group.Args
-      | genex::views::transform([sm, meta](auto const &x) {
-        return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self";
-      })
-      | genex::views::intersperse(", "_str)
-      | genex::views::join
-      | genex::to<Str>();
-
-    auto sub_errors = fail_overloads
-      | genex::views::transform([](auto const &f) { return f.Error; })
-      | genex::to<Vec>();
-
-    Raise<errors::SppFunctionCallNoValidSignaturesError>(
-      {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature),
-      std::move(sub_errors));
-  }
-
-  // If there are multiple pass overloads, raise an error.
-  if (pass_overloads.Len() > 1) {
-    auto signatures = "\n" + (pass_overloads
-      | genex::views::transform([](auto const &x) { return "    - "s + x.Proto->PrintSignature(""); })
-      | genex::views::intersperse("\n"_str)
-      | genex::views::join
-      | genex::to<Str>());
-
-    auto arg_usage_signature = arg_group.Args
-      | genex::views::transform([sm, meta](auto const &x) {
-        return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self";
-      })
-      | genex::views::intersperse(", "_str)
-      | genex::views::join
-      | genex::to<Str>();
-
-    Raise<errors::SppFunctionCallOverloadAmbiguousError>(
-      {sm->CurrentScope}, ERR_ARGS(fn_call, signatures, arg_usage_signature));
-  }
-}
-
-auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
-  asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-  asts::FunctionPrototypeAst const &fn_proto,
-  scopes::Scope const *fn_scope,
-  asts::FunctionCallArgumentGroupAst const &func_args,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> void {
-  //
-  using errors::SppArgumentNameInvalidError;
-  using errors::SppArgumentMissingError;
-  using errors::SppTypeMismatchError;
-  using type_utils::TypeEq;
-  using type_utils::RelaxedTypeEq;
-
-  // Check any params are "Void", pop them (indexes because
-  // of unique pointers).
-  for (auto &&i : genex::views::iota(0uz, fn_proto.FnParamGroup->Params.Len())) {
-    if (type_utils::IsTypeVoid(*fn_proto.FnParamGroup->Params[i]->Type, *fn_scope)) {
-      genex::actions::erase(
-        fn_proto.FnParamGroup->Params, fn_proto.FnParamGroup->Params.begin() + static_cast<sys::ssize_t>(i));
-    }
-  }
-
-  // Recreate the lists of function parameters, and their
-  // names ("Void" removed, generics etc).
-  const auto func_params = fn_proto.FnParamGroup.get();
-  const auto func_param_names = fn_proto.FnParamGroup->Params
-    | genex::views::transform([](auto &&x) { return x->ExtractName(); })
-    | genex::to<Vec>();
-  const auto func_param_names_req = fn_proto.FnParamGroup->GetRequiredParams()
-    | genex::views::transform([](auto &&x) { return x->ExtractName(); })
-    | genex::to<Vec>();
-  const auto func_arg_names = func_args.GetKeywordArgs()
-    | genex::views::transform([](auto const &x) { return x->Name.get(); })
-    | genex::to<Vec>();
-
-  // Check for any keyword arguments that don't have a
-  // corresponding parameter.
-  // Todo: Can we use: "analyse::utils::func_utils::enforce_no_invalid_fn_args()"?
-  const auto invalid_args = func_arg_names
-    | genex::views::not_in(func_param_names, genex::meta::deref, genex::meta::deref)
-    | genex::to<Vec>();
-
-  const auto param_ctx = func_params->Params.IsEmpty()
-    ? static_cast<asts::Ast const*>(func_params)
-    : static_cast<asts::Ast const*>(func_params->Params[0].get());
-  RaiseIf<SppArgumentNameInvalidError>(
-    not invalid_args.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(*param_ctx, "parameter", *invalid_args[0], "argument"));
-
-  // Check for missing parameters that don't have a
-  // corresponding argument.
-  const auto missing_params = func_param_names_req
-    | genex::views::not_in(func_arg_names, genex::meta::deref, genex::meta::deref)
-    | genex::to<Vec>();
-  RaiseIf<SppArgumentMissingError>(
-    not missing_params.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(*missing_params[0], "parameter", fn_call, "argument"));
-
-  // Type check the arguments against the parameters. Sort
-  // the arguments into parameter order first.
-  auto sorted_func_arguments = func_args.GetKeywordArgs();
-  genex::actions::sort(
-    sorted_func_arguments,
-    {}, [&](asts::FunctionCallArgumentKeywordAst *arg) {
-      return genex::position(func_param_names, [&arg](auto const &param) { return *arg->Name == *param; });
-    });
-
-  for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->GetAllParams())) {
-    auto p_type = fn_scope->GetTypeSymbol(param->Type.get())->FqName()->WithConvention(
-      asts::AstClone(param->Type->GetConvention()));
-    if (p_type->IsSelfType()) {
-      p_type = asts::AstClone(meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>()->Lhs->To<asts::TypeAst>())->
-        WithConvention(asts::AstClone(p_type->GetConvention()));
-    }
-
-    auto a_type = arg->InferType(sm, meta);
-    auto temp = type_utils::GenericInferenceMap();
-
-    if (const auto variadic_param = param->To<asts::FunctionParameterVariadicAst>(); variadic_param != nullptr) {
-      const auto variadic_gn_param = fn_proto.GetNonGenericImpl()->GnParamGroup->GetVariadicParams();
-      const auto orig_name = dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_param->Source.OriginalType);
-      const auto is_variadic_generic_type = variadic_gn_param != nullptr
-        and orig_name != nullptr
-        and *orig_name == *dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_gn_param->Name);
-
-      if (not is_variadic_generic_type) {
-        auto ts = Vec(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
-        p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
-        p_type->Stage7_AnalyseSemantics(sm, meta);
-      }
-    }
-
-    // Special case for "self" parameters.
-    if (const auto self_param = param->To<asts::FunctionParameterSelfAst>(); self_param != nullptr) {
-      arg->Conv = asts::AstClone(self_param->Conv);
-    }
-
-    // Regular parameter without arg folding. The double check is
-    // required for generics applied to the superclass in sup-ext
-    // that cannot be substituted because they can be anything,
-    // so reverse type check them with the "relaxed" variation.
-    // This is the only place this is required.
-    else if (not type_utils::ConventionEq(*p_type, *a_type)
-      or not TypeEq(*p_type, *a_type, *fn_scope, *sm->CurrentScope)) {
-      // If the parameter's type is a generic that is rigid at
-      // the call site (defined in a scope enclosing the caller,
-      // so already fixed), the argument must match it exactly.
-      const auto param_is_rigid_generic = IsRigidGenericAtCaller(
-        *p_type, *sm->CurrentScope);
-      const auto relaxed_matched = not param_is_rigid_generic
-        and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp);
-
-      // A relaxed match that only held because it bound a
-      // generic the caller cannot choose is not a match.
-      const auto relaxed_bound_rigid = relaxed_matched and genex::any_of(temp, [&](auto const &binding) {
-        return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
-      });
-
-      RaiseIf<SppTypeMismatchError>(
-        not relaxed_matched or relaxed_bound_rigid,
-        {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
-    }
-
-    // The argument may have matched its parameter by forwarding
-    // ("&Vec[T]" satisfying a "&View[T]" parameter), in which
-    // case the value the callee is handed is the forwarded-to
-    // one, so the argument becomes that call. This is the
-    // argument-position counterpart of a method being called on
-    // the value its receiver forwards to.
-    //
-    // Todo: an argument accepted by the relaxed match above never reaches here, because that branch and this one are
-    //  alternatives. A parameter written as "&Self" is relaxed-matched against anything, so "eq(&self, that: &Self)"
-    //  on a "StrView" takes a "&Str" unforwarded and reads it through "StrView"'s "{ptr, length}" shape - which is
-    //  why "Str == Str" is false for equal strings. Moving the check out of the "else" is not enough on its own;
-    //  "TypeFwdEq" also returns false for this pair and it is not yet clear why.
-    else if (type_utils::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
-      if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
-        arg->Val = std::move(fwd_call);
-      }
-    }
-  }
 }

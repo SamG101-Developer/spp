@@ -34,33 +34,34 @@ import spp.codegen.llvm_type;
 import spp.utils.error_formatter;
 import genex;
 
-namespace {
-  auto GetSupGenericParamsFromScope(
-    spp::analyse::scopes::Scope const &sup_scope)
-    -> spp::asts::GenericParameterGroupAst const* {
-    //
-    using namespace spp::asts;
-    if (auto const *fns = sup_scope.AstNode->To<SupPrototypeFunctionsAst>(); fns != nullptr) {
-      return fns->GnParamGroup.get();
+namespace spp::analyse::scopes {
+  namespace {
+    auto GetSupGenericParamsFromScope(
+      Scope const &sup_scope)
+      -> asts::GenericParameterGroupAst const* {
+      //
+      using namespace spp::asts;
+      if (auto const *fns = sup_scope.AstNode->To<SupPrototypeFunctionsAst>(); fns != nullptr) {
+        return fns->GnParamGroup.get();
+      }
+      if (auto const *ext = sup_scope.AstNode->To<SupPrototypeExtensionAst>(); ext != nullptr) {
+        return ext->GnParamGroup.get();
+      }
+      return nullptr;
     }
-    if (auto const *ext = sup_scope.AstNode->To<SupPrototypeExtensionAst>(); ext != nullptr) {
-      return ext->GnParamGroup.get();
+
+    auto SupConstrainsItsParams(
+      Scope const &sup_scope)
+      -> bool {
+      //
+      auto const *params = GetSupGenericParamsFromScope(sup_scope);
+      if (params == nullptr) { return false; }
+
+      return genex::any_of(params->GetTypeParams(), [](auto const *p) {
+        return not p->Constraints->Constraints.IsEmpty();
+      });
     }
-    return nullptr;
   }
-
-  auto SupConstrainsItsParams(
-    spp::analyse::scopes::Scope const &sup_scope)
-    -> bool {
-    //
-    auto const *params = GetSupGenericParamsFromScope(sup_scope);
-    if (params == nullptr) { return false; }
-
-    return genex::any_of(params->GetTypeParams(), [](auto const *p) {
-      return not p->Constraints->Constraints.IsEmpty();
-    });
-  }
-
 }
 
 SPP_MOD_BEGIN

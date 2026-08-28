@@ -12,20 +12,22 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 SPP_MOD_BEGIN
-namespace {
-  /**
-   * Reduce a name ast to the key its table is indexed by. An identifier reduces to its interned id, which is fixed when
-   * the node is built; a type reduces to its name and generic arguments, which is only settled once the node has been
-   * analysed. Both are looked up through the table's heterogeneous key, so neither allocates.
-   */
-  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
-    spp::asts::IdentifierAst const *const sym_name) noexcept -> spp::utils::InternedId {
-    return sym_name->NameId();
-  }
+namespace spp::analyse::scopes {
+  namespace {
+    /**
+     * Reduce a name ast to the key its table is indexed by. An identifier reduces to its interned id, which is fixed when
+     * the node is built; a type reduces to its name and generic arguments, which is only settled once the node has been
+     * analysed. Both are looked up through the table's heterogeneous key, so neither allocates.
+     */
+    SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
+      asts::IdentifierAst const *const sym_name) noexcept -> spp::utils::InternedId {
+      return sym_name->NameId();
+    }
 
-  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
-    spp::asts::TypeIdentifierAst const *const sym_name) -> spp::StrView {
-    return sym_name->ToView();
+    SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
+      asts::TypeIdentifierAst const *const sym_name) -> spp::StrView {
+      return sym_name->ToView();
+    }
   }
 }
 

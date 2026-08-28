@@ -32,56 +32,60 @@ import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 import genex;
 
-auto spp::analyse::utils::bin_utils::CombineCompOps(
-  asts::BinaryExpressionAst &bin_expr,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> Unique<asts::BinaryExpressionAst> {
-  // Check the left-hand-side is a binary expression with a
-  // comparison operator. If there isn't a chaining combination
-  // to do, return a new bin expression copying the old one.
-  const auto bin_lhs = bin_expr.Lhs->To<asts::BinaryExpressionAst>();
-  if (
-    bin_lhs == nullptr or
-    not genex::contains(kBinComparisonOps, bin_expr.TokOp->TokenType) or
-    not genex::contains(kBinComparisonOps, bin_lhs->TokOp->TokenType)) {
-    return MakeUnique<asts::BinaryExpressionAst>(
-      std::move(bin_expr.Lhs),
-      std::move(bin_expr.TokOp),
-      std::move(bin_expr.Rhs));
+namespace spp::analyse::utils::bin_utils {
+  namespace {
+    auto CombineCompOps(
+      asts::BinaryExpressionAst &bin_expr,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta)
+      -> Unique<asts::BinaryExpressionAst> {
+      // Check the left-hand-side is a binary expression with a
+      // comparison operator. If there isn't a chaining combination
+      // to do, return a new bin expression copying the old one.
+      const auto bin_lhs = bin_expr.Lhs->To<asts::BinaryExpressionAst>();
+      if (
+        bin_lhs == nullptr or
+        not genex::contains(kBinComparisonOps, bin_expr.TokOp->TokenType) or
+        not genex::contains(kBinComparisonOps, bin_lhs->TokOp->TokenType)) {
+        return MakeUnique<asts::BinaryExpressionAst>(
+          std::move(bin_expr.Lhs),
+          std::move(bin_expr.TokOp),
+          std::move(bin_expr.Rhs));
+      }
+
+      // Non-symbolic value being reused -> put it into a variable
+      // first. Todo: Standardize materialization?
+      if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
+        const auto temp_var_name = ( {
+          const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
+          MakeShared<asts::IdentifierAst>(
+            bin_lhs->Rhs->PosStart(), uid);
+        });
+
+        const auto temp_let = ( {
+          auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(
+            nullptr, temp_var_name, nullptr);
+          MakeUnique<asts::LetStatementInitializedAst>(
+            nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
+        });
+
+        temp_let->Stage7_AnalyseSemantics(sm, meta);
+        bin_lhs->Rhs = asts::AstClone(temp_var_name);
+      }
+
+      // Otherwise, re-arrange the ASTs, with an "and" combinator
+      // binary expression.
+      auto lhs = asts::AstClone(bin_lhs->Rhs);
+      auto rhs = std::move(bin_expr.Rhs);
+      auto op_pos = bin_expr.TokOp->PosStart();
+      bin_expr.Rhs = MakeUnique<asts::BinaryExpressionAst>(
+        std::move(lhs), std::move(bin_expr.TokOp), std::move(rhs));
+      bin_expr.TokOp = MakeUnique<asts::TokenAst>(
+        op_pos, lex::SppTokenType::KW_AND, "and");
+
+      return CombineCompOps(bin_expr, sm, meta);
+    }
   }
-
-  // Non-symbolic value being reused -> put it into a variable
-  // first. Todo: Standardize materialization?
-  if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
-    const auto temp_var_name = ( {
-      const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
-      MakeShared<asts::IdentifierAst>(
-        bin_lhs->Rhs->PosStart(), uid);
-    });
-
-    const auto temp_let = ( {
-      auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(
-        nullptr, temp_var_name, nullptr);
-      MakeUnique<asts::LetStatementInitializedAst>(
-        nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
-    });
-
-    temp_let->Stage7_AnalyseSemantics(sm, meta);
-    bin_lhs->Rhs = asts::AstClone(temp_var_name);
-  }
-
-  // Otherwise, re-arrange the ASTs, with an "and" combinator
-  // binary expression.
-  auto lhs = asts::AstClone(bin_lhs->Rhs);
-  auto rhs = std::move(bin_expr.Rhs);
-  auto op_pos = bin_expr.TokOp->PosStart();
-  bin_expr.Rhs = MakeUnique<asts::BinaryExpressionAst>(
-    std::move(lhs), std::move(bin_expr.TokOp), std::move(rhs));
-  bin_expr.TokOp = MakeUnique<asts::TokenAst>(
-    op_pos, lex::SppTokenType::KW_AND, "and");
-
-  return CombineCompOps(bin_expr, sm, meta);
 }
 
 auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(

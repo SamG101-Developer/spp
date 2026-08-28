@@ -64,126 +64,244 @@ import spp.utils.strings;
 import genex;
 import std;
 
-namespace {
-  auto IsTypeTry(
-    spp::asts::TypeAst const &type,
-    spp::analyse::scopes::Scope const &scope)
-    -> bool {
-    // Check the type against "std::try::Try[Ok, Err]".
-    using spp::asts::generate::common_types_precompiled::TRY;
-    using spp::analyse::utils::type_utils::TypeEq;
+namespace spp::analyse::utils::type_utils {
+  namespace {
+    auto IsTypeTry(
+      asts::TypeAst const &type,
+      scopes::Scope const &scope)
+      -> bool {
+      // Check the type against "std::try::Try[Ok, Err]".
+      using asts::generate::common_types_precompiled::TRY;
 
-    return TypeEq(*type.WithoutGenerics(), *TRY, scope, scope);
-  }
-
-  auto GetAttrTypes(
-    const spp::asts::ClassPrototypeAst *cls_proto,
-    const spp::analyse::scopes::Scope *cls_scope,
-    spp::Vec<spp::Pair<spp::analyse::scopes::TypeSymbol*, spp::asts::ClassAttributeAst*>> &attr_symbols)
-    -> void {
-    // Get all attribute types, without recursion errors (this will
-    // be handled elsewhere, so assume it has been checked already).
-    for (auto const &member : cls_proto->Impl->Members
-         | genex::views::ptr
-         | genex::views::cast_dynamic<spp::asts::ClassAttributeAst*>) {
-      auto type_sym = cls_scope->GetTypeSymbol(member->Type.get());
-      if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.first; })) { continue; }
-      if (type_sym->IsGeneric) { continue; }
-
-      attr_symbols.EmplaceBack(type_sym, member);
-      GetAttrTypes(type_sym->Type, type_sym->LinkedScope, attr_symbols);
+      return TypeEq(*type.WithoutGenerics(), *TRY, scope, scope);
     }
-  }
 
-  /** How two written generic argument lists line up, for the type they were both written for. */
-  struct ArgListArity {
-    /** Whether the two lengths can describe the same type at all. */
-    bool Compatible;
+    auto GetAttrTypes(
+      const asts::ClassPrototypeAst *cls_proto,
+      const scopes::Scope *cls_scope,
+      Vec<Pair<scopes::TypeSymbol*, asts::ClassAttributeAst*>> &attr_symbols)
+      -> void {
+      // Get all attribute types, without recursion errors (this will
+      // be handled elsewhere, so assume it has been checked already).
+      for (auto const &member : cls_proto->Impl->Members
+           | genex::views::ptr
+           | genex::views::cast_dynamic<asts::ClassAttributeAst*>) {
+        auto type_sym = cls_scope->GetTypeSymbol(member->Type.get());
+        if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.first; })) { continue; }
+        if (type_sym->IsGeneric) { continue; }
 
-    /** How many leading arguments are compared one against one; anything past this is the pack. */
-    std::size_t FixedLen;
-
-    /** The variadic parameter the right-hand-side's trailing argument names, if it names one. */
-    spp::analyse::scopes::TypeSymbol *Pack;
-  };
-
-  /**
-   * Line up the written generic arguments of two types.
-   * @param proto The prototype both lists were written for, whose parameters say whether it is variadic at all.
-   * @param lhs_args The left-hand-side's written arguments.
-   * @param rhs_args The right-hand-side's written arguments, the side a pack may be written on.
-   * @param rhs_scope The scope the right-hand-side's arguments are named in.
-   */
-  auto MatchArgListArity(
-    spp::asts::ClassPrototypeAst const *proto,
-    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> const &lhs_args,
-    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> const &rhs_args,
-    spp::analyse::scopes::Scope const &rhs_scope)
-    -> ArgListArity {
-    //
-    using namespace spp::asts;
-
-    // The trailing argument is a pack only when it names a
-    // variadic parameter that is still unbound.
-    auto *pack = static_cast<spp::analyse::scopes::TypeSymbol*>(nullptr);
-    if (not rhs_args.IsEmpty()) {
-      if (auto const *last = rhs_args.Back()->To<GenericArgumentTypeAst>(); last != nullptr) {
-        const auto sym = rhs_scope.GetTypeSymbol(last->Val->WithoutGenerics().get(), false);
-        if (sym != nullptr and sym->IsGeneric and sym->IsVariadic) { pack = sym; }
+        attr_symbols.EmplaceBack(type_sym, member);
+        GetAttrTypes(type_sym->Type, type_sym->LinkedScope, attr_symbols);
       }
     }
 
-    // A pack absorbs the remainder, so the only requirement
-    // is that the arguments it does not cover are all there.
-    if (pack != nullptr) {
-      const auto fixed_len = rhs_args.Len() - 1;
+    /** How two written generic argument lists line up, for the type they were both written for. */
+    struct ArgListArity {
+      /** Whether the two lengths can describe the same type at all. */
+      bool Compatible;
+
+      /** How many leading arguments are compared one against one; anything past this is the pack. */
+      std::size_t FixedLen;
+
+      /** The variadic parameter the right-hand-side's trailing argument names, if it names one. */
+      scopes::TypeSymbol *Pack;
+    };
+
+    auto ConstraintEq(
+      Vec<Shared<asts::TypeAst>> const &constraints,
+      asts::TypeAst const &type,
+      scopes::Scope const &constraint_scope,
+      scopes::Scope const &type_scope)
+      -> bool {
+      // If there are no constraints, then the match is default true,
+      // because there are no restrictions on the "type" that can
+      // possibly be checked for.
+      if (constraints.IsEmpty()) { return true; }
+
+      // Check that all the constraints are satisfied. Wraps the call
+      // to the generic constraint enforcement (this function mainly
+      // exists for the naming uniformity in type equality).
+      return EnforceGenericConstraintsOneArg(
+        constraints, type, constraint_scope, type_scope) == nullptr;
+    }
+
+    /**
+     * Line up the written generic arguments of two types.
+     * @param proto The prototype both lists were written for, whose parameters say whether it is variadic at all.
+     * @param lhs_args The left-hand-side's written arguments.
+     * @param rhs_args The right-hand-side's written arguments, the side a pack may be written on.
+     * @param rhs_scope The scope the right-hand-side's arguments are named in.
+     */
+    auto MatchArgListArity(
+      asts::ClassPrototypeAst const *proto,
+      Vec<Unique<asts::GenericArgumentAst>> const &lhs_args,
+      Vec<Unique<asts::GenericArgumentAst>> const &rhs_args,
+      scopes::Scope const &rhs_scope)
+      -> ArgListArity {
+      //
+      using namespace spp::asts;
+
+      // The trailing argument is a pack only when it names a
+      // variadic parameter that is still unbound.
+      auto *pack = static_cast<scopes::TypeSymbol*>(nullptr);
+      if (not rhs_args.IsEmpty()) {
+        if (auto const *last = rhs_args.Back()->To<GenericArgumentTypeAst>(); last != nullptr) {
+          const auto sym = rhs_scope.GetTypeSymbol(last->Val->WithoutGenerics().get(), false);
+          if (sym != nullptr and sym->IsGeneric and sym->IsVariadic) { pack = sym; }
+        }
+      }
+
+      // A pack absorbs the remainder, so the only requirement
+      // is that the arguments it does not cover are all there.
+      if (pack != nullptr) {
+        const auto fixed_len = rhs_args.Len() - 1;
+        return {
+          .Compatible = lhs_args.Len() >= fixed_len,
+          .FixedLen = std::min(fixed_len, lhs_args.Len()),
+          .Pack = pack
+        };
+      }
+
+      // Without one, a variadic prototype's two lists have to
+      // be the same length, or the shorter would be read as a
+      // prefix of the longer. A fixed prototype needs no check:
+      // its parameters already fix the length.
+      const auto is_variadic = proto != nullptr and proto->GnParamGroup->GetVariadicParams() != nullptr;
       return {
-        .Compatible = lhs_args.Len() >= fixed_len,
-        .FixedLen = std::min(fixed_len, lhs_args.Len()),
-        .Pack = pack
+        .Compatible = not is_variadic or lhs_args.Len() == rhs_args.Len(),
+        .FixedLen = std::min(lhs_args.Len(), rhs_args.Len()),
+        .Pack = nullptr
       };
     }
 
-    // Without one, a variadic prototype's two lists have to
-    // be the same length, or the shorter would be read as a
-    // prefix of the longer. A fixed prototype needs no check:
-    // its parameters already fix the length.
-    const auto is_variadic = proto != nullptr and proto->GnParamGroup->GetVariadicParams() != nullptr;
-    return {
-      .Compatible = not is_variadic or lhs_args.Len() == rhs_args.Len(),
-      .FixedLen = std::min(lhs_args.Len(), rhs_args.Len()),
-      .Pack = nullptr
-    };
-  }
+    /**
+     * Whether every element a pack swallowed satisfies the pack's own constraints. A variadic parameter constrains each
+     * of the types it stands for rather than the list as a whole, so "sup [..T: Copy] Tup[T]" attaches to a tuple only
+     * when every one of its elements is copyable.
+     *
+     * @param pack The variadic parameter's symbol, which carries the constraints.
+     * @param lhs_args The written arguments the pack was matched against.
+     * @param fixed_len How many of those are covered one for one, and so are not part of the pack.
+     * @param pack_scope The scope the constraints are named in.
+     * @param arg_scope The scope the arguments are named in.
+     */
+    auto PackConstraintsSatisfied(
+      scopes::TypeSymbol const &pack,
+      Vec<Unique<asts::GenericArgumentAst>> const &lhs_args,
+      const std::size_t fixed_len,
+      scopes::Scope const &pack_scope,
+      scopes::Scope const &arg_scope)
+      -> bool {
+      //
+      if (pack.GenericConstraints.IsEmpty()) { return true; }
 
-  /**
-   * Whether every element a pack swallowed satisfies the pack's own constraints. A variadic parameter constrains each
-   * of the types it stands for rather than the list as a whole, so "sup [..T: Copy] Tup[T]" attaches to a tuple only
-   * when every one of its elements is copyable.
-   *
-   * @param pack The variadic parameter's symbol, which carries the constraints.
-   * @param lhs_args The written arguments the pack was matched against.
-   * @param fixed_len How many of those are covered one for one, and so are not part of the pack.
-   * @param pack_scope The scope the constraints are named in.
-   * @param arg_scope The scope the arguments are named in.
-   */
-  auto PackConstraintsSatisfied(
-    spp::analyse::scopes::TypeSymbol const &pack,
-    spp::Vec<spp::Unique<spp::asts::GenericArgumentAst>> const &lhs_args,
-    const std::size_t fixed_len,
-    spp::analyse::scopes::Scope const &pack_scope,
-    spp::analyse::scopes::Scope const &arg_scope)
-    -> bool {
-    //
-    using spp::analyse::utils::type_utils::ConstraintEq;
-    if (pack.GenericConstraints.IsEmpty()) { return true; }
-
-    for (auto i = fixed_len; i < lhs_args.Len(); ++i) {
-      auto const *type_arg = lhs_args[i]->To<spp::asts::GenericArgumentTypeAst>();
-      if (type_arg == nullptr) { continue; }
-      if (not ConstraintEq(pack.GenericConstraints, *type_arg->Val, pack_scope, arg_scope)) { return false; }
+      for (auto i = fixed_len; i < lhs_args.Len(); ++i) {
+        auto const *type_arg = lhs_args[i]->To<asts::GenericArgumentTypeAst>();
+        if (type_arg == nullptr) { continue; }
+        if (not ConstraintEq(pack.GenericConstraints, *type_arg->Val, pack_scope, arg_scope)) { return false; }
+      }
+      return true;
     }
-    return true;
+
+    auto _UnimplementedAbstractMethodsCache() -> Map<
+      scopes::Scope const*,
+      Pair<std::uint64_t, Vec<asts::FunctionPrototypeAst const*>>>& {
+      static auto cache = Map<
+        scopes::Scope const*,
+        Pair<std::uint64_t, Vec<asts::FunctionPrototypeAst const*>>>();
+      return cache;
+    }
+
+    auto SupMemberAsMethod(
+      asts::Ast const *member)
+      -> asts::FunctionPrototypeAst const* {
+      if (const auto fn = member->To<asts::FunctionPrototypeAst>(); fn != nullptr) { return fn; }
+      if (const auto ext = member->To<asts::SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
+        const auto final_member = ext->Impl->FinalMember();
+        return final_member != nullptr ? final_member->To<asts::FunctionPrototypeAst>() : nullptr;
+      }
+      return nullptr;
+    }
+
+    /**
+     * Check whether a value of @p type can be held by the variant @p variant_type, which is how a variant accepts
+     * anything other than itself. There are two ways in: @p type is one of the variant's members (@c {Some[T]} into a
+     * @c {Opt[T]}), or @p type is itself a variant whose members are all members of this one (@c {Str or S32} into a
+     * @c {Str or S32 or Bool}), because whichever member the narrower one holds, the wider one has room for it. An
+     * overlap is not enough, as the members that are not shared would have nowhere to go.
+     *
+     * A type with no members is not a variant, so it never matches here; the caller falls back to comparing the two
+     * types structurally, which is also what happens when the members do not line up.
+     * @param variant_type The variant type being matched into.
+     * @param type The type being matched, either a member or a narrower variant.
+     * @param variant_scope The scope of the variant type.
+     * @param type_scope The scope of the type being matched.
+     * @return If a value of @p type can be held by @p variant_type.
+     */
+    auto TypeVariantEq(
+      asts::TypeAst const &variant_type,
+      asts::TypeAst const &type,
+      scopes::Scope const &variant_scope,
+      scopes::Scope const &type_scope)
+      -> bool {
+      // Get the members of the variant. If there are no members.
+      // ie Var has no generics (shouldn't be possible), then
+      // return false - impossible to match against.
+      const auto variant_member_types = DedupVariableInnerTypes(variant_type, variant_scope);
+      if (variant_member_types.IsEmpty()) { return false; }
+
+      // When comparing two variants, the wider one must be able
+      // to accept all the types of the narrower one. For example,
+      // "Str or Bool or S32" accepts "Str or Bool", but not the
+      // other way around - "Bool" wouldn't be accepted.
+      const auto type_member_types = DedupVariableInnerTypes(type, type_scope);
+      if (not type_member_types.IsEmpty()) {
+        return genex::all_of(type_member_types, [&](auto &&type_member_type) {
+          return genex::any_of(variant_member_types, [&](auto &&variant_member_type) {
+            return TypeEq(*variant_member_type, *type_member_type, variant_scope, type_scope, false);
+          });
+        });
+      }
+
+      // Otherwise, it's a single type being compared, which matches
+      // when it is one of the members.
+      return genex::any_of(variant_member_types, [&](auto &&variant_member_type) {
+        return TypeEq(*variant_member_type, type, variant_scope, type_scope);
+      });
+    }
+
+    /**
+     * Check whether a function "mock" type (a @c $ type generated per function, which superimposes a
+     * @c FunMov/FunMut/FunRef type for each of its overloads) matches a target function type. This is what
+     * allows a plain function or method to be passed wherever a function type is expected. @c $ types are
+     * only ever generated for this purpose.
+     * @param mock_type The @c $ mock type (the function/method reference).
+     * @param func_type The target function type (@c FunMov/FunMut/FunRef) to match against.
+     * @param mock_scope The scope of the mock type.
+     * @param func_scope The scope of the target function type.
+     * @return If any of the mock's superimposed function types is equal to the target function type.
+     */
+    auto TypeFuncEq(
+      asts::TypeAst const &mock_type,
+      asts::TypeAst const &func_type,
+      scopes::Scope const &mock_scope,
+      scopes::Scope const &func_scope)
+      -> bool {
+      // A "$" mock type is generated per function and superimposes
+      // a function type for each of its overloads (and, because super
+      // types are transitive, the whole FunMov/FunMut/FunRef hierarchy
+      // above each). It matches the target function type if any of
+      // those superimposed function types is equal to the target.
+      const auto mock_sym = mock_scope.GetTypeSymbol(mock_type.WithoutConvention().get());
+      if (mock_sym == nullptr) { return false; }
+
+      for (auto const &sup_type : mock_sym->LinkedScope->SupTypes()) {
+        if (IsTypeFunc(*sup_type, mock_scope) and TypeEq(*sup_type, func_type, mock_scope, func_scope)) {
+          return true;
+        }
+      }
+      return false;
+    }
   }
 }
 
@@ -216,24 +334,6 @@ auto spp::analyse::utils::type_utils::ConventionEq(
   // No other conditions have been met, so the conventions
   // must match at this point.
   return true;
-}
-
-auto spp::analyse::utils::type_utils::ConstraintEq(
-  Vec<Shared<asts::TypeAst>> const &constraints,
-  asts::TypeAst const &type,
-  scopes::Scope const &constraint_scope,
-  scopes::Scope const &type_scope)
-  -> bool {
-  // If there are no constraints, then the match is default true,
-  // because there are no restrictions on the "type" that can
-  // possibly be checked for.
-  if (constraints.IsEmpty()) { return true; }
-
-  // Check that all the constraints are satisfied. Wraps the call
-  // to the generic constraint enforcement (this function mainly
-  // exists for the naming uniformity in type equality).
-  return EnforceGenericConstraintsOneArg(
-    constraints, type, constraint_scope, type_scope) == nullptr;
 }
 
 auto spp::analyse::utils::type_utils::TypeEq(
@@ -356,38 +456,6 @@ auto spp::analyse::utils::type_utils::TypeEq(
   return lhs_expr == rhs_expr;
 }
 
-auto spp::analyse::utils::type_utils::TypeVariantEq(
-  asts::TypeAst const &variant_type,
-  asts::TypeAst const &type,
-  scopes::Scope const &variant_scope,
-  scopes::Scope const &type_scope)
-  -> bool {
-  // Get the members of the variant. If there are no members.
-  // ie Var has no generics (shouldn't be possible), then
-  // return false - impossible to match against.
-  const auto variant_member_types = DedupVariableInnerTypes(variant_type, variant_scope);
-  if (variant_member_types.IsEmpty()) { return false; }
-
-  // When comparing two variants, the wider one must be able
-  // to accept all the types of the narrower one. For example,
-  // "Str or Bool or S32" accepts "Str or Bool", but not the
-  // other way around - "Bool" wouldn't be accepted.
-  const auto type_member_types = DedupVariableInnerTypes(type, type_scope);
-  if (not type_member_types.IsEmpty()) {
-    return genex::all_of(type_member_types, [&](auto &&type_member_type) {
-      return genex::any_of(variant_member_types, [&](auto &&variant_member_type) {
-        return TypeEq(*variant_member_type, *type_member_type, variant_scope, type_scope, false);
-      });
-    });
-  }
-
-  // Otherwise, it's a single type being compared, which matches
-  // when it is one of the members.
-  return genex::any_of(variant_member_types, [&](auto &&variant_member_type) {
-    return TypeEq(*variant_member_type, type, variant_scope, type_scope);
-  });
-}
-
 auto spp::analyse::utils::type_utils::TypeFwdEq(
   asts::TypeAst const &arg_type,
   asts::TypeAst const &param_type,
@@ -456,28 +524,6 @@ auto spp::analyse::utils::type_utils::TypeFwdEq(
   }
 
   // Otherwise, there is no forwarding match, so return false.
-  return false;
-}
-
-auto spp::analyse::utils::type_utils::TypeFuncEq(
-  asts::TypeAst const &mock_type,
-  asts::TypeAst const &func_type,
-  scopes::Scope const &mock_scope,
-  scopes::Scope const &func_scope)
-  -> bool {
-  // A "$" mock type is generated per function and superimposes
-  // a function type for each of its overloads (and, because super
-  // types are transitive, the whole FunMov/FunMut/FunRef hierarchy
-  // above each). It matches the target function type if any of
-  // those superimposed function types is equal to the target.
-  const auto mock_sym = mock_scope.GetTypeSymbol(mock_type.WithoutConvention().get());
-  if (mock_sym == nullptr) { return false; }
-
-  for (auto const &sup_type : mock_sym->LinkedScope->SupTypes()) {
-    if (IsTypeFunc(*sup_type, mock_scope) and TypeEq(*sup_type, func_type, mock_scope, func_scope)) {
-      return true;
-    }
-  }
   return false;
 }
 
@@ -1207,28 +1253,6 @@ auto spp::analyse::utils::type_utils::GetAllAttrs(
   }
 
   return extended_syms;
-}
-
-static auto SupMemberAsMethod(
-  spp::asts::Ast const *member)
-  -> spp::asts::FunctionPrototypeAst const* {
-  if (const auto fn = member->To<spp::asts::FunctionPrototypeAst>(); fn != nullptr) { return fn; }
-  if (const auto ext = member->To<spp::asts::SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
-    const auto final_member = ext->Impl->FinalMember();
-    return final_member != nullptr ? final_member->To<spp::asts::FunctionPrototypeAst>() : nullptr;
-  }
-  return nullptr;
-}
-
-namespace {
-  auto _UnimplementedAbstractMethodsCache() -> spp::Map<
-    spp::analyse::scopes::Scope const*,
-    spp::Pair<std::uint64_t, spp::Vec<spp::asts::FunctionPrototypeAst const*>>>& {
-    static auto cache = spp::Map<
-      spp::analyse::scopes::Scope const*,
-      spp::Pair<std::uint64_t, spp::Vec<spp::asts::FunctionPrototypeAst const*>>>();
-    return cache;
-  }
 }
 
 auto spp::analyse::utils::type_utils::ClearUnimplementedAbstractMethodsCache()

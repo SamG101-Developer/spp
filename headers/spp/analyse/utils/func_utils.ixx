@@ -112,12 +112,6 @@ namespace spp::analyse::utils::func_utils {
     scopes::Scope const *exclude_scope = nullptr)
     -> asts::FunctionPrototypeAst*;
 
-  SPP_EXP_FUN auto EnforceNoInvalidFnArgs(
-    Vec<asts::FunctionParameterAst*> const &params,
-    Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
-    scopes::ScopeManager &sm)
-    -> void;
-
   /**
    * @param generic_args The generic bindings known for this call, used to translate the default value of any optional
    * parameter the call left out. Such a default is the callee's own expression and is materialised into the caller's

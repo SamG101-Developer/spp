@@ -77,68 +77,99 @@ import spp.utils.types;
 import spp.utils.uid;
 import genex;
 
-namespace {
-  /**
-   * Temporarily re-parent a scope, putting the original parent back however the enclosing block is left - including by
-   * a thrown semantic error.
-   *
-   * Overload resolution catches per-candidate exceptions, so a bare restore after a call that raises leaves the scope
-   * tree permanently wrongly-parented: every later lookup through that scope silently resolves against the wrong
-   * ancestors, with no failure at the point the damage is done.
-   */
-  struct ScopeParentSwap {
-    spp::analyse::scopes::Scope *Scope;
-    spp::analyse::scopes::Scope *Original;
+namespace spp::analyse::utils::func_utils {
+  namespace {
+    /**
+     * Temporarily re-parent a scope, putting the original parent back however the enclosing block is left - including by
+     * a thrown semantic error.
+     *
+     * Overload resolution catches per-candidate exceptions, so a bare restore after a call that raises leaves the scope
+     * tree permanently wrongly-parented: every later lookup through that scope silently resolves against the wrong
+     * ancestors, with no failure at the point the damage is done.
+     */
+    struct ScopeParentSwap {
+      scopes::Scope *Scope;
+      scopes::Scope *Original;
 
-    ScopeParentSwap(
-      spp::analyse::scopes::Scope *const scope,
-      spp::analyse::scopes::Scope *const replacement) :
-      Scope(scope), Original(scope->Parent) {
-      scope->Parent = replacement;
-      spp::analyse::scopes::BumpScopeLinkageGeneration();
+      ScopeParentSwap(
+        scopes::Scope *const scope,
+        scopes::Scope *const replacement) :
+        Scope(scope), Original(scope->Parent) {
+        scope->Parent = replacement;
+        scopes::BumpScopeLinkageGeneration();
+      }
+
+      ~ScopeParentSwap() {
+        Scope->Parent = Original;
+        scopes::BumpScopeLinkageGeneration();
+      }
+
+      ScopeParentSwap(ScopeParentSwap const&) = delete;
+      ScopeParentSwap(ScopeParentSwap&&) = delete;
+      auto operator=(ScopeParentSwap const&) -> ScopeParentSwap& = delete;
+      auto operator=(ScopeParentSwap&&) -> ScopeParentSwap& = delete;
+    };
+
+    /**
+     * Get the "sup" block a function prototype was declared in, or @c nullptr for a free function (whose context is the
+     * module prototype, which superimposes nothing).
+     */
+    auto _SupBlockOf(
+      asts::FunctionPrototypeAst const &fn)
+      -> asts::Ast* {
+      auto *ctx = fn.GetAstCtx();
+      if (ctx == nullptr) { return nullptr; }
+      const auto is_sup = ctx->To<asts::SupPrototypeFunctionsAst>() != nullptr
+        or ctx->To<asts::SupPrototypeExtensionAst>() != nullptr;
+      return is_sup ? ctx : nullptr;
     }
 
-    ~ScopeParentSwap() {
-      Scope->Parent = Original;
-      spp::analyse::scopes::BumpScopeLinkageGeneration();
+    /**
+     * Determine whether two "sup" blocks can ever apply to the same instantiation. Blocks over the same generic type can
+     * carry disjoint constraints ("sup [T: Integer] Atom[T]" against "sup [T: FloatingPoint] Atom[T]"), which makes them
+     * specializations that never both attach to one type, so their members never see each other.
+     */
+    auto _SupBlocksOverlap(
+      asts::Ast *const sup_a,
+      asts::Ast *const sup_b)
+      -> bool {
+      // Free functions, and members of one block, always share a context.
+      if (sup_a == nullptr or sup_b == nullptr or sup_a == sup_b) { return true; }
+
+      auto generics = type_utils::GenericInferenceMap();
+      return type_utils::RelaxedTypeEq(
+        *asts::AstName(sup_a), *asts::AstName(sup_b),
+        *sup_a->GetAstScope(), *sup_b->GetAstScope(), generics);
     }
 
-    ScopeParentSwap(ScopeParentSwap const&) = delete;
-    ScopeParentSwap(ScopeParentSwap&&) = delete;
-    auto operator=(ScopeParentSwap const&) -> ScopeParentSwap& = delete;
-    auto operator=(ScopeParentSwap&&) -> ScopeParentSwap& = delete;
-  };
+    auto EnforceNoInvalidFnArgs(
+      Vec<asts::FunctionParameterAst*> const &params,
+      Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
+      scopes::ScopeManager &sm)
+      -> void {
+      //
+      using errors::SppArgumentNameInvalidError;
 
-  /**
-   * Get the "sup" block a function prototype was declared in, or @c nullptr for a free function (whose context is the
-   * module prototype, which superimposes nothing).
-   */
-  auto _SupBlockOf(
-    spp::asts::FunctionPrototypeAst const &fn)
-    -> spp::asts::Ast* {
-    auto *ctx = fn.GetAstCtx();
-    if (ctx == nullptr) { return nullptr; }
-    const auto is_sup = ctx->To<spp::asts::SupPrototypeFunctionsAst>() != nullptr
-      or ctx->To<spp::asts::SupPrototypeExtensionAst>() != nullptr;
-    return is_sup ? ctx : nullptr;
-  }
+      // Get the parameter names using the extraction method.
+      const auto p_names = params
+        | genex::views::transform([](auto *x) { return x->ExtractName(); })
+        | genex::to<Vec>();
 
-  /**
-   * Determine whether two "sup" blocks can ever apply to the same instantiation. Blocks over the same generic type can
-   * carry disjoint constraints ("sup [T: Integer] Atom[T]" against "sup [T: FloatingPoint] Atom[T]"), which makes them
-   * specializations that never both attach to one type, so their members never see each other.
-   */
-  auto _SupBlocksOverlap(
-    spp::asts::Ast *const sup_a,
-    spp::asts::Ast *const sup_b)
-    -> bool {
-    // Free functions, and members of one block, always share a context.
-    if (sup_a == nullptr or sup_b == nullptr or sup_a == sup_b) { return true; }
+      // Get the argument names using the attribute.
+      const auto a_names = named_args
+        | genex::views::transform([](auto *x) { return x->Name; })
+        | genex::to<Vec>();
 
-    auto generics = spp::analyse::utils::type_utils::GenericInferenceMap();
-    return spp::analyse::utils::type_utils::RelaxedTypeEq(
-      *spp::asts::AstName(sup_a), *spp::asts::AstName(sup_b),
-      *sup_a->GetAstScope(), *sup_b->GetAstScope(), generics);
+      // Check for invalid argument names against parameter names.
+      const auto invalid_arg_names = a_names
+        | genex::views::not_in(p_names, genex::meta::deref, genex::meta::deref)
+        | genex::to<Vec>();
+
+      // Raise an error if any invalid argument names were found.
+      RaiseIf<SppArgumentNameInvalidError>(
+        not invalid_arg_names.IsEmpty(), {sm.CurrentScope},
+        ERR_ARGS(*params[0], "fn param", *invalid_arg_names[0], "fn arg"));
+    }
   }
 }
 
@@ -591,35 +622,6 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
   }
 
   return nullptr;
-}
-
-auto spp::analyse::utils::func_utils::EnforceNoInvalidFnArgs(
-  Vec<asts::FunctionParameterAst*> const &params,
-  Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
-  scopes::ScopeManager &sm)
-  -> void {
-  //
-  using errors::SppArgumentNameInvalidError;
-
-  // Get the parameter names using the extraction method.
-  const auto p_names = params
-    | genex::views::transform([](auto *x) { return x->ExtractName(); })
-    | genex::to<Vec>();
-
-  // Get the argument names using the attribute.
-  const auto a_names = named_args
-    | genex::views::transform([](auto *x) { return x->Name; })
-    | genex::to<Vec>();
-
-  // Check for invalid argument names against parameter names.
-  const auto invalid_arg_names = a_names
-    | genex::views::not_in(p_names, genex::meta::deref, genex::meta::deref)
-    | genex::to<Vec>();
-
-  // Raise an error if any invalid argument names were found.
-  RaiseIf<SppArgumentNameInvalidError>(
-    not invalid_arg_names.IsEmpty(), {sm.CurrentScope},
-    ERR_ARGS(*params[0], "fn param", *invalid_arg_names[0], "fn arg"));
 }
 
 auto spp::analyse::utils::func_utils::NameFnArgs(

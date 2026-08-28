@@ -37,15 +37,6 @@ namespace spp::analyse::utils::generic_bindings {
     spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
 
-  SPP_EXP_FUN auto EnforceNoUninferredGnArgs(
-    Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
-    Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
-    scopes::Scope const &owner_scope,
-    Shared<asts::Ast> const &owner,
-    scopes::ScopeManager &sm)
-    -> void;
-
-
   SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
     asts::GenericParameterGroupAst const &p_group,
     asts::GenericArgumentGroupAst const &a_group,

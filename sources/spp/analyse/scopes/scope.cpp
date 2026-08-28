@@ -38,6 +38,16 @@ import spp.utils.functions;
 import spp.utils.ptr;
 import genex;
 
+namespace spp::analyse::scopes {
+  namespace {
+    /**
+     * Record that a type lookup could now resolve differently. Declared here because the counter it moves is
+     * defined at the foot of the file, well below the symbol-table calls that bump it.
+     */
+    auto BumpTypeLookupGeneration() -> void;
+  }
+}
+
 SPP_MOD_BEGIN
 spp::analyse::scopes::Scope::Scope(
   ScopeName name,
@@ -888,13 +898,20 @@ auto spp::analyse::scopes::Scope::FixChildrenToParentPointer()
 
 SPP_MOD_END
 
-namespace {
-  /**
-   * Starts at one so that a zero stamp means "never computed" rather than "computed before anything moved".
-   */
-  std::uint64_t _ScopeLinkageGeneration = 1;
-  std::uint64_t _TypeStructureGeneration = 1;
-  std::uint64_t _TypeLookupGeneration = 1;
+namespace spp::analyse::scopes {
+  namespace {
+    /**
+     * Starts at one so that a zero stamp means "never computed" rather than "computed before anything moved".
+     */
+    std::uint64_t _ScopeLinkageGeneration = 1;
+    std::uint64_t _TypeStructureGeneration = 1;
+    std::uint64_t _TypeLookupGeneration = 1;
+
+    auto BumpTypeLookupGeneration()
+      -> void {
+      ++_TypeLookupGeneration;
+    }
+  }
 }
 
 auto spp::analyse::scopes::ScopeLinkageGeneration()
@@ -925,9 +942,4 @@ auto spp::analyse::scopes::BumpTypeStructureGeneration()
 auto spp::analyse::scopes::TypeLookupGeneration()
   -> std::uint64_t {
   return _TypeLookupGeneration;
-}
-
-auto spp::analyse::scopes::BumpTypeLookupGeneration()
-  -> void {
-  ++_TypeLookupGeneration;
 }

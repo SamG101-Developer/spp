@@ -88,12 +88,6 @@ namespace spp::analyse::utils::bin_utils {
     lex::SppTokenType::TK_GE
   };
 
-  SPP_EXP_FUN auto CombineCompOps(
-    asts::BinaryExpressionAst &bin_expr,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Unique<asts::BinaryExpressionAst>;
-
   SPP_EXP_FUN auto ConvertBinExprToFuncCall(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,

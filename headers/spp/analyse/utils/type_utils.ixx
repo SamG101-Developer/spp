@@ -45,13 +45,6 @@ namespace spp::analyse::utils::type_utils {
     asts::TypeAst const &rhs_type)
     -> bool;
 
-  SPP_EXP_FUN auto ConstraintEq(
-    Vec<Shared<asts::TypeAst>> const &constraints,
-    asts::TypeAst const &type,
-    scopes::Scope const &constraint_scope,
-    scopes::Scope const &type_scope)
-    -> bool;
-
   /**
    * The symbolic equality type checker is a complex type checking algorithm that takes namespacing, scopes, aliases,
    * variants, etc, all into account, and returns whether two types are indeed the same. Generic arguments are also
@@ -93,46 +86,6 @@ namespace spp::analyse::utils::type_utils {
     asts::TypeAst const &param_type,
     scopes::Scope const &arg_scope,
     scopes::Scope const &param_scope)
-    -> bool;
-
-  /**
-   * Check whether a function "mock" type (a @c $ type generated per function, which superimposes a
-   * @c FunMov/FunMut/FunRef type for each of its overloads) matches a target function type. This is what
-   * allows a plain function or method to be passed wherever a function type is expected. @c $ types are
-   * only ever generated for this purpose.
-   * @param mock_type The @c $ mock type (the function/method reference).
-   * @param func_type The target function type (@c FunMov/FunMut/FunRef) to match against.
-   * @param mock_scope The scope of the mock type.
-   * @param func_scope The scope of the target function type.
-   * @return If any of the mock's superimposed function types is equal to the target function type.
-   */
-  SPP_EXP_FUN auto TypeFuncEq(
-    asts::TypeAst const &mock_type,
-    asts::TypeAst const &func_type,
-    scopes::Scope const &mock_scope,
-    scopes::Scope const &func_scope)
-    -> bool;
-
-  /**
-   * Check whether a value of @p type can be held by the variant @p variant_type, which is how a variant accepts
-   * anything other than itself. There are two ways in: @p type is one of the variant's members (@c {Some[T]} into a
-   * @c {Opt[T]}), or @p type is itself a variant whose members are all members of this one (@c {Str or S32} into a
-   * @c {Str or S32 or Bool}), because whichever member the narrower one holds, the wider one has room for it. An
-   * overlap is not enough, as the members that are not shared would have nowhere to go.
-   *
-   * A type with no members is not a variant, so it never matches here; the caller falls back to comparing the two
-   * types structurally, which is also what happens when the members do not line up.
-   * @param variant_type The variant type being matched into.
-   * @param type The type being matched, either a member or a narrower variant.
-   * @param variant_scope The scope of the variant type.
-   * @param type_scope The scope of the type being matched.
-   * @return If a value of @p type can be held by @p variant_type.
-   */
-  SPP_EXP_FUN auto TypeVariantEq(
-    asts::TypeAst const &variant_type,
-    asts::TypeAst const &type,
-    scopes::Scope const &variant_scope,
-    scopes::Scope const &type_scope)
     -> bool;
 
   /**

@@ -21,19 +21,6 @@ namespace spp::analyse::scopes {
 
 namespace spp::analyse::utils::linear_utils {
   /**
-   * Whether this symbol still owns a value that nothing has consumed. S++ ownership is linear: a value of a
-   * non-@c Copy type must be used exactly once, so a symbol reaching the end of its scope while still holding one is
-   * an error.
-   * @param sym The symbol being checked.
-   * @param sm The scope manager, positioned where the symbol's type resolves from.
-   * @return Whether the symbol still owns an unconsumed value.
-   */
-  SPP_EXP_FUN auto IsLive(
-    scopes::VariableSymbol const &sym,
-    scopes::ScopeManager &sm)
-    -> bool;
-
-  /**
    * Record what this scope's deferred expressions take when they run. A @c defer does not consume anything where it is
    * written - the value has to stay usable for the rest of the scope - so leaving the scope is what consumes it, and
    * this is where that is written down, immediately before the scope is held to the linear rule.

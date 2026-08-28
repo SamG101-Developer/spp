@@ -88,8 +88,6 @@ namespace spp::analyse::scopes {
   SPP_EXP_FUN SPP_ATTR_HOT
   auto TypeLookupGeneration() -> std::uint64_t;
 
-  SPP_EXP_FUN
-  auto BumpTypeLookupGeneration() -> void;
 }
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {

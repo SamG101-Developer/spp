@@ -25,15 +25,6 @@ namespace spp::codegen {
 }
 
 namespace spp::analyse::utils::case_utils {
-  SPP_EXP_FUN
-  template <typename T>
-  auto CreateAndAnalysePatternEqFuncsCore(
-    Vec<asts::CasePatternVariantAst*> const &elems,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta,
-    std::copyable_function<T(asts::Ast *)> &&mapper) // todo: function_ref?
-    -> Vec<T>;
-
   SPP_EXP_FUN auto CreateAndAnalysePatternEqFuncsLlvm(
     Vec<asts::CasePatternVariantAst*> const &elems,
     scopes::ScopeManager *sm,

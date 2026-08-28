@@ -34,151 +34,155 @@ import spp.codegen.llvm_ctx;
 import genex;
 import std;
 
-template <typename T>
-auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsCore(
-  Vec<asts::CasePatternVariantAst*> const &elems,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta,
-  std::copyable_function<T(asts::Ast *)> &&mapper)
-  -> Vec<T> {
-  auto transformed = Vec<T>();
-  transformed.reserve(elems.Len());
+namespace spp::analyse::utils::case_utils {
+  namespace {
+    template <typename T>
+    auto CreateAndAnalysePatternEqFuncsCore(
+      Vec<asts::CasePatternVariantAst*> const &elems,
+      scopes::ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta,
+      std::copyable_function<T(asts::Ast *)> &&mapper)
+      -> Vec<T> {
+      auto transformed = Vec<T>();
+      transformed.reserve(elems.Len());
 
-  if (not elems.IsEmpty() and elems[0]->To<asts::CasePatternVariantExpressionAst>()) {
-    // For expression patterns, just generate the expression once.
-    const auto expr_part = elems[0]->To<asts::CasePatternVariantExpressionAst>();
-    auto transform = mapper(expr_part->Expr.get());
-    transformed.EmplaceBack(std::move(transform));
-    return transformed;
-  }
+      if (not elems.IsEmpty() and elems[0]->To<asts::CasePatternVariantExpressionAst>()) {
+        // For expression patterns, just generate the expression once.
+        const auto expr_part = elems[0]->To<asts::CasePatternVariantExpressionAst>();
+        auto transform = mapper(expr_part->Expr.get());
+        transformed.EmplaceBack(std::move(transform));
+        return transformed;
+      }
 
-  // A bound-or-unbound multi-argument skip ("..") absorbs a number
-  // of real array/tuple slots that isn't known until the real (rhs)
-  // length is known, so any positionally-addressed element after it
-  // ("cond.<i>") cannot use its raw position within "elems" - that
-  // would under-count by the width of the skip and read one slot too
-  // early.
-  auto skip_index = std::optional<std::size_t>{};
-  for (auto const &[i, part] : elems | genex::views::enumerate) {
-    if (part->To<asts::CasePatternVariantDestructureSkipMultipleArgumentsAst>() != nullptr) {
-      skip_index = i;
-      break;
+      // A bound-or-unbound multi-argument skip ("..") absorbs a number
+      // of real array/tuple slots that isn't known until the real (rhs)
+      // length is known, so any positionally-addressed element after it
+      // ("cond.<i>") cannot use its raw position within "elems" - that
+      // would under-count by the width of the skip and read one slot too
+      // early.
+      auto skip_index = std::optional<std::size_t>{};
+      for (auto const &[i, part] : elems | genex::views::enumerate) {
+        if (part->To<asts::CasePatternVariantDestructureSkipMultipleArgumentsAst>() != nullptr) {
+          skip_index = i;
+          break;
+        }
+      }
+
+      // Todo: move "max length" into type_utils function, and route the
+      //  "is in bounds" through that too.
+      auto num_rhs_elems = std::optional<std::size_t>{};
+      const auto real_index = [&](const std::size_t i) -> std::size_t {
+        if (not skip_index.has_value() or i <= *skip_index) { return i; }
+        if (not num_rhs_elems.has_value()) {
+          const auto cond_type = meta->CaseCondition->InferType(sm, meta);
+          const auto &gn_arg_group = cond_type->LastTypePart()->GnArgGroup;
+          num_rhs_elems = type_utils::IsTypeArr(*cond_type, *sm->CurrentScope)
+            ? std::stoull(
+              gn_arg_group->Args[1]->template ToUnchecked<
+                asts::GenericArgumentCompAst>()->Val->ToUnchecked<
+                asts::IntegerLiteralAst>()->Val->TokenData)
+            : gn_arg_group->Args.Len();
+        }
+        return *num_rhs_elems - (elems.Len() - i);
+      };
+
+      for (auto const &[i, part] : elems | genex::views::enumerate) {
+        // For literals and expressions, generate the equality checks.
+        if (part->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
+          // Generate the extraction on the condition for this part, like "cond.0".
+          auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
+          auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+          auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
+
+          // Turn the "literal part" into a function argument.
+          auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
+          auto eq_arg_val = asts::AstClone(
+            part->To<asts::CasePatternVariantLiteralAst>()->Literal->To<asts::ExpressionAst>());
+          auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
+                                                                            std::move(eq_arg_val));
+
+          // Create the ".eq" part.
+          auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
+          auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
+            nullptr, std::move(eq_field_name));
+          auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
+
+          // Make the ".eq" part callable, as ".eq()" (no arguments right now)
+          auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+          eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
+          const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
+
+          const auto current_scope = sm->CurrentScope;
+          const auto current_scope_iter = sm->CurrentIterator();
+          eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
+          sm->Reset(current_scope, current_scope_iter);
+
+          // Generate the equality check.
+          auto transform = mapper(eq_call_expr.get());
+          transformed.EmplaceBack(std::move(transform));
+        }
+
+        // For named attribute bindings whose value is a literal, like "field=literal".
+        else if (const auto cast_attr = part->To<asts::CasePatternVariantDestructureAttributeBindingAst>();
+          cast_attr != nullptr and cast_attr->Val->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
+          const auto literal_part = cast_attr->Val->To<asts::CasePatternVariantLiteralAst>();
+
+          // Generate the extraction on the condition by attribute name, like "cond.field".
+          auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
+            nullptr, asts::AstCloneShared(cast_attr->Name));
+          auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
+
+          // Turn the "literal part" into a function argument.
+          auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
+          auto eq_arg_val = asts::AstClone(literal_part->Literal->To<asts::ExpressionAst>());
+          auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
+                                                                            std::move(eq_arg_val));
+
+          // Create the ".eq" part.
+          auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
+          auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
+            nullptr, std::move(eq_field_name));
+          auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
+
+          // Make the ".eq" part callable, as ".eq()"
+          auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+          eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
+          const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
+
+          const auto current_scope = sm->CurrentScope;
+          const auto current_scope_iter = sm->CurrentIterator();
+          eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
+          sm->Reset(current_scope, current_scope_iter);
+
+          // Generate the equality check.
+          auto transform = mapper(eq_call_expr.get());
+          transformed.EmplaceBack(std::move(transform));
+        }
+
+        // For nested objects (array, tuple, object)
+        else if (
+          part->To<asts::CasePatternVariantDestructureArrayAst>() != nullptr or
+          part->To<asts::CasePatternVariantDestructureTupleAst>() != nullptr or
+          part->To<asts::CasePatternVariantDestructureObjectAst>() != nullptr) {
+          // Generate the extraction on the condition for this part, like "cond.0".
+          auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
+          auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+          auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
+
+          // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
+          meta->Save();
+          meta->CaseCondition = pf_expr.get();
+
+          // Combine the result.
+          auto transform = mapper(part);
+          transformed.EmplaceBack(std::move(transform));
+          meta->Restore();
+        }
+      }
+
+      return transformed;
     }
   }
-
-  // Todo: move "max length" into type_utils function, and route the
-  //  "is in bounds" through that too.
-  auto num_rhs_elems = std::optional<std::size_t>{};
-  const auto real_index = [&](const std::size_t i) -> std::size_t {
-    if (not skip_index.has_value() or i <= *skip_index) { return i; }
-    if (not num_rhs_elems.has_value()) {
-      const auto cond_type = meta->CaseCondition->InferType(sm, meta);
-      const auto &gn_arg_group = cond_type->LastTypePart()->GnArgGroup;
-      num_rhs_elems = type_utils::IsTypeArr(*cond_type, *sm->CurrentScope)
-        ? std::stoull(
-          gn_arg_group->Args[1]->template ToUnchecked<
-            asts::GenericArgumentCompAst>()->Val->ToUnchecked<
-            asts::IntegerLiteralAst>()->Val->TokenData)
-        : gn_arg_group->Args.Len();
-    }
-    return *num_rhs_elems - (elems.Len() - i);
-  };
-
-  for (auto const &[i, part] : elems | genex::views::enumerate) {
-    // For literals and expressions, generate the equality checks.
-    if (part->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
-      // Generate the extraction on the condition for this part, like "cond.0".
-      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
-      auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-      auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-      // Turn the "literal part" into a function argument.
-      auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
-      auto eq_arg_val = asts::AstClone(
-        part->To<asts::CasePatternVariantLiteralAst>()->Literal->To<asts::ExpressionAst>());
-      auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
-                                                                        std::move(eq_arg_val));
-
-      // Create the ".eq" part.
-      auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
-      auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
-        nullptr, std::move(eq_field_name));
-      auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
-
-      // Make the ".eq" part callable, as ".eq()" (no arguments right now)
-      auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-      eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
-      const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
-      const auto current_scope = sm->CurrentScope;
-      const auto current_scope_iter = sm->CurrentIterator();
-      eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
-      sm->Reset(current_scope, current_scope_iter);
-
-      // Generate the equality check.
-      auto transform = mapper(eq_call_expr.get());
-      transformed.EmplaceBack(std::move(transform));
-    }
-
-    // For named attribute bindings whose value is a literal, like "field=literal".
-    else if (const auto cast_attr = part->To<asts::CasePatternVariantDestructureAttributeBindingAst>();
-      cast_attr != nullptr and cast_attr->Val->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
-      const auto literal_part = cast_attr->Val->To<asts::CasePatternVariantLiteralAst>();
-
-      // Generate the extraction on the condition by attribute name, like "cond.field".
-      auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
-        nullptr, asts::AstCloneShared(cast_attr->Name));
-      auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-      // Turn the "literal part" into a function argument.
-      auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
-      auto eq_arg_val = asts::AstClone(literal_part->Literal->To<asts::ExpressionAst>());
-      auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
-                                                                        std::move(eq_arg_val));
-
-      // Create the ".eq" part.
-      auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
-      auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
-        nullptr, std::move(eq_field_name));
-      auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
-
-      // Make the ".eq" part callable, as ".eq()"
-      auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-      eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
-      const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
-      const auto current_scope = sm->CurrentScope;
-      const auto current_scope_iter = sm->CurrentIterator();
-      eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
-      sm->Reset(current_scope, current_scope_iter);
-
-      // Generate the equality check.
-      auto transform = mapper(eq_call_expr.get());
-      transformed.EmplaceBack(std::move(transform));
-    }
-
-    // For nested objects (array, tuple, object)
-    else if (
-      part->To<asts::CasePatternVariantDestructureArrayAst>() != nullptr or
-      part->To<asts::CasePatternVariantDestructureTupleAst>() != nullptr or
-      part->To<asts::CasePatternVariantDestructureObjectAst>() != nullptr) {
-      // Generate the extraction on the condition for this part, like "cond.0".
-      auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
-      auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-      auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-      // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
-      meta->Save();
-      meta->CaseCondition = pf_expr.get();
-
-      // Combine the result.
-      auto transform = mapper(part);
-      transformed.EmplaceBack(std::move(transform));
-      meta->Restore();
-    }
-  }
-
-  return transformed;
 }
 
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(

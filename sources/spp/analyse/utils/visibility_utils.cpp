@@ -14,18 +14,22 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.visibility;
 import genex;
 
-auto spp::analyse::utils::visibility_utils::VisibilityName(
-  const asts::utils::Visibility vis)
-  -> Str {
-  using V = asts::utils::Visibility;
-  switch (vis) {
-    case V::kPublic: return "public";
-    case V::kPackage: return "package";
-    case V::kProtected: return "protected";
-    case V::kPrivate: return "private";
-    default: std::unreachable();
+namespace spp::analyse::utils::visibility_utils {
+  namespace {
+    auto VisibilityName(
+      const asts::utils::Visibility vis)
+      -> Str {
+      using V = asts::utils::Visibility;
+      switch (vis) {
+        case V::kPublic: return "public";
+        case V::kPackage: return "package";
+        case V::kProtected: return "protected";
+        case V::kPrivate: return "private";
+        default: std::unreachable();
+      }
+      std::unreachable();
+    }
   }
-  std::unreachable();
 }
 
 auto spp::analyse::utils::visibility_utils::CheckTypeMemberVisibility(

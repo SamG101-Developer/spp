@@ -26,8 +26,6 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::visibility_utils {
-  SPP_EXP_FUN auto VisibilityName(asts::utils::Visibility vis) -> Str;
-
   SPP_EXP_FUN auto CheckTypeMemberVisibility(
     scopes::VariableSymbol const &sym,
     asts::Ast const &access_ast,
