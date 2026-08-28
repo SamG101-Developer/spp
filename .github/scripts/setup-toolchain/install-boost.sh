@@ -45,9 +45,10 @@ case "$SPP_RUNNER_IMAGE" in
     sha="$BOOST_SHA256_WINDOWS_2022"
     ;;
   *)
-    # Never guess: an unpinned asset is an unverified download,
-    # and the digest check below is the only thing standing
-    # between CI and whatever the CDN decides to serve.
+    # Don't guess on the version, so error if we have a genuine
+    # mismatch between the given and known runner images. Note
+    # to self: can request updates from boost precompiled repo;
+    # very quick response time.
     echo "::error::no Boost asset is pinned for ${SPP_RUNNER_IMAGE}"
     echo "::error::Add one to .github/scripts/setup-toolchain/install-boost.sh, .github/dependencies.toml and refresh-pins.sh."
     exit 1
