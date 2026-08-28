@@ -436,3 +436,56 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(d)
     }
 )");
+
+// A generic parameter is registered on a scope, and a fully bound instantiation like "Str[A=GlobalAlloc]" has one
+// scope shared by the whole program. Carrying the enclosing scope's generics into that scope stranded them there:
+// declaring any generic named "U" - anywhere, in any file - left a "U" registered on "Str", which was then offered
+// to every call as a "U=U" argument. Being an argument it outranked inference, so a callee's own "U" never got
+// inferred. It took a default value to trigger, because that is what names a concrete type from inside the scope
+// the parameter lives in. The name is incidental: this is pinned with "U" because "Opt::map[U, ...]" is the shape
+// that broke, but every generic name in the standard library was reachable the same way.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraints,
+  test_valid_defaulted_generic_does_not_strand_its_name_on_the_default_type, R"(
+    cls Holder[U = Str] { }
+
+    fun g(o: Opt[S32]) -> Void {
+        let m = o.map((x: S32) { x })
+        std::mem::ops::drop(m)
+    }
+)");
+
+// The same sweep carries comp generics in, and they are stranded on a shared instantiation the same way. They do
+// less damage, because "Scope::GetGenerics" skips a comp symbol that is still an unbound parameter, so a stranded
+// one is never offered as an argument. That skip has no counterpart on the type branch, which is why the type case
+// above had to be stopped at the point the symbol is carried in instead. A comp parameter named like one of the
+// standard library's own is the shape that would expose it if that ever stopped holding.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraints,
+  test_valid_defaulted_comp_generic_does_not_strand_its_name_on_the_default_type, R"(
+    cls HolderW[cmp w: U32 = 5_u32] { }
+
+    fun g() -> Void {
+        let a = 1_u32 + 2_u32
+        let b = 7_u8 + 1_u8
+        let c = 3_uz + 4_uz
+    }
+)");
+
+// The gap the unbound-parameter skip does not cover: a comp symbol that is bound to a value is offered, so one
+// stranded on a shared instantiation would be offered as a real binding rather than an inert identity. Nothing
+// reaches it today - this pins the shape that would.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraints,
+  test_valid_bound_comp_generic_is_not_stranded_on_a_shared_instantiation, R"(
+    cls HolderB[cmp w: U32] {
+        !public x: Str
+    }
+
+    fun g() -> Void {
+        let a = HolderB[5_u32](x=Str::from("q"))
+        std::mem::ops::drop(a)
+        let b = 1_u32 + 2_u32
+        let c = 3_uz + 4_uz
+    }
+)");
