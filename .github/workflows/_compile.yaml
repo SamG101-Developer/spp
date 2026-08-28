@@ -66,7 +66,7 @@ jobs:
       ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:detect_leaks=1:strict_string_checks=1"
       UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
       TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
-      CACHE_KEY: build-v2-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
+      CACHE_KEY: build-v3-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
 
     steps:
       # Secure the runner from external packages or actions.

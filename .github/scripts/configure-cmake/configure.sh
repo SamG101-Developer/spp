@@ -23,6 +23,13 @@ if [ -n "$SANITIZER" ]; then
   args+=(-DSPP_SANITIZER="$SANITIZER")
 fi
 
+# Fix for mac-os which needs the xcode commands to be ran
+# on certain values to unlock macros that are currently
+# blocking type definitions.
+if [ "$RUNNER_OS" = "macOS" ]; then
+  args+=(-DCMAKE_OSX_SYSROOT="$(xcrun --show-sdk-path)")
+fi
+
 # Ubuntu injects -D_FORTIFY_SOURCE=3, which triggers a GCC
 # 16 ICE. Disable it otherwise the entire cmake build will
 # fail. Don't think it's an issue on GCC 17 but runner must
