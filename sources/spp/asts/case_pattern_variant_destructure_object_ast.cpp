@@ -129,6 +129,10 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*meta->CaseCondition, *_CondSym->Type, *Source.OriginalType, *Type));
     _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
     _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
+
+    // What this narrows, so that consuming through the
+    // narrowed name discharges the value itself.
+    _FlowSym->NarrowsSym = _CondSym;
     _FlowSym->Type = Type;
     _FlowSym->IsFlowNarrowing = true;
 
@@ -222,9 +226,14 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
 
     // Next, get the actual tag value from the variant that is
     // telling us which member type is active in the variant.
+    auto variant_ptr = _CondSym->LlvmInfo->Alloca;
+    if (_CondSym->Type->GetConvention() != nullptr) {
+      variant_ptr = ctx->Builder.CreateLoad(
+        llvm::PointerType::get(*ctx->Context, 0), variant_ptr, "case.pattern.subject" + uid);
+    }
+
     const auto llvm_tag = codegen::LoadVariantTag(
-      _CondSym->LlvmInfo->Alloca, llvm_variant_ty,
-      "case.pattern.tag" + uid, ctx);
+      variant_ptr, llvm_variant_ty, "case.pattern.tag" + uid, ctx);
 
     // Comparing the discriminant is what decides whether this
     // pattern matches.
