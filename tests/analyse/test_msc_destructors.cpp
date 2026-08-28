@@ -1,170 +1,114 @@
 #include "../test_macros.hpp"
 
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_custom_del_runs_at_scope_exit, R"(
-    cls A { }
+// This file used to test compiler-inserted destruction: "Del::del" run at scope exit, drop flags for conditionally
+// moved values, unwind drops at a loop "exit", and the destruction of a discarded statement value. None of that
+// exists any more - ownership is linear, so nothing is destroyed implicitly and every one of those cases is now a
+// compile time error instead. What survives is "Drop", an ordinary trait whose "drop" takes "self" by move and is
+// called explicitly, so that is what is tested here.
+//
+// Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp.
 
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
-    }
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_drop_called_explicitly, R"(
+    cls Handle { !public fd: S32 }
 
-    fun main() -> Void {
-        let a = A()
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_attribute_destroyed_with_owner, R"(
-    cls A { }
-
-    cls Holder {
-        !public inner: A
-    }
-
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
-    }
-
-    fun main() -> Void {
-        let h = Holder(inner=A())
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_moved_value_destroyed_once, R"(
-    cls A { }
-
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
-    }
-
-    fun main() -> Void {
-        let a = A()
-        let b = a
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_conditionally_moved_value_uses_drop_flag, R"(
-    cls A { }
-
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
-    }
-
-    fun consume(x: A) -> Void { }
-
-    fun cond() -> Bool {
-        ret true
-    }
-
-    fun main() -> Void {
-        let a = A()
-        case cond() { consume(a) }
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_loop_exit_destroys_body_locals, R"(
-    cls A { }
-
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
-    }
-
-    fun main() -> Void {
-        let mut i = 0
-        loop i < 5 {
-            let a = A()
-            case i == 2 { exit }
-            i += 1
+    sup Handle ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Handle(fd) = self
         }
     }
-)");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_generic_body_local_destroyed, R"(
-    cls A { }
-
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
-    }
-
-    fun generic_body[T](t: T) -> Void {
-        let inner = A()
-    }
-
-    fun main() -> Void {
-        generic_body(0)
+    fun f() -> Void {
+        let h = Handle(fd=1)
+        h.drop()
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_generic_body_moved_out_not_destroyed, R"(
-    cls A { }
+// "drop" is found through a superimposition chain like any other method, so a type that inherits its destructor is
+// destroyed by the one it inherits.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_drop_inherited_through_a_chain, R"(
+    cls Base { !public fd: S32 }
+    cls Derived { }
 
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
+    sup Base ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Self(fd) = self
+        }
     }
 
-    fun generic_moves[T](t: T) -> A {
-        let inner = A()
-        ret inner
-    }
+    sup Derived ext Base { }
 
-    fun main() -> Void {
-        let m = generic_moves(0)
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_generator_frame_destroyed_when_drained, R"(
-    cor counter() -> Gen[S32] {
-        gen 1
-        gen 2
-    }
-
-    fun main() -> Void {
-        loop x in counter() { }
+    fun f() -> Void {
+        let d = Derived(fd=1)
+        d.drop()
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_generator_frame_destroyed_when_abandoned, R"(
-    cor counter() -> Gen[S32] {
-        gen 1
-        gen 2
+// Every copyable type is discardable, which is what lets a generic constrained by "Drop" take a number.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_copyable_type_is_droppable, R"(
+    fun discard[T: std::ops::drop::Drop](v: T) -> Void {
+        v.drop()
     }
 
-    fun main() -> Void {
-        loop x in counter() { exit }
+    fun f() -> Void {
+        discard(123)
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
-    Destructors,
-    test_valid_discarded_statement_value_destroyed, R"(
-    cls A { }
+// Nothing is destroyed implicitly any more, so a value left holding something at the end of its scope is an error
+// rather than something the compiler quietly cleans up. This is the case the old first test asserted the opposite of.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstDestructors,
+    test_invalid_value_not_dropped_at_scope_exit,
+    SppLinearValueNotConsumedError, R"(
+    cls Handle { !public fd: S32 }
 
-    sup A ext std::ops::del::Del {
-        fun del(&mut self) -> Void { }
+    sup Handle ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Handle(fd) = self
+        }
     }
 
-    fun make() -> A {
-        ret A()
+    fun f() -> Void {
+        let h = Handle(fd=1)
+    }
+)");
+
+// "drop" consumes, so it cannot be called twice - which is what makes a double release unrepresentable rather than
+// something a drop flag has to prevent at runtime.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstDestructors,
+    test_invalid_drop_called_twice,
+    SppUninitializedMemoryUseError, R"(
+    cls Handle { !public fd: S32 }
+
+    sup Handle ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Handle(fd) = self
+        }
     }
 
-    fun main() -> Void {
-        make()
-        let after = 1
+    fun f() -> Void {
+        let h = Handle(fd=1)
+        h.drop()
+        h.drop()
+    }
+)");
+
+// A type with no "Drop" has no "drop" to call; it is taken apart instead.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstDestructors,
+    test_invalid_drop_on_type_without_drop,
+    SppIdentifierUnknownError, R"(
+    cls Handle { !public fd: S32 }
+
+    fun f() -> Void {
+        let h = Handle(fd=1)
+        h.drop()
     }
 )");

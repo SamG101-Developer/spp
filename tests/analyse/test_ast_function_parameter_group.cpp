@@ -88,7 +88,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     cls A { }
     sup A {
-        fun f(self) -> Void { }
+        fun f(self) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 )");
 
@@ -140,7 +142,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     cls A { }
     sup A {
-        fun f(self, a: S32) -> Void { }
+        fun f(self, a: S32) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 )");
 
@@ -150,7 +154,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     cls A { }
     sup A {
-        fun f(self, a: S32 = 0) -> Void { }
+        fun f(self, a: S32 = 0) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 )");
 
@@ -160,7 +166,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     cls A { }
     sup A {
-        fun f(self, ..a: S32) -> Void { }
+        fun f(self, ..a: S32) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 )");
 
@@ -170,7 +178,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     cls A { }
     sup A {
-        fun f(self, a: S32, b: S32 = 0, ..c: S32) -> Void { }
+        fun f(self, a: S32, b: S32 = 0, ..c: S32) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 )");
 

@@ -7,6 +7,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[123_uz]()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -28,6 +29,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[USize, 123_uz]()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -60,6 +62,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let mut x = A[n=123_uz](a=0_uz)
         x.a = 456_uz
+        std::mem::ops::drop(x)
     }
 )");
 

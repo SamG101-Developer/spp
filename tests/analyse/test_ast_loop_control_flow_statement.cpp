@@ -59,7 +59,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopControlFlowStatementAst,
     test_valid_exit_types, R"(
     fun f() -> std::void::Void {
-        loop true {
+        let looped = loop true {
             case true {
                 exit 1
             }
@@ -90,7 +90,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopControlFlowStatementAst,
     test_valid_exit_types_nested, R"(
     fun f() -> std::void::Void {
-        loop true {
+        let looped = loop true {
             loop true {
                 exit exit 1
             }

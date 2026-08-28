@@ -84,6 +84,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let mut x = async f()
         x = Fut[Str]()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -94,5 +95,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let mut x = async f("hello")
         x = Fut[Void]()
+        std::mem::ops::drop(x)
     }
 )");

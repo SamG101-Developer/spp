@@ -22,7 +22,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(a: A) -> Void {
-        let x = a[0]
+        {
+            let x = a[0]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -39,7 +42,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(mut a: A) -> Void {
-        let x = a[mut 0]
+        {
+            let x = a[mut 0]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -92,7 +98,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(a: A) -> Void {
-        let x: &StrView = a[0]
+        {
+            let x: &StrView = a[0]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -109,7 +118,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(mut a: A) -> Void {
-        let x: &mut StrView = a[mut 0]
+        {
+            let x: &mut StrView = a[mut 0]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 

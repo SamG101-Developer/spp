@@ -13,7 +13,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let p = Point(x=Str::from("5"), y=Str::from("5"))
 
         case 1 of {
-            == 1 { let r = p }
+            == 1 {
+                let r = p
+                std::mem::ops::drop(r)
+            }
             == 2 { }
         }
 
@@ -53,7 +56,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let x = p.x }
+            == 1 {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
             == 2 { }
         }
 
@@ -73,8 +79,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let x = p.x }
-            == 2 { let y = p.y }
+            == 1 {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
+            == 2 {
+                let y = p.y
+                std::mem::ops::drop(y)
+            }
         }
 
         let r = p
@@ -230,6 +242,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(r)
     }
 )");
 
@@ -251,6 +264,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(r)
     }
 )");
 
@@ -272,6 +286,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(r)
     }
 )");
 
@@ -288,8 +303,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let r = p }
-            == 2 { let r = p }
+            == 1 {
+                let r = p
+                std::mem::ops::drop(r)
+            }
+            == 2 {
+                let r = p
+                std::mem::ops::drop(r)
+            }
         }
     }
 )");
@@ -310,6 +331,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(r)
     }
 )");
 
@@ -333,6 +355,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
 
         g(&p)
+        std::mem::ops::drop(p)
     }
 )");
 

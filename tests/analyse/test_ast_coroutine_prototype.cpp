@@ -72,7 +72,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor c(a: &mut Bool, b: &S32) -> Gen[S32] { }
     fun f() -> Void {
         let (mut x, y) = (false, 123)
-        c(&mut x, &y)
+        std::mem::ops::drop(c(&mut x, &y))
     }
 )");
 
@@ -88,7 +88,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     CoroutinePrototypeAst,
     test_valid_return_type_gen_with_send_type, R"(
     cor c() -> Gen[S32, Bool] {
-        gen 1
+        let recv = gen 1
     }
 )");
 
@@ -173,8 +173,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         vec.append(Str::from("hello"))
         vec.append(Str::from("world"))
 
-        let mut elem1 = vec.index_ref(0_uz)
-        let mut elem2 = vec.index_ref(1_uz)
-        elem2 = elem1
+        {
+            let mut elem1 = vec.index_ref(0_uz)
+            let mut elem2 = vec.index_ref(1_uz)
+            elem2 = elem1
+        }
+        std::mem::ops::drop(vec)
     }
 )");

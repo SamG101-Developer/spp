@@ -33,7 +33,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
     test_valid_function_constraint, R"(
     cls A { }
-    fun g[T: A](t: T) -> Void { }
+    fun g[T: A](t: T) -> Void {
+        std::mem::ops::drop(t)
+    }
 
     fun f() -> Void {
         let a = A()
@@ -51,7 +53,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup C ext A { }
     sup C ext B { }
 
-    fun g[T: A & B](t: T) -> Void { }
+    fun g[T: A & B](t: T) -> Void {
+        std::mem::ops::drop(t)
+    }
 
     fun f() -> Void {
         let c = C()
@@ -97,6 +101,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A()
         let b = B[A]()
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -114,6 +120,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let c = C()
         let d = D[C]()
+        std::mem::ops::drop(c)
+        std::mem::ops::drop(d)
     }
 )");
 
@@ -200,5 +208,83 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A[U32]()
         a.my_function()  # valid; U32 is Copy
+        std::mem::ops::drop(a)
+    }
+)");
+
+// A variadic parameter stands for however many arguments were left, so its constraint describes each of them rather
+// than the pack they were collected into. Nothing exercised that path before: every constraint test above binds one
+// argument to one parameter, and the variadic case was read as a question about the tuple holding the pack - which a
+// "sup [..Ts: Copy] Tup[Ts] ext Copy" answers with the very impl the constraint exists to gate.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_variadic_constraint_all_satisfy, R"(
+    cls A[..Ts] { }
+
+    sup [..Ts: Copy] A[Ts] {
+        !public fun my_function(&self) -> Void { }
+    }
+
+    fun f() -> Void {
+        let a = A[U32, Bool]()
+        a.my_function()
+        std::mem::ops::drop(a)
+    }
+)");
+
+// One element that does not satisfy it is enough to reject the pack. Declared on the class rather than on a "sup",
+// because an unsatisfied "sup" constraint means that superimposition simply does not apply - the method is then not
+// found, which is a weaker thing to assert than the constraint itself being enforced.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_variadic_constraint_one_element_fails,
+    SppGenericConstraintError, R"(
+    cls NotCopy { }
+    cls A[..Ts: Copy] { }
+
+    fun f() -> Void {
+        let a = A[U32, NotCopy]()
+        std::mem::ops::drop(a)
+    }
+)");
+
+// ...including when it is the only element, which is the shape a single-argument pack takes, and the one most easily
+// confused with the bare argument the check used to be handed.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_variadic_constraint_single_element_fails,
+    SppGenericConstraintError, R"(
+    cls NotCopy { }
+    cls A[..Ts: Copy] { }
+
+    fun f() -> Void {
+        let a = A[NotCopy]()
+        std::mem::ops::drop(a)
+    }
+)");
+
+// An empty pack has nothing to violate the constraint, so it satisfies it. Written against a function, because that
+// is where an empty pack arises on its own - a call that gives the variadic parameter no arguments at all.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_variadic_constraint_empty_pack, R"(
+    fun g[..Ts: Copy](..a: Ts) -> Void { }
+
+    fun f() -> Void {
+        g()
+    }
+)");
+
+// A variadic function generic is the same rule on the call side.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_variadic_function_constraint_one_element_fails,
+    SppFunctionCallNoValidSignaturesError, R"(
+    cls NotCopy { }
+
+    fun g[..Ts: Copy](..a: Ts) -> Void { }
+
+    fun f() -> Void {
+        g(1, NotCopy())
     }
 )");

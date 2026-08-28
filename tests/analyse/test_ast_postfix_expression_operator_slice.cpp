@@ -13,7 +13,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_ref, R"(
     fun f(a: Vec[S32]) -> Void {
-        let x = a[0_uz to 2_uz]
+        {
+            let x = a[0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -21,7 +24,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_mut, R"(
     fun f(mut a: Vec[S32]) -> Void {
-        let x = a[mut 0_uz to 2_uz]
+        {
+            let x = a[mut 0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -29,7 +35,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_ref_infer_type, R"(
     fun f(a: Vec[S32]) -> Void {
-        let x: &View[S32] = a[0_uz to 2_uz]
+        {
+            let x: &View[S32] = a[0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -37,7 +46,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_mut_infer_type, R"(
     fun f(mut a: Vec[S32]) -> Void {
-        let x: &mut View[S32] = a[mut 0_uz to 2_uz]
+        {
+            let x: &mut View[S32] = a[mut 0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 

@@ -1,9 +1,9 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_duplicate_named_argument,
-    SppIdentifierDuplicateError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_duplicate_named_argument,
+  SppIdentifierDuplicateError, R"(
     fun f(a: Bool, b: Bool) -> Void { }
 
     fun g() -> Void {
@@ -12,9 +12,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_argument_order,
-    SppOrderInvalidError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_argument_order,
+  SppOrderInvalidError, R"(
     fun f(a: Bool, b: Bool) -> Void { }
 
     fun g() -> Void {
@@ -23,9 +23,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_tuple_expansion,
-    SppExpansionOfNonTupleError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_tuple_expansion,
+  SppExpansionOfNonTupleError, R"(
     fun f(a: Bool, b: Bool) -> Void { }
 
     fun g() -> Void {
@@ -35,8 +35,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_tuple_expansion, R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_tuple_expansion, R"(
     fun f(a: Bool, b: Bool) -> Void { }
 
     fun g() -> Void {
@@ -46,8 +46,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_mixed_positional_and_keyword_order, R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_mixed_positional_and_keyword_order, R"(
     fun f(a: Bool, b: Bool) -> Void { }
 
     fun g() -> Void {
@@ -56,8 +56,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_multiple_keyword_args, R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_multiple_keyword_args, R"(
     fun f(a: Bool, b: Bool) -> Void { }
 
     fun g() -> Void {
@@ -66,9 +66,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_value_and_mut_attr,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_value_and_mut_attr,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -82,9 +82,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mov_value_and_mov_attr,
-    SppUninitializedMemoryUseError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mov_value_and_mov_attr,
+  SppUninitializedMemoryUseError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -98,9 +98,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_ref_value_and_mov_attr,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_ref_value_and_mov_attr,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Str
         !public b: Str
@@ -114,9 +114,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_value_and_mov_attr,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_value_and_mov_attr,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Str
         !public b: Str
@@ -130,9 +130,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_ref_value_and_mut_attr,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_ref_value_and_mut_attr,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -146,9 +146,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_value_and_ref_attr,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_value_and_ref_attr,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -162,9 +162,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mov_value_and_mut_attr,
-    SppUninitializedMemoryUseError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mov_value_and_mut_attr,
+  SppUninitializedMemoryUseError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -178,9 +178,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mov_value_and_ref_attr,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mov_value_and_ref_attr,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -194,9 +194,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_attr_and_mut_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_attr_and_mut_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -210,9 +210,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_ref_attr_and_mov_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_ref_attr_and_mov_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -226,9 +226,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_attr_and_mov_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_attr_and_mov_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -242,9 +242,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_ref_attr_and_mut_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_ref_attr_and_mut_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -258,9 +258,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_attr_and_ref_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_attr_and_ref_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -274,9 +274,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mov_attr_and_mut_value,
-    SppPartiallyInitializedMemoryUseError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mov_attr_and_mut_value,
+  SppPartiallyInitializedMemoryUseError, R"(
     cls A {
         !public a: Str
         !public b: Str
@@ -286,13 +286,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(a.b, &mut a)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mov_attr_and_ref_value,
-    SppPartiallyInitializedMemoryUseError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mov_attr_and_ref_value,
+  SppPartiallyInitializedMemoryUseError, R"(
     cls A {
         !public a: Str
         !public b: Str
@@ -302,13 +303,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(a.b, &a)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_value_and_mut_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_value_and_mut_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -322,9 +324,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_ref_value_and_mov_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_ref_value_and_mov_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -338,9 +340,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_value_and_mov_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_value_and_mov_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -354,9 +356,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_ref_value_and_mut_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_ref_value_and_mut_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -370,9 +372,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mut_value_and_ref_value,
-    SppMemoryOverlapUsageError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mut_value_and_ref_value,
+  SppMemoryOverlapUsageError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -386,9 +388,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mov_value_and_mut_value,
-    SppUninitializedMemoryUseError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mov_value_and_mut_value,
+  SppUninitializedMemoryUseError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -402,9 +404,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_invalid_overlap_mov_value_and_ref_value,
-    SppUninitializedMemoryUseError, R"(
+  FunctionCallArgumentGroupAst,
+  test_invalid_overlap_mov_value_and_ref_value,
+  SppUninitializedMemoryUseError, R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -418,9 +420,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_ref_value_and_ref_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_ref_value_and_ref_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -430,13 +432,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a, &a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_ref_attr_and_ref_value,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_ref_attr_and_ref_value,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -446,13 +449,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a.b, &a)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_ref_value_and_ref_value,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_ref_value_and_ref_value,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -462,13 +466,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a, &a)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_non_overlap_mut_attr_ref_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_non_overlap_mut_attr_ref_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -478,13 +483,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&mut a.a, &a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_ref_attr_and_mut_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_ref_attr_and_mut_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -494,13 +500,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&a.a, &mut a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_mut_attr_and_mut_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_mut_attr_and_mut_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -510,13 +517,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&mut a.a, &mut a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_ref_attr_and_ref_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_ref_attr_and_ref_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -526,13 +534,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a.a, &a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_mov_attr_and_ref_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_mov_attr_and_ref_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -542,13 +551,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(a.a, &a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_mov_attr_and_mut_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_mov_attr_and_mut_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -558,13 +568,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(a.a, &mut a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_ref_attr_and_mov_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_ref_attr_and_mov_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -574,13 +585,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a.a, a.b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    FunctionCallArgumentGroupAst,
-    test_valid_overlap_mut_attr_and_mov_attr,
-    R"(
+  FunctionCallArgumentGroupAst,
+  test_valid_overlap_mut_attr_and_mov_attr,
+  R"(
     cls A {
         !public a: Bool
         !public b: Bool
@@ -590,5 +602,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&mut a.a, a.b)
+        std::mem::ops::drop(a)
     }
 )");

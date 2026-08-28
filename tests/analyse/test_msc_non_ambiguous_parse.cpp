@@ -11,6 +11,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let v = Vec[FunMov[(), Str]]()
         let mut x = v[1_u64]()
         x = false
+        std::mem::ops::drop(v)
     }
 )");
 
@@ -77,6 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = foo
             .bar()
         x = 2
+        std::mem::ops::drop(foo)
     }
 )");
 
@@ -85,7 +87,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_index_on_new_line_is_a_new_statement, R"(
     fun g() -> Void {
         let mut x = 1
-        [x]
+        std::mem::ops::drop([x])
         x = 2
     }
 )");

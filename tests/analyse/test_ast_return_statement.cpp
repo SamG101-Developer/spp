@@ -95,24 +95,28 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     }
 )");
 
+// Returning a value is a way of consuming it, so the returned value is not also destroyed on the way out. What has
+// changed since this was written is the other half: the scratch value is no longer destroyed for you either, so it has
+// to be discarded explicitly.
 SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     AstReturnStatementAst,
-    test_valid_ret_does_not_destroy_returned_value, R"(
-    use std::ops::del::Del
-
+    test_valid_ret_consumes_the_returned_value, R"(
     cls A { }
 
-    sup A ext Del {
-        fun del(&mut self) -> Void { }
+    sup A ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let A() = self
+        }
     }
 
     fun f() -> A {
         let scratch = A()
-        let out = A()
-        ret out
+        scratch.drop()
+        ret A()
     }
 
     fun main() -> Void {
         let r = f()
+        r.drop()
     }
 )");

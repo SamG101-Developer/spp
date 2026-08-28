@@ -8,13 +8,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let y = x
         x = Str::from("b")
         let z = x
+        std::mem::ops::drop(y)
+        std::mem::ops::drop(z)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryReinitialization,
     test_valid_memory_reinitialize_after_move_into_function, R"(
-    fun consume(s: Str) -> Void { }
+    fun consume(s: Str) -> Void {
+        std::mem::ops::drop(s)
+    }
     fun f() -> Void {
         let mut x = Str::from("a")
         consume(x)
@@ -33,13 +37,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = b.a
         b.a = A()
         let y = b
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(y)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryReinitialization,
     test_valid_memory_reinitialize_after_move_multiple_cycles, R"(
-    fun consume(s: Str) -> Void { }
+    fun consume(s: Str) -> Void {
+        std::mem::ops::drop(s)
+    }
     fun f() -> Void {
         let mut x = Str::from("a")
         consume(x)

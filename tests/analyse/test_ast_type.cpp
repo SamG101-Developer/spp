@@ -130,6 +130,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: MyType::X
         x = Str::from("hello")
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -153,6 +154,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: MyTypeA::X::Y
         x = MyTypeC()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -228,6 +230,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: C::X
         x = Str::from("hello")
+        std::mem::ops::drop(x)
     }
 )");
 

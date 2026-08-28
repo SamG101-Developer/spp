@@ -218,6 +218,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::bignum::bigint::BigInt
     fun f(b: (BigInt, BigInt, BigInt, BigInt)) -> Void {
         let a = .. + b
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -227,6 +228,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::bignum::bigint::BigInt
     fun f(a: (BigInt, BigInt, BigInt, BigInt)) -> Void {
         let b = a + ..
+        std::mem::ops::drop(b)
     }
 )");
 

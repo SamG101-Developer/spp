@@ -60,7 +60,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_generator_object_mov, R"(
     cor g() -> Gen[Yield=S32, Send=Bool] {
-        gen 1
+        let sent = gen 1
     }
 
     fun f(mut c: S32) -> Void {
@@ -70,6 +70,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is S32(..) { b }
             else { c }
         }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -77,7 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_generator_object_ref, R"(
     cor g() -> Gen[Yield=&S32, Send=Bool] {
-        gen &1
+        let sent = gen &1
     }
 
     fun f(mut c: &S32) -> Void {
@@ -87,6 +88,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is &S32(..) { b }
             else { c }
         }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -94,7 +96,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_generator_object_mut, R"(
     cor g() -> Gen[Yield=&mut S32, Send=Bool] {
-        gen &mut 1
+        let sent = gen &mut 1
     }
 
     fun f(mut c: &mut S32) -> Void {
@@ -104,6 +106,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is &mut S32(..) { b }
             else { c }
         }
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -120,6 +123,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = a.res()
         let c = a.res()
         let d = b
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -169,7 +173,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_res_send_value_used_after_move,
     SppUninitializedMemoryUseError, R"(
     cor g() -> Gen[Yield=S32, Send=Str] {
-        gen 1
+        let sent = gen 1
     }
 
     fun f(s: Str) -> Void {

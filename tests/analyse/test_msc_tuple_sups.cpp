@@ -402,3 +402,25 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         t.f()
     }
 )");
+
+// A tuple owns nothing beyond its elements, so it is copyable exactly when all of them are - the same shape as
+// "sup [..Variants: Copy] Var[Variants] ext Copy". Without this a variadic pack of numbers arrived as a linear value.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTupleSuperimpositions,
+    test_valid_tuple_of_copyable_elements_is_copy, R"(
+    fun f() -> Void {
+        let t = (1, 2, 3)
+    }
+)");
+
+// ...and is not copyable when one of them is not, so it still has to be taken apart.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestTupleSuperimpositions,
+    test_invalid_tuple_with_a_non_copyable_element,
+    SppLinearValueNotConsumedError, R"(
+    cls T { }
+
+    fun f() -> Void {
+        let t = (1, T())
+    }
+)");

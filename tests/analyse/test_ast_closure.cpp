@@ -113,6 +113,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 5_u32
         let x = (b: U32, c: U32 caps a) a + b + c
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -143,6 +144,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 5_u32
         let x: FunMov[(), U32] = (caps a) 123_u32
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -183,6 +185,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = 5_u32
         let b = 6_u32
         let x: FunMov[(), U32] = (caps a, b) 123_u32
+        let result = x()
     }
 )");
 
@@ -194,6 +197,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = 5_u32
         let b = 6_u32
         let x: FunMov[(), U32] = (caps a, &b) 123_u32
+        let result = x()
     }
 )");
 
@@ -227,6 +231,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = "test"
         let x = (caps a) a
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -237,8 +242,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let a = "test"
         let x = (caps a) a
-        x()
-        x()
+
+        let z = x()
+        let z = x()
     }
 )");
 
@@ -284,6 +290,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 5_u32
         let x = (caps a) { ret a }
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -304,6 +311,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 5_u32
         let x = cor (caps a) { gen a }
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -323,6 +331,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     fun f() -> Void {
         let x = (a: U32, b: U32) a
-        x(1_u32, 2_u32)
+        std::mem::ops::drop(x(1_u32, 2_u32))
     }
 )");

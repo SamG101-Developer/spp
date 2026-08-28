@@ -41,8 +41,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup A {
-        fun function(&self) -> Void {
-            let x = self.a
+        fun function(&self) -> Str {
+            ret self.a.clone()
         }
     }
 )");
@@ -53,6 +53,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAccessViolationError, R"(
     fun f() -> Void {
         let x = std::generator::Generated[S32]()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -65,14 +66,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup A {
         !virtual_method
-        fun function(&self) -> Void { }
+        fun function(&self) -> Str {
+            ret Str::from("")
+        }
     }
 
     cls B { }
 
     sup B ext A {
-        fun function(&self) -> Void {
-            let x = self.a
+        fun function(&self) -> Str {
+            ret self.a.clone()
         }
     }
 )");
@@ -92,8 +95,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public a: Str
     }
 
-    fun function(a: A) -> Void {
-        let x = a.a
+    fun function(a: A) -> Str {
+        ret a.a
     }
 )");
 
@@ -105,8 +108,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !protected a: Str
     }
 
-    fun function(a: A) -> Void {
-        let x = a.a
+    fun function(a: A) -> Str {
+        ret a.a
     }
 )");
 
@@ -118,8 +121,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup A {
-        fun function(&self) -> Void {
-            let x = self.a
+        fun function(&self) -> Str {
+            ret self.a.clone()
         }
     }
 )");

@@ -9,6 +9,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut x = Str::from("hello world")
         x = g()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -69,6 +70,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = MyType()
         let string: Str = x.into()
         let boolean: Bool = x.into()
+        string.drop()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -85,6 +88,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = MyType(a=g())
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -101,6 +105,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = MyType[T=Str](a=g())
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -118,6 +123,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let mut x = MyType(a=g())
+        std::mem::ops::drop(x)
     }
 )");
 

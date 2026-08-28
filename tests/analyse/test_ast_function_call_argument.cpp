@@ -346,7 +346,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentAst,
     test_invalid_arg_name_against_stripped_void_param,
-    SppArgumentNameInvalidError, R"(
+    SppFunctionCallNoValidSignaturesError, R"(
     fun takes(x: Void) -> Void { }
 
     fun f() -> Void {

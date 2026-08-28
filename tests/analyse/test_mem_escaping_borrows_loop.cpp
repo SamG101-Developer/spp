@@ -4,7 +4,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_valid_memory_mov_iterator_no_modifications, R"(
     fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_mov() { }
+        loop x in v.iter_mov() {
+            std::mem::ops::drop(x)
+        }
     }
 )");
 
@@ -13,6 +15,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_mut_iterator_no_modifications, R"(
     fun f(mut v: Vec[Str]) -> Void {
         loop x in v.iter_mut() { }
+        std::mem::ops::drop(v)
     }
 )");
 
@@ -21,6 +24,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_ref_iterator_no_modifications, R"(
     fun f(mut v: Vec[Str]) -> Void {
         loop x in v.iter_ref() { }
+        std::mem::ops::drop(v)
     }
 )");
 
@@ -75,6 +79,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop x in v.iter_mut() {
         }
         v.append(Str::from("hello"))
+        std::mem::ops::drop(v)
     }
 )");
 
@@ -85,6 +90,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop x in v.clone().iter_mut() {
             v.append(Str::from("hello world"))
         }
+        std::mem::ops::drop(v)
     }
 )");
 
@@ -95,5 +101,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop x in v.iter_ref() {
             let l = v.len()
         }
+        std::mem::ops::drop(v)
     }
 )");

@@ -17,8 +17,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b: Bool
     }
 
-    fun f(mut a: A) -> Void {
+    fun f(mut a: A) -> A {
         a.b = true
+        ret a
     }
 )");
 

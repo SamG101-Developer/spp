@@ -1,4 +1,4 @@
-#include "../test_macros.hpp"
+#include "../test_macros_parse.hpp"
 import spp.analyse.errors.semantic_error;
 import spp.asts._all;
 import spp.parse.errors.parser_error;

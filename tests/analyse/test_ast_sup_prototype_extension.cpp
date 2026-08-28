@@ -277,17 +277,20 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public
         fun f(mut self) -> Void {
             self.a = 100
+            std::mem::ops::drop(self)
         }
     }
 
     sup B ext A {
         fun f(mut self) -> Void {
-            self.a = self.b
+            let Self(mut a, b) = self
+            a = b
         }
     }
 
     fun f() -> Void {
         let b = B(b=200)
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -300,16 +303,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T] A[T] {
         !virtual_method
         !public
-        fun f(mut self) -> Void { }
+        fun f(mut self) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 
     sup [T] B[T] ext A[T] {
         fun f(mut self) -> Void {
-            self.a = self.b
+            let Self(mut a, b) = self
+            a = b
+            std::mem::ops::drop(a)
         }
     }
 
     fun f() -> Void {
         let b = B(b=100)
+        std::mem::ops::drop(b)
     }
 )");

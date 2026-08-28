@@ -62,8 +62,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = Str::from("123")
-        let coro1 = c(&x)
-        let coro2 = c(&x)
+        {
+            let coro1 = c(&x)
+            let coro2 = c(&x)
+        }
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -166,7 +169,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun h() -> Void {
-        loop true {
+        let looped = loop true {
             let x = Str::from("hello world")
             let coroutine = g(&x)
             exit x
@@ -183,7 +186,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor h() -> Gen[Str, Bool] {
         let x = Str::from("hello world")
         let coroutine = g(&x)
-        gen x
+        let sent = gen x
     }
 )");
 
@@ -208,8 +211,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x = Str::from("hello world")
         let y = Str::from("other")
-        let coroutine = g(&x)
-        let z = y
+        {
+            let coroutine = g(&x)
+            let z = y
+            std::mem::ops::drop(z)
+        }
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -224,6 +231,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let coroutine = g(&x)
         }
         let y = x
+        std::mem::ops::drop(y)
     }
 )");
 
@@ -251,5 +259,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         xs.append(1_u32)
         let a = xs[0_uz]@
         let b = xs
+        std::mem::ops::drop(b)
     }
 )");

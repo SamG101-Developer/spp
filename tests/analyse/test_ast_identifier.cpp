@@ -36,6 +36,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(self) -> Void {
             let x = self
+            std::mem::ops::drop(x)
         }
     }
 )");

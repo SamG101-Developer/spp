@@ -35,6 +35,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = A(a=5)
         a.f()
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -55,5 +56,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A(a=5)
         let mut b = a.f()
         b = a.a
+        std::mem::ops::drop(a)
     }
 )");

@@ -93,8 +93,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x = Str::from("hello world")
-        let mut coroutine = g(&x)  # take an immutable borrow
-        h(&x)                      # conflicting immutable borrow does not invalidate the first immutable borrow
+        {
+            let mut coroutine = g(&x)  # take an immutable borrow
+            h(&x)                      # conflicting immutable borrow does not invalidate the first immutable borrow
+        }
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -160,8 +163,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun test_fn() -> Void {
         let mut object = MyType()
-        let generator_ref_1 = object.custom_iter_ref()
-        let generator_ref_2 = object.custom_iter_ref()
+        {
+            let generator_ref_1 = object.custom_iter_ref()
+            let generator_ref_2 = object.custom_iter_ref()
+        }
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -292,7 +298,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             generator_ref_1 = object.custom_iter_ref()
         }
         let generator_ref_2 = object.custom_iter_ref()
-        generator_ref_1.res()
+        std::mem::ops::drop(generator_ref_1.res())
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -307,13 +314,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun test_fn() -> Void {
         let mut object = MyType()
-        let mut generator_mut = object.custom_iter_mut()
-        let x = generator_mut.res()
-        let y = generator_mut.res()
-        let z = case x of {
-            is &mut Str(..) { x.to_uppercase() }
-            else { Str::from("") }
+        {
+            let mut generator_mut = object.custom_iter_mut()
+            let x = generator_mut.res()
+            let y = generator_mut.res()
+            let z = case x of {
+                is &mut Str(..) { x.to_uppercase() }
+                else { Str::from("") }
+            }
+            std::mem::ops::drop(z)
         }
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -327,13 +338,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun test_fn() -> Void {
         let mut object = MyType()
-        let mut generator_ref = object.custom_iter_ref()
-        let x = generator_ref.res()
-        let y = generator_ref.res()
-        let z = case x of {
-            is &Str(..) { x.to_uppercase() }
-            else { Str::from("") }
+        {
+            let mut generator_ref = object.custom_iter_ref()
+            let x = generator_ref.res()
+            let y = generator_ref.res()
+            let z = case x of {
+                is &Str(..) { x.to_uppercase() }
+                else { Str::from("") }
+            }
+            std::mem::ops::drop(z)
         }
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -352,7 +367,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let generator_mut = object.custom_iter_mut()
         }
         let mut generator_ref = object.custom_iter_ref()
-        generator_ref.res()
+        std::mem::ops::drop(generator_ref.res())
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -371,7 +387,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let generator_ref = object.custom_iter_ref()
         }
         let mut generator_mut = object.custom_iter_mut()
-        generator_mut.res()
+        std::mem::ops::drop(generator_mut.res())
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -389,8 +406,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop true {
             let generator_mut_1 = object.custom_iter_mut()
         }
-        let mut generator_mut_1 = object.custom_iter_mut()
-        generator_mut_1.res()
+        {
+            let mut generator_mut_1 = object.custom_iter_mut()
+            let x = generator_mut_1.res()
+        }
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -408,8 +428,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop true {
             let generator_ref_1 = object.custom_iter_ref()
         }
-        let mut generator_ref_2 = object.custom_iter_ref()
-        generator_ref_2.res()
+        {
+            let mut generator_ref_2 = object.custom_iter_ref()
+            std::mem::ops::drop(generator_ref_2.res())
+        }
+        std::mem::ops::drop(object)
     }
 )");
 
@@ -428,6 +451,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is A(a) { a }
             else { Str::from("nothing") }
         }
+        std::mem::ops::drop(generator)
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -446,6 +471,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is &A(a) { a }
             else { 0_u32 }
         }
+        std::mem::ops::drop(generator)
     }
 )");
 
@@ -465,6 +491,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is &A(..) { a.a }
             else { 0_u32 }
         }
+        std::mem::ops::drop(generator)
     }
 )");
 
@@ -473,13 +500,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_assign_narrowed_yielded_borrow_to_outer_binding, R"(
     fun f() -> Void {
         let mut v = Vec[Str]()
-        let mut i = v.iter_mut()
-        loop true {
-            let mut e2: &mut Str
-            let e1 = i.res()
-            case e1 of {
-                is &mut Str(..) { e2 = e1 }
+        {
+            let mut i = v.iter_mut()
+            loop true {
+                let mut e2: &mut Str
+                let e1 = i.res()
+                case e1 of {
+                    is &mut Str(..) { e2 = e1 }
+                }
             }
         }
+        std::mem::ops::drop(v)
     }
 )");

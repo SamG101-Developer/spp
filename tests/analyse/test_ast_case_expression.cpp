@@ -226,7 +226,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     CaseExpressionAst,
     test_valid_of_form_else_case, R"(
     fun f() -> Void {
-        case 1 == 1 {
+        let x = case 1 == 1 {
             "hello world"
         }
         else case 2 == 2 {

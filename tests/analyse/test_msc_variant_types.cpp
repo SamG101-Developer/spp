@@ -91,10 +91,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A variant may hold a borrow. These asserted the opposite, which the language cannot afford: "view.spp" indexes
+// through "Indexed[&T or None]" everywhere, and narrowing a variant to its borrowed alternative is how a borrow is
+// read back out of one. The restriction that does hold is on a type alias - see
+// "test_invalid_type_statement_old_type_convention_ref" - because an alias presents no convention of its own while
+// the type it resolves to has one, and every convention comparison downstream then asks the wrong question.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
-    test_variant_including_a_borrowed_type_1,
-    SppSecondClassBorrowViolationError, R"(
+    test_variant_including_a_borrowed_type_1, R"(
     fun f(a: &StrView or U64 or Bool) -> Str {
         ret case a of {
             is &StrView(..) { Str::from(a) }
@@ -103,11 +107,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// ...including alongside an owned alternative, which is what makes the variant itself owned and so still owed.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
-    test_variant_including_a_borrowed_type_2,
-    SppSecondClassBorrowViolationError, R"(
+    test_variant_including_a_borrowed_type_2, R"(
     fun f(a: Str or &mut U64 or Bool) -> Str {
+        std::mem::ops::drop(a)
         ret Str::from("hello")
     }
 )");
@@ -122,6 +127,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (Some(val=Str::from("hello world")), 123_u64)
         let a = g(t)
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -160,6 +166,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A(x=true)
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -168,6 +175,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_as_generic_argument, R"(
     fun f() -> Void {
         let v = Vec[Bool or Str]()
+        std::mem::ops::drop(v)
     }
 )");
 

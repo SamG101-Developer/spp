@@ -71,10 +71,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestShadowing,
     test_shadow_moved_variable, R"(
-    fun f() -> Void {
+    fun f() -> (Str, Str) {
         let x = Str::from("a")
         let y = x
         let x = Str::from("b")
         let z = x
+        ret (y, z)
     }
 )");

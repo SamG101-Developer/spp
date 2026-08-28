@@ -106,6 +106,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t = (1, Str::from("2"))
         let [(a, mut b), c] = [t, (3, Str::from("4"))]
         b = Str::from("5")
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -204,6 +205,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(c: Bool) -> Void {
         let s = Str::from("a")
         let [a, b] = case c { [s, Str::from("b")] } else { [s, Str::from("d")] }
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -215,6 +218,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let s = Str::from("a")
         let t = s
         let [a, b] = case c { [s, Str::from("b")] } else { [s, Str::from("d")] }
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -229,13 +234,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [a, b] = g()
         let done = false
         loop done { }
+        std::mem::ops::drop(b)
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   LocalVariableDestructureArrayAst_MaterializeRhs,
-  test_invalid_place_value_used_after_partial_move,
-  SppPartiallyInitializedMemoryUseError, R"(
+  test_invalid_place_value_used_after_destructure,
+  SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let t = [Str::from("a"), Str::from("b")]
         let [a, ..] = t

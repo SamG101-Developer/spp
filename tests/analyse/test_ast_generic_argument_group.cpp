@@ -47,7 +47,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g[T]() -> A[T] { ret A[T]() }
 
     fun f() -> Void {
-        g[Str]()
+        std::mem::ops::drop(g[Str]())
     }
 )");
 
@@ -59,7 +59,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g[..T]() -> A[T] { ret A[T]() }
 
     fun f() -> Void {
-        g[Str, U32, U64]()
+        std::mem::ops::drop(g[Str, U32, U64]())
     }
 )");
 
@@ -110,7 +110,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g[cmp n: Bool]() -> A[n] { ret A[n]() }
 
     fun f() -> Void {
-        g[false]()
+        std::mem::ops::drop(g[false]())
     }
 )");
 
@@ -134,6 +134,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut type1 = Type[Bool, Str]()
         type1 = Type[T=Bool, U=Str]()
+        std::mem::ops::drop(type1)
     }
 )");
 
@@ -145,6 +146,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut type1 = Type[Bool, Str]()
         type1 = Type[U=Str, T=Bool]()
+        std::mem::ops::drop(type1)
     }
 )");
 
@@ -158,6 +160,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[T]() -> Void {
         let mut x = g[T]()
         x.append(element=T())
+        std::mem::ops::drop(x)
     }
 )");
 
