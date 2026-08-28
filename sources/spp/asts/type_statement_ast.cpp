@@ -152,6 +152,14 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
+  // An alias names a type, and a borrow is not one a type can be: it is second class, so it cannot be what a name
+  // stands for any more than it can be an attribute or a variant member. The new type is checked at stage 2, where
+  // nothing is loaded yet; the old type has to wait until here, because it is a type expression to resolve rather
+  // than a name to declare.
+  RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(
+    analyse::utils::type_utils::IsTypeBorrowed(*OldType, *sm, false),
+    {sm->CurrentScope}, ERR_ARGS(*this, *OldType, "type statement old type"));
+
   // Check the "old type" exists (non-generic).
   meta->Save();
   meta->SkipTypeAnalysisGenericChecks = true;
