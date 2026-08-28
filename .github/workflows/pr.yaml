@@ -108,6 +108,7 @@ jobs:
           - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", cache-tree: true }
           - { os: ubuntu-24.04-arm, compiler: clang, version: "23", cache-tree: true }
           - { os: ubuntu-24.04, compiler: clang, version: "23", cache-tree: true }
+          - { os: macos-26, compiler: clang, version: "", cache-tree: true }
           - { os: macos-15, compiler: clang, version: "", cache-tree: true }
           - { os: windows-2025, compiler: msvc, version: "", cache-tree: true }
           - { os: windows-2025, compiler: clang-cl, version: "", cache-tree: true }

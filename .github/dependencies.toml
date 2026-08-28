@@ -63,22 +63,25 @@ asset = "LLVM-23.1.0-rc3-macOS-ARM64.tar.xz"
 sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
 
 # macOS toolchains are tied to the Xcode app on the runner image.
-# Pin the developer directory explicitly so CI does not drift when GitHub updates the image.
+# Pin the developer directory explicitly so CI does not drift when GitHub updates the image. One key per image,
+# because the two do not overlap at the default: macos-15 boots on 16.4 and macos-26 on 26.6.
 [pin.xcode]
-developer-dir = "/Applications/Xcode_16.4.app/Contents/Developer"
+developer-dir-macos-15 = "/Applications/Xcode_16.4.app/Contents/Developer"
+developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
 
 # Prebuilt from MarkusJx/prebuilt-boost, so one digest per
 # runner.
 [pin.boost]
-version = "1.91.0"
+version = "1.92.0"
 osv-ecosystem = "OSS-Fuzz"
 osv-name = "boost"
-sha256-ubuntu-2404 = "24b11fd9c9287389491c16d1e22522ab7d6adaaf1fd80af1ece2436e5dd883d9"
-sha256-ubuntu-2204 = "5788a48747c7ebd35c6110059bf963fb61bdf2dea7ff952e3fdd2385064f3863"
-sha256-ubuntu-2204-arm64 = "c888304ea2f244f87e28044e1be35d82236e8c118d5811892583a9e360795058"
-sha256-macos-15 = "3b249cddee3fde8c20427b4ff93e18c2d88b8fb3bfeb2861081e8d16923bdf85"
-sha256-windows-2025 = "bf4b5ec8893a25cd5be1cda3a33f020ae925919a8ad6296b289d0787892db395"
-sha256-windows-2022 = "05fc1dc2ee5783a7e191c331d076b3ab569a67c5d6dde615cdf3c03ce616d9e2"
+sha256-ubuntu-2404 = "9e95ffa5c2de721acc9e91db67c0393058b16cf643047462d719a41a76958b8c"
+sha256-ubuntu-2204 = "c24626810f61bc1363dd600aac18cf0cdec1f3962db5ea2381dd951c1782ef51"
+sha256-ubuntu-2204-arm64 = "8eeeb9c33af4d1d70c046f46557f95e389e1b549d5853bc2c4e3b55f21e1e136"
+sha256-macos-15 = "57897ee9a536a8cb159f635a6d59ed2e1e7705408bdc9c058c1e078c15ad7ebf"
+sha256-macos-26 = "71d0bbe7466921d0989777a7a01c7955225b7afde00fd5b687c8790a67886f2a"
+sha256-windows-2025 = "e3db0d60785471a624c29a444b5cb42fcbd3363d8a4dd92cf12739603ebdba5e"
+sha256-windows-2022 = "1dbbd1d7ac3fcabec5e4b24d3b1bc3143cd1b57aead2436276f2c56acb48ea5d"
 
 [pin.doxygen]
 version = "1.17.0"
@@ -115,7 +118,8 @@ linux = "ubuntu-24.04"
 linux-arm = "ubuntu-24.04-arm"
 linux-old = "ubuntu-22.04"
 linux-old-arm = "ubuntu-22.04-arm"
-macos = "macos-15"
+macos = "macos-26"
+macos-old = "macos-15"
 windows = "windows-2025"
 windows-old = "windows-2022"
 
@@ -143,7 +147,7 @@ cmake-flags = ["-DMI_SECURE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "01853ed6bcf9ebe88ec2e248ea757b86417b1487"
+commit = "35705d79d878db5ca1a282ec0f8243a80010d24e"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]

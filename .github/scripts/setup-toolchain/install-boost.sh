@@ -32,6 +32,10 @@ case "$SPP_RUNNER_IMAGE" in
     url="$base/boost-${BOOST_VERSION}-macos-15-clang-static%2Bshared-aarch64.tar.gz"
     sha="$BOOST_SHA256_MACOS_15"
     ;;
+  macos-26)
+    url="$base/boost-${BOOST_VERSION}-macos-26-clang-static%2Bshared-aarch64.tar.gz"
+    sha="$BOOST_SHA256_MACOS_26"
+    ;;
   windows-2025)
     url="$base/boost-${BOOST_VERSION}-windows-2025-msvc-static-x86.tar.gz"
     sha="$BOOST_SHA256_WINDOWS_2025"

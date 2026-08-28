@@ -71,10 +71,9 @@ runs:
     - name: Select Xcode
       if: runner.os == 'macOS'
       shell: bash
-      run: |
-        sudo xcode-select -s "$XCODE_DEVELOPER_DIR"
-        xcode-select -p
-        xcodebuild -version
+      env:
+        SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
+      run: bash .github/scripts/setup-toolchain/select-xcode-macos.sh
 
     - name: Install Clang (macOS, brew)
       if: inputs.compiler == 'clang' && runner.os == 'macOS'

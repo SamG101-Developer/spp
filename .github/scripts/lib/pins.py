@@ -30,7 +30,7 @@ MANIFEST = Path(".github/dependencies.toml")
 
 # Keys inside a [pin.*] table that become environment variables. Anything else in such a table is metadata for the
 # install or refresh logic and is deliberately not exported.
-EXPORTED = re.compile(r"^(version|commit|tag|asset|developer-dir|sha256(-[a-z0-9-]+)?)$")
+EXPORTED = re.compile(r"^(version|commit|tag|asset|developer-dir(-[a-z0-9-]+)?|sha256(-[a-z0-9-]+)?)$")
 
 # A pin is a version, a tag, a commit, a digest or one release asset filename. Notably no whitespace, so nothing here
 # can inject a second line into GITHUB_ENV.
