@@ -241,12 +241,27 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
       {sm.CurrentScope}, ERR_ARGS(value_ast, *where_pm, *where_borrow));
   }
 
+  // A narrowed view of a value is that value: consuming
+  // "x" inside "case x is Some[T](..)" discharges what
+  // "x" named, not merely the branch-local symbol standing
+  // for it. Walked up the chain, since a pattern can narrow
+  // what an enclosing pattern already narrowed.
+  const auto mark_chain = [](scopes::VariableSymbol *sym, auto &&mark) {
+    for (auto *s = sym; s != nullptr; s = s->NarrowsSym.get()) { mark(s); }
+  };
+
   // Mark the symbol as moved/partially-moved if it is not
   // copyable.
   if (mark_moves and value_ast.To<asts::IdentifierAst>() != nullptr and not copies) {
-    var_sym->MemInfo->MovedBy(value_ast, sm.CurrentScope);
+    mark_chain(var_sym, [&](scopes::VariableSymbol *s) { s->MemInfo->MovedBy(value_ast, sm.CurrentScope); });
   }
 
+  // Only whole moves carry up the chain. A pattern binding
+  // an attribute out of the narrowed view partially moves
+  // that view, but the value it narrows is still whole as
+  // far as anything outside the branch is concerned - and
+  // marking it otherwise makes the subject itself unreadable
+  // at the "case" that introduced the narrowing.
   else if (mark_moves and value_ast.To<asts::IdentifierAst>() == nullptr and not partial_copies) {
     var_sym->MemInfo->AstPartialMoves.EmplaceBack(&value_ast);
   }
