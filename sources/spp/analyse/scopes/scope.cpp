@@ -213,6 +213,12 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
   Vec<asts::GenericArgumentAst*> const &generics,
   Shared<asts::TypeAst> const &ignore) const
   -> Vec<Shared<Symbol>> {
+  // "ignore" names the comp parameter whose own type is being qualified right now. Its symbol exists but has no
+  // type yet, so it must not be carried into anything. It arrives as a TypeAst while the symbols it has to be
+  // matched against are named by an IdentifierAst, and those two never compare equal - so both filters below used
+  // to be constants, one keeping everything and the other keeping nothing. Matching on the name is what was meant.
+  const auto ignore_name = ignore != nullptr ? ignore->LastTypePart()->Name : Str();
+
   // Convert the provided generic arguments into symbols.
   // Todo: filter to "is_generic"?
   const auto type_syms = generics
@@ -224,7 +230,11 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
 
   const auto comp_syms = generics
     | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
-    | genex::views::filter([&ignore](auto const &gen_arg) { return ignore == nullptr or *gen_arg->Val != *ignore; })
+    | genex::views::filter([&](auto const &gen_arg) {
+      if (ignore == nullptr) { return true; }
+      const auto ident = gen_arg->Val->template To<asts::IdentifierAst>();
+      return ident == nullptr or ident->Val != ignore_name;
+    })
     | genex::views::transform([this](auto const &gen_arg) {
       return GetVarSymbol(gen_arg->Val->template To<asts::IdentifierAst>());
     })
@@ -241,24 +251,48 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     | genex::views::take_while([](auto *scope) { return not std::holds_alternative<ScopeIdentifierName>(scope->Name); })
     | genex::to<Vec>();
 
+  // Carrying a type generic in is only useful while the instantiation still has something open for it to resolve,
+  // as in "Vec[Opt[T]]" named inside "cls Foo[T]". A fully bound instantiation has nothing left to resolve, and its
+  // scope is shared by every use of it in the program, so a generic swept in from whichever scope happened to name
+  // it first is stranded there for good: a "U" belonging to an unrelated class ends up registered on
+  // "Str[A=GlobalAlloc]", and "GetGenerics" then offers it to every call as a "U=U" argument. An argument outranks
+  // inference, so a callee's own "U" is never inferred.
+  const auto names_an_open_generic = genex::any_of(generics, [this](auto const *gen_arg) {
+    const auto type_arg = gen_arg->template To<asts::GenericArgumentTypeAst>();
+    if (type_arg == nullptr or type_arg->Val == nullptr) { return false; }
+
+    // A generic can sit at any depth of the argument, so every name in it is checked rather than the argument as a
+    // whole ("Opt[T]" is not a generic symbol; the "T" inside it is).
+    auto parts = Vec<asts::TypeIdentifierAst const*>();
+    type_arg->Val->TypePartsInto(parts);
+    return genex::any_of(parts, [this](auto const *part) {
+      return genex::any_of(part->Iterator(), [this](auto const &nested) {
+        const auto sym = GetTypeSymbol(nested.get());
+        return sym != nullptr and sym->IsGeneric;
+      });
+    });
+  });
+
   for (auto const *scope : scopes) {
     // "Self" is never carried across. Every scope that needs one
     // registers its own, naming the type it belongs to. Adding it
     // here causes shadowing issues or mistypes.
-    for (auto const &sym : scope->AllTypeSymbols(true)
-         | genex::views::filter([](auto const &s) { return s->IsGeneric and s->Name->Name != "Self"; })) {
-      auto clone = std::make_shared<TypeSymbol>(
-        sym->Name, nullptr, sym->Type == nullptr ? sym->LinkedScope : nullptr,
-        nullptr, nullptr, true);
-      clone->IsDirectlyCopyable = sym->IsDirectlyCopyable;
-      clone->IsDirectlyZeroType = sym->IsDirectlyZeroType;
-      clone->GenericConstraints = sym->GenericConstraints;
-      syms.EmplaceBack(clone);
+    if (names_an_open_generic) {
+      for (auto const &sym : scope->AllTypeSymbols(true)
+           | genex::views::filter([](auto const &s) { return s->IsGeneric and s->Name->Name != "Self"; })) {
+        auto clone = std::make_shared<TypeSymbol>(
+          sym->Name, nullptr, sym->Type == nullptr ? sym->LinkedScope : nullptr,
+          nullptr, nullptr, true);
+        clone->IsDirectlyCopyable = sym->IsDirectlyCopyable;
+        clone->IsDirectlyZeroType = sym->IsDirectlyZeroType;
+        clone->GenericConstraints = sym->GenericConstraints;
+        syms.EmplaceBack(clone);
+      }
     }
 
     for (auto const &sym : scope->AllVarSymbols(true)
          | genex::views::filter([](auto const &s) { return s->IsGeneric; })
-         | genex::views::filter([&ignore](auto const &s) { return ignore == nullptr or *s->Name == *ignore; })) {
+         | genex::views::filter([&](auto const &s) { return ignore == nullptr or s->Name->Val != ignore_name; })) {
       syms.EmplaceBack(sym->SharedFromThis());
     }
   }
