@@ -97,7 +97,7 @@ auto spp::analyse::utils::visibility_utils::CheckModuleMemberVisibility(
 
   // Protected module member: accessible from children modules.
   const auto good_protected = good_private or genex::contains(accessing_module->Ancestors(), definition_module);
-  return RaiseIf<SppAccessViolationError>(
+  RaiseIf<SppAccessViolationError>(
     sym.Visibility == V::kProtected and not good_protected,
     {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 
