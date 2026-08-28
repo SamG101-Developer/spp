@@ -242,15 +242,4 @@ auto spp::asts::FloatLiteralAst::InferType(
   return sym->FqName();
 }
 
-template <typename T> requires spp::utils::traits::floating_point<T>
-auto spp::asts::FloatLiteralAst::CppVal() const -> T {
-  const auto raw_str = IntVal->ToString() + "." + FracVal->ToString();
-  const auto signed_str = TokSign != nullptr ? "-" + raw_str : raw_str;
-  return static_cast<T>(std::stold(signed_str));
-}
-
-template auto spp::asts::FloatLiteralAst::CppVal<std::float16_t>() const -> std::float16_t;
-template auto spp::asts::FloatLiteralAst::CppVal<std::float32_t>() const -> std::float32_t;
-template auto spp::asts::FloatLiteralAst::CppVal<std::float64_t>() const -> std::float64_t;
-template auto spp::asts::FloatLiteralAst::CppVal<std::float128_t>() const -> std::float128_t;
 SPP_MOD_END

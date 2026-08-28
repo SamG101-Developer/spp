@@ -1,5 +1,4 @@
 module;
-#include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
 
 export module spp.utils.traits;
@@ -20,14 +19,7 @@ namespace spp::utils::traits {
 
   SPP_EXP_CON template <typename T>
   concept floating_point = std::floating_point<T>
-    || boost::number_category<T>::value == boost::number_kind_floating_point
-#if SPP_COMPILER_CLANG
-    || std::is_same_v<T, std::float16_t>
-    || std::is_same_v<T, std::float32_t>
-    || std::is_same_v<T, std::float64_t>
-    || std::is_same_v<T, std::float128_t>
-#endif
-  ;
+    || boost::number_category<T>::value == boost::number_kind_floating_point;
 }
 
 SPP_EXP_CLS template <typename Ret, typename... Args>

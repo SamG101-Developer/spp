@@ -1,12 +1,5 @@
 module;
-#include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
-
-#if SPP_COMPILER_CLANG && SPP_PLATFORM_UNIX
-#include <bits/floatn-common.h>
-#elif SPP_COMPILER_GCC
-#include <stdfloat>
-#endif
 
 export module spp.utils.types;
 import ankerl;
@@ -26,25 +19,6 @@ export namespace std {
       return static_cast<T>(lhs >> rhs);
     }
   };
-
-#if SPP_COMPILER_GCC
-  using ::std::float16_t;
-  using ::std::float32_t;
-  using ::std::float64_t;
-  using ::std::float128_t;
-#elif SPP_COMPILER_CLANG
-  using float16_t = _Float16;
-  using float32_t = _Float32;
-  using float64_t = _Float64;
-  using float128_t = __float128;
-#endif
-  inline auto to_string(const float16_t x) -> std::string {
-    return std::to_string(static_cast<double>(x));
-  }
-
-  inline auto to_string(const float128_t x) -> std::string {
-    return std::to_string(static_cast<double>(x));
-  }
 }
 
 namespace spp {

@@ -6,7 +6,6 @@ export module spp.asts.float_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.numbers;
-import spp.utils.traits;
 import spp.utils.types;
 import boost;
 import llvm;
@@ -26,10 +25,10 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   inline static const auto kBounds = spp::utils::numbers::FloatLimitMap{
     {spp::Str("f8"), spp::MakePair(boost::BigDec("-448"), boost::BigDec("448"))},
-    {spp::Str("f16"), LIMIT_F(std::float16_t)},
-    {spp::Str("f32"), LIMIT_F(std::float32_t)},
-    {spp::Str("f64"), LIMIT_F(std::float64_t)},
-    {spp::Str("f128"), LIMIT_F(std::float128_t)}
+    {spp::Str("f16"), LIMIT_F(11, 16)},
+    {spp::Str("f32"), LIMIT_F(24, 128)},
+    {spp::Str("f64"), LIMIT_F(53, 1024)},
+    {spp::Str("f128"), LIMIT_F(113, 16384)}
   };
 
   SPP_GCC_VTABLE_FIX
@@ -99,9 +98,6 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
-
-  template <typename T> requires utils::traits::floating_point<T>
-  auto CppVal() const -> T;
 
   /**
    * The exact value of this literal. Comp-time arithmetic works in this rather than in a fixed-width C++ float, so

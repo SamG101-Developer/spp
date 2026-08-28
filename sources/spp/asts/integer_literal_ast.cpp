@@ -249,18 +249,9 @@ auto spp::asts::IntegerLiteralAst::CppVal() const -> T {
   else { return static_cast<T>(std::stoll(signed_str)); }
 }
 
-// Manual instantiation of.CppVal function
-template auto spp::asts::IntegerLiteralAst::CppVal<std::int8_t>() const -> std::int8_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<std::int16_t>() const -> std::int16_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<std::int32_t>() const -> std::int32_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<std::int64_t>() const -> std::int64_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<boost::int128_t>() const -> boost::int128_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<boost::int256_t>() const -> boost::int256_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<std::uint8_t>() const -> std::uint8_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<std::uint16_t>() const -> std::uint16_t;
+// Manual instantiation of.CppVal function, for the widths that are
+// actually asked for: shift counts and the annotation context mask.
 template auto spp::asts::IntegerLiteralAst::CppVal<std::uint32_t>() const -> std::uint32_t;
 template auto spp::asts::IntegerLiteralAst::CppVal<std::uint64_t>() const -> std::uint64_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<boost::uint128_t>() const -> boost::uint128_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<boost::uint256_t>() const -> boost::uint256_t;
 
 SPP_MOD_END

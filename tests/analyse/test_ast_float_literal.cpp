@@ -52,6 +52,24 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// The f16 bounds are the ones a broken LIMIT_F collapses to zero,
+// and every other valid case here is 0.0, which stays in range.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FloatLiteralAst,
+    test_valid_f16_lower_bound, R"(
+    fun f() -> Void {
+        let x = -65504.0_f16
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FloatLiteralAst,
+    test_valid_f16_upper_bound, R"(
+    fun f() -> Void {
+        let x = 65504.0_f16
+    }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FloatLiteralAst,
     test_invalid_f32_lower_bound,

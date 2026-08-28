@@ -26,11 +26,14 @@
     boost::BigInt(0), \
     (boost::BigInt(1) << (bits)) - 1)
 
-#define LIMIT_F_MAG(T)                                          \
-  ((((boost::BigInt(1) << std::numeric_limits<T>::digits) - 1)  \
-    << (std::numeric_limits<T>::max_exponent - std::numeric_limits<T>::digits)).str())
+// The largest finite value of an IEEE binary format, from the two
+// parameters that define it. Taken directly rather than through
+// std::numeric_limits, which is unspecialised for _Float16 and
+// __float128 and silently yields a magnitude of zero there.
+#define LIMIT_F_MAG(digits, max_exp) \
+  ((((boost::BigInt(1) << (digits)) - 1) << ((max_exp) - (digits))).str())
 
-#define LIMIT_F(T)                              \
-  spp::MakePair(                                \
-    boost::BigDec(("-" + LIMIT_F_MAG(T)).c_str()), \
-    boost::BigDec(LIMIT_F_MAG(T).c_str()))
+#define LIMIT_F(digits, max_exp)                                   \
+  spp::MakePair(                                                   \
+    boost::BigDec(("-" + LIMIT_F_MAG(digits, max_exp)).c_str()),   \
+    boost::BigDec(LIMIT_F_MAG(digits, max_exp).c_str()))
