@@ -15,18 +15,6 @@ namespace spp::asts::mixins {
 }
 
 namespace spp::analyse::utils::order_utils {
-  inline const Vec ARG_ORDER_ARR{
-    spp::asts::utils::OrderableTag::kPositionalArg,
-    spp::asts::utils::OrderableTag::kKeywordArg,
-  };
-
-  inline const Vec PARAM_ORDER_ARR{
-    spp::asts::utils::OrderableTag::kSelfParam,
-    spp::asts::utils::OrderableTag::kRequiredParam,
-    spp::asts::utils::OrderableTag::kOptionalParam,
-    spp::asts::utils::OrderableTag::kVariadicParam,
-  };
-
   /**
    * The entry point into ordering arguments. This uses the internal order defined for function call arguments:
    * POSITIONAL -> KEYWORD.

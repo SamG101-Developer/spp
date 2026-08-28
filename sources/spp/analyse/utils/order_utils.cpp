@@ -7,12 +7,12 @@ import std;
 
 namespace spp::analyse::utils::order_utils {
   namespace {
-    constexpr std::array kArgOrderArr{
+    const Vec kArgOrderArr{
       spp::asts::utils::OrderableTag::kPositionalArg,
       spp::asts::utils::OrderableTag::kKeywordArg,
     };
 
-    constexpr std::array kParamOrderArr{
+    const Vec kParamOrderArr{
       spp::asts::utils::OrderableTag::kSelfParam,
       spp::asts::utils::OrderableTag::kRequiredParam,
       spp::asts::utils::OrderableTag::kOptionalParam,
@@ -53,12 +53,12 @@ auto spp::analyse::utils::order_utils::DoOrderArgs(
   Vec<asts::mixins::OrderableAst*> &&args)
   -> Vec<Pair<Str, asts::Ast*>> {
   // Call the generic order function with the argument order.
-  return DoOrder(std::move(args), ARG_ORDER_ARR);
+  return DoOrder(std::move(args), kArgOrderArr);
 }
 
 auto spp::analyse::utils::order_utils::DoOrderParams(
   Vec<asts::mixins::OrderableAst*> &&params)
   -> Vec<Pair<Str, asts::Ast*>> {
   // Call the generic order function with the parameter order.
-  return DoOrder(std::move(params), PARAM_ORDER_ARR);
+  return DoOrder(std::move(params), kParamOrderArr);
 }
