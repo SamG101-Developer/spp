@@ -24,11 +24,7 @@ case "$SPP_RUNNER_IMAGE" in
     url="$base/boost-${BOOST_VERSION}-ubuntu-24.04-gcc-static%2Bshared-x86.tar.gz"
     sha="$BOOST_SHA256_UBUNTU_2404"
     ;;
-  ubuntu-22.04)
-    url="$base/boost-${BOOST_VERSION}-ubuntu-22.04-gcc-static%2Bshared-x86.tar.gz"
-    sha="$BOOST_SHA256_UBUNTU_2204"
-    ;;
-  ubuntu-24.04-arm | ubuntu-22.04-arm)
+  ubuntu-24.04-arm)
     url="$base/boost-${BOOST_VERSION}-ubuntu-22.04-gcc-static%2Bshared-aarch64.tar.gz"
     sha="$BOOST_SHA256_UBUNTU_2204_ARM64"
     ;;
