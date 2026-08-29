@@ -32,6 +32,36 @@ import boost;
 import genex;
 import sys;
 
+namespace spp::analyse::utils::cmp_utils {
+  namespace {
+    /**
+     * An "op_assign" intrinsic is its "op" applied in place: the result replaces what @p lhs holds. Seventeen of
+     * these were written out longhand, each nine lines differing only in which "op" it called and which fields the
+     * literal carries - exactly the shape that lets one copy drift away from the others unnoticed.
+     * @param lhs The literal being assigned into.
+     * @param result What the operation produced.
+     */
+    auto AssignInPlace(
+      asts::IntegerLiteralAst &lhs,
+      Unique<asts::IntegerLiteralAst> result)
+      -> void {
+      lhs.TokSign = std::move(result->TokSign);
+      lhs.Val = std::move(result->Val);
+      lhs.Type = std::move(result->Type);
+    }
+
+    auto AssignInPlace(
+      asts::FloatLiteralAst &lhs,
+      Unique<asts::FloatLiteralAst> result)
+      -> void {
+      lhs.TokSign = std::move(result->TokSign);
+      lhs.IntVal = std::move(result->IntVal);
+      lhs.FracVal = std::move(result->FracVal);
+      lhs.Type = std::move(result->Type);
+    }
+  }
+}
+
 auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
   asts::ObjectInitializerAst const *object,
   asts::Ast *attribute,
@@ -161,10 +191,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_add_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform addition assignment on an integer literal.
-  const auto result_literal = std_intrinsics_add(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_add(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sub(
@@ -180,10 +207,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_sub_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform subtraction assignment on an integer literal.
-  const auto result_literal = std_intrinsics_sub(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_sub(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_mul(
@@ -199,10 +223,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_mul_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform multiplication assignment on an integer literal.
-  const auto result_literal = std_intrinsics_mul(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_mul(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv(
@@ -218,10 +239,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform signed division assignment on an integer literal.
-  const auto result_literal = std_intrinsics_sdiv(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_sdiv(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv(
@@ -237,10 +255,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform unsigned division assignment on an integer literal.
-  const auto result_literal = std_intrinsics_udiv(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_udiv(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_srem(
@@ -256,10 +271,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_srem_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform signed remainder assignment on an integer literal.
-  const auto result_literal = std_intrinsics_srem(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_srem(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_urem(
@@ -275,10 +287,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_urem_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform unsigned remainder assignment on an integer literal.
-  const auto result_literal = std_intrinsics_urem(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_urem(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sneg(
@@ -302,10 +311,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform bitwise left shift assignment on an integer literal.
-  const auto result_literal = std_intrinsics_bit_shl(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_bit_shl(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr(
@@ -321,10 +327,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform bitwise right shift assignment on an integer literal.
-  const auto result_literal = std_intrinsics_bit_shr(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_bit_shr(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior(
@@ -340,10 +343,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform bitwise OR assignment on an integer literal.
-  const auto result_literal = std_intrinsics_bit_ior(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_bit_ior(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and(
@@ -359,10 +359,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform bitwise AND assignment on an integer literal.
-  const auto result_literal = std_intrinsics_bit_and(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_bit_and(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor(
@@ -378,10 +375,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor_assign(
   asts::IntegerLiteralAst const &rhs)
   -> void {
   // Perform bitwise XOR assignment on an integer literal.
-  const auto result_literal = std_intrinsics_bit_xor(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_bit_xor(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not(
@@ -613,11 +607,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd_assign(
   asts::FloatLiteralAst const &rhs)
   -> void {
   // Perform addition assignment on a float literal.
-  const auto result_literal = std_intrinsics_fadd(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.IntVal = std::move(result_literal->IntVal);
-  lhs.FracVal = std::move(result_literal->FracVal);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_fadd(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub(
@@ -634,11 +624,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub_assign(
   asts::FloatLiteralAst const &rhs)
   -> void {
   // Perform subtraction assignment on a float literal.
-  const auto result_literal = std_intrinsics_fsub(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.IntVal = std::move(result_literal->IntVal);
-  lhs.FracVal = std::move(result_literal->FracVal);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_fsub(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul(
@@ -655,11 +641,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul_assign(
   asts::FloatLiteralAst const &rhs)
   -> void {
   // Perform multiplication assignment on a float literal.
-  const auto result_literal = std_intrinsics_fmul(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.IntVal = std::move(result_literal->IntVal);
-  lhs.FracVal = std::move(result_literal->FracVal);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_fmul(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv(
@@ -675,11 +657,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv_assign(
   asts::FloatLiteralAst const &rhs)
   -> void {
   // Perform division assignment on a float literal.
-  const auto result_literal = std_intrinsics_fdiv(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.IntVal = std::move(result_literal->IntVal);
-  lhs.FracVal = std::move(result_literal->FracVal);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_fdiv(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_frem(
@@ -695,11 +673,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_frem_assign(
   asts::FloatLiteralAst const &rhs)
   -> void {
   // Perform remainder assignment on a float literal.
-  const auto result_literal = std_intrinsics_frem(lhs, rhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.IntVal = std::move(result_literal->IntVal);
-  lhs.FracVal = std::move(result_literal->FracVal);
-  lhs.Type = std::move(result_literal->Type);
+  AssignInPlace(lhs, std_intrinsics_frem(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fneg(
