@@ -493,7 +493,8 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   //  as function targets, due to scope lookup.
   auto temp = Shared<asts::ExpressionAst>(nullptr);
   if (const auto id = lhs->To<asts::IdentifierAst>()) {
-    const auto x = sm->CurrentScope->GetVarSymbol(id);
+    const auto mod_scope = sm->CurrentScope->ParentModule();
+    const auto x = mod_scope != nullptr ? mod_scope->GetVarSymbol(id) : sm->CurrentScope->GetVarSymbol(id);
     if (x and x->MemInfo->AstCompTime) {
       temp = x->FqName();
       lhs = temp.get();
@@ -616,6 +617,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         for (auto const &a : fn_args->GetKeywordArgs()) {
           if (a->Name->Val != variadic_name->Val) { continue; }
           variadic_pack_type = a->Val->InferType(sm, meta);
+          for (auto *part : variadic_pack_type->TypeParts()) { part->ClearSourceWritten(); }
           break;
         }
       }
