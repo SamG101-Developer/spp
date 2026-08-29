@@ -21,7 +21,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let h = Handle(fd=1)
-        h.drop()
+        drop(h)
     }
 )");
 
@@ -43,7 +43,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let d = Derived(fd=1)
-        d.drop()
+        drop(d)
     }
 )");
 
@@ -52,7 +52,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstDestructors,
     test_valid_copyable_type_is_droppable, R"(
     fun discard[T: std::ops::drop::Drop](v: T) -> Void {
-        v.drop()
+        drop(v)
     }
 
     fun f() -> Void {
@@ -95,8 +95,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let h = Handle(fd=1)
-        h.drop()
-        h.drop()
+        drop(h)
+        drop(h)
     }
 )");
 
@@ -109,6 +109,34 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let h = Handle(fd=1)
-        h.drop()
+        drop(h)
+    }
+)");
+
+// "drop" called from inside a "drop" method, on an attribute recovered by destructuring "self". The method's own
+// declaration lowers into a mock constant named "drop" in the enclosing "sup" scope, so an unqualified call used to
+// find that instead of the imported free function and fail with no matching signature - the shape every composite
+// "Drop" in the standard library is written in. An unqualified call names a module level function, so it resolves
+// against the module, not the scope it is written in.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_drop_called_on_attribute_inside_drop_method, R"(
+    use std::mem::ops::drop
+    use std::ops::drop::Drop
+
+    cls Inner { }
+    cls Outer { inner: Inner }
+
+    sup Inner ext Drop {
+        fun drop(self) -> Void {
+            let Inner() = self
+        }
+    }
+
+    sup Outer ext Drop {
+        fun drop(self) -> Void {
+            let Outer(inner) = self
+            drop(inner)
+        }
     }
 )");

@@ -1,8 +1,8 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_assignment, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_infer_from_assignment, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
@@ -14,8 +14,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_let_statement, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_infer_from_let_statement, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
@@ -25,8 +25,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_return_statement, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_infer_from_return_statement, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
@@ -36,8 +36,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_gen_expression, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_infer_from_gen_expression, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
@@ -47,8 +47,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_complex, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_complex, R"(
     cls MyType { }
 
     cls To[Target] { }
@@ -70,14 +70,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = MyType()
         let string: Str = x.into()
         let boolean: Bool = x.into()
-        string.drop()
+        drop(string)
         std::mem::ops::drop(x)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_class_attribute, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_infer_from_class_attribute, R"(
     cls MyType {
         !public
         a: Bool
@@ -93,8 +93,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_generic_class_attribute_explicit_argument, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_infer_from_generic_class_attribute_explicit_argument, R"(
     cls MyType[T] {
         !public
         a: T
@@ -110,9 +110,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_invalid_return_type_overloading_infer_from_generic_class_attribute,
-    SppFunctionCallOverloadAmbiguousError, R"(
+  TestReturnTypeOverloading,
+  test_invalid_return_type_overloading_infer_from_generic_class_attribute,
+  SppFunctionCallOverloadAmbiguousError, R"(
     cls MyType[T] {
         !public
         a: T
@@ -128,8 +128,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_function_parameter, R"(
+  TestReturnTypeOverloading,
+  test_valid_return_type_overloading_infer_from_function_parameter, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
     fun h(x: Bool) -> Void { }
@@ -140,9 +140,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_invalid_return_type_overloading_infer_from_function_parameter,
-    SppFunctionCallOverloadAmbiguousError, R"(
+  TestReturnTypeOverloading,
+  test_invalid_return_type_overloading_infer_from_function_parameter,
+  SppFunctionCallOverloadAmbiguousError, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
     fun h(x: &StrView) -> Void { }
@@ -154,9 +154,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_invalid_return_type_overloading_no_context,
-    SppFunctionCallOverloadAmbiguousError, R"(
+  TestReturnTypeOverloading,
+  test_invalid_return_type_overloading_no_context,
+  SppFunctionCallOverloadAmbiguousError, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 
@@ -166,9 +166,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestReturnTypeOverloading,
-    test_invalid_return_type_overloading_target_matches_no_overload,
-    SppFunctionCallOverloadAmbiguousError, R"(
+  TestReturnTypeOverloading,
+  test_invalid_return_type_overloading_target_matches_no_overload,
+  SppFunctionCallOverloadAmbiguousError, R"(
     fun g() -> Str { ret Str::from("") }
     fun g() -> Bool { ret false }
 

@@ -124,7 +124,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let mut x = f[U=Str](123)
         x = Str::from("hello")
-        x.drop()
+        drop(x)
     }
 )");
 

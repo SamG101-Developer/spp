@@ -104,7 +104,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b.f(true, 1)
 
         std::mem::ops::drop(b)
-        x.drop()
+        drop(x)
     }
 )");
 
