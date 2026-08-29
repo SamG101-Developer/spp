@@ -45,6 +45,42 @@ namespace spp::analyse::scopes {
      * defined at the foot of the file, well below the symbol-table calls that bump it.
      */
     auto BumpTypeLookupGeneration() -> void;
+
+    /**
+     * Search a scope's super scopes for a variable symbol named @p name. Used to reach a constant defined with @c cmp
+     * inside a @c sup block of a type. Each super scope is asked exclusively, so the walk stays within the sup graph
+     * rather than escaping upwards into the enclosing lexical scopes.
+     * @param scope The scope whose super scopes are searched.
+     * @param name The name of the variable symbol to search for.
+     * @return The found variable symbol, or nullptr.
+     */
+    auto SearchSupScopesForVar(
+      Scope const &scope,
+      asts::IdentifierAst const *name)
+      -> VariableSymbol* {
+      for (auto const *sup_scope : scope.DirectSupScopes) {
+        if (auto *sym = sup_scope->GetVarSymbol(name, true); sym != nullptr) { return sym; }
+      }
+      return nullptr;
+    }
+
+    /**
+     * The type-symbol counterpart of @c SearchSupScopesForVar , reaching a type defined with a @c type statement
+     * inside a @c sup block. Kept as its own function rather than folded together with the variable form: the two
+     * bodies are six lines each, and a template plus a getter would be longer at both definition and call site.
+     * @param scope The scope whose super scopes are searched.
+     * @param name The name of the type symbol to search for.
+     * @return The found type symbol, or nullptr.
+     */
+    auto SearchSupScopesForType(
+      Scope const &scope,
+      asts::TypeIdentifierAst const *name)
+      -> TypeSymbol* {
+      for (auto const *sup_scope : scope.DirectSupScopes) {
+        if (auto *sym = sup_scope->GetTypeSymbol(name, true); sym != nullptr) { return sym; }
+      }
+      return nullptr;
+    }
   }
 }
 
@@ -104,32 +140,6 @@ auto spp::analyse::scopes::Scope::NewGlobal(
 
   // Return the global scope.
   return glob_scope;
-}
-
-auto spp::analyse::scopes::Scope::SearchSupScopesForVar(
-  Scope const &scope,
-  asts::IdentifierAst const *name)
-  -> VariableSymbol* {
-  // Recursively search the super scopes for a variable symbol.
-  for (auto const *sup_scope : scope.DirectSupScopes) {
-    if (auto *sym = sup_scope->GetVarSymbol(name, true); sym != nullptr) { return sym; }
-  }
-
-  // No symbol was found, so return nullptr.
-  return nullptr;
-}
-
-auto spp::analyse::scopes::Scope::SearchSupScopesForType(
-  Scope const &scope,
-  asts::TypeIdentifierAst const *name)
-  -> TypeSymbol* {
-  // Recursively search the super scopes for a type symbol.
-  for (auto const *sup_scope : scope.DirectSupScopes) {
-    if (auto *sym = sup_scope->GetTypeSymbol(name, true); sym != nullptr) { return sym; }
-  }
-
-  // No symbol was found, so return nullptr.
-  return nullptr;
 }
 
 auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
@@ -426,9 +436,10 @@ auto spp::analyse::scopes::Scope::AllTypeSymbols(
     syms.AppendRange(Parent->AllTypeSymbols(exclusive, sup_scope_search));
   }
 
-  // For super scope searches, yield from all direct super scopes.
+  // For super scope searches, yield from all super scopes. Each is asked non-recursively, so the walk has to be over
+  // the transitive closure rather than the direct list, which is what the variable version above does.
   if (sup_scope_search) {
-    for (auto const *sup_scope : DirectSupScopes) {
+    for (auto const *sup_scope : SupScopes()) {
       syms.AppendRange(sup_scope->AllTypeSymbols(true, false));
     }
   }
@@ -439,6 +450,8 @@ auto spp::analyse::scopes::Scope::AllTypeSymbols(
 auto spp::analyse::scopes::Scope::AllNsSymbols(
   const bool exclusive, bool) const
   -> Vec<NamespaceSymbol*> {
+  // The second parameter is a super-scope search, which a namespace never has one of. It is accepted so the three
+  // symbol kinds share a signature, and deliberately ignored.
   auto syms = InternalTable.NsTbl.All();
 
   // For non-exclusive searches where a parent is present, yield from the parent scope.
@@ -485,7 +498,7 @@ auto spp::analyse::scopes::Scope::GetVarSymbol(
 
   // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
   if (sym == nullptr and not exclusive and scope->Parent != nullptr) {
-    sym = scope->Parent->GetVarSymbol(sym_name, exclusive);
+    sym = scope->Parent->GetVarSymbol(sym_name, exclusive, sup_scope_search);
   }
 
   // If the symbol still hasn't been found, check the super scopes for it.
@@ -535,7 +548,7 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
   // If the symbol doesn't exist, and this is a non-exclusive
   // search, check the parent scope.
   if (sym == nullptr and not exclusive and scope->Parent != nullptr) {
-    sym = scope->Parent->GetTypeSymbol(sym_name_extracted, exclusive);
+    sym = scope->Parent->GetTypeSymbol(sym_name_extracted, exclusive, sup_scope_search);
   }
 
   // If the symbol still hasn't been found, check the super
@@ -755,25 +768,36 @@ auto spp::analyse::scopes::Scope::GetEnclosingSelfType(
 
 auto spp::analyse::scopes::Scope::SupScopes() const
   -> Vec<Scope*> {
-  // Get all super scopes, recursively.
+  // Get all super scopes, recursively, yielding each one once. The graph is not a tree: a type reaches the same
+  // super scope by every route that leads to it, and "sup Copy ext Drop" alone means anything both "ext Copy" and
+  // "ext Drop" arrives at "Drop" twice. "SizedInteger", with 23 direct super scopes, repeats "Copy"/"Clone"/"Drop"
+  // once per route. Order is unchanged - a super scope still appears before the ones above it.
   auto scopes = Vec<Scope*>();
-  for (auto *scope : DirectSupScopes) {
-    const auto child_scopes = scope->SupScopes();
-    scopes.push_back(scope);
-    scopes.AppendRange(child_scopes);
-  }
+  auto seen = Set<Scope const*>();
+  const auto walk = [&](auto const &self, Scope const &from) -> void {
+    for (auto *sup_scope : from.DirectSupScopes) {
+      if (not seen.insert(sup_scope).second) { continue; }
+      scopes.push_back(sup_scope);
+      self(self, *sup_scope);
+    }
+  };
+  walk(walk, *this);
   return scopes;
 }
 
 auto spp::analyse::scopes::Scope::SupScopesConst() const
   -> Vec<Scope const*> {
-  // Get all super scopes, recursively.
+  // The const form of SupScopes, deduplicated the same way and for the same reason.
   auto scopes = Vec<Scope const*>();
-  for (auto const *scope : DirectSupScopes) {
-    const auto child_scopes = scope->SupScopesConst();
-    scopes.push_back(scope);
-    scopes.AppendRange(child_scopes);
-  }
+  auto seen = Set<Scope const*>();
+  const auto walk = [&](auto const &self, Scope const &from) -> void {
+    for (auto const *sup_scope : from.DirectSupScopes) {
+      if (not seen.insert(sup_scope).second) { continue; }
+      scopes.push_back(sup_scope);
+      self(self, *sup_scope);
+    }
+  };
+  walk(walk, *this);
   return scopes;
 }
 

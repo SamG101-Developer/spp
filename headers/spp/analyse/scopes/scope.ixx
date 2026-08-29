@@ -187,31 +187,6 @@ public:
     -> Shared<Scope>;
 
   /**
-   * Search all "sup" scopes of an existing scope (this will be a type scope), for a variable symbol with a name that
-   * matches "name". This is used when looking for the a constant defined with "cmp" within a sup-block of a type.
-   * @param scope The starting scope to search from.
-   * @param name The name of the variable symbol to search for.
-   * @return The found variable symbol, or nullptr if not found.
-   */
-  static auto SearchSupScopesForVar(
-    Scope const &scope,
-    asts::IdentifierAst const *name)
-    -> VariableSymbol*;
-
-  /**
-   * Search all "sup" scopes of an existing scope (this will be a type scope), for a type symbol with a name that
-   * matches "name". This is used when looking for a type defined with a "type" statement within a sup-block of a
-   * type.
-   * @param scope The starting scope to search from.
-   * @param name The name of the type symbol to search for.
-   * @return The found type symbol, or nullptr if not found.
-   */
-  static auto SearchSupScopesForType(
-    Scope const &scope,
-    asts::TypeIdentifierAst const *name)
-    -> TypeSymbol*;
-
-  /**
    * Given a scope and a fully qualified type, this function moves through the namespace parts of the type, moving
    * into the next namespace scopes. Finally, it will arrive at the scope for the innermost (rightmost) namespace
    * part, and the completely unqualified type name. For example,
