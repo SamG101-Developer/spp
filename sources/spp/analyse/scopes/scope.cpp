@@ -10,6 +10,7 @@ import spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.cmp_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -337,8 +338,22 @@ auto spp::analyse::scopes::Scope::AddVarSymbolCheckConflict(
     // const auto is_generic = sym->IsGeneric;
     // const auto is_comptime = sym->MemInfo->AstCompTime != nullptr;
     const auto is_functional = existing_sym->Type and existing_sym->Type->IsCompilerGeneratedType();
+
+    // A name brought in by a "use" is being shadowed by a declaration
+    // written here, which is not a redefinition - "use std::mem::ops::drop"
+    // alongside a "fun drop" of this type's own is the ordinary case.
+    // The lookup above is non-exclusive, so it reaches the module-level
+    // import from inside a "sup" block.
+    auto const *const existing_ast = existing_sym->MemInfo != nullptr
+      ? existing_sym->MemInfo->AstCompTime.get()
+      : nullptr;
+    auto const *const existing_cmp = existing_ast != nullptr
+      ? existing_ast->To<asts::CmpStatementAst>()
+      : nullptr;
+    const auto is_shadowed_import = existing_cmp != nullptr and existing_cmp->IsFromUseStatement();
+
     RaiseIf<errors::SppIdentifierDuplicateError>(
-      not is_functional,
+      not is_functional and not is_shadowed_import,
       {this, this},
       ERR_ARGS(*existing_sym->Name, *sym->Name, "comptime variable identifier"));
   }
