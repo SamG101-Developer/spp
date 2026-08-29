@@ -232,7 +232,7 @@ namespace spp::analyse::utils::monomorphization_utils {
       for (auto const &scoped_sym : scope.AllVarSymbols(true)) {
         if (scoped_sym->Type == nullptr) { continue; }
         scoped_sym->Type = scoped_sym->Type->SubstituteGenerics(generic_args);
-        if (meta->CurrentStage > 5) {
+        if (meta->CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) {
           // Note: DO NOT inline "analysed_type", because the scoped_sym->Type
           // can change during the analysis that uses it, leaving the original
           // dereerence pointing to garbage.
@@ -423,7 +423,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
     new_cls_scope_ptr->Parent->Children.EmplaceBack(std::move(new_cls_scope));
   }
 
-  if (meta->CurrentStage > 7) {
+  if (meta->CurrentStage >= asts::meta::CompilerStage::kAttachSupScopes) {
     sm->AttachSpecificSuperScopes(*new_cls_scope_ptr, meta);
   }
 
@@ -465,7 +465,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
        | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
     //
     attr->Type = attr->Type->SubstituteGenerics(substitution_generics);
-    if (meta->CurrentStage > 5) {
+    if (meta->CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) {
       attr->Stage7_AnalyseSemantics(&tm, meta);
     }
   }

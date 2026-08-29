@@ -189,7 +189,7 @@ namespace spp::analyse::utils::generic_bindings {
           else {
             auto elems = MAKE_VARIADIC_TYPE_ARGS(a_group.Args);
             auto tuple = TupleType(positional_arg->PosStart(), std::move(elems));
-            if (meta.CurrentStage > 5) { tuple->Stage7_AnalyseSemantics(&sm, &meta); }
+            if (meta.CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) { tuple->Stage7_AnalyseSemantics(&sm, &meta); }
             kw_arg->Val = std::move(tuple);
           }
 
@@ -201,7 +201,7 @@ namespace spp::analyse::utils::generic_bindings {
         // Otherwise, attach the single argument convention and
         // value.
         kw_arg->Val = asts::AstClone(positional_arg->To<GenericArgType>()->Val);
-        if (meta.CurrentStage > 5) { kw_arg->Val->Stage7_AnalyseSemantics(&sm, &meta); }
+        if (meta.CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) { kw_arg->Val->Stage7_AnalyseSemantics(&sm, &meta); }
         a_group.Args[i] = std::move(kw_arg);
       }
     }
@@ -597,7 +597,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
     for (auto p_con : p_con_groups[i]) {
       auto def_type_raw = p_con->WithoutGenerics();
       if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_val_type_sym != nullptr and meta.
-        CurrentStage > 4) {
+        CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
         auto temp = def_val_type_sym->FqName();
         temp = temp->WithGenerics(asts::AstClone(p_con->LastTypePart()->GnArgGroup));
         p_con = std::move(temp);
@@ -779,7 +779,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
     if (bindings.ContainsType(cast_name.get())) { continue; }
     auto def_type = opt_param->DefaultVal;
     auto def_type_raw = def_type->WithoutGenerics();
-    if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_sym != nullptr and meta.CurrentStage > 4) {
+    if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_sym != nullptr and meta.CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
       auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
       if (not type_utils::IsTypeSelf(*def_type)) {
         temp = temp->WithGenerics(asts::AstClone(def_type->LastTypePart()->GnArgGroup));
@@ -832,7 +832,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
   // were missing, because this function temporarily
   // removes them. So we only analyse AFTER they are
   // re-added having been checked.
-  if (meta.CurrentStage > 7) {
+  if (meta.CurrentStage >= asts::meta::CompilerStage::kAttachSupScopes) {
     const auto all_final_group = asts::GenericArgumentGroupAst::FromMap(bindings.ToInferenceMap());
     const auto all_final_args = all_final_group->GetAllArgs();
 

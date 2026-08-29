@@ -112,7 +112,7 @@ auto spp::compiler::CompilerBoot::Stage2_GenTopLvlScopes(
   -> void {
   // Generate top-level scopes stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(4.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlScopes);
     mod->Stage2_GenTopLvlScopes(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -127,7 +127,7 @@ auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
   -> void {
   // Generate top-level aliases stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(5.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlAliases);
     mod->Stage3_GenTopLvlAliases(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -142,7 +142,7 @@ auto spp::compiler::CompilerBoot::Stage4_QualifyTypes(
   -> void {
   // Qualify types stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(6.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kQualifyTypes);
     mod->Stage4_QualifyTypes(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -157,7 +157,7 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
   -> void {
   // Load super scopes stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(7.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kLoadSupScopes);
     mod->Stage5_LoadSupScopes(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -167,7 +167,7 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
   // Attach all super scopes now.
   // Todo: New progress bar here
   auto meta = asts::meta::CompilerMetaData();
-  meta.CurrentStage = 7.5;
+  meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
   sm->AttachAllSuperScopes(&meta);
 }
 
@@ -178,7 +178,7 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   -> void {
   // Pre-analyse semantics stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(8.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Stage6_PreAnalyseSemantics(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -194,7 +194,7 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
   -> void {
   // Analyse semantics stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(9.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kAnalyseSemantics);
     mod->Stage7_AnalyseSemantics(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -212,7 +212,7 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   -> void {
   // Check memory stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(10.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCheckMemory);
     mod->Stage8_CheckMemory(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -234,7 +234,7 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
   -> void {
   // Comptime resolution stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(11.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCompTimeResolve);
     mod->Stage9_CompTimeResolve(sm, &meta);
     sm->Reset();
     bar.Next();
@@ -254,7 +254,7 @@ auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   // see "MonomorphiseToFixedPoint" - so there is no per-module
   // progress to report, only the whole thing being done.
   auto meta = asts::meta::CompilerMetaData();
-  meta.CurrentStage = 11.5;
+  meta.CurrentStage = asts::meta::CompilerStage::kMonomorphise;
   MonomorphiseToFixedPoint(sm, &meta);
   bar.Finish();
 }
@@ -266,7 +266,7 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
   -> void {
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
-    PREP_SCOPE_MANAGER_AND_META(11.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreCodeGen);
     mod->Stage10_PreCodeGen(sm, &meta, ctx);
     sm->Reset();
     bar.Next();
@@ -282,7 +282,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   -> void {
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
-    PREP_SCOPE_MANAGER_AND_META(12.0);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
     meta.LlvmCtx = ctx;
     mod->Stage11_CodeGen(sm, &meta, ctx);
     sm->Reset();
@@ -509,7 +509,7 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 
   try {
     auto meta = asts::meta::CompilerMetaData();
-    meta.CurrentStage = 9.0;
+    meta.CurrentStage = asts::meta::CompilerStage::kAnalyseSemantics;
     main_call->Stage7_AnalyseSemantics(sm, &meta);
 
     // Remember what the call resolved to. It is the one function the program is entered through, and so the one

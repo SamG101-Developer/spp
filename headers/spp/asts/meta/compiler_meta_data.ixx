@@ -8,6 +8,27 @@ import spp.utils.types;
 import llvm;
 import std;
 
+namespace spp::asts::meta {
+  SPP_EXP_CLS enum class CompilerStage : std::uint8_t;
+  SPP_EXP_CLS struct MetaGuard;
+}
+
+SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
+  kNone = 0,
+  kGenTopLvlScopes,     // stage 2
+  kGenTopLvlAliases,    // stage 3
+  kQualifyTypes,        // stage 4
+  kLoadSupScopes,       // stage 5
+  kAttachSupScopes,     // the tail of stage 5
+  kPreAnalyseSemantics, // stage 6
+  kAnalyseSemantics,    // stage 7
+  kCheckMemory,         // stage 8
+  kCompTimeResolve,     // stage 9
+  kMonomorphise,        // between stages 9 and 10
+  kPreCodeGen,          // stage 10
+  kCodeGen,             // stage 11
+};
+
 namespace spp::asts {
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct IdentifierAst;

@@ -141,7 +141,7 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_utils::TypeEq;
   using analyse::utils::type_utils::IsTypeSelf;
 
-  if (meta->CurrentStage == 9) {
+  if (meta->CurrentStage == meta::CompilerStage::kAnalyseSemantics) {
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   }
 
@@ -155,7 +155,7 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   }
   var_sym->Type = Type;
 
-  if (meta->CurrentStage != 9) { return; }
+  if (meta->CurrentStage != meta::CompilerStage::kAnalyseSemantics) { return; }
   if (DefaultVal != nullptr) {
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     const auto default_type = DefaultVal->InferType(sm, meta);
