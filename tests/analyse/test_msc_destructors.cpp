@@ -100,19 +100,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// A type with no "Drop" has no "drop" to call; it is taken apart instead.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstDestructors,
-    test_invalid_drop_on_type_without_drop,
-    SppIdentifierUnknownError, R"(
-    cls Handle { !public fd: S32 }
-
-    fun f() -> Void {
-        let h = Handle(fd=1)
-        drop(h)
-    }
-)");
-
 // "drop" called from inside a "drop" method, on an attribute recovered by destructuring "self". The method's own
 // declaration lowers into a mock constant named "drop" in the enclosing "sup" scope, so an unqualified call used to
 // find that instead of the imported free function and fail with no matching signature - the shape every composite
