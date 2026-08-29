@@ -41,7 +41,7 @@ namespace spp::analyse::utils::case_utils {
       Vec<asts::CasePatternVariantAst*> const &elems,
       scopes::ScopeManager *sm,
       asts::meta::CompilerMetaData *meta,
-      std::copyable_function<T(asts::Ast *)> &&mapper)
+      Function<T(asts::Ast *)> &&mapper)
       -> Vec<T> {
       auto transformed = Vec<T>();
       transformed.reserve(elems.Len());
@@ -191,7 +191,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
   codegen::LlvmCtx *ctx)
   -> Vec<llvm::Value*> {
   // Get the expression and map then to LLVM values.
-  std::copyable_function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {
+  Function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {
     return x->Stage11_CodeGen(sm, meta, ctx);
   };
 
@@ -205,7 +205,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime(
   asts::meta::CompilerMetaData *meta)
   -> Vec<Unique<asts::ExpressionAst>> {
   // Get the expression and map then to Comptime values.
-  std::copyable_function<Unique<asts::ExpressionAst>(asts::Ast *)> map = [&](asts::Ast *x) {
+  Function<Unique<asts::ExpressionAst>(asts::Ast *)> map = [&](asts::Ast *x) {
     x->Stage9_CompTimeResolve(sm, meta);
     return std::move(meta->CmpResult);
   };
@@ -220,6 +220,6 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
   asts::meta::CompilerMetaData *meta)
   -> void {
   //
-  std::copyable_function<std::monostate(asts::Ast *)> noop = [](asts::Ast *) { return std::monostate{}; };
+  Function<std::monostate(asts::Ast *)> noop = [](asts::Ast *) { return std::monostate{}; };
   CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(noop));
 }
