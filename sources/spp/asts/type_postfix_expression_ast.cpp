@@ -174,8 +174,8 @@ auto spp::asts::TypePostfixExpressionAst::InferType(
 
   // Infer the type of the postfix operation.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  const auto part = analyse::utils::type_utils::GetTypeSymOrError(*lhs_type_scope, *op_nested->Name, *sm, meta)->
-    FqName();
+  const auto part = analyse::utils::type_utils::GetTypeSymOrError(
+    *lhs_type_scope, *op_nested->Name, *sm)->FqName();
   const auto sym = lhs_type_scope->GetTypeSymbol(part.get());
   return sym->FqName();
 }

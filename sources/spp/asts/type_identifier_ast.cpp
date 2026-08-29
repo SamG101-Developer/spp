@@ -179,7 +179,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
       analyse::errors::NotYetSupportedFeature::NestedTypeBeforeSupScopes, *scope->TySym->Name, *this));
 
   const auto type_sym = GetTypeSymOrError(
-    *scope, *WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), *sm, meta);
+    *scope, *WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), *sm);
   if (Name == "Self") {
     _HasAnalysed = true;
     return;
