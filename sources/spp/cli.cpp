@@ -30,13 +30,6 @@ inline constexpr spp::Str VCS_FOLDER = "vcs";
 inline constexpr spp::Str FFI_FOLDER = "ffi";
 inline constexpr spp::Str TST_FOLDER = "tst";
 
-/**
- * Iterate a directory that may not be there. The optional folders are only created inside this project, so a
- * dependency legitimately has none of them and walking one must not throw.
- */
-static auto SafeDirectoryIterator(std::filesystem::path const &dir) -> std::filesystem::directory_iterator {
-  return std::filesystem::exists(dir) ? std::filesystem::directory_iterator(dir) : std::filesystem::directory_iterator();
-}
 inline constexpr spp::Str MAIN_FILE = "main.spp";
 inline constexpr spp::Str CONFIG_FILE = "spp.toml";
 
@@ -54,20 +47,61 @@ inline const spp::Str CONFIG_FILE_CONTENTS = R"(
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
-namespace {
-  /**
-   * Run a git invocation, reporting a non-zero exit rather than discarding it. A failed fetch leaves the "vcs" folder
-   * empty, which every later stage accepts, so the only symptom is that each imported symbol becomes undefined.
-   * @param args The arguments to pass to git.
-   * @return @c true when git exited cleanly.
-   */
-  auto RunGit(spp::Str const &args) -> bool {
-    const auto command = "git " + args;
-    if (const auto status = std::system(command.c_str()); status != 0) {
-      std::cerr << "Error: git failed (" << status << "): " << command << "\n";
-      return false;
+namespace spp::cli {
+  namespace {
+    /**
+     * Iterate a directory that may not be there. The optional folders are only created inside this project, so a
+     * dependency legitimately has none of them and walking one must not throw.
+     */
+    auto SafeDirectoryIterator(std::filesystem::path const &dir) -> std::filesystem::directory_iterator {
+      return std::filesystem::exists(dir)
+        ? std::filesystem::directory_iterator(dir)
+        : std::filesystem::directory_iterator();
     }
-    return true;
+
+    /**
+     * Run a git invocation, reporting a non-zero exit rather than discarding it. A failed fetch leaves the "vcs" folder
+     * empty, which every later stage accepts, so the only symptom is that each imported symbol becomes undefined.
+     * @param args The arguments to pass to git.
+     * @return @c true when git exited cleanly.
+     */
+    auto RunGit(spp::Str const &args) -> bool {
+      const auto command = "git " + args;
+      if (const auto status = std::system(command.c_str()); status != 0) {
+        std::cerr << "Error: git failed (" << status << "): " << command << "\n";
+        return false;
+      }
+      return true;
+    }
+
+    auto HostOf(spp::Str const &url) -> spp::Str {
+      auto rest = spp::StrView(url);
+      if (const auto scheme = rest.find("://"); scheme != spp::StrView::npos) { rest.remove_prefix(scheme + 3); }
+
+      // Only a "user@" before the first "/" is credentials;
+      // an "@" further in belongs to the path.
+      const auto slash = rest.find('/');
+      if (const auto at = rest.find('@');
+        at != spp::StrView::npos and (slash == spp::StrView::npos or at < slash)) {
+        rest.remove_prefix(at + 1);
+      }
+      return spp::Str(rest.substr(0, rest.find_first_of(":/?")));
+    }
+
+    auto IsHostReachable(spp::Str const &host) -> bool {
+      // ICMP is blocked on some networks that can still reach
+      // git, so leave a way past the check.
+      if (host.empty() or std::getenv("SPP_NO_PING_CHECK") != nullptr) { return true; }
+
+#if SPP_PLATFORM_WINDOWS
+      const auto command = "ping -n 1 -w 1500 " + host + " >NUL 2>&1";
+#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
+      const auto command = "ping -c 1 -W 1500 " + host + " >/dev/null 2>&1";
+#else
+      const auto command = "ping -c 1 -W 2 " + host + " >/dev/null 2>&1";
+#endif
+      return std::system(command.c_str()) == 0;
+    }
   }
 }
 
@@ -197,6 +231,7 @@ auto spp::cli::handle_vcs()
 
   // Iterate over the vcs section and clone/update the repositories.
   auto ok = true;
+  auto reachable = Map<Str, bool>();
   auto vcs = toml["vcs"].as_table();
   for (auto [key, info] : *vcs) {
     auto repo_name = Str(key);
@@ -205,8 +240,27 @@ auto spp::cli::handle_vcs()
     auto repo_folder = cwd / VCS_FOLDER / repo_name;
     auto repo_target = utils::files::NativeString(repo_folder);
 
+    // Ping the host before handing it to git, once per host:
+    // later repositories on the same host reuse the answer.
+    const auto host = HostOf(repo_url);
+    auto [host_ok, first_seen] = reachable.try_emplace(host, false);
+    if (first_seen) { host_ok->second = IsHostReachable(host); }
+
+    // An already-cloned repository is still usable with the
+    // host down, so that case carries on with what is on
+    // disk (and still copies its FFI libraries across) rather
+    // than failing the build.
+    if (not host_ok->second) {
+      if (not std::filesystem::exists(repo_folder)) {
+        std::cerr << "Error: '"s + host + "' is unreachable, and " + repo_name + " has not been cloned yet.\n";
+        ok = false;
+        continue;
+      }
+      std::cerr << "Warning: '"s + host + "' is unreachable; using the existing checkout of " + repo_name + ".\n";
+    }
+
     // Repo doesn't exist locally => clone it.
-    if (not std::filesystem::exists(repo_folder)) {
+    else if (not std::filesystem::exists(repo_folder)) {
       if (not RunGit("clone --branch " + repo_branch + " " + repo_url + " " + repo_target)) {
         ok = false;
         continue;
