@@ -431,7 +431,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
   // without this, a type whose forwarded-to type also forwards
   // (eg "NonNull[Str]" -> "&Str" -> "&StrView") sees both
   // "fwd_ref" overloads and the forwarding call is ambiguous.
-  if (target_scope->TySym != nullptr and meta->CurrentStage >= 9.0 and overload_scopes.IsEmpty()) {
+  if (target_scope->TySym != nullptr and meta->CurrentStage >= asts::meta::CompilerStage::kAnalyseSemantics and overload_scopes.IsEmpty()) {
     auto [fwd_ref_type, fwd_mut_type] = type_utils::GetFwdTypes(*target_scope->TySym->FqName(), sm);
     if (fwd_ref_type != nullptr) {
       const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val;
