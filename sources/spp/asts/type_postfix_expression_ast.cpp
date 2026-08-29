@@ -147,10 +147,9 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   }
 
   // Ensure the type exists on the "lhs" part.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->TypeAnalysisTypeScope = lhs_type_scope;
   op_nested->Name->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::TypePostfixExpressionAst::Stage11_CodeGen(

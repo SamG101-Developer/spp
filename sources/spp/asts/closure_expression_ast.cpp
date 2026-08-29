@@ -87,61 +87,62 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
 
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
-  meta->Save();
-  meta->OverriddenScopeForClosure = parent_scope;
-  PcGroup->Stage7_AnalyseSemantics(sm, meta);
+  {
+    const auto _meta_guard = meta::MetaGuard(meta, true);
+    meta->OverriddenScopeForClosure = parent_scope;
+    PcGroup->Stage7_AnalyseSemantics(sm, meta);
 
-  const auto inherited_type_generics = sm->CurrentScope->AllTypeSymbols()
-    | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
-    | genex::to<Vec>();
+    const auto inherited_type_generics = sm->CurrentScope->AllTypeSymbols()
+      | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+      | genex::to<Vec>();
 
-  const auto inherited_comp_generics = sm->CurrentScope->AllVarSymbols()
-    | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
-    | genex::to<Vec>();
+    const auto inherited_comp_generics = sm->CurrentScope->AllVarSymbols()
+      | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+      | genex::to<Vec>();
 
-  // Update the meta args with the closure information for body analysis.
-  // The closure-wide save/restore allows for the "ret" to match the closure's inferred return type.
-  meta->Save();
-  meta->EnclosingFunctionScope = sm->CurrentScope; // this will be the closure-outer scope
-  sm->CurrentScope->Parent = sm->CurrentScope->ParentModule();
-  analyse::scopes::BumpScopeLinkageGeneration();
+    // Update the meta args with the closure information for body analysis.
+    // The closure-wide save/restore allows for the "ret" to match the closure's inferred return type.
+    meta->Save();
+    meta->EnclosingFunctionScope = sm->CurrentScope; // this will be the closure-outer scope
+    sm->CurrentScope->Parent = sm->CurrentScope->ParentModule();
+    analyse::scopes::BumpScopeLinkageGeneration();
 
-  auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
-    "closure-inner", {}, PosStart());
-  sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
-  meta->EnclosingFunctionFlavour = Tok.get();
-  meta->EnclosingFunctionRetType = {};
-  meta->EnclosingFunctionSourceRetType = {};
+    auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+      "closure-inner", {}, PosStart());
+    sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+    meta->EnclosingFunctionFlavour = Tok.get();
+    meta->EnclosingFunctionRetType = {};
+    meta->EnclosingFunctionSourceRetType = {};
 
-  // A "ret" or "?" in the body leaves the closure rather
-  // than the function the closure is written in, so a
-  // closure written inside a deferred expression is past
-  // the point that restriction applies to.
-  meta->WithinDeferTok = nullptr;
+    // A "ret" or "?" in the body leaves the closure rather
+    // than the function the closure is written in, so a
+    // closure written inside a deferred expression is past
+    // the point that restriction applies to.
+    meta->WithinDeferTok = nullptr;
 
-  // Add the inherited generics into the closure-inner scope.
-  for (auto const &type_generic_sym : inherited_type_generics) {
-    sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
+    // Add the inherited generics into the closure-inner scope.
+    for (auto const &type_generic_sym : inherited_type_generics) {
+      sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
+    }
+    for (auto const &comp_generic_sym : inherited_comp_generics) {
+      sm->CurrentScope->AddVarSymbol(comp_generic_sym->SharedFromThis<analyse::scopes::VariableSymbol>());
+    }
+
+    // Analyse the body of the closure.
+    Body->Stage7_AnalyseSemantics(sm, meta);
+    _RetType = not meta->EnclosingFunctionRetType.IsEmpty()
+      ? meta->EnclosingFunctionRetType[0]
+      : Body->InferType(sm, meta);
+    _RetType->Stage7_AnalyseSemantics(sm, meta);
+    Source._OriginalRetType = _RetType;
+
+    // The return type is inferred rather than declared, so it
+    // never passes through the function prototype's return type
+    // borrow check.
+    RaiseIf<SppSecondClassBorrowViolationError>(
+      Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_RetType, *sm),
+      {sm->CurrentScope}, ERR_ARGS(*this, *_RetType, "function return type"));
   }
-  for (auto const &comp_generic_sym : inherited_comp_generics) {
-    sm->CurrentScope->AddVarSymbol(comp_generic_sym->SharedFromThis<analyse::scopes::VariableSymbol>());
-  }
-
-  // Analyse the body of the closure.
-  Body->Stage7_AnalyseSemantics(sm, meta);
-  _RetType = not meta->EnclosingFunctionRetType.IsEmpty()
-    ? meta->EnclosingFunctionRetType[0]
-    : Body->InferType(sm, meta);
-  _RetType->Stage7_AnalyseSemantics(sm, meta);
-  Source._OriginalRetType = _RetType;
-
-  // The return type is inferred rather than declared, so it
-  // never passes through the function prototype's return type
-  // borrow check.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_RetType, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *_RetType, "function return type"));
-  meta->Restore(true);
   meta->Restore();
 
   // Set the scope back.
@@ -154,22 +155,23 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
   -> void {
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
-  meta->Save();
-  PcGroup->Stage8_CheckMemory(sm, meta);
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    PcGroup->Stage8_CheckMemory(sm, meta);
 
-  // Prevent the body inheriting external assignments.
-  meta->AssignmentTarget = nullptr;
-  meta->AssignmentTargetType = nullptr;
+    // Prevent the body inheriting external assignments.
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
 
-  // Check the memory of the body of the closure. A "ret" inside it
-  // leaves the closure, not the function the closure is written in,
-  // so the linearity walk has to stop here.
-  sm->MoveToNextScope();
-  meta->EnclosingFunctionScope = sm->CurrentScope;
-  Body->Stage8_CheckMemory(sm, meta);
+    // Check the memory of the body of the closure. A "ret" inside it
+    // leaves the closure, not the function the closure is written in,
+    // so the linearity walk has to stop here.
+    sm->MoveToNextScope();
+    meta->EnclosingFunctionScope = sm->CurrentScope;
+    Body->Stage8_CheckMemory(sm, meta);
 
-  // Set the scope back.
-  meta->Restore();
+    // Set the scope back.
+  }
   sm->CurrentScope = parent_scope;
 }
 
@@ -240,28 +242,28 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 
   // For now, just skip scopes and return a nullptr.
   const auto parent_scope = sm->CurrentScope;
-  meta->Save();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
 
-  // Copy stage 8 meta reset changes to prevent leakage between
-  // info from outside the closure and inside the closure.
-  meta->AssignmentTarget = nullptr;
-  meta->AssignmentTargetType = nullptr;
-  meta->LlvmAssignmentTarget = nullptr;
-  meta->LlvmAssignmentTargetType = nullptr;
+    // Copy stage 8 meta reset changes to prevent leakage between
+    // info from outside the closure and inside the closure.
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
+    meta->LlvmAssignmentTarget = nullptr;
+    meta->LlvmAssignmentTargetType = nullptr;
 
-  PcGroup->Stage11_CodeGen(sm, meta, ctx);
-  sm->MoveToNextScope();
-  const auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
+    PcGroup->Stage11_CodeGen(sm, meta, ctx);
+    sm->MoveToNextScope();
+    const auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
 
-  // Terminate the closure function with a return of the body's
-  // value (closures return their body implicitly).
-  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
-    if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
-    else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
-    else { ctx->Builder.CreateUnreachable(); }
+    // Terminate the closure function with a return of the body's
+    // value (closures return their body implicitly).
+    if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+      if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
+      else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
+      else { ctx->Builder.CreateUnreachable(); }
+    }
   }
-
-  meta->Restore();
   sm->CurrentScope = parent_scope;
 
   // Restore the previous context.

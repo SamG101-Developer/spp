@@ -261,12 +261,13 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
 
   // Add a special case for the "!" type being used as the
   // returning type of one of the branches.
-  meta->Save();
-  meta->IgnoreMissingElseBranchForInference = true;
-  const auto body_is_never = analyse::utils::type_utils::TypeEq(
-    *Body->InferType(sm, meta), *generate::common_types_precompiled::NEVER,
-    *sm->CurrentScope, *sm->CurrentScope);
-  meta->Restore();
+  const auto body_is_never = [&] {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->IgnoreMissingElseBranchForInference = true;
+    return analyse::utils::type_utils::TypeEq(
+      *Body->InferType(sm, meta), *generate::common_types_precompiled::NEVER,
+      *sm->CurrentScope, *sm->CurrentScope);
+  }();
 
   // Add the value generated from the branch's body into the PHI
   // node of the "meta" context. This will then be pulled by the

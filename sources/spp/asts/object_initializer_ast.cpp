@@ -83,10 +83,11 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Get the base class symbol (no generics) and check it exists.
-  meta->Save();
-  meta->SkipTypeAnalysisGenericChecks = true;
-  Type->WithoutGenerics()->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->SkipTypeAnalysisGenericChecks = true;
+    Type->WithoutGenerics()->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Check this type isn't a borrow violation.
   RaiseIf<SppSecondClassBorrowViolationError>(
@@ -107,10 +108,11 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
 
   // Prepare the object initializer arguments.
-  meta->Save();
-  meta->ObjectInitType = Type->WithoutGenerics();
-  ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->ObjectInitType = Type->WithoutGenerics();
+    ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
+  }
 
   // Determine the generic inference source and target values.
   auto generic_infer_source = ArgGroup->Args
@@ -129,14 +131,15 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     | genex::to<Vec>()
     : spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
 
-  meta->Save();
-  meta->InferSource = MakeShared<meta::GenericInferenceBindings>(
-    generic_infer_source.begin(), generic_infer_source.end());
-  meta->InferTarget = MakeShared<meta::GenericInferenceBindings>(
-    generic_infer_target.begin(), generic_infer_target.end());
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->InferSource = MakeShared<meta::GenericInferenceBindings>(
+      generic_infer_source.begin(), generic_infer_source.end());
+    meta->InferTarget = MakeShared<meta::GenericInferenceBindings>(
+      generic_infer_target.begin(), generic_infer_target.end());
+    Type->Stage7_AnalyseSemantics(sm, meta);
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
+  }
 
   // A generator cannot be initialized either.
   const auto [gen_type, _, _] = GetGenAndYieldTypes(
@@ -145,10 +148,9 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     gen_type != nullptr, {sm->CurrentScope},
     ERR_ARGS(*Source.OriginalType, *gen_type));
 
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->ObjectInitType = Type;
   ArgGroup->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::ObjectInitializerAst::Stage8_CheckMemory(

@@ -75,38 +75,39 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidPrimaryExpressionError;
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
-    meta->Save();
-    meta->PostfixExpressionLhs = Lhs.get();
-    Op->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->PostfixExpressionLhs = Lhs.get();
+      Op->Stage7_AnalyseSemantics(sm, meta);
+    }
     return;
   }
 
   // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
   // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
-  meta->Save();
-  meta->ReturnTypeOverloadResolverType = nullptr;
-  meta->PreventAutoGeneratorResume = false;
-  if (Lhs->To<TypeAst>() != nullptr) {
-    auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
-    temp_lhs->Stage7_AnalyseSemantics(sm, meta);
-    temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
-    temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs.get())->FqName();
-    Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->ReturnTypeOverloadResolverType = nullptr;
+    meta->PreventAutoGeneratorResume = false;
+    if (Lhs->To<TypeAst>() != nullptr) {
+      auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
+      temp_lhs->Stage7_AnalyseSemantics(sm, meta);
+      temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
+      temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs.get())->FqName();
+      Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
+    }
+    else {
+      Lhs->Stage7_AnalyseSemantics(sm, meta);
+      RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
+        {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
+    }
   }
-  else {
-    Lhs->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
-      {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
-  }
-  meta->Restore();
 
   // Re-attach the meta info, as it is targeting the lhs.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
@@ -124,10 +125,11 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
   }
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
-    meta->Save();
-    meta->PostfixExpressionLhs = Lhs.get();
-    Op->Stage8_CheckMemory(sm, meta);
-    meta->Restore();
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->PostfixExpressionLhs = Lhs.get();
+      Op->Stage8_CheckMemory(sm, meta);
+    }
     return;
   }
 
@@ -150,7 +152,7 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
   if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
   meta->AssignmentTarget = saved_assignment_target;
 
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   if (Lhs->To<IdentifierAst>() != nullptr) {
     // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
@@ -158,7 +160,6 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, false, false, false, false, meta);
   }
   Op->Stage8_CheckMemory(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
@@ -166,10 +167,9 @@ auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
   CompilerMetaData *meta)
   -> void {
   // Forward into the operator AST.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   Op->Stage9_CompTimeResolve(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
@@ -185,10 +185,9 @@ auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
   }
 
   // Forward into the operator AST.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return ret_val;
 }
 
@@ -200,10 +199,9 @@ auto spp::asts::PostfixExpressionAst::InferType(
   // if (Source.CachedInference != nullptr) { return Source.CachedInference; }
 
   // Forward into the operator AST.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   auto x = Op->InferType(sm, meta);
-  meta->Restore();
   return x;
 }
 

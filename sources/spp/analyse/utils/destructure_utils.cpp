@@ -181,9 +181,8 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   sym->LlvmInfo->Alloca = alloca;
 
   // Generate the value exactly once, into the temporary. The expanded "let" statements then index the temporary.
-  meta->Save();
+  const auto _meta_guard = asts::meta::MetaGuard(meta);
   meta->AssignmentTarget = tmp_name;
   const auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(&sm, meta, ctx);
   ctx->Builder.CreateStore(llvm_val, alloca);
-  meta->Restore();
 }

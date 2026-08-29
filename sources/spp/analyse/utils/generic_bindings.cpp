@@ -154,7 +154,7 @@ namespace spp::analyse::utils::generic_bindings {
         return p->template To<GenericParamTypeVariadicAst>() != nullptr;
       });
 
-      meta.Save();
+      const auto _meta_guard = asts::meta::MetaGuard(&meta);
       meta.TypeAnalysisTypeScope = nullptr;
 
       for (auto [i, positional_arg] : a_group.GetPositionalArgs() | genex::views::enumerate) {
@@ -204,8 +204,6 @@ namespace spp::analyse::utils::generic_bindings {
         if (meta.CurrentStage > 5) { kw_arg->Val->Stage7_AnalyseSemantics(&sm, &meta); }
         a_group.Args[i] = std::move(kw_arg);
       }
-
-      meta.Restore();
     }
   }
 }
@@ -606,10 +604,11 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
       }
 
       auto sub = p_con->SubstituteGenerics(all_args);
-      meta.Save();
-      meta.AllowAbstractType = true;
-      sub->Stage7_AnalyseSemantics(&con_sm, &meta);
-      meta.Restore();
+      {
+        const auto _meta_guard = asts::meta::MetaGuard(&meta);
+        meta.AllowAbstractType = true;
+        sub->Stage7_AnalyseSemantics(&con_sm, &meta);
+      }
       p_cons.push_back(std::move(sub));
     }
 

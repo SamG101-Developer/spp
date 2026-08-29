@@ -128,23 +128,24 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
 
   // Update the meta information for enclosing function information.
-  meta->Save();
-  meta->EnclosingFunctionFlavour = TokFun.get();
-  meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-  meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-  meta->EnclosingFunctionScope = sm->CurrentScope;
-  Impl->Stage7_AnalyseSemantics(sm, meta);
+  {
+    const auto _meta_guard = meta::MetaGuard(meta, true);
+    meta->EnclosingFunctionFlavour = TokFun.get();
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFunctionScope = sm->CurrentScope;
+    Impl->Stage7_AnalyseSemantics(sm, meta);
 
-  // Check the return type superimposes the generator type.
-  auto [_, yield_type, is_once] = GetGenAndYieldTypes(
-    *ret_type_sym->FqName(), *sm->CurrentScope,
-    *Source.OriginalReturnType, "coroutine return type");
-  _YieldType = yield_type;
-  _IsOnce = is_once;
+    // Check the return type superimposes the generator type.
+    auto [_, yield_type, is_once] = GetGenAndYieldTypes(
+      *ret_type_sym->FqName(), *sm->CurrentScope,
+      *Source.OriginalReturnType, "coroutine return type");
+    _YieldType = yield_type;
+    _IsOnce = is_once;
 
-  // Analyse the semantics of the function body, and move out the scope.
-  sm->MoveOutOfCurrentScope();
-  meta->Restore(true);
+    // Analyse the semantics of the function body, and move out the scope.
+    sm->MoveOutOfCurrentScope();
+  }
   meta->LoopReturnTypes->clear();
 }
 
@@ -307,83 +308,84 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   const auto cleanup_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.cleanup" + uid);
   const auto suspend_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.suspend" + uid);
 
-  meta->Save();
-  meta->LlvmGenerator = MakeShared<codegen::LlvmGenerator>(coro_handle);
-  meta->LlvmGenerator->CleanupBlock = cleanup_bb;
-  meta->LlvmGenerator->SuspendBlock = suspend_bb;
-  meta->LlvmGeneratorState = llvm_gen_state;
-  meta->EnclosingFunctionFlavour = TokFun.get();
-  meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-  meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-  meta->EnclosingFunctionScope = sm->CurrentScope;
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->LlvmGenerator = MakeShared<codegen::LlvmGenerator>(coro_handle);
+    meta->LlvmGenerator->CleanupBlock = cleanup_bb;
+    meta->LlvmGenerator->SuspendBlock = suspend_bb;
+    meta->LlvmGeneratorState = llvm_gen_state;
+    meta->EnclosingFunctionFlavour = TokFun.get();
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFunctionScope = sm->CurrentScope;
 
-  // If there is an implementation, generate its code. Generic
-  // bases have already returned above. There are no ffi
-  // coroutines.
-  const auto is_extern = AbstractAnnotation;
-  if (not is_extern) {
-    // Generate the coroutine implementation. Add a safety
-    // return void at the end.
-    Impl->Stage11_CodeGen(sm, meta, ctx);
+    // If there is an implementation, generate its code. Generic
+    // bases have already returned above. There are no ffi
+    // coroutines.
+    const auto is_extern = AbstractAnnotation;
+    if (not is_extern) {
+      // Generate the coroutine implementation. Add a safety
+      // return void at the end.
+      Impl->Stage11_CodeGen(sm, meta, ctx);
+    }
+
+    // Running off the end of the body is the coroutine completing, and completing is a suspend like any other - marked
+    // final. It has to be a suspend rather than a fall-through into cleanup, because "llvm.coro.done" is what tells a
+    // consumer there is nothing left to resume, and it only ever reads true of a coroutine parked on a final suspend.
+    // Freeing the frame here instead would leave the consumer asking a destroyed frame whether it was finished.
+    //
+    // Resuming a coroutine that has already finished is undefined behaviour rather than something to lower, so the
+    // block the suspend leaves the builder in - the one a resume would return to - is unreachable.
+    if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+      codegen::EmitLlvmGeneratorSuspend(
+        true, suspend_bb, cleanup_bb, "coro.final.suspend" + uid, "coro.final.resume" + uid, ctx);
+      ctx->Builder.CreateUnreachable();
+    }
+
+    // Cleanup: the destroy edge of every suspend switch, and where the frame is released. "llvm.coro.free" hands back
+    // the pointer that "llvm.coro.begin" was given, or null when the frame was never allocated - elided into the
+    // caller, in which case it goes away with the caller's own frame and there is nothing to free here. That is why
+    // the free is guarded rather than unconditional.
+    cleanup_bb->insertInto(llvm_func_target);
+    ctx->Builder.SetInsertPoint(cleanup_bb);
+    const auto coro_free_mem = ctx->Builder.CreateIntrinsic(
+      llvm::Intrinsic::coro_free, {}, {coro_id, coro_handle}, {}, "coro.free.mem" + uid);
+    const auto coro_was_alloced = ctx->Builder.CreateIsNotNull(coro_free_mem, "coro.was.alloced" + uid);
+
+    const auto free_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.free" + uid, llvm_func_target);
+    ctx->Builder.CreateCondBr(coro_was_alloced, free_bb, suspend_bb);
+
+    ctx->Builder.SetInsertPoint(free_bb);
+    ctx->Builder.CreateCall(CoroFrameFreeFn(ctx), {coro_free_mem});
+    ctx->Builder.CreateBr(suspend_bb);
+
+    // Final suspend: end the coroutine and return the handle. Like the cleanup block, this was created detached so a
+    // "gen" in the body could name it as a suspend-switch target before it existed here, so it has to be attached
+    // before anything is built into it - a parentless block has no module, and "CreateIntrinsic" needs one.
+    suspend_bb->insertInto(llvm_func_target);
+    ctx->Builder.SetInsertPoint(suspend_bb);
+    ctx->Builder.CreateIntrinsic(
+      llvm::Intrinsic::coro_end, {},
+      {coro_handle, ctx->Builder.getFalse(), llvm::ConstantTokenNone::get(*ctx->Context)}, {}, "");
+
+    // "Gen"/"GenOnce" lower to the bare handle, so the coroutine hands it straight back. A class superimposing one of
+    // them ("Iterator[T]") is a struct instead, carrying the handle in the fat-pointer field ahead of whatever it
+    // declares of its own, so the handle is packed into that shape before it leaves the function - the caller unwraps
+    // it again to drive the coroutine intrinsics.
+    const auto llvm_ret_type = llvm_func_target->getReturnType();
+    if (llvm_ret_type->isPointerTy()) {
+      ctx->Builder.CreateRet(coro_handle);
+    }
+    else {
+      const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
+      const auto handle_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
+      const auto empty_ret_val = llvm::Constant::getNullValue(llvm_ret_type);
+      ctx->Builder.CreateRet(
+        ctx->Builder.CreateInsertValue(empty_ret_val, coro_handle, {handle_idx}, "coro.handle.wrap" + uid));
+    }
+    VALIDATE_LLVM;
+
   }
-
-  // Running off the end of the body is the coroutine completing, and completing is a suspend like any other - marked
-  // final. It has to be a suspend rather than a fall-through into cleanup, because "llvm.coro.done" is what tells a
-  // consumer there is nothing left to resume, and it only ever reads true of a coroutine parked on a final suspend.
-  // Freeing the frame here instead would leave the consumer asking a destroyed frame whether it was finished.
-  //
-  // Resuming a coroutine that has already finished is undefined behaviour rather than something to lower, so the
-  // block the suspend leaves the builder in - the one a resume would return to - is unreachable.
-  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
-    codegen::EmitLlvmGeneratorSuspend(
-      true, suspend_bb, cleanup_bb, "coro.final.suspend" + uid, "coro.final.resume" + uid, ctx);
-    ctx->Builder.CreateUnreachable();
-  }
-
-  // Cleanup: the destroy edge of every suspend switch, and where the frame is released. "llvm.coro.free" hands back
-  // the pointer that "llvm.coro.begin" was given, or null when the frame was never allocated - elided into the
-  // caller, in which case it goes away with the caller's own frame and there is nothing to free here. That is why
-  // the free is guarded rather than unconditional.
-  cleanup_bb->insertInto(llvm_func_target);
-  ctx->Builder.SetInsertPoint(cleanup_bb);
-  const auto coro_free_mem = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_free, {}, {coro_id, coro_handle}, {}, "coro.free.mem" + uid);
-  const auto coro_was_alloced = ctx->Builder.CreateIsNotNull(coro_free_mem, "coro.was.alloced" + uid);
-
-  const auto free_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.free" + uid, llvm_func_target);
-  ctx->Builder.CreateCondBr(coro_was_alloced, free_bb, suspend_bb);
-
-  ctx->Builder.SetInsertPoint(free_bb);
-  ctx->Builder.CreateCall(CoroFrameFreeFn(ctx), {coro_free_mem});
-  ctx->Builder.CreateBr(suspend_bb);
-
-  // Final suspend: end the coroutine and return the handle. Like the cleanup block, this was created detached so a
-  // "gen" in the body could name it as a suspend-switch target before it existed here, so it has to be attached
-  // before anything is built into it - a parentless block has no module, and "CreateIntrinsic" needs one.
-  suspend_bb->insertInto(llvm_func_target);
-  ctx->Builder.SetInsertPoint(suspend_bb);
-  ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_end, {},
-    {coro_handle, ctx->Builder.getFalse(), llvm::ConstantTokenNone::get(*ctx->Context)}, {}, "");
-
-  // "Gen"/"GenOnce" lower to the bare handle, so the coroutine hands it straight back. A class superimposing one of
-  // them ("Iterator[T]") is a struct instead, carrying the handle in the fat-pointer field ahead of whatever it
-  // declares of its own, so the handle is packed into that shape before it leaves the function - the caller unwraps
-  // it again to drive the coroutine intrinsics.
-  const auto llvm_ret_type = llvm_func_target->getReturnType();
-  if (llvm_ret_type->isPointerTy()) {
-    ctx->Builder.CreateRet(coro_handle);
-  }
-  else {
-    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
-    const auto handle_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
-    const auto empty_ret_val = llvm::Constant::getNullValue(llvm_ret_type);
-    ctx->Builder.CreateRet(
-      ctx->Builder.CreateInsertValue(empty_ret_val, coro_handle, {handle_idx}, "coro.handle.wrap" + uid));
-  }
-  VALIDATE_LLVM;
-
-  meta->Restore();
   sm->MoveOutOfCurrentScope();
   _CodeGenGenericSubstitutions(sm, meta, ctx);
   return nullptr;

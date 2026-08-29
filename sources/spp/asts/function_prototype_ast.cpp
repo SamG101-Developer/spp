@@ -585,22 +585,23 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
   // "EnclosingFunctionScope" is set here as well as in stage 7,
   // because the early-exit linearity check needs to know where to
   // stop walking outwards.
-  meta->Save();
-  meta->EnclosingFunctionScope = sm->CurrentScope;
-  FnParamGroup->Stage8_CheckMemory(sm, meta);
-  Impl->Stage8_CheckMemory(sm, meta);
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->EnclosingFunctionScope = sm->CurrentScope;
+    FnParamGroup->Stage8_CheckMemory(sm, meta);
+    Impl->Stage8_CheckMemory(sm, meta);
 
-  // A function whose body is not written in S++ is exempt: an
-  // intrinsic is implemented by code generation, an ffi function by
-  // a foreign library, and an abstract method by whoever overrides
-  // it. There is no body that could have consumed the parameters,
-  // so there is nothing to hold to the rule.
-  if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
-    and not Impl->Terminates()) {
-    analyse::utils::linear_utils::CheckScopeExit(
-      *sm->CurrentScope, *Impl, "Function end", *sm, meta);
+    // A function whose body is not written in S++ is exempt: an
+    // intrinsic is implemented by code generation, an ffi function by
+    // a foreign library, and an abstract method by whoever overrides
+    // it. There is no body that could have consumed the parameters,
+    // so there is nothing to hold to the rule.
+    if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
+      and not Impl->Terminates()) {
+      analyse::utils::linear_utils::CheckScopeExit(
+        *sm->CurrentScope, *Impl, "Function end", *sm, meta);
+    }
   }
-  meta->Restore();
 
   // Move out of the function scope, as it is now complete.
   sm->MoveOutOfCurrentScope();
@@ -707,7 +708,7 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
     sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl);
     sub.Proto->_InstallLoweredImpl(&tm);
 
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
     meta->ResolveBoundCompGenerics = true;
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
@@ -733,7 +734,6 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
       analyse::utils::linear_utils::CheckScopeExit(
         *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
     }
-    meta->Restore();
   }
 }
 

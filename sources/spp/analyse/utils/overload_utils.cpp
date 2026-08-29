@@ -198,11 +198,11 @@ namespace spp::analyse::utils::overload_utils {
 
       // Determine the overload based off the function
       // (uniform system).
-      meta->Save();
-      meta->PostfixExpressionLhs = transformed_lhs.get();
-      auto [overload, is_closure] = DetermineOverload(
-        *transformed_fn_call, sm, meta);
-      meta->Restore();
+      auto [overload, is_closure] = [&] {
+        const auto _meta_guard = asts::meta::MetaGuard(meta);
+        meta->PostfixExpressionLhs = transformed_lhs.get();
+        return DetermineOverload(*transformed_fn_call, sm, meta);
+      }();
 
       // Get the argument group with the "self" injection,
       // and bind it to the function call.

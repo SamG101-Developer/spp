@@ -292,10 +292,11 @@ auto spp::analyse::utils::func_utils::ConvertMethodToFuncForm(
   // itself, so its type is the borrow it yields. Infer it
   // with resumption allowed, whatever the surrounding
   // expression asked for (an "async" call suppresses it).
-  meta->Save();
-  meta->PreventAutoGeneratorResume = false;
-  new_fn_call->FnArgGroup->Args[0]->SetSelfType(self_expr->InferType(&sm, meta));
-  meta->Restore();
+  {
+    const auto _meta_guard = asts::meta::MetaGuard(meta);
+    meta->PreventAutoGeneratorResume = false;
+    new_fn_call->FnArgGroup->Args[0]->SetSelfType(self_expr->InferType(&sm, meta));
+  }
   new_fn_call->Source.OriginalExpr = fn_call.Source.OriginalExpr;
 
   // Return the new ASTs.

@@ -24,6 +24,7 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
@@ -161,10 +162,11 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
     {sm->CurrentScope}, ERR_ARGS(*this, *OldType, "type statement old type"));
 
   // Check the "old type" exists (non-generic).
-  meta->Save();
-  meta->SkipTypeAnalysisGenericChecks = true;
-  OldType->WithoutGenerics()->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->SkipTypeAnalysisGenericChecks = true;
+    OldType->WithoutGenerics()->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Recursively discover the actual type being mapped to.
   auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::RecursiveAliasSearch(
@@ -265,12 +267,13 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
 
-    meta->Save();
-    meta->AllowAbstractType = true;
     auto const &resolved = _AliasSym->Alias->Resolved;
-    resolved->ResetCache();
-    resolved->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AllowAbstractType = true;
+      resolved->ResetCache();
+      resolved->Stage7_AnalyseSemantics(sm, meta);
+    }
 
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(resolved.get());
     if (cls_sym->Type) {

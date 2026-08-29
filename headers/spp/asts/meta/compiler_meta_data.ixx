@@ -60,7 +60,7 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
 };
 
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
-  double CurrentStage;
+  CompilerStage CurrentStage;
   Shared<TypeAst> ReturnTypeOverloadResolverType;
   Shared<IdentifierAst> AssignmentTarget;
   Shared<TypeAst> AssignmentTargetType;
@@ -109,7 +109,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
    */
   llvm::Value *LetStatementPrecomputedValue;
 
-  bool LoopDoubleCheckActive;
   std::size_t LoopCurrentDepth;
   LoopExpressionAst *LoopCurrentAst;
   Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
@@ -211,4 +210,24 @@ public:
   auto Restore(bool heavy = false) -> void;
 
   SPP_ATTR_NODISCARD auto Depth() const -> std::size_t;
+};
+
+/**
+ * Scoped @c CompilerMetaData::Save / @c Restore . The pair has to bracket exactly, and writing it by hand means a
+ * @c return or a raised @c SemanticError between the two leaks the saved state into whatever runs next - which is
+ * why @c DetermineOverload carries a loop that unwinds back to a remembered depth by hand. Declaring one of these
+ * instead ties the restore to the scope, so both cases are handled by the language.
+ */
+SPP_EXP_CLS struct spp::asts::meta::MetaGuard {
+  explicit MetaGuard(CompilerMetaData *meta, bool heavy = false);
+
+  ~MetaGuard();
+
+  MetaGuard(MetaGuard const &) = delete;
+
+  auto operator=(MetaGuard const &) -> MetaGuard& = delete;
+
+private:
+  CompilerMetaData *_Meta;
+  bool _Heavy;
 };

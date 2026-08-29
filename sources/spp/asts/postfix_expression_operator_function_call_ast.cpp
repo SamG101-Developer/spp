@@ -155,11 +155,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   if (_OverloadInfo.has_value()) { return; }
 
   // Analyse the generic arguments and the function call arguments before determining the overload.
-  meta->Save();
-  meta->ReturnTypeOverloadResolverType = nullptr;
-  GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
-  FnArgGroup->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->ReturnTypeOverloadResolverType = nullptr;
+    GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    FnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // If we are function folding, create transformed asts.
   if (Fold != nullptr) {
@@ -261,11 +262,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   // Check the argument group, now the old borrows have been invalidated.
   GnArgGroup->Stage8_CheckMemory(sm, meta);
 
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->TargetCallFunctionPrototype = _OverloadInfo->Proto;
   meta->TargetCallWasFunctionAsync = _IsAsync;
   FnArgGroup->Stage8_CheckMemory(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
@@ -312,14 +312,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   for (auto &&gn_arg : GnArgGroup->GetCompArgs()) { gn_arg_comp_map.EmplaceBack(gn_arg->Val.get()); }
 
   // Resolve the function with the arguments.
-  meta->Save();
-  meta->CmpArgs = std::move(fn_arg_map);
-  meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
-  meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
-  auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope());
-  tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
-  fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->CmpArgs = std::move(fn_arg_map);
+    meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
+    meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
+    auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope());
+    tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
+    fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
+  }
 
   // Every function reaches comp-time resolution through here, so this is where an integer result is checked against
   // what its type can hold. Comp-time arithmetic is exact, so a result that does not fit arrives intact rather than
@@ -332,7 +333,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   else if (const auto flt_result = meta->CmpResult != nullptr ? meta->CmpResult->To<FloatLiteralAst>() : nullptr) {
     flt_result->ValidateBounds(*owner, *sm);
   }
-
 
   if (revoke) {
     _OverloadInfo.reset();

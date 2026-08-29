@@ -258,10 +258,11 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     auto inner_types = analyse::utils::type_utils::DedupVariableInnerTypes(*this, *sm->CurrentScope);
     if (not inner_types.IsEmpty()) {
       auto inner_types_as_tup = generate::common_types::TupleType(PosStart(), std::move(inner_types));
-      meta->Save();
-      meta->TypeAnalysisTypeScope = scope;
-      inner_types_as_tup->Stage7_AnalyseSemantics(sm, meta);
-      meta->Restore();
+      {
+        const auto _meta_guard = meta::MetaGuard(meta);
+        meta->TypeAnalysisTypeScope = scope;
+        inner_types_as_tup->Stage7_AnalyseSemantics(sm, meta);
+      }
       GnArgGroup->Args[0]->ToUnchecked<GenericArgumentTypeAst>()->Val = std::move(inner_types_as_tup);
     }
   }

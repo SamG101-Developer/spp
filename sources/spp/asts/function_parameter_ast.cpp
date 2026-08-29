@@ -79,12 +79,11 @@ auto spp::asts::FunctionParameterAst::Stage11_CodeGen(
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the local variable so that the symbol table receives the alloca.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
   // It's not uninitialized but as the value is external we need this behaviour
   Var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return nullptr;
 }
 

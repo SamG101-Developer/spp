@@ -94,7 +94,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   }
 
   // Add the type into the return type overload resolver.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->ReturnTypeOverloadResolverType = Type;
 
   // Check the value is a valid expression type.
@@ -118,7 +118,6 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
@@ -127,12 +126,11 @@ auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
   -> void {
   // Check the variable's memory (which in turn checks the
   // values memory - must be done this way for destructuring).
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
   meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage8_CheckMemory(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
@@ -152,12 +150,11 @@ auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
   for (auto const &sym : shadowed) { sm->CurrentScope->AddVarSymbol(sym); }
 
   // Assign the comptime value to the variable.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
   meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage9_CompTimeResolve(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
@@ -168,7 +165,7 @@ auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
   // Todo: Inconsistent with lower level stages?
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
   meta->AssignmentTargetType = Type;
   const auto val_type = Type ? Type : Val->InferType(sm, meta);
@@ -183,7 +180,6 @@ auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
   // It's a hacky solution that should live on "meta" but no harm
   // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return alloca;
 }
 

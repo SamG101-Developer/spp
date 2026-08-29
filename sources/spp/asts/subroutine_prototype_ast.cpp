@@ -102,12 +102,13 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 
   // Handle the "!" never type.
   auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope->Children[0].get());
-  meta->Save();
-  meta->IgnoreMissingElseBranchForInference = true;
-  const auto is_never = not Impl->Members.IsEmpty() and TypeEq(
-    *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta), *NEVER,
-    *tm.CurrentScope, *sm->CurrentScope);
-  meta->Restore();
+  const auto is_never = [&] {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->IgnoreMissingElseBranchForInference = true;
+    return not Impl->Members.IsEmpty() and TypeEq(
+      *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta), *NEVER,
+      *tm.CurrentScope, *sm->CurrentScope);
+  }();
 
   // Check for a void return type.
   const auto is_void = TypeEq(
@@ -175,39 +176,40 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
 
   const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
     ReturnType.get());
-  meta->Save();
-  meta->EnclosingFunctionFlavour = TokFun.get();
-  meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-  meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-  meta->EnclosingFunctionScope = sm->CurrentScope;
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->EnclosingFunctionFlavour = TokFun.get();
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFunctionScope = sm->CurrentScope;
 
-  // If there is an implementation, generate its code.
-  if (BuiltinAnnotation or FfiAnnotation) {
-    // Get manual IR from a codegen module.
-    Impl->Stage11_CodeGen(sm, meta, ctx);
-    if (entry_bb->empty()) {
-      entry_bb->eraseFromParent();
-      ctx->Builder.ClearInsertionPoint();
+    // If there is an implementation, generate its code.
+    if (BuiltinAnnotation or FfiAnnotation) {
+      // Get manual IR from a codegen module.
+      Impl->Stage11_CodeGen(sm, meta, ctx);
+      if (entry_bb->empty()) {
+        entry_bb->eraseFromParent();
+        ctx->Builder.ClearInsertionPoint();
+      }
     }
-  }
-  else {
-    // Generate the function implementation. For abstract method,
-    // shift scopes, as there is still a body, it's just empty.
-    Impl->Stage11_CodeGen(sm, meta, ctx);
+    else {
+      // Generate the function implementation. For abstract method,
+      // shift scopes, as there is still a body, it's just empty.
+      Impl->Stage11_CodeGen(sm, meta, ctx);
 
-    // Add a return instruction inside the function if there isn't
-    // one (abstract methods will never be called due to previous
-    // semantic analysis on abstracts, but to satisfy LLVM analysis).
-    const auto insert_bb = ctx->Builder.GetInsertBlock();
-    if (not insert_bb->hasTerminator()) {
-      const auto ret_void = insert_bb->getParent()->getReturnType()->isVoidTy();
-      if (ret_void) { ctx->Builder.CreateRetVoid(); }
-      else { ctx->Builder.CreateUnreachable(); }
+      // Add a return instruction inside the function if there isn't
+      // one (abstract methods will never be called due to previous
+      // semantic analysis on abstracts, but to satisfy LLVM analysis).
+      const auto insert_bb = ctx->Builder.GetInsertBlock();
+      if (not insert_bb->hasTerminator()) {
+        const auto ret_void = insert_bb->getParent()->getReturnType()->isVoidTy();
+        if (ret_void) { ctx->Builder.CreateRetVoid(); }
+        else { ctx->Builder.CreateUnreachable(); }
+      }
     }
-  }
-  VALIDATE_LLVM
+    VALIDATE_LLVM
 
-  meta->Restore();
+  }
   sm->MoveOutOfCurrentScope();
   _CodeGenGenericSubstitutions(sm, meta, ctx);
   return nullptr;

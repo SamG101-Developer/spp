@@ -147,15 +147,16 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   // Handle builtin annotations.
   using A = analyse::utils::annotation_utils::BuiltinAnnotations;
 
-  meta->Save();
-  meta->IgnoreAccessModifierViolations = true;
-  if (const auto pf = Name->To<PostfixExpressionAst>(); pf and pf->Op->To<PostfixExpressionOperatorFunctionCallAst>()) {
-    pf->Lhs->Stage7_AnalyseSemantics(sm, meta);
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->IgnoreAccessModifierViolations = true;
+    if (const auto pf = Name->To<PostfixExpressionAst>(); pf and pf->Op->To<PostfixExpressionOperatorFunctionCallAst>()) {
+      pf->Lhs->Stage7_AnalyseSemantics(sm, meta);
+    }
+    else {
+      Name->Stage7_AnalyseSemantics(sm, meta);
+    }
   }
-  else {
-    Name->Stage7_AnalyseSemantics(sm, meta);
-  }
-  meta->Restore();
 
   const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).first;
   const auto fq_name = sym->FqName()->ToString();
@@ -305,16 +306,17 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
 
   // Todo: Maybe do this in stage7, with stage9 evaluation? needs cmp args.
   // Evaluate the context that this annotation can be applied to.
-  meta->Save();
   const auto annotation_scope_name = INJECT_CODE("std::annotations", parse_expression);
   const auto annotation_scope = const_cast<analyse::scopes::Scope*>(
     sm->CurrentScope->ConvertPostfixToNestedScope(annotation_scope_name.get()));
   auto tm = ScopeManager(sm->GlobalScope, annotation_scope);
-  annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);
-  annotation_info->Definition->FnArgGroup->At("target")->Val->Stage9_CompTimeResolve(&tm, meta);
-  const auto result = std::move(meta->CmpResult);
-  const auto allowed_ctx = result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
-  meta->Restore();
+  const auto allowed_ctx = [&] {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);
+    annotation_info->Definition->FnArgGroup->At("target")->Val->Stage9_CompTimeResolve(&tm, meta);
+    const auto result = std::move(meta->CmpResult);
+    return result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
+  }();
 
   const auto target = annotation_info->Definition->FnArgGroup->At("target");
 

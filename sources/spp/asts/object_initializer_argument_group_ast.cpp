@@ -133,7 +133,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   // Analyse the arguments in the group.
   for (auto const &arg : Args) {
     // Return type overload helper.
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
     if (const auto kw_arg = arg->To<ObjectInitializerArgumentKeywordAst>(); kw_arg != nullptr) {
       SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
         // Multiple attributes with same name (via base classes) -> can't infer the one to use.
@@ -150,7 +150,6 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     }
 
     arg->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
   }
 }
 
@@ -197,11 +196,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     }
 
     const auto attr_type = attr_type_sym->FqName();
-    meta->Save();
-    meta->AssignmentTargetType = attr_type;
-    meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
-    auto arg_type = arg->InferType(sm, meta);
-    meta->Restore();
+    auto arg_type = [&] {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AssignmentTargetType = attr_type;
+      meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
+      return arg->InferType(sm, meta);
+    }();
 
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*attr_type, *arg_type, *sm->CurrentScope, *sm->CurrentScope),

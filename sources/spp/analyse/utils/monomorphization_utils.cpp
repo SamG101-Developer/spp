@@ -206,12 +206,11 @@ namespace spp::analyse::utils::monomorphization_utils {
       const bool allow_abstract,
       const bool ignore_access)
       -> void {
-      meta->Save();
+      const auto _meta_guard = asts::meta::MetaGuard(meta);
       meta->AllowAbstractType = meta->AllowAbstractType or allow_abstract;
       meta->IgnoreAccessModifierViolations = meta->IgnoreAccessModifierViolations or ignore_access;
       meta->SkipSubstitutedConstraintChecks = true;
       type.Stage7_AnalyseSemantics(tm, meta);
-      meta->Restore();
     }
 
     /**

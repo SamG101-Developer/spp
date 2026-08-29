@@ -106,7 +106,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
   // Analyse the expression if it exists, and determine the type of the expression.
   auto expr_type = VoidType(PosStart());
   if (Expr != nullptr) {
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
     if (not meta->EnclosingFunctionRetType.IsEmpty()) {
       auto [gen_type, yield_type, _] = GetGenAndYieldTypes(
         *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
@@ -129,7 +129,6 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
 
     expr_type = Expr->InferType(sm, meta);
     if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
-    meta->Restore();
   }
 
   // Functions provide the return type, closures require inference; handle the inference.

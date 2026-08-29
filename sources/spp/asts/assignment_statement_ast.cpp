@@ -89,10 +89,9 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   // Ensure the LHS is semantically valid.
   for (auto const &lhs_expr : Lhs) {
     SPP_DEREF_ALLOW_MOVE_HELPER(lhs_expr) {
-      meta->Save();
+      const auto _meta_guard = meta::MetaGuard(meta);
       meta->AllowMoveDeref = true;
       lhs_expr->Stage7_AnalyseSemantics(sm, meta);
-      meta->Restore();
     }
     else {
       lhs_expr->Stage7_AnalyseSemantics(sm, meta);
@@ -101,7 +100,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 
   // Ensure the RHS is semantically valid.
   for (auto [i, rhs_expr] : Rhs | genex::views::ptr | genex::views::enumerate) {
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
 
     // Handle return type overloading matching for the lhs target types.
     if (const auto pf = rhs_expr->To<PostfixExpressionAst>(); pf != nullptr) {
@@ -114,7 +113,6 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
     meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
     rhs_expr->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
   }
 
   // For each assignment, get the outermost symbol of the expression.
@@ -191,11 +189,12 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     // the move, but do some checks before calling the internal memory checker on the postfix expression.
     ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, false, meta);
 
-    meta->Save();
-    meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
-    meta->AssignmentTargetType = lhs_expr->InferType(sm, meta);
-    rhs_expr->Stage8_CheckMemory(sm, meta);
-    meta->Restore();
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
+      meta->AssignmentTargetType = lhs_expr->InferType(sm, meta);
+      rhs_expr->Stage8_CheckMemory(sm, meta);
+    }
 
     // Fully validate the memory of the right-hand-side expression, marking the move. A value carrying escaping
     // borrows is let through here, because "PreventBorrowLifetimeExtension" below weighs the destination against
@@ -273,27 +272,29 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   auto llvm_rhs_vals = Vec<llvm::Value*>{};
   llvm_rhs_vals.Reserve(Rhs.Len());
   for (auto i = 0uz; i < Rhs.Len(); ++i) {
-    meta->Save();
-    meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
-    meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
-    if (IsIdentifier(Lhs[i].get())) {
-      meta->LlvmAssignmentTarget = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
-    }
+    auto llvm_rhs = [&] {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
+      meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
+      if (IsIdentifier(Lhs[i].get())) {
+        meta->LlvmAssignmentTarget = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
+      }
 
-    auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
+      auto value = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
 
-    // Just like a "let" with a declared type: the target may be
-    // a variant the value is only a member of, in which case it
-    // is tagged and copied into the payload rather than written
-    // raw over the slot (which would land the member on top of
-    // the tag).
-    if (const auto target_type = Lhs[i]->InferType(sm, meta); target_type != nullptr) {
-      llvm_rhs = codegen::CoerceToVariant(
-        llvm_rhs, *target_type, *Rhs[i]->InferType(sm, meta),
-        *sm->CurrentScope, "assign.variant." + spp::utils::Uid(this), ctx);
-    }
+      // Just like a "let" with a declared type: the target may be
+      // a variant the value is only a member of, in which case it
+      // is tagged and copied into the payload rather than written
+      // raw over the slot (which would land the member on top of
+      // the tag).
+      if (const auto target_type = Lhs[i]->InferType(sm, meta); target_type != nullptr) {
+        value = codegen::CoerceToVariant(
+          value, *target_type, *Rhs[i]->InferType(sm, meta),
+          *sm->CurrentScope, "assign.variant." + spp::utils::Uid(this), ctx);
+      }
 
-    meta->Restore();
+      return value;
+    }();
     llvm_rhs_vals.EmplaceBack(llvm_rhs);
   }
 
@@ -323,10 +324,9 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     // The statement "x.y = v" (attribute): ask the runtime member
     // access for the field's address rather than its value.
     else {
-      meta->Save();
+      const auto _meta_guard = meta::MetaGuard(meta);
       meta->LlvmWantAddress = true;
       llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
-      meta->Restore();
     }
 
     llvm_lhs_locs.EmplaceBack(llvm_lhs);

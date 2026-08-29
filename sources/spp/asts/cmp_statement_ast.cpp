@@ -19,6 +19,7 @@ import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
@@ -205,10 +206,11 @@ auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Analyse the type and value.
-  meta->Save();
-  meta->ReturnTypeOverloadResolverType = Type; // Todo: Add this to unit tests.
-  Value->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->ReturnTypeOverloadResolverType = Type; // Todo: Add this to unit tests.
+    Value->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Check the value's type is the same as the given type.
   const auto inferred_type = Value->InferType(sm, meta);

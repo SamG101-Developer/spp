@@ -65,10 +65,9 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
     not IsPrimaryExprTypeValid(*Expr, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Expr));
 
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
@@ -85,10 +84,9 @@ auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the right-hand-side expression.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();
   const auto lhs_val = Op->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return lhs_val;
 }
 
@@ -97,10 +95,9 @@ auto spp::asts::UnaryExpressionAst::InferType(
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the type of the right-hand-side expression, adjusted by the operator.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();
   auto type = Op->InferType(sm, meta);
-  meta->Restore();
 
   return type;
 }

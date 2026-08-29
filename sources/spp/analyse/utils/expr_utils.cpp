@@ -101,10 +101,11 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   // Inferred against the scope the statement was written in, which
   // is not necessarily the one the walk is currently sitting in.
   auto tm = scopes::ScopeManager(sm.GlobalScope, scope);
-  meta->Save();
-  meta->IgnoreMissingElseBranchForInference = true;
-  const auto type = expr->InferType(&tm, meta);
-  meta->Restore();
+  const auto type = [&] {
+    const auto _meta_guard = asts::meta::MetaGuard(meta);
+    meta->IgnoreMissingElseBranchForInference = true;
+    return expr->InferType(&tm, meta);
+  }();
   if (type == nullptr) { return; }
 
   const auto type_name = type->ToString();

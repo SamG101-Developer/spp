@@ -1647,9 +1647,8 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
   const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
 
   auto t = type.SubstituteGenerics(args);
-  meta.Save();
+  const auto _meta_guard = asts::meta::MetaGuard(&meta);
   meta.AllowAbstractType = true;
   t->Stage7_AnalyseSemantics(&sm, &meta);
-  meta.Restore();
   return t;
 }

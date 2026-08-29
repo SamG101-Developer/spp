@@ -179,12 +179,13 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
 
   _TransformedExpr = MakeUnique<InnerScopeExpressionAst>(
     nullptr, std::move(members), nullptr);
-  meta->Save();
-  meta->AssignmentTarget = nullptr;
-  meta->AssignmentTargetType = nullptr;
-  meta->ReturnTypeOverloadResolverType = nullptr;
-  _TransformedExpr->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
+    meta->ReturnTypeOverloadResolverType = nullptr;
+    _TransformedExpr->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // The "Try" checks run against the analysed copy, and so after
   // the lowering rather than before it. Only that copy has been
@@ -240,10 +241,9 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTargetType = nullptr;
   const auto llvm_val = _TransformedExpr->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return llvm_val;
 }
 
@@ -255,11 +255,10 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
   using analyse::utils::type_utils::GetTryType;
   if (_TransformedExpr != nullptr) {
     // Infer from the transformed ast.
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
     auto transformed_type = _TransformedExpr->InferType(sm, meta);
-    meta->Restore();
     return transformed_type;
   }
 

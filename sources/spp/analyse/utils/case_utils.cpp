@@ -170,13 +170,12 @@ namespace spp::analyse::utils::case_utils {
           auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
 
           // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
-          meta->Save();
+          const auto _meta_guard = asts::meta::MetaGuard(meta);
           meta->CaseCondition = pf_expr.get();
 
           // Combine the result.
           auto transform = mapper(part);
           transformed.EmplaceBack(std::move(transform));
-          meta->Restore();
         }
       }
 

@@ -161,7 +161,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
   CompilerMetaData *meta)
   -> void {
   // Assign the generated value into the variable symbol.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
 
   // Fix variable shadowing, where a newer version of the symbol is
@@ -177,7 +177,6 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
     // Can be nullptr for the materialization into $ symbols.
     var_sym->CompTimeValue = std::move(meta->CmpResult);
   }
-  meta->Restore();
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
@@ -217,7 +216,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     ctx->Builder.CreateStore(meta->LetStatementPrecomputedValue, alloca);
   }
   else if (not meta->LetStatementFromUninitialized) {
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
     meta->LlvmAssignmentTarget = alloca;
 
@@ -249,7 +248,6 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // Skip storing Void (created via generic implementation
     // analysis).
     if (not is_void) { ctx->Builder.CreateStore(llvm_val, alloca); }
-    meta->Restore();
   }
 
   // Alloca already added; return nullptr.

@@ -33,17 +33,18 @@ auto spp::codegen::llvm_materialize(
   const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
 
   // Analyse semantics and generate code for the let statement.
-  meta->Save();
-  meta->LetStatementExplicitType = ast.InferType(sm, meta);
-  meta->LetStatementFromUninitialized = true;
-  meta->LetStatementValue = nullptr;
-  var->Stage7_AnalyseSemantics(sm, meta);
+  {
+    const auto _meta_guard = asts::meta::MetaGuard(meta);
+    meta->LetStatementExplicitType = ast.InferType(sm, meta);
+    meta->LetStatementFromUninitialized = true;
+    meta->LetStatementValue = nullptr;
+    var->Stage7_AnalyseSemantics(sm, meta);
 
-  // Set the lhs to the variable name.
-  meta->LetStatementFromUninitialized = false; // Need to generate the expression now.
-  meta->LetStatementValue = &ast;
-  var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
+    // Set the lhs to the variable name.
+    meta->LetStatementFromUninitialized = false; // Need to generate the expression now.
+    meta->LetStatementValue = &ast;
+    var->Stage11_CodeGen(sm, meta, ctx);
+  }
   const auto materialized_val = var->To<asts::LocalVariableSingleIdentifierAst>()->Name.get();
   return materialized_val;
 }
@@ -65,10 +66,11 @@ auto spp::codegen::llvm_addr_of(
   // A member access generates the address of its own field, which is the object a borrow of it points at. The symbol
   // lookup below cannot be used for one, because it resolves to the head of the chain ("a" in "a.b").
   if (asts::IsRuntimeMemberAccess(&ast)) {
-    meta->Save();
-    meta->LlvmWantAddress = true;
-    const auto field_ptr = ast.Stage11_CodeGen(sm, meta, ctx);
-    meta->Restore();
+    const auto field_ptr = [&] {
+      const auto _meta_guard = asts::meta::MetaGuard(meta);
+      meta->LlvmWantAddress = true;
+      return ast.Stage11_CodeGen(sm, meta, ctx);
+    }();
     SPP_ASSERT(field_ptr->getType()->isPointerTy());
     return field_ptr;
   }

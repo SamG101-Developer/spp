@@ -94,10 +94,9 @@ auto spp::asts::TypeUnaryExpressionAst::Stage4_QualifyTypes(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, tm);
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
     meta->TypeAnalysisTypeScope = type_scope;
     Rhs->Stage4_QualifyTypes(sm, meta);
-    meta->Restore();
   }
   else {
     Rhs->Stage4_QualifyTypes(sm, meta);
@@ -114,10 +113,9 @@ auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
     meta->TypeAnalysisTypeScope = type_scope;
     Rhs->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
   }
   else {
     Rhs->Stage7_AnalyseSemantics(sm, meta);

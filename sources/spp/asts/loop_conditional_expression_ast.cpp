@@ -102,14 +102,15 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*Cond, *cond_type, "loop"));
 
   // Set the loop level information into the "meta" object.
-  meta->Save();
-  meta->LoopCurrentDepth += 1;
-  meta->LoopCurrentAst = this;
-  Body->Stage7_AnalyseSemantics(sm, meta);
-  if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-    m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->LoopCurrentDepth += 1;
+    meta->LoopCurrentAst = this;
+    Body->Stage7_AnalyseSemantics(sm, meta);
+    if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
+      m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+    }
   }
-  meta->Restore();
 
   // Analyse the else block if it exists.
   if (ElseBlock != nullptr) {
@@ -214,58 +215,60 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
 
   // Register this loop so that nested "exit"/"skip" statements can branch to the correct blocks. The stack is
   // ordered outermost-first, so "exit exit" pops 2 frames off the back to find its target.
-  meta->Save();
-  meta->LlvmEndBB = loop_end_bb;
-  meta->LlvmPhi = phi;
-  meta->LlvmLoopStack.EmplaceBack(loop_cond_bb, loop_end_bb, phi, entered_flag, sm->CurrentScope);
-  meta->AssignmentTargetType = ret_type;
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->LlvmEndBB = loop_end_bb;
+    meta->LlvmPhi = phi;
+    meta->LlvmLoopStack.EmplaceBack(loop_cond_bb, loop_end_bb, phi, entered_flag, sm->CurrentScope);
+    meta->AssignmentTargetType = ret_type;
 
-  // Generate the condition. This block is branched back to at the end of every iteration, so the condition is
-  // re-evaluated each time round.
-  ctx->Builder.SetInsertPoint(loop_cond_bb);
-  const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
-  const auto cond_end_bb = ctx->Builder.GetInsertBlock();
-  ctx->Builder.CreateCondBr(llvm_cond, loop_body_bb, loop_not_taken_bb);
+    // Generate the condition. This block is branched back to at the end of every iteration, so the condition is
+    // re-evaluated each time round.
+    ctx->Builder.SetInsertPoint(loop_cond_bb);
+    const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
+    const auto cond_end_bb = ctx->Builder.GetInsertBlock();
+    ctx->Builder.CreateCondBr(llvm_cond, loop_body_bb, loop_not_taken_bb);
 
-  // Generate the loop body block. The body itself never yields the loop's value (only "exit" does), so the
-  // assignment target is cleared to stop the final body statement being treated as a yielded value.
-  ctx->Builder.SetInsertPoint(loop_body_bb);
-  if (entered_flag != nullptr and not _IterDesugar) {
-    ctx->Builder.CreateStore(llvm::ConstantInt::getTrue(*ctx->Context), entered_flag);
-  }
-  meta->Save();
-  meta->AssignmentTarget = nullptr;
-  meta->LlvmAssignmentTarget = nullptr;
-  Body->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
-  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
-    ctx->Builder.CreateBr(loop_cond_bb);
-  }
-
-  if (ElseBlock != nullptr) {
-    // The condition failed: run the else block only if no iteration was ever taken, otherwise leave the loop.
-    ctx->Builder.SetInsertPoint(loop_not_taken_bb);
-    const auto was_entered = ctx->Builder.CreateLoad(
-      llvm::Type::getInt1Ty(*ctx->Context), entered_flag, "loop.was_entered" + uid);
-    ctx->Builder.CreateCondBr(was_entered, loop_end_bb, loop_else_bb);
-    if (phi != nullptr) { phi->addIncoming(llvm::UndefValue::get(phi->getType()), loop_not_taken_bb); }
-
-    // Generate the else block itself.
-    ctx->Builder.SetInsertPoint(loop_else_bb);
-    const auto else_val = ElseBlock->Stage11_CodeGen(sm, meta, ctx);
-    const auto else_end_bb = ctx->Builder.GetInsertBlock();
-    if (not else_end_bb->hasTerminator()) {
-      if (phi != nullptr) { phi->addIncoming(else_val, else_end_bb); }
-      ctx->Builder.CreateBr(loop_end_bb);
+    // Generate the loop body block. The body itself never yields the loop's value (only "exit" does), so the
+    // assignment target is cleared to stop the final body statement being treated as a yielded value.
+    ctx->Builder.SetInsertPoint(loop_body_bb);
+    if (entered_flag != nullptr and not _IterDesugar) {
+      ctx->Builder.CreateStore(llvm::ConstantInt::getTrue(*ctx->Context), entered_flag);
     }
-  }
-  else {
-    // The failing condition targets the end block directly, but the phi still needs a value for it.
-    if (phi != nullptr) { phi->addIncoming(llvm::UndefValue::get(phi->getType()), cond_end_bb); }
-  }
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AssignmentTarget = nullptr;
+      meta->LlvmAssignmentTarget = nullptr;
+      Body->Stage11_CodeGen(sm, meta, ctx);
+    }
+    if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+      ctx->Builder.CreateBr(loop_cond_bb);
+    }
 
-  // Finish the loop expression.
-  meta->Restore();
+    if (ElseBlock != nullptr) {
+      // The condition failed: run the else block only if no iteration was ever taken, otherwise leave the loop.
+      ctx->Builder.SetInsertPoint(loop_not_taken_bb);
+      const auto was_entered = ctx->Builder.CreateLoad(
+        llvm::Type::getInt1Ty(*ctx->Context), entered_flag, "loop.was_entered" + uid);
+      ctx->Builder.CreateCondBr(was_entered, loop_end_bb, loop_else_bb);
+      if (phi != nullptr) { phi->addIncoming(llvm::UndefValue::get(phi->getType()), loop_not_taken_bb); }
+
+      // Generate the else block itself.
+      ctx->Builder.SetInsertPoint(loop_else_bb);
+      const auto else_val = ElseBlock->Stage11_CodeGen(sm, meta, ctx);
+      const auto else_end_bb = ctx->Builder.GetInsertBlock();
+      if (not else_end_bb->hasTerminator()) {
+        if (phi != nullptr) { phi->addIncoming(else_val, else_end_bb); }
+        ctx->Builder.CreateBr(loop_end_bb);
+      }
+    }
+    else {
+      // The failing condition targets the end block directly, but the phi still needs a value for it.
+      if (phi != nullptr) { phi->addIncoming(llvm::UndefValue::get(phi->getType()), cond_end_bb); }
+    }
+
+    // Finish the loop expression.
+  }
   sm->MoveOutOfCurrentScope();
   ctx->Builder.SetInsertPoint(loop_end_bb);
   return phi;

@@ -162,10 +162,11 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 
   // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
   // methods are declared.
-  meta->Save();
-  meta->AllowAbstractType = true;
-  Name->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AllowAbstractType = true;
+    Name->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Name, *sm),
@@ -227,11 +228,12 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
 
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
-  meta->Save();
-  meta->AllowAbstractType = true;
-  Name->ResetCache();
-  Name->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AllowAbstractType = true;
+    Name->ResetCache();
+    Name->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Re-map "Self" to the true type.
   if (not Name->IsCompilerGeneratedType()) {

@@ -101,7 +101,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   auto expr_type = VoidType(PosStart());
   _RetType = VoidType(PosStart());
   if (Expr != nullptr) {
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
 
     // For case conditions, we need an assignment target in case of variants. Closures have no declared return
     // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
@@ -124,7 +124,6 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     Source._OriginalRetType = meta->EnclosingFunctionSourceRetType.IsEmpty()
       ? nullptr
       : meta->EnclosingFunctionSourceRetType[0];
-    meta->Restore();
   }
 
   // Functions provide the return type, closures require inference; handle the inference.
@@ -216,7 +215,7 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
       llvm_ret_val, *ret_type, *Expr->InferType(sm, meta), *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTargetType = _RetType;
   if (meta->AssignmentTarget == nullptr) {
     meta->AssignmentTarget = MakeShared<IdentifierAst>(PosStart(), "$ret");
@@ -238,7 +237,6 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   ctx->Builder.GetInsertBlock()->getParent()->getReturnType()->isVoidTy()
     ? ctx->Builder.CreateRetVoid()
     : ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
-  meta->Restore();
 
   return nullptr;
 }

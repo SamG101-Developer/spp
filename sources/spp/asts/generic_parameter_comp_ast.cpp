@@ -67,7 +67,7 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
   using analyse::utils::type_utils::IsTypeBorrowed;
 
   // Qualify the type on the generic parameter.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->IgnoreCmpGeneric = Name;
 
   // Check the type exists and qualify.
@@ -83,8 +83,6 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Type, *sm), {sm->CurrentScope},
     ERR_ARGS(*Type, *Type, "generic comp argument"));
-
-  meta->Restore();
 }
 
 auto spp::asts::GenericParameterCompAst::Stage7_AnalyseSemantics(

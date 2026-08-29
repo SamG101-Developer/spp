@@ -8,7 +8,7 @@ import spp.asts.type_ast;
 
 SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
-  CurrentStage = 0;
+  CurrentStage = CompilerStage::kNone;
   ReturnTypeOverloadResolverType = nullptr;
   AssignmentTarget = nullptr;
   AssignmentTargetType = nullptr;
@@ -30,7 +30,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
   LetStatementPrecomputedValue = nullptr;
-  LoopDoubleCheckActive = false;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
   LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
@@ -91,7 +90,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
   s.LetStatementPrecomputedValue = LetStatementPrecomputedValue;
-  s.LoopDoubleCheckActive = LoopDoubleCheckActive;
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
   s.LoopReturnTypes = LoopReturnTypes;
@@ -161,7 +159,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
   LetStatementPrecomputedValue = state.LetStatementPrecomputedValue;
-  LoopDoubleCheckActive = state.LoopDoubleCheckActive;
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;
   LoopReturnTypes = std::move(state.LoopReturnTypes);
@@ -201,6 +198,18 @@ auto spp::asts::meta::CompilerMetaData::Depth() const
   -> std::size_t {
   // Get the number of live history items.
   return _Depth;
+}
+
+spp::asts::meta::MetaGuard::MetaGuard(
+  CompilerMetaData *const meta,
+  const bool heavy) :
+  _Meta(meta),
+  _Heavy(heavy) {
+  _Meta->Save();
+}
+
+spp::asts::meta::MetaGuard::~MetaGuard() {
+  _Meta->Restore(_Heavy);
 }
 
 SPP_MOD_END

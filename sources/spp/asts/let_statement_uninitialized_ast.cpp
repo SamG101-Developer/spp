@@ -76,12 +76,11 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);
 
   // Update the meta arguments.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementValue = mock_init.get(); // Safe, because only used within inner frame, then reset.
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
   Var->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
@@ -89,7 +88,7 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
   CompilerMetaData *meta)
   -> void {
   // Check the variable for memory issues.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementValue = nullptr;
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
@@ -97,7 +96,6 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
   for (auto const &v : Var->ExtractNames()) {
     sm->CurrentScope->GetVarSymbol(v.get())->MemInfo->MovedBy(*this, sm->CurrentScope);
   }
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
@@ -107,7 +105,7 @@ auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
   -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementValue = nullptr;
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
@@ -118,7 +116,6 @@ auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
   // It's a hacky solution that should live on "meta" but no harm
   // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return alloca;
 }
 
