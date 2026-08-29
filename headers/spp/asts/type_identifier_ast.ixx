@@ -154,6 +154,14 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_ATTR_NODISCARD auto ToView() const
     -> StrView;
 
+  /**
+   * Forget that this type was written in source. A type produced by substituting a generic argument is a clone of
+   * whatever the caller named, so it arrives carrying the caller's flag; analysed inside the template's module it
+   * then reads as an access written there, and a caller's own private type is reported illegal from inside std.
+   * Only what someone actually typed at a site is an access by that site.
+   */
+  auto ClearSourceWritten() -> void;
+
   auto MarkSourceWritten()
     -> void;
 
