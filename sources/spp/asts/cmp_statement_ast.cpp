@@ -77,6 +77,7 @@ auto spp::asts::CmpStatementAst::Clone() const
   ast->Visibility = Visibility;
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
+  ast->_FromUseStatement = _FromUseStatement;
   for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
   return ast;
 }
