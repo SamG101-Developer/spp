@@ -164,7 +164,15 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
     sm->CurrentScope->TySym->Visibility = Visibility.first;
   }
 
-  // Mark the "Copy" class itself as copyable. Minimise TypeEq calls.
+  // Visibility patch for generic symbols ie Vec vs
+  // Vec[T]. Sync the visibility.
+  if (not GnParamGroup->Params.IsEmpty() and sm->CurrentScope->Parent != nullptr) {
+    const auto base_sym = sm->CurrentScope->Parent->GetTypeSymbol(Name->TypeParts()[0], true);
+    if (base_sym != nullptr) { base_sym->Visibility = Visibility.first; }
+  }
+
+  // Mark the "Copy" class itself as copyable. Minimise
+  // `TypeEq` calls.
   if (_ClsSym != nullptr and Name->LastTypePart()->Name == COPY->LastTypePart()->Name) {
     const auto fq_name = _ClsSym->FqName();
     if (TypeEq(*fq_name, *COPY, *sm->CurrentScope, *sm->CurrentScope)) {
