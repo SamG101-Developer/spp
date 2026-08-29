@@ -17,6 +17,7 @@ use std::annotations::abstract_method
 use std::annotations::ffi
 use std::annotations::test
 use std::annotations::Annotation
+use std::mem::ops::drop
 use std::string::Str
 use std::string_view::StrView
 use std::boolean::Bool
