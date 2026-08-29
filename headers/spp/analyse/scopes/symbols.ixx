@@ -151,7 +151,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     Scope *ScopeDefinedIn,
     bool is_mutable = false,
     bool is_generic = false,
-    asts::utils::Visibility visibility = asts::utils::Visibility::kPublic);
+    asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate);
 
   VariableSymbol(
     VariableSymbol const &that);
@@ -327,7 +327,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     Scope *scope_module = nullptr,
     bool is_generic = false,
     bool is_directly_copyable = false,
-    asts::utils::Visibility visibility = asts::utils::Visibility::kPublic,
+    asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate,
     Unique<asts::ConventionAst> &&convention = nullptr,
     Vec<Shared<asts::TypeAst>> const &generic_constraints = {});
 
