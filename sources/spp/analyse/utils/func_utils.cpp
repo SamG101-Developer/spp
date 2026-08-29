@@ -228,7 +228,14 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
   else if (postfix_lhs != nullptr and static_field != nullptr) {
     fn_owner_scope = sm.CurrentScope->ConvertPostfixToNestedScope(postfix_lhs->Lhs.get());
     fn_name = static_field->Name;
-    fn_owner_type = fn_owner_scope->GetVarSymbol(fn_name.get())->Type;
+
+    // Add a name check here because we need to get
+    // the type off of it before it is even analysed.
+    const auto fn_owner_sym = fn_owner_scope->GetVarSymbol(fn_name.get());
+    if (fn_owner_sym == nullptr) {
+      RaiseMissingIdentifierAndClosestOptions(*fn_name, fn_owner_scope->AllVarSymbols(), {}, sm);
+    }
+    fn_owner_type = fn_owner_sym->Type;
   }
 
   // Direct access into a non-namespaced function:
