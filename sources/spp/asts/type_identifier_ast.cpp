@@ -167,11 +167,12 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   // Determine the scope and get the type symbol.
   const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
 
-  // Using postfix type expression before stage 5 is
-  // currently an error because they aren't attached
-  // to types, via sup scopes, until stage 5.
+  // Using a postfix type expression before stage 5 is
+  // currently an error, because nested types are not
+  // attached to their owner, via sup scopes, until stage 5.
   RaiseIf<analyse::errors::SppFeatureNotYetSupportedError>(
-    scope->TySym != nullptr and meta->CurrentStage < meta::CompilerStage::kAttachSupScopes
+    meta->TypeAnalysisTypeScope != nullptr and scope->TySym != nullptr
+    and meta->CurrentStage < meta::CompilerStage::kAttachSupScopes
     and scope->GetTypeSymbol(WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), false) == nullptr,
     {sm->CurrentScope},
     ERR_ARGS(
@@ -184,7 +185,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     return;
   }
 
-  if (_IsSourceWritten and type_sym->ScopeDefinedIn != nullptr and type_sym->Name->Name == Name) {
+  if (_IsSourceWritten and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
+    and type_sym->ScopeDefinedIn != nullptr
+    and type_sym->Name->Name == Name) {
     CheckModuleTypeVisibility(
       *type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
   }
@@ -279,14 +282,18 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   // Enforce generic constraints from the pre-analysis stage onwards, not just the main analysis
   // stage. Sup scopes are fully loaded by the end of stage 5, so constraints can be reliably checked here, and some
   // need to be done before stage 7 for order agnostic behaviour.
-  if (not GnArgGroup->Args.IsEmpty() and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics and not meta->SkipSubstitutedConstraintChecks) {
+  if (not GnArgGroup->Args.IsEmpty()
+    and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
+    and not meta->SkipSubstitutedConstraintChecks) {
     EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
   }
 
   // Reject abstract types everywhere except the few positions that name a type without ever producing a value of it.
   // The generic substitution above may have created the scope this resolves to, so the symbol is re-fetched rather
   // than reusing the base "type_sym" from before it existed.
-  if (not meta->AllowAbstractType and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics and not type_sym->IsGeneric) {
+  if (not meta->AllowAbstractType
+    and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
+    and not type_sym->IsGeneric) {
     const auto resolved_sym = scope->GetTypeSymbol(this);
     if (resolved_sym != nullptr and resolved_sym->LinkedScope != nullptr) {
       const auto unimplemented = GetUnimplementedAbstractMethods(*resolved_sym->LinkedScope);
@@ -457,7 +464,9 @@ auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
     auto const *type_kw_arg = arg->To<GenericArgumentTypeKeywordAst>();
     if (type_kw_arg == nullptr) { continue; }
     if (*this == *type_kw_arg->Name->ToUnchecked<TypeIdentifierAst>()) {
-      return AstClone(type_kw_arg->Val->ToUnchecked<TypeAst>());
+      auto substituted = AstClone(type_kw_arg->Val->ToUnchecked<TypeAst>());
+      for (auto *part : substituted->TypeParts()) { part->ClearSourceWritten(); }
+      return substituted;
     }
   }
 
@@ -559,7 +568,7 @@ auto spp::asts::TypeIdentifierAst::ToView() const
 }
 
 auto spp::asts::TypeIdentifierAst::NsPartsInto(
-  Vec<IdentifierAst const*>&) const
+  Vec<IdentifierAst const*> &) const
   -> void {
 }
 
