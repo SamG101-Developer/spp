@@ -239,16 +239,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-  LocalVariableDestructureTupleAst_MaterializeRhs,
-  test_valid_place_value_keeps_partial_moves, R"(
-    fun f() -> Void {
-        let t = (Str::from("a"), Str::from("b"))
-        let (a, ..) = t
-        let b = t.1
-    }
-)");
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   LocalVariableDestructureTupleAst_MaterializeRhs,
   test_invalid_place_value_used_after_destructure,

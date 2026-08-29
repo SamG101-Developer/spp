@@ -1,9 +1,9 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_partial_move_from_yielded_borrow_via_variable,
-    SppMoveFromBorrowedMemoryError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_partial_move_from_yielded_borrow_via_variable,
+  SppMoveFromBorrowedMemoryError, R"(
     cls A {
         !public a: Str
     }
@@ -21,9 +21,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_partial_move_from_yielded_borrow_directly,
-    SppMoveFromBorrowedMemoryError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_partial_move_from_yielded_borrow_directly,
+  SppMoveFromBorrowedMemoryError, R"(
     cls A {
         !public a: Str
     }
@@ -40,9 +40,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_simple,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_simple,
+  SppMemoryOverlapUsageError, R"(
     cor g(a: &Str) -> Gen[Str] { }
 
     fun h(a: &mut Str) -> Void { }
@@ -55,9 +55,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_simple,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_simple,
+  SppMemoryOverlapUsageError, R"(
     cor g(a: &mut Str) -> Gen[Str] { }
 
     fun h(a: &Str) -> Void { }
@@ -70,9 +70,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_simple,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_simple,
+  SppMemoryOverlapUsageError, R"(
     cor g(a: &mut Str) -> Gen[Str] { }
 
     fun h(a: &mut Str) -> Void { }
@@ -85,8 +85,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_simple, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_simple, R"(
     cor g(a: &Str) -> Gen[Str] { }
 
     fun h(a: &Str) -> Void { }
@@ -102,9 +102,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_define_conflicting_mut_borrow_after_mut_borrow_created,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_define_conflicting_mut_borrow_after_mut_borrow_created,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str] { }
@@ -119,9 +119,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_define_conflicting_ref_borrow_after_mut_borrow_created,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_define_conflicting_ref_borrow_after_mut_borrow_created,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str] { }
@@ -136,9 +136,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_define_conflicting_mut_borrow_after_ref_borrow_created,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_define_conflicting_mut_borrow_after_ref_borrow_created,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str] { }
@@ -153,8 +153,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_define_conflicting_ref_borrow_after_ref_borrow_created, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_define_conflicting_ref_borrow_after_ref_borrow_created, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str] { }
@@ -172,9 +172,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str] { }
@@ -189,9 +189,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str] { }
@@ -206,9 +206,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str] { }
@@ -223,9 +223,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow_with_scoping,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow_with_scoping,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -243,9 +243,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow_with_scoping,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow_with_scoping,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -263,9 +263,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow_with_scoping,
-    SppMemoryOverlapUsageError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow_with_scoping,
+  SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -283,8 +283,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_create_ref_borrow_create_ref_borrow_use_ref_borrow_with_scoping, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_create_ref_borrow_create_ref_borrow_use_ref_borrow_with_scoping, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -304,9 +304,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_for_resume,
-    SppUninitializedMemoryUseError, R"(
+  TestAstYieldedBorrow,
+  test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_for_resume,
+  SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
@@ -318,10 +318,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             let mut generator_mut = object.custom_iter_mut()
             let x = generator_mut.res()
             let y = generator_mut.res()
+            defer std::mem::ops::drop(y)
             let z = case x of {
                 is &mut Str(..) { x.to_uppercase() }
                 else { Str::from("") }
-                std::mem::ops::drop(y)
             }
             std::mem::ops::drop(z)
         }
@@ -330,8 +330,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_for_resume, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_for_resume, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -343,10 +343,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let mut generator_ref = object.custom_iter_ref()
             let x = generator_ref.res()
             let y = generator_ref.res()
+            defer std::mem::ops::drop(y)
             let z = case x of {
                 is &Str(..) { x.to_uppercase() }
                 else { Str::from("") }
-                std::mem::ops::drop(y)
             }
             std::mem::ops::drop(z)
         }
@@ -355,8 +355,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_with_scoping, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -375,8 +375,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -395,8 +395,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -418,8 +418,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_with_scoping_2, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_with_scoping_2, R"(
     cls MyType { }
     sup MyType {
         !public cor custom_iter_ref(&self) -> Gen[&Str, Void] { }
@@ -440,8 +440,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_partial_move_from_owned_yielded_value, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_partial_move_from_owned_yielded_value, R"(
     cls A {
         !public a: Str
     }
@@ -460,8 +460,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_copy_attribute_from_yielded_borrow_directly, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_copy_attribute_from_yielded_borrow_directly, R"(
     cls A {
         !public a: U32
     }
@@ -479,8 +479,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_copy_attribute_from_yielded_borrow_via_variable, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_copy_attribute_from_yielded_borrow_via_variable, R"(
     cls A {
         !public a: U32
     }
@@ -490,18 +490,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut generator = g()
         let a = generator.res()
+        defer std::mem::ops::drop(a)
         let b = case a of {
             is &A(..) { a.a }
             else { 0_u32 }
-            std::mem::ops::drop(a)
         }
         std::mem::ops::drop(generator)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstYieldedBorrow,
-    test_valid_memory_assign_narrowed_yielded_borrow_to_outer_binding, R"(
+  TestAstYieldedBorrow,
+  test_valid_memory_assign_narrowed_yielded_borrow_to_outer_binding, R"(
     fun f() -> Void {
         let mut v = Vec[Str]()
         {

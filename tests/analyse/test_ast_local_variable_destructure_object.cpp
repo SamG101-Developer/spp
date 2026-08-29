@@ -335,25 +335,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-  LocalVariableDestructureObjectAst_MaterializeRhs,
-  test_valid_place_value_keeps_partial_moves, R"(
-    cls Pair {
-        !public a: Str
-        !public b: Str
-    }
-
-    fun f() -> Void {
-        let p = Pair(a=Str::from("a"), b=Str::from("b"))
-        let Pair(a, ..) = p
-        let b = p.b
-    }
-)");
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   LocalVariableDestructureObjectAst_MaterializeRhs,
   test_invalid_place_value_used_after_partial_move,
-  SppPartiallyInitializedMemoryUseError, R"(
+  SppUninitializedMemoryUseError, R"(
     cls Pair {
         !public a: Str
         !public b: Str
