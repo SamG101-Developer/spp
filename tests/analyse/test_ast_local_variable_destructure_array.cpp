@@ -107,6 +107,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [(a, mut b), c] = [t, (3, Str::from("4"))]
         b = Str::from("5")
         std::mem::ops::drop(b)
+        std::mem::ops::drop(c)
     }
 )");
 

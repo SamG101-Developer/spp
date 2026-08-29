@@ -92,7 +92,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTupleNamedType,
     test_valid_named_tuple_type_in_generic_function, R"(
-    fun f[T](a: Tup[T, Bool]) -> Void { }
+    fun f[T](a: Tup[T, Bool]) -> Void {
+        std::mem::ops::drop(a)
+    }
 
     fun g() -> Void {
         f((1_u64, true))

@@ -111,5 +111,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f(p: Arr[Point, 2_uz]) -> Void {
         case p is [Point(x=10, y), Point(x, y=20)] { }
+        std::mem::ops::drop(p)
     }
 )");

@@ -78,6 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (1_u64, Str::from("hello"), false)
         t.f()
+        std::mem::ops::drop(t)
     }
 )");
 
@@ -100,6 +101,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         let t4 = (false,)
         t4.f()
+        std::mem::ops::drop(t3)
     }
 )");
 
@@ -361,6 +363,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (1_u64, Str::from("hello"))
         t.f()
+        std::mem::ops::drop(t)
     }
 )");
 

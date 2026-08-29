@@ -113,5 +113,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f(p: (Point, Point)) -> Void {
         case p is (Point(x as a, y as b), Point(x as c, y as d)) { }
+        std::mem::ops::drop(p)
     }
 )");

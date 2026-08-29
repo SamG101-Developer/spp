@@ -475,6 +475,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_single_arg_no_leading_param, R"(
     fun g[..Ts](..a: Ts) -> Void {
+        std::mem::ops::drop(a)
         ret
     }
 
@@ -493,6 +494,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut x = pass_through(1, true, Str::from("hi"))
         x = (0, false, Str::from("bye"))
+        std::mem::ops::drop(x)
     }
 )");
 

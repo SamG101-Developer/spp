@@ -616,6 +616,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut t: (MyVec[Bool], Bool)) -> Void {
         t = (MyVec[Bool]::new(), false)
         t = (Vec[Bool]::new(), true)
+        std::mem::ops::drop(t)
     }
 )");
 
@@ -642,6 +643,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(mut a: [MyVec[Bool]; 2_uz]) -> Void {
         a = [MyVec[Bool]::new(), Vec[Bool]::new()]
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -671,6 +673,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = MyVec[Bool]::new()
         x = Vec[Bool]::new()
         x = true
+        std::mem::ops::drop(x)
     }
 )");
 

@@ -108,6 +108,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b = Str::from("5")
         c.1 = Str::from("6")
         std::mem::ops::drop(b)
+        std::mem::ops::drop(c)
     }
 )");
 

@@ -174,5 +174,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut x = g[Str]()
         x = Some(val=Str::from("hello"))
+        std::mem::ops::drop(x)
     }
 )");

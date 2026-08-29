@@ -247,7 +247,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_MultiNested,
   test_valid_infer_nested_generic_inside_tuple, R"(
-    fun f[T, U](a: (Vec[T], U)) -> (T, U) { ret (T(), U()) }
+    fun f[T, U](a: (Vec[T], U)) -> (T, U) {
+        std::mem::ops::drop(a)
+        ret (T(), U())
+    }
 
     fun g() -> Void {
         let mut x = f((Vec[S32](), true))

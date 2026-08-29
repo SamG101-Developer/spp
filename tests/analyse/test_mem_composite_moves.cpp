@@ -76,5 +76,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("a")
         let y = Str::from("b")
         let t = (x, y)
+        std::mem::ops::drop(t)
     }
 )");

@@ -50,6 +50,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         let x: (MyString, MyBool)
         x = (Str::from("hello"), true)
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -57,7 +58,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_variant, R"(
     type SomeType = Str or Bool
-    fun f(a: SomeType) -> Void { }
+    fun f(a: SomeType) -> Void {
+        std::mem::ops::drop(a)
+    }
     fun g() -> Void { f(Str::from("hello")) }
 )");
 

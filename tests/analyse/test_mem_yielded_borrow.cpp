@@ -321,6 +321,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             let z = case x of {
                 is &mut Str(..) { x.to_uppercase() }
                 else { Str::from("") }
+                std::mem::ops::drop(y)
             }
             std::mem::ops::drop(z)
         }
@@ -345,6 +346,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let z = case x of {
                 is &Str(..) { x.to_uppercase() }
                 else { Str::from("") }
+                std::mem::ops::drop(y)
             }
             std::mem::ops::drop(z)
         }
@@ -409,6 +411,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let mut generator_mut_1 = object.custom_iter_mut()
             let x = generator_mut_1.res()
+            std::mem::ops::drop(x)
         }
         std::mem::ops::drop(object)
     }
@@ -490,6 +493,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = case a of {
             is &A(..) { a.a }
             else { 0_u32 }
+            std::mem::ops::drop(a)
         }
         std::mem::ops::drop(generator)
     }

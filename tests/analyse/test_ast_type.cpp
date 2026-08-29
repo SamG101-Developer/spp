@@ -61,31 +61,44 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant, R"(
-    fun f(mut a: Str or Bool) -> Void { a = Str::from("hello") }
+    fun f(mut a: Str or Bool) -> Void {
+        a = Str::from("hello")
+        std::mem::ops::drop(a)
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_default, R"(
-    fun f(a: Str or Bool = Str::from("hello")) -> Void { }
+    fun f(a: Str or Bool = Str::from("hello")) -> Void {
+        std::mem::ops::drop(a)
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_1, R"(
-    fun f(mut a: (Str,)) -> Void { a = (Str::from("hello"),) }
+    fun f(mut a: (Str,)) -> Void {
+        a = (Str::from("hello"),)
+        std::mem::ops::drop(a)
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_n, R"(
-    fun f(mut a: (Str, Bool)) -> Void { a = (Str::from("hello"), true) }
+    fun f(mut a: (Str, Bool)) -> Void {
+        a = (Str::from("hello"), true)
+        std::mem::ops::drop(a)
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_default, R"(
-    fun f(a: (Str, Bool) = (Str::from("hello"), true)) -> Void { }
+    fun f(a: (Str, Bool) = (Str::from("hello"), true)) -> Void {
+        std::mem::ops::drop(a)
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
