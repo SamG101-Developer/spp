@@ -22,15 +22,15 @@ fi
   echo "LDFLAGS=-L${prefix}/lib -Wl,-rpath,${prefix}/lib"
 } >> "$GITHUB_ENV"
 
-# The manifest's source paths are relative to its own directory, which
-# sits either in lib/ or lib/c++/ depending on how the release laid
-# libc++ out; rewriting from the "share/libc++/v1" they all end in is
-# what makes that immaterial.
+# The manifest's paths are relative to its own directory, which sits
+# either in lib/ or lib/c++/ depending on how the release laid libc++
+# out, and they are read from the resource directory it is copied to
+# rather than from there.
 manifest="$(find "${prefix}/lib" -maxdepth 2 -name libc++.modules.json | head -n 1)"
 if [ -z "$manifest" ]; then
   echo "::error::no libc++.modules.json under ${prefix}/lib; 'import std' has nothing to build from" >&2
   exit 1
 fi
 resource_dir="$("${prefix}/bin/clang" -print-resource-dir)"
-sed "s|\"[^\"]*share/libc++/v1/|\"${prefix}/share/libc++/v1/|g" \
+sed "s|\"[^\"]*share/libc++/v1|\"${prefix}/share/libc++/v1|g" \
   "$manifest" > "${resource_dir}/libc++.modules.json"
