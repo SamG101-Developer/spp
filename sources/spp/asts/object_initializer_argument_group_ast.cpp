@@ -8,7 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.class_attribute_ast;
 import spp.asts.expression_ast;
@@ -88,7 +90,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   using analyse::errors::SppArgumentNameInvalidError;
   using analyse::errors::SppIdentifierDuplicateError;
   using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
-  using analyse::utils::type_utils::GetAllAttrs;
+  using analyse::utils::type_members::GetAllAttrs;
 
   const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, *sm);
   const auto all_attr_names = all_attrs
@@ -158,10 +160,10 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::type_utils::TypeEq;
-  using analyse::utils::type_utils::GetAllAttrs;
-  using analyse::utils::type_utils::GetAllAttrAsts;
-  using analyse::utils::type_utils::IsTypeVariant;
+  using analyse::utils::type_compare::TypeEq;
+  using analyse::utils::type_members::GetAllAttrs;
+  using analyse::utils::type_members::GetAllAttrAsts;
+  using analyse::utils::type_predicates::IsTypeVariant;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
   using analyse::errors::SemanticError;
   using analyse::errors::SppAmbiguousMemberAccessError;

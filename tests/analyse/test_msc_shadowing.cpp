@@ -80,11 +80,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// A method's mock constant does not shadow the module-level "drop" the prelude brings in. "drop" here is both that
+// free function and a method on "T", and the unqualified call in "consume" means the free function - the method is
+// only reachable through a receiver. Nothing about this depends on "Drop"; the method is an ordinary one that happens
+// to share the name. The import is not written out because the prelude already provides it, and repeating it is a
+// duplicate identifier.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestShadowing,
   test_shadow_method_does_not_hide_module_import, R"(
-    use std::mem::ops::drop
-
     cls T { }
 
     sup T {

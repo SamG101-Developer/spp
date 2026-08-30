@@ -7,7 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.destructure_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -84,7 +84,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError;
   using analyse::utils::destructure_utils::BindDestructureTemporary;
   using analyse::utils::destructure_utils::IsDestructurePlaceExpression;
-  using analyse::utils::type_utils::IsTypeArr;
+  using analyse::utils::type_predicates::IsTypeArr;
 
   // Only 1 "multi-skip" allowed in a destructure.
   const auto multi_arg_skips = Elems

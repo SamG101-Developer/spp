@@ -48,38 +48,7 @@ namespace spp::analyse::utils::func_utils {
     Shared<asts::TypeAst> FwdType;
   };
 
-  /**
-   * Get the function owner type, scope and name from an expression AST. This is used to determine information related
-   * to getting the overloads of a function. This function owner type is the type of the class the method belongs to
-   * if the callable is a method rather than a free-function. The scope is for the function itself, not its owner. The
-   * following cases are handled:
-   *      - @c object.method(): runtime access into an instance.
-   *      - @c Type::method(): static access into a type.
-   *      - @c namespace::function(): direct access into a namespaced free function.
-   *      - @c function(): direct free function call.
-   *      - @c <otherwise>: closure identifier, or invalid function call.
-   * @param sm The scope manager to access function scopes.
-   * @param lhs The left-hand-side of the function call (ie remove the @c (...) part).
-   * @param meta Associated metadata.
-   * @return A 3-tuple containing:
-   *      1. The owner type of the function (method: class, free function: module, closure: nullptr)
-   *      2. The function scope (the scope generated when the @c FunctionPrototypeAst was analysed).
-   *      3. The function name (the identifier that is used to call the function).
-   */
-  SPP_EXP_FUN auto GetFuncOwnerTypeAndFuncName(
-    asts::ExpressionAst const &lhs,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Tup<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>>;
 
-  SPP_EXP_FUN auto ConvertMethodToFuncForm(
-    asts::TypeAst const &function_owner_type,
-    asts::IdentifierAst const &function_name,
-    asts::PostfixExpressionAst const &lhs,
-    asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Pair<Unique<asts::PostfixExpressionAst>, Unique<asts::PostfixExpressionOperatorFunctionCallAst>>;
 
   SPP_EXP_FUN auto GetAllFunctionScopes(
     asts::IdentifierAst const &target_fn_name,
@@ -131,7 +100,4 @@ namespace spp::analyse::utils::func_utils {
     asts::meta::CompilerMetaData *meta)
     -> Shared<const asts::TypeAst>;
 
-  SPP_EXP_FUN auto CreateCallablePrototype(
-    asts::TypeAst const &expr_type)
-    -> Unique<asts::FunctionPrototypeAst>;
 }

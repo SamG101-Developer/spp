@@ -6,7 +6,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -264,7 +264,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   const auto body_is_never = [&] {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
-    return analyse::utils::type_utils::TypeEq(
+    return analyse::utils::type_compare::TypeEq(
       *Body->InferType(sm, meta), *generate::common_types_precompiled::NEVER,
       *sm->CurrentScope, *sm->CurrentScope);
   }();

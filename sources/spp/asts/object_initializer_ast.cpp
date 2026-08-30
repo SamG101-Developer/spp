@@ -8,6 +8,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
@@ -78,8 +80,8 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppObjectInitializerVariantError;
   using analyse::errors::SppObjectInitializerGeneratorError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
-  using analyse::utils::type_utils::IsTypeVariant;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeVariant;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Get the base class symbol (no generics) and check it exists.
@@ -184,8 +186,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
-  using analyse::utils::type_utils::GetAllAttrs;
-  using analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount;
+  using analyse::utils::type_members::GetAllAttrs;
+  using analyse::utils::type_predicates::GetSuperimposedFatPointerFieldCount;
 
   // Create an empty struct based on the llvm type - will never
   // be a borrow so always stack allocated, not a pointer.

@@ -11,7 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
@@ -81,7 +81,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppExpressionNotBooleanError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeBool;
+  using analyse::utils::type_predicates::IsTypeBool;
 
   // Create the loop scope.
   auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
@@ -158,8 +158,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
-  using analyse::utils::type_utils::IsTypeNever;
-  using analyse::utils::type_utils::IsTypeVoid;
+  using analyse::utils::type_predicates::IsTypeNever;
+  using analyse::utils::type_predicates::IsTypeVoid;
 
   // Move into the loop scope.
   sm->MoveToNextScope();

@@ -101,14 +101,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 // "drop" called from inside a "drop" method, on an attribute recovered by destructuring "self". The method's own
-// declaration lowers into a mock constant named "drop" in the enclosing "sup" scope, so an unqualified call used to
-// find that instead of the imported free function and fail with no matching signature - the shape every composite
-// "Drop" in the standard library is written in. An unqualified call names a module level function, so it resolves
-// against the module, not the scope it is written in.
+// declaration lowers into a mock constant named "drop" in the enclosing "sup" scope, and the call still has to reach
+// the free function rather than that mock - the shape every composite "Drop" in the standard library is written in.
+//
+// Note this does *not* cover the module-scope resolution fix in "overload_utils". Reproducing that needs the import
+// written above the declarations, which a file with no prelude gets and a test snippet cannot: the prelude is appended
+// to the snippet, and writing "use std::mem::ops::drop" here would duplicate it, which is itself an error (see
+// "test_invalid_use_variable_statement_duplicate_of_prelude"). That fix is only observable in the standard library.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstDestructors,
     test_valid_drop_called_on_attribute_inside_drop_method, R"(
-    use std::mem::ops::drop
     use std::ops::drop::Drop
 
     cls Inner { }

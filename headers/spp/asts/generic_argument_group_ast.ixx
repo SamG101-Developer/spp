@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.ast;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -50,7 +50,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
     -> Unique<GenericArgumentGroupAst>;
 
   static auto FromMap(
-    analyse::utils::type_utils::GenericInferenceMap const &map)
+    analyse::utils::type_compare::GenericInferenceMap const &map)
     -> Unique<GenericArgumentGroupAst>;
 
   /**

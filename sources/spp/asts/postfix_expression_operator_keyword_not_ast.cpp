@@ -7,7 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
@@ -61,7 +61,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::errors::SppExpressionNotBooleanError;
-  using analyse::utils::type_utils::IsTypeBool;
+  using analyse::utils::type_predicates::IsTypeBool;
 
   // Check the left-hand-side is a boolean expression.
   // Todo: Test with convention.

@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.instantiation_queue;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
@@ -381,7 +381,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   new_cls_sym->IsConcrete = genex::all_of(
     type_part.GnArgGroup->Args | genex::views::ptr, [&](auto const *arg) {
       if (const auto type_arg = arg->template To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
-        return type_utils::IsTypeFullyConcrete(*type_arg->Val, *sm->CurrentScope);
+        return type_predicates::IsTypeFullyConcrete(*type_arg->Val, *sm->CurrentScope);
       }
       if (const auto comp_arg = arg->template To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
         return comp_arg->Val->template To<asts::IdentifierAst>() == nullptr;

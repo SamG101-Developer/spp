@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
@@ -78,7 +79,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
   using analyse::errors::SppCoroutineContainsReturnStatementError;
   using analyse::errors::SppInvalidPrimaryExpressionError;

@@ -7,7 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.destructure_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -84,7 +84,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError;
   using analyse::utils::destructure_utils::BindDestructureTemporary;
   using analyse::utils::destructure_utils::IsDestructurePlaceExpression;
-  using analyse::utils::type_utils::IsTypeTup;
+  using analyse::utils::type_predicates::IsTypeTup;
 
   // Only 1 "multi-skip" allowed in a destructure.
   const auto multi_arg_skips = Elems

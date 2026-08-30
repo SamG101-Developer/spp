@@ -7,7 +7,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
+import spp.asts.ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.expression_ast;
@@ -63,14 +64,14 @@ auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
 
 auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   asts::Ast &member,
-  scopes::Scope *const scope,
+  scopes::Scope * scope,
   scopes::ScopeManager const &sm,
   asts::meta::CompilerMetaData *const meta)
   -> void {
   //
   using errors::SppDiscardedValueError;
-  using type_utils::IsTypeNever;
-  using type_utils::IsTypeVoid;
+  using type_predicates::IsTypeNever;
+  using type_predicates::IsTypeVoid;
 
   if (scope == nullptr) { return; }
 

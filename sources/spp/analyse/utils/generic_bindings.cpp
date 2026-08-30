@@ -22,7 +22,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
@@ -72,11 +73,7 @@ namespace spp::analyse::utils::generic_bindings {
         not uninferred_params.IsEmpty(), {sm.CurrentScope, &owner_scope},
         ERR_ARGS(*uninferred_params[0], *owner));
     }
-  }
-}
 
-namespace spp::analyse::utils::generic_bindings {
-  namespace {
     /**
      * Reject a keyword argument whose name is not one of the parameters.
      */
@@ -205,11 +202,7 @@ namespace spp::analyse::utils::generic_bindings {
         a_group.Args[i] = std::move(kw_arg);
       }
     }
-  }
-}
 
-namespace spp::analyse::utils::generic_bindings {
-  namespace {
     auto CollectDirectInferences(
       Shared<asts::TypeAst> const &source_type,
       Shared<asts::TypeAst> const &target_type,
@@ -223,8 +216,8 @@ namespace spp::analyse::utils::generic_bindings {
       GenericBindingSet &bindings)
       -> void {
       //
-      auto temp_gs = spp::analyse::utils::type_utils::GenericInferenceMap();
-      spp::analyse::utils::type_utils::RelaxedTypeEq(
+      auto temp_gs = spp::analyse::utils::type_compare::GenericInferenceMap();
+      spp::analyse::utils::type_compare::RelaxedTypeEq(
         *source_type->WithoutConvention(),
         *target_type->WithoutConvention(),
         *sm.CurrentScope, owner_scope, temp_gs, true);
@@ -255,7 +248,6 @@ namespace spp::analyse::utils::generic_bindings {
     }
   }
 }
-
 
 auto spp::analyse::utils::generic_bindings::BindsToItself(
   asts::GenericArgumentAst const &arg)
@@ -482,7 +474,7 @@ auto spp::analyse::utils::generic_bindings::GenericBindingSet::EnforceNoConflict
   -> void {
   //
   using errors::SppGenericParameterConflictError;
-  using type_utils::TypeEq;
+  using type_compare::TypeEq;
 
   // A parameter reached through multiple arguments, or
   // through an arguments and constraints, has to be
@@ -512,8 +504,8 @@ auto spp::analyse::utils::generic_bindings::GenericBindingSet::EnforceNoConflict
 }
 
 auto spp::analyse::utils::generic_bindings::GenericBindingSet::ToInferenceMap() const
-  -> type_utils::GenericInferenceMap {
-  auto out = type_utils::GenericInferenceMap();
+  -> type_compare::GenericInferenceMap {
+  auto out = type_compare::GenericInferenceMap();
   for (auto const &[name, candidates] : _Table) {
     if (not candidates.Types.IsEmpty()) { out.emplace(name, candidates.Types[0].get()); }
     else if (not candidates.Comps.IsEmpty()) { out.emplace(name, candidates.Comps[0]); }
@@ -626,7 +618,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
     // Raise an error if any constraint of this argument is
     // not satisfied.
     for (auto const *target : targets) {
-      const auto unsatisfied = type_utils::EnforceGenericConstraintsOneArg(
+      const auto unsatisfied = type_compare::EnforceGenericConstraintsOneArg(
         p_cons, *target, owner_scope, *sm.CurrentScope);
       RaiseIf<SppGenericConstraintError>(
         unsatisfied != nullptr, {&owner_scope, sm.CurrentScope},
@@ -649,7 +641,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
   -> void {
   using errors::SppGenericConstraintError;
   using errors::SppTypeMismatchError;
-  using type_utils::TypeEq;
+  using type_compare::TypeEq;
 
   meta.InferSource = MakeShared<asts::meta::GenericInferenceBindings>();
   meta.InferTarget = MakeShared<asts::meta::GenericInferenceBindings>();
@@ -724,11 +716,11 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
       for (auto const &constraint : param->Constraints->Constraints) {
         // Try each candidate in order and stop at the first
         // match.
-        auto temp_gs = type_utils::GenericInferenceMap();
+        auto temp_gs = type_compare::GenericInferenceMap();
         auto matched = false;
         for (auto const &[candidate, candidate_scope] : candidates) {
           temp_gs.clear();
-          if (type_utils::RelaxedTypeEq(
+          if (type_compare::RelaxedTypeEq(
             *candidate->WithoutConvention(),
             *constraint->WithoutConvention(),
             *candidate_scope, owner_scope, temp_gs, true, false)) {
@@ -781,7 +773,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
     auto def_type_raw = def_type->WithoutGenerics();
     if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_sym != nullptr and meta.CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
       auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
-      if (not type_utils::IsTypeSelf(*def_type)) {
+      if (not type_predicates::IsTypeSelf(*def_type)) {
         temp = temp->WithGenerics(asts::AstClone(def_type->LastTypePart()->GnArgGroup));
       }
       def_type = std::move(temp);

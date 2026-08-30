@@ -11,7 +11,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
@@ -177,7 +178,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::errors::SppGenericTypeInvalidUsageError;
   using analyse::errors::SppSecondClassBorrowViolationError;
 
@@ -187,10 +188,11 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
 
   // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
   // methods are declared, and where a derived type implements them.
-  meta->Save();
-  meta->AllowAbstractType = true;
-  Name->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AllowAbstractType = true;
+    Name->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Name, *sm),
@@ -245,7 +247,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   -> void {
   //
   using analyse::utils::func_utils::CheckForConflictingOverride;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::errors::SppSuperimpositionExtensionMethodInvalidError;
   using analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError;
   using analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError;
@@ -259,11 +261,12 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   // Re-analyse the superclass type so its generic-argument constraints are enforced at this pre-analysis
   // stage. If they are done in stage 7, then we get misleading errors because when something else correctly fails, a
   // missing constraint enforcement spews some inference error. Note to self: trust this comment.
-  meta->Save();
-  meta->AllowAbstractType = true;
-  SuperClass->ResetCache();
-  SuperClass->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AllowAbstractType = true;
+    SuperClass->ResetCache();
+    SuperClass->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Get the symbols.
   const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
@@ -371,25 +374,25 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
   // Both the superimposition target and the superclass are allowed to be abstract, as neither names a value.
-  meta->Save();
-  meta->AllowAbstractType = true;
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AllowAbstractType = true;
 
-  Name->ResetCache();
-  Name->Stage7_AnalyseSemantics(sm, meta);
-  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-  if (cls_sym->Type)
-    EnforceGenericConstraintsAllArgs(
-      *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+    Name->ResetCache();
+    Name->Stage7_AnalyseSemantics(sm, meta);
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+    if (cls_sym->Type)
+      EnforceGenericConstraintsAllArgs(
+        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
 
-  SuperClass->ResetCache();
-  SuperClass->Stage7_AnalyseSemantics(sm, meta);
-  if (cls_sym->Type and not cls_sym->Type->Name->IsCompilerGeneratedType()) {
-    const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
-    EnforceGenericConstraintsAllArgs(
-      *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+    SuperClass->ResetCache();
+    SuperClass->Stage7_AnalyseSemantics(sm, meta);
+    if (cls_sym->Type and not cls_sym->Type->Name->IsCompilerGeneratedType()) {
+      const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
+      EnforceGenericConstraintsAllArgs(
+        *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+    }
   }
-
-  meta->Restore();
 
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
@@ -448,9 +451,9 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
   -> void {
   //
   using analyse::errors::SppSuperimpositionCyclicExtensionError;
-  using analyse::utils::type_utils::GenericInferenceMap;
-  using analyse::utils::type_utils::RelaxedTypeEq;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::GenericInferenceMap;
+  using analyse::utils::type_compare::RelaxedTypeEq;
+  using analyse::utils::type_compare::TypeEq;
 
   //
   auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
@@ -480,9 +483,9 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
   analyse::scopes::Scope &check_scope) const
   -> void {
   // Early return for function-classes.
-  using analyse::utils::type_utils::GenericInferenceMap;
-  using analyse::utils::type_utils::RelaxedTypeEq;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::GenericInferenceMap;
+  using analyse::utils::type_compare::RelaxedTypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::errors::SppSuperimpositionDoubleExtensionError;
   if (cls_sym.Name->IsCompilerGeneratedType()) { return; }
 
@@ -516,7 +519,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckSelfExtension(
   -> void {
   //
   using analyse::errors::SppSuperimpositionSelfExtensionError;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
 
   // Optimization as $Types can never extend themselves, given
   // that they are compiler generated.

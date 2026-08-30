@@ -42,10 +42,20 @@ import genex;
 namespace spp::analyse::scopes {
   namespace {
     /**
-     * Record that a type lookup could now resolve differently. Declared here because the counter it moves is
-     * defined at the foot of the file, well below the symbol-table calls that bump it.
+     * The fully qualified name a super scope contributes as a super type. A non-generic class is named by its own
+     * class symbol rather than by the scope's type symbol, which is what keeps the name stable; anything else falls
+     * back to the type symbol. Written once because the two callers below had drifted into near-identical copies.
+     * @param scope The super scope to name.
+     * @return The super type's fully qualified name, or @c nullptr .
      */
-    auto BumpTypeLookupGeneration() -> void;
+    auto ResolveSupTypeName(
+      Scope const *scope)
+      -> Shared<asts::TypeAst> {
+      const auto cls_proto = scope->AstNode->To<asts::ClassPrototypeAst>();
+      const auto cls_sym = cls_proto != nullptr ? cls_proto->GetClsSym() : nullptr;
+      if (cls_sym != nullptr and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) { return cls_sym->FqName(); }
+      return scope->TySym->FqName();
+    }
 
     /**
      * Search a scope's super scopes for a variable symbol named @p name. Used to reach a constant defined with @c cmp
@@ -81,6 +91,18 @@ namespace spp::analyse::scopes {
         if (auto *sym = sup_scope->GetTypeSymbol(name, true); sym != nullptr) { return sym; }
       }
       return nullptr;
+    }
+
+    /**
+     * Starts at one so that a zero stamp means "never computed" rather than "computed before anything moved".
+     */
+    std::uint64_t _ScopeLinkageGeneration = 1;
+    std::uint64_t _TypeStructureGeneration = 1;
+    std::uint64_t _TypeLookupGeneration = 1;
+
+    auto BumpTypeLookupGeneration()
+      -> void {
+      ++_TypeLookupGeneration;
     }
   }
 }
@@ -339,18 +361,19 @@ auto spp::analyse::scopes::Scope::AddVarSymbolCheckConflict(
     // const auto is_comptime = sym->MemInfo->AstCompTime != nullptr;
     const auto is_functional = existing_sym->Type and existing_sym->Type->IsCompilerGeneratedType();
 
-    // A name brought in by a "use" is being shadowed by a declaration
-    // written here, which is not a redefinition - "use std::mem::ops::drop"
-    // alongside a "fun drop" of this type's own is the ordinary case.
-    // The lookup above is non-exclusive, so it reaches the module-level
-    // import from inside a "sup" block.
-    auto const *const existing_ast = existing_sym->MemInfo != nullptr
-      ? existing_sym->MemInfo->AstCompTime.get()
-      : nullptr;
-    auto const *const existing_cmp = existing_ast != nullptr
-      ? existing_ast->To<asts::CmpStatementAst>()
-      : nullptr;
-    const auto is_shadowed_import = existing_cmp != nullptr and existing_cmp->IsFromUseStatement();
+    // A name brought in by a "use" is being shadowed by a declaration written here, which is not a redefinition -
+    // "use std::mem::ops::drop" alongside a "fun drop" of this type's own is the ordinary case. The lookup above is
+    // non-exclusive, so it reaches the module-level import from inside a "sup" block.
+    //
+    // Both halves matter: importing a name twice ("use std::abort::abort" written twice, or once against a name the
+    // prelude already brings in) is a redefinition and stays an error, so the incoming symbol has to be a declaration
+    // rather than another import.
+    const auto from_use_statement = [](VariableSymbol const &s) {
+      auto const *const ast = s.MemInfo != nullptr ? s.MemInfo->AstCompTime.get() : nullptr;
+      auto const *const cmp = ast != nullptr ? ast->To<asts::CmpStatementAst>() : nullptr;
+      return cmp != nullptr and cmp->IsFromUseStatement();
+    };
+    const auto is_shadowed_import = from_use_statement(*existing_sym) and not from_use_statement(*sym);
 
     RaiseIf<errors::SppIdentifierDuplicateError>(
       not is_functional and not is_shadowed_import,
@@ -818,16 +841,9 @@ auto spp::analyse::scopes::Scope::SupScopesConst() const
 
 auto spp::analyse::scopes::Scope::SupTypes() const
   -> Vec<Shared<asts::TypeAst>> {
-  static const auto resolve_fq_name = [](auto *scope) -> Shared<asts::TypeAst> {
-    const auto cls_proto = scope->AstNode->template To<asts::ClassPrototypeAst>();
-    const auto cls_sym = cls_proto ? cls_proto->GetClsSym() : nullptr;
-    if (cls_sym and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) { return cls_sym->FqName(); }
-    return scope->TySym->FqName();
-  };
-
   auto ts = SupScopes()
     | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
-    | genex::views::transform(resolve_fq_name)
+    | genex::views::transform(ResolveSupTypeName)
     | genex::views::filter([](auto const &type) { return type != nullptr; }) // Todo: shouldn't need.
     | genex::to<Vec>();
 
@@ -837,17 +853,9 @@ auto spp::analyse::scopes::Scope::SupTypes() const
 auto spp::analyse::scopes::Scope::DirectSupTypes() const
   -> Vec<Shared<asts::TypeAst>> {
   // Get all direct super types (filter and map the direct super scopes).
-  static const auto resolve_fq_name = [](auto *scope) -> Shared<asts::TypeAst> {
-    const auto cls_proto = scope->AstNode->template To<asts::ClassPrototypeAst>();
-    const auto cls_sym = cls_proto ? cls_proto->GetClsSym() : nullptr;
-    if (cls_sym and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) {
-      return cls_sym->FqName();
-    }
-    return scope->TySym->FqName();
-  };
   return DirectSupScopes
     | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
-    | genex::views::transform(resolve_fq_name)
+    | genex::views::transform(ResolveSupTypeName)
     | genex::to<Vec>();
 }
 
@@ -936,22 +944,6 @@ auto spp::analyse::scopes::Scope::FixChildrenToParentPointer()
 }
 
 SPP_MOD_END
-
-namespace spp::analyse::scopes {
-  namespace {
-    /**
-     * Starts at one so that a zero stamp means "never computed" rather than "computed before anything moved".
-     */
-    std::uint64_t _ScopeLinkageGeneration = 1;
-    std::uint64_t _TypeStructureGeneration = 1;
-    std::uint64_t _TypeLookupGeneration = 1;
-
-    auto BumpTypeLookupGeneration()
-      -> void {
-      ++_TypeLookupGeneration;
-    }
-  }
-}
 
 auto spp::analyse::scopes::ScopeLinkageGeneration()
   -> std::uint64_t {

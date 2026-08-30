@@ -11,6 +11,8 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.monomorphization_utils;
 import spp.analyse.utils.overload_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_mut_ast;
@@ -144,8 +146,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::func_utils::IsTargetCallable;
   using analyse::utils::overload_utils::DetermineOverload;
-  using analyse::utils::type_utils::IsTypeBorrowed;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types_precompiled::FUN_REF;
   using generate::common_types_precompiled::FUN_MUT;
   using generate::common_types_precompiled::GEN_ONCE;
@@ -656,7 +658,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_HandleFunctionFolding
   auto fold_indexes = Vec<std::size_t>{};
   for (auto [i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
     auto arg_type = arg->InferType(sm, meta);
-    if (analyse::utils::type_utils::IsTypeTup(*arg_type, *sm->CurrentScope)) {
+    if (analyse::utils::type_predicates::IsTypeTup(*arg_type, *sm->CurrentScope)) {
       fold_indexes.EmplaceBack(i);
       folded_args.EmplaceBack(arg);
       folded_arg_types.EmplaceBack(arg_type.get());

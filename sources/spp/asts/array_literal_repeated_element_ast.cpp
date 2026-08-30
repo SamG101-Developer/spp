@@ -11,7 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
@@ -102,7 +102,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppNonCopyableTypeError;
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
 
   // Analyse the repeated element.
   Elem->Stage7_AnalyseSemantics(sm, meta);

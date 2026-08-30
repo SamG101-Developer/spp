@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
@@ -83,7 +83,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types_precompiled::VOID;
   using generate::common_types_precompiled::NEVER;
 

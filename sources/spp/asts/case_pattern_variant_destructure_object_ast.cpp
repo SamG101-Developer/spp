@@ -11,7 +11,8 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
@@ -108,8 +109,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
-  using analyse::utils::type_utils::IsTypeVariant;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_predicates::IsTypeVariant;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::errors::SppTypeMismatchError;
 
   auto conv = AstClone(Type->GetConvention());
@@ -257,7 +258,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   // flow-type - "self@" is a deref, not a name - but its
   // discriminant still has to be checked.
   else if (meta->CaseCondition != nullptr and meta->LlvmCaseCondition != nullptr) {
-    using analyse::utils::type_utils::IsTypeVariant;
+    using analyse::utils::type_predicates::IsTypeVariant;
     const auto cond_type = meta->CaseCondition->InferType(sm, meta);
     const auto bare_cond_type = cond_type != nullptr ? cond_type->WithoutConvention() : nullptr;
 

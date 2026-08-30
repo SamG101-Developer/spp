@@ -8,7 +8,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.monomorphization_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
@@ -177,8 +178,8 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
   -> void {
   //
   using utils::monomorphization_utils::CreateGenericSupScope;
-  using utils::type_utils::RelaxedTypeEq;
-  using utils::type_utils::GenericInferenceMap;
+  using utils::type_compare::RelaxedTypeEq;
+  using utils::type_compare::GenericInferenceMap;
   if (sup_scopes.IsEmpty()) { return; }
 
   // Clear the sup scopes list.
@@ -280,8 +281,8 @@ auto spp::analyse::scopes::ScopeManager::PruneUnsatisfiedSupConstraints(
   asts::meta::CompilerMetaData * /*meta*/) const
   -> void {
   // Todo: Genex usage
-  using utils::type_utils::RelaxedTypeEq;
-  using utils::type_utils::GenericInferenceMap;
+  using utils::type_compare::RelaxedTypeEq;
+  using utils::type_compare::GenericInferenceMap;
 
   // Repeat until no further attachments are pruned: pruning one attachment can invalidate the constraint of
   // another that depends on it (transitive constraint chains), so a single pass is not sufficient.
@@ -316,14 +317,14 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
   Scope const &sup_scope)
   -> void {
   // Get the scopes to check for conflicts in.
-  auto dummy = utils::type_utils::GenericInferenceMap();
+  auto dummy = utils::type_compare::GenericInferenceMap();
   const auto existing_scopes = cls_sym.LinkedScope->DirectSupScopes
     | genex::views::filter([&](auto *scope) {
       return scope->AstNode->template To<asts::SupPrototypeExtensionAst>()
         or scope->AstNode->template To<asts::SupPrototypeFunctionsAst>();
     })
     | genex::views::filter([&](auto *scope) {
-      return utils::type_utils::RelaxedTypeEq(
+      return utils::type_compare::RelaxedTypeEq(
         *asts::AstName(sup_scope.AstNode), *asts::AstName(scope->AstNode), sup_scope, *scope->AstNode->GetAstScope(),
         dummy);
     })
@@ -375,7 +376,7 @@ auto spp::analyse::scopes::ScopeManager::SelfProto() const
 
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   normal_sup_blocks.clear();
-  utils::type_utils::ClearUnimplementedAbstractMethodsCache();
+  utils::type_members::ClearUnimplementedAbstractMethodsCache();
   utils::monomorphization_utils::ClearSupScopeInstantiations();
   generic_sup_blocks.Clear();
   temp_scopes.Clear();

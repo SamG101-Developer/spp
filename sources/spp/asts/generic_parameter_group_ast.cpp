@@ -224,6 +224,22 @@ auto spp::asts::GenericParameterGroupAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
+  //
+  using analyse::errors::SppIdentifierDuplicateError;
+
+  // Checked here rather than at stage 7, where the rest of this group's validation lives, because the parameters
+  // register their symbols in the loop below. Two parameters sharing a name register twice, and analysis then carries
+  // on for another five stages over a scope whose symbol table already disagrees with the source - which surfaced as
+  // an unrelated failure in whichever file was analysed next, rather than as the duplicate that caused it.
+  const auto duplicate_names = Params
+    | genex::views::transform([](auto const &x) { return x->Name.get(); })
+    | genex::to<Vec>()
+    | genex::views::duplicates({}, genex::meta::deref)
+    | genex::to<Vec>();
+  RaiseIf<SppIdentifierDuplicateError>(
+    not duplicate_names.IsEmpty(), {sm->CurrentScope},
+    ERR_ARGS(*duplicate_names[0], *duplicate_names[1], "generic parameter"));
+
   // Run the generation steps on the parameters in the group.
   for (auto const &p : Params) { p->Stage2_GenTopLvlScopes(sm, meta); }
 }
@@ -258,16 +274,9 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::errors::SppIdentifierDuplicateError;
   using analyse::errors::SppOrderInvalidError;
 
-  //
-  const auto param_names = Params
-    | genex::views::transform([](auto const &x) { return x->Name.get(); })
-    | genex::to<Vec>()
-    | genex::views::duplicates({}, genex::meta::deref)
-    | genex::to<Vec>();
-
+  // Duplicate parameter names are caught at stage 2, before the symbols are registered.
   const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
@@ -283,11 +292,6 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
       }
     }
   }
-
-  // Check there are no duplicate parameter names.
-  RaiseIf<SppIdentifierDuplicateError>(
-    not param_names.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(

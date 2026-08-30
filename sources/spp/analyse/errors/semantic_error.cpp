@@ -74,17 +74,29 @@ auto spp::analyse::errors::SemanticError::AddHeaders(
     std::move(msg), "E" + std::to_string(err_code)});
 }
 
-static auto UnwrapFunctionCallAst(spp::asts::Ast const *ast) -> spp::asts::Ast const* {
-  if (const auto fn_call = ast->To<spp::asts::PostfixExpressionOperatorFunctionCallAst>()) {
-    if (fn_call->Source.OriginalExpr != fn_call) {
-      return UnwrapFunctionCallAst(fn_call->Source.OriginalExpr);
+namespace spp::analyse::errors {
+  namespace {
+    /**
+     * Follow a call expression back to the ast a person actually wrote. A lowered call points at the expression it was
+     * generated from, so reporting against the generated node would underline code that appears nowhere in the source.
+     * @param ast The ast to unwrap.
+     * @return The originally written ast, or @p ast when it is already the written one.
+     */
+    auto UnwrapFunctionCallAst(
+      spp::asts::Ast const *ast)
+      -> spp::asts::Ast const* {
+      if (const auto fn_call = ast->To<spp::asts::PostfixExpressionOperatorFunctionCallAst>()) {
+        if (fn_call->Source.OriginalExpr != fn_call) {
+          return UnwrapFunctionCallAst(fn_call->Source.OriginalExpr);
+        }
+        return fn_call;
+      }
+      if (const auto pf = ast->To<spp::asts::PostfixExpressionAst>()) {
+        return UnwrapFunctionCallAst(pf->Op.get());
+      }
+      return ast;
     }
-    return fn_call;
   }
-  if (const auto pf = ast->To<spp::asts::PostfixExpressionAst>()) {
-    return UnwrapFunctionCallAst(pf->Op.get());
-  }
-  return ast;
 }
 
 auto spp::analyse::errors::SemanticError::AddErr(

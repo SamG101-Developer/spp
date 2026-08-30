@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.annotation_ast;
@@ -110,7 +111,7 @@ auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
   -> void {
   // Run top level scope generation for the annotations.
   using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
   // Check there are no conventions on the new type. Todo: Move to later stage? nothing is loaded in atm
@@ -158,7 +159,7 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   // nothing is loaded yet; the old type has to wait until here, because it is a type expression to resolve rather
   // than a name to declare.
   RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(
-    analyse::utils::type_utils::IsTypeBorrowed(*OldType, *sm, false),
+    analyse::utils::type_predicates::IsTypeBorrowed(*OldType, *sm, false),
     {sm->CurrentScope}, ERR_ARGS(*this, *OldType, "type statement old type"));
 
   // Check the "old type" exists (non-generic).

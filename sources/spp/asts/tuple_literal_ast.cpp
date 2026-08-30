@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
@@ -93,7 +93,7 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
 
   // Analyse the elements in the tuple.
   for (auto const &elem : Elems) {

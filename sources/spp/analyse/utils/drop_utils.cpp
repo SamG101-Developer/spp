@@ -6,7 +6,9 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
@@ -24,7 +26,7 @@ auto spp::analyse::utils::drop_utils::FindDropOverload(
   asts::meta::CompilerMetaData *meta)
   -> asts::FunctionPrototypeAst* {
   //
-  using type_utils::TypeEq;
+  using type_compare::TypeEq;
   using asts::generate::common_types_precompiled::DROP;
 
   // A bound generic parameter stands for its argument: the
@@ -86,7 +88,8 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   asts::meta::CompilerMetaData *meta)
   -> bool {
   //
-  using type_utils::GetAllAttrs;
+  using type_members::GetAllAttrs;
+  using type_predicates::IsTypeGen;
 
   // A borrow does not own what it points at, so nothing
   // behind it is this scope's to destroy. Generators are
@@ -102,7 +105,7 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
     and type_sym.LinkedScope->TySym.get() != &type_sym) {
     return NeedsDrop(*type_sym.LinkedScope->TySym, sm, meta);
   }
-  if (type_utils::IsTypeGen(*type_sym.FqName(), *sm.CurrentScope)) { return true; }
+  if (IsTypeGen(*type_sym.FqName(), *sm.CurrentScope)) { return true; }
 
   // A copyable value owns nothing that has to be released: copying leaves the original in place, so there was never
   // a single owner to answer for it. Checked before the overload lookup, which now walks the whole sup chain and so

@@ -8,7 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.order_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -67,7 +67,7 @@ auto spp::asts::GenericArgumentGroupAst::FromParams(
 }
 
 auto spp::asts::GenericArgumentGroupAst::FromMap(
-  analyse::utils::type_utils::GenericInferenceMap const &map)
+  analyse::utils::type_compare::GenericInferenceMap const &map)
   -> Unique<GenericArgumentGroupAst> {
   // Create the list of arguments, initially empty.
   auto mapped_args = Vec<Unique<GenericArgumentAst>>();

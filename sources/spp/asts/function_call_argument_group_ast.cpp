@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.order_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.convention_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.expression_ast;
@@ -125,8 +125,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidVoidValueError;
   using analyse::errors::SppOrderInvalidError;
   using analyse::utils::order_utils::DoOrderArgs;
-  using analyse::utils::type_utils::IsTypeTup;
-  using analyse::utils::type_utils::IsTypeVoid;
+  using analyse::utils::type_predicates::IsTypeTup;
+  using analyse::utils::type_predicates::IsTypeVoid;
 
   // Check there are no duplicate argument names.
   const auto arg_names = GetKeywordArgs()

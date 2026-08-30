@@ -9,7 +9,9 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
@@ -152,7 +154,7 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   CompilerMetaData *meta)
   -> void {
   // Load the super scopes for the class body.
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types_precompiled::COPY;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -204,7 +206,7 @@ auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   Impl->Stage6_PreAnalyseSemantics(sm, meta);
 
   // Check the type isn't recursive.
-  const auto recursion = analyse::utils::type_utils::IsTypeRecursive(*this, *sm);
+  const auto recursion = analyse::utils::type_predicates::IsTypeRecursive(*this, *sm);
   RaiseIf<analyse::errors::SppRecursiveTypeError>(
     recursion != nullptr, {sm->CurrentScope},
     ERR_ARGS(*this, *recursion));
@@ -424,9 +426,9 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   codegen::LlvmCtx const *ctx) const
   -> void {
   // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
-  using analyse::utils::type_utils::IsTypeTup;
-  using analyse::utils::type_utils::GetAllAttrs;
-  using analyse::utils::type_utils::GetSuperimposedFatPointerFieldCount;
+  using analyse::utils::type_predicates::IsTypeTup;
+  using analyse::utils::type_members::GetAllAttrs;
+  using analyse::utils::type_predicates::GetSuperimposedFatPointerFieldCount;
 
   // Non-struct types are compiler known special types, so
   // don't have any field generation. Things like numbers,

@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.boolean_literal_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -50,7 +50,7 @@ auto spp::asts::LoopExpressionAst::InferType(
   -> Shared<TypeAst> {
   //
   using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types::VoidType;
 
   // Get the loop's exit type (or Void if there are no

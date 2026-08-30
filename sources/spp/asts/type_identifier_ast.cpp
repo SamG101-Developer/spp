@@ -11,6 +11,9 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
 import spp.analyse.utils.monomorphization_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.class_prototype_ast;
@@ -145,9 +148,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   using analyse::utils::generic_bindings::NameGnArgs;
   using analyse::utils::monomorphization_utils::CreateGenericClsScope;
   using analyse::utils::type_utils::GetTypeSymOrError;
-  using analyse::utils::type_utils::GetUnimplementedAbstractMethods;
-  using analyse::utils::type_utils::IsTupSymbol;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_members::GetUnimplementedAbstractMethods;
+  using analyse::utils::type_predicates::IsTupSymbol;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
   using analyse::errors::SemanticError;
   using analyse::errors::SppAbstractTypeUseError;
@@ -258,8 +261,8 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   // "Str or S32", and so that a nested variant is flattened into its parent. Without this, two spellings of the same
   // set of members would produce distinct type symbols.
   if (GnArgGroup != nullptr and GnArgGroup->TypeAt("Variants") != nullptr
-    and analyse::utils::type_utils::IsTypeVariant(*type_sym->FqName(), *sm->CurrentScope)) {
-    auto inner_types = analyse::utils::type_utils::DedupVariableInnerTypes(*this, *sm->CurrentScope);
+    and analyse::utils::type_predicates::IsTypeVariant(*type_sym->FqName(), *sm->CurrentScope)) {
+    auto inner_types = analyse::utils::type_compare::DedupVariableInnerTypes(*this, *sm->CurrentScope);
     if (not inner_types.IsEmpty()) {
       auto inner_types_as_tup = generate::common_types::TupleType(PosStart(), std::move(inner_types));
       {

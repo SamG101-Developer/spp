@@ -10,7 +10,8 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
@@ -150,7 +151,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
   for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -201,7 +202,7 @@ auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);

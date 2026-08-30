@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
@@ -97,7 +97,7 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   // Already analysed => return early.
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types_precompiled::SLICE_MUT;
   using generate::common_types_precompiled::SLICE_REF;
   if (_MappedFunc != nullptr) { return; }

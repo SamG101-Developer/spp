@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.coroutine_prototype_ast;
@@ -90,7 +91,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
   using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types::GenType;
   using generate::common_types::VoidType;
   using analyse::errors::SppInvalidPrimaryExpressionError;

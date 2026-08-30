@@ -15,6 +15,8 @@ import spp.analyse.utils.builtins;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.instantiation_queue;
 import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_implementation_ast;
@@ -143,7 +145,7 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   codegen::LlvmCtx *ctx)
   -> Shared<codegen::LlvmFuncWrapper> {
   // Generate the return and parameter types.
-  using analyse::utils::type_utils::IsTypeNever;
+  using analyse::utils::type_predicates::IsTypeNever;
   using A = analyse::utils::annotation_utils::BuiltinAnnotations;
   auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(
     sm, meta, ctx);
@@ -378,7 +380,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
 
   // Analyse the parameter and return types before sup
   // scopes are attached.
@@ -523,8 +525,8 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_compare::TypeEq;
 
   // Move into the function scope, as it is now ready for
   // semantic analysis.

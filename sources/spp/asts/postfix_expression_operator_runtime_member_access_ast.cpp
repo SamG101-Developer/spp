@@ -10,6 +10,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
@@ -90,8 +92,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
   using analyse::utils::type_utils::BuildFwdCall;
-  using analyse::utils::type_utils::IsTypeCompTimeIndexable;
-  using analyse::utils::type_utils::IsIndexWithinBound;
+  using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
+  using analyse::utils::type_predicates::IsIndexWithinBound;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
 
   // Already rewritten against a forwarded-to value by an earlier
@@ -255,8 +257,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
-  using analyse::utils::type_utils::GetFieldIndexInType;
-  using analyse::utils::type_utils::IsTypeArr;
+  using analyse::utils::type_members::GetFieldIndexInType;
+  using analyse::utils::type_predicates::IsTypeArr;
 
   // A member reached by forwarding lives on the forwarded-to value, so the mapped ast generates it: the forwarding call
   // it is applied to produces the borrow that is then indexed into.
@@ -364,7 +366,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
-  using analyse::utils::type_utils::GetNthTypeOfIndexableType;
+  using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
 
   // A member reached by forwarding belongs to the forwarded-to type, so the rewritten access knows its type.
   if (_MappedFwd != nullptr) { return _MappedFwd->InferType(sm, meta); }

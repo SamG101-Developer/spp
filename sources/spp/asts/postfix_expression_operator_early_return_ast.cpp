@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_utils;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
@@ -80,7 +81,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   using analyse::errors::SppDeferTerminatesError;
   using analyse::errors::SppTypeMismatchError;
   using analyse::utils::type_utils::GetTryType;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // A deferred expression runs at the exits of its scope,

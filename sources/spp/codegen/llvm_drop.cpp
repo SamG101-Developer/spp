@@ -7,7 +7,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_info_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
@@ -30,7 +31,7 @@ auto spp::codegen::EmitDrop(
   //
   using analyse::utils::drop_utils::FindDropOverload;
   using analyse::utils::drop_utils::NeedsDrop;
-  using analyse::utils::type_utils::GetAllAttrs;
+  using analyse::utils::type_members::GetAllAttrs;
 
   // Destroying a value that owns nothing is a no-op;
   // an "S32" local, or a struct built only from them,
@@ -46,7 +47,7 @@ auto spp::codegen::EmitDrop(
   // Todo: "llvm.coro.destroy" releases the frame's storage but runs no destructors for the values living in it, so a
   //  generator abandoned while holding owned locals still leaks those. That needs drops emitted into the coroutine's
   //  own cleanup path.
-  if (analyse::utils::type_utils::IsTypeGen(*type_sym.FqName(), *sm->CurrentScope)) {
+  if (analyse::utils::type_predicates::IsTypeGen(*type_sym.FqName(), *sm->CurrentScope)) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto handle = ctx->Builder.CreateLoad(ptr_ty, ptr, "drop.gen.handle" + uid);
 

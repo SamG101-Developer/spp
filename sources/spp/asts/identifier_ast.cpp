@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -213,7 +213,7 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   -> llvm::Value* {
   //
   using analyse::errors::SppInternalCompilerError;
-  using analyse::utils::type_utils::IsTypeVoid;
+  using analyse::utils::type_predicates::IsTypeVoid;
 
   // Get the allocation for the variable from the current
   // scope. The "alloca" will have been filled from wherever

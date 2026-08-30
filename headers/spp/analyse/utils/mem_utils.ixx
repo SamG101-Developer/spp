@@ -71,12 +71,6 @@ namespace spp::analyse::utils::mem_utils {
     bool check_escaping_borrow_move = true)
     -> void;
 
-  SPP_EXP_FUN auto ValidateInconsistentMemory(
-    asts::Ast *parent,
-    Vec<asts::CaseExpressionBranchAst*> const &branches,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
 
   SPP_EXP_FUN auto PreventBorrowLifetimeExtension(
     asts::Ast const &rhs_expr,

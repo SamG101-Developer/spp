@@ -186,28 +186,12 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_add(
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_add_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform addition assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_add(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sub(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform subtraction on two integer literals.
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_sub_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform subtraction assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_sub(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_mul(
@@ -218,28 +202,12 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_mul(
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_mul_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform multiplication assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_mul(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform signed division on two integer literals, exactly.
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform signed division assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_sdiv(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv(
@@ -250,14 +218,6 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv(
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform unsigned division assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_udiv(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_srem(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
@@ -266,28 +226,12 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_srem(
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() % rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_srem_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform signed remainder assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_srem(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_urem(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned remainder on two integer literals, exactly.
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() % rhs.BigVal(), lhs.Type);
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_urem_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform unsigned remainder assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_urem(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sneg(
@@ -306,28 +250,12 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl(
     lhs.BigVal() << rhs.CppVal<std::uint32_t>(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform bitwise left shift assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_bit_shl(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform bitwise right shift on two integer literals. S++ forces U32 too (safe).
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() >> rhs.CppVal<std::uint32_t>(), lhs.Type);
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform bitwise right shift assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_bit_shr(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior(
@@ -338,14 +266,6 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior(
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() | rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform bitwise OR assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_bit_ior(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
@@ -354,28 +274,12 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and(
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() & rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform bitwise AND assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_bit_and(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform bitwise XOR on two integer literals.
   return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal() ^ rhs.BigVal(), lhs.Type);
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor_assign(
-  asts::IntegerLiteralAst &lhs,
-  asts::IntegerLiteralAst const &rhs)
-  -> void {
-  // Perform bitwise XOR assignment on an integer literal.
-  AssignInPlace(lhs, std_intrinsics_bit_xor(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not(
@@ -388,11 +292,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not(
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not_assign(
   asts::IntegerLiteralAst &lhs)
   -> void {
-  // Perform bitwise NOT assignment on an integer literal.
-  const auto result_literal = std_intrinsics_bit_not(lhs);
-  lhs.TokSign = std::move(result_literal->TokSign);
-  lhs.Val = std::move(result_literal->Val);
-  lhs.Type = std::move(result_literal->Type);
+  // Perform bitwise NOT assignment on an integer literal. Written out rather than generated below because it is the
+  // one unary assignment; it used to hand-roll the field copy that "AssignInPlace" does, and had drifted from it.
+  AssignInPlace(lhs, std_intrinsics_bit_not(lhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_abs(
@@ -602,14 +504,6 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
   return asts::FloatLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd_assign(
-  asts::FloatLiteralAst &lhs,
-  asts::FloatLiteralAst const &rhs)
-  -> void {
-  // Perform addition assignment on a float literal.
-  AssignInPlace(lhs, std_intrinsics_fadd(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub(
   asts::FloatLiteralAst const &lhs,
   asts::FloatLiteralAst const &rhs)
@@ -617,14 +511,6 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub(
   // Perform subtraction on two float literals. The arithmetic is exact rather than done in a fixed-width C++ float: a
   // result the type cannot hold has to stay a value the caller can reject, not become an infinity.
   return asts::FloatLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub_assign(
-  asts::FloatLiteralAst &lhs,
-  asts::FloatLiteralAst const &rhs)
-  -> void {
-  // Perform subtraction assignment on a float literal.
-  AssignInPlace(lhs, std_intrinsics_fsub(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul(
@@ -636,14 +522,6 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul(
   return asts::FloatLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul_assign(
-  asts::FloatLiteralAst &lhs,
-  asts::FloatLiteralAst const &rhs)
-  -> void {
-  // Perform multiplication assignment on a float literal.
-  AssignInPlace(lhs, std_intrinsics_fmul(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv(
   asts::FloatLiteralAst const &lhs,
   asts::FloatLiteralAst const &rhs)
@@ -652,28 +530,12 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv(
   return asts::FloatLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv_assign(
-  asts::FloatLiteralAst &lhs,
-  asts::FloatLiteralAst const &rhs)
-  -> void {
-  // Perform division assignment on a float literal.
-  AssignInPlace(lhs, std_intrinsics_fdiv(lhs, rhs));
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_frem(
   asts::FloatLiteralAst const &lhs,
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
   // Perform remainder on two float literals.
   return asts::FloatLiteralAst::FromBigVal(boost::fmod(lhs.BigVal(), rhs.BigVal()), lhs.Type);
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_frem_assign(
-  asts::FloatLiteralAst &lhs,
-  asts::FloatLiteralAst const &rhs)
-  -> void {
-  // Perform remainder assignment on a float literal.
-  AssignInPlace(lhs, std_intrinsics_frem(lhs, rhs));
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fneg(
@@ -823,3 +685,35 @@ auto spp::analyse::utils::cmp_utils::std_mem_ops_align_of(
   auto tok = MakeUnique<asts::TokenAst>(0, lex::SppTokenType::LX_NUMBER, std::to_string(size));
   return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(tok), "uz");
 }
+
+// Every binary compound assignment is the same shape: run the operation, then overwrite the left literal with the
+// result. The operations themselves differ and are written out above; only this last step repeats, so it is generated
+// rather than copied eighteen times. The declarations stay written out in the interface, so each name is still
+// searchable there and at its registration in "builtins.cpp".
+#define SPP_CMP_ASSIGN_OP(name, lit_ty)                                \
+  auto spp::analyse::utils::cmp_utils::std_intrinsics_##name##_assign( \
+    asts::lit_ty &lhs,                                                 \
+    asts::lit_ty const &rhs)                                           \
+    -> void {                                                          \
+    AssignInPlace(lhs, std_intrinsics_##name(lhs, rhs));               \
+  }
+
+SPP_CMP_ASSIGN_OP(add, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(sub, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(mul, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(sdiv, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(udiv, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(srem, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(urem, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(bit_shl, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(bit_shr, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(bit_ior, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(bit_and, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(bit_xor, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(fadd, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(fsub, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(fmul, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(fdiv, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(frem, FloatLiteralAst)
+
+#undef SPP_CMP_ASSIGN_OP

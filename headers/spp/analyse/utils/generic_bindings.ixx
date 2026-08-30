@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.generic_bindings;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -223,7 +223,7 @@ namespace spp::analyse::utils::generic_bindings {
      * The resolved bindings in the form the type substitution machinery takes.
      */
     SPP_ATTR_NODISCARD auto ToInferenceMap() const
-      -> type_utils::GenericInferenceMap;
+      -> type_compare::GenericInferenceMap;
 
     /**
      * The resolved bindings as generic arguments, ordered to match the parameter declarations. Order matters because

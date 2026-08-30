@@ -4,7 +4,8 @@ module;
 module spp.codegen.llvm_type;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.function_parameter_ast;
@@ -45,7 +46,7 @@ constexpr auto kVariantTagBits = 64u;
 
 // Largest alignment a variant payload buffer will be built out of. Anything needing more than a 16 byte alignment is
 // vector/extended precision territory, which the layout code does not model either.
-constexpr auto kMaxVariantPayloadAlign = 16uz;
+constexpr std::uint64_t kMaxVariantPayloadAlign = 16;
 
 static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
   switch (bit_width) {
@@ -65,7 +66,7 @@ auto spp::codegen::GetFatPointerFields(
   LlvmCtx const *ctx)
   -> std::optional<Vec<llvm::Type*>> {
   //
-  using analyse::utils::type_utils::IsTypeFunc;
+  using analyse::utils::type_predicates::IsTypeFunc;
 
   // "FunXXX" closures are represented by a { fn_ptr, env_ptr }
   // pair. The total field count (for example a stateful type
@@ -208,8 +209,8 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     cls_sym->LlvmInfo->LlvmType = struct_type;
 
     auto const &dl = ctx->Module->getDataLayout();
-    auto max_size = 0uz;
-    auto max_align = 1uz;
+    auto max_size = std::uint64_t{0};
+    auto max_align = std::uint64_t{1};
 
     // The members are named relative to the variant, so
     // they are measured from the variant's own scope rather
@@ -218,7 +219,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     const auto member_sm = analyse::scopes::ScopeManager(
       sm.GlobalScope, const_cast<analyse::scopes::Scope*>(scope));
 
-    for (auto const &member : analyse::utils::type_utils::DedupVariableInnerTypes(*cls_sym->FqName(), *scope)) {
+    for (auto const &member : analyse::utils::type_compare::DedupVariableInnerTypes(*cls_sym->FqName(), *scope)) {
       const auto member_sym = scope->GetTypeSymbol(member.get());
       if (member_sym == nullptr) { continue; }
 
@@ -376,8 +377,8 @@ auto spp::codegen::GetVariantIndexOfMember(
   analyse::scopes::Scope const &scope)
   -> std::optional<std::uint64_t> {
   //
-  using analyse::utils::type_utils::DedupVariableInnerTypes;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::DedupVariableInnerTypes;
+  using analyse::utils::type_compare::TypeEq;
 
   // Index the type in the list of member types of the variant.
   // Bind the list to a named local first, rather than piping
@@ -453,9 +454,9 @@ auto spp::codegen::CoerceToVariant(
   LlvmCtx *ctx)
   -> llvm::Value* {
   //
-  using analyse::utils::type_utils::DedupVariableInnerTypes;
-  using analyse::utils::type_utils::IsTypeVariant;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::DedupVariableInnerTypes;
+  using analyse::utils::type_predicates::IsTypeVariant;
+  using analyse::utils::type_compare::TypeEq;
 
   // Only a variant target ever needs a coercion, and a value
   // already of the target type is one.

@@ -5,7 +5,7 @@ module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
@@ -109,7 +109,7 @@ auto spp::analyse::scopes::VariableSymbol::operator==(
 auto spp::analyse::scopes::TypeSymbol::IsCopyable() const
   -> bool {
   using asts::generate::common_types_precompiled::COPY;
-  using utils::type_utils::TypeEq;
+  using utils::type_compare::TypeEq;
 
   // Todo: Clean this mess up.
   // From the superimposition graph:

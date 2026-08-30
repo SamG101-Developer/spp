@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.case_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
@@ -189,37 +190,41 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
  * Whether this pattern takes a value out of the subject, rather than only testing it. A pattern that binds a name
  * without a borrow convention takes what it names; a literal, an expression, a skip and an @c else all only look.
  */
-static auto PatternBindsByMove(
-  spp::asts::CasePatternVariantAst const &pattern)
-  -> bool {
-  // A name binds what it is matched against, unless it asks for
-  // it through a borrow, which leaves the value where it was.
-  if (const auto single = pattern.To<spp::asts::CasePatternVariantSingleIdentifierAst>()) {
-    return single->Conv == nullptr;
-  }
+namespace spp::asts {
+  namespace {
+    auto PatternBindsByMove(
+      spp::asts::CasePatternVariantAst const &pattern)
+      -> bool {
+      // A name binds what it is matched against, unless it asks for
+      // it through a borrow, which leaves the value where it was.
+      if (const auto single = pattern.To<spp::asts::CasePatternVariantSingleIdentifierAst>()) {
+        return single->Conv == nullptr;
+      }
 
-  // "x=<pattern>" and "x as y" bind whatever their value pattern
-  // binds.
-  if (const auto attr = pattern.To<spp::asts::CasePatternVariantDestructureAttributeBindingAst>()) {
-    return attr->Val != nullptr and PatternBindsByMove(*attr->Val);
-  }
+      // "x=<pattern>" and "x as y" bind whatever their value pattern
+      // binds.
+      if (const auto attr = pattern.To<spp::asts::CasePatternVariantDestructureAttributeBindingAst>()) {
+        return attr->Val != nullptr and PatternBindsByMove(*attr->Val);
+      }
 
-  // A destructure binds if any of its elements does. An empty one,
-  // or one made only of skips, is a shape test and takes nothing.
-  const auto any_elem_binds = [](auto const &elems) {
-    return genex::any_of(elems, [](auto const &e) { return PatternBindsByMove(*e); });
-  };
-  if (const auto obj = pattern.To<spp::asts::CasePatternVariantDestructureObjectAst>()) {
-    return any_elem_binds(obj->Elems);
-  }
-  if (const auto tup = pattern.To<spp::asts::CasePatternVariantDestructureTupleAst>()) {
-    return any_elem_binds(tup->Elems);
-  }
-  if (const auto arr = pattern.To<spp::asts::CasePatternVariantDestructureArrayAst>()) {
-    return any_elem_binds(arr->Elems);
-  }
+      // A destructure binds if any of its elements does. An empty one,
+      // or one made only of skips, is a shape test and takes nothing.
+      const auto any_elem_binds = [](auto const &elems) {
+        return genex::any_of(elems, [](auto const &e) { return PatternBindsByMove(*e); });
+      };
+      if (const auto obj = pattern.To<spp::asts::CasePatternVariantDestructureObjectAst>()) {
+        return any_elem_binds(obj->Elems);
+      }
+      if (const auto tup = pattern.To<spp::asts::CasePatternVariantDestructureTupleAst>()) {
+        return any_elem_binds(tup->Elems);
+      }
+      if (const auto arr = pattern.To<spp::asts::CasePatternVariantDestructureArrayAst>()) {
+        return any_elem_binds(arr->Elems);
+      }
 
-  return false;
+      return false;
+    }
+  }
 }
 
 auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
@@ -227,7 +232,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
-  using analyse::utils::mem_utils::ValidateInconsistentMemory;
+  using analyse::utils::case_utils::ValidateInconsistentMemory;
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
   // Move into the "case" scope and check the memory status of the symbols in the branches.
@@ -422,7 +427,7 @@ auto spp::asts::CaseExpressionAst::InferType(
   -> Shared<TypeAst> {
   // Alias the common utils functions and types.
   using analyse::errors::SppCaseBranchMissingElseError;
-  using analyse::utils::type_utils::ValidateInconsistentTypes;
+  using analyse::utils::case_utils::ValidateInconsistentTypes;
   using generate::common_types::VoidType;
 
   // Ensure consistency across branches.

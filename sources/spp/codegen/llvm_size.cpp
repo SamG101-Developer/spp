@@ -1,7 +1,8 @@
 module spp.codegen.llvm_size;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -47,8 +48,8 @@ namespace spp::codegen {
     //
     using namespace spp;
     using codegen::Layout;
-    using analyse::utils::type_utils::DedupVariableInnerTypes;
-    using analyse::utils::type_utils::TypeEq;
+    using analyse::utils::type_compare::DedupVariableInnerTypes;
+    using analyse::utils::type_compare::TypeEq;
     using namespace asts::generate::common_types_precompiled;
 
     if (const auto param_sym = sm.CurrentScope->GetTypeSymbol(&type);
@@ -189,7 +190,7 @@ namespace spp::codegen {
     // first, then largest, which is what minimizes the padding
     // between them.
     auto attr_layouts = Vec<Layout>();
-    for (auto const &attr : analyse::utils::type_utils::GetAllAttrs(type, sm)) {
+    for (auto const &attr : analyse::utils::type_members::GetAllAttrs(type, sm)) {
       attr_layouts.EmplaceBack(LayoutOf(sm, *spp::get<1>(attr)->FqName()));
     }
     attr_layouts |= genex::actions::stable_sort([](auto const &a, auto const &b) {

@@ -8,7 +8,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_info_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.defer_statement_ast;
 import spp.asts.identifier_ast;
@@ -108,7 +108,7 @@ namespace spp::analyse::utils::linear_utils {
       if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return true; }
 
       const auto owner = sym.Name->ToString();
-      for (auto const &attr : type_utils::GetAllAttrs(*sym.Type, sm)) {
+      for (auto const &attr : type_members::GetAllAttrs(*sym.Type, sm)) {
         const auto attr_type_sym = spp::get<1>(attr);
         if (attr_type_sym == nullptr or attr_type_sym->IsCopyable()) { continue; }
 

@@ -6,7 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_members;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
@@ -875,7 +875,7 @@ auto spp::codegen::func_impls::simple_coro_vector_fwd(
   // A vector's elements live in its "buffer", a "RawBuf[T, A]" whose first attribute is the pointer to them. The live
   // region is "[0, length)": "start" only ever moves for the by-value move-iterator, which consumes the vector, so no
   // forwarded view can observe it non-zero.
-  using analyse::utils::type_utils::GetAllAttrs;
+  using analyse::utils::type_members::GetAllAttrs;
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);

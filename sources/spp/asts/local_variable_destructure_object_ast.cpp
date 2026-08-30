@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
@@ -97,7 +97,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppTypeMismatchError;
   using analyse::utils::destructure_utils::BindDestructureTemporary;
   using analyse::utils::destructure_utils::IsDestructurePlaceExpression;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
 
   // Get the value and analyse it and the type.
   const auto val = meta->LetStatementValue;

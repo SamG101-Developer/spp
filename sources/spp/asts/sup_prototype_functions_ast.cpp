@@ -12,7 +12,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
@@ -154,7 +154,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
 
   // Move into the superimposition scope.
   sm->MoveToNextScope();

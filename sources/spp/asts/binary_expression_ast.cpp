@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.bin_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
@@ -83,7 +83,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
   // Alias the common utils functions and types.
   using analyse::utils::bin_utils::ConvertBinExprToFuncCall;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeTup;
+  using analyse::utils::type_predicates::IsTypeTup;
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppMemberAccessNonIndexableError;
   using analyse::errors::SppInvalidBinaryFoldExpressionError;

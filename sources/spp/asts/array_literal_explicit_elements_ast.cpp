@@ -10,7 +10,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.integer_literal_ast;
@@ -103,9 +104,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppTypeMismatchError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeArr;
-  using analyse::utils::type_utils::IsTypeBorrowed;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_predicates::IsTypeArr;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_compare::TypeEq;
 
   // Analyse the element inside the array. Also enforce beforehand that the element
   // is an acceptable primary expression, ie not a TypeAst or a TokenAst.
@@ -287,7 +288,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Alias the common utils functions and types.
-  using analyse::utils::type_utils::IsTypeArr;
+  using analyse::utils::type_predicates::IsTypeArr;
 
   // Create a "T" type and "n" size, for the array type. If a pre-defined array type
   // has been given (ie the assignment target type), pull the element type from it so a

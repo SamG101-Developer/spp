@@ -11,7 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.assignment_utils;
 import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
@@ -84,7 +84,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   using analyse::utils::assignment_utils::IsAttr;
   using analyse::utils::assignment_utils::IsDeref;
   using analyse::utils::assignment_utils::IsIdentifier;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
 
   // Ensure the LHS is semantically valid.
   for (auto const &lhs_expr : Lhs) {

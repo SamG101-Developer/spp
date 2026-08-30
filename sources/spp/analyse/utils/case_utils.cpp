@@ -1,15 +1,27 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.analyse.utils.case_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_destructure_array_ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.case_pattern_variant_destructure_tuple_ast;
+import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
@@ -17,7 +29,9 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.literal_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -25,17 +39,41 @@ import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.utils.ptr;
 import genex;
 import std;
 
 namespace spp::analyse::utils::case_utils {
   namespace {
+    /**
+     * Compare two escaping-borrow container lists by the memory regions they name, rather than by ast identity. Each
+     * branch of a "case" builds its own ast nodes, so the same borrow written in two branches is two pointers but one
+     * region, and only the region is what makes the branches agree or disagree.
+     */
+    auto EscapingBorrowContainersDiffer(
+      Vec<spp::Tup<asts::Ast const*, asts::Ast const*>> const &lhs,
+      Vec<spp::Tup<asts::Ast const*, asts::Ast const*>> const &rhs)
+      -> bool {
+      const auto regions = [](auto const &list) {
+        auto out = Vec<spp::Str>();
+        for (auto const &[container, borrow] : list) {
+          out.EmplaceBack(container->ToString() + " <- " + borrow->ToString());
+        }
+        genex::actions::sort(out);
+        return out;
+      };
+      return regions(lhs) != regions(rhs);
+    }
+
     template <typename T>
     auto CreateAndAnalysePatternEqFuncsCore(
       Vec<asts::CasePatternVariantAst*> const &elems,
@@ -76,7 +114,7 @@ namespace spp::analyse::utils::case_utils {
         if (not num_rhs_elems.has_value()) {
           const auto cond_type = meta->CaseCondition->InferType(sm, meta);
           const auto &gn_arg_group = cond_type->LastTypePart()->GnArgGroup;
-          num_rhs_elems = type_utils::IsTypeArr(*cond_type, *sm->CurrentScope)
+          num_rhs_elems = type_predicates::IsTypeArr(*cond_type, *sm->CurrentScope)
             ? std::stoull(
               gn_arg_group->Args[1]->template ToUnchecked<
                 asts::GenericArgumentCompAst>()->Val->ToUnchecked<
@@ -222,4 +260,247 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
   //
   Function<std::monostate(asts::Ast *)> noop = [](asts::Ast *) { return std::monostate{}; };
   CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(noop));
+}
+
+auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
+  Vec<asts::CaseExpressionBranchAst*> const &branches,
+  scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData *meta)
+  -> Tup<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>> {
+  //
+  using errors::SppTypeMismatchError;
+  using asts::generate::common_types_precompiled::NEVER;
+
+  // Collect type information for each branch, pairing the
+  // branch with its inferred type.
+  auto branches_type_info = branches
+    | genex::views::transform([&sm, meta](auto *x) { return MakePair(x, x->InferType(&sm, meta)); })
+    | genex::to<Vec>();
+
+  // The valued branches are branches that are non-terminating.
+  // This is because "ret" from a branch doesn't pass a value
+  // back to the binding, so shouldn't be considered for type
+  // checking.
+  auto valued_branches_type_info = branches_type_info
+    | genex::views::remove_if([](auto const &x) { return x.first->Body->Terminates(); })
+    | genex::to<Vec>();
+  if (valued_branches_type_info.IsEmpty()) { valued_branches_type_info = branches_type_info; }
+
+  // Filter the branch types down to variant types for custom
+  // analysis.
+  auto variant_branches_type_info = valued_branches_type_info
+    | genex::views::filter([&sm](auto &&x) { return type_predicates::IsTypeVariant(*x.second, *sm.CurrentScope); })
+    | genex::to<Vec>();
+
+  // Set the master branch type to the first branch's type, if
+  // it exists. This is the default and may be subsequently
+  // changed. Override it if an assignment type is given.
+  auto master_branch_type_info = not valued_branches_type_info.IsEmpty()
+    ? MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second)
+    : MakePair<asts::CaseExpressionBranchAst*, Shared<asts::TypeAst>>(nullptr, nullptr);
+  if (meta->AssignmentTargetType != nullptr) {
+    master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType);
+  }
+
+  // Otherwise, if there are variant branches, use the most
+  // variant type as the master branch type.
+  else if (not variant_branches_type_info.IsEmpty()) {
+    auto most_inner_types = 0uz;
+    for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
+      const auto variant_size = type_compare::DedupVariableInnerTypes(*variant_type, *sm.CurrentScope).Len();
+      if (variant_size > most_inner_types) {
+        master_branch_type_info = {variant_branch, variant_type};
+        most_inner_types = variant_size;
+      }
+    }
+  }
+
+  // Remove the master branch pointer from the list of remaining
+  // branch types and check all types match.
+  // Todo: Shouldn't need to auto-remove "!" type, because TypeEq handles it?
+  auto mismatch_branches_type_info = valued_branches_type_info
+    | genex::views::remove_if([&](auto const &x) {
+      return type_compare::TypeEq(*NEVER, *x.second, *sm.CurrentScope, *sm.CurrentScope);
+    })
+    | genex::views::remove_if([&](auto const &x) {
+      return x.first == master_branch_type_info.first;
+    })
+    | genex::views::remove_if([&](auto const &x) {
+      return type_compare::TypeEq(*master_branch_type_info.second, *x.second, *sm.CurrentScope, *sm.CurrentScope);
+    })
+    | genex::to<Vec>();
+
+  if (not mismatch_branches_type_info.IsEmpty()) {
+    const auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
+    const auto [master_branch, master_branch_type] = master_branch_type_info;
+    const auto final_member = master_branch ? master_branch->Body->FinalMember() : meta->AssignmentTarget.get();
+    Raise<SppTypeMismatchError>(
+      {sm.CurrentScope},
+      ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
+  }
+
+  // The `master_branch_type_info.first` is deliberately null when an
+  // assignment target type drove the master type (see above); calling
+  // `To<>()` through that null pointer is UB, so guard it and keep
+  // the null.
+  const auto cast_master_branch_type_info = MakePair(
+    master_branch_type_info.first ? master_branch_type_info.first->template ToUnchecked<asts::Ast>() : nullptr,
+    master_branch_type_info.second);
+
+  // Cast to common AST nodes and return with the types.
+  const auto cast_branches_type_info = branches_type_info
+    | genex::views::transform([](auto &&x) {
+      return MakePair(x.first->template ToUnchecked<asts::Ast>(), x.second);
+    })
+    | genex::to<Vec>();
+  return {cast_master_branch_type_info, cast_branches_type_info};
+}
+
+auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
+  asts::Ast *parent,
+  Vec<asts::CaseExpressionBranchAst*> const &branches,
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta)
+  -> void {
+  // Define a simple alias for a list of symbols and their
+  // memory.
+  using SymbolMemoryList = Vec<Pair<asts::CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
+  using SymbolMemoryMap = Map<scopes::VariableSymbol*, mem_info_utils::MemoryInfoSnapshot>;
+
+  // Create a map of the symbols' memory  information before
+  // any branches are analysed.
+  auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
+
+  // The lookup walks ancestors and super scopes, which can
+  // reach one symbol by more than one route, and every list
+  // below is built with one entry per branch per occurrence.
+  // Deduplicate.
+  auto vs = Vec<scopes::VariableSymbol*>();
+  auto seen_syms = Set<scopes::VariableSymbol*>();
+  for (auto *sym : sm->CurrentScope->AllVarSymbols()) {
+    if (seen_syms.insert(sym).second) { vs.EmplaceBack(sym); }
+  }
+
+  auto pre_analysis_mem_info = vs
+    | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
+    | genex::to<Vec>();
+
+  // Make a record of the symbols' memory status in the scope
+  // before the branch is analysed.
+  auto old_symbol_mem_info = vs
+    | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
+    | genex::to<Vec>();
+
+  for (auto &&branch : branches) {
+    // Analyse the memory and then recheck the symbols' memory
+    // status.
+    branch->Stage8_CheckMemory(sm, meta);
+    auto new_symbol_mem_info = vs
+      | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
+      | genex::to<Vec>();
+
+    // Reset the memory status of the symbols for the next branch
+    // to analyse with the same original memory states.
+    // Todo: Scopes need restoring properly too. (And rename to AstInit + Reformat).
+    // Built once per branch rather than once per symbol: it is the same map every time round, and rebuilding it
+    // inside the loop made recording one branch's states quadratic in the number of symbols in scope.
+    auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
+
+    for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
+      sym->MemInfo->AstInitialization = {
+        old_mem_status.AstInitialization,
+        spp::get<1>(sym->MemInfo->AstInitialization)
+      };
+      sym->MemInfo->AstMoved = {old_mem_status.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
+      sym->MemInfo->AstPartialMoves = old_mem_status.AstPartialMoves;
+      sym->MemInfo->AstContainedEscapingBorrows = old_mem_status.AstContainedEscapingBorrows;
+      sym->MemInfo->AstContainersOfEscapingBorrows = old_mem_status.AstContainersOfEscapingBorrows;
+      sym->MemInfo->InitializationCounter = old_mem_status.InitializationCounter;
+
+      // Save this memory status for subsequent inter-branch
+      // status comparisons.
+      sym_mem_info[sym].EmplaceBack(branch, new_symbol_mem_info_map[sym]);
+    }
+  }
+
+  // Add the pre-analysis memory states as a "final" branch
+  // (just for comparison purposes).
+  for (auto &&[sym, mem_info_list] : pre_analysis_mem_info) {
+    sym_mem_info[sym].EmplaceBack(nullptr, std::move(mem_info_list));
+  }
+
+  // Get the first "non-terminating" branch, and update the
+  // symbols to reflect its memory state.
+  const auto non_terminating_branch = genex::find_if(
+    branches, [](auto const &x) { return not x->Body->Terminates(); });
+  const auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
+  const auto first_branch_index = non_terminating_branch != branches.end()
+    ? genex::iterators::distance(branches.begin(), non_terminating_branch)
+    : -1;
+  const auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
+    return first_branch_index != -1
+      ? branch_mem_info.At(static_cast<std::size_t>(first_branch_index)).second
+      : branch_mem_info.Back().second;
+  };
+
+  const auto has_else_branch = not branches.IsEmpty()
+    ? branches.Back()->Patterns[0]->To<asts::CasePatternVariantElseAst>()
+    : nullptr;
+  const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
+
+  // Check for consistency among the branches' symbols' memory
+  // states.
+  for (auto const &[sym, branches_memory_info_lists] : sym_mem_info) {
+    auto first_branch_mem_info = first_branch_mem_info_getter(branches_memory_info_lists);
+
+    // Assuming all new memory states are consistent across
+    // branches, update to the first "new" state list.
+    sym->MemInfo->AstInitialization = {
+      first_branch_mem_info.AstInitialization, spp::get<1>(sym->MemInfo->AstInitialization)
+    };
+    sym->MemInfo->AstMoved = {first_branch_mem_info.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
+    sym->MemInfo->AstPartialMoves = first_branch_mem_info.AstPartialMoves;
+    sym->MemInfo->AstContainedEscapingBorrows = first_branch_mem_info.AstContainedEscapingBorrows;
+    sym->MemInfo->AstContainersOfEscapingBorrows = first_branch_mem_info.AstContainersOfEscapingBorrows;
+    sym->MemInfo->InitializationCounter = first_branch_mem_info.InitializationCounter;
+
+    // Check the new memory status for each symbol is
+    // consistent across all branches that don't terminate.
+    auto applicable_branch_memory_info_lists = branches_memory_info_lists
+      | genex::views::remove_if([&](auto const &x) {
+        return x.first == nullptr or x.first->Body->Terminates()
+          or (skip_else and not branches.IsEmpty() and x.first == branches.Back());
+      })
+      | genex::to<Vec>();
+
+    for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
+      // Check for consistent initialization.
+      if ((first_branch_mem_info.AstInitialization == nullptr) != (branch_memory_info_list.AstInitialization ==
+        nullptr)) {
+        sym->MemInfo->IsInconsistentlyInitialized = {first_branch, branch};
+      }
+
+      // Check for consistent moved state.
+      if ((first_branch_mem_info.AstMoved == nullptr) != (branch_memory_info_list.AstMoved == nullptr)) {
+        sym->MemInfo->IsInconsistentlyMoved = {first_branch, branch};
+      }
+
+      // Check for consistent partial moves.
+      if (first_branch_mem_info.AstPartialMoves != branch_memory_info_list.AstPartialMoves) {
+        sym->MemInfo->IsInconsistentlyPartiallyMoved = {first_branch, branch};
+      }
+
+      // Check for consistent escaping borrows, from both ends
+      // of the link: a symbol can be the coroutine handle that
+      // holds the borrows, or the owner of the memory they
+      // borrow, and only the second is what a later use of that
+      // memory (eg moving it) is checked against.
+      if (first_branch_mem_info.AstContainedEscapingBorrows != branch_memory_info_list.AstContainedEscapingBorrows
+        or EscapingBorrowContainersDiffer(
+          first_branch_mem_info.AstContainersOfEscapingBorrows,
+          branch_memory_info_list.AstContainersOfEscapingBorrows)) {
+        sym->MemInfo->IsInconsistentlyBorrowEscaping = {first_branch, branch};
+      }
+    }
+  }
 }

@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
@@ -64,7 +64,7 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
 
   // Qualify the type on the generic parameter.
   const auto _meta_guard = meta::MetaGuard(meta);
