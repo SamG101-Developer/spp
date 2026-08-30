@@ -285,15 +285,15 @@ auto spp::analyse::utils::generic_bindings::NameGnArgs(
 
   // Copy the raw pointer vectors from the splits. Cast into
   // the raw `GenericParameterAst` for re-combination later.
-  const auto comp_params = ( {
+  const auto comp_params = [&] {
     auto raw = p_group.GetCompParams();
-    Vec<asts::GenericParameterAst*>(raw.begin(), raw.end());
-  });
+    return Vec<asts::GenericParameterAst*>(raw.begin(), raw.end());
+  }();
 
-  const auto type_params = ( {
+  const auto type_params = [&] {
     auto raw = p_group.GetTypeParams();
-    Vec<asts::GenericParameterAst*>(raw.begin(), raw.end());
-  });
+    return Vec<asts::GenericParameterAst*>(raw.begin(), raw.end());
+  }();
 
   // Name the two kinds of arguments separately. This is fine
   // as there is no cross-over between names for comp params/args

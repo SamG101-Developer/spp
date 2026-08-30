@@ -56,18 +56,18 @@ namespace spp::analyse::utils::bin_utils {
       // Non-symbolic value being reused -> put it into a variable
       // first. Todo: Standardize materialization?
       if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
-        const auto temp_var_name = ( {
+        const auto temp_var_name = [&] {
           const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
-          MakeShared<asts::IdentifierAst>(
+          return MakeShared<asts::IdentifierAst>(
             bin_lhs->Rhs->PosStart(), uid);
-        });
+        }();
 
-        const auto temp_let = ( {
+        const auto temp_let = [&] {
           auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(
             nullptr, temp_var_name, nullptr);
-          MakeUnique<asts::LetStatementInitializedAst>(
+          return MakeUnique<asts::LetStatementInitializedAst>(
             nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
-        });
+        }();
 
         temp_let->Stage7_AnalyseSemantics(sm, meta);
         bin_lhs->Rhs = asts::AstClone(temp_var_name);
