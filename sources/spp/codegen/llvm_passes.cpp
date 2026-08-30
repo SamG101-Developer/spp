@@ -52,6 +52,83 @@ namespace {
     return true;
   }
 
+  /** The name the runtime start-up shim is emitted under; dotted, so it cannot collide with a mangled s++ name. */
+  constexpr auto kRuntimeInitShim = llvm::StringLiteral("spp.rt.init");
+
+  /** The name the runtime tear-down shim is emitted under; dotted, for the same reason. */
+  constexpr auto kRuntimeCleanupShim = llvm::StringLiteral("spp.rt.cleanup");
+
+  /**
+   * Emit, once per module, an internal @c void(void) that brings the ffi runtime up and does not come back if it
+   * cannot. @c sppc_init installs the signal dispositions, the locale and the malloc tuning that everything after it
+   * assumes, starts the green-thread runtime, and builds the three stdio mutexes; a failure leaves those half-built.
+   * @param[in,out] llvm_mod The module to emit it into.
+   * @return The shim, existing or new.
+   */
+  auto RuntimeInitShim(
+    llvm::Module &llvm_mod)
+    -> llvm::Function* {
+    if (auto *const existing = llvm_mod.getFunction(kRuntimeInitShim)) { return existing; }
+
+    auto &ctx = llvm_mod.getContext();
+    const auto i32_ty = llvm::Type::getInt32Ty(ctx);
+    const auto init = llvm_mod.getOrInsertFunction(
+      "sppc_init", llvm::FunctionType::get(i32_ty, {}, false));
+    const auto exit_fn = llvm_mod.getOrInsertFunction(
+      "exit", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {i32_ty}, false));
+
+    const auto shim = llvm::Function::Create(
+      llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
+      llvm::Function::InternalLinkage, kRuntimeInitShim, &llvm_mod);
+
+    const auto entry_bb = llvm::BasicBlock::Create(ctx, "entry", shim);
+    const auto up_bb = llvm::BasicBlock::Create(ctx, "rt.up", shim);
+    const auto failed_bb = llvm::BasicBlock::Create(ctx, "rt.failed", shim);
+
+    auto builder = llvm::IRBuilder<>(entry_bb);
+    const auto init_rc = builder.CreateCall(init, {}, "rt.init");
+    const auto init_ok = builder.CreateICmpEQ(init_rc, llvm::ConstantInt::get(i32_ty, 0), "rt.init.ok");
+    builder.CreateCondBr(init_ok, up_bb, failed_bb);
+
+    // Marked here rather than left to the pipeline to infer, because the
+    // "unreachable" after it is only well-formed if "exit" cannot return.
+    builder.SetInsertPoint(failed_bb);
+    builder.CreateCall(exit_fn, {init_rc})->setDoesNotReturn();
+    builder.CreateUnreachable();
+
+    builder.SetInsertPoint(up_bb);
+    builder.CreateRetVoid();
+    return shim;
+  }
+
+  /**
+   * Emit, once per module, an internal @c void(void) wrapper around @c sppc_cleanup for @c atexit to be handed. The
+   * runtime function returns an @c int , and registering it directly would have libc call it through a signature it
+   * does not have; the wrapper drops the result instead.
+   * @param[in,out] llvm_mod The module to emit it into.
+   * @return The shim, existing or new.
+   */
+  auto RuntimeCleanupShim(
+    llvm::Module &llvm_mod)
+    -> llvm::Function* {
+    if (auto *const existing = llvm_mod.getFunction(kRuntimeCleanupShim)) { return existing; }
+
+    auto &ctx = llvm_mod.getContext();
+    const auto cleanup = llvm_mod.getOrInsertFunction(
+      "sppc_cleanup", llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}, false));
+
+    const auto shim = llvm::Function::Create(
+      llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
+      llvm::Function::InternalLinkage, kRuntimeCleanupShim, &llvm_mod);
+
+    // The result is the errno a "pthread_mutex_destroy" of a stdio lock failed with: EBUSY means the program still
+    // held one as it exited, which is a bug in it, but this runs too late for anything to be told about it.
+    auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(ctx, "entry", shim));
+    builder.CreateCall(cleanup, {});
+    builder.CreateRetVoid();
+    return shim;
+  }
+
   /**
    * The triple the host llvm was configured for, normalised once. Read from llvm rather than written down, so an
    * arm64 or a windows build asks its own backend for a layout and a code generator instead of x86's.
@@ -262,6 +339,9 @@ auto spp::codegen::EmitCEntryPoint(
     return false;
   }
 
+  const auto atexit_ty = llvm::FunctionType::get(i32_ty, {ptr_ty}, false);
+  builder.CreateCall(RuntimeInitShim(llvm_mod), {});
+  builder.CreateCall(llvm_mod.getOrInsertFunction("atexit", atexit_ty), {RuntimeCleanupShim(llvm_mod)});
   builder.CreateCall(spp_main, {});
 
   // An S++ "main" returns "Void", which is where this ends up;
