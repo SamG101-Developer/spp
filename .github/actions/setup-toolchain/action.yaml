@@ -75,13 +75,6 @@ runs:
         SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
       run: bash .github/scripts/setup-toolchain/select-xcode-macos.sh
 
-    - name: Install Clang (macOS, brew)
-      if: inputs.compiler == 'clang' && runner.os == 'macOS'
-      shell: bash
-      env:
-        CLANG_VERSION: ${{ inputs.version }}
-      run: bash .github/scripts/setup-toolchain/install-clang-macos.sh
-
     # Windows + Clang-Cl
     - name: Set up MSVC / clang-cl (Windows)
       if: runner.os == 'Windows'
@@ -174,21 +167,30 @@ runs:
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-deps-windows.sh
 
-    # macOS gets the release tarball too: brew has no llvm@23, so the
-    # clang installed above is a whole major version behind the LLVM the
-    # project links against.
-    - name: Cache LLVM dev libraries (macOS)
+    # macOS gets the release tarball too, and takes its compiler out of
+    # it as well: brew has no llvm@23, so a brew clang would be a whole
+    # major version behind the LLVM the project links against. The key
+    # carries the install script, which decides what the tree holds and
+    # so cannot change without invalidating what is already cached.
+    - name: Cache LLVM toolchain (macOS)
       if: inputs.dependencies == 'true' && runner.os == 'macOS'
       id: llvm-mac-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/llvm
-        key: llvm-mac-${{ env.LLVM_MAC_SHA256 }}
+        key: llvm-mac-${{ env.LLVM_MAC_SHA256 }}-${{ hashFiles('.github/scripts/setup-toolchain/install-llvm-macos.sh') }}
 
-    - name: Install LLVM dev libraries (macOS, cache miss)
+    - name: Install LLVM toolchain (macOS, cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'macOS' && steps.llvm-mac-cache.outputs.cache-hit != 'true'
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-macos.sh
+
+    - name: Select Clang (macOS)
+      if: inputs.dependencies == 'true' && inputs.compiler == 'clang' && runner.os == 'macOS'
+      shell: bash
+      env:
+        CLANG_VERSION: ${{ inputs.version }}
+      run: bash .github/scripts/setup-toolchain/install-clang-macos.sh
 
     # The remaining libraries are header/CMake projects: check out,
     # install, cache. The key is content-addressed on the three

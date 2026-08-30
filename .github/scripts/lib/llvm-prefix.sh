@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The prefix holding the LLVM development libraries the project
-# links against. Deliberately not the compiler's prefix: on macOS
-# the two are different LLVM releases, because brew has no llvm@23.
+# links against. On macOS it holds the compiler as well, unpacked
+# from the same release: brew has no llvm@23 to compile with.
 # shellcheck shell=bash
 
 llvm_prefix() {

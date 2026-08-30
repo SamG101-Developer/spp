@@ -54,9 +54,9 @@ commit = "c94eb0210183b9d7cb43f8e7fddc6be55843ef49"
 version = "3.0.3"
 commit = "06e7608bfe926d2bd7176c0b02be0c98f40cced4"
 
-# Homebrew has no llvm@23 formula (llvm is still 22.1.x),
-# so macOS takes its dev libraries off the same release as
-# Windows rather than off the brew clang it compiles with.
+# Homebrew has no llvm@23 formula (llvm is still 22.1.x), so
+# macOS takes its whole toolchain - compiler, libc++ and dev
+# libraries - off the same release as Windows.
 [pin.llvm-mac]
 tag = "llvmorg-23.1.0-rc3"
 asset = "LLVM-23.1.0-rc3-macOS-ARM64.tar.xz"

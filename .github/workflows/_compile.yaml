@@ -114,8 +114,22 @@ jobs:
           sanitizer: ${{ matrix.variant.sanitizer }}
 
       # Build the cmake project with the parallel flag set. CI.
+      # The output is teed so a failed build can be uploaded whole.
       - name: Build
-        run: cmake --build build --parallel
+        shell: bash
+        run: |
+          mkdir -p build-logs
+          cmake --build build --parallel 2>&1 | tee build-logs/build.log
+
+      # If the build failed, then upload the log as an artefact so
+      # it can be downloaded for analysis.
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: buildlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
+          path: build-logs
+          if-no-files-found: ignore
 
       # Save the build tree to the cache. A tree whose configure
       # failed is worse than no tree: its cached check results
