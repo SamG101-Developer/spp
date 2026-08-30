@@ -88,17 +88,16 @@ namespace spp::cli {
       return spp::Str(rest.substr(0, rest.find_first_of(":/?")));
     }
 
-    auto IsHostReachable(spp::Str const &host) -> bool {
-      // ICMP is blocked on some networks that can still reach
-      // git, so leave a way past the check.
-      if (host.empty() or std::getenv("SPP_NO_PING_CHECK") != nullptr) { return true; }
+    auto IsRemoteReachable(spp::Str const &url) -> bool {
+      if (url.empty() or std::getenv("SPP_NO_NETWORK_CHECK") != nullptr) { return true; }
+      const auto args =
+        " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
+        + url;
 
 #if SPP_PLATFORM_WINDOWS
-      const auto command = "ping -n 1 -w 1500 " + host + " >NUL 2>&1";
-#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
-      const auto command = "ping -c 1 -W 1500 " + host + " >/dev/null 2>&1";
+      const auto command = "set GIT_TERMINAL_PROMPT=0&& git" + args + " >NUL 2>&1";
 #else
-      const auto command = "ping -c 1 -W 2 " + host + " >/dev/null 2>&1";
+      const auto command = "GIT_TERMINAL_PROMPT=0 git" + args + " >/dev/null 2>&1";
 #endif
       return std::system(command.c_str()) == 0;
     }
@@ -243,40 +242,38 @@ auto spp::cli::handle_vcs()
     // Ping the host before handing it to git, once per host:
     // later repositories on the same host reuse the answer.
     const auto host = HostOf(repo_url);
-    auto [host_ok, first_seen] = reachable.try_emplace(host, false);
-    if (first_seen) { host_ok->second = IsHostReachable(host); }
-
-    // An already-cloned repository is still usable with the
-    // host down, so that case carries on with what is on
-    // disk (and still copies its FFI libraries across) rather
-    // than failing the build.
-    if (not host_ok->second) {
-      if (not std::filesystem::exists(repo_folder)) {
-        std::cerr << "Error: '"s + host + "' is unreachable, and " + repo_name + " has not been cloned yet.\n";
-        ok = false;
-        continue;
-      }
-      std::cerr << "Warning: '"s + host + "' is unreachable; using the existing checkout of " + repo_name + ".\n";
-    }
+    auto host_is_up = [&] {
+      auto [cached, first_seen] = reachable.try_emplace(host, false);
+      if (first_seen) { cached->second = IsRemoteReachable(repo_url); }
+      return cached->second;
+    };
 
     // Repo doesn't exist locally => clone it.
-    else if (not std::filesystem::exists(repo_folder)) {
+    if (not std::filesystem::exists(repo_folder)) {
       if (not RunGit("clone --branch " + repo_branch + " " + repo_url + " " + repo_target)) {
+        if (not host_is_up()) {
+          std::cerr << "Error: '"s + host + "' is unreachable, and " + repo_name + " has not been cloned yet.\n";
+        }
         ok = false;
         continue;
       }
       std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
     }
-    else {
-      if (not RunGit("-C " + repo_target + " checkout " + repo_branch) or
-        not RunGit("-C " + repo_target + " pull origin " + repo_branch)) {
+
+    else if (not RunGit("-C " + repo_target + " checkout " + repo_branch) or
+      not RunGit("-C " + repo_target + " pull origin " + repo_branch)) {
+      if (host_is_up()) {
         ok = false;
         continue;
       }
+      std::cerr << "Warning: '"s + host + "' is unreachable; using the existing checkout of " + repo_name + ".\n";
+    }
+    else {
       std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
     }
 
-    // Copy all DLLs from the VCS's FFI folder into this project's FFI folder.
+    // Copy all DLLs from the VCS's FFI folder into this
+    // project's FFI folder.
     auto ffi_repo_folder = repo_folder / FFI_FOLDER;
     if (std::filesystem::exists(ffi_repo_folder)) {
       for (auto const &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
@@ -308,8 +305,10 @@ auto spp::cli::handle_build(
   // were the build that just happened.
   std::filesystem::remove(cwd / OUT_FOLDER / compiler::CompilerBoot::ExecutableName(cwd));
 
-  // Handle VCS if not skipped. Building against a half-fetched "vcs" folder reports every imported symbol as
-  // undefined rather than the fetch failure that caused it, so stop here instead.
+  // Handle VCS if not skipped. Building against a half-fetched
+  // "vcs" folder reports every imported symbol as undefined
+  // rather than the fetch failure that caused it, so stop here
+  // instead.
   if (not skip_vcs and not handle_vcs()) {
     std::cerr << "Error: Aborting the build; the [vcs] dependencies could not be fetched.\n";
     return;
@@ -355,11 +354,12 @@ auto spp::cli::handle_run(
   std::cout << "Running: " << utils::files::DisplayString(exe_file) << std::endl;
   std::cout.flush();
 
-  // Home the cursor, wipe the screen and then the scrollback, so
-  // the program's own output is all that is on the console, rather
-  // than the tail of the build that produced it. This is the byte
-  // sequence "clear" sends: without the ED 3, the erased lines stay
-  // in the scrollback and the console still reads as uncleared.
+  // Home the cursor, wipe the screen and then the scrollback,
+  // so the program's own output is all that is on the console,
+  // rather than the tail of the build that produced it. This
+  // is the byte sequence "clear" sends: without the ED 3, the
+  // erased lines stay in the scrollback and the console still
+  // reads as uncleared.
   std::cout << "\033[H\033[2J\033[3J";
   std::cout.flush();
 
