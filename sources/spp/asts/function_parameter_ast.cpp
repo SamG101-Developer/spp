@@ -9,6 +9,7 @@ import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_uninitialized_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
