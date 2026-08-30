@@ -8,6 +8,7 @@ import spp.utils.types;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct ClassPrototypeAst;
   SPP_EXP_CLS struct TypeAst;
 }
@@ -143,4 +144,9 @@ namespace spp::analyse::utils::type_predicates {
     asts::TypeAst const &type,
     scopes::Scope const &scope)
     -> Shared<asts::TypeAst>;
+
+  SPP_EXP_FUN auto AreGenericArgsConcrete(
+    Vec<Unique<asts::GenericArgumentAst>> const &args,
+    scopes::Scope const &scope)
+    -> bool;
 }

@@ -378,16 +378,8 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
     old_cls_scope->Parent, old_cls_sym->IsGeneric, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
   new_cls_sym->DerivesFromSym = old_cls_sym;
 
-  new_cls_sym->IsConcrete = genex::all_of(
-    type_part.GnArgGroup->Args | genex::views::ptr, [&](auto const *arg) {
-      if (const auto type_arg = arg->template To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
-        return type_predicates::IsTypeFullyConcrete(*type_arg->Val, *sm->CurrentScope);
-      }
-      if (const auto comp_arg = arg->template To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
-        return comp_arg->Val->template To<asts::IdentifierAst>() == nullptr;
-      }
-      return true;
-    });
+  new_cls_sym->IsConcrete = type_predicates::AreGenericArgsConcrete(
+    type_part.GnArgGroup->Args, *sm->CurrentScope);
 
   new_cls_scope_ptr->TySym = new_cls_sym;
 

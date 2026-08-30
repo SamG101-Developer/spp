@@ -368,3 +368,18 @@ auto spp::analyse::utils::type_predicates::GetNthTypeOfIndexableType(
   Raise<SppInternalCompilerError>(
     {&scope}, ERR_ARGS(type, err_msg));
 }
+
+auto spp::analyse::utils::type_predicates::AreGenericArgsConcrete(
+  Vec<Unique<asts::GenericArgumentAst>> const &args,
+  scopes::Scope const &scope)
+  -> bool {
+  return genex::all_of(args | genex::views::ptr, [&](auto const *arg) {
+    if (const auto type_arg = arg->template To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
+      return IsTypeFullyConcrete(*type_arg->Val, scope);
+    }
+    if (const auto comp_arg = arg->template To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
+      return comp_arg->Val->template To<asts::IdentifierAst>() == nullptr;
+    }
+    return true;
+  });
+}

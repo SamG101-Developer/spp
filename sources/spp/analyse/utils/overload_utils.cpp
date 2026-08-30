@@ -203,15 +203,9 @@ namespace spp::analyse::utils::overload_utils {
         return type_predicates::IsTypeFullyConcrete(*resolved, *new_fn_scope);
       };
 
-      return genex::all_of(combined_generics.Args | genex::views::ptr, [&](auto const *arg) {
-          if (const auto type_arg = arg->template To<asts::GenericArgumentTypeAst>(); type_arg != nullptr) {
-            return type_predicates::IsTypeFullyConcrete(*type_arg->Val, *sm->CurrentScope);
-          }
-          if (const auto comp_arg = arg->template To<asts::GenericArgumentCompAst>(); comp_arg != nullptr) {
-            return comp_arg->Val->template To<asts::IdentifierAst>() == nullptr;
-          }
-          return true;
-        })
+      // The arguments are asked the same way a class instantiation asks them; a function goes on to check the
+      // signature it ended up with, which a class has no equivalent of.
+      return type_predicates::AreGenericArgsConcrete(combined_generics.Args, *sm->CurrentScope)
         and type_is_concrete(*new_fn_proto.ReturnType)
         and genex::all_of(new_fn_proto.FnParamGroup->GetAllParams(), [&](auto *p) {
           return type_is_concrete(*p->Type);
