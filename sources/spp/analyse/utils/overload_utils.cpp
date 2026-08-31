@@ -564,7 +564,8 @@ namespace spp::analyse::utils::overload_utils {
      * argument list from the prototype's own generic parameters and drops a name that is not one of them.
      * @param fn_proto The candidate prototype.
      * @param fn_scope The scope the candidate was declared in.
-     * @param fn_owner_type The type the call was made on.
+     * @param fn_owner_type The type the call was made on, or @c nullptr when the callee is a plain function name and
+     * there is no receiver - a free function has nothing for "Self" to be pinned to.
      * @param gn_args The generic arguments for this candidate, merged into in place.
      * @param sm The scope manager, positioned at the call site.
      * @param meta Associated metadata.
@@ -573,7 +574,7 @@ namespace spp::analyse::utils::overload_utils {
     auto PinSelfToReceiver(
       asts::FunctionPrototypeAst const &fn_proto,
       scopes::Scope const *fn_scope,
-      asts::TypeAst const &fn_owner_type,
+      asts::TypeAst const *fn_owner_type,
       asts::GenericArgumentGroupAst &gn_args,
       scopes::ScopeManager const *sm,
       asts::meta::CompilerMetaData const *meta)
@@ -588,8 +589,9 @@ namespace spp::analyse::utils::overload_utils {
         and not type_members::GetUnimplementedAbstractMethods(*declared_self_sym->LinkedScope).IsEmpty();
 
       auto self_pin = Shared<asts::TypeAst>(nullptr);
-      if (declared_self != nullptr and (SignatureNamesSelf(fn_proto) or declared_on_abstract)) {
-        auto receiver = fn_owner_type.WithConvention(nullptr);
+      if (fn_owner_type != nullptr and declared_self != nullptr
+        and (SignatureNamesSelf(fn_proto) or declared_on_abstract)) {
+        auto receiver = fn_owner_type->WithConvention(nullptr);
 
         // "Self" only stands for the receiver when the receiver really is an implementer of the class the method was
         // declared on - this is what stops a forwarding type triggering it.
@@ -1167,7 +1169,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       gn_args->MergeGenerics(std::move(candidate.SupGenerics->Args));
 
       const auto self_pin = PinSelfToReceiver(
-        *fn_proto, fn_scope, *fn_owner_type, *gn_args, sm, meta);
+        *fn_proto, fn_scope, fn_owner_type.get(), *gn_args, sm, meta);
 
       InferAllGenerics(
         *fn_proto, *fn_params, *fn_args, *gn_args, is_variadic_fn, fn_scope, sm, meta);
