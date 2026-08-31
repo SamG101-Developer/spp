@@ -213,6 +213,10 @@ if (WIN32)
   target_link_libraries(${PROJECT_NAME}_lib PRIVATE pthreads4w::pthreadVC3)
 endif ()
 
+if (APPLE)
+  target_link_libraries(${PROJECT_NAME}_lib PRIVATE c++abi)
+endif ()
+
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 
