@@ -44,6 +44,43 @@ import std;
 
 namespace {
   /**
+   * Emit a message to stderr and abort, terminating the current block.
+   *
+   * @n
+   * Used wherever a runtime contract is broken and the failure has something worth saying. The alternative - a bare
+   * @c llvm.trap - lowers to @c ud2 and surfaces as "Illegal instruction" with no index, no length, no location and no
+   * name: a good deal less than the failure actually knows. @c dprintf is used rather than @c fprintf because it takes
+   * a descriptor directly, so no @c FILE* has to be reached for from ir.
+   *
+   * @param ctx The llvm context to emit into, positioned at the block that fails.
+   * @param fmt The message, as a printf format; a newline is appended.
+   * @param args The values for @p fmt 's conversions, in order.
+   */
+  auto EmitRuntimeAbort(
+    spp::codegen::LlvmCtx *const ctx,
+    spp::Str const &fmt,
+    std::vector<llvm::Value*> const &args = {})
+    -> void {
+    auto *const mod = ctx->Builder.GetInsertBlock()->getParent()->getParent();
+    const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+
+    const auto dprintf_fn = mod->getOrInsertFunction(
+      "dprintf", llvm::FunctionType::get(i32_ty, {i32_ty, ptr_ty}, true));
+
+    auto call_args = std::vector<llvm::Value*>{
+      llvm::ConstantInt::get(i32_ty, 2),
+      ctx->Builder.CreateGlobalString(std::string(fmt) + "\n")};
+    call_args.insert(call_args.end(), args.begin(), args.end());
+    ctx->Builder.CreateCall(dprintf_fn, call_args);
+
+    ctx->Builder.CreateCall(
+      mod->getOrInsertFunction("sppc_abort", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {}, false)),
+      {});
+    ctx->Builder.CreateUnreachable();
+  }
+
+  /**
    * The type a @c "Self" symbol stands for.
    *
    * @n
@@ -61,6 +98,46 @@ namespace {
     return self_ty_sym.LinkedScope != nullptr and self_ty_sym.LinkedScope->TySym != nullptr
       ? self_ty_sym.LinkedScope->TySym->FqName()
       : self_ty_sym.FqName();
+  }
+
+  /**
+   * Emit a shift whose result is defined for every distance, including one at or past the operand's width.
+   *
+   * @n
+   * A bare @c shl or @c lshr is poison once the distance reaches the operand's bit width, and the hardware does not
+   * agree with the language about what that means: x86 masks a variable shift count to the low five or six bits, so
+   * @c "x >> 32" on a 32-bit value is assembled as a shift by zero and hands back @p a unchanged. Source that shifts a
+   * value out in a loop then never terminates - and if it allocates per iteration, it does not fail, it exhausts the
+   * machine. That is not a diagnosable condition the way an out-of-bounds index is: a distance past the width has one
+   * obvious answer, which is that every bit has been shifted out, so this defines it rather than reporting it.
+   *
+   * The distance is clamped before the shift as well as selected over afterwards, because the shift is emitted on both
+   * paths and has to be in range on the one that is discarded too.
+   *
+   * @param ctx The llvm context to emit into.
+   * @param op The shift being emitted; must satisfy @c is_shift_bin_op.
+   * @param a The value being shifted.
+   * @param b The distance, already the same type as @p a.
+   * @return The shifted value, or zero when @p b is at or past the width of @p a.
+   */
+  auto EmitDefinedShift(
+    spp::codegen::LlvmCtx *const ctx,
+    const spp::codegen::func_impls::BinOp op,
+    llvm::Value *const a,
+    llvm::Value *const b)
+    -> llvm::Value* {
+    const auto uid = spp::utils::Uid();
+    const auto ty = a->getType();
+    const auto width = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth());
+    const auto max = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth() - 1);
+
+    const auto too_wide = ctx->Builder.CreateICmpUGE(b, width, "shift.wide" + uid);
+    const auto safe = ctx->Builder.CreateSelect(too_wide, max, b, "shift.safe" + uid);
+    const auto raw = op == spp::codegen::func_impls::BinOp::Shl
+      ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
+      : ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid);
+
+    return ctx->Builder.CreateSelect(too_wide, llvm::ConstantInt::get(ty, 0), raw, "shift.result" + uid);
   }
 }
 
@@ -130,8 +207,8 @@ auto spp::codegen::func_impls::apply_bin_op(
     case BinOp::UDiv: return ctx->Builder.CreateUDiv(a, b, name);
     case BinOp::SRem: return ctx->Builder.CreateSRem(a, b, name);
     case BinOp::URem: return ctx->Builder.CreateURem(a, b, name);
-    case BinOp::Shl: return ctx->Builder.CreateShl(a, b, name);
-    case BinOp::LShr: return ctx->Builder.CreateLShr(a, b, name);
+    case BinOp::Shl:
+    case BinOp::LShr: return EmitDefinedShift(ctx, op, a, b);
     case BinOp::Or: return ctx->Builder.CreateOr(a, b, name);
     case BinOp::And: return ctx->Builder.CreateAnd(a, b, name);
     case BinOp::Xor: return ctx->Builder.CreateXor(a, b, name);
@@ -243,20 +320,29 @@ auto spp::codegen::func_impls::simple_intrinsic_binop(
 
 auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *, const BinOp op) -> void {
-  // "(this: &mut T, that: T) -> Void": "ty" (per the dispatcher) is the declared return type "Void", not "T" - the
-  // operand type is read off "that" (the last parameter) instead, which - unlike "this" - is a plain "T" rather than
-  // a reference, so there's no reference-unwrapping ambiguity.
+  // "(this: &mut T, that: U) -> Void": "ty" (per the dispatcher) is the declared return type "Void", not "T", so both
+  // operand types are read off the parameters. The two are the same type for every operation but a shift, whose
+  // distance is separately typed ("bit_shr_assign(&mut self, that: U32)") - so the slot being updated is sized from
+  // "this" rather than from "that", or a "&mut U64" would be loaded and stored 32 bits at a time.
   const auto uid = "." + utils::Uid();
-  const auto that_param = proto->FnParamGroup->GetAllParams().Back();
-  const auto operand_ty = GetLlvmTypeOf(*that_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto value_ty = GetLlvmTypeOf(*params[0]->Type->WithoutConvention(), *sm->CurrentScope, ctx);
+  const auto operand_ty = GetLlvmTypeOf(*params.Back()->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
   const auto fn = simple_create_fn(sm, proto, meta, ctx, void_ty, Vec{ptr_ty, operand_ty});
 
   const auto lhs = fn->arg_begin();
-  const auto rhs = fn->arg_begin() + 1;
-  const auto loaded_val = ctx->Builder.CreateLoad(operand_ty, lhs, "intrinsic.assign.loaded" + uid);
+  auto rhs = llvm::cast<llvm::Value>(fn->arg_begin() + 1);
+  const auto loaded_val = ctx->Builder.CreateLoad(value_ty, lhs, "intrinsic.assign.loaded" + uid);
+
+  // As in the by-value form, a shift distance is widened or narrowed to the type being shifted, which llvm requires to
+  // match. Neither direction loses a meaningful distance: one that does not fit in the value's type is already past
+  // the width being shifted, and "apply_bin_op" defines that case.
+  if (is_shift_bin_op(op) and rhs->getType() != value_ty) {
+    rhs = ctx->Builder.CreateZExtOrTrunc(rhs, value_ty, "intrinsic.shift.by" + uid);
+  }
   const auto result = apply_bin_op(ctx, op, loaded_val, rhs);
   ctx->Builder.CreateStore(result, lhs);
   ctx->Builder.CreateRetVoid();
@@ -346,7 +432,7 @@ auto spp::codegen::func_impls::simple_intrinsic_conv(
   // arm of that gets instantiated for the widths the enclosing instantiation binds, while only the arm the widths
   // choose can ever run. The other arms are given a body that says so, rather than an instruction llvm rejects.
   if (not ConvOpIsDefined(op, src_ty, ty)) {
-    ctx->Builder.CreateUnreachable();
+    EmitRuntimeAbort(ctx, "integer conversion reached for a width pair it is not defined for");
     return;
   }
   ctx->Builder.CreateRet(apply_conv_op(ctx, op, operand, ty));
@@ -966,8 +1052,9 @@ auto spp::codegen::func_impls::simple_coro_view_index(
         i64_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _LengthIdx, "view.index.length_ptr" + _Uid),
         "view.index.length" + _Uid);
 
-      // Out of bounds traps rather than returning something: the contract is that an out-of-range index aborts, and
-      // there is no s++-level string to report from down here.
+      // Out of bounds aborts rather than returning something: the contract is that an out-of-range index aborts,
+      // and "get_ref"/"get_mut" are the accessors that answer with "None" instead. Both numbers are reported, because
+      // being told only that one of them was out of range leaves the reader to find both by hand.
       const auto fn = ctx->Builder.GetInsertBlock()->getParent();
       const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "view.index.ok" + _Uid, fn);
       const auto oob_bb = llvm::BasicBlock::Create(*ctx->Context, "view.index.oob" + _Uid, fn);
@@ -975,8 +1062,7 @@ auto spp::codegen::func_impls::simple_coro_view_index(
         ctx->Builder.CreateICmpULT(idx_val, self_length, "view.index.in_bounds" + _Uid), ok_bb, oob_bb);
 
       ctx->Builder.SetInsertPoint(oob_bb);
-      ctx->Builder.CreateIntrinsic(llvm::Intrinsic::trap, {}, {}, {}, "");
-      ctx->Builder.CreateUnreachable();
+      EmitRuntimeAbort(ctx, "index %zu out of bounds for length %zu", {idx_val, self_length});
 
       // Indexed over the element type, so one step of the index advances by one element rather than by one byte.
       ctx->Builder.SetInsertPoint(ok_bb);
@@ -1935,7 +2021,30 @@ auto spp::codegen::func_impls::std_intrinsics_fpclass(
   const auto flag_arg = fn->arg_begin() + 1;
   const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
     ctx->Module.get(), llvm::Intrinsic::is_fpclass, {value_ty});
-  const auto result = ctx->Builder.CreateCall(intrinsic_fn, {value_arg, flag_arg}, "intrinsic.result" + uid);
+
+  static constexpr auto kClassCount = 10u;
+  const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "fpclass.done" + uid, fn);
+  const auto other_bb = llvm::BasicBlock::Create(*ctx->Context, "fpclass.other" + uid, fn);
+  const auto sw = ctx->Builder.CreateSwitch(flag_arg, other_bb, kClassCount);
+
+  auto incoming = std::vector<std::pair<llvm::Value*, llvm::BasicBlock*>>();
+  for (auto i = 0u; i < kClassCount; ++i) {
+    const auto case_bb = llvm::BasicBlock::Create(*ctx->Context, "fpclass.c" + std::to_string(i) + uid, fn);
+    sw->addCase(llvm::cast<llvm::ConstantInt>(llvm::ConstantInt::get(i32_ty, i)), case_bb);
+    ctx->Builder.SetInsertPoint(case_bb);
+    const auto hit = ctx->Builder.CreateCall(
+      intrinsic_fn, {value_arg, llvm::ConstantInt::get(i32_ty, 1u << i)}, "intrinsic.result" + uid);
+    ctx->Builder.CreateBr(done_bb);
+    incoming.emplace_back(hit, case_bb);
+  }
+
+  ctx->Builder.SetInsertPoint(other_bb);
+  ctx->Builder.CreateBr(done_bb);
+
+  ctx->Builder.SetInsertPoint(done_bb);
+  const auto result = ctx->Builder.CreatePHI(ty, kClassCount + 1, "intrinsic.result" + uid);
+  for (auto const &[val, bb] : incoming) { result->addIncoming(val, bb); }
+  result->addIncoming(llvm::ConstantInt::get(ty, 0), other_bb);
   ctx->Builder.CreateRet(result);
 }
 
@@ -1980,9 +2089,9 @@ auto spp::codegen::func_impls::std_generator_send(
   LlvmCtx *ctx,
   llvm::Type *)
   -> void {
-  // Dummy function for analysis. Still needs terminating. The .res() operator handles the lowering for generators
-  // there.
-  ctx->Builder.CreateUnreachable();
+  // Dummy function for analysis. Still needs terminating. The ".res()" operator handles the lowering for generators
+  // there, so reaching this body means "send" was called directly rather than through it.
+  EmitRuntimeAbort(ctx, "generator 'send' was reached directly; it is lowered through the '.res()' operator");
 }
 
 auto spp::codegen::func_impls::std_generator_once_send(
@@ -1990,9 +2099,9 @@ auto spp::codegen::func_impls::std_generator_once_send(
   LlvmCtx *ctx,
   llvm::Type *)
   -> void {
-  // Dummy function for analysis. Still needs terminating. The .res() operator handles the lowering for generators
-  // there.
-  ctx->Builder.CreateUnreachable();
+  // Dummy function for analysis. Still needs terminating. The ".res()" operator handles the lowering for generators
+  // there, so reaching this body means "send" was called directly rather than through it.
+  EmitRuntimeAbort(ctx, "generator 'send' was reached directly; it is lowered through the '.res()' operator");
 }
 
 auto spp::codegen::func_impls::std_generator_drop(
@@ -2365,7 +2474,8 @@ auto spp::codegen::func_impls::std_raw_buf_take_at(
   const auto elem_val = ctx->Builder.CreateLoad(elem_ty, elem_addr, "raw_buf.take_at.elem");
   */
 
-  ctx->Builder.CreateUnreachable();
+  // Stub right now.
+  EmitRuntimeAbort(ctx, "std::mem::raw_buf::RawBuf::take_at is not implemented");
 }
 
 auto spp::codegen::func_impls::std_raw_buf_place_at(
