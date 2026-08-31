@@ -35,8 +35,6 @@ auto spp::compiler::Module::TestHarness(
 spp::compiler::ModuleTree::ModuleTree(
   std::filesystem::path path,
   TestScope const &tests) {
-  using namespace std::string_literals;
-
   // Get all the spp module files from the src path.
   m_root = std::move(path);
   m_src_path = m_root / "src";
@@ -92,10 +90,11 @@ spp::compiler::ModuleTree::ModuleTree(
       inner_path /= part;
     }
 
-    //
-    const auto inner_native = spp::utils::files::NativeString(inner_path);
-    const auto is_ffi = inner_native.starts_with("ffi"s + std::filesystem::path::preferred_separator);
-    const auto is_tst = inner_native.starts_with("tst"s + std::filesystem::path::preferred_separator);
+    // Compare the leading component rather than a string prefix: the native
+    // separator is a wchar_t on Windows, so it cannot be spliced onto a Str.
+    const auto top = inner_path.empty() ? std::filesystem::path() : *inner_path.begin();
+    const auto is_ffi = top == "ffi";
+    const auto is_tst = top == "tst";
     const auto keep_tst = tests.WantsLib(lib_name) and inner_path != std::filesystem::path("tst/main.spp");
 
     if (inner_path != std::filesystem::path("src/main.spp") and not is_ffi and (not is_tst or keep_tst)) {

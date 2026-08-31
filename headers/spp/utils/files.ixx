@@ -43,7 +43,12 @@ namespace spp::utils::files {
    */
   SPP_EXP_FUN auto NativeString(std::filesystem::path const &path) -> Str;
 
-  SPP_EXP_FUN auto GlobSpp(Str const &path) -> Vec<std::filesystem::path>;
+  /**
+   * Recursively walk a directory, collecting every ".spp" file under it.
+   * @param path The directory to walk.
+   * @return The paths of the ".spp" files found.
+   */
+  SPP_EXP_FUN auto GlobSpp(std::filesystem::path const &path) -> Vec<std::filesystem::path>;
 
   /**
    * An advisory lock over a whole file: flock(2) on POSIX, and the equivalent
