@@ -88,7 +88,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  template <typename T> requires utils::traits::integral<T>
+  template <typename T> requires spp::utils::traits::integral<T>
   auto CppVal() const -> T;
 
   /**
