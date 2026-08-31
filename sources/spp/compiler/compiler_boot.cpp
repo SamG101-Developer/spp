@@ -367,6 +367,8 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   if (_LlvmCtxs.IsEmpty()) { return; }
 
   const auto lto_module = MakeUnique<llvm::Module>("spp.lto", *_LlvmCtxs[0]->Context);
+  lto_module->setTargetTriple(llvm::Triple(codegen::HostTargetTripleString()));
+  lto_module->setDataLayout(codegen::HostDataLayoutString());
 
   // Link every module into the special lto "root" module. This
   // creates one meta-module containing all the definitions.
@@ -455,6 +457,8 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
         staged, lib_dir / ("lib" + name), std::filesystem::copy_options::overwrite_existing);
     }
   }
+
+  command += " -lm";
   command += " -Wl,-rpath,'$ORIGIN/lib'";
 
   std::cout << "Linking: " << exe_file << std::endl;
