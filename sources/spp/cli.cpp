@@ -60,6 +60,37 @@ namespace spp::cli {
     }
 
     /**
+     * Wrap a command so the process it starts cannot exhaust the machine.
+     *
+     * @n
+     * The allocator already models running out of memory - @c GlobalAlloc::allocate maps a null @c malloc to
+     * @c AllocOomErr - but on linux that branch is unreachable by default: overcommit hands out address space that has
+     * no memory behind it, @c malloc succeeds, and the process is killed by the kernel when it touches the pages. A
+     * compiled program with a runaway allocation therefore does not fail, it takes the machine down with it, and the
+     * failure surfaces in @c dmesg rather than anywhere the user is looking.
+     *
+     * An address-space limit on the child restores the contract the allocator was written against: @c malloc returns
+     * null at the cap, @c AllocOomErr propagates, and the program reports itself. The limit is set on the command
+     * rather than on this process so the compiler keeps its own budget, and it is set through the shell because that
+     * is what @c std::system starts anyway.
+     *
+     * @param command The command to run.
+     * @return The command, prefixed with the limit, on the platforms whose shell can set one.
+     */
+    auto WithMemoryLimit(spp::Str const &command) -> spp::Str {
+#if SPP_PLATFORM_WINDOWS
+      return command;
+#else
+      // A run that needs more than this is not one this is meant to catch, and the value can be raised - or removed
+      // with a zero - for the run that legitimately does.
+      constexpr auto default_kb = 4ull * 1024 * 1024;
+      const auto env = std::getenv("SPP_MEMORY_LIMIT_KB");
+      const auto limit_kb = env != nullptr ? std::strtoull(env, nullptr, 10) : default_kb;
+      return limit_kb == 0 ? command : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
+#endif
+    }
+
+    /**
      * Run a git invocation, reporting a non-zero exit rather than discarding it. A failed fetch leaves the "vcs" folder
      * empty, which every later stage accepts, so the only symptom is that each imported symbol becomes undefined.
      * @param args The arguments to pass to git.
@@ -363,7 +394,7 @@ auto spp::cli::handle_run(
   std::cout << "\033[H\033[2J\033[3J";
   std::cout.flush();
 
-  const auto status = std::system(utils::files::NativeString(exe_file).c_str());
+  const auto status = std::system(WithMemoryLimit(utils::files::NativeString(exe_file)).c_str());
   const auto exited_normally = (status & 0x7F) == 0;
   const auto exit_code = exited_normally ? (status >> 8) & 0xFF : status;
 
@@ -451,7 +482,7 @@ auto spp::cli::handle_test(
   // whole-suite run is plain.
   const auto run = [&exe](Str const &only) {
     const auto command = only.empty() ? exe : "SPP_TEST_ONLY=" + only + " " + exe;
-    const auto status = std::system(command.c_str());
+    const auto status = std::system(WithMemoryLimit(command).c_str());
     const auto exited_normally = (status & 0x7F) == 0;
     return exited_normally ? (status >> 8) & 0xFF : -1;
   };
