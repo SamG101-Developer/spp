@@ -95,6 +95,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
   using analyse::utils::type_predicates::IsIndexWithinBound;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
+  using analyse::utils::visibility_utils::IsTypeMemberVisible;
 
   // Already rewritten against a forwarded-to value by an earlier
   // pass, which analysed the rewrite as it built it.
@@ -178,9 +179,13 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
       | genex::views::filter([](auto const &x) { return spp::get<2>(x)->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
     if (not fn_scopes_and_syms.IsEmpty()) {
-      const auto fn_closest = fn_scopes_and_syms.Back();
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
-      CheckTypeMemberVisibility(*spp::get<2>(fn_closest), *Name, *cls_scope, *sm, *meta);
+      const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
+        return IsTypeMemberVisible(*spp::get<2>(x), *cls_scope, *sm, *meta);
+      });
+      if (not any_visible) {
+        CheckTypeMemberVisibility(*spp::get<2>(fn_scopes_and_syms.Back()), *Name, *cls_scope, *sm, *meta);
+      }
     }
 
     auto scopes_and_syms = all_scopes_and_syms
