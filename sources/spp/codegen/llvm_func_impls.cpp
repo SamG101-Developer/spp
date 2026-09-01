@@ -31,6 +31,7 @@ import spp.codegen.llvm_layout;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
 import spp.codegen.llvm_type;
+import spp.utils.ptr;
 import spp.utils.uid;
 import llvm;
 import std;
@@ -2428,54 +2429,77 @@ auto spp::codegen::func_impls::std_raw_buf_index_mut(
 
 auto spp::codegen::func_impls::std_raw_buf_take_at(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  // Bounds-checked "take" which moves an element off of a raw
-  // buffer, and either returns None (out of bounds or the slot
-  // isn't initialized), or Some(val) containing the taken value.
-  /*
+  // Bounds-checked "take", which moves the element at an index
+  // off the buffer and hands it back as "Some(val)", or "None"
+  // when the index is past the buffer's capacity.
   using asts::generate::common_types_precompiled::SELF_VAR;
   using asts::generate::common_types_precompiled::SELF_TYPE;
-  const auto uid = utils::Uid();
+
+  const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
   const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get());
-  const auto self_ty = GetLlvmType(*self_ty_sym, ctx);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "raw_buf.take_at.self" + uid);
 
-  const auto elem_ty_spp = SelfTypeName(*self_ty_sym)->LastTypePart()->GnArgGroup->TypeAt("T")->Val
-    ->WithoutConvention();
+  const auto elem_ty_spp = SelfTypeName(
+    *self_ty_sym)->LastTypePart()->GnArgGroup->TypeAt("T")->Val->WithoutConvention();
   const auto elem_ty_sym = sm->CurrentScope->GetTypeSymbol(elem_ty_spp.get(), true);
   const auto elem_ty = GetLlvmType(*elem_ty_sym, ctx);
 
-  // As in "place_at": "self" is a parameter like any other, and is reached through its own symbol above.
+  // "self" is a parameter like any other, and is reached through
+  // its own symbol above, so the declared parameters are counted
+  // without it.
   const auto index_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto index_sym = sm->CurrentScope->GetVarSymbol(index_param->ExtractName().get());
   const auto usize_ty = GetLlvmTypeOf(*index_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
-  const auto index_val = ctx->Builder.CreateLoad(usize_ty, index_sym->LlvmInfo->Alloca, "raw_buf.take_at.index");
+  const auto index_val = ctx->Builder.CreateLoad(
+    usize_ty, index_sym->LlvmInfo->Alloca, "raw_buf.take_at.index" + uid);
 
-  const auto capacity_addr = ctx->Builder.CreateStructGEP(
-    self_ty, self_ptr, 1, "raw_buf.take_at.capacity_addr");
+  // The returned "Opt[T]", and the discriminants of its two
+  // alternatives. They are asked for by name rather than
+  // taken by position, because nothing about the variant
+  // guarantees which order its members are declared in.
+  const auto opt_ty_spp = proto->ReturnType->WithoutConvention();
+  const auto opt_llvm_ty = GetLlvmTypeOf(*opt_ty_spp, *sm->CurrentScope, ctx);
+  const auto some_ty_spp = asts::generate::common_types::SomeType(
+    proto->PosStart(), const_shared_cast<asts::TypeAst>(elem_ty_spp));
+  const auto none_ty_spp = asts::generate::common_types::None(proto->PosStart());
+  const auto some_tag = GetVariantIndexOfMember(*opt_ty_spp, *some_ty_spp, *sm->CurrentScope);
+  const auto none_tag = GetVariantIndexOfMember(*opt_ty_spp, *none_ty_spp, *sm->CurrentScope);
+  SPP_ASSERT(some_tag.has_value() and none_tag.has_value());
+
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto capacity_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 1);
   const auto capacity = ctx->Builder.CreateLoad(
-    usize_ty, capacity_addr, "raw_buf.take_at.capacity");
+    usize_ty,
+    ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, capacity_idx, "raw_buf.take_at.capacity.ptr" + uid),
+    "raw_buf.take_at.capacity" + uid);
 
-  // If the index is out of bounds, or the element slot at the given
-  // index is not initialised, return None.
+  const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+  const auto in_bounds_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "raw_buf.take_at.in_bounds" + uid, fn);
+  const auto out_of_bounds_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "raw_buf.take_at.out_of_bounds" + uid, fn);
+  ctx->Builder.CreateCondBr(
+    ctx->Builder.CreateICmpULT(index_val, capacity, "raw_buf.take_at.in_range" + uid),
+    in_bounds_bb, out_of_bounds_bb);
 
-  // Bounds branching.
-  const auto bounds_check = ctx->Builder.CreateICmpULT(index_val, capacity, "raw_buf.take_at.bounds_check");
-  const auto bounds_check_bb = ctx->Builder.GetInsertBlock();
-  const auto bounds_check_true_bb = llvm::BasicBlock::Create(
-    *ctx->Context, "raw_buf.take_at.bounds_check.true", ctx->Builder.GetInsertBlock()->getParent());
-  const auto bounds_check_false_bb = llvm::BasicBlock::Create(
-    *ctx->Context, "raw_buf.take_at.bounds_check.false", ctx->Builder.GetInsertBlock()->getParent());
-  ctx->Builder.CreateCondBr(bounds_check, bounds_check_true_bb, bounds_check_false_bb);
-  ctx->Builder.SetInsertPoint(bounds_check_true_bb);
+  ctx->Builder.SetInsertPoint(in_bounds_bb);
+  const auto data_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 0);
+  const auto buf_ptr = ctx->Builder.CreateLoad(
+    ptr_ty,
+    ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.take_at.buf.ptr" + uid),
+    "raw_buf.take_at.buf" + uid);
+  const auto elem_val = ctx->Builder.CreateLoad(
+    elem_ty,
+    ctx->Builder.CreateGEP(elem_ty, buf_ptr, index_val, "raw_buf.take_at.elem.ptr" + uid),
+    "raw_buf.take_at.elem" + uid);
+  ctx->Builder.CreateRet(
+    BuildVariant(elem_val, opt_llvm_ty, *some_tag, "raw_buf.take_at.some" + uid, ctx));
 
-  const auto elem_addr = ctx->Builder.CreateGEP(elem_ty, self_ptr, index_val, "raw_buf.take_at.elem_addr");
-  const auto elem_val = ctx->Builder.CreateLoad(elem_ty, elem_addr, "raw_buf.take_at.elem");
-  */
-
-  // Stub right now.
-  EmitRuntimeAbort(ctx, "std::mem::raw_buf::RawBuf::take_at is not implemented");
+  ctx->Builder.SetInsertPoint(out_of_bounds_bb);
+  ctx->Builder.CreateRet(
+    BuildVariant(nullptr, opt_llvm_ty, *none_tag, "raw_buf.take_at.none" + uid, ctx));
 }
 
 auto spp::codegen::func_impls::std_raw_buf_place_at(
