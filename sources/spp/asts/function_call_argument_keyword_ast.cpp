@@ -40,11 +40,13 @@ auto spp::asts::FunctionCallArgumentKeywordAst::PosEnd() const
 auto spp::asts::FunctionCallArgumentKeywordAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<FunctionCallArgumentKeywordAst>(
+  auto ast = MakeUnique<FunctionCallArgumentKeywordAst>(
     AstCloneShared(Name),
     AstClone(TokAssign),
     AstClone(Conv),
     AstClone(Val));
+  ast->SetSelfType(GetSelfType());
+  return ast;
 }
 
 auto spp::asts::FunctionCallArgumentKeywordAst::ToString() const

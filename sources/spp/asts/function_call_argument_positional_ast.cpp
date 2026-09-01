@@ -35,11 +35,13 @@ auto spp::asts::FunctionCallArgumentPositionalAst::PosEnd() const
 
 auto spp::asts::FunctionCallArgumentPositionalAst::Clone() const
   -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<FunctionCallArgumentPositionalAst>(
+  // Clone all the members of the ast
+  auto ast = MakeUnique<FunctionCallArgumentPositionalAst>(
     AstClone(Conv),
     AstClone(TokUnpack),
     AstClone(Val));
+  ast->SetSelfType(GetSelfType());
+  return ast;
 }
 
 auto spp::asts::FunctionCallArgumentPositionalAst::ToString() const

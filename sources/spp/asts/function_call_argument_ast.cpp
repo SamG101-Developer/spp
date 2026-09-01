@@ -90,7 +90,7 @@ auto spp::asts::FunctionCallArgumentAst::SetSelfType(
   _InjectedSelfType = std::move(self_type);
 }
 
-auto spp::asts::FunctionCallArgumentAst::GetSelfType()
+auto spp::asts::FunctionCallArgumentAst::GetSelfType() const
   -> Shared<TypeAst> {
   // Get the self type.
   return _InjectedSelfType;

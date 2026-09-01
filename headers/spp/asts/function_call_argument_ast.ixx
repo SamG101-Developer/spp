@@ -64,7 +64,7 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAs
 
   auto SetSelfType(Shared<TypeAst> self_type) -> void;
 
-  auto GetSelfType() -> Shared<TypeAst>;
+  SPP_ATTR_NODISCARD auto GetSelfType() const -> Shared<TypeAst>;
 
 private:
   /**
