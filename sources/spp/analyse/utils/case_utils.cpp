@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.case_expression_branch_ast;
@@ -47,13 +48,95 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_layout;
+import spp.codegen.llvm_type;
 import spp.utils.ptr;
+import spp.utils.uid;
 import genex;
 import std;
 
 namespace spp::analyse::utils::case_utils {
   namespace {
+    /**
+     * The value of one field of an already-generated aggregate, indexed rather than rebuilt.
+     * @param[in] base_type The aggregate's type, as written at this level.
+     * @param[in] field_name The field being selected: a number for a tuple or array element, a name for an attribute.
+     * @param[in] llvm_base The aggregate's already-generated value, or a pointer to it for a borrowed subject.
+     * @param[in, out] sm The scope manager, positioned where @p base_type resolves.
+     * @param[in, out] ctx The LLVM context to generate into.
+     * @return The field's value, or @c nullptr when the field carries none.
+     */
+    auto NarrowOntoField(
+      asts::TypeAst const &base_type,
+      asts::IdentifierAst const &field_name,
+      llvm::Value *const llvm_base,
+      scopes::ScopeManager &sm,
+      codegen::LlvmCtx *const ctx)
+      -> llvm::Value* {
+      //
+      using type_members::GetFieldIndexInType;
+      using type_predicates::IsTypeArr;
+
+      const auto uid = "." + spp::utils::Uid(&field_name);
+      const auto bare_type = base_type.WithoutConvention();
+      const auto base_type_sym = sm.CurrentScope->GetTypeSymbol(bare_type.get());
+      if (base_type_sym == nullptr or base_type_sym->LlvmInfo->LlvmType == nullptr) { return nullptr; }
+      const auto llvm_base_ty = base_type_sym->LlvmInfo->LlvmType;
+
+      // Indexing needs an address. A borrowed subject already
+      // is one; anything else is a value, and gets a slot to
+      // be indexed through - the same materialisation the member
+      // access does for a non-symbolic base.
+      auto base_ptr = llvm_base;
+      if (not llvm_base->getType()->isPointerTy()) {
+        base_ptr = codegen::LlvmEntryAlloca(llvm_base_ty, "case.pattern.subject" + uid, ctx);
+        ctx->Builder.CreateStore(llvm_base, base_ptr);
+      }
+
+      // Determine the field pointer which can be set via the
+      // runtime member access field (numeric or identifier).
+      auto field_ptr = static_cast<llvm::Value*>(nullptr);
+
+      // For the numeric case, we need to either GEP into the
+      // array target, or struct GEP into the tuple target.
+      if (std::isdigit(static_cast<unsigned char>(field_name.Val[0]))) {
+        const auto index = static_cast<std::uint32_t>(std::stoul(field_name.Val));
+
+        // An array lowers to "[n x T]" rather than to a struct,
+        // so it is indexed through the array itself.
+        if (IsTypeArr(*bare_type, *sm.CurrentScope)) {
+          const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+          field_ptr = ctx->Builder.CreateGEP(
+            llvm_base_ty, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
+            "case.pattern.elem_ptr" + uid);
+        }
+
+        // Tuples use the normal struct GEP function, which
+        // gets the target field by internal pointer math. No
+        // mapping because tuples' field order matches the
+        // type arguments' order.
+        else {
+          field_ptr = ctx->Builder.CreateStructGEP(
+            llvm_base_ty, base_ptr, index,
+            "case.pattern.elem_ptr" + uid);
+        }
+      }
+
+      // The layout re-orders fields to minimize padding, so a
+      // named attribute's declaration index has to be resolved
+      // through the type's own field index map.
+      else {
+        const auto decl_index = GetFieldIndexInType(*bare_type, field_name, sm);
+        const auto field_index = codegen::GetPhysicalFieldIndex(*base_type_sym->LlvmInfo, decl_index);
+        field_ptr = ctx->Builder.CreateStructGEP(
+          llvm_base_ty, base_ptr, field_index, "case.pattern.field_ptr" + uid);
+      }
+
+      return field_ptr;
+    }
+
     /**
      * Compare two escaping-borrow container lists by the memory regions they name, rather than by ast identity. Each
      * branch of a "case" builds its own ast nodes, so the same borrow written in two branches is two pointers but one
@@ -130,7 +213,8 @@ namespace spp::analyse::utils::case_utils {
         if (part->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
           // Generate the extraction on the condition for this part, like "cond.0".
           auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
-          auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+          auto field = MakeUnique<
+            asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
           auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
 
           // Turn the "literal part" into a function argument.
@@ -205,7 +289,8 @@ namespace spp::analyse::utils::case_utils {
           part->To<asts::CasePatternVariantDestructureObjectAst>() != nullptr) {
           // Generate the extraction on the condition for this part, like "cond.0".
           auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
-          auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+          auto field = MakeUnique<
+            asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
           auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
 
           // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
@@ -235,17 +320,55 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
     return x->Stage11_CodeGen(sm, meta, ctx);
   };
 
-  // Narrow the subject's llvm value onto each element alongside its ast. The element access is built fresh here, so
-  // it has to be analysed before it can be generated - the literal branches above do the same, saving and restoring
-  // the scope around it because analysis walks into the condition's own scope.
+  // Narrow the subject's llvm value onto each element alongside
+  // its ast. The element access is built fresh here, so it has
+  // to be analysed before it can be generated - the literal
+  // branches above do the same, saving and restoring the scope
+  // around it because analysis walks into the condition's own scope.
   Function<void(asts::ExpressionAst *)> on_nested_subject = [&](asts::ExpressionAst *subject) {
+    // Analyse the subject, and then walk back the scope iterator,
+    // asthe value itself might have introduced new scopes.
     const auto current_scope = sm->CurrentScope;
     const auto current_scope_iter = sm->CurrentIterator();
     subject->Stage7_AnalyseSemantics(sm, meta);
     sm->Reset(current_scope, current_scope_iter);
-    meta->LlvmCaseCondition = subject->Stage11_CodeGen(sm, meta, ctx);
+
+    // If the subject is a postfix expression, extract the runtime
+    // member access as the operator (otherwise nullptr).
+    const auto access = subject->To<asts::PostfixExpressionAst>();
+    const auto field = access != nullptr
+      ? access->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
+      : nullptr;
+
+    // Anything that is not the plain field access requires code
+    // generation. No more work needs to be done after that.
+    if (field == nullptr or meta->LlvmCaseCondition == nullptr) {
+      meta->LlvmCaseCondition = subject->Stage11_CodeGen(sm, meta, ctx);
+      return;
+    }
+
+    // For nested variant destructures, we need to narrow the
+    // value into the target type field, providing access onto
+    // the narrowed-type value.
+    const auto base_type = access->Lhs->InferType(sm, meta);
+    const auto field_ptr = NarrowOntoField(
+      *base_type, *field->Name, meta->LlvmCaseCondition, *sm, ctx);
+    if (field_ptr == nullptr) {
+      meta->LlvmCaseCondition = subject->Stage11_CodeGen(sm, meta, ctx);
+      return;
+    }
+
+    // A field carrying no value is not laid out, so there is
+    // nothing to read and "load void" is not valid ir.
+    const auto field_type = subject->InferType(sm, meta);
+    const auto field_llvm_ty = sm->CurrentScope->GetTypeSymbol(field_type.get())->LlvmInfo->LlvmType;
+    meta->LlvmCaseCondition = codegen::IsValuelessType(field_llvm_ty)
+      ? nullptr
+      : ctx->Builder.CreateLoad(field_llvm_ty, field_ptr, "case.pattern.subject.value");
   };
 
+  // Forward the nested analysis lambda into the core checker
+  // to propagate the nested checks properly.
   auto asts = CreateAndAnalysePatternEqFuncsCore(
     elems, sm, meta, std::move(map), std::move(on_nested_subject));
   return asts;
