@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.destructure_utils;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -119,12 +120,14 @@ namespace spp::analyse::utils::destructure_utils {
    * Generate the value bound to a destructure's hidden temporary into a stack slot, once, before the expanded @c let
    * statements index it. This is what stops a destructure evaluating its value once per element.
    * @param[in] tmp_name The name returned by @ref BindDestructureTemporary.
+   * @param[in] llvm_subject The already-generated value, or @c nullptr to generate @c LetStatementValue here.
    * @param[in, out] sm The scope manager to get the temporary's symbol from.
    * @param[in, out] meta Metadata to pass between ASTs, holding the value in @c LetStatementValue.
    * @param[in, out] ctx The LLVM context to generate code into.
    */
   SPP_EXP_FUN auto DestructureTempStage11(
     Shared<asts::IdentifierAst> const &tmp_name,
+    llvm::Value *llvm_subject,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta,
     codegen::LlvmCtx *ctx)

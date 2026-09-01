@@ -156,6 +156,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   Shared<asts::IdentifierAst> const &tmp_name,
+  llvm::Value *const llvm_subject,
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *const meta,
   codegen::LlvmCtx *const ctx)
@@ -183,6 +184,8 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   // Generate the value exactly once, into the temporary. The expanded "let" statements then index the temporary.
   const auto _meta_guard = asts::meta::MetaGuard(meta);
   meta->AssignmentTarget = tmp_name;
-  const auto llvm_val = meta->LetStatementValue->Stage11_CodeGen(&sm, meta, ctx);
+  const auto llvm_val = llvm_subject != nullptr
+    ? llvm_subject
+    : meta->LetStatementValue->Stage11_CodeGen(&sm, meta, ctx);
   ctx->Builder.CreateStore(llvm_val, alloca);
 }
