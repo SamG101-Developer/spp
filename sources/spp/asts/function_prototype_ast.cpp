@@ -12,6 +12,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.builtins;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.instantiation_queue;
 import spp.analyse.utils.linear_utils;
@@ -736,7 +737,30 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
       analyse::utils::linear_utils::CheckScopeExit(
         *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
     }
+
+    _EnsureDropsForBuiltin(*sub.Proto, tm, meta);
   }
+}
+
+auto spp::asts::FunctionPrototypeAst::_EnsureDropsForBuiltin(
+  FunctionPrototypeAst const &sub_proto,
+  ScopeManager &tm,
+  CompilerMetaData *meta)
+  -> void {
+  if (sub_proto.BuiltinAnnotation == nullptr) { return; }
+
+  const auto name_arg = sub_proto.BuiltinAnnotation->FnArgGroup->At("name");
+  if (name_arg == nullptr) { return; }
+  const auto name = name_arg->Val->ToUnchecked<StringLiteralAst>()->CppVal();
+  if (name != "std.mem.ops.drop" and name != "std.mem.ops.drop_in_place") { return; }
+
+  // "T" is what the instantiation bound, and the scope manager
+  // is sitting inside the instantiation's own scope, which is
+  // where that binding lives.
+  const auto t_ast = TypeIdentifierAst::FromString("T");
+  const auto t_sym = tm.CurrentScope->GetTypeSymbol(t_ast.get());
+  if (t_sym == nullptr) { return; }
+  analyse::utils::drop_utils::EnsureDropInstantiated(*t_sym, tm, meta);
 }
 
 auto spp::asts::FunctionPrototypeAst::GetFfiSymbolName() const

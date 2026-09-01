@@ -50,4 +50,18 @@ namespace spp::analyse::utils::drop_utils {
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
     -> bool;
+
+  /**
+   * Mint the instantiations that destroying a value of this type will need, for the whole tree @c codegen::EmitDrop
+   * will walk: the type's own @c drop , or, when it has none, the @c drop of every attribute that has one, and so on
+   * down.
+   * @param type_sym The symbol of the type being destroyed.
+   * @param sm The scope manager, positioned anywhere the type resolves from.
+   * @param meta Associated metadata.
+   */
+  SPP_EXP_FUN auto EnsureDropInstantiated(
+    scopes::TypeSymbol const &type_sym,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void;
 }

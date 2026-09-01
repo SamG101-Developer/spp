@@ -378,6 +378,20 @@ protected:
     ScopeManager *sm)
     -> void;
 
+  /**
+   * Mint the destructors an instantiation of a drop intrinsic will call, if @p sub_proto is one. Nothing else needs
+   * this: an ordinary body names what it calls, and analysing it is what instantiates those, but the drop intrinsics
+   * have no S++ body at all - see @c drop_utils::EnsureDropInstantiated .
+   * @param[in] sub_proto The instantiation just analysed.
+   * @param[in] tm A scope manager positioned inside that instantiation's own scope, where its @c T is bound.
+   * @param[in] meta Associated metadata.
+   */
+  static auto _EnsureDropsForBuiltin(
+    FunctionPrototypeAst const &sub_proto,
+    ScopeManager &tm,
+    CompilerMetaData *meta)
+    -> void;
+
   SPP_ATTR_NODISCARD auto _IsPureGeneric(
     ScopeManager *sm,
     CompilerMetaData *meta,
