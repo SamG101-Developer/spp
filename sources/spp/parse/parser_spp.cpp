@@ -1445,10 +1445,28 @@ auto spp::parse::ParserSpp::parse_object_initializer_argument_shorthand()
 
 auto spp::parse::ParserSpp::parse_closure_expression()
   -> Unique<asts::ClosureExpressionAst> {
+  PARSE_ALTERNATE(
+    p1, asts::ClosureExpressionAst, parse_closure_expression_with_return_type,
+    parse_closure_expression_without_return_type);
+  return FORWARD_AST(p1);
+}
+
+auto spp::parse::ParserSpp::parse_closure_expression_with_return_type()
+  -> Unique<asts::ClosureExpressionAst> {
+  PARSE_OPTIONAL(p1, parse_keyword_cor);
+  PARSE_ONCE(p2, parse_closure_expression_parameter_and_capture_group);
+  PARSE_ONCE(p3, parse_token_arrow_right);
+  PARSE_ONCE(p4, parse_type_expression);
+  PARSE_ONCE(p5, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); });
+  return CREATE_AST(asts::ClosureExpressionAst, p1, p2, p3, p4, p5);
+}
+
+auto spp::parse::ParserSpp::parse_closure_expression_without_return_type()
+  -> Unique<asts::ClosureExpressionAst> {
   PARSE_OPTIONAL(p1, parse_keyword_cor);
   PARSE_ONCE(p2, parse_closure_expression_parameter_and_capture_group);
   PARSE_ONCE(p3, parse_expression);
-  return CREATE_AST(asts::ClosureExpressionAst, p1, p2, p3);
+  return CREATE_AST(asts::ClosureExpressionAst, p1, p2, nullptr, nullptr, p3);
 }
 
 auto spp::parse::ParserSpp::parse_closure_expression_capture_group()

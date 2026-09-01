@@ -370,6 +370,10 @@ public:
   auto parse_object_initializer_argument_shorthand() -> Unique<asts::ObjectInitializerArgumentShorthandAst>;
 
   auto parse_closure_expression() -> Unique<asts::ClosureExpressionAst>;
+
+  auto parse_closure_expression_with_return_type() -> Unique<asts::ClosureExpressionAst>;
+
+  auto parse_closure_expression_without_return_type() -> Unique<asts::ClosureExpressionAst>;
   auto parse_closure_expression_capture_group() -> Unique<asts::ClosureExpressionCaptureGroupAst>;
   auto parse_closure_expression_capture() -> Unique<asts::ClosureExpressionCaptureAst>;
   auto parse_closure_expression_parameter_and_capture_group()

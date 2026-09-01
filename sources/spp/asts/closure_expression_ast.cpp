@@ -34,9 +34,13 @@ SPP_MOD_BEGIN
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(
   decltype(Tok) &&tok,
   decltype(PcGroup) &&pc_group,
+  decltype(TokArrow) &&tok_arrow,
+  decltype(ReturnType) return_type,
   decltype(Body) &&body) :
   Tok(std::move(tok)),
   PcGroup(std::move(pc_group)),
+  TokArrow(std::move(tok_arrow)),
+  ReturnType(std::move(return_type)),
   Body(std::move(body)) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Tok, lex::SppTokenType::KW_FUN, "fun");
   Source._OriginalRetType = nullptr;
@@ -63,6 +67,8 @@ auto spp::asts::ClosureExpressionAst::Clone() const
   auto c = MakeUnique<ClosureExpressionAst>(
     AstClone(Tok),
     AstClone(PcGroup),
+    AstClone(TokArrow),
+    AstCloneShared(ReturnType),
     AstClone(Body));
   c->_RetType = _RetType;
   return c;
@@ -73,6 +79,8 @@ auto spp::asts::ClosureExpressionAst::ToString() const
   SPP_STRING_START;
   SPP_STRING_APPEND(Tok).append(" ");
   SPP_STRING_APPEND(PcGroup).append(" ");
+  SPP_STRING_APPEND(TokArrow).append(TokArrow ? " " : "");
+  SPP_STRING_APPEND(ReturnType).append(ReturnType ? " " : "");
   SPP_STRING_APPEND(Body);
   SPP_STRING_END;
 }
@@ -113,6 +121,15 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     meta->EnclosingFunctionFlavour = Tok.get();
     meta->EnclosingFunctionRetType = {};
     meta->EnclosingFunctionSourceRetType = {};
+
+    // A declared return type is seeded here, so that a "ret"
+    // in the body is checked against it and coerced into it -
+    // the same path a subroutine's body takes.
+    if (ReturnType != nullptr) {
+      ReturnType->Stage7_AnalyseSemantics(sm, meta);
+      meta->EnclosingFunctionRetType.EmplaceBack(ReturnType);
+      meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
+    }
 
     // A "ret" or "?" in the body leaves the closure rather
     // than the function the closure is written in, so a
