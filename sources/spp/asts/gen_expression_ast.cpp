@@ -30,6 +30,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_defer;
 import spp.codegen.llvm_materialize;
 import spp.lex.tokens;
 import spp.utils.ptr;
@@ -219,25 +220,41 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   // suspend the coroutine, then receive the sent value.
 
   // Step 1: Generate the expression into an llvm value, and
-  // store it in the generator state object.
+  // store it in the generator state object. The slot layout is taken from the promise's own allocation rather than
+  // rebuilt here, so the store cannot be wider than the storage the frame reserved for it.
+  const auto llvm_gen_state_ty = meta->LlvmGeneratorState->getAllocatedType();
   const auto llvm_yield_val = Expr->Stage11_CodeGen(sm, meta, ctx);
   const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
-    meta->LlvmGeneratorState, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT, "gen.yield.slot", ctx);
+    meta->LlvmGeneratorState, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT,
+    "gen.yield.slot", ctx);
   ctx->Builder.CreateStore(llvm_yield_val, llvm_yield_slot);
 
   // Step 2: Invoke the coroutine suspension intrinsic, allowing
   // the caller to use the yielded value. Control comes back into the block this leaves the builder in.
+  const auto uid = "." + spp::utils::Uid(this);
+  const auto parked_bb = ctx->Builder.GetInsertBlock();
+  const auto destroy_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "gen.coro.destroy" + uid, parked_bb->getParent());
+
+  ctx->Builder.SetInsertPoint(destroy_bb);
+  codegen::EmitDeferredUnwind(*sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
+  ctx->Builder.CreateBr(meta->LlvmGenerator->CleanupBlock);
+
+  ctx->Builder.SetInsertPoint(parked_bb);
   codegen::EmitLlvmGeneratorSuspend(
-    false, meta->LlvmGenerator->SuspendBlock, meta->LlvmGenerator->CleanupBlock,
+    false, meta->LlvmGenerator->SuspendBlock, destroy_bb,
     "gen.coro.suspend", "gen.resume", ctx);
 
   // Step 3: Read the value from the send slot on the generator
   // state, and as this is an expression, return the value out
   // of this function.
   const auto llvm_send_slot = codegen::GetLlvmGeneratorSlotPtr(
-    meta->LlvmGeneratorState, codegen::LlvmGeneratorStateStructFields::SEND_SLOT, "gen.send.slot", ctx);
+    meta->LlvmGeneratorState, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::SEND_SLOT,
+    "gen.send.slot", ctx);
   const auto llvm_recv_val = ctx->Builder.CreateLoad(
-    codegen::GetLlvmGeneratorStateSendSlotType(ctx), llvm_send_slot, "gen.send.value");
+    llvm::cast<llvm::StructType>(llvm_gen_state_ty)->getElementType(
+      static_cast<unsigned>(std::to_underlying(codegen::LlvmGeneratorStateStructFields::SEND_SLOT))),
+    llvm_send_slot, "gen.send.value");
   return llvm_recv_val;
 }
 

@@ -14,17 +14,34 @@ namespace spp::codegen {
     SEND_SLOT = 1,
   };
 
+  /**
+   * The struct a generator yields and receives through - the coroutine's llvm "promise" - which is one field per
+   * direction, in the types that direction actually carries.
+   *
+   * @n
+   * The slots are the real types rather than a fixed cell, because the promise is what the frame reserves room for:
+   * @c llvm.coro.id is given this alloca, and the frame is built to hold exactly it. A cell narrower than the yield
+   * type is not a truncation, it is a buffer overrun - the @c gen store writes the full value from the promise's
+   * address onwards, over whatever the frame put after it. A yield of more than 16 bytes overran the frame's own
+   * locals and its resume index this way, which is why move-iterating a container of anything wider than two words
+   * used to corrupt.
+   *
+   * @n
+   * Both ends have to build this from the same pair of types, because the send slot's offset depends on the yield
+   * slot's size: the coroutine reaches its slots through the alloca, and a caller reaches the same struct through
+   * @c llvm.coro.promise .
+   * @param[in] yield_type The generator's @c Yield type, as lowered. S++ @c Void lowers to llvm @c void , which has
+   * no storage and which llvm rejects as a field type, so a direction that carries nothing gets a word of padding
+   * instead; nothing reads such a slot, so only the two ends agreeing on it matters.
+   * @param[in] send_type The generator's @c Send type, as lowered, under the same rule.
+   * @param[in] ctx The LLVM context containing all codegen info.
+   * @return The state struct type.
+   */
   SPP_EXP_FUN auto CreateLlvmGeneratorStateType(
+    llvm::Type *yield_type,
+    llvm::Type *send_type,
     LlvmCtx const *ctx)
-    -> llvm::Type*;
-
-  SPP_EXP_FUN auto GetLlvmGeneratorStateYieldSlotType(
-    LlvmCtx const *ctx)
-    -> llvm::Type*;
-
-  SPP_EXP_FUN auto GetLlvmGeneratorStateSendSlotType(
-    LlvmCtx const *ctx)
-    -> llvm::Type*;
+    -> llvm::StructType*;
 
   /**
    * The alignment a coroutine frame and its promise are built to. One constant rather than one per call site, because
@@ -45,6 +62,9 @@ namespace spp::codegen {
    * @code getelementptr i64, ptr %state, i64 0, i64 N @endcode , which asks to index into an @c i64 - not an
    * aggregate, so not a valid GEP.
    * @param[in] state The generator state object.
+   * @param[in] state_type The state's struct type, from @c CreateLlvmGeneratorStateType . Passed rather than rebuilt
+   * because it decides the slot's offset, and a caller reaching the promise through a pointer has no way to recover
+   * it from the value.
    * @param[in] field Which slot to reach.
    * @param[in] name Name for the resulting address.
    * @param[in] ctx The LLVM context containing all codegen info.
@@ -52,6 +72,7 @@ namespace spp::codegen {
    */
   SPP_EXP_FUN auto GetLlvmGeneratorSlotPtr(
     llvm::Value *state,
+    llvm::Type *state_type,
     LlvmGeneratorStateStructFields field,
     char const *name,
     LlvmCtx *ctx)
