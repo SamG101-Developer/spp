@@ -357,10 +357,16 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     // the block is dropped rather than left orphaned. A final
     // suspend sitting in unreachable code would still be collected
     // as this coroutine's, which is not something to hand the
-    // coroutine passes. Resuming a coroutine that has already
-    // finished is undefined behaviour rather than something to
-    // lower, so the block the suspend leaves the builder in -
-    // the one a resume would return to - is unreachable.
+    // coroutine passes. The block the suspend leaves the builder
+    // in - the one a resume would return to - is unreachable
+    // because nothing ever resumes a finished generator: "res"
+    // tests "llvm.coro.done" and takes its exhausted edge before
+    // it reaches the "llvm.coro.resume" on the other one. That is
+    // why an exhausted generator keeps answering "None" instead
+    // of faulting, which is what a loop over a generator reads to
+    // know it has ended. The frame stays allocated at this
+    // suspend so that question stays answerable, and goes when
+    // the generator itself is dropped.
     if (final_bb->hasNPredecessorsOrMore(1)) {
       final_bb->insertInto(llvm_func_target);
       ctx->Builder.SetInsertPoint(final_bb);
