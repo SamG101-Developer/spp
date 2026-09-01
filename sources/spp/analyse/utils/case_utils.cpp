@@ -79,7 +79,8 @@ namespace spp::analyse::utils::case_utils {
       Vec<asts::CasePatternVariantAst*> const &elems,
       scopes::ScopeManager *sm,
       asts::meta::CompilerMetaData *meta,
-      Function<T(asts::Ast *)> &&mapper)
+      Function<T(asts::Ast *)> &&mapper,
+      Function<void(asts::ExpressionAst *)> &&on_nested_subject = {})
       -> Vec<T> {
       auto transformed = Vec<T>();
       transformed.reserve(elems.Len());
@@ -210,6 +211,7 @@ namespace spp::analyse::utils::case_utils {
           // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
           const auto _meta_guard = asts::meta::MetaGuard(meta);
           meta->CaseCondition = pf_expr.get();
+          if (on_nested_subject) { on_nested_subject(pf_expr.get()); }
 
           // Combine the result.
           auto transform = mapper(part);
@@ -233,7 +235,19 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
     return x->Stage11_CodeGen(sm, meta, ctx);
   };
 
-  auto asts = CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(map));
+  // Narrow the subject's llvm value onto each element alongside its ast. The element access is built fresh here, so
+  // it has to be analysed before it can be generated - the literal branches above do the same, saving and restoring
+  // the scope around it because analysis walks into the condition's own scope.
+  Function<void(asts::ExpressionAst *)> on_nested_subject = [&](asts::ExpressionAst *subject) {
+    const auto current_scope = sm->CurrentScope;
+    const auto current_scope_iter = sm->CurrentIterator();
+    subject->Stage7_AnalyseSemantics(sm, meta);
+    sm->Reset(current_scope, current_scope_iter);
+    meta->LlvmCaseCondition = subject->Stage11_CodeGen(sm, meta, ctx);
+  };
+
+  auto asts = CreateAndAnalysePatternEqFuncsCore(
+    elems, sm, meta, std::move(map), std::move(on_nested_subject));
   return asts;
 }
 
