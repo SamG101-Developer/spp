@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/IR/IRBuilder.h>
@@ -8,6 +10,7 @@
 #include <llvm/Linker/Linker.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Passes/PassBuilder.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
@@ -30,6 +33,9 @@ namespace {
 
   /** Intrinsics that only hint at what the optimizer may do; see @c RepairMisnamedIntrinsics . */
   constexpr auto kHintIntrinsicPrefix = llvm::StringLiteral("llvm.lifetime.");
+
+  /** The width of the field an intrinsic name is read back out of, junk and all; see @c RepairMisnamedIntrinsics . */
+  constexpr auto kNameFieldWidth = 31U;
 
   /**
    * Erase @p fn and every call to it. Only done when every use is a plain call: anything else means this is not the
@@ -148,6 +154,11 @@ namespace {
     static auto *machine = []() -> llvm::TargetMachine* {
       llvm::InitializeNativeTarget();
       llvm::InitializeNativeTargetAsmPrinter();
+
+      auto &registered = llvm::cl::getRegisteredOptions();
+      if (const auto it = registered.find("disable-cgp"); it != registered.end()) {
+        if (auto *const flag = static_cast<llvm::cl::opt<bool>*>(it->second)) { flag->setValue(true); }
+      }
 
       auto error = std::string();
       const auto &triple = HostTriple();
@@ -361,7 +372,8 @@ auto spp::codegen::RepairMisnamedIntrinsics(
   auto broken = llvm::SmallVector<llvm::Function*>();
   for (auto &fn : llvm_mod) {
     if (not fn.isDeclaration() or not fn.getName().starts_with("llvm.")) { continue; }
-    if (fn.getIntrinsicID() == llvm::Intrinsic::not_intrinsic) { broken.push_back(&fn); }
+    const auto id = fn.getIntrinsicID();
+    if (id == llvm::Intrinsic::not_intrinsic or llvm::Intrinsic::isOverloaded(id)) { broken.push_back(&fn); }
   }
 
   auto repaired = 0UL;
@@ -373,24 +385,60 @@ auto spp::codegen::RepairMisnamedIntrinsics(
     // part of the name, which a scan for the first unprintable byte would do.
     const auto name = fn->getName();
     auto real_name = llvm::StringRef();
-    for (auto len = name.size(); len > kIntrinsicPrefix.size(); --len) {
+    auto rebuilt = std::string();
+
+    // Bug (?) where all names are a fixed length, presenting
+    // as corrupt strings because the genuine name doesn't
+    // necessarily reach the 31-byte limit. Patch this by byte-
+    // stripping.
+    auto base = llvm::StringRef();
+    if (const auto nul = name.find('\0'); nul != llvm::StringRef::npos and nul < kNameFieldWidth) {
+      base = llvm::StringRef(name.data(), nul);
+      if (llvm::Intrinsic::lookupIntrinsicID(base) == llvm::Intrinsic::not_intrinsic) { base = llvm::StringRef(); }
+    }
+
+    for (auto len = name.size(); base.empty() and len > kIntrinsicPrefix.size(); --len) {
       const auto candidate = name.substr(0, len);
       if (llvm::Intrinsic::lookupIntrinsicID(candidate) == llvm::Intrinsic::not_intrinsic) { continue; }
-      real_name = candidate;
+      base = candidate;
       break;
     }
-    if (real_name.empty()) { continue; }
+    if (base.empty()) { continue; }
 
-    // Hints are dropped rather than renamed. A lifetime marker says nothing
-    // about what the program computes - only which stack slots are dead
-    // where - and one that has been invisible to the passes has not been
-    // kept up to date by them, so naming it back into existence tells the
-    // backend to colour a slot that is still live. Losing the hint costs
-    // slot sharing; honouring a stale one costs the program.
-    if (real_name.starts_with(kHintIntrinsicPrefix)) {
+    // Hints are dropped because of corruption. Todo: Can we now
+    // re-enable them now we have the byte-stripping in place for
+    // corrupt names?
+    if (base.starts_with(kHintIntrinsicPrefix)) {
       if (DropCallsTo(fn)) { repaired += 1; }
       continue;
     }
+
+    rebuilt.assign(base.data(), base.size());
+    const auto id = llvm::Intrinsic::lookupIntrinsicID(base);
+
+    if (llvm::Intrinsic::isOverloaded(id)) {
+      auto tys = llvm::SmallVector<llvm::Type*>();
+      if (not llvm::Intrinsic::isSignatureValid(id, fn->getFunctionType(), tys)) { continue; }
+
+      const auto mangled = llvm::Intrinsic::getName(id, tys, &llvm_mod, fn->getFunctionType());
+      const auto *const raw = mangled.c_str();
+      if (std::strlen(raw) >= kNameFieldWidth) { continue; }
+
+      const auto *const suffix = raw + kNameFieldWidth;
+      const auto suffix_len = std::strlen(suffix);
+      if (suffix_len == 0) { continue; }
+
+      // A name that already ends in the suffix is a name that
+      // was already right - either it was never damaged, or an
+      // earlier round repaired it.
+      const auto tail = base.size() >= suffix_len
+        ? llvm::StringRef(base.data() + base.size() - suffix_len, suffix_len)
+        : llvm::StringRef();
+      if (tail == llvm::StringRef(suffix, suffix_len)) { continue; }
+      rebuilt.append(suffix, suffix_len);
+    }
+
+    real_name = llvm::StringRef(rebuilt.c_str(), std::strlen(rebuilt.c_str()));
 
     // A declaration under the real name may already be here, from a call
     // site whose name survived. Reusing it is the point - two declarations
@@ -398,6 +446,7 @@ auto spp::codegen::RepairMisnamedIntrinsics(
     // again. Only ever reused when the types agree; a mismatch is not the
     // shape being worked around, so it is left to fail visibly.
     auto *fixed = llvm_mod.getFunction(real_name);
+    if (fixed == fn) { continue; }
     if (fixed != nullptr and fixed->getFunctionType() != fn->getFunctionType()) { continue; }
     if (fixed == nullptr) {
       fixed = llvm::Function::Create(
