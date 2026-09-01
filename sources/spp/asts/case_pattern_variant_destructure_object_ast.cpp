@@ -369,7 +369,11 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
 
   // Run the codegen on the transformed "let" ast to introduce symbols into the llvm function.
   if (_MappedLet != nullptr) {
-    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
+      _MappedLet->Stage11_CodeGen(sm, meta, ctx);
+    }
   }
 
   // Combine all the generated transforms into a single "AND"ed
