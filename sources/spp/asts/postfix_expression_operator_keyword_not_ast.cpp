@@ -63,11 +63,10 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppExpressionNotBooleanError;
   using analyse::utils::type_predicates::IsTypeBool;
 
-  // Check the left-hand-side is a boolean expression.
-  // Todo: Test with convention.
+  // Check the left-hand-side is an owned boolean expression.
   const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
   RaiseIf<SppExpressionNotBooleanError>(
-    not IsTypeBool(*lhs_type->WithoutConvention(), *sm->CurrentScope),
+    lhs_type->GetConvention() != nullptr or not IsTypeBool(*lhs_type, *sm->CurrentScope),
     {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, "not expression"));
 }
 
@@ -89,15 +88,15 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // Generate the left-hand-side expression, which analysis has guaranteed is a boolean, owned or borrowed.
+  // Generate the left-hand-side expression, which analysis has
+  // guaranteed is a boolean, owned or borrowed.
   const auto uid = "." + spp::utils::Uid(this);
-  auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+  const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(lhs_val != nullptr);
 
-  // A borrowed boolean is a pointer, so read the "i1" out of it first.
-  if (lhs_val->getType()->isPointerTy()) {
-    lhs_val = ctx->Builder.CreateLoad(llvm::Type::getInt1Ty(*ctx->Context), lhs_val, "not.load" + uid);
-  }
+  // Analysis has required an owned boolean, so this generates
+  // as an "i1" and there is nothing to read out of a pointer:
+  // a borrowed one is inverted as "x@.not".
   SPP_ASSERT(lhs_val->getType()->isIntegerTy(1));
 
   // Use a "not" instruction to invert the expression on the lhs.
