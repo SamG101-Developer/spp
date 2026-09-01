@@ -208,7 +208,13 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
    * one - a "gen" in a case branch, a loop body, and so on.
    */
   Shared<codegen::LlvmGenerator> LlvmGenerator;
-  llvm::Value *LlvmGeneratorState;
+
+  /**
+   * The coroutine's promise, held as the alloca it is rather than as a bare value, so that a "gen" reaching a slot
+   * through it takes the struct type from the allocation itself. The two cannot then disagree about where the send
+   * slot begins, which they would if each rebuilt the type from the coroutine's signature separately.
+   */
+  llvm::AllocaInst *LlvmGeneratorState;
 };
 
 /**
