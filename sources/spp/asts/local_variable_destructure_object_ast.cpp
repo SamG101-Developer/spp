@@ -280,8 +280,13 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
   // Generate the value into the hidden temporary once, before
   // anything indexes it.
   using analyse::utils::destructure_utils::DestructureTempStage11;
+
+  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto llvm_subject = meta->LetStatementPrecomputedValue;
+  meta->LetStatementPrecomputedValue = nullptr;
+
   if (_TmpName != nullptr) {
-    DestructureTempStage11(_TmpName, *sm, meta, ctx);
+    DestructureTempStage11(_TmpName, llvm_subject, *sm, meta, ctx);
   }
 
   // If flow typing introduced a temp variable, generate it. _FlowSym
