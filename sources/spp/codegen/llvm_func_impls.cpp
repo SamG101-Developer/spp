@@ -32,6 +32,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
 import spp.codegen.llvm_type;
 import spp.utils.ptr;
+import spp.utils.types;
 import spp.utils.uid;
 import llvm;
 import std;
@@ -60,7 +61,7 @@ namespace {
   auto EmitRuntimeAbort(
     spp::codegen::LlvmCtx *const ctx,
     spp::Str const &fmt,
-    std::vector<llvm::Value*> const &args = {})
+    spp::Vec<llvm::Value*> const &args = {})
     -> void {
     auto *const mod = ctx->Builder.GetInsertBlock()->getParent()->getParent();
     const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
@@ -69,9 +70,9 @@ namespace {
     const auto dprintf_fn = mod->getOrInsertFunction(
       "dprintf", llvm::FunctionType::get(i32_ty, {i32_ty, ptr_ty}, true));
 
-    auto call_args = std::vector<llvm::Value*>{
+    auto call_args = std::vector<llvm::Value*>{ // Todo: Vec
       llvm::ConstantInt::get(i32_ty, 2),
-      ctx->Builder.CreateGlobalString(std::string(fmt) + "\n")};
+      ctx->Builder.CreateGlobalString(spp::Str(fmt) + "\n")};
     call_args.insert(call_args.end(), args.begin(), args.end());
     ctx->Builder.CreateCall(dprintf_fn, call_args);
 
