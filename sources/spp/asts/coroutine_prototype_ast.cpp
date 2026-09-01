@@ -315,12 +315,14 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // to emit them.
   const auto cleanup_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.cleanup" + uid);
   const auto suspend_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.suspend" + uid);
+  const auto final_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.final" + uid);
 
   {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->LlvmGenerator = MakeShared<codegen::LlvmGenerator>(coro_handle);
     meta->LlvmGenerator->CleanupBlock = cleanup_bb;
     meta->LlvmGenerator->SuspendBlock = suspend_bb;
+    meta->LlvmGenerator->FinalBlock = final_bb;
     meta->LlvmGeneratorState = llvm_gen_state;
     meta->EnclosingFunctionFlavour = TokFun.get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
@@ -337,17 +339,37 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
       Impl->Stage11_CodeGen(sm, meta, ctx);
     }
 
-    // Running off the end of the body is the coroutine completing, and completing is a suspend like any other - marked
-    // final. It has to be a suspend rather than a fall-through into cleanup, because "llvm.coro.done" is what tells a
-    // consumer there is nothing left to resume, and it only ever reads true of a coroutine parked on a final suspend.
-    // Freeing the frame here instead would leave the consumer asking a destroyed frame whether it was finished.
-    //
-    // Resuming a coroutine that has already finished is undefined behaviour rather than something to lower, so the
-    // block the suspend leaves the builder in - the one a resume would return to - is unreachable.
+    // Running off the end of the body is the coroutine completing,
+    // and completing is a suspend like any other - marked final.
+    // It has to be a suspend rather than a fall-through into cleanup,
+    // because "llvm.coro.done" is what tells a consumer there is
+    // nothing left to resume, and it only ever reads true of a
+    // coroutine parked on a final suspend. Freeing the frame here
+    // instead would leave the consumer asking a destroyed frame
+    // whether it was finished. "ret" must set the current block as
+    // as the final block.
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+      ctx->Builder.CreateBr(final_bb);
+    }
+
+    // A body with no way out - "loop true" over an unending "gen" -
+    // never completes, so there is nothing to mark finished and
+    // the block is dropped rather than left orphaned. A final
+    // suspend sitting in unreachable code would still be collected
+    // as this coroutine's, which is not something to hand the
+    // coroutine passes. Resuming a coroutine that has already
+    // finished is undefined behaviour rather than something to
+    // lower, so the block the suspend leaves the builder in -
+    // the one a resume would return to - is unreachable.
+    if (final_bb->hasNPredecessorsOrMore(1)) {
+      final_bb->insertInto(llvm_func_target);
+      ctx->Builder.SetInsertPoint(final_bb);
       codegen::EmitLlvmGeneratorSuspend(
         true, suspend_bb, cleanup_bb, "coro.final.suspend" + uid, "coro.final.resume" + uid, ctx);
       ctx->Builder.CreateUnreachable();
+    }
+    else {
+      delete final_bb;
     }
 
     // Cleanup: the destroy edge of every suspend switch, and where the frame is released. "llvm.coro.free" hands back

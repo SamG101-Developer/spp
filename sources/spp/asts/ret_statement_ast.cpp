@@ -185,11 +185,15 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Inside a coroutine, "ret" ends the generator rather than
-  // returning anything: control goes to the final suspend
-  // block, which runs "llvm.coro.end" and hands the frame
-  // handle back to whoever resumed it.
-  if (meta->LlvmGenerator != nullptr and meta->LlvmGenerator->SuspendBlock != nullptr) {
-    ctx->Builder.CreateBr(meta->LlvmGenerator->SuspendBlock);
+  // returning anything (stage 7 rejects one carrying a value),
+  // so it leaves the body the same way running off the end
+  // does: every scope between here and the coroutine's own
+  // runs what it deferred, and then control joins the one
+  // final suspend.
+  if (meta->LlvmGenerator != nullptr and meta->LlvmGenerator->FinalBlock != nullptr) {
+    codegen::EmitDeferredUnwind(
+      *sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
+    ctx->Builder.CreateBr(meta->LlvmGenerator->FinalBlock);
     return nullptr;
   }
 
