@@ -1231,3 +1231,28 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   }
   return {std::move(pass_overloads[0]), candidates.IsClosure};
 }
+
+auto spp::analyse::utils::overload_utils::InstantiateOverload(
+  asts::FunctionPrototypeAst *fn_proto,
+  scopes::Scope const *fn_scope,
+  asts::GenericArgumentGroupAst &generic_args,
+  scopes::ScopeManager *sm,
+  asts::meta::CompilerMetaData *meta)
+  -> asts::FunctionPrototypeAst* {
+  // The arguments arrive already named - they are read off a "sup" block that has bound them - so there is nothing
+  // here for inference to do, and the substitution itself is the whole of what a call site would reach.
+  return std::get<0>(PotentiallyGenerateGenericSubstitutedPrototype(
+    fn_proto, fn_scope, generic_args, nullptr, sm, meta));
+}
+
+auto spp::analyse::utils::overload_utils::FindInstantiatedOverload(
+  asts::FunctionPrototypeAst *fn_proto,
+  asts::GenericArgumentGroupAst &generic_args,
+  scopes::ScopeManager const *sm)
+  -> asts::FunctionPrototypeAst* {
+  // Nothing to substitute means the template is the only prototype there is, exactly as
+  // "PotentiallyGenerateGenericSubstitutedPrototype" decides it.
+  NormaliseGenericArgs(generic_args, sm);
+  if (generic_args.Args.IsEmpty()) { return fn_proto; }
+  return fn_proto->FindGenericSubstitution(generic_args).second;
+}
