@@ -352,3 +352,44 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret true
     }
 )");
+
+// Branch-type consistency used to be checked only from "CaseExpressionAst::InferType", which nothing asks of a case in
+// statement position, so its branches were never compared against each other. The linear type rules did not close the
+// gap on their own: an orphaned non-"Copy" value is caught by them, but a "Copy" one is discarded in silence, which is
+// what both of these do. The check now runs in "Stage7_AnalyseSemantics", where it applies whatever the case is used
+// as.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_branch_type_mismatch_in_statement_position,
+  SppTypeMismatchError, R"(
+    fun f() -> Void {
+        case 1 of {
+            == 1 { 1 }
+            else { "not a number" }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_branch_type_mismatch_in_statement_position_all_copy,
+  SppTypeMismatchError, R"(
+    fun f() -> Void {
+        case 1 of {
+            == 1 { 1 }
+            else { true }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_branch_non_void_in_statement_position,
+  SppTypeMismatchError, R"(
+    fun f() -> Void {
+        case 1 of {
+            == 1 { 1 }
+            else { 2 }
+        }
+    }
+)");
