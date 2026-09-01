@@ -161,6 +161,21 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     ? rebuilt_generator
     : llvm_generator_it->second;
 
+  // The yielded value is read with the yield type's own layout, because that is what the "gen" expression stored
+  // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
+  // and storing those into a narrower binding writes past it.
+  const auto uid = spp::utils::Uid(this);
+  const auto lhs_gen_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+  auto [generator_type, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
+    *lhs_gen_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
+  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*yield_type, *sm->CurrentScope, ctx);
+
+  const auto send_type = is_once
+    ? generate::common_types_precompiled::VOID
+    : generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
+  const auto llvm_send_ty = codegen::GetLlvmTypeOf(*send_type, *sm->CurrentScope, ctx);
+  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(llvm_yield_ty, llvm_send_ty, ctx);
+
   // Step 1: Place the value of the argument (if it exists),
   // into the "send" slot on the generator state struct. A bare
   // "res()" sends nothing, so there is simply no store to make:
@@ -174,23 +189,16 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
 
   if (send_arg != args_group->Args.end()) {
     const auto llvm_send_slot = codegen::GetLlvmGeneratorSlotPtr(
-      llvm_generator_env->State, codegen::LlvmGeneratorStateStructFields::SEND_SLOT, "gen.send.slot", ctx);
+      llvm_generator_env->State, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::SEND_SLOT,
+      "gen.send.slot", ctx);
     const auto llvm_send_value = (*send_arg)->Stage11_CodeGen(sm, meta, ctx);
     ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
   }
 
-  // The yielded value is read with the yield type's own layout, because that is what the "gen" expression stored
-  // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
-  // and storing those into a narrower binding writes past it.
-  const auto uid = spp::utils::Uid(this);
-  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-  auto [_, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
-    *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
-  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*yield_type, *sm->CurrentScope, ctx);
-
   const auto read_yielded_val = [&] {
     const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
-      llvm_generator_env->State, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT, "gen.yield.slot", ctx);
+      llvm_generator_env->State, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT,
+      "gen.yield.slot", ctx);
     return ctx->Builder.CreateLoad(llvm_yield_ty, llvm_yield_slot, "gen.yield.value");
   };
 
