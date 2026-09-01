@@ -2462,7 +2462,7 @@ auto spp::codegen::func_impls::std_raw_buf_take_at(
   const auto opt_ty_spp = proto->ReturnType->WithoutConvention();
   const auto opt_llvm_ty = GetLlvmTypeOf(*opt_ty_spp, *sm->CurrentScope, ctx);
   const auto some_ty_spp = asts::generate::common_types::SomeType(
-    proto->PosStart(), const_shared_cast<asts::TypeAst>(elem_ty_spp));
+    proto->PosStart(), mut_shared_cast(elem_ty_spp));
   const auto none_ty_spp = asts::generate::common_types::None(proto->PosStart());
   const auto some_tag = GetVariantIndexOfMember(*opt_ty_spp, *some_ty_spp, *sm->CurrentScope);
   const auto none_tag = GetVariantIndexOfMember(*opt_ty_spp, *none_ty_spp, *sm->CurrentScope);
