@@ -34,7 +34,7 @@ import genex;
 
 namespace spp::analyse::utils::bin_utils {
   namespace {
-    auto CombineCompOps(
+    auto CombineCompOpsImpl(
       asts::BinaryExpressionAst &bin_expr,
       scopes::ScopeManager *sm,
       asts::meta::CompilerMetaData *meta)
@@ -83,9 +83,17 @@ namespace spp::analyse::utils::bin_utils {
       bin_expr.TokOp = MakeUnique<asts::TokenAst>(
         op_pos, lex::SppTokenType::KW_AND, "and");
 
-      return CombineCompOps(bin_expr, sm, meta);
+      return CombineCompOpsImpl(bin_expr, sm, meta);
     }
   }
+}
+
+auto spp::analyse::utils::bin_utils::CombineComparisonChain(
+  asts::BinaryExpressionAst &bin_expr,
+  scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta)
+  -> Unique<asts::BinaryExpressionAst> {
+  return CombineCompOpsImpl(bin_expr, sm, meta);
 }
 
 auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
@@ -95,7 +103,7 @@ auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
   -> Unique<asts::PostfixExpressionAst> {
   // Before converting into a function check if we can chain
   // comparison operators.
-  const auto new_bin_expr = CombineCompOps(bin_expr, sm, meta);
+  const auto new_bin_expr = CombineCompOpsImpl(bin_expr, sm, meta);
 
   // Get the method names based on the operator token. For
   // example, `1 + 2` is the same as `1.add(2)` (which after

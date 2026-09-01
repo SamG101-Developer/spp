@@ -599,8 +599,8 @@ spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError
   AddHeaders(36, "Expression Not Boolean Error");
   AddErr(&expr, "Type inferred as " + INLINE_INFO(expr_type.ToString()));
   AddFooter(
-    "This expression be boolean to be used in a " + INLINE_NOTE(Str(what)) + " context.",
-    "Change this expression to a boolean type expression.");
+    "This expression must be an owned boolean to be used in a " + INLINE_NOTE(Str(what)) + " context.",
+    "Change this expression to a boolean type expression, or take one out of a borrow with " + INLINE_HELP("@") + ".");
 }
 
 spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(

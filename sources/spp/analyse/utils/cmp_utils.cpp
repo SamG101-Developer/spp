@@ -162,22 +162,6 @@ auto spp::analyse::utils::cmp_utils::GetCompTimeAttrValue(
   return nullptr;
 }
 
-auto spp::analyse::utils::cmp_utils::std_boolean_and(
-  asts::BooleanLiteralAst const &lhs,
-  asts::BooleanLiteralAst const &rhs)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform bitwise AND operation on two boolean literals.
-  return asts::BooleanLiteralAst::FromCppVal(lhs.CppVal() and rhs.CppVal());
-}
-
-auto spp::analyse::utils::cmp_utils::std_boolean_ior(
-  asts::BooleanLiteralAst const &lhs,
-  asts::BooleanLiteralAst const &rhs)
-  -> Unique<asts::BooleanLiteralAst> {
-  // Perform bitwise OR operation on two boolean literals.
-  return asts::BooleanLiteralAst::FromCppVal(lhs.CppVal() or rhs.CppVal());
-}
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_add(
   asts::IntegerLiteralAst const &lhs,
   asts::IntegerLiteralAst const &rhs)

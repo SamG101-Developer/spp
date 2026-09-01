@@ -240,8 +240,6 @@ auto spp::codegen::func_impls::apply_bin_op(
     case BinOp::NUWSub: return ctx->Builder.CreateNUWSub(a, b, name);
     case BinOp::NSWMul: return ctx->Builder.CreateNSWMul(a, b, name);
     case BinOp::NUWMul: return ctx->Builder.CreateNUWMul(a, b, name);
-    case BinOp::LogicalAnd: return ctx->Builder.CreateLogicalAnd(a, b, name);
-    case BinOp::LogicalOr: return ctx->Builder.CreateLogicalOr(a, b, name);
     default: throw std::runtime_error(std::format("Unsupported BinOp type: {}", name));
   }
   SPP_ASSERT(false);
@@ -1080,18 +1078,6 @@ auto spp::codegen::func_impls::simple_coro_view_index(
 // =========================================================================================================
 // Layer 3: BinOp (simple_intrinsic_binop)
 // =========================================================================================================
-
-auto spp::codegen::func_impls::std_boolean_and(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
-  -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, llvm::Type::getInt1Ty(*ctx->Context), BinOp::LogicalAnd);
-}
-
-auto spp::codegen::func_impls::std_boolean_ior(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *)
-  -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, llvm::Type::getInt1Ty(*ctx->Context), BinOp::LogicalOr);
-}
 
 auto spp::codegen::func_impls::std_intrinsics_add(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)

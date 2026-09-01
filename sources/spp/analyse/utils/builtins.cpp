@@ -32,9 +32,6 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC("std.vector.Vec.fwd_ref", std_vector_fwd_ref);
   SPP_DEFINE_BUILTIN_FUNC("std.vector.Vec.fwd_mut", std_vector_fwd_mut);
 
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.boolean.Bool.and", std_boolean_and);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.boolean.Bool.ior", std_boolean_ior);
-
   SPP_DEFINE_BUILTIN_FUNC("std.generator.Gen.send", std_generator_send);
   SPP_DEFINE_BUILTIN_FUNC("std.generator.Gen.drop", std_generator_drop);
   SPP_DEFINE_BUILTIN_FUNC("std.generator.GenOnce.drop", std_generator_drop);

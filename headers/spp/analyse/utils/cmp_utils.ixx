@@ -186,16 +186,6 @@ namespace spp::analyse::utils::cmp_utils {
     return MakeUnique<CmpFnImpl<true, true, Ret, Args...>>(fn);
   }
 
-  SPP_EXP_FUN auto std_boolean_and(
-    asts::BooleanLiteralAst const &lhs,
-    asts::BooleanLiteralAst const &rhs)
-    -> Unique<asts::BooleanLiteralAst>;
-
-  SPP_EXP_FUN auto std_boolean_ior(
-    asts::BooleanLiteralAst const &lhs,
-    asts::BooleanLiteralAst const &rhs)
-    -> Unique<asts::BooleanLiteralAst>;
-
   SPP_EXP_FUN auto std_intrinsics_add(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)

@@ -75,7 +75,6 @@ export namespace spp::codegen::func_impls {
     FCmpOEQ, FCmpONE, FCmpOLT, FCmpOLE, FCmpOGT, FCmpOGE,
     FAdd, FSub, FMul, FDiv, FRem,
     NSWAdd, NUWAdd, NSWSub, NUWSub, NSWMul, NUWMul,
-    LogicalAnd, LogicalOr,
   };
 
   /** Unary arithmetic operations shareable across "(T) -> T". */
@@ -269,8 +268,6 @@ export namespace spp::codegen::func_impls {
   // =====================================================================================================
 
   // --- BinOp (simple_intrinsic_binop) ---
-  auto std_boolean_and(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_boolean_ior(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_add(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_sub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_mul(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
