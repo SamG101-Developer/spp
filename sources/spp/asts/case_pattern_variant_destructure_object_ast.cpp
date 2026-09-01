@@ -23,6 +23,7 @@ import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
@@ -45,6 +46,51 @@ import spp.utils.uid;
 import genex;
 
 SPP_MOD_BEGIN
+namespace spp::asts {
+  namespace {
+    /**
+     * The next level down of a pattern that narrows further than the alternative it matched.
+     *
+     * @n
+     * A pattern can name a type narrower than any one alternative of its subject: @c "Some[Some[T]]" against an
+     * @c "Opt[Opt[T]]" - whose alternatives are @c "Some[Opt[T]]" and @c "None" - also claims the inner @c "Opt[T]"
+     * is a @c "Some" . That claim needs its own discriminant check, against the payload the outer one selected.
+     *
+     * There is another level exactly when the alternative holds a variant that the pattern names one alternative of.
+     * Arguments that are already equal mean the pattern describes this level exactly, so the ordinary
+     * @c "is Some[T](val)" ends here and is checked once.
+     *
+     * @param pattern The pattern type at this level.
+     * @param alt The alternative it matched.
+     * @param scope The scope to resolve both in.
+     * @return The pattern and subject for the level below, or two nulls when this was the last one.
+     */
+    auto NarrowedLevel(
+      TypeAst const &pattern,
+      TypeAst const &alt,
+      analyse::scopes::Scope const &scope)
+      -> Pair<Shared<TypeAst>, Shared<TypeAst>> {
+      using analyse::utils::type_compare::TypeEq;
+      using analyse::utils::type_predicates::IsTypeVariant;
+
+      const auto arg_at = [](TypeAst const &t, const std::size_t i) -> Shared<TypeAst> {
+        auto const &args = t.LastTypePart()->GnArgGroup->Args;
+        const auto arg = i < args.Len() ? args[i]->To<GenericArgumentTypeAst>() : nullptr;
+        return arg != nullptr ? arg->Val : nullptr;
+      };
+
+      for (auto i = 0uz; i < pattern.LastTypePart()->GnArgGroup->Args.Len(); ++i) {
+        const auto p = arg_at(pattern, i);
+        const auto a = arg_at(alt, i);
+        if (p == nullptr or a == nullptr or not IsTypeVariant(*a, scope)) { continue; }
+        if (TypeEq(*a, *p, scope, scope, false)) { continue; }
+        if (codegen::GetVariantIndexOfMember(*a, *p, scope).has_value()) { return {p, a}; }
+      }
+      return {nullptr, nullptr};
+    }
+  }
+}
+
 spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
   decltype(Type) type,
   decltype(TokL) &&tok_l,
@@ -198,6 +244,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   -> llvm::Value* {
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
+  using analyse::utils::type_predicates::IsTypeVariant;
+  using analyse::utils::type_compare::TypeEq;
 
   // A flow symbol only exists for a variant condition, whose
   // members live behind the discriminant, so the narrowed
@@ -207,24 +255,12 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   auto llvm_tag_check = static_cast<llvm::Value*>(nullptr);
   if (_FlowSym and _CondSym) {
     SPP_ASSERT(_CondSym->LlvmInfo->Alloca != nullptr);
-    const auto llvm_variant_ty = sm->CurrentScope->GetTypeSymbol(
-      _CondSym->Type.get())->LlvmInfo->LlvmType;
-    SPP_ASSERT(llvm_variant_ty != nullptr);
-
     // Find the index in the variant's member types, of the
     // member type being flowed into. A variant can hold a borrow
     // as a member in its own right ("&S32 or None", which is what
     // resuming a "Gen[&S32]" gives), and then the convention is
     // part of what identifies the member rather than something
     // attached to the pattern, so the exact type is tried first.
-    auto tag = codegen::GetVariantIndexOfMember(
-      *_CondSym->Type, *Type, *sm->CurrentScope);
-    if (not tag.has_value()) {
-      tag = codegen::GetVariantIndexOfMember(
-        *_CondSym->Type, *Type->WithoutConvention(), *sm->CurrentScope);
-    }
-    SPP_ASSERT(tag.has_value());
-
     // Next, get the actual tag value from the variant that is
     // telling us which member type is active in the variant.
     auto variant_ptr = _CondSym->LlvmInfo->Alloca;
@@ -233,14 +269,53 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
         llvm::PointerType::get(*ctx->Context, 0), variant_ptr, "case.pattern.subject" + uid);
     }
 
-    const auto llvm_tag = codegen::LoadVariantTag(
-      variant_ptr, llvm_variant_ty, "case.pattern.tag" + uid, ctx);
+    // Each level of the pattern is checked in turn: its discriminant against the subject it applies to, then the
+    // payload that selected becomes the subject of the level below. Checking only the outermost took every inner
+    // claim on trust, so a "Some(None())" matched "Some[Some[T]]" and the binding read the inner discriminant as if
+    // it were the inner value. The walk also lands "current_ptr" on the innermost payload, which is where the
+    // narrowed bindings actually live.
+    auto subject_type = _CondSym->Type;
+    auto pattern_type = Type;
+    auto current_ptr = variant_ptr;
 
-    // Comparing the discriminant is what decides whether this
-    // pattern matches.
-    llvm_tag_check = ctx->Builder.CreateICmpEQ(
-      llvm_tag, llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag),
-      "case.pattern.is" + uid);
+    for (auto level = 0uz; ; ++level) {
+      // Named per level, and that matters: several values are emitted for each one, and this build of llvm does
+      // not handle a repeated value name well - reusing a single uid across the levels made the whole pattern
+      // miscompile, non-deterministically.
+      const auto level_uid = uid + "." + std::to_string(level);
+      const auto llvm_subject_ty = sm->CurrentScope->GetTypeSymbol(
+        subject_type->WithoutConvention().get())->LlvmInfo->LlvmType;
+      SPP_ASSERT(llvm_subject_ty != nullptr);
+
+      // A variant can hold a borrow as a member in its own right ("&S32 or None", which is what resuming a
+      // "Gen[&S32]" gives), and then the convention is part of what identifies the member rather than something
+      // attached to the pattern, so the exact type is tried first.
+      auto tag = codegen::GetVariantIndexOfMember(*subject_type, *pattern_type, *sm->CurrentScope);
+      if (not tag.has_value()) {
+        tag = codegen::GetVariantIndexOfMember(
+          *subject_type, *pattern_type->WithoutConvention(), *sm->CurrentScope);
+      }
+      if (not tag.has_value()) { break; }
+
+      const auto check = ctx->Builder.CreateICmpEQ(
+        codegen::LoadVariantTag(current_ptr, llvm_subject_ty, "case.pattern.tag" + level_uid, ctx),
+        llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag), "case.pattern.is" + level_uid);
+      llvm_tag_check = llvm_tag_check == nullptr
+        ? check
+        : ctx->Builder.CreateAnd(llvm_tag_check, check, "case.pattern.is.all" + level_uid);
+
+      current_ptr = codegen::GetVariantPayloadPtr(
+        current_ptr, llvm_subject_ty, "case.pattern.payload" + level_uid, ctx);
+
+      const auto alts = analyse::utils::type_compare::DedupVariableInnerTypes(
+        *subject_type->WithoutConvention(), *sm->CurrentScope);
+      if (*tag >= alts.Len()) { break; }
+
+      auto [next_pattern, next_subject] = NarrowedLevel(*pattern_type, *alts[*tag], *sm->CurrentScope);
+      if (next_pattern == nullptr) { break; }
+      pattern_type = std::move(next_pattern);
+      subject_type = std::move(next_subject);
+    }
 
     // Set the alloca into the flow symbol (more precisely typed).
     // The flow symbol shares the condition symbol's llvm info up
@@ -249,9 +324,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     // condition symbol itself onto the payload for the remainder
     // of the enclosing function.
     _FlowSym->LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
-    _FlowSym->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
-      _CondSym->LlvmInfo->Alloca, llvm_variant_ty,
-      "case.pattern.payload" + uid, ctx);
+    _FlowSym->LlvmInfo->Alloca = current_ptr;
   }
 
   // A condition that is not a plain identifier has no symbol to

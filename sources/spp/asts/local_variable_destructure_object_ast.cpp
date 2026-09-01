@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
@@ -29,6 +30,8 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_sym_info;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
@@ -287,6 +290,34 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
   // already sets _FlowSym->LlvmInfo->Alloca, so no copy needed.
   if (_CondLet) {
     _CondLet->Stage11_CodeGen(sm, meta, ctx);
+
+    // Narrowing the type is not enough on its own when the value is a variant: its members live behind the
+    // discriminant, so a member read against the variant's own address lands on the discriminant rather than on the
+    // field. The case-pattern handler does this for a condition that is a plain name; a destructure reached any other
+    // way - an element of a tuple pattern, most of all - arrives here instead, and was binding the tag as its first
+    // field. The flow symbol is given its own llvm info to write into, because it shares the condition's up to here
+    // and narrowing through that would move the condition itself onto the payload.
+    using analyse::utils::type_predicates::IsTypeVariant;
+    if (_FlowSym != nullptr and _CondSym != nullptr and _CondSym->LlvmInfo->Alloca != nullptr) {
+      const auto bare_cond_type = _CondSym->Type->WithoutConvention();
+      if (IsTypeVariant(*bare_cond_type, *sm->CurrentScope)) {
+        const auto uid = "." + spp::utils::Uid(this);
+        const auto variant_ty = sm->CurrentScope->GetTypeSymbol(
+          bare_cond_type.get())->LlvmInfo->LlvmType;
+
+        // A borrowed condition holds the address of the variant rather than the variant, so it is stepped through
+        // first - the payload of the pointer itself is not a thing.
+        auto variant_ptr = _CondSym->LlvmInfo->Alloca;
+        if (_CondSym->Type->GetConvention() != nullptr) {
+          variant_ptr = ctx->Builder.CreateLoad(
+            llvm::PointerType::get(*ctx->Context, 0), variant_ptr, "destructure.subject" + uid);
+        }
+
+        _FlowSym->LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
+        _FlowSym->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
+          variant_ptr, variant_ty, "destructure.payload" + uid, ctx);
+      }
+    }
   }
 
   // Generate the "let" statements for each element.
