@@ -182,6 +182,17 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     sym->MemInfo->FillFromSnapshot(snapshot);
   }
 
+  // Enforce consistent branch type return values; either the
+  // values are being roppropagated up to an identifier, or
+  // they should all be void.
+  {
+    using analyse::utils::case_utils::ValidateInconsistentTypes;
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->CaseCondition = Cond.get();
+    meta->IgnoreMissingElseBranchForInference = true;
+    ValidateInconsistentTypes(Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
+  }
+
   // Move out of the case expression scope.
   sm->MoveOutOfCurrentScope();
 }
