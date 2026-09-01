@@ -14,6 +14,7 @@ import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
@@ -21,6 +22,7 @@ import spp.asts.subroutine_prototype_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
@@ -77,6 +79,7 @@ spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
     std::move(return_type), std::move(impl)),
   _IsOnce(false),
   _YieldType(nullptr),
+  _SendType(nullptr),
   _GenOnceLowered(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_COR, "cor");
 }
@@ -137,10 +140,13 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the return type superimposes the generator type.
-    auto [_, yield_type, is_once] = GetGenAndYieldTypes(
+    auto [generator_type, yield_type, is_once] = GetGenAndYieldTypes(
       *ret_type_sym->FqName(), *sm->CurrentScope,
       *Source.OriginalReturnType, "coroutine return type");
     _YieldType = yield_type;
+    _SendType = is_once
+      ? generate::common_types_precompiled::VOID
+      : generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
     _IsOnce = is_once;
 
     // Analyse the semantics of the function body, and move out the scope.
@@ -244,7 +250,9 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
 
   // The generator environment holding the yield and send
   // slots, which "gen" and "res" load/store/GEP through.
-  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(ctx);
+  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*_YieldType, *sm->CurrentScope, ctx);
+  const auto llvm_send_ty = codegen::GetLlvmTypeOf(*_SendType, *sm->CurrentScope, ctx);
+  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(llvm_yield_ty, llvm_send_ty, ctx);
   const auto llvm_gen_state = ctx->Builder.CreateAlloca(
     llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
   // The same alignment "GetLlvmGeneratorFrameAlign" reports, because "llvm.coro.promise" reads the promise back out

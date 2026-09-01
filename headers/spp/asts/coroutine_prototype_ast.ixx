@@ -53,6 +53,7 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 private:
   bool _IsOnce = false;
   Shared<TypeAst> _YieldType;
+  Shared<TypeAst> _SendType;
   Unique<SubroutinePrototypeAst> _GenOnceLowered;
 
   /**
