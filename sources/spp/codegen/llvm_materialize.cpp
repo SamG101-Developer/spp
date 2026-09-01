@@ -5,11 +5,13 @@ module spp.codegen.llvm_materialize;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.assignment_utils;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.postfix_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -55,12 +57,22 @@ auto spp::codegen::llvm_addr_of(
   asts::meta::CompilerMetaData *meta,
   LlvmCtx *ctx)
   -> llvm::Value* {
+  //
+  using analyse::utils::assignment_utils::IsDeref;
+
   // An expression that is already a borrow evaluates to the address of what it borrows, so it is its own address:
   // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one. Note: we
   // don't enforce the borrow on the llvm type, because Gen[&XXX] is valid, but not a borrow.
   if (const auto type = ast.InferType(sm, meta); type != nullptr and type->GetConvention() != nullptr) {
     const auto borrow_val = ast.Stage11_CodeGen(sm, meta, ctx);
     return borrow_val;
+  }
+
+  // "x@" names the value the borrow points at, so its address
+  // is the pointer that "x" holds - not the address of "x"
+  // itself, (the borrow)
+  if (IsDeref(&ast)) {
+    return ast.To<asts::PostfixExpressionAst>()->Lhs->Stage11_CodeGen(sm, meta, ctx);
   }
 
   // A member access generates the address of its own field, which is the object a borrow of it points at. The symbol
