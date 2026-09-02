@@ -13,6 +13,7 @@ import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
@@ -157,10 +158,17 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
   using analyse::utils::type_predicates::IsTypeVariant;
   using analyse::utils::type_compare::TypeEq;
+  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
   using analyse::errors::SppTypeMismatchError;
 
   auto conv = AstClone(Type->GetConvention());
   Type->Stage7_AnalyseSemantics(sm, meta);
+
+  // A pattern may name "Self" inside its generic arguments - "is Some[Self](val)" in a method of a generic type - and
+  // the symbol lookup below takes the name as written. Left alone, "Self" reaches code generation unsubstituted and
+  // the destructure indexes into "Some[T=Self]", a type with no size. Resolve it against the enclosing type first,
+  // the way a parameter or return type written as "Self" already is.
+  Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
   Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
   Type = Type->WithConvention(std::move(conv));
 
