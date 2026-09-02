@@ -122,11 +122,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   //
   using analyse::errors::SppExpansionOfNonTupleError;
   using analyse::errors::SppIdentifierDuplicateError;
-  using analyse::errors::SppInvalidVoidValueError;
   using analyse::errors::SppOrderInvalidError;
   using analyse::utils::order_utils::DoOrderArgs;
   using analyse::utils::type_predicates::IsTypeTup;
-  using analyse::utils::type_predicates::IsTypeVoid;
 
   // Check there are no duplicate argument names.
   const auto arg_names = GetKeywordArgs()
@@ -181,17 +179,6 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   // resolution.
   for (auto const &arg : Args) {
     arg->Stage7_AnalyseSemantics(sm, meta);
-  }
-
-  // A "Void" expression carries no value, so passing one as
-  // an argument is meaningless. This has to caught before
-  // overload resolution, because that strips "Void" parameters
-  // out of the prototype.
-  for (auto const &arg : Args) {
-    auto arg_type = arg->InferType(sm, meta);
-    RaiseIf<SppInvalidVoidValueError>(
-      IsTypeVoid(*arg_type, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*arg->Val, "function-argument"));
   }
 }
 
