@@ -419,7 +419,7 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
   if (true_self_type == nullptr) { return AstClone(&type); }
 
   // If "Self" is not present, return a plain clone.
-  if (genex::none_of(type.Iterator(), [](auto const &part) { return part->Name == "Self"; })) {
+  if (not type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
     return AstClone(&type);
   }
 
