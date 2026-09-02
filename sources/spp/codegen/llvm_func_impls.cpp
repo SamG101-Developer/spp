@@ -1307,37 +1307,37 @@ auto spp::codegen::func_impls::std_intrinsics_frem(
 auto spp::codegen::func_impls::std_intrinsics_sadd_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NSWAdd);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Add);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uadd_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NUWAdd);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Add);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ssub_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NSWSub);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Sub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_usub_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NUWSub);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Sub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_smul_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NSWMul);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Mul);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::NUWMul);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Mul);
 }
 
 // =========================================================================================================
