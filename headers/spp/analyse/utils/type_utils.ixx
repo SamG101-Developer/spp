@@ -73,7 +73,6 @@ namespace spp::analyse::utils::type_utils {
     asts::meta::CompilerMetaData *meta)
     -> Unique<asts::PostfixExpressionAst>;
 
-
   SPP_EXP_FUN auto GetTypeSymOrError(
     scopes::Scope const &scope,
     asts::TypeIdentifierAst const &type_part,
