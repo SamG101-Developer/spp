@@ -782,10 +782,58 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
   }
 
   // Apply optional defaults for still unknown comp params.
+  // A default is an expression written in the callee's own
+  // terms - "Self::mo_seq_cst", "n + 1" - and is read back
+  // here, where those names mean nothing: this is the call
+  // site's scope, and "Self" names nothing at all in it. So
+  // it is translated the same way the prototype's types are,
+  // against everything bound so far plus the "Self" its
+  // owner resolves to. Don't remove the "substituted" list,
+  // as it holds owned versions of the raw pointers this puts
+  // into "bindings".
+  auto substituted_comp_defaults = Vec<Shared<asts::ExpressionAst>>();
+  auto owner_self_arg = Unique<asts::GenericArgumentTypeKeywordAst>(nullptr);
+  auto owner_self_looked_up = false;
+
   for (auto *opt_param : comp_params | genex::views::cast_dynamic<asts::GenericParameterCompOptionalAst*>()) {
     const auto cast_name = dynamic_shared_cast<asts::TypeIdentifierAst>(opt_param->Name);
     if (bindings.ContainsComp(cast_name.get())) { continue; }
-    bindings.Add(cast_name, opt_param->DefaultVal.get());
+
+    auto *default_val = opt_param->DefaultVal.get();
+
+    // Nothing to translate against before the aliases exist.
+    // The lookup for "Self" is made here rather than up front
+    // because it is a symbol lookup, and most calls have no
+    // optional comp parameter to make it for.
+    if (meta.CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
+      if (not owner_self_looked_up) {
+        owner_self_looked_up = true;
+        if (auto self_type = owner_scope.GetEnclosingSelfType(meta);
+          self_type != nullptr and not self_type->IsSelfType()) {
+          owner_self_arg = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+            asts::generate::common_types::SelfType(0), nullptr, std::move(self_type));
+        }
+      }
+
+      // What is already bound comes first, so a "Self" the call
+      // itself pinned outranks the one the owner declares.
+      const auto known_group = asts::GenericArgumentGroupAst::FromMap(bindings.ToInferenceMap());
+      auto default_args = known_group->GetAllArgs();
+      if (owner_self_arg != nullptr) { default_args.EmplaceBack(owner_self_arg.get()); }
+
+      if (not default_args.IsEmpty()) {
+        // The rewritten clone has to be analysed: an operator
+        // caches the symbol its left-hand side resolved to, and
+        // code generation reads that back, so an unanalysed one
+        // reaches stage 11 looking like a namespace access.
+        auto substituted = default_val->SubstituteGenericsExpr(default_args);
+        substituted->Stage7_AnalyseSemantics(&sm, &meta);
+        default_val = substituted.get();
+        substituted_comp_defaults.EmplaceBack(std::move(substituted));
+      }
+    }
+
+    bindings.Add(cast_name, default_val);
   }
 
   // Validate there are no conflicting candidates or
