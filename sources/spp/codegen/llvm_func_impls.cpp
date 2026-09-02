@@ -2773,7 +2773,8 @@ auto spp::codegen::func_impls::std_threading_atomic_is_lock_free(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   using asts::generate::common_types_precompiled::SELF_TYPE;
-  const auto self_type_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
+
+  const auto self_type_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get());
   const auto atom_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_type_sym, ctx));
   const auto val_ty = atom_ty->getElementType(0);
 
