@@ -123,9 +123,14 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       }
     }
     else {
-      // Mark the symbol from the outer context as moved.
+      // Mark the symbol from the outer context as moved, unless
+      // the type of the capture is copyable, in which case no
+      // action needs to be taken. Todo: Remove nullptr check?
       const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
-      cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
+      const auto cap_type_sym = meta->CurrentLambdaOuterScope->GetTypeSymbol(cap_sym->Type.get());
+      if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
+        cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
+      }
     }
   }
 }
