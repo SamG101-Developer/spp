@@ -5,6 +5,7 @@ module spp.asts.generic_argument_type_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.generic_bindings;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
@@ -33,7 +34,11 @@ auto spp::asts::GenericArgumentTypeAst::Stage4_QualifyTypes(
   Val->Stage4_QualifyTypes(sm, meta);
   const auto sym = sm->CurrentScope->GetTypeSymbol(Val.get(), true);
   if (sym and not sym->Alias) {
-    Val = sym->FqName();
+    auto fq = sym->FqName();
+    if (Val->LastTypePart()->GnArgGroup->Args.IsEmpty()) {
+      fq = analyse::utils::generic_bindings::WithoutSelfBindingGenerics(fq);
+    }
+    Val = std::move(fq);
     return;
   }
 

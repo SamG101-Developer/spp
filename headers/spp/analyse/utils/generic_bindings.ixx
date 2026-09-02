@@ -101,6 +101,20 @@ namespace spp::analyse::utils::generic_bindings {
     -> bool;
 
   /**
+   * A type stripped of generic arguments that only restate their own parameters. Such a spelling is the template's
+   * own name - every generic class gets one, built by `GenericArgumentGroupAst::FromParams` - and it is not a type a
+   * value can have. It reaches concrete positions through the one type that is legitimately written bare: the empty
+   * tuple `()` has nothing to instantiate `Tup[..Items]` with, so it resolves to the template itself and anything
+   * adopting that symbol's name spells it `Tup[Items=Items]`. That names a parameter nothing binds, and fails to
+   * resolve wherever the type is later re-analysed - instantiating a destructor for a class holding one, say.
+   * @param type The type to normalise.
+   * @return The type without its arguments if they only bind to themselves, otherwise the type unchanged.
+   */
+  SPP_EXP_FUN auto WithoutSelfBindingGenerics(
+    Shared<asts::TypeAst> const &type)
+    -> Shared<asts::TypeAst>;
+
+  /**
    * What one generic parameter is bound to. The `Type` and `Comp` are mutually exclusive; only one is ever set.
    */
   SPP_EXP_CLS struct GenericBinding {

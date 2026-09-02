@@ -249,6 +249,16 @@ namespace spp::analyse::utils::generic_bindings {
   }
 }
 
+auto spp::analyse::utils::generic_bindings::WithoutSelfBindingGenerics(
+  Shared<asts::TypeAst> const &type)
+  -> Shared<asts::TypeAst> {
+  // An empty argument list is not a self-binding one - there is nothing to strip, and nothing wrong with it.
+  auto const &args = type->LastTypePart()->GnArgGroup->Args;
+  if (args.IsEmpty()) { return type; }
+  if (not genex::all_of(args, [](auto const &a) { return BindsToItself(*a); })) { return type; }
+  return type->WithoutGenerics()->WithConvention(asts::AstClone(type->GetConvention()));
+}
+
 auto spp::analyse::utils::generic_bindings::BindsToItself(
   asts::GenericArgumentAst const &arg)
   -> bool {
