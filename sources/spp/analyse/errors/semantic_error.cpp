@@ -1361,6 +1361,18 @@ spp::analyse::errors::SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedE
           "written in a signature. Naming one here would need that pass split in two, which is not done yet.",
           "Name the type the alias resolves to, or move the use into a function body, where it does work."};
 
+      case NotYetSupportedFeature::VariadicFfiCall:
+        return {
+          "Variadic parameter declared here",
+          "Variadic ffi call",
+          "A " + INLINE_NOTE("..a: T") + " parameter is not c variadic. The call site collapses the trailing arguments "
+          "into a single tuple and passes that as one struct, while a c function reads them one at a time with " +
+          INLINE_NOTE("va_arg") + " - so the two sides disagree about where each argument sits, and the callee reads "
+          "whatever happens to be in the register. Passing them as real c varargs is not done yet.",
+          "Declare one entry point per argument shape and call that instead - the way " + INLINE_NOTE("fcntl") +
+          " is split into " + INLINE_NOTE("fcntl_get") + ", " + INLINE_NOTE("fcntl_set") + " and " +
+          INLINE_NOTE("fcntl_ptr") + "."};
+
       default:
         std::unreachable();
     }

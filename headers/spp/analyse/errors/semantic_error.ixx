@@ -124,11 +124,8 @@ namespace spp::analyse::errors {
    * not work today, so that reaching it reads as "not yet" rather than as a mistake in the code that reached it.
    */
   SPP_EXP_CLS enum class NotYetSupportedFeature {
-    /**
-     * Naming a type declared in a @c sup block from a place resolved before superimposition scopes are attached - a
-     * function signature, most often. See @c SppFeatureNotYetSupportedError for what it would take to lift.
-     */
     NestedTypeBeforeSupScopes,
+    VariadicFfiCall,
   };
 
   SPP_EXP_CLS enum class ErrorInformationKind {
