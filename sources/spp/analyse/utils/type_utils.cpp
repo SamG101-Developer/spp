@@ -241,15 +241,21 @@ auto spp::analyse::utils::type_utils::BuildFwdCall(
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> Unique<asts::PostfixExpressionAst> {
-  // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut". The
-  // immutable forward is preferred, matching how the forwarded-to members are resolved.
+  // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut".
   const auto [fwd_ref_type, fwd_mut_type] = GetFwdTypes(receiver_type, *sm);
   if (fwd_ref_type == nullptr and fwd_mut_type == nullptr) { return nullptr; }
+
+  // Which of the two is taken follows the receiver's own convention: a value borrowed mutably forwards to a mutable
+  // borrow of what it points at. Preferring the immutable one unconditionally turned a "&mut" receiver into a "&"
+  // yield, which is what a mutable forward was for in the first place. Fall back to whichever exists when the
+  // preferred one does not.
+  const auto conv = receiver_type.GetConvention();
+  const auto wants_mut = conv != nullptr and *conv == asts::ConventionTag::MUT and fwd_mut_type != nullptr;
 
   // Build "<receiver>.fwd_ref()". The forwarding coroutines return a "GenOnce", so the call resumes itself and the
   // expression evaluates to the borrow of the forwarded-to value.
   auto field_name = MakeUnique<asts::IdentifierAst>(
-    receiver.PosStart(), fwd_ref_type != nullptr ? "fwd_ref" : "fwd_mut");
+    receiver.PosStart(), wants_mut or fwd_ref_type == nullptr ? "fwd_mut" : "fwd_ref");
   auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
   auto member_access = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(&receiver), std::move(field));
   auto func_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
