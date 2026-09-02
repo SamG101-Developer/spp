@@ -71,6 +71,34 @@ namespace spp::analyse::utils::mem_utils {
     }
 
     /**
+     * Whether @p path names something inside the region @p prefix names, comparing them as paths rather than as raw
+     * text.
+     *
+     * @n
+     * A region is reached from another by field access, indexing or a deref, so @c {a} contains @c {a.b} and @c {a[i]}
+     * and @c {a@} . What it does not contain is @c {ab} , and a plain @c starts_with says otherwise - which made a
+     * variable called @c s report as overlapping one called @c second . The rule is therefore that the prefix has to
+     * end where an identifier ends: anything but a further identifier character is a boundary, which keeps every
+     * genuine containment while dropping the ones that only share spelling.
+     *
+     * @todo: probably better to actually travel the member access asts for exact matching?
+     * @param prefix The path of the containing region.
+     * @param path The path that may sit inside it.
+     * @return Whether @p path is @p prefix or something reached from it.
+     */
+    auto IsRegionPathPrefix(
+      Str const &prefix,
+      Str const &path) -> bool {
+      if (not path.starts_with(prefix)) { return false; }
+      if (path.size() == prefix.size()) { return true; }
+
+      const auto c = path[prefix.size()];
+      const auto continues_identifier =
+        (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c == '_';
+      return not continues_identifier;
+    }
+
+    /**
      * This function is another, slightly more relaxed memory region overlap check. It does the same as
      * @ref memory_region_overlap, but only checks one way. This means that @c {a R_OVERLAP a.b} will result in a
      * positive match, but @c {a.b R_OVERLAP a.b} will not.
@@ -81,9 +109,7 @@ namespace spp::analyse::utils::mem_utils {
     auto MemRegionRightOverlap(
       asts::Ast const &ast_1,
       asts::Ast const &ast_2) -> bool {
-      const auto s1 = ast_1.ToString();
-      const auto s2 = ast_2.ToString();
-      return s2.starts_with(s1);
+      return IsRegionPathPrefix(ast_1.ToString(), ast_2.ToString());
     }
   }
 }
@@ -94,7 +120,7 @@ auto spp::analyse::utils::mem_utils::MemRegionOverlap(
   -> bool {
   const auto s1 = ast_1.ToString();
   const auto s2 = ast_2.ToString();
-  return s1.starts_with(s2) or s2.starts_with(s1);
+  return IsRegionPathPrefix(s1, s2) or IsRegionPathPrefix(s2, s1);
 }
 
 auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
