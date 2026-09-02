@@ -740,6 +740,9 @@ namespace spp::analyse::utils::overload_utils {
       using type_compare::RelaxedTypeEq;
 
       StripVoidParams(fn_proto, fn_scope);
+      const auto arg_is_void = [&](asts::FunctionCallArgumentKeywordAst const *a) {
+        return type_predicates::IsTypeVoid(*a->Val->InferType(sm, meta), *sm->CurrentScope);
+      };
 
       // Recreate the lists of function parameters, and their
       // names ("Void" removed, generics etc).
@@ -750,16 +753,20 @@ namespace spp::analyse::utils::overload_utils {
       const auto func_param_names_req = fn_proto.FnParamGroup->GetRequiredParams()
         | genex::views::transform([](auto &&x) { return x->ExtractName(); })
         | genex::to<Vec>();
-      const auto func_arg_names = func_args.GetKeywordArgs()
-        | genex::views::transform([](auto const &x) { return x->Name.get(); })
-        | genex::to<Vec>();
+      auto func_arg_names = Vec<asts::IdentifierAst*>();
+      for (auto const &x : func_args.GetKeywordArgs()) {
+        if (not arg_is_void(x)) { func_arg_names.EmplaceBack(x->Name.get()); }
+      }
 
       CheckArgNamesAgainstParams(
         *func_params, func_param_names, func_param_names_req, func_arg_names, fn_call, sm);
 
       // Type check the arguments against the parameters. Sort
       // the arguments into parameter order first.
-      auto sorted_func_arguments = func_args.GetKeywordArgs();
+      auto sorted_func_arguments = Vec<asts::FunctionCallArgumentKeywordAst*>();
+      for (auto const &x : func_args.GetKeywordArgs()) {
+        if (not arg_is_void(x)) { sorted_func_arguments.EmplaceBack(x); }
+      }
       genex::actions::sort(
         sorted_func_arguments,
         {}, [&](asts::FunctionCallArgumentKeywordAst *arg) {
