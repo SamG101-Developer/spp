@@ -538,6 +538,7 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   asts::FunctionCallArgumentGroupAst &a_group,
   asts::FunctionParameterGroupAst const &p_group,
   scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData *const meta,
   Vec<asts::GenericArgumentAst*> const &generic_args)
   -> void {
   //
@@ -638,6 +639,12 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     auto default_val = generic_args.IsEmpty()
       ? asts::AstClone(optional_param->DefaultVal)
       : asts::AstClone(optional_param->DefaultVal->SubstituteGenericsExpr(generic_args));
+
+    // Analyse the substitution.
+    if (not generic_args.IsEmpty() and meta != nullptr) {
+      default_val->Stage7_AnalyseSemantics(&sm, meta);
+    }
+
     ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
       param_name, nullptr, nullptr, std::move(default_val)));
   }

@@ -631,7 +631,7 @@ namespace spp::analyse::utils::overload_utils {
       // Name the positional function arguments. The generic arguments
       // were named by the caller, which has to do it before it merges
       // the owner's and the "sup" block's arguments in.
-      NameFnArgs(fn_args, fn_params, *sm, gn_args.GetAllArgs());
+      NameFnArgs(fn_args, fn_params, *sm, meta, gn_args.GetAllArgs());
 
       // The inference source is all the function arguments (except for
       // "self")

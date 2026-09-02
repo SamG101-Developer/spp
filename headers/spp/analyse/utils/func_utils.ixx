@@ -91,6 +91,7 @@ namespace spp::analyse::utils::func_utils {
     asts::FunctionCallArgumentGroupAst &a_group,
     asts::FunctionParameterGroupAst const &p_group,
     scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta,
     Vec<asts::GenericArgumentAst*> const &generic_args = {})
     -> void;
 
