@@ -40,6 +40,14 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept -> bool { return false; }
 
   /**
+   * A type sitting in expression position - the @c A of @c {A::new()} , or a comp argument naming one - is substituted
+   * as the type it is. This is the one node where the expression walk and the type walk meet.
+   */
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
+
+  /**
    * Answer with the symbol this type resolved to last time it was asked for in @p scope (if that answer still stands).
    * @param scope The scope the lookup is being made in.
    * @param generation The current @c TypeLookupGeneration ; a remembered answer from any earlier one is discarded.

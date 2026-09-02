@@ -9,6 +9,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct ParenthesisedExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -54,4 +55,8 @@ SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressi
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
 };

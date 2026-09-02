@@ -10,6 +10,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct BooleanLiteralAst; // TODO: GCC BUG REQUIRES THIS
   SPP_EXP_CLS struct CharLiteralAst; // TODO: GCC BUG REQUIRES THIS
   SPP_EXP_CLS struct FloatLiteralAst; // TODO: GCC BUG REQUIRES THIS
+  SPP_EXP_CLS struct GenericArgumentAst; // TODO: GCC BUG REQUIRES THIS
   SPP_EXP_CLS struct IdentifierAst; // TODO: GCC BUG REQUIRES THIS
   SPP_EXP_CLS struct IntegerLiteralAst; // TODO: GCC BUG REQUIRES THIS
   SPP_EXP_CLS struct StringLiteralAst; // TODO: GCC BUG REQUIRES THIS

@@ -71,7 +71,6 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
-import spp.asts.utils.generic_substitution;
 import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -542,8 +541,6 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   Vec<asts::GenericArgumentAst*> const &generic_args)
   -> void {
   //
-  using asts::utils::generic_substitution::SubstituteGenericsInExpression;
-
   // Validate the named arguments against the parameters.
   EnforceNoInvalidFnArgs(p_group.GetAllParams(), a_group.GetKeywordArgs(), sm);
 
@@ -634,12 +631,13 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
 
     // Translate the default out of the callee's terms as it is
     // materialised. The parameter's own type is substituted when
-    // the instantiation's prototype is built, but its default
-    // value is an expression and nothing rewrites those, so
-    // "alloc: A = A()" would arrive here as an "A()" the caller
-    // has no "A" for.
-    auto default_val = asts::AstClone(optional_param->DefaultVal);
-    SubstituteGenericsInExpression(default_val, generic_args);
+    // the instantiation's prototype is built, and its default is
+    // an expression, so it needs the expression-level walk for
+    // the same reason - otherwise "alloc: A = A()" arrives here
+    // as an "A()" the caller has no "A" for.
+    auto default_val = generic_args.IsEmpty()
+      ? asts::AstClone(optional_param->DefaultVal)
+      : asts::AstClone(optional_param->DefaultVal->SubstituteGenericsExpr(generic_args));
     ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
       param_name, nullptr, nullptr, std::move(default_val)));
   }

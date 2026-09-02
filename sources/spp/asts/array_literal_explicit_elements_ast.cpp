@@ -45,10 +45,12 @@ spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() =
 auto spp::asts::ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
   ArrayLiteralExplicitElementsAst const &other) const
   -> Ordering {
-  // If two explicit array asts don't have the same size, they cannot be equal.
+  // If two explicit array asts don't have the same
+  // size, they cannot be equal.
   if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
 
-  // Ensure each element of the two array literals are equal.
+  // Ensure each element of the two array literals are
+  // equal.
   const auto temp = genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr) | genex::to<Vec>();
   if (genex::all_of(
     temp,
@@ -108,8 +110,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_compare::TypeEq;
 
-  // Analyse the element inside the array. Also enforce beforehand that the element
-  // is an acceptable primary expression, ie not a TypeAst or a TokenAst.
+  // Analyse the element inside the array. Also enforce
+  // beforehand that the element is an acceptable primary
+  // expression, ie not a TypeAst or a TokenAst.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -117,8 +120,10 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*elem));
   }
 
-  // Determine the "correct type" that all elements are compared against. If a pre-defined array type has
-  // been given, allowing a variant element type to be respected; otherwise just use the 0th element.
+  // Determine the "correct type" that all elements are
+  // compared against. If a pre-defined array type has
+  // been given, allowing a variant element type to be
+  // respected; otherwise just use the 0th element.
   const auto z_elem = Elems[0].get();
   const auto from_target = meta->AssignmentTargetType != nullptr and
     IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
@@ -131,9 +136,11 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     IsTypeBorrowed(*z_type, *sm),
     {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, "array element type"));
 
-  // Check all elements have the same type as the "correct type". When the type came from the 0th element,
-  // that element is skipped as it trivially matches itself; when it came from the target, every element
-  // (including the 0th) must be validated.
+  // Check all elements have the same type as the "correct
+  // type". When the type came from the 0th element, that
+  // element is skipped as it trivially matches itself;
+  // when it came from the target, every element (including
+  // the 0th) must be validated.
   for (auto const &c_elem : Elems | genex::views::ptr | genex::views::drop(from_target ? 0uz : 1uz)) {
     auto c_type = c_elem->InferType(sm, meta);
 
@@ -142,7 +149,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
   }
 
-  // Analyse the inferred array type to generate the generic implementation for future analysis; the first occurrence of
+  // Analyse the inferred array type to generate the generic
+  // implementation for future analysis; the first occurrence of
   // Vec[S32] will not exist in the symbol table, so add it now.
   InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
 }
@@ -186,13 +194,13 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   // Alias the common utils functions and types.
   using spp::utils::Uid;
 
-  // Runtime allocation. This pathway generates each element and
-  // then uses alloca into the entry block of the function. Unless
-  // every element itself is constant then it can use constant
-  // array to optimize away the GEPs.
+  // Runtime allocation. This pathway generates each element
+  // and then uses alloca into the entry block of the
+  // function. Unless every element itself is constant then
+  // it can use constant array to optimize away the GEPs.
   if (not ctx->InConstantContext) {
-    // Collect the llvm generated versions of the elements, ensuring
-    // the validity of each element (debug only).
+    // Collect the llvm generated versions of the elements,
+    // ensuring the validity of each element (debug only).
     auto llvm_rt_elems = Vec<llvm::Value*>{};
     llvm_rt_elems.Reserve(Elems.Len());
     for (auto const &spp_elem : Elems) {
@@ -201,17 +209,18 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
       llvm_rt_elems.EmplaceBack(llvm_rt_elem);
     }
 
-    // Create the array type. The array type wraps the llvm determined
-    // element type, and the length is also provided. This lowers to
-    // the llvm special array [T * n] type.
+    // Create the array type. The array type wraps the llvm
+    // determined element type, and the length is also
+    // provided. This lowers to the llvm special array [T * n]
+    // type.
     const auto llvm_rt_elem_ty = llvm_rt_elems[0]->getType();
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(
       llvm_rt_elem_ty, llvm_rt_elems.Len());
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
 
-    // If every element came back a constant then so is the array, and
-    // it can be produced as a value rather than materialised, use the
-    // equivalent to the constant path.
+    // If every element came back a constant then so is the
+    // array, and it can be produced as a value rather than
+    // materialised, use the equivalent to the constant path.
     const auto all_elems_constant = genex::all_of(llvm_rt_elems, [&](auto const *llvm_rt_elem) {
       return llvm::isa<llvm::Constant>(llvm_rt_elem) and llvm_rt_elem->getType() == llvm_rt_elem_ty;
     });
@@ -229,14 +238,14 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
         llvm_rt_arr_ty, llvm_ct_elems.ToStdVector());
     }
 
-    // Allocate the array into the enclosing function using the uniform
-    // entry alloca function.
+    // Allocate the array into the enclosing function using
+    // the uniform entry alloca function.
     const auto uid = "." + Uid(this);
     const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
       llvm_rt_arr_ty, "array.explicit.alloca" + uid, ctx);
 
-    // Finally, place the runtime generated elements in the array
-    // allocation, using the GEP and store commands.
+    // Finally, place the runtime generated elements in the
+    // array allocation, using the GEP and store commands.
     for (auto i = 0uz; i < llvm_rt_elems.Len(); ++i) {
       const auto idx0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
       const auto idx1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
@@ -247,17 +256,18 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
       ctx->Builder.CreateStore(llvm_rt_elems[i], llvm_rt_elem_ptr);
     }
 
-    // Return the array by value. The "llvm_rt_arr_alloc" is by pointer
-    // on the stack where the array is located.
+    // Return the array by value. The "llvm_rt_arr_alloc"
+    // is by pointer on the stack where the array is located.
     return ctx->Builder.CreateLoad(
       llvm_rt_arr_ty, llvm_rt_arr_alloc, "array.explicit.result" + uid);
   }
 
-  // Comptime array creation. This pathway generated an array using
-  // "constant" values (comptime-known values).
+  // Comptime array creation. This pathway generated an array
+  // using "constant" values (comptime-known values).
   {
-    // Collect the llvm generated versions of the elements, ensuring
-    // the validity of each element after a constant cast (debug only).
+    // Collect the llvm generated versions of the elements,
+    // ensuring the validity of each element after a constant
+    // cast (debug only).
     auto llvm_ct_elems = Vec<llvm::Constant*>{};
     llvm_ct_elems.Reserve(Elems.Len());
     for (auto const &spp_elem : Elems) {
@@ -267,16 +277,17 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
       llvm_ct_elems.EmplaceBack(llvm_ct_elem);
     }
 
-    // Create the array type. The array type wraps the llvm determined
-    // element type, and the length is also provided. This lowers to
-    // the llvm special array [T * n] type.
+    // Create the array type. The array type wraps the llvm
+    // determined element type, and the length is also
+    // provided. This lowers to the llvm special array
+    // [T * n] type.
     const auto llvm_ct_elem_ty = llvm_ct_elems[0]->getType();
     const auto llvm_ct_arr_ty = llvm::ArrayType::get(
       llvm_ct_elem_ty, llvm_ct_elems.Len());
     SPP_ASSERT(llvm_ct_arr_ty != nullptr);
 
-    // Allocate the array into the enclosing function using the llvm
-    // constant array creation.
+    // Allocate the array into the enclosing function using
+    // the llvm constant array creation.
     const auto arr_alloc = llvm::ConstantArray::get(
       llvm_ct_arr_ty, llvm_ct_elems.ToStdVector());
     return arr_alloc;
@@ -290,19 +301,32 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
   // Alias the common utils functions and types.
   using analyse::utils::type_predicates::IsTypeArr;
 
-  // Create a "T" type and "n" size, for the array type. If a pre-defined array type
-  // has been given (ie the assignment target type), pull the element type from it so a
-  // variant element type is preserved; otherwise use the 0th element's inferred type.
+  // Create a "T" type and "n" size, for the array type. If
+  // a pre-defined array type has been given (ie the assignment
+  // target type), pull the element type from it so a variant
+  // element type is preserved; otherwise use the 0th element's
+  // inferred type.
   auto size_tok = MakeUnique<TokenAst>(TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
   auto size_gen = MakeUnique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");
   auto elem_gen = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope)
     ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->TypeAt("T")->Val)
     : Elems[0]->InferType(sm, meta);
 
-  // Create an array type with the inferred element type and size.
+  // Create an array type with the inferred element type and
+  // size.
   auto array_type = generate::common_types::ArrayType(PosStart(), std::move(elem_gen), std::move(size_gen));
   array_type->Stage7_AnalyseSemantics(sm, meta);
   return array_type;
+}
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // Each element is an expression, so map them all.
+  auto elems = UniqueVec<ExpressionAst>();
+  elems.Reserve(Elems.Len());
+  for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
+  return MakeShared<ArrayLiteralExplicitElementsAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
 SPP_MOD_END

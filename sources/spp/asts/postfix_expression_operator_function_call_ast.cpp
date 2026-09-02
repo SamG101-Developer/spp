@@ -689,4 +689,32 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_HandleFunctionFolding
   return transformed_asts;
 }
 
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Unique<PostfixExpressionOperatorAst> {
+  // Handle the generic type and comp arguments that
+  // take part in the function call.
+  auto gn_arg_group = AstClone(GnArgGroup);
+  for (auto const &gn_arg : gn_arg_group->Args) {
+    if (auto *type_arg = gn_arg->To<GenericArgumentTypeAst>(); type_arg != nullptr) {
+      type_arg->Val = type_arg->Val->SubstituteGenerics(args);
+    }
+    else if (auto *comp_arg = gn_arg->To<GenericArgumentCompAst>(); comp_arg != nullptr) {
+      comp_arg->Val = AstClone(comp_arg->Val->SubstituteGenericsExpr(args));
+    }
+  }
+
+  // Handle the function runtime arguments too in the
+  // same way.
+  auto fn_arg_group = AstClone(FnArgGroup);
+  for (auto const &fn_arg : fn_arg_group->Args) {
+    fn_arg->Val = AstClone(fn_arg->Val->SubstituteGenericsExpr(args));
+  }
+
+  // Move the substituted values into the new function
+  // cast postfix operator AST.
+  return MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+    std::move(gn_arg_group), std::move(fn_arg_group), AstClone(Fold));
+}
+
 SPP_MOD_END

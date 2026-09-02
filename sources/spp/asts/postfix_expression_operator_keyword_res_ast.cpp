@@ -265,4 +265,17 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(
   return send_type->LastTypePart()->GnArgGroup->TypeAt("Yield")->Val;
 }
 
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Unique<PostfixExpressionOperatorAst> {
+  // The potential resume arguments are expressions.
+  auto fn_arg_group = AstClone(FnArgGroup);
+  for (auto const &fn_arg : fn_arg_group->Args) {
+    fn_arg->Val = AstClone(fn_arg->Val->SubstituteGenericsExpr(args));
+  }
+
+  return MakeUnique<PostfixExpressionOperatorKeywordResAst>(
+    AstClone(TokDot), AstClone(TokRes), std::move(fn_arg_group));
+}
+
 SPP_MOD_END

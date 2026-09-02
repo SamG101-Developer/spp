@@ -7,9 +7,10 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct ArrayLiteralAst;
-  SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
-  SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
-  SPP_EXP_CLS struct TypeAst;
+  SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst; // TODO: GCC BUG REQUIRES THIS
+  SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst; // TODO: GCC BUG REQUIRES THIS
+  SPP_EXP_CLS struct GenericArgumentAst; // TODO: GCC BUG REQUIRES THIS
+  SPP_EXP_CLS struct TypeAst; // TODO: GCC BUG REQUIRES THIS
 }
 
 /**

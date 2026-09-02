@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -92,6 +93,10 @@ public:
 
   SPP_ATTR_NODISCARD auto ExprParts() const
     -> Vec<Ast*> override;
+
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
 
   SPP_ATTR_NODISCARD auto ToView() const noexcept
     -> StrView;

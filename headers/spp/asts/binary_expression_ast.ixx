@@ -10,6 +10,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct BinaryExpressionAst;
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -111,6 +112,10 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @return The inferred type of the binary expression, which is the return type of the mapped function.
    */
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
 
 private:
   /**

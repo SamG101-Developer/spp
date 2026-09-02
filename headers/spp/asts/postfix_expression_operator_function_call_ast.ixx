@@ -77,6 +77,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Unique<PostfixExpressionOperatorAst> override;
+
   auto MarkAsAsync(
     Ast *async_token)
     -> void;

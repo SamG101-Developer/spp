@@ -11,6 +11,8 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.visibility_utils;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -128,7 +130,8 @@ auto spp::asts::IdentifierAst::PosEnd() const
 
 auto spp::asts::IdentifierAst::Clone() const
   -> Unique<Ast> {
-  // The copy spells the same name, so it carries the id over rather than interning the string again.
+  // The copy spells the same name, so it carries the
+  // id over rather than interning the string again.
   return Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
 }
 
@@ -253,9 +256,12 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
     return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
   }
 
-  // Handle any other address the symbol was pointed at, such as the payload a variant's flow-typed symbol is narrowed
-  // onto by a case pattern. These carry no llvm type of its own under opaque pointers, so the load goes through the
-  // symbol's own type instead of through the instruction that produced the address.
+  // Handle any other address the symbol was pointed at, such
+  // as the payload a variant's flow-typed symbol is narrowed
+  // onto by a case pattern. These carry no llvm type of its
+  // own under opaque pointers, so the load goes through the
+  // symbol's own type instead of through the instruction that
+  // produced the address.
   if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
     const auto llvm_type = codegen::GetLlvmTypeOf(*var_sym->Type, *sm->CurrentScope, ctx);
     SPP_ASSERT(llvm_type != nullptr);
@@ -290,14 +296,34 @@ auto spp::asts::IdentifierAst::ToFuncIdentifier() const
 
 auto spp::asts::IdentifierAst::AnkerlHash() const
   -> std::size_t {
-  // Consistent with "EqualsIdentifier", which decides equality
-  // on the id, and a multiply rather than a pass over the string.
+  // Consistent with "EqualsIdentifier", which decides
+  // equality on the id, and a multiply rather than a
+  // pass over the string.
   return Hash<utils::InternedId>()(_NameId);
 }
 
 auto spp::asts::IdentifierAst::ExprParts() const
   -> Vec<Ast*> {
   return {const_cast<IdentifierAst*>(this)};
+}
+
+auto spp::asts::IdentifierAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // A comp parameter's name is written as a type in the
+  // parameter list and read as an identifier in an
+  // expression, so the two spellings have to be brought
+  // together before they can be compared.
+  for (auto const *arg : args) {
+    auto const *comp_kw_arg = arg->To<GenericArgumentCompKeywordAst>();
+    if (comp_kw_arg == nullptr) { continue; }
+    if (*FromType(*comp_kw_arg->Name) != *this) { continue; }
+    return AstCloneShared(comp_kw_arg->Val.get());
+  }
+
+  // Any other identifier names something the bindings
+  // say nothing about - a local, a constant, a function.
+  return AstCloneShared(this);
 }
 
 auto spp::asts::IdentifierAst::ToView() const noexcept

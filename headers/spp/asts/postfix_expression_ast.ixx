@@ -9,6 +9,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorAst;
   SPP_EXP_CLS struct TypeAst;
@@ -55,4 +56,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
   SPP_ATTR_NODISCARD auto ExprParts() const
     -> Vec<Ast*> override;
+
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
 };

@@ -346,4 +346,14 @@ auto spp::asts::BinaryExpressionAst::InferType(
   return _MappedFunc->InferType(sm, meta);
 }
 
+auto spp::asts::BinaryExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // Both operands are expressions.
+  return MakeShared<BinaryExpressionAst>(
+    AstClone(Lhs->SubstituteGenericsExpr(args)),
+    AstClone(TokOp),
+    AstClone(Rhs->SubstituteGenericsExpr(args)));
+}
+
 SPP_MOD_END

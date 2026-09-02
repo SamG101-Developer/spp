@@ -106,4 +106,14 @@ auto spp::asts::ParenthesisedExpressionAst::InferType(
   return Expr->InferType(sm, meta);
 }
 
+auto spp::asts::ParenthesisedExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // Substitute into the inner expression.
+  return MakeShared<ParenthesisedExpressionAst>(
+    AstClone(TokL),
+    AstClone(Expr->SubstituteGenericsExpr(args)),
+    AstClone(TokR));
+}
+
 SPP_MOD_END

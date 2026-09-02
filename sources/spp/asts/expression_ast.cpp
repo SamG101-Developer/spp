@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.expression_ast;
+import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::ExpressionAst::ExpressionAst() = default;
@@ -100,6 +101,14 @@ auto spp::asts::ExpressionAst::Equals(
 auto spp::asts::ExpressionAst::ExprParts() const
   -> Vec<Ast*> {
   return {};
+}
+
+auto spp::asts::ExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &) const
+  -> Shared<ExpressionAst> {
+  // The default operation is to do nothing, because all
+  // other ASTs will specialize.
+  return AstCloneShared(this);
 }
 
 SPP_MOD_END

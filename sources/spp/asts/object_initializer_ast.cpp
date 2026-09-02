@@ -116,7 +116,8 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   }
 
-  // Determine the generic inference source and target values.
+  // Determine the generic inference source and target
+  // values.
   auto generic_infer_source = ArgGroup->Args
     | genex::views::transform([sm, meta](auto const &x) {
       return MakePair(x->Name, x->Val->InferType(sm, meta));
@@ -189,8 +190,9 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   using analyse::utils::type_members::GetAllAttrs;
   using analyse::utils::type_predicates::GetSuperimposedFatPointerFieldCount;
 
-  // Create an empty struct based on the llvm type - will never
-  // be a borrow so always stack allocated, not a pointer.
+  // Create an empty struct based on the llvm type - will
+  // never be a borrow so always stack allocated, not a
+  // pointer.
   const auto uid = "." + spp::utils::Uid(this);
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
 
@@ -201,29 +203,30 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
 
-  // A type carrying no value has no value to build, so prevent
-  // any code generation (or further GEPs into it).
+  // A type carrying no value has no value to build, so
+  // prevent any code generation (or further GEPs into it).
   if (codegen::IsValuelessType(llvm_type)) { return nullptr; }
 
-  // Types with no attributes have nothing to fill in, so they
-  // initialize to their zero value. This covers the compiler-
-  // known primitives (which don't even lower to structs) and
-  // the fat pointer types. Also the base cases for the recursive
-  // default initialization.
+  // Types with no attributes have nothing to fill in, so
+  // they initialize to their zero value. This covers the
+  // compiler-known primitives (which don't even lower to
+  // structs) and the fat pointer types. Also the base
+  // cases for the recursive default initialization.
   if (attr_names.IsEmpty()) { return llvm::Constant::getNullValue(llvm_type); }
 
-  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that
-  // interface's fat-pointer fields prepended ahead of its own
-  // declared attributes. An object initializer only ever fills
-  // in the class's own attributes, never the synthesized fields,
-  // so every declared index has to be shifted past them.
+  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets
+  // that interface's fat-pointer fields prepended ahead of
+  // its own declared attributes. An object initializer only
+  // ever fills in the class's own attributes, never the
+  // synthesized fields, so every declared index has to be
+  // shifted past them.
   const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
     *type_sym->FqName(), *sm->CurrentScope);
 
-  // The physical field order isn't the declaration order, because
-  // the S++ layout re-orders the fields to minimize padding, so
-  // every attribute's index has to be resolved through the type's
-  // field index map.
+  // The physical field order isn't the declaration order,
+  // because the S++ layout re-orders the fields to minimize
+  // padding, so every attribute's index has to be resolved
+  // through the type's field index map.
   const auto field_index = [&](IdentifierAst const &name) {
     const auto decl_index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
     SPP_ASSERT(decl_index >= 0);
@@ -233,9 +236,10 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
 
   // Runtime pathway.
   if (not ctx->InConstantContext) {
-    // Every argument is generated up front, paired with the physical
-    // field it fills, because whether the aggregate as a whole is
-    // constant cannot be known until they have been.
+    // Every argument is generated up front, paired with the
+    // physical field it fills, because whether the aggregate
+    // as a whole is constant cannot be known until they have
+    // been.
     auto arg_values = Vec<Pair<std::uint32_t, llvm::Value*>>();
     arg_values.Reserve(ArgGroup->Args.Len());
     for (auto const &arg : ArgGroup->Args) {
@@ -246,9 +250,9 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
       arg_values.EmplaceBack(MakePair(field_index(*arg->Name), val));
     }
 
-    // If every field is filled by a constant of the right type then
-    // so is the aggregate, and it can be produced as a value rather
-    // than materialised.
+    // If every field is filled by a constant of the right
+    // type then so is the aggregate, and it can be produced
+    // as a value rather than materialised.
     const auto llvm_struct_type = llvm::dyn_cast<llvm::StructType>(llvm_type);
     auto llvm_ct_fields = Vec<llvm::Constant*>(
       llvm_struct_type != nullptr ? llvm_struct_type->getNumElements() : 0uz, nullptr);
@@ -283,9 +287,10 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     return ctx->Builder.CreateLoad(llvm_type, aggregate, "obj_init.result" + uid);
   }
 
-  // Set each field value in the constant, indexed by its physical
-  // position in the struct. The vector is sized by the struct rather
-  // than by the attribute count (for fat pointer shifting).
+  // Set each field value in the constant, indexed by its
+  // physical position in the struct. The vector is sized
+  // by the struct rather than by the attribute count
+  // (for fat pointer shifting).
   const auto struct_type = llvm::cast<llvm::StructType>(llvm_type);
   auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
@@ -294,10 +299,10 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     comp_fields[field_index(*arg->Name)] = llvm::cast<llvm::Constant>(comp_val);
   }
 
-  // Anything the arguments did not cover - a synthesized fat-
-  // pointer field, or an attribute this initializer leaves out,
-  // still needs a value, because a constant has to give one for
-  // every field.
+  // Anything the arguments did not cover - a synthesized
+  // fat-pointer field, or an attribute this initializer
+  // leaves out, still needs a value, because a constant has
+  // to give one for every field.
   for (auto i = 0uz; i < comp_fields.Len(); ++i) {
     if (comp_fields[i] != nullptr) { continue; }
     comp_fields[i] = llvm::Constant::getNullValue(
@@ -312,10 +317,10 @@ auto spp::asts::ObjectInitializerAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *)
   -> Shared<TypeAst> {
-  // The type of the object initializer is the type being initialized.
-  // The conventions are added for dummy types being created into
-  // values during other ast's analysis. Types cannot be instantiated
-  // as borrows in user code.
+  // The type of the object initializer is the type being
+  // initialized. The conventions are added for dummy types
+  // being created into values during other ast's analysis.
+  // Types cannot be instantiated as borrows in user code.
   // Todo: tidy this by splitting into lines.
   return sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 }
@@ -326,6 +331,16 @@ auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(
   -> Shared<TypeAst> {
   // Use the source original type.
   return Source.OriginalType;
+}
+
+auto spp::asts::ObjectInitializerAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // The initialiser names its type outright, and each
+  // of its arguments is an expression in its own right.
+  auto arg_group = AstClone(ArgGroup);
+  for (auto const &arg : arg_group->Args) { arg->Val = AstClone(arg->Val->SubstituteGenericsExpr(args)); }
+  return MakeShared<ObjectInitializerAst>(Type->SubstituteGenerics(args), std::move(arg_group));
 }
 
 SPP_MOD_END

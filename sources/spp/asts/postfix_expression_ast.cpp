@@ -177,7 +177,8 @@ auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // Memory analysis used the transformed AST to not repeat lhs as self.
+  // Memory analysis used the transformed AST to not
+  // repeat lhs as self.
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
   if (func != nullptr and func->GetTransformedAst() != nullptr) {
     const auto ret_val = func->GetTransformedAst()->Stage11_CodeGen(sm, meta, ctx);
@@ -207,13 +208,26 @@ auto spp::asts::PostfixExpressionAst::InferType(
 
 auto spp::asts::PostfixExpressionAst::ExprParts() const
   -> Vec<Ast*> {
-  // Recursively search the lhs, and add the rhs if it exists.
+  // Recursively search the lhs, and add the rhs if it
+  // exists.
   auto lhs_parts = Lhs->ExprParts();
   auto rhs_parts = Op->ExprParts();
   if (not rhs_parts.IsEmpty()) {
     lhs_parts.AppendRange(std::move(rhs_parts));
   }
   return lhs_parts;
+}
+
+auto spp::asts::PostfixExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // The left-hand side is where a type is written - the
+  // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
+  // and the operator carries whatever a call, an index or
+  // a slice was given.
+  return MakeShared<PostfixExpressionAst>(
+    AstClone(Lhs->SubstituteGenericsExpr(args)),
+    Op->SubstituteGenericsExpr(args));
 }
 
 SPP_MOD_END

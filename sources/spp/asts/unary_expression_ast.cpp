@@ -94,12 +94,21 @@ auto spp::asts::UnaryExpressionAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
-  // Infer the type of the right-hand-side expression, adjusted by the operator.
+  // Infer the type of the right-hand-side expression,
+  // adjusted by the operator.
   const auto _meta_guard = meta::MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();
   auto type = Op->InferType(sm, meta);
 
   return type;
+}
+
+auto spp::asts::UnaryExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // The only unary operator is the "async" function call
+  // so there will be no specialization.
+  return MakeShared<UnaryExpressionAst>(AstClone(Op), AstClone(Expr->SubstituteGenericsExpr(args)));
 }
 
 SPP_MOD_END

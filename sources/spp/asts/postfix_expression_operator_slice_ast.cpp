@@ -171,4 +171,18 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::InferType(
   return _MappedFunc->InferType(sm, meta);
 }
 
+auto spp::asts::PostfixExpressionOperatorSliceAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Unique<PostfixExpressionOperatorAst> {
+  // Substitute the inner expressions inside the []
+  // tokens.
+  return MakeUnique<PostfixExpressionOperatorSliceAst>(
+    AstClone(TokL),
+    AstClone(TokMut),
+    AstClone(ExprLBound->SubstituteGenericsExpr(args)),
+    AstClone(TokTo),
+    AstClone(ExprRBound->SubstituteGenericsExpr(args)),
+    AstClone(TokR));
+}
+
 SPP_MOD_END
