@@ -95,6 +95,8 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_compare::TypeEq;
   using generate::common_types::GenType;
   using generate::common_types::VoidType;
+  using analyse::utils::type_compare::TypeFwdEq;
+  using analyse::utils::type_utils::BuildFwdCall;
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
   using analyse::errors::SppYieldedTypeMismatchError;
@@ -133,7 +135,8 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
   }
 
-  // Functions provide the return type, closures require inference; handle the inference.
+  // Functions provide the return type, closures require
+  // inference; handle the inference.
   if (meta->EnclosingFunctionRetType.IsEmpty()) {
     _GenType = GenType(Expr ? Expr->PosStart() : TokGen->PosStart(), expr_type);
     _GenType->Stage7_AnalyseSemantics(sm, meta);
@@ -145,8 +148,23 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     _GenType = meta->EnclosingFunctionRetType.Back();
   }
 
-  // Determine the "Yield" type of the enclosing function (to type check the expression against).
+  // Determine the "Yield" type of the enclosing function
+  // (to type check the expression against).
   auto [gen_type, yield_type, is_once] = GetGenAndYieldTypes(*_GenType, *sm->CurrentScope, *_GenType, "coroutine");
+
+  // When we are yielding a value that *forwards* to the return
+  // type, we need to call the forwarding function and inject
+  // it into the expression field of this ast.
+  if (Expr != nullptr and TypeFwdEq(
+    *expr_type, *yield_type, *sm->CurrentScope, *meta->EnclosingFunctionScope)) {
+    if (auto fwd_call = BuildFwdCall(*Expr, *expr_type, sm, meta); fwd_call != nullptr) {
+      Expr = std::move(fwd_call);
+      Expr->Stage7_AnalyseSemantics(sm, meta);
+      expr_type = Expr->InferType(sm, meta);
+      if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
+    }
+  }
+
   const auto direct_match = TypeEq(
     *yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
   _GenType = mut_shared_cast(gen_type);
