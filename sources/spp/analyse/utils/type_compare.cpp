@@ -62,7 +62,6 @@ import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
-import std;
 
 namespace spp::analyse::utils::type_compare {
   namespace {
@@ -489,42 +488,37 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
   const bool check_variant,
   const bool check_constraints,
   const bool strict_generic_args) -> bool {
-  // Todo: Make this left relaxed only and remove strict_generic_args?
   // Strip the generics from the types. This allows for the base
   // types to be retrieved and compared in their respective scopes.
   using asts::generate::common_types_precompiled::VAR;
-  const auto stripped_lhs = mut_shared_cast(lhs_type.WithoutGenerics()->WithoutConvention());
   const auto stripped_rhs = mut_shared_cast(rhs_type.WithoutGenerics()->WithoutConvention());
 
-  // If the right-hand-side is directly generic, then return a
-  // match: "sup[T] T { ... }" matches all types. Record the generic
-  // in the map too.
+  // Binding one side's generic to whatever stands opposite it, which both directions below do identically: record the
+  // mapping, then hold the bound type to the generic's own constraints.
+  const auto bind = [&](
+    Shared<asts::TypeAst> const &stripped, scopes::TypeSymbol const *sym,
+    asts::TypeAst const &bound_to, scopes::Scope const &sym_scope, scopes::Scope const &bound_to_scope) {
+    generic_args.insert({static_shared_cast<asts::TypeIdentifierAst>(stripped), const_cast<asts::TypeAst*>(&bound_to)});
+    return not check_constraints or ConstraintEq(sym->GenericConstraints, bound_to, sym_scope, bound_to_scope);
+  };
+
+  // A generic on the right accepts whatever is on the left.
   const auto stripped_rhs_sym = rhs_scope.GetTypeSymbol(stripped_rhs.get());
   if (stripped_rhs_sym == nullptr) { return false; }
   if (stripped_rhs_sym->IsGeneric) {
-    const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
-    generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
-    if (check_constraints and not ConstraintEq(stripped_rhs_sym->GenericConstraints, lhs_type, rhs_scope, lhs_scope)) {
-      return false;
-    }
-    return true;
+    return bind(stripped_rhs, stripped_rhs_sym, lhs_type, rhs_scope, lhs_scope);
   }
 
-  // TODO: Deliberately inverted for the param/arg checker. This will be
-  //  removed once that type check is actually done properly.
-  if (not ConventionEq(rhs_type, lhs_type)) { return false; }
+  if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
-  // The same as above, but for the left-hand-side: auto match on a
-  // direct generic and record the mapping.
+  // And the mirror case. The left side is stripped here rather than alongside the right, because the right-hand
+  // branch above returns for the large majority of calls and stripping costs a type-symbol lookup - the one thing
+  // this compiler spends most of its time on.
+  const auto stripped_lhs = mut_shared_cast(lhs_type.WithoutGenerics()->WithoutConvention());
   const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs.get());
   if (stripped_lhs_sym == nullptr) { return false; }
   if (stripped_lhs_sym->IsGeneric) {
-    const auto t = static_shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
-    generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
-    if (check_constraints and not ConstraintEq(stripped_lhs_sym->GenericConstraints, rhs_type, lhs_scope, rhs_scope)) {
-      return false;
-    }
-    return true;
+    return bind(stripped_lhs, stripped_lhs_sym, rhs_type, lhs_scope, rhs_scope);
   }
 
   // If the right-hand-side is a "Variant" type, check the member
