@@ -213,7 +213,8 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
 
       func->Target->addParamAttr(j, llvm::Attribute::NonNull);
       func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
-      func->Target->addParamAttr(j, is_ref ? llvm::Attribute::ReadOnly : llvm::Attribute::NoAlias);
+      // func->Target->addParamAttr(j, is_ref ? llvm::Attribute::ReadOnly : llvm::Attribute::NoAlias);
+      if (is_ref) { func->Target->addParamAttr(j, llvm::Attribute::ReadOnly); }
       if (const auto bytes = deref_bytes(param_type); bytes > 0) {
         func->Target->addDereferenceableParamAttr(j, bytes);
       }
