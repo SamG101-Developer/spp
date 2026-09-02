@@ -345,6 +345,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) -> llvm::Value* {
+  //
+  using analyse::utils::type_predicates::IsTypeVoid;
+
   // For folding, generate the code for the folded
   // transformations and combine into single block.
   if (Fold != nullptr) {
@@ -446,9 +449,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   auto llvm_func_args = Vec<llvm::Value*>();
   llvm_func_args.Reserve(FnArgGroup->Args.Len());
 
-  for (auto i = 0uz; i < FnArgGroup->Args.Len(); ++i) {
+  for (auto i = 0uz, p = 0uz; i < FnArgGroup->Args.Len(); ++i) {
     auto const &arg = FnArgGroup->Args[i];
+    const auto arg_is_void = IsTypeVoid(
+      *arg->InferType(sm, meta), *sm->CurrentScope);
+
     auto llvm_arg = arg->Stage11_CodeGen(sm, meta, ctx);
+    if (arg_is_void) { continue; }
     SPP_ASSERT(llvm_arg != nullptr);
 
     // The parameter's type is named where the overload lives,
@@ -457,18 +464,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // parameter that does not resolve from it (a "Self" or a
     // generic still standing in for one) is not a variant this
     // call has to widen into anyway.
-    const auto param_type_sym = i < fn_params.Len()
-      ? _OverloadInfo->OverloadScope->GetTypeSymbol(fn_params[i]->Type.get())
+    const auto param_type_sym = p < fn_params.Len()
+      ? _OverloadInfo->OverloadScope->GetTypeSymbol(fn_params[p]->Type.get())
       : nullptr;
     const auto param_type = param_type_sym != nullptr ? param_type_sym->FqName() : nullptr;
 
     // Only a by-value parameter is ever widened. A borrowed one
     // receives a pointer to something that is already the variant,
     // so there is nothing to tag and copy.
-    const auto param_is_borrow = i < fn_params.Len() and (
-      fn_params[i]->To<FunctionParameterSelfAst>() != nullptr
-        ? fn_params[i]->To<FunctionParameterSelfAst>()->Conv != nullptr
-        : fn_params[i]->Type->GetConvention() != nullptr);
+    const auto param_is_borrow = p < fn_params.Len() and (
+      fn_params[p]->To<FunctionParameterSelfAst>() != nullptr
+        ? fn_params[p]->To<FunctionParameterSelfAst>()->Conv != nullptr
+        : fn_params[p]->Type->GetConvention() != nullptr);
 
     if (param_type != nullptr and not param_is_borrow
       and sm->CurrentScope->GetTypeSymbol(param_type.get()) != nullptr) {
@@ -482,13 +489,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // that the borrow is happening here. For example, if "x" is
     // "&X", that borrow can then be moved into "fun a(y: &X)" -
     // re don't re-borrow just because it's a borrow type.
-    const auto self_param = i < fn_params.Len()
-      ? fn_params[i]->To<FunctionParameterSelfAst>()
+    const auto self_param = p < fn_params.Len()
+      ? fn_params[p]->To<FunctionParameterSelfAst>()
       : nullptr;
 
-    const auto param_by_value = i < fn_params.Len() and (self_param != nullptr
+    const auto param_by_value = p < fn_params.Len() and (self_param != nullptr
       ? self_param->Conv == nullptr
-      : fn_params[i]->Type->GetConvention() == nullptr);
+      : fn_params[p]->Type->GetConvention() == nullptr);
 
     if (param_by_value and llvm_arg->getType()->isPointerTy()) {
       const auto arg_type = arg->InferType(sm, meta);
@@ -500,6 +507,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       }
     }
     llvm_func_args.EmplaceBack(llvm_arg);
+    ++p;
   }
 
   // Create the call instruction (a call returning Void cannot be given a name - llvm forbids naming void
