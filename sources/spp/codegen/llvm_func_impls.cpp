@@ -7,12 +7,14 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_members;
+import spp.asts.boolean_literal_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.gen_expression_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
@@ -539,6 +541,30 @@ auto spp::codegen::func_impls::simple_atomic_fetch_rmw(
     apply_atomic_rmw_op(op), val_field_ptr, val_arg, dl.getABITypeAlign(val_ty),
     read_atomic_ordering(sm, meta, ctx, "order"));
   ctx->Builder.CreateRet(rmw_inst);
+}
+
+namespace {
+  /**
+   * Whether a resolved sized-integer type is a signed one.
+   *
+   * @n
+   * Not a question the name can answer. @c "U8" is an alias for @c "SizedIntegerUnsigned[8]", which is itself an
+   * alias for @c "SizedInteger[8, false]" - so by the time the type is resolved every width of both signednesses is
+   * called @c SizedInteger . Reading the first letter made all of them look signed, and @c "max_val[U8]()" came back
+   * as 127. The signedness is the type's own @c signed comp argument, so that is what is read; the name is only a
+   * fallback for a type that somehow arrives without one.
+   *
+   * @param type The resolved return type of the intrinsic.
+   * @return Whether it is a signed integer.
+   */
+  auto IsSignedIntegerType(
+    spp::asts::TypeAst const &type) -> bool {
+    if (auto const *signed_arg = type.LastTypePart()->GnArgGroup->CompAt("signed"); signed_arg != nullptr) {
+      auto const *literal = signed_arg->Val->To<spp::asts::BooleanLiteralAst>();
+      if (literal != nullptr) { return literal->CppVal(); }
+    }
+    return type.LastTypePart()->Name.starts_with("S");
+  }
 }
 
 auto spp::codegen::func_impls::simple_binary_intrinsic_call(
@@ -1614,7 +1640,7 @@ auto spp::codegen::func_impls::std_intrinsics_min_val(
   -> void {
   // The lowest representable value for this sized-integer type. LLVM integer types carry no sign, so signedness is
   // read off the resolved "Self" return type's name ("S32" vs "U32") instead of "ty".
-  const auto is_signed = proto->ReturnType->LastTypePart()->Name.starts_with("S");
+  const auto is_signed = IsSignedIntegerType(*proto->ReturnType);
   const auto bit_width = ty->getIntegerBitWidth();
   const auto val = llvm::ConstantInt::get(
     ty, is_signed ? llvm::APInt::getSignedMinValue(bit_width) : llvm::APInt::getMinValue(bit_width));
@@ -1626,7 +1652,7 @@ auto spp::codegen::func_impls::std_intrinsics_max_val(
   -> void {
   // The highest representable value for this sized-integer type. See std_intrinsics_min_val for why signedness
   // comes from the return type's name rather than "ty".
-  const auto is_signed = proto->ReturnType->LastTypePart()->Name.starts_with("S");
+  const auto is_signed = IsSignedIntegerType(*proto->ReturnType);
   const auto bit_width = ty->getIntegerBitWidth();
   const auto val = llvm::ConstantInt::get(
     ty, is_signed ? llvm::APInt::getSignedMaxValue(bit_width) : llvm::APInt::getMaxValue(bit_width));
@@ -1680,7 +1706,21 @@ auto spp::codegen::func_impls::std_intrinsics_umin(
 auto spp::codegen::func_impls::std_intrinsics_fpowi(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_binary_intrinsic_call(sm, proto, meta, ctx, ty, llvm::Intrinsic::powi);
+  // "float_powi(base: T, exponent: S32)" raises a float to
+  // an *integer* power, so unlike every other binary intrinsic
+  // its two operands are different types - and "llvm.powi"
+  // is overloaded on both of them, not just the float.
+  // Todo: Tidy this up
+  const auto uid = "." + utils::Uid();
+  const auto i32_ty = llvm::cast<llvm::Type>(llvm::Type::getInt32Ty(*ctx->Context));
+
+  const auto fn = simple_create_fn(sm, proto, meta, ctx, ty, Vec{ty, i32_ty});
+  const auto base = fn->arg_begin();
+  const auto exponent = fn->arg_begin() + 1;
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
+    ctx->Module.get(), llvm::Intrinsic::powi, {ty, i32_ty});
+  const auto result = ctx->Builder.CreateCall(intrinsic_fn, {base, exponent}, "intrinsic.result" + uid);
+  ctx->Builder.CreateRet(result);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_fpowf(
@@ -1999,7 +2039,7 @@ auto spp::codegen::func_impls::std_intrinsics_fpclass(
   -> void {
   // "(value: T, flag: S32) -> Bool"; "ty" (per the dispatcher) is the return type "Bool" (i1) - "T" is read off the
   // "value" parameter instead.
-  const auto value_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto value_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto value_ty = GetLlvmTypeOf(*value_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
 
   const auto uid = "." + utils::Uid();
@@ -2160,7 +2200,7 @@ auto spp::codegen::func_impls::std_slot_replace(
   const auto val_field_ptr = ctx->Builder.CreateStructGEP(slot_ty, self_ptr, 0, "slot.replace.val_ptr" + uid);
   const auto val_ty = slot_ty->getElementType(0);
 
-  const auto new_val_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto new_val_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto new_val_sym = sm->CurrentScope->GetVarSymbol(new_val_param->ExtractName().get());
   const auto new_val_ptr = new_val_sym->LlvmInfo->Alloca;
 
@@ -2245,7 +2285,7 @@ auto spp::codegen::func_impls::std_non_null_write(
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.write.self");
   const auto data_ptr = ctx->Builder.CreateLoad(ptr_ty, self_ptr, "non_null.write.data_ptr");
 
-  const auto value_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto value_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
   const auto value_ty = GetLlvmTypeOf(*value_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto value_val = ctx->Builder.CreateLoad(value_ty, value_sym->LlvmInfo->Alloca, "non_null.write.value");
@@ -2365,7 +2405,7 @@ auto spp::codegen::func_impls::std_vol_write(
 
   // Get the llvm representation of the value being written
   // to this volatile value.
-  const auto new_param = proto->FnParamGroup->Params[0].get();
+  const auto new_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto new_alloca = sm->CurrentScope->GetVarSymbol(new_param->ExtractName().get(), true)->LlvmInfo->Alloca;
   const auto new_type = GetLlvmType(*sm->CurrentScope->GetTypeSymbol(new_param->Type.get()), ctx);
   const auto new_val = ctx->Builder.CreateLoad(new_type, new_alloca, "vol.write.new_val" + uid);
@@ -2392,7 +2432,7 @@ auto spp::codegen::func_impls::std_vol_replace(
   const auto val_field_ptr = ctx->Builder.CreateStructGEP(slot_ty, self_ptr, 0, "vol.replace.val_ptr" + uid);
   const auto val_ty = slot_ty->getElementType(0);
 
-  const auto new_val_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto new_val_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto new_val_sym = sm->CurrentScope->GetVarSymbol(new_val_param->ExtractName().get());
   const auto new_val_ptr = new_val_sym->LlvmInfo->Alloca;
 
