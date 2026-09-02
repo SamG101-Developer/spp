@@ -251,21 +251,23 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
   // Run the type qualifier steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage4_QualifyTypes(sm, meta); }
 
-  // Do the constraints after all the parameters are qualified. This is because of external generic symbols using
-  // unqualified types when analysing generically substituted constraint types.
+  // Do the constraints after all the parameters are qualified.
+  // This is because of external generic symbols using unqualified
+  // types when analysing generically substituted constraint types.
   for (auto const &p : GetTypeParams()) {
     p->Constraints->Stage4_QualifyTypes(sm, meta);
 
     // Attach the scopes of the constraint types as sup-scopes to the generic scope.
     for (auto const &constraint : p->Constraints->Constraints) {
-      auto constraint_scope = sm->CurrentScope->GetTypeSymbol(constraint.get())->LinkedScope;
+      const auto constraint_sym = sm->CurrentScope->GetTypeSymbol(constraint.get());
       for (auto const &dummy_scope : p->GetDummyScopes()) {
         analyse::scopes::BumpTypeStructureGeneration();
-        dummy_scope->DirectSupScopes.EmplaceBack(constraint_scope);
+        dummy_scope->DirectSupScopes.EmplaceBack(constraint_sym->LinkedScope);
       }
     }
 
-    p->GetDummyScopes()[0]->TySym->GenericConstraints = AstCloneVecShared(p->Constraints->Constraints);
+    const auto dummy_scopes = p->GetDummyScopes();
+    dummy_scopes[0]->TySym->GenericConstraints = AstCloneVecShared(p->Constraints->Constraints);
   }
 }
 
