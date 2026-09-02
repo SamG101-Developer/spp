@@ -196,6 +196,16 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   -> llvm::Value* {
   const auto uid = "." + spp::utils::Uid(this);
 
+  // In a constant context the caller wants a value,
+  // not a load. Resolve recursively and return the
+  // result from the meta context.
+  if (ctx->InConstantContext) {
+    Stage9_CompTimeResolve(sm, meta);
+    if (auto folded = std::move(meta->CmpResult); folded != nullptr) {
+      return folded->Stage11_CodeGen(sm, meta, ctx);
+    }
+  }
+
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
   if (_LhsTypeSym != nullptr) {
     const auto var_sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
