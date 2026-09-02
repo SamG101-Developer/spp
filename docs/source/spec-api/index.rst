@@ -4,15 +4,12 @@ S++ Language Specification
 .. toctree::
    :maxdepth: 2
 
-   introduction/index
-   type_system/index
-   functions/index
-   statements/index
-   expressions/index
-   modules/index
-   concurrency/index
-   mem_safety/index
-   stl/index
-   advanced/index
-
-   containers/index
+   getting-started/index
+   fundamentals/index
+   type-system/index
+   memory-model-and-safety/index
+   expressions-statements-functions/index
+   concurrency-parallelism/index
+   advanced-features/index
+   standard-library/index
+   compiler-reference/index
