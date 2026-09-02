@@ -25,8 +25,21 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
 
   virtual ~AbstractTypeAst();
 
-  SPP_ATTR_NODISCARD virtual auto Iterator() const
-    -> Vec<Shared<const TypeIdentifierAst>> = 0;
+  /**
+   * Whether any part of this type satisfies @p pred .
+   *
+   * @n
+   * A type is a chain of nodes, and every caller of this asks a yes-or-no question about the parts rather than wanting
+   * the parts themselves. Answering with a container made each level allocate one and copy the level below into it -
+   * the same cost @c NsPartsInto exists to avoid - and, because the container held shared pointers, the walk also had
+   * to take a @c shared_from_this of each node, so it threw on any type owned outright rather than shared. Asking the
+   * question directly costs no allocation, stops at the first part that answers it, and works whoever owns the node.
+   *
+   * @param pred Applied to each part in turn; the walk stops at the first that returns true.
+   * @return Whether any part satisfied @p pred .
+   */
+  SPP_ATTR_NODISCARD virtual auto AnyPart(
+    std::function<bool(TypeIdentifierAst const&)> const &pred) const -> bool = 0;
 
   SPP_ATTR_NODISCARD virtual auto IsNeverType() const noexcept
     -> bool = 0;

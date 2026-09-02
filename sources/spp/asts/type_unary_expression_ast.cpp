@@ -143,10 +143,11 @@ auto spp::asts::TypeUnaryExpressionAst::InferType(
   return type_sym->FqName()->WithConvention(AstClone(GetConvention()));
 }
 
-auto spp::asts::TypeUnaryExpressionAst::Iterator() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
-  // Iterate from the right-hand-side.
-  return Rhs->Iterator();
+auto spp::asts::TypeUnaryExpressionAst::AnyPart(
+  std::function<bool(TypeIdentifierAst const&)> const &pred) const
+  -> bool {
+  // Walk from the right-hand-side.
+  return Rhs->AnyPart(pred);
 }
 
 auto spp::asts::TypeUnaryExpressionAst::IsNeverType() const noexcept

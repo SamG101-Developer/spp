@@ -309,8 +309,8 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     auto parts = Vec<asts::TypeIdentifierAst const*>();
     type_arg->Val->TypePartsInto(parts);
     return genex::any_of(parts, [this](auto const *part) {
-      return genex::any_of(part->Iterator(), [this](auto const &nested) {
-        const auto sym = GetTypeSymbol(nested.get());
+      return part->AnyPart([this](asts::TypeIdentifierAst const &nested) {
+        const auto sym = GetTypeSymbol(&nested);
         return sym != nullptr and sym->IsGeneric;
       });
     });

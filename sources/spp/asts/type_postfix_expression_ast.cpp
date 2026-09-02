@@ -180,10 +180,11 @@ auto spp::asts::TypePostfixExpressionAst::InferType(
   return sym->FqName();
 }
 
-auto spp::asts::TypePostfixExpressionAst::Iterator() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
-  // Iterate from the left-hand-side.
-  return Lhs->Iterator();
+auto spp::asts::TypePostfixExpressionAst::AnyPart(
+  std::function<bool(TypeIdentifierAst const&)> const &pred) const
+  -> bool {
+  // Walk from the left-hand-side.
+  return Lhs->AnyPart(pred);
 }
 
 auto spp::asts::TypePostfixExpressionAst::IsNeverType() const noexcept

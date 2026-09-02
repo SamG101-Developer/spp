@@ -81,8 +81,8 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto Iterator() const
-    -> Vec<Shared<const TypeIdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto AnyPart(
+    std::function<bool(TypeIdentifierAst const&)> const &pred) const -> bool override;
 
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept
     -> bool override;

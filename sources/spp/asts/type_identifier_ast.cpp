@@ -332,44 +332,41 @@ auto spp::asts::TypeIdentifierAst::Stage11_CodeGen(
   return mock_init->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto spp::asts::TypeIdentifierAst::Iterator() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
-  // First yield is the original type being iterated over.
-  auto parts = Vec<Shared<const TypeIdentifierAst>>{};
-  parts.EmplaceBack(dynamic_shared_cast<const TypeIdentifierAst>(
-    shared_from_this()));
+auto spp::asts::TypeIdentifierAst::AnyPart(
+  std::function<bool(TypeIdentifierAst const&)> const &pred) const
+  -> bool {
+  // This node is a part in its own right.
+  if (pred(*this)) { return true; }
 
   for (auto &&g : GnArgGroup->Args) {
     // Positional generic comp argument with identifier value.
     if (auto &&comp_positional_arg = g->To<GenericArgumentCompPositionalAst>()) {
       if (auto &&ident_val = comp_positional_arg->Val->To<IdentifierAst>()) {
-        parts.EmplaceBack(FromIdentifier(*ident_val));
+        // A comp argument that is a bare name stands for a type part without being one, so one is made to ask about.
+        // It lives only for the question - nothing outside this call can hold on to it.
+        if (const auto part = FromIdentifier(*ident_val); pred(*part)) { return true; }
       }
     }
 
     // Keyword generic comp argument with identifier value.
     else if (auto &&comp_keyword_arg = g->To<GenericArgumentCompKeywordAst>()) {
       if (auto &&ident_val = comp_keyword_arg->Val->To<IdentifierAst>()) {
-        parts.EmplaceBack(FromIdentifier(*ident_val));
+        if (const auto part = FromIdentifier(*ident_val); pred(*part)) { return true; }
       }
     }
 
-    // Positional generic type arguments => recursive iteration.
+    // Positional generic type arguments => recursive walk.
     else if (auto &&type_positional_arg = g->To<GenericArgumentTypePositionalAst>()) {
-      for (auto &&ti : type_positional_arg->Val->Iterator()) {
-        parts.EmplaceBack(ti);
-      }
+      if (type_positional_arg->Val->AnyPart(pred)) { return true; }
     }
 
-    // Keyword generic type arguments => recursive iteration.
+    // Keyword generic type arguments => recursive walk.
     else if (auto &&type_keyword_arg = g->To<GenericArgumentTypeKeywordAst>()) {
-      for (auto &&ti : type_keyword_arg->Val->Iterator()) {
-        parts.EmplaceBack(ti);
-      }
+      if (type_keyword_arg->Val->AnyPart(pred)) { return true; }
     }
   }
 
-  return parts;
+  return false;
 }
 
 auto spp::asts::TypeIdentifierAst::IsNeverType() const noexcept
@@ -509,10 +506,9 @@ auto spp::asts::TypeIdentifierAst::SubstituteGenerics(
 auto spp::asts::TypeIdentifierAst::ContainsGenerics(
   GenericParameterAst const &generic) const
   -> bool {
-  // Check if the parameter's name is in the type parts iterated from this type.
-  auto cast_name = generic.Name->ToUnchecked<TypeIdentifierAst>();
-  return genex::any_of(
-    Iterator() | genex::to<Vec>(), [&cast_name](auto ti) { return *ti == *cast_name; });
+  // Check if the parameter's name is in the type parts walked from this type.
+  auto const *cast_name = generic.Name->ToUnchecked<TypeIdentifierAst>();
+  return AnyPart([cast_name](TypeIdentifierAst const &part) { return part == *cast_name; });
 }
 
 auto spp::asts::TypeIdentifierAst::WithGenerics(

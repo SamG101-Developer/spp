@@ -441,7 +441,7 @@ namespace spp::analyse::utils::overload_utils {
       asts::FunctionPrototypeAst const &fn_proto)
       -> bool {
       const auto names_self = [](asts::TypeAst const &type) {
-        return genex::any_of(type.Iterator(), [](auto const &part) { return part->Name == "Self"; });
+        return type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; });
       };
       return names_self(*fn_proto.ReturnType)
         or genex::any_of(fn_proto.FnParamGroup->GetNonSelfParams(), [&](auto const *p) { return names_self(*p->Type); });
