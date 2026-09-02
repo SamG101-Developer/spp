@@ -2272,6 +2272,15 @@ auto spp::codegen::func_impls::std_non_null_read(
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto data_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.read.data_ptr" + uid);
+
+  // Add a Void guard to cover all eventualities of the generic
+  // instantiation of intrinsic functions. Use the special return
+  // void instruction in this case.
+  if (ty == nullptr or ty->isVoidTy()) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+
   const auto val = ctx->Builder.CreateLoad(ty, data_ptr, "non_null.read.val" + uid);
   ctx->Builder.CreateRet(val);
 }
@@ -2285,7 +2294,17 @@ auto spp::codegen::func_impls::std_non_null_write(
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.write.self");
   const auto data_ptr = ctx->Builder.CreateLoad(ptr_ty, self_ptr, "non_null.write.data_ptr");
 
-  const auto value_param = proto->FnParamGroup->GetNonSelfParams()[0];
+  // Add a Void guard to cover all eventualities of the generic
+  // instantiation of intrinsic functions. In this case, a Void
+  // generic arg means the param is removed from the signature.
+  // Use the special return void instruction in this case.
+  const auto value_params = proto->FnParamGroup->GetNonSelfParams();
+  if (value_params.IsEmpty()) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+
+  const auto value_param = value_params[0];
   const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
   const auto value_ty = GetLlvmTypeOf(*value_param->Type->WithoutConvention(), *sm->CurrentScope, ctx);
   const auto value_val = ctx->Builder.CreateLoad(value_ty, value_sym->LlvmInfo->Alloca, "non_null.write.value");
