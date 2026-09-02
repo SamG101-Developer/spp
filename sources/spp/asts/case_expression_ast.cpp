@@ -204,17 +204,17 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 namespace spp::asts {
   namespace {
     auto PatternBindsByMove(
-      spp::asts::CasePatternVariantAst const &pattern)
+      CasePatternVariantAst const &pattern)
       -> bool {
       // A name binds what it is matched against, unless it asks for
       // it through a borrow, which leaves the value where it was.
-      if (const auto single = pattern.To<spp::asts::CasePatternVariantSingleIdentifierAst>()) {
+      if (const auto single = pattern.To<CasePatternVariantSingleIdentifierAst>()) {
         return single->Conv == nullptr;
       }
 
       // "x=<pattern>" and "x as y" bind whatever their value pattern
       // binds.
-      if (const auto attr = pattern.To<spp::asts::CasePatternVariantDestructureAttributeBindingAst>()) {
+      if (const auto attr = pattern.To<CasePatternVariantDestructureAttributeBindingAst>()) {
         return attr->Val != nullptr and PatternBindsByMove(*attr->Val);
       }
 
@@ -223,13 +223,13 @@ namespace spp::asts {
       const auto any_elem_binds = [](auto const &elems) {
         return genex::any_of(elems, [](auto const &e) { return PatternBindsByMove(*e); });
       };
-      if (const auto obj = pattern.To<spp::asts::CasePatternVariantDestructureObjectAst>()) {
+      if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
         return any_elem_binds(obj->Elems);
       }
-      if (const auto tup = pattern.To<spp::asts::CasePatternVariantDestructureTupleAst>()) {
+      if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
         return any_elem_binds(tup->Elems);
       }
-      if (const auto arr = pattern.To<spp::asts::CasePatternVariantDestructureArrayAst>()) {
+      if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
         return any_elem_binds(arr->Elems);
       }
 
