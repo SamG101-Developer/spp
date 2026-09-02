@@ -532,7 +532,7 @@ auto spp::codegen::func_impls::simple_atomic_fetch_rmw(
   const auto val_ty = atom_ty->getElementType(0);
 
   // "val" is the only non-"self" parameter; the ordering is a generic parameter.
-  const auto val_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto val_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
   const auto val_arg = ctx->Builder.CreateLoad(val_ty, val_sym->LlvmInfo->Alloca, "atomic.fetch.operand");
 
@@ -2847,7 +2847,15 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_inner(
     ptr_arg, old_arg, new_arg, dl.getABITypeAlign(elem_ty),
     read_atomic_ordering(sm, meta, ctx, "success_order"),
     read_atomic_ordering(sm, meta, ctx, "failure_order"));
-  ctx->Builder.CreateRet(cmpxchg_inst);
+
+  // Repack
+  const auto uid = "." + utils::Uid();
+  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  packed = ctx->Builder.CreateInsertValue(
+    packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {0}, "compex.value" + uid), {0}, "compex.packed" + uid);
+  packed = ctx->Builder.CreateInsertValue(
+    packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {1}, "compex.flag" + uid), {1}, "compex.packed" + uid);
+  ctx->Builder.CreateRet(packed);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_compex_weak_inner(
@@ -2869,7 +2877,15 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_weak_inner(
     read_atomic_ordering(sm, meta, ctx, "success_order"),
     read_atomic_ordering(sm, meta, ctx, "failure_order"));
   cmpxchg_inst->setWeak(true);
-  ctx->Builder.CreateRet(cmpxchg_inst);
+
+  // Repack
+  const auto uid = "." + utils::Uid();
+  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  packed = ctx->Builder.CreateInsertValue(
+    packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {0}, "compex.value" + uid), {0}, "compex.packed" + uid);
+  packed = ctx->Builder.CreateInsertValue(
+    packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {1}, "compex.flag" + uid), {1}, "compex.packed" + uid);
+  ctx->Builder.CreateRet(packed);
 }
 
 auto spp::codegen::func_impls::std_threading_atomic_fetch_exchange(
