@@ -60,7 +60,6 @@ import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.types;
 import genex;
-import std;
 import sys;
 
 namespace spp::analyse::utils::overload_utils {
@@ -771,15 +770,38 @@ namespace spp::analyse::utils::overload_utils {
         auto p_type = fn_scope->GetTypeSymbol(param->Type.get())->FqName()->WithConvention(
           asts::AstClone(param->Type->GetConvention()));
         if (p_type->IsSelfType()) {
-          // Guarded: this used to dereference both casts, so a "Self" parameter on a call whose left-hand side is not
-          // a postfix-with-type crashed rather than failing the candidate.
-          if (const auto receiver = ReceiverTypeAtCallSite(meta); receiver != nullptr) {
-            p_type = asts::AstClone(receiver)->WithConvention(asts::AstClone(p_type->GetConvention()));
+          // "Self" is the type the function belongs to. Taking it from the call-site receiver is right when the
+          // receiver is that type, and wrong when the method was reached by forwarding: "&Str" calling "StrView::eq"
+          // bound "Self" in "that: &Self" to "Str", and since a bare "Self" is relaxed-matched against anything, the
+          // argument was accepted un-forwarded and the callee read a "Str" through "StrView"'s "{ptr, length}" shape.
+          // That is why "Str == Str" was false for equal strings.
+          //
+          // So the owning type wins whenever the receiver only reaches it by forwarding, and the receiver wins
+          // otherwise - "Self" on an abstract sup block is meant to be the concrete receiver, not the block's class.
+          // Guarded throughout: a call whose left-hand side is not a postfix-with-type has no receiver at all, and
+          // used to crash here rather than failing the candidate.
+          const auto receiver = ReceiverTypeAtCallSite(meta);
+          const auto conv = p_type->GetConvention();
+          auto owner = type_utils::ResolveAndSubstituteSelfType(
+            *p_type->WithoutConvention(), *fn_scope, *sm, *meta);
+
+          const auto owner_known = owner != nullptr and not owner->IsSelfType();
+          const auto reached_by_forwarding = owner_known and receiver != nullptr and conv != nullptr
+            and not TypeEq(*owner, *receiver, *fn_scope, *sm->CurrentScope)
+            and type_compare::TypeFwdEq(
+              *receiver->WithConvention(asts::AstClone(conv)),
+              *owner->WithConvention(asts::AstClone(conv)),
+              *sm->CurrentScope, *fn_scope);
+
+          if (reached_by_forwarding or (owner_known and receiver == nullptr)) {
+            p_type = std::move(owner)->WithConvention(asts::AstClone(conv));
+          }
+          else if (receiver != nullptr) {
+            p_type = asts::AstClone(receiver)->WithConvention(asts::AstClone(conv));
           }
         }
 
         auto a_type = arg->InferType(sm, meta);
-        auto temp = type_compare::GenericInferenceMap();
 
         if (const auto variadic_param = param->To<asts::FunctionParameterVariadicAst>(); variadic_param != nullptr) {
           const auto variadic_gn_param = fn_proto.GetNonGenericImpl()->GnParamGroup->GetVariadicParams();
@@ -795,50 +817,62 @@ namespace spp::analyse::utils::overload_utils {
           }
         }
 
-        // Special case for "self" parameters.
+        // A "self" parameter carries no type check of its own:
+        // the receiver is what chose this overload to begin with,
+        // so there is nothing left to compare it against. It only
+        // needs the convention the prototype declares.
         if (const auto self_param = param->To<asts::FunctionParameterSelfAst>(); self_param != nullptr) {
           arg->Conv = asts::AstClone(self_param->Conv);
+          continue;
         }
 
-        // Regular parameter without arg folding. The double check is
-        // required for generics applied to the superclass in sup-ext
-        // that cannot be substituted because they can be anything,
-        // so reverse type check them with the "relaxed" variation.
-        // This is the only place this is required.
-        else if (not type_compare::ConventionEq(*p_type, *a_type)
+        // An argument satisfies its parameter either outright,
+        // or by binding a generic the call is free to choose.
+        if (not type_compare::ConventionEq(*p_type, *a_type)
           or not TypeEq(*p_type, *a_type, *fn_scope, *sm->CurrentScope)) {
-          // If the parameter's type is a generic that is rigid at
-          // the call site (defined in a scope enclosing the caller,
-          // so already fixed), the argument must match it exactly.
-          const auto param_is_rigid_generic = IsRigidGenericAtCaller(
-            *p_type, *sm->CurrentScope);
-          const auto relaxed_matched = not param_is_rigid_generic
-            and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, temp);
+          // Operands go argument-first here, which is the order
+          // "RelaxedTypeEq" infers the parameter's generics from
+          // the argument in rather than the other way round; its
+          // internal convention check is inverted to match.
+          // A parameter whose generic is already fixed by a scope
+          // enclosing the caller is not free to choose, so it
+          // has to match exactly; and a relaxed match that only
+          // held by binding such a generic is not a match either.
+          auto inferred = type_compare::GenericInferenceMap();
+          const auto relaxed_matched = not IsRigidGenericAtCaller(*p_type, *sm->CurrentScope)
+            and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, inferred)
+            and not genex::any_of(inferred, [&](auto const &binding) {
+              return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
+            });
 
-          // A relaxed match that only held because it bound a
-          // generic the caller cannot choose is not a match.
-          const auto relaxed_bound_rigid = relaxed_matched and genex::any_of(temp, [&](auto const &binding) {
-            return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
-          });
+          // Forwarding is the last resort, tried only once the
+          // argument has failed to match any other way - so it
+          // never displaces a relaxed match that would have bound
+          // the parameter's generics correctly.
+          if (not relaxed_matched and type_compare::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
+            if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
+              arg->Val = std::move(fwd_call);
+              continue;
+            }
+          }
 
           RaiseIf<SppTypeMismatchError>(
-            not relaxed_matched or relaxed_bound_rigid,
-            {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
+            not relaxed_matched, {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
+          continue;
         }
 
-        // The argument may have matched its parameter by forwarding
-        // ("&Vec[T]" satisfying a "&View[T]" parameter), in which
-        // case the value the callee is handed is the forwarded-to
-        // one, so the argument becomes that call. This is the
-        // argument-position counterpart of a method being called on
-        // the value its receiver forwards to.
+        // The types matched, and may still have matched by forwarding ("&Vec[T]" satisfying a "&View[T]" parameter),
+        // in which case what the callee is handed is the forwarded-to value, so the argument becomes that call. This
+        // is the argument-position counterpart of a method being called on the value its receiver forwards to.
         //
-        // Todo: an argument accepted by the relaxed match above never reaches here, because that branch and this one are
-        //  alternatives. A parameter written as "&Self" is relaxed-matched against anything, so "eq(&self, that: &Self)"
-        //  on a "StrView" takes a "&Str" unforwarded and reads it through "StrView"'s "{ptr, length}" shape - which is
-        //  why "Str == Str" is false for equal strings. Moving the check out of the "else" is not enough on its own;
-        //  "TypeFwdEq" also returns false for this pair and it is not yet clear why.
-        else if (type_compare::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
+        // Todo: an argument accepted by the relaxed match above never reaches here, because that branch returns. A
+        //  parameter written as "&Self" is relaxed-matched against anything, so "eq(&self, that: &Self)" on a
+        //  "StrView" takes a "&Str" unforwarded and reads it through "StrView"'s "{ptr, length}" shape - which is why
+        //  "Str == Str" is false for equal strings. Trying the forward before the relaxed match instead is not the
+        //  answer: it rewrites arguments that the relaxed match would have bound correctly, and segfaults a third of
+        //  the suite. Resolving "Self" to the owning type rather than the call-site receiver is not enough on its own
+        //  either - it changes nothing here, because the pair never reaches this branch.
+        if (type_compare::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
           if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
             arg->Val = std::move(fwd_call);
           }
