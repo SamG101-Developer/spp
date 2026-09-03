@@ -1,6 +1,7 @@
 module;
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
     if (not handle_validate(is_exe)) { return; }
@@ -17,6 +18,7 @@ import spp.asts.module_prototype_ast;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
+import spp.compiler.out_layout;
 import spp.lex.tokens;
 import spp.utils.files;
 import cli11;
@@ -152,29 +154,48 @@ auto spp::cli::run_cli(
   auto run_mode = Str("dev");
   auto clean_mode = Str("all");
 
+  // One target per subcommand. Empty is the host, which
+  // is what every build was before the option existed.
+  auto build_target = Str();
+  auto run_target = Str();
+  auto clean_target = Str();
+
+  // No example triple: which ones resolve depends on the backends
+  // this binary was linked with, so an example here would be wrong
+  // for a default build. Passing an unrecognised one lists what
+  // this build can actually emit for.
+  constexpr auto target_help =
+    "Target triple to build for; the host by default. Pass an unknown one to list what this build supports. A "
+    "target other than the host is compiled and an object emitted, but not linked - see the note the build prints.";
+
   app.add_subcommand("init", "Initialize the new project")
      ->callback(handle_init);
 
   app.add_subcommand("vcs", "Initialize version control for the project")
      ->callback([] { if (not handle_vcs()) { throw CLI::RuntimeError(1); } });
 
-  app.add_subcommand("build", "Build the project")
-     ->callback([&build_mode] { handle_build(build_mode); })
-     ->add_option("-m,--mode", build_mode, "Build mode (dev or rel)")
-     ->check(CLI::IsMember({"dev", "rel"}))
-     ->default_val("dev");
+  const auto build_cmd = app.add_subcommand("build", "Build the project");
+  build_cmd->add_option("-m,--mode", build_mode, "Build mode (dev or rel)")
+           ->check(CLI::IsMember({"dev", "rel"}))
+           ->default_val("dev");
+  build_cmd->add_option("-t,--target", build_target, target_help);
+  build_cmd->callback([&build_mode, &build_target] { handle_build(build_mode, build_target); });
 
-  app.add_subcommand("run", "Run the project")
-     ->callback([&run_mode] { handle_run(run_mode); })
-     ->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
-     ->check(CLI::IsMember({"dev", "rel"}))
-     ->default_val("dev");
+  const auto run_cmd = app.add_subcommand("run", "Run the project");
+  run_cmd->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
+         ->check(CLI::IsMember({"dev", "rel"}))
+         ->default_val("dev");
+  run_cmd->add_option("-t,--target", run_target, target_help);
+  run_cmd->callback([&run_mode, &run_target] { handle_run(run_mode, run_target); });
 
-  app.add_subcommand("clean", "Clean the project")
-     ->callback([&clean_mode] { handle_clean(clean_mode); })
-     ->add_option("-m,--mode", clean_mode, "Clean mode (dev, rel or all)")
-     ->check(CLI::IsMember({"dev", "rel", "all"}))
-     ->default_val("all");
+  const auto clean_cmd = app.add_subcommand("clean", "Clean the project");
+  clean_cmd->add_option("-m,--mode", clean_mode, "Clean mode (dev, rel or all)")
+           ->check(CLI::IsMember({"dev", "rel", "all"}))
+           ->default_val("all");
+  clean_cmd->add_option(
+    "-t,--target", clean_target,
+    "Only clean this target's tree; every target's by default");
+  clean_cmd->callback([&clean_mode, &clean_target] { handle_clean(clean_mode, clean_target); });
 
   auto test_name_filter = spp::Str();
   auto test_group_filter = spp::Str();
@@ -322,19 +343,27 @@ auto spp::cli::handle_vcs()
 
 auto spp::cli::handle_build(
   Str const &mode,
+  Str const &target,
   const bool skip_vcs)
   -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
+  // Choose the target before anything is compiled: every module
+  // carries the triple and the data layout it was built for, and
+  // those are resolved once, on first use.
+  if (not codegen::SelectTarget(target.c_str())) { return; }
+
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
-  std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
+  const auto out = compiler::OutLayout{
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode};
+  std::filesystem::create_directories(out.OutRoot());
 
   // Remove the executable first, so a build that fails leaves
   // nothing behind for "run" to pick up and execute as if it
   // were the build that just happened.
-  std::filesystem::remove(cwd / OUT_FOLDER / compiler::CompilerBoot::ExecutableName(cwd));
+  std::filesystem::remove(out.ExecutablePath());
 
   // Handle VCS if not skipped. Building against a half-fetched
   // "vcs" folder reports every imported symbol as undefined
@@ -364,16 +393,28 @@ auto spp::cli::handle_build(
 }
 
 auto spp::cli::handle_run(
-  Str const &mode)
+  Str const &mode,
+  Str const &target)
   -> void {
   // Build the project first (skip VCS).
-  handle_build(mode, false);
+  handle_build(mode, target, false);
+
+  // Nothing this machine can execute comes out of a cross build,
+  // so say that rather than reporting the missing executable as
+  // though the build had gone wrong.
+  if (not codegen::TargetIsHost()) {
+    std::cerr
+      << "Error: Cannot run a build for '" << codegen::TargetFolderName()
+      << "'; only a build for the host can be executed here.\n";
+    return;
+  }
 
   // A build that did not get as far as linking has said why
   // already, so there is nothing to add here beyond not
   // trying to run something that was never produced.
   const auto cwd = std::filesystem::current_path();
-  const auto exe_file = cwd / OUT_FOLDER / compiler::CompilerBoot::ExecutableName(cwd);
+  const auto exe_file = compiler::OutLayout{
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode}.ExecutablePath();
   if (not std::filesystem::exists(exe_file)) {
     std::cerr << "Error: No executable was built at '" << utils::files::DisplayString(exe_file) << "'.\n";
     return;
@@ -404,18 +445,44 @@ auto spp::cli::handle_run(
 }
 
 auto spp::cli::handle_clean(
-  Str const &mode)
+  Str const &mode,
+  Str const &target)
   -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
-  // Remove the appropriate folders.
+  // Which targets to sweep: the one named, or every one that has
+  // been built here. Reading them off disk rather than off a list
+  // of known triples is what makes a target built once and then
+  // never asked for again still cleanable.
   const auto cwd = std::filesystem::current_path();
-  if (mode == "dev" or mode == "all") {
-    std::filesystem::remove_all(cwd / OUT_FOLDER / "dev");
+  auto targets = Vec<Str>();
+  if (not target.empty()) {
+    if (not codegen::SelectTarget(target.c_str())) { return; }
+    targets.EmplaceBack(codegen::TargetFolderName());
   }
-  if (mode == "rel" or mode == "all") {
-    std::filesystem::remove_all(cwd / OUT_FOLDER / "rel");
+  else {
+    for (auto const &entry : SafeDirectoryIterator(cwd / OUT_FOLDER)) {
+      if (entry.is_directory()) { targets.EmplaceBack(utils::files::NativeString(entry.path().filename())); }
+    }
+  }
+
+  // Remove the appropriate folders. Every build's artifacts live
+  // under its own target and mode folder, so removing that is the
+  // whole of the clean - there is nothing left outside it.
+  for (auto const &t : targets) {
+    for (auto const &known : compiler::OutLayout::AllModes()) {
+      if (mode != "all" and mode != known) { continue; }
+      std::filesystem::remove_all(compiler::OutLayout{.Root = cwd, .Target = t, .Mode = known}.OutRoot());
+    }
+
+    // A target folder with no modes left in it is noise, so it
+    // goes too - but only when it is genuinely empty, because a
+    // "clean -m dev" leaves the "rel" build standing.
+    const auto target_root = cwd / OUT_FOLDER / t;
+    if (std::filesystem::exists(target_root) and std::filesystem::is_empty(target_root)) {
+      std::filesystem::remove(target_root);
+    }
   }
 }
 
@@ -437,13 +504,17 @@ auto spp::cli::handle_test(
   }
   SPP_VALIDATE_STRUCTURE(false);
 
+  // A test build compiles at "rel", so it must look for its
+  // executable there too - see the Compiler constructed below.
   const auto cwd = std::filesystem::current_path();
-  std::filesystem::create_directory(cwd / OUT_FOLDER / "dev");
+  const auto out = compiler::OutLayout{
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = "rel"};
+  std::filesystem::create_directories(out.OutRoot());
 
   // Remove the executable before building, so a build that
   // fails to link cannot leave the previous one behind to be
   // run and reported as a pass.
-  const auto exe_file = cwd / OUT_FOLDER / compiler::CompilerBoot::ExecutableName(cwd);
+  const auto exe_file = out.ExecutablePath();
   std::filesystem::remove(exe_file);
 
   for (auto const &lib : libs) {
@@ -666,7 +737,8 @@ auto spp::cli::run_cpp_google_test(
 
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
-  std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
+  std::filesystem::create_directories(
+    compiler::OutLayout{.Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode}.OutRoot());
   SPP_VALIDATE_STRUCTURE_OR(false, {});
 
   // Compile the code.

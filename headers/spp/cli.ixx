@@ -25,17 +25,38 @@ namespace spp::cli {
   SPP_EXP_FUN auto handle_vcs()
     -> bool;
 
+  /**
+   * Compile the project.
+   * @param[in] mode "dev" or "rel", which selects the optimisation pipeline and names the folder built into.
+   * @param[in] target The target triple, or empty for the host. A target other than the host is compiled and an
+   * object emitted for it, but not linked: the linker driver is the host's, and the ffi runtimes a project ships are
+   * host objects, so there is nothing to link a foreign object against.
+   * @param[in] skip_vcs Whether to skip fetching the [vcs] dependencies first.
+   */
   SPP_EXP_FUN auto handle_build(
     Str const &mode,
+    Str const &target = "",
     bool skip_vcs = false)
     -> void;
 
+  /**
+   * Compile the project and execute what it produced. Only a host build can be run.
+   * @param[in] mode "dev" or "rel".
+   * @param[in] target The target triple, or empty for the host.
+   */
   SPP_EXP_FUN auto handle_run(
-    Str const &mode)
+    Str const &mode,
+    Str const &target = "")
     -> void;
 
+  /**
+   * Remove built artifacts.
+   * @param[in] mode "dev", "rel", or "all".
+   * @param[in] target Only clean this target's tree; empty cleans every target that has been built here.
+   */
   SPP_EXP_FUN auto handle_clean(
-    Str const &mode)
+    Str const &mode,
+    Str const &target = "")
     -> void;
 
   /**

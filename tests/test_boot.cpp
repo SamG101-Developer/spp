@@ -61,6 +61,26 @@ auto ensure_temp_project() -> void {
 }
 
 /**
+ * The s++ build mode the suite compiles its fixtures in. "rel" (O3) unless SPP_TEST_MODE says otherwise, which is what
+ * lets CI run the same suite over the O0 pipeline as a second matrix entry. Read once: every test in a process wants
+ * the same answer, and an unrecognised value is a typo worth failing on rather than silently compiling the other mode.
+ */
+namespace {
+  auto test_build_mode() -> spp::Str const& {
+    static const auto mode = [] {
+      const auto *env = std::getenv("SPP_TEST_MODE");
+      auto value = spp::Str(env != nullptr ? env : "rel");
+      if (value != "dev" and value != "rel") {
+        std::cerr << "SPP_TEST_MODE must be 'dev' or 'rel', not '" << value << "'\n";
+        std::abort();
+      }
+      return value;
+    }();
+    return mode;
+  }
+}
+
+/**
  * Compile one module of code as a throwaway project.
  * @param code The module source.
  * @param add_main Whether to prepend an empty "main", which an executable project needs.
@@ -81,7 +101,7 @@ auto build_temp_project(std::string code, const bool add_main) -> spp::Map<spp::
   std::filesystem::current_path(cwd / fp);
   auto comp_time_constants = spp::Map<spp::Str, spp::Str>();
   try {
-    comp_time_constants = spp::cli::run_cpp_google_test("rel", std::move(code));
+    comp_time_constants = spp::cli::run_cpp_google_test(test_build_mode(), std::move(code));
   }
   catch (const spp::analyse::errors::SemanticError &e) {
     std::cout << e.what() << std::endl;

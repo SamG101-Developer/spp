@@ -146,14 +146,114 @@ namespace {
   }
 
   /**
-   * The one target machine every module is built against, created on first use. Registering the native target is done
-   * here rather than at start-up so that nothing has to remember to do it before the first module is made.
+   * Register the backends this build was linked against, once. The registry is what a triple is looked up in, so
+   * nothing can be said about a requested target until this has run.
    */
-  auto HostTargetMachine()
-    -> llvm::TargetMachine* {
-    static auto *machine = []() -> llvm::TargetMachine* {
+  auto InitializeAllBackends()
+    -> void {
+    static const auto once = [] {
+#ifdef SPP_ALL_TARGETS
+      llvm::InitializeAllTargetInfos();
+      llvm::InitializeAllTargets();
+      llvm::InitializeAllTargetMCs();
+      llvm::InitializeAllAsmPrinters();
+#else
       llvm::InitializeNativeTarget();
       llvm::InitializeNativeTargetAsmPrinter();
+#endif
+      return true;
+    }();
+    (void)once;
+  }
+
+  /**
+   * The triple this build emits for, as chosen by @c SelectTarget . Empty means the host. Written once, before code
+   * generation begins, and only read from there on - which is what makes the caching below safe.
+   */
+  auto SelectedTriple()
+    -> std::string& {
+    static auto triple = std::string();
+    return triple;
+  }
+
+  /**
+   * The target as a directory name.
+   */
+  auto SelectedFolderName()
+    -> std::string& {
+    static auto name = std::string(SPP_HOST_TRIPLE);
+    return name;
+  }
+
+  /**
+   * Whether @p text is usable as one path component: a triple's own alphabet, and nothing that would end the
+   * component or walk out of it.
+   */
+  auto IsPathComponent(
+    std::string const &text)
+    -> bool {
+    if (text.empty() or text == "." or text == "..") { return false; }
+    for (const auto c : text) {
+      const auto ok =
+        (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9')
+        or c == '-' or c == '_' or c == '.';
+      if (not ok) { return false; }
+    }
+    return true;
+  }
+
+  /**
+   * Canonical triples worth suggesting when a "--target" is not recognised. Not a whitelist, just examples.
+   */
+  constexpr char const *kSuggestedTriples[] = {
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "i686-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "riscv64-unknown-linux-gnu",
+    "s390x-unknown-linux-gnu",
+    "powerpc64le-unknown-linux-gnu",
+    "wasm32-unknown-wasi",
+  };
+
+  /**
+   * Print the suggestions this build can actually emit for, one per line. Each is put through the same lookup a real
+   * "--target" gets rather than mapped from a backend name, so what is offered is exactly what would be accepted.
+   * @return How many were printed.
+   */
+  auto PrintSupportedTriples()
+    -> unsigned {
+    InitializeAllBackends();
+    auto printed = 0u;
+    for (auto const *candidate : kSuggestedTriples) {
+      auto error = std::string();
+      const auto triple = llvm::Triple(llvm::Triple::normalize(candidate));
+      if (llvm::TargetRegistry::lookupTarget(triple, error) == nullptr) { continue; }
+      llvm::errs() << "  " << candidate << "\n";
+      printed += 1;
+    }
+    return printed;
+  }
+
+  /**
+   * The triple every module is built for, normalised once: the selected target, or the host when none was asked for.
+   */
+  auto TargetTriple()
+    -> llvm::Triple const& {
+    static const auto triple = SelectedTriple().empty()
+      ? HostTriple()
+      : llvm::Triple(llvm::Triple::normalize(SelectedTriple()));
+    return triple;
+  }
+
+  /**
+   * The one target machine every module is built against, created on first use. Registering the backends is done here
+   * rather than at start-up so that nothing has to remember to do it before the first module is made.
+   */
+  auto SelectedTargetMachine()
+    -> llvm::TargetMachine* {
+    static auto *machine = []() -> llvm::TargetMachine* {
+      InitializeAllBackends();
 
       auto &registered = llvm::cl::getRegisteredOptions();
       if (const auto it = registered.find("disable-cgp"); it != registered.end()) {
@@ -161,7 +261,7 @@ namespace {
       }
 
       auto error = std::string();
-      const auto &triple = HostTriple();
+      const auto &triple = TargetTriple();
       const auto *target = llvm::TargetRegistry::lookupTarget(triple, error);
       if (target == nullptr) {
         llvm::errs() << "No llvm target for " << triple.str() << ": " << error << "\n";
@@ -178,27 +278,81 @@ namespace {
   }
 }
 
-auto spp::codegen::HostTargetTripleString()
-  -> char const* {
-  // Off the machine rather than off "HostTriple" directly: a backend is
-  // allowed to answer with a triple other than the one it was looked up
-  // by, and the layout below comes from the same machine, so taking both
-  // from it is what keeps a module's triple and layout describing the
-  // same target.
-  static const auto triple = [] {
-    const auto *machine = HostTargetMachine();
-    return machine != nullptr ? machine->getTargetTriple().str() : std::string();
-  }();
-  return triple.c_str();
+auto spp::codegen::SelectTarget(
+  char const *triple)
+  -> bool {
+  // An empty request is the host, which is what the target
+  // resolves to on its own when nothing has been selected.
+  const auto requested = std::string(triple != nullptr ? triple : "");
+  if (requested.empty()) { return true; }
+
+  // The request names a directory, so it has to be one component
+  // and nothing that leaves it. Checked before anything is done
+  // with it rather than after.
+  if (not IsPathComponent(requested)) {
+    llvm::errs() << "Invalid target '" << requested << "': a triple is letters, digits, '-', '_' and '.'\n";
+    return false;
+  }
+
+  // Normalised before the lookup, so a short name ("riscv64",
+  // "aarch64") is accepted on the same terms as a full triple.
+  InitializeAllBackends();
+  const auto normalized = llvm::Triple::normalize(requested);
+
+  auto error = std::string();
+  if (llvm::TargetRegistry::lookupTarget(llvm::Triple(normalized), error) == nullptr) {
+    llvm::errs()
+      << "No llvm backend for target '" << requested << "' (normalised: " << normalized << "): " << error << "\n"
+      << "This build can emit for:\n";
+
+    // Triples rather than the registry's architecture names, which
+    // is what the message used to print: "x86-64" is not something
+    // that can be handed back to "--target", and a suggestion that
+    // cannot be copied is not a suggestion.
+    if (PrintSupportedTriples() == 0) {
+      llvm::errs() << "  (nothing; this llvm has no usable backend at all)\n";
+    }
+    llvm::errs() << "Any other triple whose backend is linked in is accepted too; these are the tested ones.\n";
+#ifndef SPP_ALL_TARGETS
+    llvm::errs() << "Only the host backend is linked in; reconfigure with -DSPP_ALL_TARGETS=ON for the rest.\n";
+#endif
+    return false;
+  }
+
+  SelectedTriple() = normalized;
+
+  // The folder keeps the requested spelling, not the normalised
+  // one: normalize() returns a std::string across the boundary
+  // described above, so what comes back cannot be trusted to be
+  // a path component even though the request was.
+  SelectedFolderName() = requested;
+  return true;
 }
 
-auto spp::codegen::HostDataLayoutString()
+auto spp::codegen::TargetIsHost()
+  -> bool {
+  return TargetTriple() == HostTriple();
+}
+
+auto spp::codegen::TargetFolderName()
   -> char const* {
-  static const auto layout = [] {
-    const auto *machine = HostTargetMachine();
-    return machine != nullptr ? machine->createDataLayout().getStringRepresentation() : std::string();
-  }();
-  return layout.c_str();
+  return SelectedFolderName().c_str();
+}
+
+auto spp::codegen::ApplyTargetToModule(
+  void *llvm_module)
+  -> void {
+  // Both off the same machine, rather than off the selected triple
+  // directly: a backend is allowed to answer with a triple other
+  // than the one it was looked up by, and taking both from the
+  // machine is what keeps a module's triple and layout describing
+  // the same target.
+  const auto *machine = SelectedTargetMachine();
+  if (machine == nullptr) { return; }
+
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm_mod.setTargetTriple(machine->getTargetTriple());
+  llvm_mod.setDataLayout(machine->createDataLayout());
 }
 
 auto spp::codegen::RunCoroLoweringPipeline(
@@ -474,7 +628,7 @@ auto spp::codegen::EmitObjectFile(
   char const *path)
   -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-  auto *machine = HostTargetMachine();
+  auto *machine = SelectedTargetMachine();
   if (machine == nullptr) { return false; }
 
   // Check we can open the given path.

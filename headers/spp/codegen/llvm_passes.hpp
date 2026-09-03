@@ -6,23 +6,38 @@
 
 namespace spp::codegen {
   /**
-   * The one target every module is built for: the host llvm was configured for, asked of llvm rather than named here,
-   * so a build on another architecture emits for that architecture instead of for whatever this file used to say. It
-   * is read back off the target machine, not off the host directly, so that it cannot disagree with the data layout
-   * below. Cross-compilation will have to make this a parameter; until then "the target" and "the host" are the same
-   * thing.
-   * @return The normalised triple string, or an empty string if the target is not registered in this build of llvm.
+   * Choose the triple every module is built for. Must be called before any code generation: the target machine, the
+   * triple and the data layout are each resolved once, on first use, and a selection made after that is ignored
+   * rather than honoured - which would leave modules describing one target and the object describing another.
+   *
+   * @n
+   * The triple is normalised, so a short name ("riscv64", "aarch64") is accepted on the same terms as a full triple.
+   * A target whose backend this llvm was not built with is rejected here, with the list of the ones it does have,
+   * rather than at the point an object cannot be emitted for it.
+   *
+   * @param[in] triple The target triple, or null/empty for the host.
+   * @return @c true if the target was registered and selected.
    */
-  auto HostTargetTripleString() -> char const*;
+  auto SelectTarget(char const *triple) -> bool;
 
   /**
-   * The data layout string of @c HostTargetTripleString : how wide each type is, what it is aligned to, and how a
-   * struct's fields are packed. Every module has to carry it, because without one llvm falls back to a default layout
-   * that is not the target's, and every size and offset computed from a module - a struct's field offsets, the byte
-   * count of a "dereferenceable", the size an allocation asks for - is computed against whatever the module says.
-   * @return The layout string, or an empty string if the target is not registered in this build of llvm.
+   * Whether the selected target is the machine this compiler is running on. Only a host build can be linked and run:
+   * the linker driver invoked below is the host's, and the ffi runtimes a project ships are host objects.
    */
-  auto HostDataLayoutString() -> char const*;
+  auto TargetIsHost() -> bool;
+
+  /**
+   * The selected target as a directory name, which is what names its folder in the "out" tree. Validated as a single
+   * path component by @c SelectTarget , and deliberately not read back off llvm - see the note on the definition.
+   * @return The target's folder name; never empty, because an unselected target is the host's own triple.
+   */
+  auto TargetFolderName() -> char const*;
+
+  /**
+   * Stamp @p llvm_module with the selected target's triple and data layout.
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   */
+  auto ApplyTargetToModule(void *llvm_module) -> void;
 
   /**
    * Emit @p llvm_module as a native object file at @p path .

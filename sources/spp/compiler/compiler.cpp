@@ -23,11 +23,17 @@ import genex;
 import std;
 
 SPP_MOD_BEGIN
+auto spp::compiler::Compiler::ModeName(
+  const Mode mode)
+  -> Str {
+  return mode == Mode::REL ? "rel" : "dev";
+}
+
 spp::compiler::Compiler::Compiler(
   const Mode mode,
   const BuildType build_type,
   TestScope const &tests) :
-  m_modules(MakeUnique<ModuleTree>(std::filesystem::current_path(), tests)),
+  m_modules(MakeUnique<ModuleTree>(std::filesystem::current_path(), ModeName(mode), tests)),
   m_mode(mode),
   m_build_type(build_type) {
   m_path = std::filesystem::current_path() / "src";
@@ -39,7 +45,8 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
   Str &&main_code)
   -> Unique<Compiler> {
   auto c = MakeUnique<Compiler>();
-  c->m_modules = ModuleTree::ForCppGoogleTest(std::filesystem::current_path(), std::move(main_code));
+  c->m_modules = ModuleTree::ForCppGoogleTest(
+    std::filesystem::current_path(), ModeName(mode), std::move(main_code));
   c->m_mode = mode;
   c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
   c->m_path = std::filesystem::current_path() / "src";
@@ -103,7 +110,7 @@ auto spp::compiler::Compiler::Compile() -> void {
 
 auto spp::compiler::Compiler::SetTestFilters(
   Str name_filter,
-  Str group_filter)
+  Str group_filter) const
   -> void {
   m_boot->TestNameFilter = std::move(name_filter);
   m_boot->TestGroupFilter = std::move(group_filter);

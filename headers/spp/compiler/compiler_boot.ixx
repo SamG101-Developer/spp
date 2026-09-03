@@ -3,6 +3,7 @@ module;
 
 export module spp.compiler.compiler_boot;
 import spp.codegen.llvm_ctx;
+import spp.compiler.out_layout;
 import spp.utils.progress;
 import spp.utils.types;
 import llvm;
@@ -26,14 +27,6 @@ namespace spp::compiler {
 }
 
 SPP_EXP_CLS struct spp::compiler::CompilerBoot {
-  /**
-   * The name the linked executable is given: the project's own folder name, so a project in "foo/" builds "foo".
-   * @param[in] project_root The directory holding the project's "src", "out" and so on.
-   */
-  SPP_ATTR_NODISCARD static auto ExecutableName(
-    std::filesystem::path const &project_root)
-    -> Str;
-
   /** Only tests whose fully qualified name contains this are built into the harness; empty builds all. */
   Str TestNameFilter;
 
@@ -155,19 +148,19 @@ private:
    * Copy every module into one and run the optimization pipeline over that, so the optimizer can see across the file
    * boundaries the per-module walk leaves in place. Written beside the per-module ir as @c lto.ll rather than
    * replacing it.
-   * @param[in] out_path The directory the per-module ir was written to.
+   * @param[in] out Where this build writes; the combined ir and the object come off it.
    */
   auto _LinkTimeOptimize(
-    std::filesystem::path const &out_path,
+    OutLayout const &out,
     unsigned opt_level)
     -> void;
 
   /**
-   * Link @p object_file against the ffi runtimes the project's packages ship, producing the executable.
-   * @param[in] object_file The object file emitted from the combined module.
+   * Link the emitted object against the ffi runtimes the project's packages ship, producing the executable.
+   * @param[in] out Where this build writes; the object, the staged library folder and the executable all come off it.
    */
   auto _LinkExecutable(
-    std::filesystem::path const &object_file)
+    OutLayout const &out)
     -> void;
 
   /**

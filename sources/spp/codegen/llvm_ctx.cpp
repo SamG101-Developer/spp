@@ -20,8 +20,7 @@ auto spp::codegen::LlvmCtx::NewCtx(Str const &module_name) -> Unique<LlvmCtx> {
   ctx->Module = MakeUnique<llvm::Module>(module_name, *ctx->Context);
   ctx->Module->setModuleIdentifier(module_name);
   ctx->Module->setSourceFileName(module_name);
-  ctx->Module->setTargetTriple(llvm::Triple(HostTargetTripleString()));
-  ctx->Module->setDataLayout(HostDataLayoutString());
+  ApplyTargetToModule(ctx->Module.get());
   return ctx;
 }
 

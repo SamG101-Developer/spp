@@ -291,9 +291,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   bar.Finish();
 
   // Write the llvm modules to file.
-  const auto out_path = tree.RootPath() / "out" / "llvm";
-  std::filesystem::create_directories(out_path);
-  std::cout << "Writing LLVM IR to: " << out_path << std::endl;
+  const auto &out = tree.Out();
+  std::filesystem::create_directories(out.LlvmRoot());
+  std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
 
   // Paired with the modules, because the file each context belongs
   // to comes from the module's own path. Every module is verified
@@ -342,13 +342,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
   // Link every module together now that all of them have been
   // built.
-  _LinkTimeOptimize(out_path, opt_level);
-}
-
-auto spp::compiler::CompilerBoot::ExecutableName(
-  std::filesystem::path const &project_root)
-  -> Str {
-  return utils::files::NativeString(project_root.filename());
+  _LinkTimeOptimize(out, opt_level);
 }
 
 auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
@@ -360,15 +354,14 @@ auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
 }
 
 auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
-  std::filesystem::path const &out_path,
+  OutLayout const &out,
   const unsigned opt_level)
   -> void {
   // Guard.
   if (_LlvmCtxs.IsEmpty()) { return; }
 
   const auto lto_module = MakeUnique<llvm::Module>("spp.lto", *_LlvmCtxs[0]->Context);
-  lto_module->setTargetTriple(llvm::Triple(codegen::HostTargetTripleString()));
-  lto_module->setDataLayout(codegen::HostDataLayoutString());
+  codegen::ApplyTargetToModule(lto_module.get());
 
   // Link every module into the special lto "root" module. This
   // creates one meta-module containing all the definitions.
@@ -413,34 +406,44 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   codegen::RepairMisnamedIntrinsics(lto_module.get());
 
   auto ec = std::error_code();
-  auto out = llvm::raw_fd_ostream(
-    utils::files::NativeString(out_path / "lto.ll"), ec,
+  auto ir_out = llvm::raw_fd_ostream(
+    utils::files::NativeString(out.LtoIrFile()), ec,
     static_cast<llvm::sys::fs::OpenFlags>(0));
-  lto_module->print(out, nullptr);
-  out.flush();
+  lto_module->print(ir_out, nullptr);
+  ir_out.flush();
 
   // Only a program gets built into something runnable. A library
   // has no entry point, so there is nothing for a linker to make an
   // executable out of, and the ir is the whole of what it produces.
   if (not has_entry_point) { return; }
-  const auto object_file = out_path / "spp.o";
+  const auto object_file = out.ObjectFile();
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
-  _LinkExecutable(object_file);
+
+  // A cross build stops at the object, no linking available for
+  // now.
+  if (not codegen::TargetIsHost()) {
+    std::cout
+      << "Built object for " << codegen::TargetFolderName() << ": "
+      << utils::files::DisplayString(object_file) << "\n"
+      << "Not linking: a cross build has no linker or ffi runtime for its target here." << std::endl;
+    return;
+  }
+  _LinkExecutable(out);
 }
 
 auto spp::compiler::CompilerBoot::_LinkExecutable(
-  std::filesystem::path const &object_file)
+  OutLayout const &out)
   -> void {
   // The object holds calls into the ffi runtime and nothing
   // else external, so the link is the object plus whatever
   // shared libraries the project's packages ship.
-  const auto out_dir = object_file.parent_path().parent_path();
-  const auto exe_file = out_dir / CompilerBoot::ExecutableName(out_dir.parent_path());
-  const auto lib_dir = out_dir / "lib";
+  const auto object_file = out.ObjectFile();
+  const auto exe_file = out.ExecutablePath();
+  const auto lib_dir = out.LibRoot();
   std::filesystem::create_directories(lib_dir);
 
   auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
-  for (auto const &lib : _FfiLibraries(out_dir.parent_path())) {
+  for (auto const &lib : _FfiLibraries(out.Root)) {
     // Staged beside the executable rather than linked where it
     // sits, so that what the loader needs travels with what
     // was built and the path baked into it is a relative one.

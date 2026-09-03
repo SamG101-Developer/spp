@@ -38,6 +38,8 @@ public:
 
   enum class BuildType { EXE, LIB };
 
+  SPP_ATTR_NODISCARD static auto ModeName(Mode mode) -> Str;
+
 private:
   std::filesystem::path m_path;
 
@@ -93,7 +95,7 @@ public:
    * Restrict which unit tests the generated harness runs. Must be set before @c Compile , because the filters are
    * applied while the harness is written rather than when it runs.
    */
-  auto SetTestFilters(Str name_filter, Str group_filter) -> void;
+  auto SetTestFilters(Str name_filter, Str group_filter) const -> void;
 
   /** How many unit tests the generated harness ended up running. Valid once @c Compile has run. */
   SPP_ATTR_NODISCARD auto TestCount() const -> std::size_t;

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.module_tree;
+import spp.compiler.out_layout;
 import spp.lex.tokens;
 import spp.utils.error_formatter;
 import spp.utils.files;
@@ -81,6 +82,7 @@ SPP_EXP_CLS struct spp::compiler::Module {
 SPP_EXP_CLS struct spp::compiler::ModuleTree {
 private:
   std::filesystem::path m_root;
+  OutLayout m_out;
   std::filesystem::path m_src_path;
   std::filesystem::path m_vcs_path;
   std::filesystem::path m_ffi_path;
@@ -97,16 +99,17 @@ private:
 public:
   /**
    * @param[in] path The project root.
-   * @param[in] include_tests Whether to pick up the project's own @c tst folder. Only a test build does: the folder is
-   * absent from an ordinary one, so a test can name things a shipping build never links, and a dependency's tests are
-   * never pulled into the consumer.
+   * @param[in] mode The build mode, "dev" or "rel". Only the out tree depends on it; which modules are picked up does
+   * not, so this is carried rather than acted on until code generation writes something.
    */
   explicit ModuleTree(
     std::filesystem::path path,
+    Str mode = "dev",
     TestScope const &tests = {});
 
   static auto ForCppGoogleTest(
     std::filesystem::path path,
+    Str mode,
     Str &&main_code)
     -> Unique<ModuleTree>;
 
@@ -123,7 +126,14 @@ public:
     -> std::filesystem::path;
 
   /**
-   * Where a module's generated LLVM IR belongs: the module's own path mirrored under the project's @c out/llvm tree,
+   * Where this build writes: see @c OutLayout . Everything downstream of code generation asks this rather than
+   * rebuilding the path from the root, so the tree's shape is described in one place.
+   */
+  SPP_ATTR_NODISCARD auto Out() const
+    -> OutLayout const&;
+
+  /**
+   * Where a module's generated LLVM IR belongs: the module's own path mirrored under the build's @c llvm tree,
    * with a @c .ll extension. The mirror is anchored on the source root that actually produced the module rather than
    * on the first path component spelled @c src , because a module is free to have directories of its own by that
    * name and only the real root decides where the mirrored part starts.

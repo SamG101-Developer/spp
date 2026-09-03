@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
@@ -34,9 +35,16 @@ auto spp::compiler::Module::TestHarness(
 
 spp::compiler::ModuleTree::ModuleTree(
   std::filesystem::path path,
+  Str mode,
   TestScope const &tests) {
   // Get all the spp module files from the src path.
   m_root = std::move(path);
+
+  // The target is a property of the whole build, set by the cli
+  // before anything is compiled, so it is asked for here rather
+  // than threaded through every constructor between the two.
+  m_out = OutLayout{
+    .Root = m_root, .Target = codegen::TargetFolderName(), .Mode = std::move(mode)};
   m_src_path = m_root / "src";
   m_vcs_path = m_root / "vcs";
   m_ffi_path = m_root / "ffi";
@@ -158,8 +166,7 @@ auto spp::compiler::ModuleTree::NamespaceOf(
   // package folder holding it.
   auto parts = Vec<Str>();
   if (best_rel.empty()) {
-    const auto raw = Vec<Str>(module_path.begin(), module_path.end());
-    return Vec<Str>{raw[raw.Len() - 2]};
+    return Vec<Str>{spp::utils::files::NativeString(module_path.parent_path().filename())};
   }
 
   for (auto const &part : best_rel) { parts.EmplaceBack(spp::utils::files::NativeString(part)); }
@@ -170,11 +177,12 @@ auto spp::compiler::ModuleTree::NamespaceOf(
 
 auto spp::compiler::ModuleTree::ForCppGoogleTest(
   std::filesystem::path path,
+  Str mode,
   Str &&main_code)
   -> Unique<ModuleTree> {
   // Create a new ModuleTree with a single module containing the
   // main_code.
-  auto c = MakeUnique<ModuleTree>(std::move(path));
+  auto c = MakeUnique<ModuleTree>(std::move(path), std::move(mode));
   c->m_modules[0]->code = std::move(main_code);
   return c;
 }
@@ -207,13 +215,18 @@ auto spp::compiler::ModuleTree::RootPath() const
   return m_root;
 }
 
+auto spp::compiler::ModuleTree::Out() const
+  -> OutLayout const& {
+  return m_out;
+}
+
 auto spp::compiler::ModuleTree::LlvmOutPathFor(
   std::filesystem::path const &module_path) const
   -> std::filesystem::path {
-  const auto out_root = m_root / "out" / "llvm";
+  const auto out_root = m_out.LlvmRoot();
 
   // The project's own sources lose their "src" prefix, so
-  // "<root>/src/a/b.spp" mirrors to "<root>/out/llvm/a/b.ll".
+  // "<root>/src/a/b.spp" mirrors to "<root>/out/<mode>/llvm/a/b.ll".
   const auto roots = Vec<Pair<std::filesystem::path, std::filesystem::path>>{
     {m_src_path, std::filesystem::path()},
     {m_vcs_path, std::filesystem::path("vcs")},

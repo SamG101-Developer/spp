@@ -44,6 +44,7 @@ endif ()
 # composite action).
 option(SPP_WERROR "Treat compiler warnings as errors" ON)
 option(SPP_BUILD_TESTS "Build the unit tests" ON)
+option(SPP_ALL_TARGETS "Link every LLVM backend" OFF)
 set(SPP_SANITIZER
   ""
   CACHE STRING
@@ -60,6 +61,10 @@ if (SPP_SANITIZER)
   )
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
 endif ()
+
+# Only allow mimalloc for release, non-sanitizer builds.
+set(SPP_NO_MIMALLOC_GENEX $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>>)
+add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
 if (NOT APPLE)
   set(CMAKE_LINKER_TYPE LLD)
@@ -89,11 +94,20 @@ separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 if (NOT LLVM_NATIVE_ARCH IN_LIST LLVM_TARGETS_TO_BUILD)
   message(FATAL_ERROR
     "This LLVM (${LLVM_PACKAGE_VERSION}) was built without its own host "
-    "backend ${LLVM_NATIVE_ARCH};  it has ${LLVM_TARGETS_TO_BUILD}. "
+    "backend ${LLVM_NATIVE_ARCH}; it has ${LLVM_TARGETS_TO_BUILD}. "
     "Nothing here can emit an object file for this machine."
   )
 endif ()
-llvm_map_components_to_libnames(LLVM_NATIVE_LIBS nativecodegen)
+
+if (SPP_ALL_TARGETS)
+  llvm_map_components_to_libnames(
+    LLVM_NATIVE_LIBS
+    AllTargetsInfos AllTargetsDescs AllTargetsCodeGens)
+else ()
+  llvm_map_components_to_libnames(
+    LLVM_NATIVE_LIBS
+    nativecodegen)
+endif ()
 
 # Collect all source files and create the library.
 file(GLOB_RECURSE MODULE_FILES CONFIGURE_DEPENDS "headers/*.ixx")
@@ -170,7 +184,10 @@ target_compile_options(
 
 target_compile_definitions(
   ${PROJECT_NAME}_lib
-  PRIVATE ${LLVM_DEFINITIONS_LIST})
+  PRIVATE
+  ${LLVM_DEFINITIONS_LIST}
+  $<$<BOOL:${SPP_ALL_TARGETS}>:SPP_ALL_TARGETS>
+  SPP_HOST_TRIPLE="${LLVM_HOST_TRIPLE}")
 
 target_include_directories(
   ${PROJECT_NAME}_lib
@@ -180,6 +197,12 @@ target_include_directories(
   ${PROJECT_NAME}_lib
   SYSTEM
   PUBLIC ${LLVM_INCLUDE_DIRS}
+)
+
+target_include_directories(
+  ${PROJECT_NAME}_lib
+  SYSTEM
+  PUBLIC $<TARGET_PROPERTY:mimalloc,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_link_libraries(
@@ -199,7 +222,7 @@ target_link_libraries(
   LLVMTarget
   ${LLVM_NATIVE_LIBS}
   Threads::Threads
-  mimalloc
+  $<$<NOT:${SPP_NO_MIMALLOC_GENEX}>:mimalloc>
   unordered_dense::unordered_dense
   tomlplusplus::tomlplusplus
   nlohmann_json::nlohmann_json
