@@ -133,7 +133,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
       rhs_num_elems < 2,
       {sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_tuple_type, rhs_num_elems));
 
-    auto new_asts = UniqueVec<PostfixExpressionAst>();
+    auto new_asts = Vec<Unique<PostfixExpressionAst>>();
     for (auto i = 0u; i < rhs_num_elems; ++i) {
       auto field = MakeUnique<IdentifierAst>(Rhs->PosStart(), std::to_string(i));
       auto new_ast = MakeUnique<PostfixExpressionAst>(
@@ -172,7 +172,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
       lhs_num_elems < 2,
       {sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
 
-    auto new_asts = UniqueVec<PostfixExpressionAst>();
+    auto new_asts = Vec<Unique<PostfixExpressionAst>>();
     for (auto i = 0U; i < lhs_num_elems; ++i) {
       auto field = MakeUnique<IdentifierAst>(Lhs->PosStart(), std::to_string(i));
       auto new_ast = MakeUnique<PostfixExpressionAst>(

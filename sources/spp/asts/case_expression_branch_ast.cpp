@@ -111,7 +111,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   // Build the comparison the branch actually tests, over the
   // real operands. This is to retained, rather than needing to
   // rebuild at codegen time. Only needed for "case ... of".
-  _PatternComparisons = UniqueVec<BinaryExpressionAst>(Patterns.Len());
+  _PatternComparisons = Vec<Unique<BinaryExpressionAst>>(Patterns.Len());
   if (Op != nullptr and Op->TokenType != lex::SppTokenType::KW_IS) {
     for (auto const &[i, p] : Patterns | genex::views::ptr | genex::views::enumerate) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();

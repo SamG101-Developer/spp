@@ -38,7 +38,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
    * The list of expressions that are the elements of the array. Each element is an AST that represents an expression.
    * They will all infer to the same type.
    */
-  UniqueVec<ExpressionAst> Elems;
+  Vec<Unique<ExpressionAst>> Elems;
 
   /**
    * The token that represents the right square bracket @code ]@endcode in the array literal. This closes the array

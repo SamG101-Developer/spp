@@ -49,12 +49,6 @@ namespace spp {
   SPP_EXP_CLS
   using StrView = std::string_view; // stringzilla::string_view;
 
-  SPP_EXP_CLS template <typename T, typename A = std::allocator<Shared<T>>>
-  using SharedVec = Vec<Shared<T>, A>;
-
-  SPP_EXP_CLS template <typename T, typename A = std::allocator<Unique<T>>>
-  using UniqueVec = Vec<Unique<T>, A>;
-
   SPP_EXP_CLS
   using Ordering = std::strong_ordering;
 

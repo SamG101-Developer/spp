@@ -241,7 +241,7 @@ auto spp::asts::TupleLiteralAst::SubstituteGenericsExpr(
   -> Shared<ExpressionAst> {
   // Each element is an expression so substitute them
   // all too.
-  auto elems = UniqueVec<ExpressionAst>();
+  auto elems = Vec<Unique<ExpressionAst>>();
   elems.Reserve(Elems.Len());
   for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));

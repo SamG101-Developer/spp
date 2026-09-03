@@ -155,8 +155,8 @@ namespace spp::analyse::utils::monomorphization_utils {
      * @param meta The compiler meta data.
      */
     auto RegisterGenericSyms(
-      SharedVec<scopes::Symbol> const &external_generic_syms,
-      UniqueVec<asts::GenericArgumentAst> const &generic_args,
+      Vec<Shared<scopes::Symbol>> const &external_generic_syms,
+      Vec<Unique<asts::GenericArgumentAst>> const &generic_args,
       scopes::Scope *scope,
       scopes::ScopeManager *sm,
       asts::meta::CompilerMetaData *meta)
@@ -356,7 +356,7 @@ auto spp::analyse::utils::monomorphization_utils::MonomorphiseToFixedPoint(
 auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   asts::TypeIdentifierAst &type_part,
   Shared<scopes::TypeSymbol> const &old_cls_sym,
-  SharedVec<scopes::Symbol> const &external_generic_syms,
+  Vec<Shared<scopes::Symbol>> const &external_generic_syms,
   const bool is_tuple,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
@@ -468,7 +468,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
 auto spp::analyse::utils::monomorphization_utils::CreateGenericFunScope(
   scopes::Scope const &old_fun_scope,
   asts::GenericArgumentGroupAst const &generic_args,
-  SharedVec<scopes::Symbol> const &external_generic_syms,
+  Vec<Shared<scopes::Symbol>> const &external_generic_syms,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> scopes::Scope* {
@@ -527,7 +527,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
   scopes::Scope &old_sup_scope,
   scopes::Scope &new_cls_scope,
   asts::GenericArgumentGroupAst const &generic_args,
-  SharedVec<scopes::Symbol> const &external_generic_syms,
+  Vec<Shared<scopes::Symbol>> const &external_generic_syms,
   scopes::ScopeManager const *sm,
   asts::meta::CompilerMetaData *meta)
   -> Tup<scopes::Scope*, scopes::Scope*> {

@@ -65,7 +65,7 @@ auto spp::asts::CaseExpressionAst::NewNonPatternMatch(
   Unique<InnerScopeExpressionAst> &&first,
   decltype(Branches) &&branches) -> Unique<CaseExpressionAst> {
   // Convert consecutive if/else-if/else branches into case pattern matching.
-  auto patterns = UniqueVec<CasePatternVariantAst>(1);
+  auto patterns = Vec<Unique<CasePatternVariantAst>>(1);
   patterns[0] = MakeUnique<CasePatternVariantExpressionAst>(BooleanLiteralAst::True(tok_case->PosStart()));
   auto first_branch = MakeUnique<CaseExpressionBranchAst>(nullptr, std::move(patterns), nullptr, std::move(first));
   branches.Insert(branches.begin(), std::move(first_branch));
@@ -441,7 +441,13 @@ auto spp::asts::CaseExpressionAst::InferType(
   using analyse::utils::case_utils::ValidateInconsistentTypes;
   using generate::common_types::VoidType;
 
-  // Ensure consistency across branches.
+  // Ensure consistency across branches. Also done in "Stage7_AnalyseSemantics", which is what covers a case in
+  // statement position - nothing asks one of those for its type, so this would never run for it.
+  //
+  // Todo: the other half of the rule is not enforced. Branches must agree with each other, and where the case is not
+  //  used as an expression that agreed type should be "Void" - "case x of { == 1 { 1 } else { 2 } }" discards an
+  //  "S32" that nothing asked for. A case carries no signal for which of the two positions it is in, which is what
+  //  the missing half needs; see the red test in "test_ast_case_expression.cpp".
   auto [master_branch_type_info, branches_type_info] = ValidateInconsistentTypes(
     Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
 

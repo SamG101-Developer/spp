@@ -131,7 +131,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto mut = std::make_unique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
     auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), iterable_name, nullptr);
     auto iterable_val = std::move(Iterable);
-    return MakeUnique<LetStatementInitializedAst>(nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
+    return MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
   }();
 
   // Create the let statement holding the loop's continuation flag, to control entering the else block.
@@ -140,7 +141,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto mut = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
     auto flag_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), flag_name, nullptr);
     auto flag_val = BooleanLiteralAst::True(PosStart());
-    return MakeUnique<LetStatementInitializedAst>(nullptr, std::move(flag_var), nullptr, nullptr, std::move(flag_val));
+    return MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(flag_var), nullptr, nullptr, std::move(flag_val));
   }();
 
   // Create the "let" statement that increments the iterator.
@@ -149,7 +151,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto resume_fn_call = MakeUnique<PostfixExpressionOperatorKeywordResAst>(nullptr, nullptr, nullptr);
     auto resume_val = MakeUnique<PostfixExpressionAst>(AstClone(iterable_name), std::move(resume_fn_call));
     auto resume_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, resume_name, nullptr);
-    return MakeUnique<LetStatementInitializedAst>(nullptr, AstClone(resume_var), nullptr, nullptr, std::move(resume_val));
+    return MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(resume_var), nullptr, nullptr, std::move(resume_val));
   }();
 
   // If the value is the iterable type, then use the inner body.
@@ -164,10 +167,11 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     patterns.EmplaceBack(std::move(case_type_pattern));
 
     // Destructure the "$_res" variable into parts defined in "loop (v1, v2) in ..."
-    auto let_stmt = MakeUnique<LetStatementInitializedAst>(nullptr, std::move(Var), nullptr, nullptr,
-                                                           AstClone(resume_name));
+    auto let_stmt = MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(Var), nullptr, nullptr, AstClone(resume_name));
     Body->Members.Insert(Body->Members.begin(), std::move(let_stmt));
-    return MakeUnique<CaseExpressionBranchAst>(std::move(is_tok), std::move(patterns), nullptr, std::move(Body));
+    return MakeUnique<CaseExpressionBranchAst>(
+      std::move(is_tok), std::move(patterns), nullptr, std::move(Body));
   }();
 
   // Reaching the branch above is what counts as the loop having taken an iteration.
@@ -180,8 +184,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto case_else_body = InnerScopeExpressionAst::NewEmpty();
     case_else_pattern->MarkForIterLoopExit();
 
-    auto flag_clear_lhs = UniqueVec<ExpressionAst>();
-    auto flag_clear_rhs = UniqueVec<ExpressionAst>();
+    auto flag_clear_lhs = Vec<Unique<ExpressionAst>>();
+    auto flag_clear_rhs = Vec<Unique<ExpressionAst>>();
     flag_clear_lhs.EmplaceBack(AstClone(flag_name));
     flag_clear_rhs.EmplaceBack(BooleanLiteralAst::False(PosStart()));
     auto flag_clear = MakeUnique<AssignmentStatementAst>(
@@ -191,7 +195,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto patterns = Vec<Unique<CasePatternVariantAst>>();
     patterns.EmplaceBack(std::move(case_else_pattern));
     case_else_body->Members.EmplaceBack(std::move(flag_clear));
-    return MakeUnique<CaseExpressionBranchAst>(std::move(is_tok), std::move(patterns), nullptr, std::move(case_else_body));
+    return MakeUnique<CaseExpressionBranchAst>(
+      std::move(is_tok), std::move(patterns), nullptr, std::move(case_else_body));
   }();
 
   // Case block to handle the resume value.
@@ -199,14 +204,16 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto case_branches = Vec<Unique<CaseExpressionBranchAst>>();
     case_branches.EmplaceBack(std::move(case_valid_branch));
     case_branches.EmplaceBack(std::move(case_else_branch));
-    return MakeUnique<CaseExpressionAst>(nullptr, AstClone(resume_name), nullptr, std::move(case_branches));
+    return MakeUnique<CaseExpressionAst>(
+      nullptr, AstClone(resume_name), nullptr, std::move(case_branches));
   }();
 
   // New boolean loop that manually iterates the iterable.
   // Translated: "loop $_ok { ... } else { ... }".
   auto loop_new = [&] {
     auto cond = AstClone(flag_name);
-    return MakeUnique<LoopConditionalExpressionAst>(nullptr, std::move(cond), nullptr, std::move(ElseBlock));
+    return MakeUnique<LoopConditionalExpressionAst>(
+      nullptr, std::move(cond), nullptr, std::move(ElseBlock));
   }();
   loop_new->Body->Members.EmplaceBack(std::move(resume_let));
   loop_new->Body->Members.EmplaceBack(std::move(case_expr));

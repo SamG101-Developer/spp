@@ -37,7 +37,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
    * The list of patterns that this branch matches against. There can be more than 1 pattern for non-destructuring
    * operations.
    */
-  UniqueVec<CasePatternVariantAst> Patterns;
+  Vec<Unique<CasePatternVariantAst>> Patterns;
 
   /**
    * The optional guard for the case branch. This is a boolean expression that must evaluate to true for destructuring
@@ -85,7 +85,7 @@ private:
    * Save the generated combined pattern expressions for code generation without needed to re-walk asts and scopes that
    * messes up the scope manager's alignment.
    */
-  UniqueVec<BinaryExpressionAst> _PatternComparisons;
+  Vec<Unique<BinaryExpressionAst>> _PatternComparisons;
 
   /**
    * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is

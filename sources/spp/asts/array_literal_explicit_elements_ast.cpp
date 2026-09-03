@@ -174,7 +174,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
   CompilerMetaData *meta)
   -> void {
   // Convert the inner elements to compile-time values.
-  auto cmp_elems = UniqueVec<ExpressionAst>();
+  auto cmp_elems = Vec<Unique<ExpressionAst>>();
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
     Elems[i] = AstClone(meta->CmpResult);
@@ -323,7 +323,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
   Vec<GenericArgumentAst*> const &args) const
   -> Shared<ExpressionAst> {
   // Each element is an expression, so map them all.
-  auto elems = UniqueVec<ExpressionAst>();
+  auto elems = Vec<Unique<ExpressionAst>>();
   elems.Reserve(Elems.Len());
   for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
   return MakeShared<ArrayLiteralExplicitElementsAst>(AstClone(TokL), std::move(elems), AstClone(TokR));

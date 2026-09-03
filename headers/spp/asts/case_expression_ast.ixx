@@ -46,7 +46,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
    * The inner scope of the case branches. This is where the branches of the case expression are defined, and allows
    * symbols to be created inside the @c case expression scope, but available to all branches, if need be.
    */
-  UniqueVec<CaseExpressionBranchAst> Branches;
+  Vec<Unique<CaseExpressionBranchAst>> Branches;
 
   /**
    * Set when this @c case was produced by desugaring an @c is expression ("x is T(..)"), whose two branches yield

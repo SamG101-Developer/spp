@@ -209,12 +209,12 @@ public:
     -> utils::errors::ErrorFormatter*;
 
   SPP_ATTR_NODISCARD auto GetGenerics() const
-    -> UniqueVec<asts::GenericArgumentAst>;
+    -> Vec<Unique<asts::GenericArgumentAst>>;
 
   SPP_ATTR_NODISCARD auto GetExtendedGenericSymbols(
     Vec<asts::GenericArgumentAst*> const &generics,
     Shared<asts::TypeAst> const &ignore = nullptr) const
-    -> SharedVec<Symbol>;
+    -> Vec<Shared<Symbol>>;
 
   /**
    * Register a new variable symbol into the symbol table held inside this scope.
@@ -362,9 +362,9 @@ public:
 
   SPP_ATTR_NODISCARD auto SupScopesConst() const -> Vec<Scope const*>;
 
-  SPP_ATTR_NODISCARD auto SupTypes() const -> SharedVec<asts::TypeAst>;
+  SPP_ATTR_NODISCARD auto SupTypes() const -> Vec<Shared<asts::TypeAst>>;
 
-  SPP_ATTR_NODISCARD auto DirectSupTypes() const -> SharedVec<asts::TypeAst>;
+  SPP_ATTR_NODISCARD auto DirectSupTypes() const -> Vec<Shared<asts::TypeAst>>;
 
   SPP_ATTR_NODISCARD auto ConvertPostfixToNestedScope(
     asts::ExpressionAst const *postfix_ast) const

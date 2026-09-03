@@ -131,12 +131,12 @@ namespace spp::asts::generate::common_types {
 
   SPP_EXP_FUN auto VariantType(
     std::size_t pos,
-    SharedVec<TypeAst> &&inner_types)
+    Vec<Shared<TypeAst>> &&inner_types)
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto TupleType(
     std::size_t pos,
-    SharedVec<TypeAst> &&inner_types)
+    Vec<Shared<TypeAst>> &&inner_types)
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto TryType(

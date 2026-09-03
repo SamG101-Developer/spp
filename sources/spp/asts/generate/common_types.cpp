@@ -30,7 +30,7 @@ import genex;
     return type;
 
 #define MAKE_GENERICS() \
-    auto generics_list = UniqueVec<GenericArgumentAst>();
+    auto generics_list = Vec<Unique<GenericArgumentAst>>();
 
 #define ADD_TYPE_GENERIC(gn) \
     generics_list.push_back(MakeUnique<GenericArgumentTypePositionalAst>(gn));
@@ -263,7 +263,7 @@ auto spp::asts::generate::common_types::ViewU8Type(const std::size_t pos) -> Sha
 }
 
 auto spp::asts::generate::common_types::VariantType(std::size_t pos,
-  SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst> {
+  Vec<Shared<TypeAst>> &&inner_types) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_ALL_GENERICS()
   FINISH_GENERICS()
@@ -275,7 +275,7 @@ auto spp::asts::generate::common_types::VariantType(std::size_t pos,
 }
 
 auto spp::asts::generate::common_types::TupleType(std::size_t pos,
-  SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst> {
+  Vec<Shared<TypeAst>> &&inner_types) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_ALL_GENERICS()
   FINISH_GENERICS()
@@ -389,7 +389,7 @@ auto spp::asts::generate::common_types::GenType(std::size_t pos, Shared<TypeAst>
 
 auto spp::asts::generate::common_types::GenOnceType(std::size_t pos, Shared<TypeAst> yield_type) -> Shared<TypeAst> {
   // Todo: MAcro these!
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(yield_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -404,7 +404,7 @@ auto spp::asts::generate::common_types::GenOnceType(std::size_t pos, Shared<Type
 }
 
 auto spp::asts::generate::common_types::IndexMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -422,7 +422,7 @@ auto spp::asts::generate::common_types::IndexMutType(std::size_t pos, Shared<Typ
 }
 
 auto spp::asts::generate::common_types::IndexRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -440,7 +440,7 @@ auto spp::asts::generate::common_types::IndexRefType(std::size_t pos, Shared<Typ
 }
 
 auto spp::asts::generate::common_types::SliceMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -458,7 +458,7 @@ auto spp::asts::generate::common_types::SliceMutType(std::size_t pos, Shared<Typ
 }
 
 auto spp::asts::generate::common_types::SliceRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -477,7 +477,7 @@ auto spp::asts::generate::common_types::SliceRefType(std::size_t pos, Shared<Typ
 
 auto spp::asts::generate::common_types::FunRefType(std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(2);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(2);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
   generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
@@ -494,7 +494,7 @@ auto spp::asts::generate::common_types::FunRefType(std::size_t pos, Shared<TypeA
 
 auto spp::asts::generate::common_types::FunMutType(std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(2);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(2);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
   generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
@@ -511,7 +511,7 @@ auto spp::asts::generate::common_types::FunMutType(std::size_t pos, Shared<TypeA
 
 auto spp::asts::generate::common_types::FunMovType(std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(2);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(2);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(param_types));
   generics_lst[1] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(ret_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
@@ -527,7 +527,7 @@ auto spp::asts::generate::common_types::FunMovType(std::size_t pos, Shared<TypeA
 }
 
 auto spp::asts::generate::common_types::ForwardRefType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -545,7 +545,7 @@ auto spp::asts::generate::common_types::ForwardRefType(std::size_t pos, Shared<T
 }
 
 auto spp::asts::generate::common_types::NonNullType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -563,7 +563,7 @@ auto spp::asts::generate::common_types::NonNullType(std::size_t pos, Shared<Type
 }
 
 auto spp::asts::generate::common_types::ForwardMutType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
   generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(inner_type));
   auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 

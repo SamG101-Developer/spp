@@ -110,7 +110,7 @@ namespace spp::analyse::utils::type_compare {
    * want an error should raise @c SppGenericConstraintError from the returned constraint.
    */
   SPP_EXP_FUN auto EnforceGenericConstraintsOneArg(
-    SharedVec<asts::TypeAst> const &constraints,
+    Vec<Shared<asts::TypeAst>> const &constraints,
     asts::TypeAst const &concrete_type,
     scopes::Scope const &constraints_owner_scope,
     scopes::Scope const &concrete_scope)
@@ -119,5 +119,5 @@ namespace spp::analyse::utils::type_compare {
   SPP_EXP_FUN auto DedupVariableInnerTypes(
     asts::TypeAst const &type,
     scopes::Scope const &scope)
-    -> SharedVec<asts::TypeAst>;
+    -> Vec<Shared<asts::TypeAst>>;
 }

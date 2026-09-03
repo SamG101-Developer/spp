@@ -55,7 +55,7 @@ namespace spp::analyse::utils::monomorphization_utils {
   SPP_EXP_FUN auto CreateGenericClsScope(
     asts::TypeIdentifierAst &type_part,
     Shared<scopes::TypeSymbol> const &old_cls_sym,
-    SharedVec<scopes::Symbol> const &external_generic_syms,
+    Vec<Shared<scopes::Symbol>> const &external_generic_syms,
     bool is_tuple,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
@@ -77,7 +77,7 @@ namespace spp::analyse::utils::monomorphization_utils {
   SPP_EXP_FUN auto CreateGenericFunScope(
     scopes::Scope const &old_fun_scope,
     asts::GenericArgumentGroupAst const &generic_args,
-    SharedVec<scopes::Symbol> const &external_generic_syms,
+    Vec<Shared<scopes::Symbol>> const &external_generic_syms,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> scopes::Scope*;
@@ -102,7 +102,7 @@ namespace spp::analyse::utils::monomorphization_utils {
     scopes::Scope &old_sup_scope,
     scopes::Scope &new_cls_scope,
     asts::GenericArgumentGroupAst const &generic_args,
-    SharedVec<scopes::Symbol> const &external_generic_syms,
+    Vec<Shared<scopes::Symbol>> const &external_generic_syms,
     scopes::ScopeManager const *sm,
     asts::meta::CompilerMetaData *meta)
     -> Tup<scopes::Scope*, scopes::Scope*>;

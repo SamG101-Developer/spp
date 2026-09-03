@@ -111,8 +111,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   analyse::scopes::Scope *OverriddenScopeForClosure;
   analyse::scopes::Scope *EnclosingFunctionScope;
   TokenAst *EnclosingFunctionFlavour;
-  SharedVec<TypeAst> EnclosingFunctionRetType;
-  SharedVec<TypeAst> EnclosingFunctionSourceRetType;
+  Vec<Shared<TypeAst>> EnclosingFunctionRetType;
+  Vec<Shared<TypeAst>> EnclosingFunctionSourceRetType;
   TokenAst *EnclosingFunctionCmp;
   analyse::scopes::Scope *CurrentLambdaOuterScope;
   FunctionPrototypeAst *TargetCallFunctionPrototype;

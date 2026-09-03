@@ -594,7 +594,7 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   // a default value for every optional parameter the call left out.
   // Ordering by parameter is needed for LLVM to do an ordinal match
   // despite S++ operating with keyword-matching.
-  auto ordered_args = UniqueVec<asts::FunctionCallArgumentAst>();
+  auto ordered_args = Vec<Unique<asts::FunctionCallArgumentAst>>();
   for (auto const *param : p_group.GetAllParams()) {
     const auto param_name = param->ExtractName();
 
@@ -618,7 +618,7 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     // `Tup[]`.
     if (param->To<asts::FunctionParameterVariadicAst>() != nullptr) {
       auto empty_pack = MakeUnique<asts::TupleLiteralAst>(
-        nullptr, UniqueVec<asts::ExpressionAst>(), nullptr);
+        nullptr, Vec<Unique<asts::ExpressionAst>>(), nullptr);
       ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
         param_name, nullptr, nullptr, std::move(empty_pack)));
       continue;
