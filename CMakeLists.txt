@@ -68,6 +68,9 @@ add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
 if (NOT APPLE)
   set(CMAKE_LINKER_TYPE LLD)
+else ()
+  add_compile_options(-fno-typed-cxx-new-delete)
+  add_link_options(-fno-typed-cxx-new-delete)
 endif ()
 
 # Find dependencies.
