@@ -103,6 +103,7 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
   SPP_EXP_CLS struct SppUnitTestInvalidSignatureError;
   SPP_EXP_CLS struct SppUnitTestNotCallableError;
+  SPP_EXP_CLS struct SppFfiGenericParameterError;
   SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
   SPP_EXP_CLS struct SppAccessViolationError;
   SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
@@ -125,7 +126,6 @@ namespace spp::analyse::errors {
    */
   SPP_EXP_CLS enum class NotYetSupportedFeature {
     NestedTypeBeforeSupScopes,
-    VariadicFfiCall,
   };
 
   SPP_EXP_CLS enum class ErrorInformationKind {
@@ -561,6 +561,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstE
 SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestInvalidSignatureError final : SemanticError {
   explicit SppUnitTestInvalidSignatureError(asts::Ast const &annotation, asts::Ast const &fun_name,
     StrView requirement);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFfiGenericParameterError final : SemanticError {
+  explicit SppFfiGenericParameterError(
+    asts::Ast const &annotation, asts::Ast const &generic_parameter, StrView symbol);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestNotCallableError final : SemanticError {

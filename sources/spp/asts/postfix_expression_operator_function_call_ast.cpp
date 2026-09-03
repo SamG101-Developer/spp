@@ -209,17 +209,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
       {sm->CurrentScope}, ERR_ARGS(*this, *test_annotation));
   }
 
-  // A "..a: T" parameter is not c variadic: the arguments after it have already been collapsed into a single tuple,
-  // and a c function reads them one at a time. Rejected at the call rather than at the declaration, so that a binding
-  // can name a symbol that exists without being callable yet - and so that splitting one by argument shape, as
-  // "sppc_fcntl" is, needs no change to how the rest of the bindings are written.
-  if (const auto variadic_param = _OverloadInfo->Proto->FnParamGroup->GetVariadicParams();
-    variadic_param != nullptr and _OverloadInfo->Proto->FfiAnnotation != nullptr) {
-    Raise<analyse::errors::SppFeatureNotYetSupportedError>(
-      {sm->CurrentScope},
-      ERR_ARGS(analyse::errors::NotYetSupportedFeature::VariadicFfiCall, *variadic_param, *this));
-  }
-
   // Check that if we are in a cmp context, that the overload is also cmp.
   RaiseIf<SppInvalidComptimeOperationError>(
     meta->EnclosingFunctionCmp != nullptr and _OverloadInfo->Proto->TokCmp == nullptr,

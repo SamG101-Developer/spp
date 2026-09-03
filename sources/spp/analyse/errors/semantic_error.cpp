@@ -1179,6 +1179,23 @@ spp::analyse::errors::SppUnitTestInvalidSignatureError::SppUnitTestInvalidSignat
       "fun name() -> Void") + ".");
 }
 
+spp::analyse::errors::SppFfiGenericParameterError::SppFfiGenericParameterError(
+  asts::Ast const &annotation,
+  asts::Ast const &generic_parameter,
+  const StrView symbol) {
+  AddHeaders(101, "Ffi Generic Parameter Error");
+  AddCtxForErr(&annotation, "Bound to " + Str(symbol) + " here");
+  AddErr(&generic_parameter, "Generic parameter on an ffi function");
+  AddFooter(
+    "A c function has one prototype, so a binding for one has to have exactly one signature too. A generic parameter "
+    "gives it more than one - " + INLINE_NOTE("f[T](x: T)") + " lowers differently for every " +
+    INLINE_NOTE("T") + " it is called at - and only the first could be emitted under the symbol the linker resolves.",
+    "Name the c type the binding actually takes, or declare one binding per c prototype, the way " +
+    INLINE_NOTE("fcntl") + " is split into " + INLINE_NOTE("fcntl_get") + ", " + INLINE_NOTE("fcntl_set") + " and " +
+    INLINE_NOTE("fcntl_lock") + ". A callable is taken as " + INLINE_NOTE("CClosure[Ts, R]") + ", the concrete pair c "
+    "receives, which " + INLINE_NOTE("CClosure::from") + " makes from a closure.");
+}
+
 spp::analyse::errors::SppUnitTestNotCallableError::SppUnitTestNotCallableError(
   asts::Ast const &call_site,
   asts::Ast const &annotation) {
@@ -1360,18 +1377,6 @@ spp::analyse::errors::SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedE
           "once superimposition scopes are attached - and that happens in the same pass that resolves the types "
           "written in a signature. Naming one here would need that pass split in two, which is not done yet.",
           "Name the type the alias resolves to, or move the use into a function body, where it does work."};
-
-      case NotYetSupportedFeature::VariadicFfiCall:
-        return {
-          "Variadic parameter declared here",
-          "Variadic ffi call",
-          "A " + INLINE_NOTE("..a: T") + " parameter is not c variadic. The call site collapses the trailing arguments "
-          "into a single tuple and passes that as one struct, while a c function reads them one at a time with " +
-          INLINE_NOTE("va_arg") + " - so the two sides disagree about where each argument sits, and the callee reads "
-          "whatever happens to be in the register. Passing them as real c varargs is not done yet.",
-          "Declare one entry point per argument shape and call that instead - the way " + INLINE_NOTE("fcntl") +
-          " is split into " + INLINE_NOTE("fcntl_get") + ", " + INLINE_NOTE("fcntl_set") + " and " +
-          INLINE_NOTE("fcntl_ptr") + "."};
 
       default:
         std::unreachable();

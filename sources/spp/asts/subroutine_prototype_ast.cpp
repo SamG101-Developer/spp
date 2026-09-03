@@ -11,10 +11,14 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.identifier_ast;
 import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
@@ -121,6 +125,17 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
     is_void or is_never or annotation_blocks_ret or final_member_check,
     {sm->CurrentScope}, ERR_ARGS(*final_member, *Source.OriginalReturnType, *ReturnType));
+
+  // Ffi functions cannot be generic, otherwise we get
+  // multiple prototypes for the singular C function,
+  // breaking C ABI compatibility.
+  if (FfiAnnotation != nullptr) {
+    const auto ffi_symbol = GetFfiSymbolName();
+    for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
+      Raise<analyse::errors::SppFfiGenericParameterError>(
+        {sm->CurrentScope}, ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
+    }
+  }
 
   sm->MoveOutOfCurrentScope();
   meta->Restore(true);
