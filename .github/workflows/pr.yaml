@@ -148,6 +148,8 @@ jobs:
 
   security:
     name: Security
+    needs: [ changes ]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
       security-events: write
@@ -158,7 +160,7 @@ jobs:
   # quality gate does not block a merge. Todo: Add it to the ci-success `needs` list to make it blocking.
   sonar:
     name: Sonar
-    needs: [ changes, lint ]
+    needs: [ changes ]
     if: |
       needs.changes.outputs.code == 'true'
       && (github.event_name != 'pull_request'
