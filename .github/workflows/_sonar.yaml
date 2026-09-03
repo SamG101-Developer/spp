@@ -8,10 +8,15 @@ on:
         type: string
         default: "Release"
       os:
-        description: "Must match the os the release variant was built on, or the build-tree cache below never hits."
+        description: "Must match the os the variant below was built on, or the build-tree cache never hits."
         required: false
         type: string
         default: "ubuntu-24.04"
+      variant:
+        description: "Build variant whose tree to restore. Must be one _compile.yaml actually builds on that os."
+        required: false
+        type: string
+        default: "release-rel"
     secrets:
       SONAR_TOKEN:
         required: true
@@ -50,10 +55,21 @@ jobs:
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
-          runner-image: ubuntu-24.04
+          runner-image: ${{ inputs.os }}
           compiler: gcc
           version: ${{ env.GCC_VERSION }}
           cache-key-suffix: sonar
+
+      # The key comes from the same action _compile.yaml writes the tree with, so restoring it needs only the variant
+      # name to agree.
+      - name: Compose build tree cache key
+        id: cache-key
+        uses: ./.github/actions/build-cache-key
+        with:
+          os: ${{ inputs.os }}
+          compiler: gcc
+          version: ${{ env.GCC_VERSION }}
+          variant: ${{ inputs.variant }}
 
       # Shares the release variant's tree; Sonar only adds -DCMAKE_EXPORT_COMPILE_COMMANDS, which does not invalidate
       # any objects.
@@ -61,9 +77,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
-          key: build-${{ inputs.os }}-gcc${{ env.GCC_VERSION }}-release-${{ github.sha }}
+          key: ${{ steps.cache-key.outputs.key }}
           restore-keys: |
-            build-${{ inputs.os }}-gcc${{ env.GCC_VERSION }}-release-
+            ${{ steps.cache-key.outputs.prefix }}
 
       # Add the extra configuration flag into the cmake configuration (won't trigger a rebuild of the entire project).
       - name: Configure

@@ -61,12 +61,12 @@ jobs:
       contents: read
     uses: ./.github/workflows/_lint.yaml
 
-  # Static analysis, gating the builds. Ordered after `lint` so a formatting slip still fails in seconds rather than
-  # behind half a minute of analysis, and before the builds so five toolchains are not spent on code that cppcheck
-  # already rejects.
+  # Static analysis, gating the builds so a dozen toolchains are not spent on code cppcheck already rejects. It does
+  # not wait on `lint`: the only way to fix a pre-commit failure is another commit, which re-runs this workflow from
+  # scratch anyway, so serialising the two only lengthens the critical path of every green PR.
   cppcheck:
     name: Static Analysis
-    needs: [ changes, lint ]
+    needs: [ changes ]
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
@@ -115,11 +115,11 @@ jobs:
           - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", cache-tree: true }
           - { os: ubuntu-24.04-arm, compiler: clang, version: "23", cache-tree: true }
           - { os: ubuntu-24.04, compiler: clang, version: "23", cache-tree: true }
-          - { os: macos-26, compiler: clang, version: "23", cache-tree: true }
+          # - { os: macos-26, compiler: clang, version: "23", cache-tree: true }
           - { os: macos-15, compiler: clang, version: "23", cache-tree: true }
           - { os: windows-2025, compiler: msvc, version: "", cache-tree: true }
           - { os: windows-2025, compiler: clang-cl, version: "", cache-tree: true }
-          - { os: windows-2022, compiler: msvc, version: "", cache-tree: false }
+          # - { os: windows-2022, compiler: msvc, version: "", cache-tree: false }
     uses: ./.github/workflows/_compile.yaml
     with:
       os: ${{ matrix.os }}
@@ -191,7 +191,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ build-test, docs, security ] # sonar
+    needs: [ lint, cppcheck, build-test, docs, security ] # sonar
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }

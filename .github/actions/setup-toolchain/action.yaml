@@ -193,17 +193,17 @@ runs:
       run: bash .github/scripts/setup-toolchain/install-clang-macos.sh
 
     # The remaining libraries are header/CMake projects: check out,
-    # install, cache. The key is content-addressed on the three
-    # files that decide what the tree contains and where it goes:
-    # install-small-libs.sh, dependencies.toml and pins.py. v2 abandons
-    # the entries written before the tree was checked for completeness.
+    # install, cache. The key is content-addressed on the three files that
+    # decide what the tree contains and where it goes.
     - name: Restore small libraries
       if: inputs.dependencies == 'true'
       id: libs-cache
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.local
-        key: spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup-toolchain/install-small-libs.sh') }}
+        key: spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/scripts/setup-toolchain/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-${{ hashFiles('.github/dependencies.toml') }}
+        restore-keys: |
+          spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/scripts/setup-toolchain/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-
 
     # A restored tree is only usable if the install that filled it ran to
     # the end; a half-installed prefix otherwise looks like a hit forever
@@ -222,7 +222,7 @@ runs:
     # Only after the install succeeded: a save on the combined action runs
     # from the post step, which is also reached when the install failed.
     - name: Save small libraries
-      if: inputs.dependencies == 'true' && steps.libs-check.outputs.complete != 'true'
+      if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
       continue-on-error: true
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:

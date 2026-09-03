@@ -67,7 +67,6 @@ jobs:
       UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
       TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
       SPP_TEST_MODE: ${{ matrix.variant.spp-mode || 'rel' }}
-      CACHE_KEY: build-v3-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
 
     steps:
       # Secure the runner from external packages or actions.
@@ -96,6 +95,18 @@ jobs:
           version: ${{ inputs.version }}
           cache-key-suffix: ${{ matrix.variant.name }}
 
+      # The key is composed by the shared action rather than
+      # spelled out here, so the workflows that write the tree
+      # and the ones that read it cannot drift apart.
+      - name: Compose build tree cache key
+        id: cache-key
+        uses: ./.github/actions/build-cache-key
+        with:
+          os: ${{ inputs.os }}
+          compiler: ${{ inputs.compiler }}
+          version: ${{ inputs.version }}
+          variant: ${{ matrix.variant.name }}
+
       # Falls back to the newest tree for this variant on this
       # branch, then on the base branch.
       - name: Restore build tree
@@ -103,8 +114,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
-          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
-          restore-keys: ${{ env.CACHE_KEY }}-
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: ${{ steps.cache-key.outputs.prefix }}
 
       # Launch the cmake configuration steps.
       - name: Configure
@@ -142,7 +153,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
-          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
+          key: ${{ steps.cache-key.outputs.key }}
 
       # Launch the specialised parallel googletest script.
       - name: Run tests

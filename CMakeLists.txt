@@ -18,6 +18,14 @@ set(
   CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
   "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 
+set(
+  CMAKE_MSVC_RUNTIME_LIBRARY
+  "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
+if (MSVC)
+  add_compile_options($<IF:$<CONFIG:Debug>,/MDd,/MD> /Zc:preprocessor)
+endif ()
+
 # The LTO-aware binutils wrappers only exist for GCC; clang
 # and MSVC runners have no plain gcc-ar, and archiving fails
 # if they are forced.
@@ -68,9 +76,6 @@ add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
 if (NOT APPLE)
   set(CMAKE_LINKER_TYPE LLD)
-else ()
-  add_compile_options(-fno-typed-cxx-new-delete)
-  add_link_options(-fno-typed-cxx-new-delete)
 endif ()
 
 # Find dependencies.
@@ -92,6 +97,7 @@ find_package(CLI11 CONFIG REQUIRED)
 find_package(GenEx CONFIG REQUIRED)
 find_package(ColEx CONFIG REQUIRED)
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_compile_options(${LLVM_DEFINITIONS_LIST})
 
 # Configure LLVM for the correct architecture/system.
 if (NOT LLVM_NATIVE_ARCH IN_LIST LLVM_TARGETS_TO_BUILD)
@@ -188,7 +194,6 @@ target_compile_options(
 target_compile_definitions(
   ${PROJECT_NAME}_lib
   PRIVATE
-  ${LLVM_DEFINITIONS_LIST}
   $<$<BOOL:${SPP_ALL_TARGETS}>:SPP_ALL_TARGETS>
   SPP_HOST_TRIPLE="${LLVM_HOST_TRIPLE}")
 

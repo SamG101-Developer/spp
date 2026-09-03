@@ -85,8 +85,9 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
-  # Doubles as the master health check and as the cache warmer. Same variants as the
-  # PR pipeline, so every key a PR looks for exists on the base branch.
+  # Doubles as the master health check and as the cache warmer. The variant list must stay identical to the PR
+  # pipeline's: the build-cache-key action folds `variant.name` in, so a variant missing here is a variant that compiles
+  # from cold on every PR. fail-fast is off for the same reason - one red variant must not cost the others their cache.
   build-test:
     name: Build & Test
     needs: [ changes ]
@@ -101,13 +102,15 @@ jobs:
       fail-fast: false
       variants: >-
         [
-          {"name": "release-rel", "build-type": "Rel", "sanitizer": "", "spp-mode": "rel"},
+          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"},
         ]
 
+  # Ordered after `build-test` so it restores that run's exact-sha tree and only has to re-run the configure step,
+  # rather than racing it and falling back to the previous commit's.
   sonar:
     name: Sonar
-#    needs: [ changes, build-test ]
-#    if: needs.changes.outputs.code == 'true'
+    needs: [ changes, build-test ]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml

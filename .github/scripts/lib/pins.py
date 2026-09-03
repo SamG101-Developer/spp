@@ -8,6 +8,7 @@ Subcommands:
     env         NAME=value lines for GITHUB_ENV (pins and install prefixes)
     libraries   one tab-separated record per small CMake library: name, repo, commit, space-joined cmake flags
     runners     one tab-separated record per canonical runner image
+    caches      one tab-separated record per build-tree cache family: name, generation, key prefix
     get NAME    print one exported value, for scripts that want a single pin without loading the lot
     set PATH V  rewrite one value in place, preserving comments and layout; used by refresh-pins.sh
     check       validate the file and print what it exports
@@ -39,7 +40,12 @@ VALUE = re.compile(r"^[A-Za-z0-9._:/+-]+$")
 NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
-TABLES = {"pin", "prefix", "library", "runner"}
+TABLES = {"pin", "prefix", "library", "runner", "cache"}
+
+# A cache family names the first segment of a key and a generation the second, so neither may contain the "-" that
+# separates the segments: prune-caches.sh splits on it to tell a family apart from the rest of the key.
+FAMILY = re.compile(r"^[a-z][a-z0-9]*$")
+GENERATION = re.compile(r"^v[1-9][0-9]*$")
 
 # Runner images are not exported: `runs-on` cannot read the env context, and RUNNER_* is GitHub's own namespace. The
 # manifest is the canonical list and check_workflows() enforces that the YAML agrees with it.
@@ -139,6 +145,24 @@ def runners(data: dict) -> dict[str, str]:
     return out
 
 
+def caches(data: dict) -> dict[str, str]:
+    """Every build-tree cache family and the generation its keys currently carry."""
+    out: dict[str, str] = {}
+    for family, table in data.get("cache", {}).items():
+        if not isinstance(table, dict):
+            fail(f"[cache.{family}] must be a table")
+        if not FAMILY.match(family):
+            fail(f"[cache.{family}] is not a usable cache family name: lowercase alphanumeric, no dashes")
+        generation = table.get("generation")
+        if not isinstance(generation, str) or not GENERATION.match(generation):
+            fail(f"cache.{family}.generation is not a generation like 'v3': {generation!r}")
+        unknown = set(table) - {"generation"}
+        if unknown:
+            fail(f"[cache.{family}] has unexpected key(s): {', '.join(sorted(unknown))}")
+        out[family] = generation
+    return out
+
+
 def check_workflows(data: dict) -> int:
     """Every runner image named in the workflows must be one the manifest lists."""
     allowed = set(runners(data).values())
@@ -159,6 +183,12 @@ def check_workflows(data: dict) -> int:
 def cmd_runners(data: dict) -> None:
     for key, value in runners(data).items():
         print(f"{key}\t{value}")
+
+
+def cmd_caches(data: dict) -> None:
+    """The prefix is the family alone, not the generation: pruning has to reach the trees a bump orphaned too."""
+    for family, generation in caches(data).items():
+        print(f"{family}\t{generation}\t{family}-")
 
 
 def cmd_env(data: dict) -> None:
@@ -207,13 +237,19 @@ def cmd_check(data: dict, quiet: bool) -> None:
     values = exports(data)
     libs = libraries(data)
     images = runners(data)
+    families = caches(data)
     if not quiet:
         for name, value in sorted(values.items()):
             print(f"  {name}={value}")
         for key, value in images.items():
             print(f"  runner.{key}={value}")
+        for key, value in families.items():
+            print(f"  cache.{key}={value}")
     problems = check_workflows(data)
-    summary = f"{MANIFEST}: {len(values)} pins, {len(libs)} libraries, {len(images)} runner images"
+    summary = (
+        f"{MANIFEST}: {len(values)} pins, {len(libs)} libraries, "
+        f"{len(images)} runner images, {len(families)} cache families"
+    )
     if problems:
         fail(f"{summary}; {problems} workflow reference(s) disagree with [runner]")
     if not quiet:
@@ -271,6 +307,7 @@ def main() -> None:
     sub.add_parser("env")
     sub.add_parser("libraries")
     sub.add_parser("runners")
+    sub.add_parser("caches")
     check = sub.add_parser("check")
     check.add_argument("-q", "--quiet", action="store_true")
     get = sub.add_parser("get")
@@ -291,6 +328,8 @@ def main() -> None:
         cmd_libraries(data)
     elif args.command == "runners":
         cmd_runners(data)
+    elif args.command == "caches":
+        cmd_caches(data)
     elif args.command == "get":
         cmd_get(data, args.name)
     else:

@@ -54,18 +54,54 @@ cmake_install() {
   cmake --build "$name/build" --target install
 }
 
+# One stamp per library, each holding the exact manifest
+# record it was installed from. The combined stamp below says
+# whether the prefix is complete; these say which parts of it
+# are still current, so bumping one library rebuilds one
+# library rather than all ten.
+stamp_dir="$PREFIX/.spp-libs.d"
+mkdir -p "$stamp_dir"
+
 # Every library, its commit and its flags come from the
 # manifest, in the order listed there. Read on descriptor 3
 # so that nothing inside the loop can consume the record
-# stream by reading stdin.
-while IFS=$'\t' read -r -u 3 name repo commit flagstr; do
+# stream by reading stdin. The raw record is kept as read,
+# rather than reassembled from the fields, so that comparing
+# it against a stamp cannot drift on the tab handling.
+while IFS= read -r -u 3 record; do
+  IFS=$'\t' read -r name repo commit flagstr <<< "$record"
+
+  # Anything about the library that could change what gets
+  # installed - its commit, its repo, its flags - is in the
+  # record, so an unchanged record means an unchanged install.
+  stamp="$stamp_dir/$name"
+  if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$record" ]; then
+    echo "${name} @ ${commit} already installed"
+    continue
+  fi
+
   # Word-splitting the flags is the point; pins.py rejects a
   # flag containing whitespace so that this stays safe.
   read -ra flags <<< "$flagstr"
   cmake_install "$name" "$repo" "$commit" ${flags[@]+"${flags[@]}"}
+  printf '%s' "$record" > "$stamp"
 done 3<<< "$records"
+
+# A library dropped from the manifest leaves its headers and
+# CMake config behind, which nothing looks for once the
+# find_package() is gone. Only the stamp is cleaned up, so
+# that re-adding the library reinstalls it rather than
+# trusting whatever the prefix still holds.
+while IFS= read -r stamp; do
+  name="$(basename "$stamp")"
+  if ! printf '%s\n' "$records" | cut -f1 | grep -qxF "$name"; then
+    echo "::warning::${name} is no longer in the manifest; its installed files remain in the prefix"
+    rm -f "$stamp"
+  fi
+done < <(find "$stamp_dir" -maxdepth 1 -type f)
 
 # Written last, and read back by check-small-libs.sh: the
 # prefix only counts as installed once every record above
-# has been through cmake_install.
+# has been through cmake_install or been vouched for by its
+# own stamp.
 printf '%s\n' "$records" > "$PREFIX/.spp-libs-stamp"

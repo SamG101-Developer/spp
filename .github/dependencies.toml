@@ -131,6 +131,12 @@ llvm-mac = "{home}/llvm"
 llvm-deps-win = "{home}/llvm-deps"
 cppcheck = "{home}/.tools/cppcheck"
 
+[cache.build]
+generation = "v3"
+
+[cache.cross]
+generation = "v1"
+
 # The header/CMake dependencies, installed in order by
 # install-small-libs.sh.
 [[library]]

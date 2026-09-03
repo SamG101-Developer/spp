@@ -32,9 +32,6 @@ jobs:
           - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32" }
           - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e" }
 
-    env:
-      # Its own key: SPP_ALL_TARGETS changes what is linked in, so this tree cannot be shared with the ordinary build.
-      CACHE_KEY: cross-v1-${{ inputs.os }}-gcc
 
     steps:
       - name: Harden Runner
@@ -62,12 +59,22 @@ jobs:
           version: ${{ env.GCC_VERSION }}
           cache-key-suffix: cross
 
+      # Its own family: SPP_ALL_TARGETS changes what is linked in, so this tree cannot be shared with the ordinary
+      # build, and it has one configuration rather than a variant list.
+      - name: Compose build tree cache key
+        id: cache-key
+        uses: ./.github/actions/build-cache-key
+        with:
+          family: cross
+          os: ${{ inputs.os }}
+          compiler: gcc
+
       - name: Restore build tree
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
-          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
-          restore-keys: ${{ env.CACHE_KEY }}-
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: ${{ steps.cache-key.outputs.prefix }}
 
       # SPP_ALL_TARGETS links every backend this llvm has, which
       # is what "--target" needs and what an ordinary build
@@ -88,7 +95,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
-          key: ${{ env.CACHE_KEY }}-${{ github.sha }}
+          key: ${{ steps.cache-key.outputs.key }}
 
       - name: Emit and check ${{ matrix.target.triple }}
         run: >-

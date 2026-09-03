@@ -22,18 +22,28 @@ prune() {
   done
 }
 
+# Build-tree families come from .github/dependencies.toml,
+# so a family added there is swept without editing this
+# script, and by their bare name rather than their current
+# generation: a bump leaves the whole previous generation
+# behind, and those trees are the largest thing the
+# repository caches.
+mapfile -t families < <(python3 .github/scripts/lib/pins.py caches | cut -f3)
+
 # Every cache this repository writes now ends in a segment
 # that changes whenever its contents should: a commit sha
-# for the compiler caches, which are reached through a
-# prefix restore-key that picks the newest match, and a
-# hash of the defining files for the rest.
-for prefix in spp-libs- cc- doxygen-; do
-  echo "keeping the newest ${prefix} cache per branch and key prefix"
+# for the compiler and build-tree caches, which are reached
+# through a prefix restore-key that picks the newest match,
+# and a hash of the defining files for the rest.
+for spec in "spp-libs-:1" "cc-:1" "doxygen-:1" "${families[@]/%/:2}"; do
+  prefix="${spec%:*}"
+  drop="${spec##*:}"
+  echo "keeping the newest ${prefix} cache per branch, dropping ${drop} trailing segment(s) to group"
 
   # shellcheck disable=SC2016
   prune '[.[] | select(.key | startswith($p))]
-         | group_by([.ref, (.key | sub("-[^-]*$"; ""))])
+         | group_by([.ref, (.key | split("-") | .[0:length - $n] | join("-"))])
          | map(sort_by(.createdAt) | .[:-1])
          | flatten | .[] | [.id, "\(.key) on \(.ref)"] | @tsv' \
-    --arg p "$prefix"
+    --arg p "$prefix" --argjson n "$drop"
 done
