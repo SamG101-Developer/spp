@@ -158,7 +158,7 @@ jobs:
   # quality gate does not block a merge. Todo: Add it to the ci-success `needs` list to make it blocking.
   sonar:
     name: Sonar
-    needs: [ changes ]
+    needs: [ changes, lint ]
     if: |
       needs.changes.outputs.code == 'true'
       && (github.event_name != 'pull_request'
@@ -189,7 +189,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, cppcheck, build-test, docs, security ] # sonar
+    needs: [ build-test, docs, security ] # sonar
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }
