@@ -22,7 +22,7 @@ jobs:
       # endpoint short would stop every merge rather than one job. Tighten it once the audit output for a cache-miss
       # run confirms what the cppcheck build actually reaches for.
       - name: Harden Runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
         with:
           egress-policy: audit
 
@@ -48,7 +48,7 @@ jobs:
       # GCC compiles it; this job never configures the project, so no project toolchain is set up here.
       - name: Install CMake & Ninja (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
-        uses: lukka/get-cmake@e6906078ebd1ccb8ce51ab4626ac46a1b5a517e3
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb
         with:
           cmakeVersion: ${{ env.CMAKE_VERSION }}
           ninjaVersion: ${{ env.NINJA_VERSION }}
