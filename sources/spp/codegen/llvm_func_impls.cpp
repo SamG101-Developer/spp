@@ -2264,6 +2264,54 @@ auto spp::codegen::func_impls::std_view_reverse_iter_mut(
   simple_coro_view_iter(sm, proto, meta, ctx, true, true);
 }
 
+auto spp::codegen::func_impls::std_cffi_c_closure_from(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // A closure and a "CClosure" are the same two pointers in the same order - the function and the environment it
+  // captures - so this reads the pair back out under the other name. Nothing is copied, and nothing can be: the
+  // environment's size is not in the closure's type, which is why it is heap allocated where it is built.
+  const auto uid = "." + utils::Uid();
+  const auto value_param = proto->FnParamGroup->GetNonSelfParams()[0];
+  const auto value_sym = sm->CurrentScope->GetVarSymbol(value_param->ExtractName().get());
+
+  // Both sides are two pointers, but they are different named struct types, and llvm holds a return to the exact one
+  // the function declares - so the fields are read out of the closure and put back into "CClosure"'s own type.
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto pair_ty = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+  const auto pair = ctx->Builder.CreateLoad(pair_ty, value_sym->LlvmInfo->Alloca, "c_closure.from.pair" + uid);
+
+  const auto ret_ty = ctx->Builder.GetInsertBlock()->getParent()->getReturnType();
+  auto out = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  out = ctx->Builder.CreateInsertValue(
+    out, ctx->Builder.CreateExtractValue(pair, {0}, "c_closure.from.fn" + uid), {0});
+  out = ctx->Builder.CreateInsertValue(
+    out, ctx->Builder.CreateExtractValue(pair, {1}, "c_closure.from.env" + uid), {1});
+  ctx->Builder.CreateRet(out);
+}
+
+auto spp::codegen::func_impls::std_function_fun_mov_drop(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // A closure that captures anything it can carry away holds its environment on the heap, because it may outlive the
+  // frame that made it (see "ClosureExpressionAst::Stage11_CodeGen"). Dropping the closure is what releases it. The
+  // value is the "{fn, env}" pair, so the environment is the second field.
+  //
+  // The captures inside it are not destroyed, only the storage holding them. Doing better needs the closure's type to
+  // say what it captured, and it does not: every closure with the same signature has the same type, so there is no
+  // per-closure destructor to reach from here. Todo: give a closure a type of its own, and drop its captures.
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto uid = "." + utils::Uid();
+  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto pair_ty = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
+
+  const auto pair = ctx->Builder.CreateLoad(pair_ty, self_sym->LlvmInfo->Alloca, "fun_mov.drop.pair" + uid);
+  const auto env = ctx->Builder.CreateExtractValue(pair, {1}, "fun_mov.drop.env" + uid);
+
+  const auto llvm_free = GetEmissionModule(*ctx)->getOrInsertFunction(
+    "sppc_free", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false));
+  ctx->Builder.CreateCall(llvm_free, {env});
+  ctx->Builder.CreateRetVoid();
+}
+
 auto spp::codegen::func_impls::std_non_null_read(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
