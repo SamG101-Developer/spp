@@ -105,18 +105,6 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Get(
   auto ptr = _Table.find(SymbolKey(sym_name));
   return ptr != _Table.end() ? ptr->second.get() : nullptr;
 }
-
-template <typename I, typename S>
-auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Has(
-  I const *sym_name) const
-  -> bool {
-  // Check if a symbol exists in the table, without touching
-  // the symbol's refcount.
-  if (sym_name == nullptr) { return false; }
-  if (_Table.empty()) { return false; }
-  return _Table.contains(SymbolKey(sym_name));
-}
-
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::All() const
   -> Vec<S*> {

@@ -23,23 +23,6 @@ import boost;
 import llvm;
 
 SPP_MOD_BEGIN
-auto spp::asts::FloatLiteralAst::FromSingleTok(
-  decltype(TokSign) &&tok_sign,
-  Unique<TokenAst> &&token,
-  Str &&type)
-  -> Unique<FloatLiteralAst> {
-  // Split the token data into integer and fractional parts.
-  const auto point = token->TokenData.find('.');
-  auto int_part = point == Str::npos ? token->TokenData : token->TokenData.substr(0, point);
-  auto frac_part = point == Str::npos ? Str("0") : token->TokenData.substr(point + 1);
-  return MakeUnique<FloatLiteralAst>(
-    std::move(tok_sign),
-    MakeUnique<TokenAst>(token->PosStart(), lex::SppTokenType::LX_NUMBER, std::move(int_part)),
-    MakeUnique<TokenAst>(token->PosStart() + int_part.length(), lex::SppTokenType::TK_DOT, "."),
-    MakeUnique<TokenAst>(token->PosStart() + int_part.length() + 1, lex::SppTokenType::LX_NUMBER, std::move(frac_part)),
-    std::move(type));
-}
-
 spp::asts::FloatLiteralAst::FloatLiteralAst(
   decltype(TokSign) &&tok_sign,
   decltype(IntVal) &&int_val,

@@ -6,7 +6,6 @@ import spp.utils.errors;
 import spp.utils.types;
 import boost;
 import std;
-import sys;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;

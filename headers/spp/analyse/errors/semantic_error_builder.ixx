@@ -47,15 +47,6 @@ namespace spp {
     if (condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
   }
 
-  SPP_EXP_FUN template <typename E, typename A, typename F, typename V>
-    requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseIfAny(F &&condition, V const &vector, Vec<analyse::scopes::Scope const*> const &scopes,
-    A &&arg_binder) -> void {
-    for (auto const &v : vector) {
-      if (condition(v)) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
-    }
-  }
-
   SPP_EXP_FUN template <typename E, typename A>
     requires std::derived_from<E, analyse::errors::SemanticError>
   auto RaiseUnless(const bool condition, Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {

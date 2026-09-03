@@ -44,7 +44,5 @@ public:
 
   auto SetScopePtr(Str const &scope_str) -> void;
 
-  SPP_ATTR_NODISCARD auto GetScopePtr() const -> Str const&;
-
   auto SetProtoPtr(FunctionPrototypeAst *proto) -> void;
 };

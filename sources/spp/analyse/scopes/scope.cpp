@@ -35,7 +35,6 @@ import spp.asts.utils.ast_utils;
 import spp.compiler.module_tree;
 import spp.utils.algorithms;
 import spp.utils.error_formatter;
-import spp.utils.functions;
 import spp.utils.ptr;
 import genex;
 
@@ -431,13 +430,6 @@ auto spp::analyse::scopes::Scope::RemTypeSymbol(
   // Remove a type symbol from the corresponding symbol table.
   BumpTypeLookupGeneration();
   return InternalTable.TypeTbl.Rem(sym_name);
-}
-
-auto spp::analyse::scopes::Scope::RemNsSymbol(
-  asts::IdentifierAst const *sym_name)
-  -> Shared<NamespaceSymbol> {
-  // Remove a namespace symbol from the corresponding symbol table.
-  return InternalTable.NsTbl.Rem(sym_name);
 }
 
 auto spp::analyse::scopes::Scope::AllVarSymbols(
@@ -850,15 +842,6 @@ auto spp::analyse::scopes::Scope::SupTypes() const
   return ts;
 }
 
-auto spp::analyse::scopes::Scope::DirectSupTypes() const
-  -> Vec<Shared<asts::TypeAst>> {
-  // Get all direct super types (filter and map the direct super scopes).
-  return DirectSupScopes
-    | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
-    | genex::views::transform(ResolveSupTypeName)
-    | genex::to<Vec>();
-}
-
 auto spp::analyse::scopes::Scope::ConvertPostfixToNestedScope(
   asts::ExpressionAst const *postfix_ast) const
   -> Scope const* {
@@ -888,29 +871,6 @@ auto spp::analyse::scopes::Scope::ConvertPostfixToNestedScope(
     if (scope == nullptr) { break; }
   }
   return scope;
-}
-
-auto spp::analyse::scopes::Scope::PrintScopeTree() const
-  -> Str {
-  //
-  using spp::utils::functions::Overload;
-
-  // Indent the children, print the scope name.
-  auto func = [](this auto &&self, Scope const *scope, Str const &indent) -> Str {
-    auto result = indent + std::visit(
-      Overload{
-        [](ScopeIdentifierName const &id) { return id.Name->Val; },
-        [](ScopeTypeIdentifierName const &id) { return id.Name->Name; },
-        [](ScopeBlockName const &block) { return block.Name; }
-      }, scope->Name) + "\n";
-
-    for (auto child : scope->Children | genex::views::ptr) {
-      result += self(child, indent + "    ");
-    }
-    return result;
-  };
-
-  return func(this, "");
 }
 
 auto spp::analyse::scopes::Scope::NameAsString() const

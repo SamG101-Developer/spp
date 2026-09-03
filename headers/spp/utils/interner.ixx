@@ -26,17 +26,4 @@ namespace spp::utils {
    */
   SPP_EXP_FUN SPP_ATTR_HOT
   auto Intern(StrView name) -> InternedId;
-
-  /**
-   * Recover the name an id stands for. The view is valid for as long as the process runs, because interned names are
-   * never released.
-   */
-  SPP_EXP_FUN SPP_ATTR_HOT
-  auto InternedView(InternedId id) -> StrView;
-
-  /**
-   * The number of distinct names interned so far. Only of interest for diagnostics.
-   */
-  SPP_EXP_FUN
-  auto InternedCount() -> std::size_t;
 }

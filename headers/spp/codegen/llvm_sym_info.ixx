@@ -9,7 +9,6 @@ import std;
 namespace spp::codegen {
   SPP_EXP_CLS struct LlvmTypeSymInfo {
     llvm::Type *LlvmType = nullptr;
-    llvm::Module *LlvmMod = nullptr;
     Map<std::size_t, std::size_t> FieldIndexMap;
   };
 

@@ -10,7 +10,6 @@ import spp.parse.errors.parser_error;
 import spp.utils.files;
 import spp.utils.types;
 import std;
-import sys;
 
 /**
  * Create the project fixture the whole suite shares, if it is not already on disk.

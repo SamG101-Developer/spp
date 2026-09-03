@@ -2261,12 +2261,6 @@ auto spp::parse::ParserSpp::parse_token_assign()
   return FORWARD_AST(p1);
 }
 
-auto spp::parse::ParserSpp::parse_token_at()
-  -> Unique<asts::TokenAst> {
-  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AT_SIGN, lex::SppTokenType::TK_AT); });
-  return FORWARD_AST(p1);
-}
-
 auto spp::parse::ParserSpp::parse_token_underscore()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(
@@ -2364,13 +2358,6 @@ auto spp::parse::ParserSpp::parse_token_deref()
 auto spp::parse::ParserSpp::parse_token_borrow()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BORROW); });
-  return FORWARD_AST(p1);
-}
-
-auto spp::parse::ParserSpp::parse_token_vertical_bar()
-  -> Unique<asts::TokenAst> {
-  PARSE_ONCE(
-    p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_VERTICAL_BAR); });
   return FORWARD_AST(p1);
 }
 

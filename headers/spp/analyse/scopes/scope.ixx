@@ -274,14 +274,6 @@ public:
     asts::TypeIdentifierAst const *sym_name)
     -> Shared<TypeSymbol>;
 
-  /**
-   * Remove a namespace symbol from the symbol table held inside this scope.
-   * @param sym_name The name of the namespace symbol to remove.
-   */
-  auto RemNsSymbol(
-    asts::IdentifierAst const *sym_name)
-    -> Shared<NamespaceSymbol>;
-
   SPP_ATTR_NODISCARD auto AllVarSymbols(
     bool exclusive = false,
     bool sup_scope_search = false) const
@@ -364,13 +356,9 @@ public:
 
   SPP_ATTR_NODISCARD auto SupTypes() const -> Vec<Shared<asts::TypeAst>>;
 
-  SPP_ATTR_NODISCARD auto DirectSupTypes() const -> Vec<Shared<asts::TypeAst>>;
-
   SPP_ATTR_NODISCARD auto ConvertPostfixToNestedScope(
     asts::ExpressionAst const *postfix_ast) const
     -> Scope const*;
-
-  SPP_ATTR_NODISCARD auto PrintScopeTree() const -> Str;
 
   SPP_ATTR_NODISCARD auto NameAsString() const -> Str;
 

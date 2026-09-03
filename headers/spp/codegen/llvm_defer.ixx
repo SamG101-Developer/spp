@@ -4,7 +4,6 @@ module;
 export module spp.codegen.llvm_defer;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
-import llvm;
 import std;
 
 namespace spp::analyse::scopes {

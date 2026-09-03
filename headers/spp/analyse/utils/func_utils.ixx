@@ -5,7 +5,6 @@ export module spp.analyse.utils.func_utils;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
-import llvm;
 import std;
 
 namespace spp::asts {

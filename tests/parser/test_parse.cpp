@@ -1,7 +1,6 @@
 #include "../test_macros_parse.hpp"
 import spp.analyse.errors.semantic_error;
 import spp.asts._all;
-import spp.parse.errors.parser_error;
 
 SPP_TEST_SHOULD_FAIL_SYNTACTIC(
     parse_intentional_error, R"(

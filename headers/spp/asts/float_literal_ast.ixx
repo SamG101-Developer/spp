@@ -62,12 +62,6 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
    */
   Str Type;
 
-  static auto FromSingleTok(
-    decltype(TokSign) &&tok_sign,
-    Unique<TokenAst> &&token,
-    Str &&type)
-    -> Unique<FloatLiteralAst>;
-
   /**
    * Construct the FloatLiteralAst with the arguments matching the members.
    * @param[in] tok_sign The optional sign of the float literal.

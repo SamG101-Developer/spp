@@ -61,9 +61,6 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto GetMappedFunc() const
-    -> Shared<CaseExpressionAst>;
-
 private:
   Shared<CaseExpressionAst> _MappedFunc;
 

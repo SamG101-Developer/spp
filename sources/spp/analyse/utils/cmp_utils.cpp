@@ -30,7 +30,6 @@ import spp.parse.parser_spp;
 import spp.utils.strings;
 import boost;
 import genex;
-import sys;
 
 namespace spp::analyse::utils::cmp_utils {
   namespace {

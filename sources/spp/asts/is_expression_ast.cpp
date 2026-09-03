@@ -136,9 +136,4 @@ auto spp::asts::IsExpressionAst::InferType(
   return generate::common_types::BooleanType(_MappedFunc->PosStart());
 }
 
-auto spp::asts::IsExpressionAst::GetMappedFunc() const
-  -> Shared<CaseExpressionAst> {
-  return _MappedFunc;
-}
-
 SPP_MOD_END

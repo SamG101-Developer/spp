@@ -4,7 +4,6 @@ module;
 export module spp.utils.strings;
 import spp.utils.traits;
 import spp.utils.types;
-import boost;
 import std;
 
 namespace std {

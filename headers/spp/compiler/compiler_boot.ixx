@@ -6,7 +6,6 @@ import spp.codegen.llvm_ctx;
 import spp.compiler.out_layout;
 import spp.utils.progress;
 import spp.utils.types;
-import llvm;
 import std;
 
 namespace spp::analyse::scopes {

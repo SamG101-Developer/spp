@@ -23,7 +23,6 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
 
   std::uint32_t Ctx = 0;
   asts::AnnotationAst *Definition = nullptr;
-  bool IsBuiltin = false;
 
   AnnotationInfo() = default;
   AnnotationInfo(AnnotationInfo const &) = default;

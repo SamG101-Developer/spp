@@ -174,9 +174,4 @@ auto spp::asts::FunctionImplementationLoweredAst::SetScopePtr(
   _ScopePtr = scope_str;
 }
 
-auto spp::asts::FunctionImplementationLoweredAst::GetScopePtr() const
-  -> Str const& {
-  return _ScopePtr;
-}
-
 SPP_MOD_END

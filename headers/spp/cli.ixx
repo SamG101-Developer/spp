@@ -3,7 +3,6 @@ module;
 
 export module spp.cli;
 import spp.utils.types;
-import cli11;
 import std;
 
 namespace spp::cli {

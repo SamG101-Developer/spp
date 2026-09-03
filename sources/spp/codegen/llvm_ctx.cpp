@@ -9,8 +9,7 @@ SPP_MOD_BEGIN
 spp::codegen::LlvmCtx::LlvmCtx() :
   Context(GLOBAL_CONTEXT),
   Module(nullptr),
-  Builder(*Context),
-  MF(nullptr) {
+  Builder(*Context) {
 }
 
 spp::codegen::LlvmCtx::~LlvmCtx() = default;

@@ -21,7 +21,6 @@ import spp.utils.types;
 import boost;
 import genex;
 import llvm;
-import sys;
 
 SPP_MOD_BEGIN
 spp::asts::IntegerLiteralAst::IntegerLiteralAst(

@@ -115,9 +115,6 @@ public:
   SPP_ATTR_NODISCARD SPP_ATTR_HOT
   auto Get(I const *sym_name) const -> S*;
 
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT
-  auto Has(I const *sym_name) const -> bool;
-
   SPP_ATTR_NODISCARD
   auto All() const -> Vec<S*>;
 };

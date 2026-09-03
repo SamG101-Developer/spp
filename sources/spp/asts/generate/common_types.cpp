@@ -200,13 +200,6 @@ auto spp::asts::generate::common_types::BooleanType(std::size_t pos) -> Shared<T
   FINISH_TYPE();
 }
 
-auto spp::asts::generate::common_types::StringType(std::size_t pos) -> Shared<TypeAst> {
-  MAKE_TYPE("Str");
-  ADD_NAMESPACE("string");
-  ADD_NAMESPACE("std");
-  FINISH_TYPE();
-}
-
 auto spp::asts::generate::common_types::StringViewType(std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("StrView");
   ADD_NAMESPACE("string_view");
@@ -307,39 +300,6 @@ auto spp::asts::generate::common_types::FutureType(std::size_t pos, Shared<TypeA
 
   MAKE_TYPE_WITH_GN("Fut")
   ADD_NAMESPACE("future")
-  ADD_NAMESPACE("std")
-  FINISH_TYPE()
-}
-
-auto spp::asts::generate::common_types::OptionType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  MAKE_GENERICS()
-  ADD_TYPE_GENERIC(inner_type)
-  FINISH_GENERICS()
-
-  MAKE_TYPE_WITH_GN("Opt")
-  ADD_NAMESPACE("opt")
-  ADD_NAMESPACE("std")
-  FINISH_TYPE()
-}
-
-auto spp::asts::generate::common_types::MemoryType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  MAKE_GENERICS()
-  ADD_TYPE_GENERIC(inner_type)
-  FINISH_GENERICS()
-
-  MAKE_TYPE_WITH_GN("Memory")
-  ADD_NAMESPACE("memory")
-  ADD_NAMESPACE("std")
-  FINISH_TYPE()
-}
-
-auto spp::asts::generate::common_types::SingleType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  MAKE_GENERICS()
-  ADD_TYPE_GENERIC(inner_type)
-  FINISH_GENERICS()
-
-  MAKE_TYPE_WITH_GN("Single")
-  ADD_NAMESPACE("single")
   ADD_NAMESPACE("std")
   FINISH_TYPE()
 }

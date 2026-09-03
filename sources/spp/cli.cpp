@@ -23,7 +23,6 @@ import spp.lex.tokens;
 import spp.utils.files;
 import cli11;
 import genex;
-import sys;
 import tomlpp;
 
 inline constexpr spp::Str OUT_FOLDER = "out";

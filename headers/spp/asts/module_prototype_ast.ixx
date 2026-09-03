@@ -70,7 +70,4 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   SPP_ATTR_NODISCARD auto Name() const
     -> Unique<IdentifierAst>;
-
-  SPP_ATTR_NODISCARD auto FileName() const
-    -> Unique<IdentifierAst>;
 };
