@@ -291,9 +291,39 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   meta->EnclosingFunctionFlavour = saved_flavour;
   ctx->CurrentClosureType = saved_current_closure_type;
 
-  // Allocate the closure environment.
-  const auto env_alloca = codegen::LlvmEntryAlloca(
-    closure_env_ty, "closure.env.alloca." + uid, ctx);
+  // Todo: Manage the moved captures' destruction properly,
+  // currently they all leak. The env pointer is freed, but
+  // not its contents. Check this more carefully.
+  const auto env_outlives_frame = genex::any_of(
+    PcGroup->CaptureGroup->Captures,
+    [](auto const &c) { return c->Conv == nullptr or *c->Conv == ConventionTag::MUT; });
+
+  const auto env_alloca = [&]() -> llvm::Value* {
+    // No captures means we don't even need to allocate
+    // an env pointer. This is also safe to free, so no
+    // special logic needed there.
+    if (PcGroup->CaptureGroup->Captures.IsEmpty()) {
+      return llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0));
+    }
+
+    // Easy alloca for the closure's environment pointer,
+    // as no additional lifetime logic is needed. Use the
+    // stack.
+    if (not env_outlives_frame) {
+      return codegen::LlvmEntryAlloca(closure_env_ty, "closure.env.alloca." + uid, ctx);
+    }
+
+    // Use the heap, because of escaping borrows. This needs
+    // more investigation as I'd rather not use the heap at
+    // all here.
+    const auto llvm_size_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto llvm_malloc = codegen::GetEmissionModule(*ctx)->getOrInsertFunction(
+      "sppc_malloc", llvm::FunctionType::get(llvm::PointerType::get(*ctx->Context, 0), {llvm_size_ty}, false));
+    const auto env_size = codegen::GetEmissionModule(*ctx)->getDataLayout()
+      .getTypeAllocSize(closure_env_ty).getFixedValue();
+    return ctx->Builder.CreateCall(
+      llvm_malloc, {llvm::ConstantInt::get(llvm_size_ty, env_size)}, "closure.env.heap." + uid);
+  }();
 
   for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
     const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
