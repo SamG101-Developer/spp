@@ -8,6 +8,7 @@ import spp.asts.function_prototype_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_implementation_ast;
