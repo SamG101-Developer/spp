@@ -73,8 +73,14 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # Supported toolchain. "Release" and both "sanitiser" configurations build in parallel and fail-fast, so one broken
-  # variant stops the others immediately.
+  # Supported toolchain. Every variant builds in parallel and fail-fast, so one broken variant stops the others
+  # immediately.
+  #
+  # "spp-mode" is a second axis over "build-type": it selects the optimisation pipeline the built compiler runs over
+  # the s++ fixtures, so "release-rel" and "release-dev" are the same C++ binary exercising O3 and O0 codegen. The
+  # sanitiser rides on "dev" rather than "rel" deliberately - it instruments the C++ compiler, whose sanitiser-visible
+  # code (the analysis stages) is identical in both modes, so the only thing "rel" would add is the wall-clock of an
+  # O3 pass pipeline on an already slow build.
   build-test:
     name: Build & Test
     needs: [ changes, cppcheck ]
@@ -89,8 +95,9 @@ jobs:
       fail-fast: true
       variants: >-
         [
-          {"name": "release", "build-type": "Release", "sanitizer": ""},
-          {"name": "asan", "build-type": "Debug", "sanitizer": "address+undefined+leak"}
+          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"},
+          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev"},
+          {"name": "asan-dev", "build-type": "Debug", "sanitizer": "address+undefined+leak", "spp-mode": "dev"}
         ]
 
   # Aspirational toolchains: they run and report red on failure, but are deliberately omitted from ci-success, so they
@@ -121,6 +128,16 @@ jobs:
       fail-fast: false
       cache-build-tree: ${{ matrix.cache-tree }}
       variants: '[{"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""}]'
+
+  # Emit for architectures unlike the host - 32-bit, big-endian, non-x86 - and check the object and the datalayout
+  # that came out. Non-blocking to begin with. Todo: Add to ci-success once the matrix has been green for a while.
+  cross-codegen:
+    name: Cross Codegen (non-blocking)
+    needs: [ changes, cppcheck ]
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_cross_codegen.yaml
 
   # Independent of the compilation chain: doc breakage is worth hearing about even while the build is still running.
   docs:

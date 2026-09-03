@@ -6,7 +6,7 @@ on:
       variants:
         description: >-
           JSON array of build variants. Each entry is
-          {"name": "...", "build-type": "...", "sanitizer": "..."}; `sanitizer` may be "".
+          {"name": "...", "build-type": "...", "sanitizer": "...", "spp-mode": "..."};
         required: true
         type: string
       os:
@@ -66,6 +66,7 @@ jobs:
       ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:detect_leaks=1:strict_string_checks=1"
       UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
       TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
+      SPP_TEST_MODE: ${{ matrix.variant.spp-mode || 'rel' }}
       CACHE_KEY: build-v3-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
 
     steps:
@@ -130,6 +131,7 @@ jobs:
           name: buildlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
           path: build-logs
           if-no-files-found: ignore
+          retention-days: 3
 
       # Save the build tree to the cache. A tree whose configure
       # failed is worse than no tree: its cached check results
@@ -156,3 +158,4 @@ jobs:
           name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ matrix.variant.name }}
           path: tests/test_output
           if-no-files-found: ignore
+          retention-days: 3
