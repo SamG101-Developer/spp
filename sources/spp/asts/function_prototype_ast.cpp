@@ -164,6 +164,17 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     // the linker will resolve against. Everything else gets the
     // S++ mangled name.
     const auto ffi_symbol = GetFfiSymbolName();
+
+    // Shortcut for ffi functions: only ever one symbol
+    // because of the C ABI compatibility. Enforced by the
+    // generics ban too.
+    if (not ffi_symbol.empty()) {
+      if (const auto existing = ctx->Module->getFunction(ffi_symbol); existing != nullptr) {
+        *_LlvmFunc = MakeShared<codegen::LlvmFuncWrapper>(existing);
+        return *_LlvmFunc;
+      }
+    }
+
     const auto created_llvm_func = llvm::Function::Create(
       llvm_fun_type, llvm::Function::ExternalLinkage,
       ffi_symbol.empty() ? codegen::mangle::mangle_fun_name(*sm->CurrentScope, *this) : ffi_symbol,
