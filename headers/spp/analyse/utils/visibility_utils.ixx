@@ -26,7 +26,22 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::visibility_utils {
-  SPP_EXP_FUN auto VisibilityName(asts::utils::Visibility vis) -> Str;
+  /**
+   * Whether a type member is accessible from where it is being named. The non-raising half of
+   * @c CheckTypeMemberVisibility , for the caller that has several same-named candidates and must not reject the
+   * access while any one of them is reachable.
+   * @param sym The symbol whose visibility is being tested.
+   * @param type_scope The scope @p sym was defined in.
+   * @param sm The scope manager, positioned at the accessing scope.
+   * @param meta Associated metadata.
+   * @return Whether the access is allowed.
+   */
+  SPP_EXP_FUN auto IsTypeMemberVisible(
+    scopes::VariableSymbol const &sym,
+    scopes::Scope const &type_scope,
+    scopes::ScopeManager const &sm,
+    asts::meta::CompilerMetaData const &meta)
+    -> bool;
 
   SPP_EXP_FUN auto CheckTypeMemberVisibility(
     scopes::VariableSymbol const &sym,

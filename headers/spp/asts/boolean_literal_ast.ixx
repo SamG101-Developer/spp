@@ -27,6 +27,8 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
    */
   Unique<TokenAst> TokBool;
 
+  static auto FromCppVal(bool val) -> Unique<BooleanLiteralAst>;
+
   /**
    * Construct the BooleanLiteralAst with the arguments matching the members.
    * @param[in] tok_bool The token that represents the boolean literal.
@@ -100,7 +102,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
    * @param ctx The LLVM context to generate code in.
    * @return The generated LLVM value representing the boolean literal.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * The boolean literal's type is always @c std::boolean::Bool, the compiler known type that represents a boolean

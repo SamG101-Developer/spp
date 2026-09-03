@@ -14,22 +14,21 @@ inputs:
 runs:
   using: composite
   steps:
-    # Cache-key versions and toolchain pins all live in ".github/versions.env".
-    - name: Load pinned versions
-      shell: bash
-      run: bash .github/scripts/lib/load-versions.sh
+    # Cache-key versions and toolchain pins all live in ".github/dependencies.toml".
+    - name: Set up Python and load pins
+      uses: ./.github/actions/setup-python
 
     - name: Cache gtest-parallel
       id: gtp-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ${{ runner.temp }}/gtest-parallel
-        key: gtest-parallel-${{ runner.os }}-v${{ env.GTEST_PARALLEL_CACHE_VERSION }}
+        key: gtest-parallel-${{ runner.os }}-${{ runner.arch }}-${{ env.GTEST_PARALLEL_COMMIT }}
 
     - name: Fetch gtest-parallel (cache miss)
       if: steps.gtp-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: git clone --depth 1 https://github.com/google/gtest-parallel.git "${RUNNER_TEMP}/gtest-parallel"
+      run: bash .github/scripts/run-tests/install-gtest-parallel.sh
 
     - name: Run tests
       shell: bash

@@ -20,6 +20,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_func;
 import spp.lex.tokens;
 import spp.utils.strings;
 import spp.utils.uid;
@@ -30,7 +31,8 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOper
   decltype(TokDblColon) &&tok_dbl_colon,
   decltype(Name) &&name) :
   TokDblColon(std::move(tok_dbl_colon)),
-  Name(std::move(name)) {
+  Name(std::move(name)),
+  _LhsTypeSym(nullptr) {
 }
 
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
@@ -50,9 +52,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosEnd() const
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
+  auto p = MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
     AstClone(TokDblColon),
     AstClone(Name));
+  p->_LhsTypeSym = _LhsTypeSym;
+  return p;
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
@@ -77,50 +81,66 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
   // Handle types on the left-hand-side of a static member access.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
+    _LhsTypeSym = lhs_type_sym;
 
     // Check the target field exists on the type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
-      // Todo: Need to filter these candidates to function groups who contain a static overload.
-      auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
-        | genex::views::filter([](auto const &sym) { return sym->Type->IsCompilerGeneratedType(); })
-        | genex::to<Vec>();
-      RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
+      auto [fwd_ref_type, fwd_mut_type] = analyse::utils::type_utils::GetFwdTypes(*lhs_type_sym->FqName(), *sm);
+      const auto temp = fwd_ref_type ? fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val.get() : nullptr;
+      const auto lhs_fwd_ref_type_sym = temp ? sm->CurrentScope->GetTypeSymbol(temp) : nullptr;
+      const auto found = lhs_fwd_ref_type_sym ? lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true) : false;
+      if (fwd_ref_type == nullptr or (fwd_ref_type != nullptr and not found)) {
+        // Todo: Need to filter these candidates to function groups who contain a static overload.
+        // Todo: Add fwd-ref type member candidates
+
+        auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
+          | genex::views::filter([](auto const &sym) { return sym->Type->IsCompilerGeneratedType(); })
+          | genex::to<Vec>();
+        RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
+      }
+      _LhsTypeSym = lhs_fwd_ref_type_sym;
     }
 
     // Check there is only 1 target field on the type at the highest level.
-    if (lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true)->Type->IsCompilerGeneratedType()) {
+    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Type->IsCompilerGeneratedType()) {
       return;
     }
 
-    auto scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope}, lhs_type_sym->LinkedScope->SupScopes())
+    auto scopes_and_syms = (genex::views::concat(Vec{_LhsTypeSym->LinkedScope}, _LhsTypeSym->LinkedScope->SupScopes())
         | genex::to<Vec>())
       | genex::views::transform([name=Name.get()](auto &&x) { return MakePair(x, x->GetVarSymbol(name, true)); })
       | genex::to<Vec>()
-      | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
+      | genex::views::filter([](auto &&x) { return x.second != nullptr; })
       | genex::views::transform([&](auto &&x) {
-        return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second);
+        return MakeTuple(_LhsTypeSym->LinkedScope->DepthDiff(x.first), x.first, x.second);
       })
       | genex::to<Vec>();
 
     auto min_depth = genex::min_element(scopes_and_syms
-      | genex::views::transform([](auto &&x) { return std::get<0>(x); })
+      | genex::views::transform([](auto &&x) { return spp::get<0>(x); })
       | genex::to<Vec>());
 
     auto closest = scopes_and_syms
-      | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
-      | genex::views::transform([](auto &&x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+      | genex::views::filter([min_depth](auto &&x) { return spp::get<0>(x) == min_depth; })
+      | genex::views::transform([](auto &&x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
       | genex::to<Vec>();
 
-    // Enforce visibility on the accessed member.
+    // Enforce visibility on the accessed member. Visibility is
+    // read off the non-generic scope, because that is where the
+    // member was written and so where its annotation lives; an
+    // instantiation's copy of a symbol is not the declaration.
     if (not closest.IsEmpty()) {
-      const auto scope = closest[0].First->NonGenericScope;
-      CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get()), *Name, *scope, *sm, *meta);
+      const auto scope = closest[0].first->NonGenericScope;
+      const auto declared_sym = scope->GetVarSymbol(Name.get());
+      CheckTypeMemberVisibility(
+        declared_sym != nullptr ? *declared_sym : *closest[0].second, *Name,
+        declared_sym != nullptr ? *scope : *closest[0].first, *sm, *meta);
     }
 
     if (closest.Len() <= 1) { return; }
     Raise<SppAmbiguousMemberAccessError>(
-      {closest[0].First, closest[1].First, sm->CurrentScope},
-      ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *Name));
+      {closest[0].first, closest[1].first, sm->CurrentScope},
+      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *Name));
   }
 
   // Otherwise, we are handling a namespace left-hand-side.
@@ -153,10 +173,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeR
   CompilerMetaData *meta)
   -> void {
   // Handle accessing a symbol on a type.
-  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
-    const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
-    auto tm = ScopeManager(sm->GlobalScope, lhs_type_sym->LinkedScope);
+  if (_LhsTypeSym != nullptr) {
+    const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
+    auto tm = ScopeManager(sm->GlobalScope, _LhsTypeSym->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CmpResult = AstClone(meta->CmpResult);
     return;
@@ -173,17 +192,28 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeR
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   const auto uid = "." + spp::utils::Uid(this);
 
+  // In a constant context the caller wants a value,
+  // not a load. Resolve recursively and return the
+  // result from the meta context.
+  if (ctx->InConstantContext) {
+    Stage9_CompTimeResolve(sm, meta);
+    if (auto folded = std::move(meta->CmpResult); folded != nullptr) {
+      return folded->Stage11_CodeGen(sm, meta, ctx);
+    }
+  }
+
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
-  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
-    const auto var_sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
+  if (_LhsTypeSym != nullptr) {
+    const auto var_sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
     SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
-    const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
+      *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
+      *codegen::GetEmissionModule(*ctx));
     return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_type_member" + uid);
   }
 
@@ -192,7 +222,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   const auto var_sym = lhs_ns_scope->GetVarSymbol(Name.get(), true);
   if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
-  const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+  const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
+    *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
+    *codegen::GetEmissionModule(*ctx));
   return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
 }
 
@@ -202,9 +234,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   -> Shared<TypeAst> {
   //
   using analyse::utils::type_utils::GetFwdTypes;
+  // Todo: use the stored symbol? that if it's null? is that possible ie if used before analysis? shouldn't be.
 
   // Get the left-hand-side type's member's type.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+    // todo: const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
     const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
     if (sym != nullptr) { return sym->Type; }

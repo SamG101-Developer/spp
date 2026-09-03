@@ -93,7 +93,7 @@ SPP_EXP_CLS struct
   CmpStatementAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,
-    decltype(Name) &&name,
+    decltype(Name) name,
     decltype(TokColon) &&tok_colon,
     decltype(Type) type,
     decltype(TokAssign) &&tok_assign,
@@ -107,9 +107,13 @@ SPP_EXP_CLS struct
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
+  auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
   auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+  auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -117,7 +121,9 @@ SPP_EXP_CLS struct
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto MarkFromUseStatement() -> void;
 

@@ -106,6 +106,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p = Point(x=5, y=5)
         let x = p.x
         let y = p.y
+        std::mem::ops::drop(p)
     }
 )");
 
@@ -416,7 +417,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let elem: (Str, Str)
-        elem.0
+        std::mem::ops::drop(elem.0)
     }
 )");
 
@@ -426,7 +427,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let elem: Bool
-        elem.not
+        std::mem::ops::drop(elem.not)
     }
 )");
 
@@ -436,7 +437,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let elem: Gen[Bool, Bool]
-        elem.res(false)
+        std::mem::ops::drop(elem.res(false))
     }
 )");
 

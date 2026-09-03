@@ -19,10 +19,10 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.module_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
@@ -32,8 +32,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
-import spp.parse.parser_spp;
 import spp.lex.lexer;
+import spp.parse.parser_spp;
 
 SPP_MOD_BEGIN
 spp::asts::AnnotationAst::AnnotationAst(
@@ -116,7 +116,7 @@ auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
   CompilerMetaData *)
   -> void {
   // Special annotation handling.
-  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).First;
+  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).first;
   if (sym == nullptr) { return; }
 
   const auto fq_name = sym->FqName()->ToString();
@@ -147,17 +147,18 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   // Handle builtin annotations.
   using A = analyse::utils::annotation_utils::BuiltinAnnotations;
 
-  meta->Save();
-  meta->IgnoreAccessModifierViolations = true;
-  if (const auto pf = Name->To<PostfixExpressionAst>(); pf and pf->Op->To<PostfixExpressionOperatorFunctionCallAst>()) {
-    pf->Lhs->Stage7_AnalyseSemantics(sm, meta);
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->IgnoreAccessModifierViolations = true;
+    if (const auto pf = Name->To<PostfixExpressionAst>(); pf and pf->Op->To<PostfixExpressionOperatorFunctionCallAst>()) {
+      pf->Lhs->Stage7_AnalyseSemantics(sm, meta);
+    }
+    else {
+      Name->Stage7_AnalyseSemantics(sm, meta);
+    }
   }
-  else {
-    Name->Stage7_AnalyseSemantics(sm, meta);
-  }
-  meta->Restore();
 
-  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).First;
+  const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).first;
   const auto fq_name = sym->FqName()->ToString();
 
   // For the known builtin annotations, they will attempt to modify their contextual objects if possible, for required
@@ -171,25 +172,25 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   // Mark a visibility-enabled ast as having "public" visibility.
   else if (fq_name == A::kPublic) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPublic, this}; }
   }
 
   // Mark a visibility-enabled ast as having "package" visibility.
   else if (fq_name == A::kPackage) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPackage, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPackage, this}; }
   }
 
   // Mark a visibility-enabled ast as having "protected" visibility.
   else if (fq_name == A::kProtected) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kProtected, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kProtected, this}; }
   }
 
   // Mark a visibility-enabled ast as having "private" visibility.
   else if (fq_name == A::kPrivate) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPrivate, this); }
+    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPrivate, this}; }
   }
 
   // Mark a method ast as being "virtual", enabling overriding.
@@ -208,7 +209,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   else if (fq_name == A::kFfi) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
     if (fun_ctx) { fun_ctx->FfiAnnotation = this; }
-    if (fun_ctx) { fun_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
+    if (fun_ctx) { fun_ctx->Visibility = {utils::Visibility::kPublic, this}; }
   }
 
   // Mark a type symbol as being "zero type" (implicitly makes it "Copy").
@@ -223,22 +224,29 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType.get())->IsDirectlyZeroType = true;
   }
 
+  // Mark a function as being a "unit test" (makes it non-callable etc).
+  else if (fq_name == A::kTest) {
+    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
+    if (fun_ctx) { fun_ctx->TestAnnotation = this; }
+    if (fun_ctx) { fun_ctx->Visibility = {utils::Visibility::kPublic, this}; }
+  }
+
   // Mark a function as being inlinable via llvm.
   else if (fq_name == A::kLlvmInline) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
+    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
   }
 
   // Mark a function as being always inlined via llvm.
   else if (fq_name == A::kLlvmAlwaysInline) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
+    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
   }
 
   // Mark a function as being never inlined via llvm.
   else if (fq_name == A::kLlvmNoInline) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
+    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
   }
 
   // Mark a function as being "hot" via llvm.
@@ -298,15 +306,17 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
 
   // Todo: Maybe do this in stage7, with stage9 evaluation? needs cmp args.
   // Evaluate the context that this annotation can be applied to.
-  meta->Save();
   const auto annotation_scope_name = INJECT_CODE("std::annotations", parse_expression);
   const auto annotation_scope = const_cast<analyse::scopes::Scope*>(
     sm->CurrentScope->ConvertPostfixToNestedScope(annotation_scope_name.get()));
   auto tm = ScopeManager(sm->GlobalScope, annotation_scope);
-  annotation_info->Definition->FnArgGroup->At("target")->Val->Stage9_CompTimeResolve(&tm, meta);
-  const auto result = std::move(meta->CmpResult);
-  const auto allowed_ctx = result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
-  meta->Restore();
+  const auto allowed_ctx = [&] {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);
+    annotation_info->Definition->FnArgGroup->At("target")->Val->Stage9_CompTimeResolve(&tm, meta);
+    const auto result = std::move(meta->CmpResult);
+    return result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
+  }();
 
   const auto target = annotation_info->Definition->FnArgGroup->At("target");
 

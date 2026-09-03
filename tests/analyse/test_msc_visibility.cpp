@@ -1,9 +1,9 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMscVisibility,
-    test_invalid_visibility_access_private_type_member_diff_ctx_same_mod,
-    SppAccessViolationError, R"(
+  TestMscVisibility,
+  test_invalid_visibility_access_private_type_member_diff_ctx_same_mod,
+  SppAccessViolationError, R"(
     cls A {
         !private a: Str
     }
@@ -14,120 +14,123 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMscVisibility,
-    test_invalid_visibility_access_private_type_member_diff_ctx_diff_module,
-    SppAccessViolationError, R"(
-    fun function(a: std::threading::mutex::Mutex) -> Void {
-        let x = a.id
+  TestMscVisibility,
+  test_invalid_visibility_access_private_type_member_diff_ctx_diff_module,
+  SppAccessViolationError, R"(
+    fun function(a: std::char::Char) -> Void {
+        let x = a.inner
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMscVisibility,
-    test_invalid_visibility_access_private_type_member_same_ctx_diff_module,
-    SppAccessViolationError, R"(
-    sup std::threading::mutex::Mutex {
+  TestMscVisibility,
+  test_invalid_visibility_access_private_type_member_same_ctx_diff_module,
+  SppAccessViolationError, R"(
+    sup std::char::Char {
         fun function(&self) -> Void {
-            let x = self.id
+            let x = self.inner
         }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestMscVisibility,
-    test_valid_visibility_access_private_type_member_same_ctx_same_module, R"(
+  TestMscVisibility,
+  test_valid_visibility_access_private_type_member_same_ctx_same_module, R"(
     cls A {
         !private a: Str
     }
 
     sup A {
-        fun function(&self) -> Void {
-            let x = self.a
+        fun function(&self) -> Str {
+            ret self.a.clone()
         }
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMscVisibility,
-    test_invalid_visibility_access_private_module_member,
-    SppAccessViolationError, R"(
+  TestMscVisibility,
+  test_invalid_visibility_access_private_module_member,
+  SppAccessViolationError, R"(
     fun f() -> Void {
         let x = std::generator::Generated[S32]()
+        std::mem::ops::drop(x)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestMscVisibility,
-    test_valid_visibility_access_protected_type_member_extended_ctx_same_module, R"(
+  TestMscVisibility,
+  test_valid_visibility_access_protected_type_member_extended_ctx_same_module, R"(
     cls A {
         !protected a: Str
     }
 
     sup A {
         !virtual_method
-        fun function(&self) -> Void { }
+        fun function(&self) -> Str {
+            ret Str::from("")
+        }
     }
 
     cls B { }
 
     sup B ext A {
-        fun function(&self) -> Void {
-            let x = self.a
+        fun function(&self) -> Str {
+            ret self.a.clone()
         }
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMscVisibility,
-    test_invalid_visibility_different_accessors_on_overload,
-    SppFunctionOverloadVisibilityMismatchError, R"(
+  TestMscVisibility,
+  test_invalid_visibility_different_accessors_on_overload,
+  SppFunctionOverloadVisibilityMismatchError, R"(
     !package fun function(a: U32) -> Void { }
     !private fun function(a: U16) -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestMscVisibility,
-    test_valid_visibility_access_public_type_member_diff_ctx_same_mod, R"(
+  TestMscVisibility,
+  test_valid_visibility_access_public_type_member_diff_ctx_same_mod, R"(
     cls A {
         !public a: Str
     }
 
-    fun function(a: A) -> Void {
-        let x = a.a
+    fun function(a: A) -> Str {
+        ret a.a
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMscVisibility,
-    test_invalid_visibility_access_protected_type_member_diff_ctx_same_mod,
-    SppAccessViolationError, R"(
+  TestMscVisibility,
+  test_invalid_visibility_access_protected_type_member_diff_ctx_same_mod,
+  SppAccessViolationError, R"(
     cls A {
         !protected a: Str
     }
 
-    fun function(a: A) -> Void {
-        let x = a.a
+    fun function(a: A) -> Str {
+        ret a.a
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestMscVisibility,
-    test_valid_visibility_access_protected_type_member_same_ctx_same_module, R"(
+  TestMscVisibility,
+  test_valid_visibility_access_protected_type_member_same_ctx_same_module, R"(
     cls A {
         !protected a: Str
     }
 
     sup A {
-        fun function(&self) -> Void {
-            let x = self.a
+        fun function(&self) -> Str {
+            ret self.a.clone()
         }
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMscVisibility,
-    test_invalid_visibility_access_private_method_diff_ctx_same_mod,
-    SppAccessViolationError, R"(
+  TestMscVisibility,
+  test_invalid_visibility_access_private_method_diff_ctx_same_mod,
+  SppAccessViolationError, R"(
     cls A { }
 
     sup A {
@@ -137,5 +140,22 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun function(a: A) -> Void {
         a.secret()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMscVisibility,
+  test_invalid_visibility_access_package_module_member,
+  SppAccessViolationError, R"(
+    fun f(mut x: Str) -> Void {
+        std::mem::ops::drop_in_place(&mut x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestMscVisibility,
+  test_valid_visibility_access_public_module_member, R"(
+    fun f(x: Str) -> Void {
+        std::mem::ops::drop(x)
     }
 )");

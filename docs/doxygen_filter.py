@@ -29,9 +29,7 @@ INLINE_CODE = re.compile(
 CONTINUATION = re.compile(r"\s*\n[ \t]*\*?[ \t]*")
 
 # Filter off the module-unit preamble: "module;", "export module spp.asts.ast;", "import std;", "export import x;".
-MODULE_PREAMBLE = re.compile(
-    r"(?m)^[ \t]*(?:module[ \t]*;|(?:export[ \t]+)?(?:module|import)[ \t]+[^;{}]*;)[ \t]*$"
-)
+MODULE_PREAMBLE = re.compile(r"(?m)^[ \t]*(?:module[ \t]*;|(?:export[ \t]+)?(?:module|import)[ \t]+[^;{}]*;)[ \t]*$")
 
 
 def _replace(match: re.Match[str]) -> str:

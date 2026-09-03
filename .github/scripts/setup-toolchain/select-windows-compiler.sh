@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Point CC/CXX at the MSVC or clang-cl driver the job asked for.
+# Point CC/CXX at the MSVC or clang-cl driver the job asked
+# for.
 set -euo pipefail
 
 cc=cl

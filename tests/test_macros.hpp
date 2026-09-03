@@ -34,20 +34,14 @@ using sys::write;
 using sys::stat;
 using sys::S_ISDIR;
 
-#include <spp/macros.hpp>
-#include <spp/parse/macros.hpp>
 #include <gtest/gtest.h>
+#include <spp/macros.hpp>
 #include "test_boot.hpp"
 
-#define SPP_TEST_SHOULD_PASS_SYNTACTIC(name, code) \
-    TEST(SppParser, name) {                        \
-        auto ast = INJECT_CODE(code, parse);       \
-    }
-
-#define SPP_TEST_SHOULD_FAIL_SYNTACTIC(name, code)                                  \
-    TEST(SppParser, name) {                                                         \
-        EXPECT_THROW(INJECT_CODE(code, parse), spp::parse::errors::SppSyntaxError); \
-    }
+// Named by the "SHOULD_FAIL_SEMANTIC" macros below, so every test file needs it. The parser and lexer are not here:
+// only the syntactic macros use them, only one test file uses those, and importing them here made the other ~120
+// translation units build the parser to run a semantic test. See "test_macros_parse.hpp".
+import spp.analyse.errors.semantic_error;
 
 #define SPP_TEST_SHOULD_PASS_SEMANTIC(group, name, code) \
     TEST(group, name) {                                  \
@@ -67,4 +61,17 @@ using sys::S_ISDIR;
 #define SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(group, name, error, code)             \
     TEST(group, name) {                                                             \
         EXPECT_THROW(build_temp_project(code, false), spp::analyse::errors::error); \
+    }
+
+#define SPP_TEST_CMP_VALUES(group, name, code, ...)                                          \
+    TEST(group, name) {                                                                      \
+        const auto actual = build_temp_project(code);                                         \
+        for (auto const &[key, expected] : std::map<spp::Str, spp::Str>{__VA_ARGS__}) {      \
+            const auto it = actual.find(key);                                                 \
+            if (it == actual.end()) {                                                         \
+                ADD_FAILURE() << "no compile-time constant named '" << key << "'";            \
+                continue;                                                                     \
+            }                                                                                 \
+            EXPECT_EQ(it->second, expected) << "compile-time constant '" << key << "'";       \
+        }                                                                                     \
     }

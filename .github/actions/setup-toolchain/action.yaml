@@ -4,6 +4,9 @@ description: >-
   compiler cache and the project's dependencies.
 
 inputs:
+  runner-image:
+    description: "Runner image."
+    required: true
   compiler:
     description: "Compiler family to install: gcc, clang, msvc or clang-cl."
     required: true
@@ -30,10 +33,9 @@ inputs:
 runs:
   using: composite
   steps:
-    # Cache-key versions and toolchain pins all live in .github/versions.env.
-    - name: Load pinned versions
-      shell: bash
-      run: bash .github/scripts/lib/load-versions.sh
+    # Cache-key versions and toolchain pins all live in .github/dependencies.toml.
+    - name: Set up Python and load pins
+      uses: ./.github/actions/setup-python
 
     # Runner images ship an older CMake (3.31.x); the project needs the pinned one to
     # satisfy cmake_minimum_required() in CMakeLists.txt.
@@ -41,7 +43,7 @@ runs:
       uses: lukka/get-cmake@e6906078ebd1ccb8ce51ab4626ac46a1b5a517e3
       with:
         cmakeVersion: ${{ env.CMAKE_VERSION }}
-        ninjaVersion: "latest"
+        ninjaVersion: ${{ env.NINJA_VERSION }}
 
     # Compiler
     # Linux + GCC
@@ -66,12 +68,12 @@ runs:
       run: bash .github/scripts/setup-toolchain/install-clang-linux.sh
 
     # macOS + Clang
-    - name: Install Clang (macOS, brew)
-      if: inputs.compiler == 'clang' && runner.os == 'macOS'
+    - name: Select Xcode
+      if: runner.os == 'macOS'
       shell: bash
       env:
-        CLANG_VERSION: ${{ inputs.version }}
-      run: bash .github/scripts/setup-toolchain/install-clang-macos.sh
+        SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
+      run: bash .github/scripts/setup-toolchain/select-xcode-macos.sh
 
     # Windows + Clang-Cl
     - name: Set up MSVC / clang-cl (Windows)
@@ -103,9 +105,9 @@ runs:
         path: |
           ~/.ccache
           ~/.cache/sccache
-        key: cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
+        key: cc-${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
         restore-keys: |
-          cc-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
+          cc-${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
 
     - name: Disable compiler cache
       if: inputs.compiler-cache != 'true'
@@ -117,6 +119,8 @@ runs:
     - name: Install Boost (prebuilt)
       if: inputs.dependencies == 'true'
       shell: bash
+      env:
+        SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
       run: bash .github/scripts/setup-toolchain/install-boost.sh
 
     - name: Install LLVM dev libraries (prebuilt, apt.llvm.org)
@@ -124,46 +128,106 @@ runs:
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-linux.sh
 
-    # CMAKE_LINKER_TYPE=LLD makes GCC pass -fuse-ld=lld, and GCC only ever looks for a
-    # plain 'ld.lld' on PATH.
+    # CMAKE_LINKER_TYPE=LLD makes GCC pass -fuse-ld=lld, and GCC
+    # only ever looks for a plain 'ld.lld' on PATH.
     - name: Expose ld.lld (Linux)
       if: inputs.dependencies == 'true' && runner.os == 'Linux'
       shell: bash
       run: bash .github/scripts/setup-toolchain/expose-lld-linux.sh
 
-    # Windows gets the official clang+llvm release tarball, which ships the
-    # static libs and lib/cmake/llvm that find_package(LLVM) needs.
+    # Windows gets the official clang+llvm release tarball, which
+    # ships the static libs and lib/cmake/llvm that
+    # "find_package(LLVM)" needs.
     - name: Cache LLVM dev libraries (Windows)
       if: inputs.dependencies == 'true' && runner.os == 'Windows'
       id: llvm-win-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
-        # SPP_LLVM_WIN_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
         path: ~/llvm
-        key: llvm-win-${{ env.LLVM_LIB_FULL_VERSION }}
+        key: llvm-win-${{ env.LLVM_WIN_SHA256 }}
 
     - name: Install LLVM dev libraries (Windows, cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-win-cache.outputs.cache-hit != 'true'
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-llvm-windows.sh
 
-    # The remaining libraries are header/CMake projects: clone, install, cache.
-    # The key rotates daily (CACHE_DATE) so upstream changes get picked up on
-    # their own; bump SPP_LIBS_CACHE_VERSION in .github/versions.env to force a
-    # rebuild before the next rollover.
-    - name: Cache small libraries
-      if: inputs.dependencies == 'true'
-      id: libs-cache
+    # Windows needs the LLVM dependencies individually, as they
+    # are not prepackaged on the system like Linux. Also add the
+    # Windows pthread equivalent too.
+    - name: Cache the Windows-only dependencies
+      if: inputs.dependencies == 'true' && runner.os == 'Windows'
+      id: llvm-deps-win-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
-        # SPP_LOCAL_PREFIX; spelled literally because actions/cache resolves `~` on every runner.
-        path: ~/.local
-        key: spp-libs-${{ runner.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ env.CACHE_DATE }}-v${{ env.SPP_LIBS_CACHE_VERSION }}
+        path: ~/llvm-deps
+        key: llvm-deps-win-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup-toolchain/install-llvm-deps-windows.sh') }}
 
-    - name: Clone & install small libraries (cache miss)
-      if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
+    - name: Install the Windows-only dependencies (cache miss)
+      if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-deps-win-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-llvm-deps-windows.sh
+
+    # macOS gets the release tarball too, and takes its compiler out of
+    # it as well: brew has no llvm@23, so a brew clang would be a whole
+    # major version behind the LLVM the project links against. The key
+    # carries the install script, which decides what the tree holds and
+    # so cannot change without invalidating what is already cached.
+    - name: Cache LLVM toolchain (macOS)
+      if: inputs.dependencies == 'true' && runner.os == 'macOS'
+      id: llvm-mac-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/llvm
+        key: llvm-mac-${{ env.LLVM_MAC_SHA256 }}-${{ hashFiles('.github/scripts/setup-toolchain/install-llvm-macos.sh') }}
+
+    - name: Install LLVM toolchain (macOS, cache miss)
+      if: inputs.dependencies == 'true' && runner.os == 'macOS' && steps.llvm-mac-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/install-llvm-macos.sh
+
+    - name: Select Clang (macOS)
+      if: inputs.dependencies == 'true' && inputs.compiler == 'clang' && runner.os == 'macOS'
+      shell: bash
+      env:
+        CLANG_VERSION: ${{ inputs.version }}
+      run: bash .github/scripts/setup-toolchain/install-clang-macos.sh
+
+    # The remaining libraries are header/CMake projects: check out,
+    # install, cache. The key is content-addressed on the three files that
+    # decide what the tree contains and where it goes.
+    - name: Restore small libraries
+      if: inputs.dependencies == 'true'
+      id: libs-cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/.local
+        key: spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/scripts/setup-toolchain/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-${{ hashFiles('.github/dependencies.toml') }}
+        restore-keys: |
+          spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/scripts/setup-toolchain/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-
+
+    # A restored tree is only usable if the install that filled it ran to
+    # the end; a half-installed prefix otherwise looks like a hit forever
+    # and every find_package() past the missing library fails.
+    - name: Check small libraries
+      if: inputs.dependencies == 'true'
+      id: libs-check
+      shell: bash
+      run: bash .github/scripts/setup-toolchain/check-small-libs.sh
+
+    - name: Clone & install small libraries (cache miss or partial tree)
+      if: inputs.dependencies == 'true' && steps.libs-check.outputs.complete != 'true'
       shell: bash
       run: bash .github/scripts/setup-toolchain/install-small-libs.sh
+
+    # Only after the install succeeded: a save on the combined action runs
+    # from the post step, which is also reached when the install failed.
+    - name: Save small libraries
+      if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/.local
+        key: ${{ steps.libs-cache.outputs.cache-primary-key }}
 
     - name: Expose dependency prefixes
       if: inputs.dependencies == 'true'

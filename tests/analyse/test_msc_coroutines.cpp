@@ -28,7 +28,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut coroutine = c()
-        coroutine.res(true)
+        std::mem::ops::drop(coroutine.res(true))
+        std::mem::ops::drop(coroutine)
     }
 )");
 
@@ -57,8 +58,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut coroutine = c()
-        coroutine.res(true)
-        coroutine.res(false)
+        std::mem::ops::drop(coroutine.res(true))
+        std::mem::ops::drop(coroutine.res(false))
+        std::mem::ops::drop(coroutine)
     }
 )");
 
@@ -71,7 +73,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut coroutine = c()
-        coroutine.res()
+        std::mem::ops::drop(coroutine.res())
+        std::mem::ops::drop(coroutine)
     }
 )");
 

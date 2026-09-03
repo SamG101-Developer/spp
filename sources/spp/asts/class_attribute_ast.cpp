@@ -9,7 +9,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -93,7 +94,7 @@ auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
 
   // Create a variable symbol for this attribute in the current scope (class scope).
   auto sym = MakeShared<analyse::scopes::VariableSymbol>(
-    Name, Type, sm->CurrentScope, false, false, Visibility.First);
+    Name, Type, sm->CurrentScope, false, false, Visibility.first);
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
@@ -111,13 +112,13 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
   const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
-  sym->Visibility = Visibility.First;
-  sym->VisibilityAnnotation = Visibility.Second;
+  sym->Visibility = Visibility.first;
+  sym->VisibilityAnnotation = Visibility.second;
 
   // Check the type is valid before scopes are attached.
   Type->Stage7_AnalyseSemantics(sm, meta);
@@ -137,11 +138,11 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   // This can be reached via stage 4 generic substitution, so prevent that.
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
-  using analyse::utils::type_utils::TypeEq;
-  using analyse::utils::type_utils::IsTypeSelf;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_compare::TypeEq;
+  using analyse::utils::type_predicates::IsTypeSelf;
 
-  if (meta->CurrentStage == 9) {
+  if (meta->CurrentStage == meta::CompilerStage::kAnalyseSemantics) {
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   }
 
@@ -155,7 +156,7 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   }
   var_sym->Type = Type;
 
-  if (meta->CurrentStage != 9) { return; }
+  if (meta->CurrentStage != meta::CompilerStage::kAnalyseSemantics) { return; }
   if (DefaultVal != nullptr) {
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     const auto default_type = DefaultVal->InferType(sm, meta);

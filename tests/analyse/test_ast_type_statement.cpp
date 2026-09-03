@@ -35,7 +35,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyString = Str
     type MyBool = Bool
 
-    fun f(a: MyString, b: MyBool) -> Void { }
+    fun f(a: MyString, b: MyBool) -> Void {
+        std::mem::ops::drop(a)
+    }
     fun g() -> Void { f(Str::from("hello"), true) }
 )");
 
@@ -48,6 +50,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         let x: (MyString, MyBool)
         x = (Str::from("hello"), true)
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -55,7 +58,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_variant, R"(
     type SomeType = Str or Bool
-    fun f(a: SomeType) -> Void { }
+    fun f(a: SomeType) -> Void {
+        std::mem::ops::drop(a)
+    }
     fun g() -> Void { f(Str::from("hello")) }
 )");
 
@@ -77,6 +82,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[T](mut a: MyVec[T], replacement: T) -> Void {
         # let mut x = a.take_head()
         # x = replacement
+        std::mem::ops::drop(replacement)
+        std::mem::ops::drop(a)
     }
 
     fun g() -> Void {
@@ -91,6 +98,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         type MyVec[T] = Vec[T]
         let x = MyVec[Str]()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -109,5 +117,27 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_type_statement_reduction_type_generic, R"(
     type MyVec[T] = Vec[T]
 
-    fun f[T](a: MyVec[T]) -> Void { }
+    fun f[T](a: MyVec[T]) -> Void {
+        std::mem::ops::drop(a)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeStatementAst,
+    test_valid_type_statement_comp_param_alias_to_foreign_module, R"(
+    type HeapArr[T, cmp n: USize] = Single[Arr[T, n]]
+
+    fun f(a: HeapArr[Bool, 4_uz]) -> Void {
+        std::mem::ops::drop(a)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeStatementAst,
+    test_valid_type_statement_constrained_param_alias_to_foreign_module, R"(
+    type CopyBox[T: Copy] = Single[T]
+
+    fun f(a: CopyBox[Bool]) -> Void {
+        std::mem::ops::drop(a)
+    }
 )");

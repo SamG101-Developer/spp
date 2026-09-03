@@ -7,28 +7,37 @@ on:
         required: false
         type: string
         default: "Release"
+      os:
+        description: "Must match the os the variant below was built on, or the build-tree cache never hits."
+        required: false
+        type: string
+        default: "ubuntu-24.04"
+      variant:
+        description: "Build variant whose tree to restore. Must be one _compile.yaml actually builds on that os."
+        required: false
+        type: string
+        default: "release-rel"
     secrets:
       SONAR_TOKEN:
         required: true
 
+permissions: { }
+
 jobs:
   sonar:
     name: SonarQube Cloud
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.os }}
     timeout-minutes: 60
     permissions:
       contents: read
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
+      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
 
-      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
-      # secured under the above "harden-runner" step. Sonar needs full history for its new-code / blame analysis, which
-      # is also what the mtime restore below needs.
+      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -38,12 +47,29 @@ jobs:
       - name: Restore source mtimes
         uses: ./.github/actions/restore-mtimes
 
+      # setup-toolchain loads the manifest itself, but not until after its own `with:` has been evaluated, so the
+      # loader runs here as well to put GCC_VERSION within reach of the step below and of the cache key further down.
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
+          runner-image: ${{ inputs.os }}
           compiler: gcc
-          version: "16"
+          version: ${{ env.GCC_VERSION }}
           cache-key-suffix: sonar
+
+      # The key comes from the same action _compile.yaml writes the tree with, so restoring it needs only the variant
+      # name to agree.
+      - name: Compose build tree cache key
+        id: cache-key
+        uses: ./.github/actions/build-cache-key
+        with:
+          os: ${{ inputs.os }}
+          compiler: gcc
+          version: ${{ env.GCC_VERSION }}
+          variant: ${{ inputs.variant }}
 
       # Shares the release variant's tree; Sonar only adds -DCMAKE_EXPORT_COMPILE_COMMANDS, which does not invalidate
       # any objects.
@@ -51,9 +77,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: build
-          key: build-ubuntu-latest-gcc16-release-${{ github.sha }}
+          key: ${{ steps.cache-key.outputs.key }}
           restore-keys: |
-            build-ubuntu-latest-gcc16-release-
+            ${{ steps.cache-key.outputs.prefix }}
 
       # Add the extra configuration flag into the cmake configuration (won't trigger a rebuild of the entire project).
       - name: Configure

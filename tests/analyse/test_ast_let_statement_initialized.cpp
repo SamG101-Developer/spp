@@ -121,6 +121,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_variant_2_types, R"(
     fun f() -> Void {
         let x: Str or S32 = Str::from("hello world")
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -129,6 +130,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_variant_3_types, R"(
     fun f() -> Void {
         let x: Str or S32 or Bool = false
+        std::mem::ops::drop(x)
     }
 )");
 

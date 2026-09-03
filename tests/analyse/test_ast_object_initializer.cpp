@@ -14,6 +14,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_generic_type_valid_usage, R"(
     fun f[T]() -> Void {
         let foo = T()
+        std::mem::ops::drop(foo)
     }
 )");
 
@@ -26,6 +27,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let foo = Foo(a=1)
+        std::mem::ops::drop(foo)
     }
 )");
 
@@ -50,5 +52,57 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let foo = Bar()
+        std::mem::ops::drop(foo)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstObjectInitializerAst,
+    test_valid_object_initializer_generic_constrained_attribute, R"(
+    cls Foo {
+        !public a: S32
+    }
+
+    fun f[T: Foo]() -> Void {
+        let foo = T(a=1)
+        std::mem::ops::drop(foo)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstObjectInitializerAst,
+    test_valid_object_initializer_generic_constrained_attribute_nested_generic, R"(
+    cls Foo {
+        !public a: S32
+    }
+
+    cls Wrapper[U] {
+        !public inner: U
+    }
+
+    fun f[T: Foo]() -> Void {
+        let foo = Wrapper[T](inner=T(a=1))
+        std::mem::ops::drop(foo)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstObjectInitializerAst,
+    test_valid_object_initializer_generic_constrained_attribute_default_filled, R"(
+    cls Foo {
+        !public a: S32
+    }
+
+    cls Wrapper[U] {
+        !public inner: U
+    }
+
+    fun g[T: Foo]() -> Wrapper[T] {
+        ret Wrapper[T]()
+    }
+
+    fun f() -> Void {
+        let x = g[Foo]()
+        std::mem::ops::drop(x)
     }
 )");

@@ -23,7 +23,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionParameterOptionalAst,
     test_valid_function_parameter_optional_non_copyable_default, R"(
-    fun f(a: Str = Str::from("hello")) -> Void { }
+    fun f(a: Str = Str::from("hello")) -> Void {
+        std::mem::ops::drop(a)
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(

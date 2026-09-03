@@ -12,6 +12,7 @@ import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -42,14 +43,19 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
   // Create a dummy scope for the generic type.
   auto dummy_scope_name = analyse::scopes::ScopeBlockName::FromParts(
     "generic-parameter-type", {Name->LastTypePart()}, PosStart());
-  _DummyAst = MakeUnique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, nullptr, nullptr, nullptr);
+
+  auto dummy_ast = MakeUnique<ClassPrototypeAst>(
+    SPP_NO_ANNOTATIONS, nullptr, nullptr, nullptr, nullptr);
   auto dummy_scope = MakeUnique<analyse::scopes::Scope>(
-    dummy_scope_name, sm->CurrentScope, _DummyAst.get());
+    dummy_scope_name, sm->CurrentScope, dummy_ast.get());
+  _DummyScopeAsts.EmplaceBack(std::move(dummy_ast));
 
   // Create the type symbol for the generic parameter.
   const auto sym = MakeShared<analyse::scopes::TypeSymbol>(
-    AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(), sm->CurrentScope, nullptr, true, false,
-    Visibility::kPublic, nullptr, Constraints->Constraints);
+    AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(),
+    sm->CurrentScope, nullptr, true, false, Visibility::kPublic,
+    nullptr, Constraints->Constraints);
+  sym->IsVariadic = To<GenericParameterTypeVariadicAst>() != nullptr;
   sm->CurrentScope->AddTypeSymbol(sym);
   dummy_scope->TySym = sym;
 
@@ -77,6 +83,10 @@ auto spp::asts::GenericParameterTypeAst::GetDummyScopes() const
   -> std::span<analyse::scopes::Scope* const> {
   // View the dummy scope vector.
   return _DummyScopes.ToView();
+}
+
+auto spp::asts::GenericParameterTypeAst::ClearDummyScopes() -> void {
+  _DummyScopeAsts.Clear();
 }
 
 SPP_MOD_END

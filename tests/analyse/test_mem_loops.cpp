@@ -8,6 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         loop true {
             let y = x
+            std::mem::ops::drop(y)
         }
     }
 )");
@@ -24,6 +25,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = SomeType()
         loop true {
             let a = x.a
+            std::mem::ops::drop(a)
         }
     }
 )");
@@ -49,6 +51,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop true {
             let y = x
             x = Str::from("world")
+            std::mem::ops::drop(y)
         }
+        std::mem::ops::drop(x)
     }
 )");

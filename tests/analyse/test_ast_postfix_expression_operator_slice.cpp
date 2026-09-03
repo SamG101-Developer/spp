@@ -1,51 +1,63 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
-    test_invalid_slicing_on_non_sliceable_type,
-    SppIdentifierUnknownError, R"(
+  AstPostfixExpressionOperatorSliceAst,
+  test_invalid_slicing_on_non_sliceable_type,
+  SppIdentifierUnknownError, R"(
     fun f() -> Void {
         123[0 to 2]
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
-    test_valid_slicing_ref, R"(
+  AstPostfixExpressionOperatorSliceAst,
+  test_valid_slicing_ref, R"(
     fun f(a: Vec[S32]) -> Void {
-        let x = a[0_uz to 2_uz]
+        {
+            let x = a[0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
-    test_valid_slicing_mut, R"(
+  AstPostfixExpressionOperatorSliceAst,
+  test_valid_slicing_mut, R"(
     fun f(mut a: Vec[S32]) -> Void {
-        let x = a[mut 0_uz to 2_uz]
+        {
+            let x = a[mut 0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
-    test_valid_slicing_ref_infer_type, R"(
+  AstPostfixExpressionOperatorSliceAst,
+  test_valid_slicing_ref_infer_type, R"(
     fun f(a: Vec[S32]) -> Void {
-        let x: &S32 = a[0_uz to 2_uz]
+        {
+            let x: &View[S32] = a[0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
-    test_valid_slicing_mut_infer_type, R"(
+  AstPostfixExpressionOperatorSliceAst,
+  test_valid_slicing_mut_infer_type, R"(
     fun f(mut a: Vec[S32]) -> Void {
-        let x: &mut S32 = a[mut 0_uz to 2_uz]
+        {
+            let x: &mut View[S32] = a[mut 0_uz to 2_uz]
+        }
+        std::mem::ops::drop(a)
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorSliceAst,
-    test_invalid_slicing_bound_type_mismatch,
-    SppFunctionCallNoValidSignaturesError, R"(
+  AstPostfixExpressionOperatorSliceAst,
+  test_invalid_slicing_bound_type_mismatch,
+  SppFunctionCallNoValidSignaturesError, R"(
     fun f(a: Vec[S32]) -> Void {
-        let x = a["hello" to 2_uz]
+        let x: &View[S32] = a["hello" to 2_uz]
     }
 )");

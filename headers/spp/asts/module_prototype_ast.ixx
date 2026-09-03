@@ -64,13 +64,10 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto Name() const
-    -> Unique<IdentifierAst>;
-
-  SPP_ATTR_NODISCARD auto FileName() const
     -> Unique<IdentifierAst>;
 };

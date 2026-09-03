@@ -19,6 +19,16 @@ private:
 
   FunctionPrototypeAst *_ProtoPtr = nullptr;
 
+  auto _ValidateZeroDivision(
+    Vec<Unique<ExpressionAst>> const &args,
+    ScopeManager const *sm) const
+    -> void;
+
+  auto _ValidateShiftAmount(
+    Vec<Unique<ExpressionAst>> const &args,
+    ScopeManager const *sm) const
+    -> void;
+
 public:
   static auto NewEmpty() -> Unique<FunctionImplementationLoweredAst>;
 
@@ -30,11 +40,9 @@ public:
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto SetScopePtr(Str const &scope_str) -> void;
-
-  SPP_ATTR_NODISCARD auto GetScopePtr() const -> Str const&;
 
   auto SetProtoPtr(FunctionPrototypeAst *proto) -> void;
 };

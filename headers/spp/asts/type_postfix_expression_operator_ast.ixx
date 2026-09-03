@@ -34,17 +34,29 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
     TypePostfixExpressionOperatorAst const &) const
     -> Ordering = 0;
 
+  /**
+   * Append this node's namespace parts to @p out , rather than answering with a container of its own. A type is a chain
+   * of nodes and each one concatenates what the nodes below it produced, so a value-returning walk allocates a vector
+   * per level and copies each level's result into the next; appending into one buffer makes the whole chain a single
+   * allocation. @c NsParts is the same walk with the buffer supplied for the caller.
+   */
+  virtual auto NsPartsInto(Vec<IdentifierAst const*> &out) const
+    -> void { for (auto const *part : NsParts()) { out.EmplaceBack(part); } }
+
+  virtual auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const
+    -> void { for (auto const *part : TypeParts()) { out.EmplaceBack(part); } }
+
   SPP_ATTR_NODISCARD virtual auto NsParts() const
-    -> Vec<Shared<const IdentifierAst>> = 0;
+    -> Vec<IdentifierAst const*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto NsParts()
-    -> Vec<Shared<IdentifierAst>> = 0;
+    -> Vec<IdentifierAst*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> = 0;
+    -> Vec<TypeIdentifierAst const*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> = 0;
+    -> Vec<TypeIdentifierAst*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto LastTypePart() const
     -> TypeIdentifierAst const* { return nullptr; }

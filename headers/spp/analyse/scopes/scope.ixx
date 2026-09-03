@@ -10,6 +10,7 @@ import sys;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
+  SPP_EXP_CLS struct DeferStatementAst;
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct IdentifierAst;
@@ -43,51 +44,116 @@ namespace spp::utils::errors {
   SPP_EXP_CLS class ErrorFormatter;
 }
 
+namespace spp::analyse::scopes {
+  /**
+   * A counter that changes whenever a scope's place in the scope tree changes. A fully qualified type name is read off
+   * the chain of scopes above the one its symbol links to, so anything derived from that chain is only valid for as
+   * long as the chain is; @c TypeSymbol::FqName caches against this.
+   *
+   * @n
+   * Re-parenting an existing scope is what invalidates: @c ScopeParentSwap splices a scope under another for the
+   * duration of one comparison and puts it back, so a name computed underneath it does not hold once it is restored.
+   * Giving a freshly-copied scope its parent does not invalidate, because no chain that anything has already read
+   * changes shape.
+   */
+  SPP_EXP_FUN SPP_ATTR_HOT
+  auto ScopeLinkageGeneration() -> std::uint64_t;
+
+  /**
+   * Record that a scope's place in the scope tree has changed, retiring everything cached against the old one.
+   */
+  SPP_EXP_FUN
+  auto BumpScopeLinkageGeneration() -> void;
+
+  /**
+   * A counter that changes whenever anything a type's method set is read off changes: its place in the scope tree, or
+   * which scopes are superimposed on it. Strictly coarser than @c ScopeLinkageGeneration - every re-parenting bumps
+   * this too - so the two are kept apart rather than shared. Attaching super scopes is common during monomorphization,
+   * and a fully qualified name does not depend on it; folding both into one counter retires those names for a change
+   * that cannot affect them.
+   */
+  SPP_EXP_FUN SPP_ATTR_HOT
+  auto TypeStructureGeneration() -> std::uint64_t;
+
+  /**
+   * Record that the scopes superimposed on a type have changed.
+   */
+  SPP_EXP_FUN
+  auto BumpTypeStructureGeneration() -> void;
+
+  /**
+   * A counter that changes whenever a type lookup could resolve differently: a symbol added or removed, a scope
+   * re-parented, or a super scope attached.
+   */
+  SPP_EXP_FUN SPP_ATTR_HOT
+  auto TypeLookupGeneration() -> std::uint64_t;
+
+}
+
 SPP_EXP_CLS class spp::analyse::scopes::Scope {
 public:
   /**
-     * The name of the scope. This will be either an @c Shared<IdentifierAst> (functions, modules), an
-     * @c Shared<TypeIdentifierAst> (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is
-     * stored in a @c std::variant to allow for easy type-safe access to the underlying type.
-     */
+   * The name of the scope. This will be either an @c Shared<IdentifierAst> (functions, modules), an
+   * @c Shared<TypeIdentifierAst> (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is
+   * stored in a @c std::variant to allow for easy type-safe access to the underlying type.
+   */
   ScopeName Name;
 
   /**
-     * The parent scope. It is a raw pointer as the parents "own" their children, and the children do not own their
-     * parents. The parent will be @c nullptr for the global scope.
-     */
+   * The parent scope. It is a raw pointer as the parents "own" their children, and the children do not own their
+   * parents. The parent will be @c nullptr for the global scope.
+   */
   Scope *Parent;
 
   /**
-     * The child scopes. These are owned by the parent scope, and are stored as @c Unique to ensure proper
-     * memory management. This allows for an easy traversal of the scope hierarchy.
-     */
+   * The child scopes. These are owned by the parent scope, and are stored as @c Unique to ensure proper
+   * memory management. This allows for an easy traversal of the scope hierarchy.
+   */
   Vec<std::unique_ptr<Scope>> Children;
 
   /**
-     * Top level scopes register their AST with the scope. This is useful for error reporting, as it allows for easy
-     * access to the AST node that the scope represents. This will be @c nullptr for non-top level scopes. Typically,
-     * the AST will need to be cast back to its original type.
-     */
+   * Top level scopes register their AST with the scope. This is useful for error reporting, as it allows for easy
+   * access to the AST node that the scope represents. This will be @c nullptr for non-top level scopes. Typically,
+   * the AST will need to be cast back to its original type.
+   */
   asts::Ast *AstNode;
 
   /**
-     * The (potential) type symbol that represents this scope. This will be @c nullptr for non-type scopes (eg
-     * functions, modules, blocks).
-     */
+   * The (potential) type symbol that represents this scope. This will be @c nullptr for non-type scopes (eg
+   * functions, modules, blocks).
+   */
   std::shared_ptr<TypeSymbol> TySym;
 
   /**
-     * The (potential) namespace symbol that represents this scope. This will be @c nullptr for non-namespace scopes
-     * (eg functions, classes, blocks). Note that a namespace is a module.
-     */
+   * The (potential) namespace symbol that represents this scope. This will be @c nullptr for non-namespace scopes
+   * (eg functions, classes, blocks). Note that a namespace is a module.
+   */
   std::shared_ptr<NamespaceSymbol> NsSym;
 
   /**
-     * The scope representing the non-generic version of this scope. If this scope isn't a generic substitution, then
-     * the non-generic scope is the scope itself. For @c Vec[Str], the non-generic scope is @c Vec.
-     */
+   * The scope representing the non-generic version of this scope. If this scope isn't a generic substitution, then
+   * the non-generic scope is the scope itself. For @c Vec[Str], the non-generic scope is @c Vec.
+   */
   Scope *NonGenericScope;
+
+  /**
+   * The @c defer statements written directly in this scope, in the order they were reached. Leaving the scope runs
+   * them in reverse.
+   *
+   * @n
+   * Recorded here rather than being read back off @c AstNode , which cannot be trusted for this: some scopes are
+   * created against asts that do not outlive the analysis that made them, so the pointer is sometimes dangling and
+   * casting through it faults only when the freed storage happens to look wrong.
+   */
+  Vec<asts::DeferStatementAst*> Deferred;
+
+  /**
+   * The deferred statements of this scope that stage 11 has actually walked past, in the order it reached them. The
+   * @c Deferred list is complete by the time codegen starts, so an exit part-way through a scope would emit
+   * statements below it that never ran and whose values have no allocation yet. This is filled as the walk reaches
+   * each one, the way @c Deferred itself is filled during stage 8, so it always holds exactly what is live.
+   */
+  Vec<asts::DeferStatementAst*> DeferredReached;
 
   Vec<Scope*> DirectSupScopes;
 
@@ -116,26 +182,9 @@ public:
    * @param mod The "main" module being compiled.
    * @return
    */
-  static auto NewGlobal(compiler::Module const &mod) -> Shared<Scope>;
-
-  /**
-   * Search all "sup" scopes of an existing scope (this will be a type scope), for a variable symbol with a name that
-   * matches "name". This is used when looking for the a constant defined with "cmp" within a sup-block of a type.
-   * @param scope The starting scope to search from.
-   * @param name The name of the variable symbol to search for.
-   * @return The found variable symbol, or nullptr if not found.
-   */
-  static auto SearchSupScopesForVar(Scope const &scope, asts::IdentifierAst const *name) -> Shared<VariableSymbol>;
-
-  /**
-   * Search all "sup" scopes of an existing scope (this will be a type scope), for a type symbol with a name that
-   * matches "name". This is used when looking for a type defined with a "type" statement within a sup-block of a
-   * type.
-   * @param scope The starting scope to search from.
-   * @param name The name of the type symbol to search for.
-   * @return The found type symbol, or nullptr if not found.
-   */
-  static auto SearchSupScopesForType(Scope const &scope, asts::TypeIdentifierAst const *name) -> Shared<TypeSymbol>;
+  static auto NewGlobal(
+    compiler::Module const &mod)
+    -> Shared<Scope>;
 
   /**
    * Given a scope and a fully qualified type, this function moves through the namespace parts of the type, moving
@@ -147,7 +196,8 @@ public:
    * @return A pair of the shifted scope and the unqualified type identifier.
    */
   static auto ShiftForNamespacedType(Scope const &scope,
-    asts::TypeAst const &fq_type) -> Pair<const Scope*, asts::TypeIdentifierAst const*>;
+    asts::TypeAst const &fq_type)
+    -> Pair<const Scope*, asts::TypeIdentifierAst const*>;
 
   /**
    * Get the error formatter associated with this scope. Lots of scopes don't have error formatters, so if the
@@ -155,93 +205,131 @@ public:
    * scope is found, which will have an error formatter.
    * @return The error formatter associated with this scope.
    */
-  SPP_ATTR_NODISCARD auto GetErrorFormatter() const -> utils::errors::ErrorFormatter*;
+  SPP_ATTR_NODISCARD auto GetErrorFormatter() const
+    -> utils::errors::ErrorFormatter*;
 
-  SPP_ATTR_NODISCARD auto GetGenerics() const -> UniqueVec<asts::GenericArgumentAst>;
+  SPP_ATTR_NODISCARD auto GetGenerics() const
+    -> Vec<Unique<asts::GenericArgumentAst>>;
 
-  SPP_ATTR_NODISCARD auto GetExtendedGenericSymbols(Vec<asts::GenericArgumentAst*> const &generics,
-    Shared<asts::TypeAst> const &ignore = nullptr) const -> SharedVec<Symbol>;
+  SPP_ATTR_NODISCARD auto GetExtendedGenericSymbols(
+    Vec<asts::GenericArgumentAst*> const &generics,
+    Shared<asts::TypeAst> const &ignore = nullptr) const
+    -> Vec<Shared<Symbol>>;
 
   /**
    * Register a new variable symbol into the symbol table held inside this scope.
    * @param sym The new variable symbol.
    */
-  auto AddVarSymbol(Shared<VariableSymbol> const &sym) -> void;
+  auto AddVarSymbol(
+    Shared<VariableSymbol> const &sym)
+    -> void;
 
   /**
    * Register a new variable symbol into the symbol table held inside this scope, checking for conflicts with existing
    * symbols. If a conflict is found, an error is raised.
    * @param sym The new variable symbol.
    */
-  auto AddVarSymbolCheckConflict(Shared<VariableSymbol> const &sym) -> void;
+  auto AddVarSymbolCheckConflict(
+    Shared<VariableSymbol> const &sym)
+    -> void;
 
   /**
    * Register a new type symbol into the symbol table held inside this scope.
    * @param sym The new type symbol.
    */
-  auto AddTypeSymbol(Shared<TypeSymbol> const &sym) -> void;
+  auto AddTypeSymbol(
+    Shared<TypeSymbol> const &sym)
+    -> void;
 
   /**
    * Register a new type symbol into the symbol table held inside this scope, checking for conflicts with existing
    * symbols. If a conflict is found, an error is raised.
    * @param sym The new type symbol.
    */
-  auto AddTypeSymbolCheckConflict(Shared<TypeSymbol> const &sym) -> void;
+  auto AddTypeSymbolCheckConflict(
+    Shared<TypeSymbol> const &sym)
+    -> void;
 
   /**
    * Register a new namespace symbol into the symbol table held inside this scope.
    * @param sym The new namespace symbol.
    */
-  auto AddNsSymbol(Shared<NamespaceSymbol> const &sym) -> void;
+  auto AddNsSymbol(
+    Shared<NamespaceSymbol> const &sym)
+    -> void;
 
   /**
    * Remove a variable symbol from the symbol table held inside this scope.
    * @param sym_name The name of the variable symbol to remove.
    */
-  auto RemVarSymbol(asts::IdentifierAst const *sym_name) -> Shared<VariableSymbol>;
+  auto RemVarSymbol(
+    asts::IdentifierAst const *sym_name)
+    -> Shared<VariableSymbol>;
 
   /**
    * Remove a type symbol from the symbol table held inside this scope.
    * @param sym_name The name of the type symbol to remove.
    */
-  auto RemTypeSymbol(asts::TypeIdentifierAst const *sym_name) -> Shared<TypeSymbol>;
-
-  /**
-   * Remove a namespace symbol from the symbol table held inside this scope.
-   * @param sym_name The name of the namespace symbol to remove.
-   */
-  auto RemNsSymbol(asts::IdentifierAst const *sym_name) -> Shared<NamespaceSymbol>;
+  auto RemTypeSymbol(
+    asts::TypeIdentifierAst const *sym_name)
+    -> Shared<TypeSymbol>;
 
   SPP_ATTR_NODISCARD auto AllVarSymbols(
-    bool exclusive = false, bool sup_scope_search = false) const -> Vec<VariableSymbol*>;
+    bool exclusive = false,
+    bool sup_scope_search = false) const
+    -> Vec<VariableSymbol*>;
 
   SPP_ATTR_NODISCARD auto AllTypeSymbols(
-    bool exclusive = false, bool sup_scope_search = false) const -> Vec<TypeSymbol*>;
+    bool exclusive = false,
+    bool sup_scope_search = false) const
+    -> Vec<TypeSymbol*>;
 
   SPP_ATTR_NODISCARD auto AllNsSymbols(
-    bool exclusive = false, bool = false) const -> Vec<NamespaceSymbol*>;
+    bool exclusive = false,
+    bool = false) const
+    -> Vec<NamespaceSymbol*>;
 
   SPP_ATTR_NODISCARD auto HasVarSymbol(
-    asts::IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
+    asts::IdentifierAst const *sym_name,
+    bool exclusive = false) const
+    -> bool;
 
   SPP_ATTR_NODISCARD auto HasTypeSymbol(
-    asts::TypeAst const *sym_name, bool exclusive = false) const -> bool;
+    asts::TypeAst const *sym_name,
+    bool exclusive = false) const
+    -> bool;
 
   SPP_ATTR_NODISCARD auto HasNsSymbol(
-    asts::IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
+    asts::IdentifierAst const *sym_name,
+    bool exclusive = false) const
+    -> bool;
 
+  /**
+   * Look a symbol up through this scope, its ancestors and its super scopes. The symbol is borrowed rather than owned:
+   * the scope that holds it outlives the lookup, and a chain walk that minted a @c Shared per scope would pay an atomic
+   * pair per step for ownership almost no caller keeps. Callers that need ownership call @c Symbol::SharedFromThis on
+   * the result.
+   */
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetVarSymbol(
-    asts::IdentifierAst const *sym_name, bool exclusive = false,
-    bool sup_scope_search = true) const -> Shared<VariableSymbol>;
+    asts::IdentifierAst const *sym_name,
+    bool exclusive = false,
+    bool sup_scope_search = true) const
+    -> VariableSymbol*;
 
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetTypeSymbol(
-    asts::TypeAst const *sym_name, bool exclusive = false, bool sup_scope_search = true) const -> Shared<TypeSymbol>;
+    asts::TypeAst const *sym_name,
+    bool exclusive = false,
+    bool sup_scope_search = true) const
+    -> TypeSymbol*;
 
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetNsSymbol(
-    asts::IdentifierAst const *sym_name, bool exclusive = false) const -> Shared<NamespaceSymbol>;
+    asts::IdentifierAst const *sym_name,
+    bool exclusive = false) const
+    -> NamespaceSymbol*;
 
   SPP_ATTR_NODISCARD auto GetVarSymbolOutermost(
-    asts::Ast const &expr) const -> Pair<Shared<VariableSymbol>, Scope const*>;
+    asts::Ast const &expr) const
+    -> Pair<VariableSymbol*, Scope const*>;
 
   auto DepthDiff(
     const Scope *scope) const -> sys::ssize_t;
@@ -254,19 +342,23 @@ public:
 
   SPP_ATTR_NODISCARD auto TopLevelParentModule() const -> Scope*;
 
-  SPP_ATTR_NODISCARD auto GetEnclosingTypeScope(asts::meta::CompilerMetaData const &meta) const -> Scope*;
+  SPP_ATTR_NODISCARD auto GetEnclosingTypeScope(
+    asts::meta::CompilerMetaData const &meta) const
+    -> Scope*;
 
-  SPP_ATTR_NODISCARD auto GetEnclosingSelfType(asts::meta::CompilerMetaData const &meta) const -> Shared<asts::TypeAst>;
+  SPP_ATTR_NODISCARD auto GetEnclosingSelfType(
+    asts::meta::CompilerMetaData const &meta) const
+    -> Shared<asts::TypeAst>;
 
   SPP_ATTR_NODISCARD auto SupScopes() const -> Vec<Scope*>;
 
-  SPP_ATTR_NODISCARD auto SupTypes() const -> SharedVec<asts::TypeAst>;
+  SPP_ATTR_NODISCARD auto SupScopesConst() const -> Vec<Scope const*>;
 
-  SPP_ATTR_NODISCARD auto DirectSupTypes() const -> SharedVec<asts::TypeAst>;
+  SPP_ATTR_NODISCARD auto SupTypes() const -> Vec<Shared<asts::TypeAst>>;
 
-  auto ConvertPostfixToNestedScope(asts::ExpressionAst const *postfix_ast) const -> Scope const*;
-
-  SPP_ATTR_NODISCARD auto PrintScopeTree() const -> Str;
+  SPP_ATTR_NODISCARD auto ConvertPostfixToNestedScope(
+    asts::ExpressionAst const *postfix_ast) const
+    -> Scope const*;
 
   SPP_ATTR_NODISCARD auto NameAsString() const -> Str;
 

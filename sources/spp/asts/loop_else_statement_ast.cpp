@@ -75,7 +75,7 @@ auto spp::asts::LoopElseStatementAst::Stage8_CheckMemory(
 auto spp::asts::LoopElseStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for the body.
   sm->MoveToNextScope();

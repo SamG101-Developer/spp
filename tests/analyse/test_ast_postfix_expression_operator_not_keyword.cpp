@@ -42,7 +42,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorNotKeywordAst,
     test_valid_boolean_lhs, R"(
     fun f() -> Void {
-        true.not
+        std::mem::ops::drop(true.not)
     }
 )");
 
@@ -50,7 +50,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorNotKeywordAst,
     test_valid_boolean_lhs_false, R"(
     fun f() -> Void {
-        false.not
+        std::mem::ops::drop(false.not)
     }
 )");
 
@@ -58,7 +58,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorNotKeywordAst,
     test_valid_boolean_lhs_stacked, R"(
     fun f() -> Void {
-        true.not.not
+        std::mem::ops::drop(true.not.not)
     }
 )");
 
@@ -67,7 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_boolean_variable_lhs, R"(
     fun f() -> Void {
         let x = true
-        x.not
+        std::mem::ops::drop(x.not)
     }
 )");
 
@@ -79,7 +79,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        g().not
+        std::mem::ops::drop(g().not)
     }
 )");
 

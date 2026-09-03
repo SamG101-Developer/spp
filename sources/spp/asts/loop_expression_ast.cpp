@@ -9,14 +9,14 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.boolean_literal_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.pattern_guard_ast;
@@ -28,7 +28,6 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::LoopExpressionAst::LoopExpressionAst(
@@ -50,16 +49,18 @@ auto spp::asts::LoopExpressionAst::InferType(
   -> Shared<TypeAst> {
   //
   using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types::VoidType;
 
-  // Get the loop's exit type (or Void if there are no exits from inside the loop).
+  // Get the loop's exit type (or Void if there are no
+  // exits from inside the loop).
   auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
     ? *m_loop_exit_type_info
-    : std::make_tuple(nullptr, VoidType(PosStart()), nullptr);
+    : Tup(static_cast<ExpressionAst*>(nullptr), VoidType(PosStart()), static_cast<analyse::scopes::Scope*>(nullptr));
   exit_expr = exit_expr ? exit_expr : this;
 
-  // Check the else block's type is the same as the loop exit type.
+  // Check the else block's type is the same as the loop
+  // exit type.
   if (ElseBlock != nullptr and not meta->IgnoreMissingElseBranchForInference) {
     const auto else_type = ElseBlock->InferType(sm, meta);
     const auto final_member = ElseBlock->Body->FinalMember();

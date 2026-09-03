@@ -1,51 +1,47 @@
 module;
 #include <spp/macros.hpp>
-#ifdef __clang__
-#include <bits/floatn-common.h>
-#endif
 
 export module spp.utils.types;
+import ankerl;
 import std;
 
 export namespace std {
   template <typename T>
   struct bit_shl {
     constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
-      return lhs << rhs;
+      return static_cast<T>(lhs << rhs);
     }
   };
 
   template <typename T>
   struct bit_shr {
     constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
-      return lhs >> rhs;
+      return static_cast<T>(lhs >> rhs);
     }
   };
-
-#ifdef __clang__
-  using float16_t = _Float16;
-  using float32_t = _Float32;
-  using float64_t = _Float64;
-  using float128_t = __float128;
-#endif
 }
 
 namespace spp {
-  SPP_EXP_CLS
-  template <typename T>
+  SPP_EXP_CLS template <typename T>
   using Shared = std::shared_ptr<T>;
 
-  SPP_EXP_CLS
-  template <typename T>
+  SPP_EXP_CLS template <typename T>
   using Weak = std::weak_ptr<T>;
 
-  SPP_EXP_CLS
-  template <typename T>
+  SPP_EXP_CLS template <typename T>
   using Unique = std::unique_ptr<T>;
 
-  SPP_EXP_CLS
-  template <typename T, typename A = std::allocator<T>>
+  SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
   class Vec;
+
+  SPP_EXP_CLS template <typename T, typename Enable = void>
+  using Hash = ankerl::unordered_dense::hash<T, Enable>;
+
+  SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>>
+  using Map = ankerl::unordered_dense::map<K, V, H, Eq>;
+
+  SPP_EXP_CLS template <typename T, typename H=Hash<T>, typename Eq=std::equal_to<T>>
+  using Set = ankerl::unordered_dense::set<T, H, Eq>;
 
   SPP_EXP_CLS
   using Str = std::string; // stringzilla::string;
@@ -54,22 +50,15 @@ namespace spp {
   using StrView = std::string_view; // stringzilla::string_view;
 
   SPP_EXP_CLS
-  template <typename T, typename A = std::allocator<Shared<T>>>
-  using SharedVec = Vec<Shared<T>, A>;
-
-  SPP_EXP_CLS
-  template <typename T, typename A = std::allocator<Unique<T>>>
-  using UniqueVec = Vec<Unique<T>, A>;
-
-  SPP_EXP_CLS
   using Ordering = std::strong_ordering;
 
-  SPP_EXP_CLS
-  template <typename K, typename V>
-  struct Pair;
+  export template <typename... Ts>
+  using Tup = std::tuple<Ts...>;
 
-  SPP_EXP_CLS
-  template <typename T>
+  export template <typename K, typename V>
+  using Pair = std::pair<K, V>;
+
+  SPP_EXP_CLS template <typename T>
   using EnableLocalSharedFromThis = std::enable_shared_from_this<T>;
 
   template <typename Sig>
@@ -81,45 +70,49 @@ namespace spp {
   template <typename Sig>
   concept IsFunctionSignature = _IsFunctionSignature<Sig>::value;
 
-  SPP_EXP_CLS
-  template <typename Sig>
-    requires IsFunctionSignature<Sig>
+  SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
   using Function = std::function<Sig>;
 
-  SPP_EXP_CLS
-  template <typename Sig>
-    requires IsFunctionSignature<Sig>
-  using FunctionRef = std::function_ref<Sig>;
+  SPP_EXP_FUN template <std::size_t N, typename... Ts>
+  auto get(Tup<Ts...> const &tup) -> decltype(auto) {
+    return std::get<N>(tup);
+  }
 
-  SPP_EXP_FUN
+  SPP_EXP_FUN template <typename K, typename V>
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakePair(
+    K &&key, V &&value) -> Pair<std::decay_t<K>, std::decay_t<V>> {
+    return Pair<std::decay_t<K>, std::decay_t<V>>(std::forward<K>(key), std::forward<V>(value));
+  }
 
-  template <typename T, typename... Args>
+  SPP_EXP_FUN template <typename... Args>
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeTuple(
+    Args &&... args) -> Tup<std::decay_t<Args>...> {
+    return Tup<std::decay_t<Args>...>(std::forward<Args>(args)...);
+  }
+
+  SPP_EXP_FUN template <typename T, typename... Args> requires std::constructible_from<T, Args...>
   SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeShared(Args &&... args) -> Shared<T> {
     return std::make_shared<T>(std::forward<Args>(args)...);
   }
 
-  SPP_EXP_FUN
-
-  template <typename T, typename... Args>
+  SPP_EXP_FUN template <typename T, typename... Args> requires std::constructible_from<T, Args...>
   SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeUnique(Args &&... args) -> Unique<T> {
     return std::make_unique<T>(std::forward<Args>(args)...);
   }
 
-  SPP_EXP_FUN
-
-  template <typename K, typename V>
-  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakePair(K &&key,
-    V &&value) -> Pair<std::decay_t<K>, std::decay_t<V>> {
-    return Pair<std::decay_t<K>, std::decay_t<V>>(std::forward<K>(key), std::forward<V>(value));
+  SPP_EXP_FUN template <typename T, typename... Args> requires std::constructible_from<T, Args...>
+  SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakeUniqueAndRaw(Args &&... args) -> Pair<Unique<T>, T*> {
+    auto unique = MakeUnique<T>(std::forward<Args>(args)...);
+    return {std::move(unique), unique.get()};
   }
 
-  SPP_EXP_FUN
-  SPP_ATTR_ALWAYS_INLINE inline auto operator""_str(const char *str, const std::size_t len) -> Str {
+  SPP_EXP_FUN SPP_ATTR_ALWAYS_INLINE
+  inline auto operator""_str(const char *str, const std::size_t len) -> Str {
     return Str(str, len);
   }
 
-  SPP_EXP_FUN
-  SPP_ATTR_ALWAYS_INLINE inline auto operator""_str_view(const char *str, const std::size_t len) -> StrView {
+  SPP_EXP_FUN SPP_ATTR_ALWAYS_INLINE
+  inline auto operator""_str_view(const char *str, const std::size_t len) -> StrView {
     return StrView(str, len);
   }
 
@@ -130,11 +123,13 @@ namespace spp {
   // Deduction guide for variadic arguments / init list
   template <typename T, typename A = std::allocator<T>>
   Vec(std::initializer_list<T>, A const & = A()) -> Vec<T, A>;
+
+  // Deduction guide for element and length
+  template <typename T, typename A = std::allocator<T>>
+  Vec(std::size_t, T, A const & = A()) -> Vec<T, A>;
 }
 
-SPP_EXP_CLS
-
-template <typename T, typename A>
+SPP_EXP_CLS template <typename T, typename A>
 class spp::Vec {
 public:
   friend auto operator==(const Vec &a, const Vec &b) -> bool { return a._Vec == b._Vec; }
@@ -169,7 +164,11 @@ public:
   template <typename I> requires std::input_iterator<I>
   Vec(I first, I last, A const &allocator = A()) : _Vec(first, last, allocator) {}
 
-  Vec(Vec const &other, A const &allocator = A()) : _Vec(other._Vec, allocator) {}
+  Vec(Vec const &other)
+    : _Vec(other._Vec)
+  {}
+
+  Vec(Vec const &other, A const &allocator) : _Vec(other._Vec, allocator) {}
   Vec(Vec &&other, A const &allocator = A()) noexcept : _Vec(std::move(other._Vec), allocator) {}
   ~Vec() = default;
 
@@ -295,13 +294,13 @@ public:
   auto Insert(const_iterator pos, I first, I last) { _Vec.insert(pos, first, last); }
 
   template <typename... Args>
-  SPP_ATTR_ALWAYS_INLINE
   // requires std::constructible_from<T, Args...>
+  SPP_ATTR_ALWAYS_INLINE
   auto Emplace(const_iterator pos, Args &&... args) { _Vec.emplace(pos, std::forward<Args>(args)...); }
 
   template <typename... Args>
-  SPP_ATTR_ALWAYS_INLINE
   // requires std::constructible_from<T, Args...>
+  SPP_ATTR_ALWAYS_INLINE
   auto EmplaceBack(Args &&... args) { _Vec.emplace_back(std::forward<Args>(args)...); }
 
   SPP_ATTR_ALWAYS_INLINE
@@ -319,13 +318,13 @@ public:
   }
 
   template <typename R>
-    requires (std::ranges::range<R>
-      and std::constructible_from<value_type, std::ranges::range_value_t<R>>
-    )
+    requires (std::ranges::range<R> and std::constructible_from<value_type, std::ranges::range_value_t<R>>)
   SPP_ATTR_ALWAYS_INLINE
   auto AppendRange(R &&range) {
-    _Vec.insert(_Vec.end(), std::make_move_iterator(std::ranges::begin(range)),
-                std::make_move_iterator(std::ranges::end(range)));
+    _Vec.insert(
+      _Vec.end(),
+      std::make_move_iterator(std::ranges::begin(range)),
+      std::make_move_iterator(std::ranges::end(range)));
   }
 
   SPP_ATTR_ALWAYS_INLINE
@@ -384,70 +383,4 @@ private:
   underlying_type _Vec;
 };
 
-SPP_EXP_CLS
-
-template <typename K, typename V>
-struct spp::Pair {
-  K First;
-  V Second;
-
-  Pair() = default;
-  Pair(Pair const &) = default;
-  Pair(Pair &&) noexcept = default;
-  auto operator=(Pair const &) -> Pair& = default;
-  auto operator=(Pair &&) noexcept -> Pair& = default;
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
-  explicit Pair(Pair<K2, V2> const &other)
-    noexcept(std::is_nothrow_constructible_v<K, K2 const&> && std::is_nothrow_constructible_v<V, V2 const&>) :
-    First(other.First), Second(other.Second) {}
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
-  explicit Pair(Pair<K2, V2> &&other)
-    noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
-    First(std::move(other.First)), Second(std::move(other.Second)) {}
-
-  template <typename K2, typename V2>
-    requires std::assignable_from<K&, K2 const&> && std::assignable_from<V&, V2 const&>
-  auto operator=(Pair<K2, V2> const &other)
-    noexcept(std::is_nothrow_assignable_v<K, K2 const&> && std::is_nothrow_assignable_v<V, V2 const&>) -> Pair& {
-    First = other.First;
-    Second = other.Second;
-    return *this;
-  }
-
-  template <typename K2, typename V2>
-    requires std::assignable_from<K&, K2&&> && std::assignable_from<V&, V2&&>
-  auto operator=(Pair<K2, V2> &&other)
-    noexcept(std::is_nothrow_assignable_v<K, K2&&> && std::is_nothrow_assignable_v<V, V2&&>) -> Pair& {
-    First = std::move(other.First);
-    Second = std::move(other.Second);
-    return *this;
-  }
-
-  template <typename K2, typename V2>
-    requires std::convertible_to<K2, K> && std::convertible_to<V2, V>
-  Pair(K2 &&key, V2 &&value)
-    noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
-    First(std::forward<K2>(key)), Second(std::forward<V2>(value)) {}
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
-  operator std::pair<K2, V2>() const
-    noexcept(std::is_nothrow_constructible_v<K2, K const&> && std::is_nothrow_constructible_v<V2, V const&>) {
-    return std::pair<K2, V2>(First, Second);
-  }
-
-  template <typename K2, typename V2>
-    requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
-  operator std::pair<K2, V2>() && noexcept(std::is_nothrow_constructible_v<K2, K&&> && std::is_nothrow_constructible_v<
-    V2, V&&>) {
-    return std::pair<K2, V2>(std::move(First), std::move(Second));
-  }
-
-  auto operator==(Pair const &other) const -> bool {
-    return First == other.First && Second == other.Second;
-  }
-};
+static_assert(std::ranges::contiguous_range<spp::Vec<int>>);

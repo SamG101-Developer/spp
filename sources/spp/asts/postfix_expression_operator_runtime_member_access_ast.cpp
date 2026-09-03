@@ -8,18 +8,20 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.visibility_utils;
 import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
-import spp.asts.identifier_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
-import spp.asts.object_initializer_ast;
+import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
@@ -28,12 +30,13 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
-import spp.utils.strings;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import spp.utils.algorithms;
+import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 
@@ -89,11 +92,13 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
   using analyse::utils::type_utils::BuildFwdCall;
-  using analyse::utils::type_utils::IsTypeCompTimeIndexable;
-  using analyse::utils::type_utils::IsIndexWithinBound;
+  using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
+  using analyse::utils::type_predicates::IsIndexWithinBound;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
+  using analyse::utils::visibility_utils::IsTypeMemberVisible;
 
-  // Already rewritten against a forwarded-to value by an earlier pass, which analysed the rewrite as it built it.
+  // Already rewritten against a forwarded-to value by an earlier
+  // pass, which analysed the rewrite as it built it.
   if (_MappedFwd != nullptr) { return; }
 
   // Prevent types on the left-hand-side of a runtime member access.
@@ -104,7 +109,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   // Numeric index access (for tuples).
   if (std::isdigit(Name->Val[0])) {
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
 
     // Check the lhs is a tuple/array (the only indexable types).
     RaiseIf<SppMemberAccessNonIndexableError>(
@@ -155,55 +159,61 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
     }
 
-    auto all_scopes_and_syms = (genex::views::concat(Vec{lhs_type_sym->LinkedScope},
-                                                     lhs_type_sym->LinkedScope->SupScopes()) | genex::to<Vec>())
+    auto all_scopes_and_syms = (genex::views::concat(
+          Vec{lhs_type_sym->LinkedScope},
+          lhs_type_sym->LinkedScope->SupScopes())
+        | genex::to<Vec>())
       | genex::views::transform([name=Name.get()](auto const &x) {
         return MakePair(x, x->GetVarSymbol(name, true, false));
       })
       | genex::to<Vec>()
-      | genex::views::filter([](auto const &x) { return x.Second != nullptr; })
+      | genex::views::filter([](auto const &x) { return x.second != nullptr; })
       | genex::views::transform([&](auto const &x) {
-        return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second);
+        return MakeTuple(lhs_type_sym->LinkedScope->DepthDiff(x.first), x.first, x.second);
       })
       | genex::to<Vec>();
 
     // Enforce visibility on functional (method) members. Their mock ("$"-typed) symbols are excluded from the
     // attribute handling below, so without this the visibility check never runs for method accesses.
     auto fn_scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return std::get<2>(x)->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return spp::get<2>(x)->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
     if (not fn_scopes_and_syms.IsEmpty()) {
-      const auto fn_closest = fn_scopes_and_syms.Back();
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
-      CheckTypeMemberVisibility(*std::get<2>(fn_closest), *Name, *cls_scope, *sm, *meta);
+      const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
+        return IsTypeMemberVisible(*spp::get<2>(x), *cls_scope, *sm, *meta);
+      });
+      if (not any_visible) {
+        CheckTypeMemberVisibility(*spp::get<2>(fn_scopes_and_syms.Back()), *Name, *cls_scope, *sm, *meta);
+      }
     }
 
     auto scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return not std::get<2>(x)->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return not spp::get<2>(x)->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
 
     // If we only have functional types, just return.
     if (scopes_and_syms.Len() < 1) { return; }
 
     auto min_depth = genex::min_element(scopes_and_syms
-      | genex::views::tuple_nth<0>
+      | spp::views::tuple_nth<0>
       | genex::to<Vec>());
 
     auto closest = scopes_and_syms
-      | genex::views::filter([min_depth](auto const &x) { return std::get<0>(x) == min_depth; })
-      | genex::views::transform([](auto const &x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+      | genex::views::filter([min_depth](auto const &x) { return spp::get<0>(x) == min_depth; })
+      | genex::views::transform([](auto const &x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
       | genex::to<Vec>();
 
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
-      const auto scope = closest[0].First->NonGenericScope;
+      const auto scope = closest[0].first->NonGenericScope;
       CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get(), true), *Name, *scope, *sm, *meta);
     }
 
     if (closest.Len() <= 1) { return; }
     Raise<analyse::errors::SppAmbiguousMemberAccessError>(
-      {closest[0].First, closest[1].First, sm->CurrentScope},
-      ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *Name));
+      {closest[0].first, closest[1].first, sm->CurrentScope},
+      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *Name));
   }
 }
 
@@ -249,11 +259,11 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTime
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
-  using analyse::utils::type_utils::GetFieldIndexInType;
-  using analyse::utils::type_utils::IsTypeArr;
+  using analyse::utils::type_members::GetFieldIndexInType;
+  using analyse::utils::type_predicates::IsTypeArr;
 
   // A member reached by forwarding lives on the forwarded-to value, so the mapped ast generates it: the forwarding call
   // it is applied to produces the borrow that is then indexed into.
@@ -290,7 +300,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
 
   // If the lhs is symbolic, get the address of the outermost part. The symbol's alloca is already the address of the
   // object (the base pointer). Load borrows to get value.
-  else if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs).First;
+  else if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs).first;
     sym != nullptr) {
     SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
     base_ptr = is_borrow
@@ -307,11 +317,19 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
   // Materialize the lhs expression into a temporary, to have an address to index through.
   else {
     const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
-    const auto temp = codegen::llvm_entry_alloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
+    const auto temp = codegen::LlvmEntryAlloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
     ctx->Builder.CreateStore(lhs_val, temp);
     base_ptr = temp;
   }
   meta->Restore();
+
+  // A field carrying no value is not laid out, so there is nothing
+  // to index to and nothing to read: llvm has no value of that type,
+  // no member for it in the struct, and "load void" is not valid ir.
+  const auto field_type = InferType(sm, meta);
+  const auto field_llvm_type = sm->CurrentScope->GetTypeSymbol(
+    field_type.get())->LlvmInfo->LlvmType;
+  if (codegen::IsValuelessType(field_llvm_type)) { return nullptr; }
 
   // Resolve the address of the member. A numeric name indexes a tuple or array positionally; any other name is an
   // attribute, whose physical position depends on how the owning type was laid out.
@@ -345,9 +363,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
 
   // Otherwise read the field out. Fields are never borrows (the second class borrow rules forbid storing one), so the
   // field's own lowered type is always the type held in the slot.
-  const auto field_type = InferType(sm, meta);
-  const auto field_llvm_type = sm->CurrentScope->GetTypeSymbol(field_type.get())->LlvmInfo->LlvmType;
-  SPP_ASSERT(field_llvm_type != nullptr);
   return ctx->Builder.CreateLoad(field_llvm_type, field_ptr, "member_access.field" + uid);
 }
 
@@ -356,7 +371,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
-  using analyse::utils::type_utils::GetNthTypeOfIndexableType;
+  using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
 
   // A member reached by forwarding belongs to the forwarded-to type, so the rewritten access knows its type.
   if (_MappedFwd != nullptr) { return _MappedFwd->InferType(sm, meta); }

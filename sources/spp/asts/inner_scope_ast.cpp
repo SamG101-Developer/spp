@@ -130,7 +130,7 @@ template <typename T>
 auto spp::asts::InnerScopeAst<T>::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
     sm->MoveToNextScope();

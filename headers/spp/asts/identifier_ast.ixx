@@ -4,11 +4,13 @@ module;
 export module spp.asts.identifier_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.interner;
 import spp.utils.types;
 import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -26,6 +28,17 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, Enable
   explicit IdentifierAst(
     std::size_t pos,
     decltype(Val) val);
+
+private:
+  /**
+   * Use the pre-known interned identifier if there is one, for edxample from a clone.
+   */
+  IdentifierAst(
+    std::size_t pos,
+    decltype(Val) val,
+    utils::InternedId name_id);
+
+public:
 
   static auto MappedFromTok(
     TokenAst const &tok,
@@ -67,7 +80,7 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, Enable
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta)
     -> Shared<TypeAst> override;
@@ -81,12 +94,24 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, Enable
   SPP_ATTR_NODISCARD auto ExprParts() const
     -> Vec<Ast*> override;
 
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
+
   SPP_ATTR_NODISCARD auto ToView() const noexcept
     -> StrView;
+
+  /**
+   * The identifier's name as an interned id. @c Val never changes once the node is built, so the id is assigned in the
+   * constructor and stands for the node's lifetime. Symbol tables key on this rather than on the string.
+   */
+  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT auto NameId() const noexcept
+    -> utils::InternedId { return _NameId; }
 
 private:
   std::size_t _Pos;
   std::size_t _ForTok = 0;
+  utils::InternedId _NameId;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

@@ -23,10 +23,6 @@ namespace spp::asts {
   SPP_EXP_CLS struct TypeStatementAst;
 }
 
-namespace spp::asts::meta {
-  SPP_EXP_CLS class AstPrinter;
-}
-
 /**
  * The AST base class is inherited by all other AST classes, provided base functionality, including formatted printing
  * and end position identification.

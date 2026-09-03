@@ -5,16 +5,16 @@ module spp.asts.meta.compiler_meta_data;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
-import ankerl;
 
 SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
-  CurrentStage = 0;
+  CurrentStage = CompilerStage::kNone;
   ReturnTypeOverloadResolverType = nullptr;
   AssignmentTarget = nullptr;
   AssignmentTargetType = nullptr;
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
+  CaseConsumedSubject = nullptr;
   ClsSym = nullptr;
   EnclosingFunctionScope = nullptr;
   EnclosingFunctionFlavour = nullptr;
@@ -29,14 +29,13 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
-  LoopDoubleCheckActive = false;
+  LetStatementPrecomputedValue = nullptr;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
-  LoopReturnTypes = MakeShared<ankerl::unordered_dense::map<
-    std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
+  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
   ObjectInitType = nullptr;
-  InferSource = {};
-  InferTarget = {};
+  InferSource = MakeShared<GenericInferenceBindings>();
+  InferTarget = MakeShared<GenericInferenceBindings>();
   PostfixExpressionLhs = nullptr;
   UnaryExpressionRhs = nullptr;
   SkipTypeAnalysisGenericChecks = false;
@@ -48,11 +47,16 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LlvmWantAddress = false;
   LlvmAssignmentTarget = nullptr;
   LlvmAssignmentTargetType = nullptr;
+  LlvmCaseCondition = nullptr;
   LlvmPhi = nullptr;
   LlvmLoopStack = {};
   CmpResult = nullptr;
   IgnoreAccessModifierViolations = false;
+  SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
+  ResolveBoundCompGenerics = false;
+  LlvmGenerator = nullptr;
+  LlvmGeneratorState = nullptr;
 }
 
 auto spp::asts::meta::CompilerMetaData::Save() -> void {
@@ -69,6 +73,8 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.AssignmentTargetType = AssignmentTargetType;
   s.IgnoreMissingElseBranchForInference = IgnoreMissingElseBranchForInference;
   s.CaseCondition = CaseCondition;
+  s.CaseConsumedSubject = CaseConsumedSubject;
+  s.WithinDeferTok = WithinDeferTok;
   s.ClsSym = ClsSym;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   s.EnclosingFunctionScope = EnclosingFunctionScope;
@@ -83,7 +89,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
-  s.LoopDoubleCheckActive = LoopDoubleCheckActive;
+  s.LetStatementPrecomputedValue = LetStatementPrecomputedValue;
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
   s.LoopReturnTypes = LoopReturnTypes;
@@ -101,11 +107,25 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LlvmWantAddress = LlvmWantAddress;
   s.LlvmAssignmentTarget = LlvmAssignmentTarget;
   s.LlvmAssignmentTargetType = LlvmAssignmentTargetType;
+  s.LlvmCaseCondition = LlvmCaseCondition;
   s.LlvmPhi = LlvmPhi;
   s.LlvmLoopStack = LlvmLoopStack;
-  s.CmpArgs = std::move(CmpArgs);
+  // Swapped rather than move-assigned. Move-assignment destroys what the parked slot already holds and then takes
+  // this one's buffers, leaving both sides to allocate again next cycle - which is exactly what the pool is meant to
+  // avoid. Swapping hands the slot the live contents and hands this side the slot's dead ones, and clearing those
+  // frees the same objects at the same point a move-assignment would have, keeping the allocation on both sides.
+  CmpArgs.swap(s.CmpArgs);
+  CmpArgs.clear();
+  CmpGnTypeArgs.Swap(s.CmpGnTypeArgs);
+  CmpGnTypeArgs.Clear();
+  CmpGnCompArgs.Swap(s.CmpGnCompArgs);
+  CmpGnCompArgs.Clear();
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
+  s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
+  s.ResolveBoundCompGenerics = ResolveBoundCompGenerics;
+  s.LlvmGenerator = LlvmGenerator;
+  s.LlvmGeneratorState = LlvmGeneratorState;
 }
 
 auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
@@ -120,6 +140,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AssignmentTargetType = std::move(state.AssignmentTargetType);
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
+  CaseConsumedSubject = state.CaseConsumedSubject;
+  WithinDeferTok = state.WithinDeferTok;
   ClsSym = state.ClsSym;
   if (heavy) {
     EnclosingFunctionScope = state.EnclosingFunctionScope;
@@ -136,7 +158,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
-  LoopDoubleCheckActive = state.LoopDoubleCheckActive;
+  LetStatementPrecomputedValue = state.LetStatementPrecomputedValue;
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;
   LoopReturnTypes = std::move(state.LoopReturnTypes);
@@ -154,18 +176,40 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmWantAddress = state.LlvmWantAddress;
   LlvmAssignmentTarget = state.LlvmAssignmentTarget;
   LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
+  LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
-  CmpArgs = std::move(state.CmpArgs);
-  // CmpResult = std::move(state.CmpResult);
+  CmpArgs.swap(state.CmpArgs);
+  state.CmpArgs.clear();
+  CmpGnTypeArgs.Swap(state.CmpGnTypeArgs);
+  state.CmpGnTypeArgs.Clear();
+  CmpGnCompArgs.Swap(state.CmpGnCompArgs);
+  state.CmpGnCompArgs.Clear();
+  // Note: CmpResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
+  SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
+  ResolveBoundCompGenerics = state.ResolveBoundCompGenerics;
+  LlvmGenerator = state.LlvmGenerator;
+  LlvmGeneratorState = state.LlvmGeneratorState;
 }
 
 auto spp::asts::meta::CompilerMetaData::Depth() const
   -> std::size_t {
   // Get the number of live history items.
   return _Depth;
+}
+
+spp::asts::meta::MetaGuard::MetaGuard(
+  CompilerMetaData *const meta,
+  const bool heavy) :
+  _Meta(meta),
+  _Heavy(heavy) {
+  _Meta->Save();
+}
+
+spp::asts::meta::MetaGuard::~MetaGuard() {
+  _Meta->Restore(_Heavy);
 }
 
 SPP_MOD_END

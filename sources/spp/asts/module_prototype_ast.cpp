@@ -118,7 +118,7 @@ auto spp::asts::ModulePrototypeAst::Stage9_CompTimeResolve(
 auto spp::asts::ModulePrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Shift to implementation.
   return Impl->Stage10_PreCodeGen(sm, meta, ctx);
@@ -127,7 +127,7 @@ auto spp::asts::ModulePrototypeAst::Stage10_PreCodeGen(
 auto spp::asts::ModulePrototypeAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Add the entry building block for module level code.
 
@@ -163,12 +163,6 @@ auto spp::asts::ModulePrototypeAst::Name() const
   }
 
   return MakeUnique<IdentifierAst>(PosStart(), std::move(name));
-}
-
-auto spp::asts::ModulePrototypeAst::FileName() const
-  -> Unique<IdentifierAst> {
-  // Return the filepath as an IdentifierAst.
-  return MakeUnique<IdentifierAst>(PosStart(), spp::utils::files::NativeString(FilePath));
 }
 
 SPP_MOD_END

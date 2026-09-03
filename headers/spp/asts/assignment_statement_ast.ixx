@@ -31,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
    * The list of left-hand side expressions in the assignment statement. These are the variables or properties that
    * are being assigned a value.
    */
-  UniqueVec<ExpressionAst> Lhs;
+  Vec<Unique<ExpressionAst>> Lhs;
 
   /**
    * The @c = token that represents the assignment operator. This indicates to the parser that an assignment statement
@@ -43,7 +43,7 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
    * The list of right-hand side expressions in the assignment statement. These are the values or expressions that
    * are being assigned to the left-hand side variables or properties.
    */
-  UniqueVec<ExpressionAst> Rhs;
+  Vec<Unique<ExpressionAst>> Rhs;
 
   /**
    * Construct the AssignmentStatementAst with the arguments matching the members.
@@ -128,5 +128,5 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
    * @param ctx The LLVM context to use for code generation.
    * @return The LLVM value representing the assignment operation.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

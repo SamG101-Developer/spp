@@ -9,21 +9,24 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_defer;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -76,12 +79,10 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeVoid;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
   using analyse::errors::SppCoroutineContainsReturnStatementError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppInvalidVoidValueError;
   using analyse::errors::SppTypeMismatchError;
   using analyse::scopes::ScopeTypeIdentifierName;
   using generate::common_types::VoidType;
@@ -101,11 +102,13 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   auto expr_type = VoidType(PosStart());
   _RetType = VoidType(PosStart());
   if (Expr != nullptr) {
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
 
     // For case conditions, we need an assignment target in case of variants. Closures have no declared return
     // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
-    meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+    meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty()
+      ? nullptr
+      : meta->EnclosingFunctionRetType.Back();
     if (meta->AssignmentTargetType != nullptr) {
       meta->AssignmentTargetType = ResolveAndSubstituteSelfType(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
@@ -122,12 +125,6 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     Source._OriginalRetType = meta->EnclosingFunctionSourceRetType.IsEmpty()
       ? nullptr
       : meta->EnclosingFunctionSourceRetType[0];
-    meta->Restore();
-
-    // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
-    RaiseIf<SppInvalidVoidValueError>(
-      IsTypeVoid(*expr_type, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Expr, "return statement"));
   }
 
   // Functions provide the return type, closures require inference; handle the inference.
@@ -152,20 +149,30 @@ auto spp::asts::RetStatementAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // If there is no expression, then now ork needs to be done.
+  //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
-  if (Expr == nullptr) return;
 
   // Ensure the argument isn't moved or partially moved (for all conventions)
-  Expr->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, meta);
+  if (Expr != nullptr) {
+    Expr->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, meta);
+  }
+
+  // A "ret" leaves every scope up to the function at once, so no
+  // closing brace is ever reached for them and their own scope-exit
+  // checks never run against this path. Checked after the returned
+  // value moves, so returning a value counts as consuming it.
+  analyse::utils::linear_utils::CheckLiveUpToFunction(
+    *TokRet, "Return", *sm, meta);
 }
 
 auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // If there is no expression, then return nullptr.
+  // Mark the frame as returned either way, so the statements after the "case" this "ret" may sit inside are not
+  // resolved on top of it.
+  meta->CmpReturned = true;
   if (Expr == nullptr) { return; }
 
   // Resolve the expression.
@@ -175,10 +182,25 @@ auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
 auto spp::asts::RetStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
+  // Inside a coroutine, "ret" ends the generator rather than
+  // returning anything (stage 7 rejects one carrying a value),
+  // so it leaves the body the same way running off the end
+  // does: every scope between here and the coroutine's own
+  // runs what it deferred, and then control joins the one
+  // final suspend.
+  if (meta->LlvmGenerator != nullptr and meta->LlvmGenerator->FinalBlock != nullptr) {
+    codegen::EmitDeferredUnwind(
+      *sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
+    ctx->Builder.CreateBr(meta->LlvmGenerator->FinalBlock);
+    return nullptr;
+  }
+
   // Use the return void instruction if there is no return value.
   if (Expr == nullptr) {
+    codegen::EmitDeferredUnwind(
+      *sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
     ctx->Builder.CreateRetVoid();
     return nullptr;
   }
@@ -188,7 +210,9 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   const auto ret_type = _RetType != nullptr
     ? _RetType
-    : meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+    : meta->EnclosingFunctionRetType.IsEmpty()
+    ? nullptr
+    : meta->EnclosingFunctionRetType.Back();
 
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
@@ -196,21 +220,28 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
       llvm_ret_val, *ret_type, *Expr->InferType(sm, meta), *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
-  // Temp holder for non-symbolic condition.
-  if (sm->CurrentScope->GetVarSymbolOutermost(*Expr).First == nullptr) {
-    meta->Save();
-    meta->AssignmentTargetType = _RetType;
-    const auto ret_val = codegen::llvm_materialize(*Expr, sm, meta, ctx);
-    const auto llvm_ret_val = ret_val->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
-    meta->Restore();
+  const auto _meta_guard = meta::MetaGuard(meta);
+  meta->AssignmentTargetType = _RetType;
+  if (meta->AssignmentTarget == nullptr) {
+    meta->AssignmentTarget = MakeShared<IdentifierAst>(PosStart(), "$ret");
   }
 
-  // Otherwise, generate normally.
-  else {
-    const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
-  }
+  // The expression is always code-generated, even when its value
+  // is discarded below, because it may have side effects that
+  // have to happen before the function returns.
+  const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
+
+  // The returned value is produced first, then every scope between here and the function's own runs what it deferred,
+  // then control leaves.
+  codegen::EmitDeferredUnwind(
+    *sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
+
+  // A generic function instantiated so that its return type is
+  // "Void" lowers to an LLVM function returning void, but its
+  // body still reads "ret <expr>". Map to llvm's ret void.
+  ctx->Builder.GetInsertBlock()->getParent()->getReturnType()->isVoidTy()
+    ? ctx->Builder.CreateRetVoid()
+    : ctx->Builder.CreateRet(wrap_variant(llvm_ret_val));
 
   return nullptr;
 }

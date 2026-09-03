@@ -1,6 +1,6 @@
 module;
-#include <spp/analyse/macros.hpp>
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.assignment_statement_ast;
 import spp.analyse.errors.semantic_error;
@@ -11,7 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.assignment_utils;
 import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
@@ -23,7 +23,9 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 
 SPP_MOD_BEGIN
@@ -82,15 +84,14 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   using analyse::utils::assignment_utils::IsAttr;
   using analyse::utils::assignment_utils::IsDeref;
   using analyse::utils::assignment_utils::IsIdentifier;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
 
   // Ensure the LHS is semantically valid.
   for (auto const &lhs_expr : Lhs) {
     SPP_DEREF_ALLOW_MOVE_HELPER(lhs_expr) {
-      meta->Save();
+      const auto _meta_guard = meta::MetaGuard(meta);
       meta->AllowMoveDeref = true;
       lhs_expr->Stage7_AnalyseSemantics(sm, meta);
-      meta->Restore();
     }
     else {
       lhs_expr->Stage7_AnalyseSemantics(sm, meta);
@@ -99,7 +100,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 
   // Ensure the RHS is semantically valid.
   for (auto [i, rhs_expr] : Rhs | genex::views::ptr | genex::views::enumerate) {
-    meta->Save();
+    const auto _meta_guard = meta::MetaGuard(meta);
 
     // Handle return type overloading matching for the lhs target types.
     if (const auto pf = rhs_expr->To<PostfixExpressionAst>(); pf != nullptr) {
@@ -112,7 +113,6 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
     meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
     rhs_expr->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
   }
 
   // For each assignment, get the outermost symbol of the expression.
@@ -132,25 +132,26 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
     RaiseIf<SppInvalidMutationError>(
       IsIdentifier(lhs_expr) and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
-      {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization),
-                                   "immutable symbol"));
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
 
     // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
     RaiseIf<SppInvalidMutationError>(
-      IsAttr(lhs_expr, sm) and not(std::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
-      {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization),
-                                   "immutable outermost symbol"));
+      IsAttr(lhs_expr, sm) and not(spp::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable outer sym"));
 
     // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
     RaiseIf<SppInvalidMutationError>(
       IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
-      {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization),
-                                   "immutable borrow"));
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
 
     // Dereference assignment (ie "x@ = y") writes through a borrow, so the borrow being dereferenced must be &mut.
     RaiseIf<SppInvalidMutationError>(
       IsDeref(lhs_expr) and lhs_deref_type->GetConvention() and *lhs_deref_type->GetConvention() != ConventionTag::MUT,
-      {sm->CurrentScope}, ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
+      {sm->CurrentScope},
+      ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
 
     // Prevent double initializations to immutable uninitialized let statements.
     if (IsIdentifier(lhs_expr)) {
@@ -188,14 +189,17 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     // the move, but do some checks before calling the internal memory checker on the postfix expression.
     ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, false, meta);
 
-    meta->Save();
-    meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
-    meta->AssignmentTargetType = lhs_expr->InferType(sm, meta);
-    rhs_expr->Stage8_CheckMemory(sm, meta);
-    meta->Restore();
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
+      meta->AssignmentTargetType = lhs_expr->InferType(sm, meta);
+      rhs_expr->Stage8_CheckMemory(sm, meta);
+    }
 
-    // Fully validate the memory of the right-hand-side expression, marking the move.
-    ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, meta);
+    // Fully validate the memory of the right-hand-side expression, marking the move. A value carrying escaping
+    // borrows is let through here, because "PreventBorrowLifetimeExtension" below weighs the destination against
+    // those borrows rather than refusing the move on sight.
+    ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, meta, false);
 
     if (IsAttr(lhs_expr, sm)) {
       const auto pf = lhs_expr->To<PostfixExpressionAst>();
@@ -212,10 +216,10 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     }
 
     // Ensure a borrow is not increasing its lifetime.
-    const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).First;
-    const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).First;
+    const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).first;
+    const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).first;
     PreventBorrowLifetimeExtension(
-      *rhs_expr, lhs_outermost.get(), rhs_outermost.get(), this, *sm);
+      *rhs_expr, lhs_outermost, rhs_outermost, this, *sm);
   }
 }
 
@@ -231,7 +235,7 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
   // Wrap the rhs value and move it into the value of the variable symbol.
   for (auto i = 0uz; i < Lhs.Len(); ++i) {
     Rhs[i]->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_sym = sm->CurrentScope->GetVarSymbolOutermost(*Lhs[i]).First;
+    const auto lhs_sym = sm->CurrentScope->GetVarSymbolOutermost(*Lhs[i]).first;
 
     // Assign to a full identifier.
     if (IsIdentifier(Lhs[i].get())) {
@@ -256,50 +260,88 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Alias the common utils functions and types.
   using analyse::utils::assignment_utils::IsDeref;
   using analyse::utils::assignment_utils::IsIdentifier;
 
-  // Generate code for each assignment in sequence.
+  // Use a 2-pass system to ensure that "a, b = b, a" is supported
+  // and doesn't clobber the values being reused. Firstly generate
+  // all the right-hand-side values into llvm ir.
+  auto llvm_rhs_vals = Vec<llvm::Value*>{};
+  llvm_rhs_vals.Reserve(Rhs.Len());
+  for (auto i = 0uz; i < Rhs.Len(); ++i) {
+    auto llvm_rhs = [&] {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
+      meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
+      if (IsIdentifier(Lhs[i].get())) {
+        meta->LlvmAssignmentTarget = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
+      }
+
+      auto value = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
+
+      // Just like a "let" with a declared type: the target may be
+      // a variant the value is only a member of, in which case it
+      // is tagged and copied into the payload rather than written
+      // raw over the slot (which would land the member on top of
+      // the tag).
+      if (const auto target_type = Lhs[i]->InferType(sm, meta); target_type != nullptr) {
+        value = codegen::CoerceToVariant(
+          value, *target_type, *Rhs[i]->InferType(sm, meta),
+          *sm->CurrentScope, "assign.variant." + spp::utils::Uid(this), ctx);
+      }
+
+      return value;
+    }();
+    llvm_rhs_vals.EmplaceBack(llvm_rhs);
+  }
+
+  // Resolve every LHS store location, still before any stores happen.
+  // This finalizes the expression swapping support.
+  auto llvm_lhs_locs = Vec<llvm::Value*>{};
+  llvm_lhs_locs.Reserve(Lhs.Len());
   for (auto i = 0uz; i < Lhs.Len(); ++i) {
-    // Set the meta information for generating with values.
-    meta->Save();
-    meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
-    meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
-
-    // Generate the RHS value.
-    const auto llvm_rhs = Rhs[i]->Stage11_CodeGen(sm, meta, ctx);
-    meta->Restore();
-
-    // Determine the LHS store location.
     auto llvm_lhs = static_cast<llvm::Value*>(nullptr);
+
+    // The statement "x@ = v" writes through a borrow: the target is
+    // the borrow pointer itself.
     if (IsDeref(Lhs[i].get())) {
-      // "x@ = v" writes through a borrow: the target is the borrow pointer itself.
       const auto inner = Lhs[i]->To<PostfixExpressionAst>()->Lhs.get();
       llvm_lhs = inner->Stage11_CodeGen(sm, meta, ctx);
     }
+
+    // The statement "a = v" targets the variable's allocation directly
+    // (loading it would yield the rvalue).
     else if (IsIdentifier(Lhs[i].get())) {
-      // "a = v" targets the variable's allocation directly (loading it would yield the rvalue).
-      const auto var_sym = sm->CurrentScope->GetVarSymbol(Lhs[i]->To<IdentifierAst>());
+      const auto var_sym = sm->CurrentScope->GetVarSymbol(
+        Lhs[i]->To<IdentifierAst>());
       SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
       llvm_lhs = var_sym->LlvmInfo->Alloca;
     }
+
+    // The statement "x.y = v" (attribute): ask the runtime member
+    // access for the field's address rather than its value.
     else {
-      // "x.y = v" (attribute): ask the runtime member access for the field's address rather than its value.
-      meta->Save();
+      const auto _meta_guard = meta::MetaGuard(meta);
       meta->LlvmWantAddress = true;
       llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
-      meta->Restore();
     }
 
-    // Store the RHS value into the resolved LHS location.
-    SPP_ASSERT(llvm_lhs != nullptr and llvm_rhs != nullptr);
-    ctx->Builder.CreateStore(llvm_rhs, llvm_lhs);
+    llvm_lhs_locs.EmplaceBack(llvm_lhs);
   }
 
-  // Statements are always generated into a builder so no need to return anything.
+  // Now that every value and location has been computed off the
+  // (pre-assignment) state, commit the stores.
+  for (auto i = 0uz; i < Lhs.Len(); ++i) {
+    if (llvm_lhs_locs[i] == nullptr and llvm_rhs_vals[i] == nullptr) { continue; }
+    SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
+    ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);
+  }
+
+  // Statements are always generated into a builder so no need
+  // to return anything.
   return nullptr;
 }
 

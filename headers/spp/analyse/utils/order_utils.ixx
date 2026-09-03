@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.order_utils;
-import spp.utils.types;
 import spp.asts.utils.orderable;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -15,30 +15,6 @@ namespace spp::asts::mixins {
 }
 
 namespace spp::analyse::utils::order_utils {
-  inline const Vec ARG_ORDER_ARR{
-    spp::asts::utils::OrderableTag::kPositionalArg,
-    spp::asts::utils::OrderableTag::kKeywordArg,
-  };
-
-  inline const Vec PARAM_ORDER_ARR{
-    spp::asts::utils::OrderableTag::kSelfParam,
-    spp::asts::utils::OrderableTag::kRequiredParam,
-    spp::asts::utils::OrderableTag::kOptionalParam,
-    spp::asts::utils::OrderableTag::kVariadicParam,
-  };
-
-  /**
-   * Return a list of items that are not in order. The order is provided by internal tags attached to the ASTs, as
-   * they all inherit the @c OrderableAst mixin.
-   * @param args The list of arguments to check the order of.
-   * @param order The correct order of the tags.
-   * @return The list of arguments that are out of order, paired with a string representation of their tag.
-   */
-  SPP_EXP_FUN auto DoOrder(
-    Vec<asts::mixins::OrderableAst*> &&args,
-    Vec<asts::utils::OrderableTag> const &order)
-    -> Vec<Pair<Str, asts::Ast*>>;
-
   /**
    * The entry point into ordering arguments. This uses the internal order defined for function call arguments:
    * POSITIONAL -> KEYWORD.

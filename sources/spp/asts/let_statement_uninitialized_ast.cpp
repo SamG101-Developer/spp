@@ -2,13 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.let_statement_uninitialized_ast;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.asts.local_variable_ast;
 import spp.asts.identifier_ast;
-import spp.asts.object_initializer_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -76,12 +76,11 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);
 
   // Update the meta arguments.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementValue = mock_init.get(); // Safe, because only used within inner frame, then reset.
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
   Var->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
@@ -89,7 +88,7 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
   CompilerMetaData *meta)
   -> void {
   // Check the variable for memory issues.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementValue = nullptr;
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
@@ -97,21 +96,26 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
   for (auto const &v : Var->ExtractNames()) {
     sm->CurrentScope->GetVarSymbol(v.get())->MemInfo->MovedBy(*this, sm->CurrentScope);
   }
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // Delegate the code generation to the variable, after setting up the meta.
-  meta->Save();
+  // Setup a lot of meta information for the local variable to
+  // correctly generate the value.
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementValue = nullptr;
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
+
+  // Delegate the code generation to the variable, after setting
+  // up the meta. Note that the "alloca" is returned even though
+  // this isn't an expression, for parent nodes that might need it.
+  // It's a hacky solution that should live on "meta" but no harm
+  // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return alloca;
 }
 

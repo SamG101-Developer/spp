@@ -15,10 +15,13 @@ use std::annotations::private
 use std::annotations::virtual_method
 use std::annotations::abstract_method
 use std::annotations::ffi
+use std::annotations::test
 use std::annotations::Annotation
+use std::mem::ops::drop
 use std::string::Str
 use std::string_view::StrView
 use std::boolean::Bool
+use std::char::Char
 use std::number::U8
 use std::number::U16
 use std::number::U32

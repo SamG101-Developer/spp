@@ -14,10 +14,13 @@ import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import genex;
+import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
@@ -113,7 +116,7 @@ auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
   RaiseIf<SppOrderInvalidError>(
     not unordered_params.IsEmpty(), {sm->CurrentScope},
     ERR_ARGS(
-      unordered_params[1].First, *unordered_params[1].Second, unordered_params[0].First, *unordered_params[0].Second));
+      unordered_params[1].first, *unordered_params[1].second, unordered_params[0].first, *unordered_params[0].second));
 
   // Analyse the parameters.
   for (auto const &param : Params) { param->Stage7_AnalyseSemantics(sm, meta); }
@@ -130,10 +133,21 @@ auto spp::asts::FunctionParameterGroupAst::Stage8_CheckMemory(
 auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // Code generate each parameter.
-  for (auto const &param : Params) { param->Stage11_CodeGen(sm, meta, ctx); }
+  // Bind each parameter's storage to its actual incoming
+  // llvm::Argument, in declaration order. For closures, the
+  // 0th argument is the closure env (skip it).
+  // Todo: why not using meta->Save()/->Restore()?
+  const auto llvm_fn = ctx->Builder.GetInsertBlock()->getParent();
+  auto arg_index = ctx->CurrentClosureType != nullptr ? 1u : 0u;
+  for (auto const &param : Params) {
+    SPP_ASSERT(arg_index < llvm_fn->arg_size());
+    meta->LetStatementPrecomputedValue = llvm_fn->getArg(arg_index);
+    param->Stage11_CodeGen(sm, meta, ctx);
+    meta->LetStatementPrecomputedValue = nullptr;
+    ++arg_index;
+  }
   return nullptr;
 }
 

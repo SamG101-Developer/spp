@@ -2,21 +2,20 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_destructure_tuple_ast;
-import spp.lex.tokens;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.case_utils;
 import spp.asts.boolean_literal_ast;
-import spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.case_pattern_variant_destructure_array_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
+import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
-import spp.asts.identifier_ast;
-import spp.asts.fold_expression_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
 import spp.asts.local_variable_destructure_tuple_ast;
@@ -28,6 +27,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 import genex;
 
 SPP_MOD_BEGIN
@@ -129,29 +129,30 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Stage9_CompTimeResolve(
 auto spp::asts::CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
 
-  // Generate the "let" statement to introduce all the symbols.
-  if (_MappedLet == nullptr) {
-    auto var = ConvToVar(meta);
-    _MappedLet = MakeUnique<LetStatementInitializedAst>(
-      nullptr, std::move(var), nullptr, nullptr, AstClone(meta->CaseCondition));
-    _MappedLet->Stage7_AnalyseSemantics(sm, meta);
+  // Run the codegen on the transformed "let" ast to introduce symbols into the llvm function.
+  if (_MappedLet != nullptr) {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
+    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
   }
-  _MappedLet->Stage11_CodeGen(sm, meta, ctx);
 
-  // Combine all the generated transforms into a single "AND"ed statement.
+  // Combine all the generated transforms into a single "AND"ed
+  // expression.
   auto llvm_transforms = CreateAndAnalysePatternEqFuncsLlvm(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
-  const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->Builder.CreateAnd(a, b); };
-  const auto llvm_master_transform = llvm_transforms.IsEmpty()
-    ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->Context))
-    : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
-  // Return the combined statement.
+  const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
+  const auto llvm_master_transform = llvm_transforms.IsEmpty()
+    ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
+    : genex::fold_left_first(llvm_transforms, std::move(AND));
+
+  // Return the combined expression back to the branch who owns
+  // this pattern.
   return llvm_master_transform;
 }
 

@@ -4,8 +4,9 @@ default_language_version:
   python: python3.14
 exclude: '^\.vale/'
 repos:
+  # GENERAL CHECKS
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: mixed-line-ending
@@ -23,9 +24,11 @@ repos:
       - id: check-shebang-scripts-are-executable
       - id: check-illegal-windows-names
       - id: forbid-submodules
-#      - id: no-commit-to-branch
-#      - id: check-json
-#      - id: check-symlinks
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: [ --branch, master ]
+  #      - id: check-json
+  #      - id: check-symlinks
 
   - repo: meta
     hooks:
@@ -34,58 +37,77 @@ repos:
 
   # C++ CHECKS
 
-#  - repo: https://github.com/pocc/pre-commit-hooks
-#    rev: 0c2dfae267d798c9adff7b86976fa602aa0999b7
-#    hooks:
-#      - id: cppcheck
-#        args:
-#          - --enable=all
-#          - --inline-suppr
-#          - --suppressions-list=.cppcheck-suppressions
-#          - --check-level=exhaustive
-#          - --std=c++26
-#          - --language=c++
-#          - --error-exitcode=1
-#          - -Iheaders
-#          - '--template={file}:{line}:{column}: {severity}: {message} [{id}]'
-#          - '--template-location={file}:{line}:{column}: note: {info}'
-  #      - id: cpplint
-  #        args: [-Iheaders]
-  #        args: [ --style=file ]
-  #      - id: clang-format
-  #      - id: clang-tidy
-  #      - id: oclint
-  #      - id: uncrustify
+  - repo: local
+    hooks:
+      - id: sort-cpp-imports
+        name: sort C++ module imports
+        entry: python3 .github/precommit/sort_imports.py
+        language: python
+        files: \.(hpp|cpp|ixx)$
+
+      - id: banned-idioms
+        name: reject banned C++ idioms
+        entry: python3 .github/precommit/banned_idioms.py
+        language: python
+        files: \.(hpp|cpp|ixx)$
+
+      - id: pins
+        name: validate dependency manifest
+        entry: python3 .github/scripts/lib/pins.py check -q
+        language: python
+        pass_filenames: false
+        files: '^\.github/(dependencies\.toml|workflows/|actions/|scripts/lib/pins\.py)'
+
+  # PYTHON CHECKS
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 65dbdb59d2f2d9c3bdc343c566821ad3319ddaa3  # v0.16.3
+    hooks:
+      - id: ruff-check
+        args: [ --fix ]
+      - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: b84c4a0a90bd58c7d82ae8f0d4d5e77b1ddd3ce6  # 0.12.5
+    hooks:
+      - id: uv-lock
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: 3a6eb0fadf60b3cccfd80bad9dbb6fae7e47b316  # v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
+      - id: text-unicode-replacement-char
 
   # CMake CHECKS
 
   - repo: https://github.com/BlankSpruce/gersemi-pre-commit
-    rev: 0.27.7
+    rev: e98930bdc210d3387007f9252d8c1694ea7e410f  # 0.27.7
     hooks:
       - id: gersemi
         args: [ --indent, "2" ]
 
   - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: v0.6.13
+    rev: e2c2116d86a80e72e7146a06e68b7c228afc6319  # v0.6.13
     hooks:
       - id: cmake-lint
 
   # SPELLING & GRAMMAR
 
   - repo: https://github.com/crate-ci/typos
-    rev: v1.48.0
+    rev: bee27e3a4fd1ea2111cf90ab89cd076c870fce14  # v1.48.0
     hooks:
       - id: typos
         args: [ --force-exclude ]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.3
+    rev: 57b21406f092110c18776e39b0bda50d37c945c8  # v2.4.3
     hooks:
       - id: codespell
         additional_dependencies: [ tomli ]
 
   - repo: https://github.com/errata-ai/vale
-    rev: v3.15.1
+    rev: 8c4ed0df90e45f93818ffed5ba587ff1e220a142  # v3.15.1
     hooks:
       - id: vale
         language_version: "1.25.7"
@@ -93,63 +115,72 @@ repos:
   # CONFIG FILE LINTING
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.11.0.1
+    rev: 745eface02aef23e168a8afb6b5737818efbea95  # v0.11.0.1
     hooks:
       - id: shellcheck
 
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.13.1-1
+    rev: 05c1426671b9237fb5e1444dd63aa5731bec0dfb  # v3.13.1-1
     hooks:
       - id: shfmt
         args: [ -i, "2", -sr, -bn, -ci ]
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # v1.7.12
     hooks:
       - id: actionlint
         language_version: "1.25.7"
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.38.0
+    rev: cba56bcde1fdd01c1deb3f945e69764c291a6530  # v1.38.0
     hooks:
       - id: yamllint
         args: [ -c, .yamllint.yaml ]
 
   - repo: https://github.com/hukkin/mdformat
-    rev: 1.0.0
+    rev: 82912cdaea4fb830f751504486a7879c70526547  # 1.0.0
     hooks:
       - id: mdformat
         additional_dependencies: [ mdformat-gfm, mdformat-toc ]
 
   - repo: https://github.com/ComPWA/taplo-pre-commit
-    rev: v0.9.3
+    rev: ade0f95ddcf661c697d4670d2cfcbe95d0048a0a  # v0.9.3
     hooks:
       - id: taplo-format
 
+  # LINK ROT
+
+  - repo: https://github.com/lycheeverse/lychee
+    rev: 2bba271688c1abb1503097a064e6c3bc1d1b6a9b
+    hooks:
+      - id: lychee
+        args: [ LYCHEE_VERSION=0.24.2, --no-progress, --cache, --max-cache-age, 1d, --max-retries, "3", --accept, "200..=299,429" ]
+        files: \.(md|rst)$
+
   # VCS HYGIENE
 
-  - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.16.5
-    hooks:
-      - id: commitizen
-      - id: commitizen-branch
-        stages: [ pre-push ]
+#  - repo: https://github.com/commitizen-tools/commitizen
+#    rev: 6afcd8e9560ddf1b9a5032262a0be26540e85fb3  # v4.16.5
+#    hooks:
+#      - id: commitizen
+#      - id: commitizen-branch
+#        stages: [ pre-push ]
 
   # SECURITY
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # v8.30.1
     hooks:
       - id: gitleaks
         language_version: "1.25.7"
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.28.0
+    rev: 067260dc5fe6ea86b7551bfd6f8b3ba4e6c93129  # v1.28.0
     hooks:
       - id: zizmor
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.4
+    rev: 6b63472e72e1a91ed8a2f6d483790dfb644fa1d3  # 0.37.4
     hooks:
       - id: check-github-workflows
         args: [ "--verbose" ]

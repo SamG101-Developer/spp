@@ -9,6 +9,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TupleLiteralAst;
   SPP_EXP_CLS struct TypeAst;
@@ -57,9 +58,13 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TupleLiteralAst)

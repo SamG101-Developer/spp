@@ -41,7 +41,7 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
    * the symbol, this attribute will be set to @c nullptr. This attribute is mutually exclusive with the @c ast_moved
    * attribute.
    */
-  std::tuple<asts::Ast const*, scopes::Scope*> AstInitialization = {nullptr, nullptr};
+  Tup<asts::Ast const*, scopes::Scope*> AstInitialization = {nullptr, nullptr};
 
   /**
    * The @c ast_moved AST is the AST that moved the value out of the symbol this memory information struct is attached
@@ -49,7 +49,7 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
    * this attribute will be set to @c nullptr. This attribute is mutually exclusive with the @c ast_initialization
    * attribute.
    */
-  std::tuple<asts::Ast const*, scopes::Scope*> AstMoved = {nullptr, nullptr};
+  Tup<asts::Ast const*, scopes::Scope*> AstMoved = {nullptr, nullptr};
 
   /**
    * The @c ast_initialization_origin AST is the same as the @c ast_initialization, but it isn't set to nullptr when
@@ -57,14 +57,14 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
    * value is moved out of the symbol, the initialization origin can still be tracked and used for further analysis
    * and error formatting.
    */
-  std::tuple<asts::Ast const*, scopes::Scope*> AstInitializationOrigin = {nullptr, nullptr};
+  Tup<asts::Ast const*, scopes::Scope*> AstInitializationOrigin = {nullptr, nullptr};
 
   /**
    * The @c ast_borrowed AST is the AST that is set if the value symbol is declared with a borrow type. This will be
    * set from a function parameter's convention. If this attribute is @c nullptr, then the convention is the "mov"
    * convention.
    */
-  std::tuple<asts::Ast const*, scopes::Scope*> AstBorrowed = {nullptr, nullptr};
+  Tup<asts::Ast const*, scopes::Scope*> AstBorrowed = {nullptr, nullptr};
 
   /**
    * The @c ast_partial_moves ASTs are the ASTs that represent partial moves of the value out of the symbol. For the
@@ -77,13 +77,13 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
    * Borrows that this symbol, a [coroutine/async call]-handle, contain, escaping the typical inner frame lifetime
    * constraint.
    */
-  Vec<std::tuple<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
+  Vec<Tup<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
 
   /**
    * A reverse map of the @c AstContainedEscapingBorrows, so we don't have to search each symbol for a contained
    * borrow match / overlap. The structure is "<container, where_contained>".
    */
-  Vec<std::tuple<asts::Ast const*, asts::Ast const*>> AstContainersOfEscapingBorrows;
+  Vec<Tup<asts::Ast const*, asts::Ast const*>> AstContainersOfEscapingBorrows;
 
   /**
    * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
@@ -197,7 +197,12 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
   /**
    * List of escaping borrows that were present in the owning @c MemoryInfo at the time of the snapshot.
    */
-  Vec<std::tuple<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
+  Vec<Tup<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
+
+  /**
+   * List of containers holding an escaping borrow of the owning @c MemoryInfo's symbol at the time of the snapshot.
+   */
+  Vec<Tup<asts::Ast const*, asts::Ast const*>> AstContainersOfEscapingBorrows;
 
   /**
    * The @c initialization_counter that was present in the owning @c MemoryInfo at the time of the snapshot.

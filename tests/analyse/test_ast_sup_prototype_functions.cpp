@@ -113,6 +113,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = BaseClass[Bool]()
         let mut y = x.f()
         y = false
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -129,5 +130,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = BaseClass(a=false)
         let mut y = x.f()
         y = false
+        std::mem::ops::drop(x)
     }
 )");

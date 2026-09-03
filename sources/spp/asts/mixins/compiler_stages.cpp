@@ -1,6 +1,6 @@
 module;
-#include <spp/analyse/macros.hpp>
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.mixins.compiler_stages;
 import spp.analyse.errors.semantic_error;
@@ -82,7 +82,7 @@ auto spp::asts::mixins::CompilerStages::Stage9_CompTimeResolve(
 auto spp::asts::mixins::CompilerStages::Stage10_PreCodeGen(
   ScopeManager *,
   CompilerMetaData *,
-  codegen::LLvmCtx *)
+  codegen::LlvmCtx *)
   -> llvm::Value* {
   // Default behaviour: no llvm generation => nullptr value returned,
   return nullptr;
@@ -91,7 +91,7 @@ auto spp::asts::mixins::CompilerStages::Stage10_PreCodeGen(
 auto spp::asts::mixins::CompilerStages::Stage11_CodeGen(
   ScopeManager *,
   CompilerMetaData *,
-  codegen::LLvmCtx *)
+  codegen::LlvmCtx *)
   -> llvm::Value* {
   // Default behaviour: no llvm generation => nullptr value returned,
   return nullptr;

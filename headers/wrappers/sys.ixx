@@ -1,51 +1,62 @@
 module;
+#include <spp/macros-platforms.hpp>
+
+#if SPP_PLATFORM_WINDOWS && !defined(_CRT_NONSTDC_NO_WARNINGS)
+#define _CRT_NONSTDC_NO_WARNINGS
+#endif
+
 #include <errno.h>
+#include <fcntl.h>
+#include <functional>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
-#include <sys/file.h>
-#include <functional>
+#include <sys/types.h>
+
+#if SPP_PLATFORM_WINDOWS
+#include <direct.h>
+#include <io.h>
+#include <stddef.h>
+
+#define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
+#else
+#include <unistd.h>
+#endif
 
 #define LEGACY_STDERR stderr
 #define LEGACY_STDIN stdin
 #define LEGACY_STDOUT stdout
-#define LEGACY_FWRLCK F_WRLCK
-#define LEGACY_FRDLCK F_RDLCK
-#define LEGACY_ORDWR O_RDWR
-#define LEGACY_OCREAT O_CREAT
-#define LEGACY_SEEKSET SEEK_SET
-#define LEGACY_FSETLK F_SETLK
-#define LEGACY_FSETLKW F_SETLKW
-#define LEGACY_FUNLCK F_UNLCK
 #define LEGACY_ERRNO errno
 #define LEGACY_S_ISDIR S_ISDIR
-#define LEGACY_LOCK_EX LOCK_EX
-#define LEGACY_LOCK_SH LOCK_SH
-#define LEGACY_LOCK_UN LOCK_UN
-#define LEGACY_LOCK_NB LOCK_NB
 
 #undef stderr
 #undef stdin
 #undef stdout
-#undef F_WRLCK
-#undef F_RDLCK
-#undef O_RDWR
-#undef O_CREAT
-#undef SEEK_SET
-#undef F_SETLK
-#undef F_SETLKW
-#undef F_UNLCK
 #undef errno
 #undef S_ISDIR
-#undef LOCK_EX
-#undef LOCK_SH
-#undef LOCK_UN
-#undef LOCK_NB
+#undef O_RDONLY
+#undef O_RDWR
+#undef SEEK_SET
 
 export module sys;
 
 export namespace sys {
+#if SPP_PLATFORM_WINDOWS
+  // The CRT has none of these under their POSIX names: mode_t and
+  // ssize_t it never declares, and strcasecmp it spells _stricmp.
+  // They live here rather than in the global module fragment, which
+  // may hold preprocessor directives and nothing else.
+  using mode_t = unsigned short;
+  using ssize_t = ::ptrdiff_t;
+
+  inline auto strcasecmp(const char *const lhs, const char *const rhs) -> int {
+    return ::_stricmp(lhs, rhs);
+  }
+#else
+  using ::ssize_t;
+  using ::strcasecmp;
+#endif
+
   using ::close;
   using ::chdir;
   using ::fdopen;
@@ -54,29 +65,17 @@ export namespace sys {
   using ::open;
   using ::read;
   using ::rmdir;
-  using ::strcasecmp;
   using ::stat;
   using ::write;
-  using ::flock;
-  using ::ssize_t;
 
-  FILE *stdout = LEGACY_STDERR;
+  FILE *stdout = LEGACY_STDOUT;
   FILE *stdin = LEGACY_STDIN;
-  FILE *stderr = LEGACY_STDOUT;
-  const short F_WRLCK = LEGACY_FWRLCK;
-  const short F_RDLCK = LEGACY_FRDLCK;
-  const int O_RDWR = LEGACY_ORDWR;
-  const int O_CREAT = LEGACY_OCREAT;
-  const short SEEK_SET = LEGACY_SEEKSET;
-  const int F_SETLK = LEGACY_FSETLK;
-  const int F_SETLKW = LEGACY_FSETLKW;
-  const short F_UNLCK = LEGACY_FUNLCK;
+  FILE *stderr = LEGACY_STDERR;
+  constexpr auto O_RDONLY = 0;
+  constexpr auto O_RDWR = 2;
+  constexpr auto SEEK_SET = static_cast<short>(0);
   int errno = LEGACY_ERRNO;
   std::function<int(mode_t)> S_ISDIR = [](const mode_t mode) {
     return LEGACY_S_ISDIR(mode);
   };
-  const int LOCK_EX = LEGACY_LOCK_EX;
-  const int LOCK_SH = LEGACY_LOCK_SH;
-  const int LOCK_UN = LEGACY_LOCK_UN;
-  const int LOCK_NB = LEGACY_LOCK_NB;
 }

@@ -2,9 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_postfix_expression_ast;
-import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.type_ast;
+import spp.asts.type_postfix_expression_operator_ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -55,25 +57,33 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto Iterator() const
-    -> Vec<Shared<const TypeIdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto AnyPart(
+    std::function<bool(TypeIdentifierAst const&)> const &pred) const -> bool override;
 
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept
     -> bool override;
 
+  auto NsPartsInto(Vec<IdentifierAst const*> &out) const
+    -> void override;
+
+  auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const
+    -> void override;
+
   SPP_ATTR_NODISCARD auto NsParts() const
-    -> Vec<Shared<const IdentifierAst>> override;
+    -> Vec<IdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto NsParts()
-    -> Vec<Shared<IdentifierAst>> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto LastTypePart() const
     -> TypeIdentifierAst const* override;

@@ -3,7 +3,7 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_1, R"(
-    fun f(mut a: StrView or U64 or Bool) -> Void {
+    fun f(mut a: &StrView or U64 or Bool) -> Void {
         a = "hello world"
     }
 )");
@@ -13,6 +13,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_type_assign_2, R"(
     fun f(mut a: Str or U64 or Bool) -> Void {
         a = 123_u64
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -21,6 +22,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_type_assign_3, R"(
     fun f(mut a: Str or U64 or Bool) -> Void {
         a = true
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -29,6 +31,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_type_assign_from_subset_variant_1, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or U64) -> Void {
         a = b
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -37,6 +40,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_type_assign_from_subset_variant_2, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or Bool) -> Void {
         a = b
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -45,6 +49,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_type_assign_from_subset_variant_3, R"(
     fun f(mut a: Str or U64 or Bool, b: U64 or Bool) -> Void {
         a = b
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -53,6 +58,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_type_assign_from_equal_variant, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool) -> Void {
         a = b
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -61,6 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_collapse_arguments, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool or Bool) -> Void {
         a = b
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -91,10 +98,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A variant may hold a borrow. These asserted the opposite, which the language cannot afford: "view.spp" indexes
+// through "Indexed[&T or None]" everywhere, and narrowing a variant to its borrowed alternative is how a borrow is
+// read back out of one. The restriction that does hold is on a type alias - see
+// "test_invalid_type_statement_old_type_convention_ref" - because an alias presents no convention of its own while
+// the type it resolves to has one, and every convention comparison downstream then asks the wrong question.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
-    test_variant_including_a_borrowed_type_1,
-    SppSecondClassBorrowViolationError, R"(
+    test_variant_including_a_borrowed_type_1, R"(
     fun f(a: &StrView or U64 or Bool) -> Str {
         ret case a of {
             is &StrView(..) { Str::from(a) }
@@ -103,11 +114,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// ...including alongside an owned alternative, which is what makes the variant itself owned and so still owed.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
-    test_variant_including_a_borrowed_type_2,
-    SppSecondClassBorrowViolationError, R"(
+    test_variant_including_a_borrowed_type_2, R"(
     fun f(a: Str or &mut U64 or Bool) -> Str {
+        std::mem::ops::drop(a)
         ret Str::from("hello")
     }
 )");
@@ -116,12 +128,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_and_tuple_combination, R"(
     fun g(a: (Opt[Str], U64)) -> Str {
+        std::mem::ops::drop(a)
         ret Str::from("hello world")
     }
 
     fun f() -> Void {
         let t = (Some(val=Str::from("hello world")), 123_u64)
         let a = g(t)
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -138,13 +152,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_as_let_annotation, R"(
     fun f() -> Void {
         let x: Bool or Str = true
+        std::mem::ops::drop(x)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_as_function_argument, R"(
-    fun g(x: Bool or Str) -> Void { }
+    fun g(x: Bool or Str) -> Void {
+        std::mem::ops::drop(x)
+    }
 
     fun f() -> Void {
         g(true)
@@ -160,6 +177,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A(x=true)
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -168,6 +186,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_as_generic_argument, R"(
     fun f() -> Void {
         let v = Vec[Bool or Str]()
+        std::mem::ops::drop(v)
     }
 )");
 
@@ -176,6 +195,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_as_array_element, R"(
     fun f(mut a: [Bool or Str; 2_uz]) -> Void {
         a = [true, Str::from("hello")]
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -184,6 +204,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_as_repeated_array_element, R"(
     fun f(mut a: [Bool or Str; 2_uz]) -> Void {
         a = [true; 2_uz]
+        std::mem::ops::drop(a)
     }
 )");
 

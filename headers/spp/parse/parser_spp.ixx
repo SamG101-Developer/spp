@@ -137,6 +137,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorDerefAst;
   SPP_EXP_CLS struct ParenthesisedExpressionAst;
+  SPP_EXP_CLS struct DeferStatementAst;
   SPP_EXP_CLS struct RetStatementAst;
   SPP_EXP_CLS struct StatementAst;
   SPP_EXP_CLS struct TokenAst;
@@ -323,6 +324,7 @@ public:
   auto parse_assignment_target_primary_expression() -> Unique<asts::ExpressionAst>;
 
   auto parse_ret_statement() -> Unique<asts::RetStatementAst>;
+  auto parse_defer_statement() -> Unique<asts::DeferStatementAst>;
   auto parse_exit_statement() -> Unique<asts::LoopControlFlowStatementAst>;
   auto parse_exit_statement_with_value() -> Unique<asts::LoopControlFlowStatementAst>;
   auto parse_skip_statement() -> Unique<asts::LoopControlFlowStatementAst>;
@@ -368,6 +370,10 @@ public:
   auto parse_object_initializer_argument_shorthand() -> Unique<asts::ObjectInitializerArgumentShorthandAst>;
 
   auto parse_closure_expression() -> Unique<asts::ClosureExpressionAst>;
+
+  auto parse_closure_expression_with_return_type() -> Unique<asts::ClosureExpressionAst>;
+
+  auto parse_closure_expression_without_return_type() -> Unique<asts::ClosureExpressionAst>;
   auto parse_closure_expression_capture_group() -> Unique<asts::ClosureExpressionCaptureGroupAst>;
   auto parse_closure_expression_capture() -> Unique<asts::ClosureExpressionCaptureAst>;
   auto parse_closure_expression_parameter_and_capture_group()
@@ -478,7 +484,6 @@ public:
   auto parse_token_colon() -> Unique<asts::TokenAst>;
   auto parse_token_comma() -> Unique<asts::TokenAst>;
   auto parse_token_assign() -> Unique<asts::TokenAst>;
-  auto parse_token_at() -> Unique<asts::TokenAst>;
   auto parse_token_underscore() -> Unique<asts::TokenAst>;
   auto parse_token_less_than() -> Unique<asts::TokenAst>;
   auto parse_token_greater_than() -> Unique<asts::TokenAst>;
@@ -495,7 +500,6 @@ public:
   auto parse_token_exclamation_mark() -> Unique<asts::TokenAst>;
   auto parse_token_deref() -> Unique<asts::TokenAst>;
   auto parse_token_borrow() -> Unique<asts::TokenAst>;
-  auto parse_token_vertical_bar() -> Unique<asts::TokenAst>;
   auto parse_token_semicolon() -> Unique<asts::TokenAst>;
   auto parse_token_single_quote() -> Unique<asts::TokenAst>;
   auto parse_token_double_quote() -> Unique<asts::TokenAst>;
@@ -544,6 +548,7 @@ public:
   auto parse_keyword_ret() -> Unique<asts::TokenAst>;
   auto parse_keyword_exit() -> Unique<asts::TokenAst>;
   auto parse_keyword_skip() -> Unique<asts::TokenAst>;
+  auto parse_keyword_defer() -> Unique<asts::TokenAst>;
   auto parse_keyword_is() -> Unique<asts::TokenAst>;
   auto parse_keyword_as() -> Unique<asts::TokenAst>;
   auto parse_keyword_or() -> Unique<asts::TokenAst>;
@@ -559,4 +564,13 @@ public:
 
 private:
   auto m_store_error(std::size_t pos, Str &&err_str) const -> bool;
+
+  /**
+   * Check whether a line feed sits between the token just parsed and the next one. Tokens otherwise skip line feeds
+   * freely, so the postfix operators that open with a bracket use this to stay on the line of what they apply to. A
+   * "(" or "[" starting a line begins a statement of its own - a tuple or array literal - and reading it as a call or
+   * an index would swallow the statement into the one above it.
+   * @return Whether a line feed is the next non-space token.
+   */
+  auto m_line_feed_ahead() const -> bool;
 };

@@ -2,12 +2,21 @@
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
+    test_invalid_async_unknown_target,
+    SppIdentifierUnknownError, R"(
+    fun g() -> Void {
+        async x()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_bad_target_1,
     SppInvalidPrimaryExpressionError, R"(
     fun g() -> Void {
         async Bool
     }
-)");
+)")
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
@@ -58,6 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_async_method_call, R"(
     cls A { }
     sup A {
+        !public
         fun method(&self) -> Str { ret Str::from("hello") }
     }
     fun g() -> Void {
@@ -74,6 +84,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let mut x = async f()
         x = Fut[Str]()
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -84,5 +95,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let mut x = async f("hello")
         x = Fut[Void]()
+        std::mem::ops::drop(x)
     }
 )");

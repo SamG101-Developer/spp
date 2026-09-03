@@ -40,14 +40,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
     test_invalid_moving_non_copy_cmp,
     SppMovingComptimeConstantMemoryError, R"(
+    cls X { }
+
     cls MyType { }
     sup MyType {
-        !public cmp n: (Bool, Bool) = (false, false)
+        !public cmp n: (X, X) = (X(), X())
     }
 
     fun f() -> Void {
         let mut local_n = MyType::n
-        local_n = (false, false)
+        local_n = (X(), X())
     }
 )");
 

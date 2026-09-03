@@ -1,0 +1,23 @@
+[[rule]]
+id = "no-std-ranges"
+enabled = true
+pattern = 'std::(?:ranges|views)::|#\s*include\s*<ranges>'
+message = "use genex instead (genex::views, genex::actions, genex::find_if, ...)"
+files = '\.(?:cpp|ixx|hpp)$'
+allow = ["headers/spp/utils/types.ixx"]
+
+[[rule]]
+id = "no-std-pointer-cast"
+enabled = true
+pattern = 'std::\w+_pointer_cast\b'
+message = "use the spp wrappers instead (dynamic_shared_cast, static_shared_cast, const_shared_cast, mut_shared_cast)"
+files = '\.(?:cpp|ixx|hpp)$'
+allow = ["headers/spp/utils/ptr.ixx"]
+
+[[rule]]
+id = "no-raw-dynamic-const-cast"
+enabled = false
+pattern = '\b(?:dynamic|const)_cast\s*<'
+message = "use the spp wrappers instead (dynamic_unique_cast, Ast::ToUnchecked, ...)"
+files = '\.(?:cpp|ixx|hpp)$'
+allow = ["headers/spp/utils/ptr.ixx"]

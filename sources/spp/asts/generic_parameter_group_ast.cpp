@@ -16,10 +16,10 @@ import spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.generic_parameter_comp_required_ast;
 import spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_type_ast;
-import spp.asts.generic_parameter_type_required_ast;
-import spp.asts.generic_parameter_type_optional_ast;
-import spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.generic_parameter_type_optional_ast;
+import spp.asts.generic_parameter_type_required_ast;
+import spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -224,6 +224,22 @@ auto spp::asts::GenericParameterGroupAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
+  //
+  using analyse::errors::SppIdentifierDuplicateError;
+
+  // Checked here rather than at stage 7, where the rest of this group's validation lives, because the parameters
+  // register their symbols in the loop below. Two parameters sharing a name register twice, and analysis then carries
+  // on for another five stages over a scope whose symbol table already disagrees with the source - which surfaced as
+  // an unrelated failure in whichever file was analysed next, rather than as the duplicate that caused it.
+  const auto duplicate_names = Params
+    | genex::views::transform([](auto const &x) { return x->Name.get(); })
+    | genex::to<Vec>()
+    | genex::views::duplicates({}, genex::meta::deref)
+    | genex::to<Vec>();
+  RaiseIf<SppIdentifierDuplicateError>(
+    not duplicate_names.IsEmpty(), {sm->CurrentScope},
+    ERR_ARGS(*duplicate_names[0], *duplicate_names[1], "generic parameter"));
+
   // Run the generation steps on the parameters in the group.
   for (auto const &p : Params) { p->Stage2_GenTopLvlScopes(sm, meta); }
 }
@@ -235,20 +251,23 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
   // Run the type qualifier steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage4_QualifyTypes(sm, meta); }
 
-  // Do the constraints after all the parameters are qualified. This is because of external generic symbols using
-  // unqualified types when analysing generically substituted constraint types.
+  // Do the constraints after all the parameters are qualified.
+  // This is because of external generic symbols using unqualified
+  // types when analysing generically substituted constraint types.
   for (auto const &p : GetTypeParams()) {
     p->Constraints->Stage4_QualifyTypes(sm, meta);
 
     // Attach the scopes of the constraint types as sup-scopes to the generic scope.
     for (auto const &constraint : p->Constraints->Constraints) {
-      auto constraint_scope = sm->CurrentScope->GetTypeSymbol(constraint.get())->LinkedScope;
+      const auto constraint_sym = sm->CurrentScope->GetTypeSymbol(constraint.get());
       for (auto const &dummy_scope : p->GetDummyScopes()) {
-        dummy_scope->DirectSupScopes.EmplaceBack(constraint_scope);
+        analyse::scopes::BumpTypeStructureGeneration();
+        dummy_scope->DirectSupScopes.EmplaceBack(constraint_sym->LinkedScope);
       }
     }
 
-    p->GetDummyScopes()[0]->TySym->GenericConstraints = AstCloneVecShared(p->Constraints->Constraints);
+    const auto dummy_scopes = p->GetDummyScopes();
+    dummy_scopes[0]->TySym->GenericConstraints = AstCloneVecShared(p->Constraints->Constraints);
   }
 }
 
@@ -257,17 +276,9 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::errors::SppIdentifierDuplicateError;
   using analyse::errors::SppOrderInvalidError;
-  using analyse::utils::type_utils::IsTypeCopyable;
 
-  //
-  const auto param_names = Params
-    | genex::views::transform([](auto const &x) { return x->Name.get(); })
-    | genex::to<Vec>()
-    | genex::views::duplicates({}, genex::meta::deref)
-    | genex::to<Vec>();
-
+  // Duplicate parameter names are caught at stage 2, before the symbols are registered.
   const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
@@ -276,23 +287,20 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
   // Mark copyable generics.
   for (auto const &p : GetTypeParams()) {
     for (auto const &constraint : p->Constraints->Constraints) {
-      if (IsTypeCopyable(*constraint, *sm)) {
+      const auto constraint_sym = sm->CurrentScope->GetTypeSymbol(constraint.get());
+      if (constraint_sym->IsCopyable()) {
         const auto generic_sym = sm->CurrentScope->GetTypeSymbol(p->Name.get());
         generic_sym->IsDirectlyCopyable = true;
       }
     }
   }
 
-  // Check there are no duplicate parameter names.
-  RaiseIf<SppIdentifierDuplicateError>(
-    not param_names.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
-
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(
     not unordered_params.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(unordered_params[0].First, *unordered_params[0].Second, unordered_params[1].First,
-             *unordered_params[1].Second));
+    ERR_ARGS(
+      unordered_params[0].first, *unordered_params[0].second,
+      unordered_params[1].first, *unordered_params[1].second));
 
   // Run the semantic analysis steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage7_AnalyseSemantics(sm, meta); }
@@ -309,7 +317,7 @@ auto spp::asts::GenericParameterGroupAst::Stage8_CheckMemory(
 auto spp::asts::GenericParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Run the code generation steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage11_CodeGen(sm, meta, ctx); }

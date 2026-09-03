@@ -5,8 +5,8 @@ module spp.asts.type_binary_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
-import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(

@@ -7,17 +7,22 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.monomorphization_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.identifier_ast;
-import spp.asts.module_prototype_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.module_member_ast;
+import spp.asts.module_prototype_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
@@ -29,6 +34,36 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.utils.error_formatter;
 import genex;
+
+namespace spp::analyse::scopes {
+  namespace {
+    auto GetSupGenericParamsFromScope(
+      Scope const &sup_scope)
+      -> asts::GenericParameterGroupAst const* {
+      //
+      using namespace spp::asts;
+      if (auto const *fns = sup_scope.AstNode->To<SupPrototypeFunctionsAst>(); fns != nullptr) {
+        return fns->GnParamGroup.get();
+      }
+      if (auto const *ext = sup_scope.AstNode->To<SupPrototypeExtensionAst>(); ext != nullptr) {
+        return ext->GnParamGroup.get();
+      }
+      return nullptr;
+    }
+
+    auto SupConstrainsItsParams(
+      Scope const &sup_scope)
+      -> bool {
+      //
+      auto const *params = GetSupGenericParamsFromScope(sup_scope);
+      if (params == nullptr) { return false; }
+
+      return genex::any_of(params->GetTypeParams(), [](auto const *p) {
+        return not p->Constraints->Constraints.IsEmpty();
+      });
+    }
+  }
+}
 
 SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeManager::ScopeManager(
@@ -84,7 +119,7 @@ auto spp::analyse::scopes::ScopeManager::MoveToNextScope(
   CurrentScope = *++_It;
   while (ignore_alias_class_scopes and CurrentScope->TySym != nullptr
     and
-    CurrentScope->TySym->AliasStmt != nullptr) {
+    CurrentScope->TySym->Alias != nullptr) {
     CurrentScope = *++_It;
   }
   return CurrentScope;
@@ -96,61 +131,6 @@ auto spp::analyse::scopes::ScopeManager::ExhaustScope()
   const auto final_scope = CurrentScope->FinalChildScope();
   while (CurrentScope != final_scope) {
     MoveToNextScope(false);
-  }
-}
-
-auto spp::analyse::scopes::ScopeManager::AttachLlvmTypeInfo(
-  asts::ModulePrototypeAst const &mod,
-  codegen::LLvmCtx *ctx) const
-  -> void {
-  // Iterate the members of the module, filter to class prototypes, and call the register function.
-
-  auto cls_members = Vec<asts::ClassPrototypeAst*>{};
-  for (auto const &member : mod.Impl->Members) {
-    if (const auto cls_member = member->To<asts::ClassPrototypeAst>(); cls_member != nullptr) {
-      cls_members.EmplaceBack(cls_member);
-    }
-
-    if (const auto sup_member = member->To<asts::SupPrototypeFunctionsAst>(); sup_member != nullptr) {
-      for (auto const &sup_member_inner : sup_member->Impl->Members) {
-        if (const auto cls_sup_member = sup_member_inner->To<asts::ClassPrototypeAst>(); cls_sup_member != nullptr) {
-          cls_members.EmplaceBack(cls_sup_member);
-        }
-      }
-    }
-
-    if (const auto ext_member = member->To<asts::SupPrototypeExtensionAst>(); ext_member != nullptr) {
-      for (auto const &ext_member_inner : ext_member->Impl->Members) {
-        if (const auto cls_ext_member = ext_member_inner->To<asts::ClassPrototypeAst>(); cls_ext_member != nullptr) {
-          cls_members.EmplaceBack(cls_ext_member);
-        }
-      }
-    }
-  }
-
-  for (auto const &cls_proto : cls_members) {
-    // If this is not a base generic (Vec::Vec)
-    if (cls_proto->GetRegisteredGenericSubstitutions().IsEmpty()) {
-      codegen::RegisterLlvmTypeInfo(cls_proto, ctx);
-
-      // All aliases need llvm type info propagated from their aliased types.
-      const auto llvm_type = codegen::GetLlvmType(*cls_proto->GetAstScope()->TySym, ctx);
-      for (auto const &alias_sym : cls_proto->GetAstScope()->TySym->AliasedBySyms) {
-        alias_sym->LlvmInfo->LlvmType = llvm_type;
-      }
-    }
-
-    // All concrete generic implementations (not Vec::Vec[T]).
-    // Todo: don't generate when one of the generics is "comp->identifier" or "type->generic"
-    for (auto const &generic_sub : cls_proto->GetRegisteredGenericSubstitutions()) {
-      codegen::RegisterLlvmTypeInfo(generic_sub.Second, ctx);
-
-      // All generic aliases need llvm type info propagated from their aliased types.
-      const auto llvm_type = codegen::GetLlvmType(*generic_sub.Second->GetAstScope()->TySym, ctx);
-      for (auto const &alias_sym : generic_sub.Second->GetAstScope()->TySym->AliasedBySyms) {
-        alias_sym->LlvmInfo->LlvmType = llvm_type;
-      }
-    }
   }
 }
 
@@ -184,7 +164,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
   // Handle type symbols.
   if (scope.TySym != nullptr) {
     const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics().get());
-    auto scopes = normal_sup_blocks[non_generic_sym.get()];
+    auto scopes = normal_sup_blocks[non_generic_sym];
     scopes.AppendRange(generic_sup_blocks);
     AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta, deferred);
   }
@@ -197,12 +177,13 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
   Vec<DeferredSupConstraint> *deferred) const
   -> void {
   //
-  using utils::type_utils::CreateGenericSupScope;
-  using utils::type_utils::RelaxedTypeEq;
-  using utils::type_utils::GenericInferenceMap;
+  using utils::monomorphization_utils::CreateGenericSupScope;
+  using utils::type_compare::RelaxedTypeEq;
+  using utils::type_compare::GenericInferenceMap;
   if (sup_scopes.IsEmpty()) { return; }
 
   // Clear the sup scopes list.
+  BumpTypeStructureGeneration();
   scope.DirectSupScopes.Clear();
   const auto fq_type = scope.TySym->FqName();
   auto const &cls_sym = scope.TySym;
@@ -215,7 +196,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     // Load the generics.
     if (not RelaxedTypeEq(
       *fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *sup_scope,
-      scope_generics_map, false, false)) { continue; }
+      scope_generics_map, false, false, true)) { continue; }
     auto scope_generics = asts::GenericArgumentGroupAst::FromMap(std::move(scope_generics_map));
 
     // Create a generic version of the super scope if needed.
@@ -238,7 +219,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
       // agnostic. On-demand attachment (deferred == nullptr) checks the constraint inline as before.
       if (auto _ = GenericInferenceMap(); not RelaxedTypeEq(
         *fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *new_sup_scope,
-        _, false, deferred == nullptr)) { continue; }
+        _, false, deferred == nullptr, true)) { continue; }
       defer_constraint = deferred != nullptr;
     }
     else {
@@ -246,6 +227,17 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
       new_sup_scope = sup_scope;
       new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass.get())->LinkedScope : nullptr;
       sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
+
+      // Nothing bound, so there is no substitution to record - but a constraint declared here still has to be
+      // checked. A variadic parameter is what reaches this: it stands for a list of types, so the match binds it to
+      // nothing, while "sup [..T: Copy] Tup[T]" still constrains every element it swallowed. Deferred in the bulk
+      // pass and checked inline on demand, for the same reasons as the branch above.
+      if (SupConstrainsItsParams(*sup_scope)) {
+        if (deferred != nullptr) { defer_constraint = true; }
+        else if (auto _ = GenericInferenceMap(); not RelaxedTypeEq(
+          *fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *new_sup_scope,
+          _, false, true, true)) { continue; }
+      }
     }
 
     // Prevent double inheritance, cyclic inheritance and self extension.
@@ -256,6 +248,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     }
 
     // Register the super scope against the current scope.
+    BumpTypeStructureGeneration();
     scope.DirectSupScopes.EmplaceBack(new_sup_scope);
 
     // Register the super scope's class scope against the current scope, if it is different. This "difference" check
@@ -263,6 +256,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     const auto cls_scope_attached = new_cls_scope and scope.TySym != new_cls_scope->TySym;
     if (cls_scope_attached) {
       // Todo: is this definitely the generically substituted "new_cls_scope"?
+      BumpTypeStructureGeneration();
       scope.DirectSupScopes.EmplaceBack(new_cls_scope);
     }
 
@@ -287,8 +281,8 @@ auto spp::analyse::scopes::ScopeManager::PruneUnsatisfiedSupConstraints(
   asts::meta::CompilerMetaData * /*meta*/) const
   -> void {
   // Todo: Genex usage
-  using utils::type_utils::RelaxedTypeEq;
-  using utils::type_utils::GenericInferenceMap;
+  using utils::type_compare::RelaxedTypeEq;
+  using utils::type_compare::GenericInferenceMap;
 
   // Repeat until no further attachments are pruned: pruning one attachment can invalidate the constraint of
   // another that depends on it (transitive constraint chains), so a single pass is not sufficient.
@@ -305,7 +299,7 @@ auto spp::analyse::scopes::ScopeManager::PruneUnsatisfiedSupConstraints(
       const auto fq_type = dc.owner_scope->TySym->FqName();
       if (RelaxedTypeEq(
         *fq_type, *asts::AstName(dc.base_sup_scope->AstNode), *dc.owner_scope->TySym->ScopeDefinedIn, *dc.sup_scope,
-        _, false, true)) { continue; }
+        _, false, true, true)) { continue; }
 
       // The constraint is not satisfied, so remove the attached super scope (and its paired class scope).
       auto &sup_scopes = dc.owner_scope->DirectSupScopes;
@@ -323,14 +317,14 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
   Scope const &sup_scope)
   -> void {
   // Get the scopes to check for conflicts in.
-  auto dummy = utils::type_utils::GenericInferenceMap();
+  auto dummy = utils::type_compare::GenericInferenceMap();
   const auto existing_scopes = cls_sym.LinkedScope->DirectSupScopes
     | genex::views::filter([&](auto *scope) {
       return scope->AstNode->template To<asts::SupPrototypeExtensionAst>()
         or scope->AstNode->template To<asts::SupPrototypeFunctionsAst>();
     })
     | genex::views::filter([&](auto *scope) {
-      return utils::type_utils::RelaxedTypeEq(
+      return utils::type_compare::RelaxedTypeEq(
         *asts::AstName(sup_scope.AstNode), *asts::AstName(scope->AstNode), sup_scope, *scope->AstNode->GetAstScope(),
         dummy);
     })
@@ -382,8 +376,11 @@ auto spp::analyse::scopes::ScopeManager::SelfProto() const
 
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   normal_sup_blocks.clear();
+  utils::type_members::ClearUnimplementedAbstractMethodsCache();
+  utils::monomorphization_utils::ClearSupScopeInstantiations();
   generic_sup_blocks.Clear();
   temp_scopes.Clear();
+  asts::GenericParameterTypeAst::ClearDummyScopes();
 }
 
 SPP_MOD_END

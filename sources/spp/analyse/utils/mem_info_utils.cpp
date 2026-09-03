@@ -45,9 +45,9 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::Snapshot() const
   -> MemoryInfoSnapshot {
   // Create and return the snapshot.
   return MemoryInfoSnapshot(
-    std::get<0>(AstInitialization), std::get<1>(AstInitialization),
-    std::get<0>(AstMoved), std::get<1>(AstMoved),
-    AstPartialMoves, AstContainedEscapingBorrows, InitializationCounter);
+    spp::get<0>(AstInitialization), spp::get<1>(AstInitialization),
+    spp::get<0>(AstMoved), spp::get<1>(AstMoved),
+    AstPartialMoves, AstContainedEscapingBorrows, AstContainersOfEscapingBorrows, InitializationCounter);
 }
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
@@ -59,6 +59,7 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
   out->AstBorrowed = AstBorrowed;
   out->AstPartialMoves = AstPartialMoves;
   out->AstContainedEscapingBorrows = AstContainedEscapingBorrows;
+  out->AstContainersOfEscapingBorrows = AstContainersOfEscapingBorrows;
   out->AstCompTime = asts::AstClone(AstCompTime);
   out->InitializationCounter = InitializationCounter;
   out->IsInconsistentlyInitialized = IsInconsistentlyInitialized;
@@ -74,6 +75,7 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::FillFromSnapshot(
   AstMoved = {snapshot.AstMoved, snapshot.ScopeMoved};
   AstPartialMoves = snapshot.AstPartialMoves;
   AstContainedEscapingBorrows = snapshot.AstContainedEscapingBorrows;
+  AstContainersOfEscapingBorrows = snapshot.AstContainersOfEscapingBorrows;
   InitializationCounter = snapshot.InitializationCounter;
 }
 

@@ -20,22 +20,25 @@ auto spp::analyse::utils::assignment_utils::IsIdentifier(
 auto spp::analyse::utils::assignment_utils::IsAttr(
   asts::Ast const *expr,
   scopes::ScopeManager const *sm) -> bool {
-  // Determine if the AST node is an attribute (ie not an identifier).
+  // Determine if the AST node is an attribute (ie not
+  // an identifier).
   const auto *const postfix = expr->To<asts::PostfixExpressionAst>();
   if (postfix == nullptr) { return false; }
   if (postfix->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
 
   // Perform validation on the actual attribute too.
   auto const var_symbol_outermost = sm->CurrentScope->GetVarSymbolOutermost(*expr);
-  return var_symbol_outermost.First != nullptr;
+  return var_symbol_outermost.first != nullptr;
 }
 
 auto spp::analyse::utils::assignment_utils::IsDeref(
   asts::Ast const *expr) -> bool {
-  // Determine if the AST node is an attribute (ie not an identifier).
+  // Determine if the AST node is a deref op (ie not
+  // an identifier or an attribute).
   const auto *const postfix = expr->To<asts::PostfixExpressionAst>();
   if (postfix == nullptr) { return false; }
 
-  // Check the operator on the postfix expression ast node.
+  // Check the operator on the postfix expression ast
+  // node.
   return postfix->Op->To<asts::PostfixExpressionOperatorDerefAst>() != nullptr;
 }

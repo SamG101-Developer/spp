@@ -11,23 +11,24 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
-import spp.asts.identifier_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
+import spp.asts.identifier_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.asts.generate.common_types_precompiled;
 import spp.lex.tokens;
 import genex;
 
@@ -153,7 +154,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
 
   // Move into the superimposition scope.
   sm->MoveToNextScope();
@@ -161,21 +162,25 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 
   // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
   // methods are declared.
-  meta->Save();
-  meta->AllowAbstractType = true;
-  Name->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AllowAbstractType = true;
+    Name->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Name, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalName, "superimposition type"));
-  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName();
+
+  // A "$Func" mock keeps its bare name here - see the
+  // matching note in "SupPrototypeExtensionAst".
+  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true);
 
   // Register the superimposition against the base symbol.
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
   if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
     if (not base_cls_sym->IsGeneric) {
-      ScopeManager::normal_sup_blocks[base_cls_sym.get()].EmplaceBack(sm->CurrentScope);
+      ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
     }
     else {
       ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
@@ -214,7 +219,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+  using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
   using generate::common_types_precompiled::SELF_TYPE;
 
   // Move to the next scope.
@@ -223,18 +228,19 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
 
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
-  meta->Save();
-  meta->AllowAbstractType = true;
-  Name->ResetCache();
-  Name->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->AllowAbstractType = true;
+    Name->ResetCache();
+    Name->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Re-map "Self" to the true type.
   if (not Name->IsCompilerGeneratedType()) {
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
     self_sym->Type = cls_sym->Type;
-    cls_sym->AliasedBySyms.EmplaceBack(self_sym);
+    cls_sym->AliasedBySyms.EmplaceBack(self_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
   }
 
   const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
@@ -270,7 +276,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage9_CompTimeResolve(
 auto spp::asts::SupPrototypeFunctionsAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -283,32 +289,11 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage10_PreCodeGen(
 auto spp::asts::SupPrototypeFunctionsAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
-  // SPP_ASSERT(sm->CurrentScope == _Scope);
-
-  // Check if this block is purely generic.
-  const auto is_generic_scope =
-    genex::any_of(sm->CurrentScope->AllTypeSymbols(true), [](auto const &x) { return x->IsGeneric; }) or
-    genex::any_of(sm->CurrentScope->AllVarSymbols(true),
-                  [](auto const &x) { return x->MemInfo->AstCompTime == nullptr; });
-
-  // Generate the implementation if not a generic scope.
-  if (not is_generic_scope) {
-    Impl->Stage11_CodeGen(sm, meta, ctx);
-  }
-
-  // Generic sup block so not generating for it.
-  // Manual scope skipping.
-  else {
-    const auto final_scope = sm->CurrentScope->FinalChildScope();
-    while (sm->CurrentScope != final_scope) {
-      sm->MoveToNextScope(false);
-    }
-  }
-
+  Impl->Stage11_CodeGen(sm, meta, ctx);
   sm->MoveOutOfCurrentScope();
   return nullptr;
 }

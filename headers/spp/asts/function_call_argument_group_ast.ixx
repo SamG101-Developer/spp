@@ -65,4 +65,6 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto At(const char *key) const -> FunctionCallArgumentAst const*;
+
+  auto ConvertToPositional() const -> Unique<FunctionCallArgumentGroupAst>;
 };

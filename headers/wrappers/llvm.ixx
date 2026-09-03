@@ -2,8 +2,10 @@ module;
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/DiagnosticInfo.h>
+#include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
@@ -15,6 +17,7 @@ export namespace llvm {
   using ::llvm::dyn_cast;
   using ::llvm::dyn_cast_or_null;
   using ::llvm::errs;
+  using ::llvm::outs;
   using ::llvm::isa;
   using ::llvm::install_fatal_error_handler;
   using ::llvm::verifyFunction;
@@ -41,6 +44,8 @@ export namespace llvm {
   using ::llvm::ConstantPointerNull;
   using ::llvm::ConstantTokenNone;
   using ::llvm::ConstantStruct;
+  using ::llvm::DiagnosticInfo;
+  using ::llvm::DiagnosticPrinterRawOStream;
   using ::llvm::Function;
   using ::llvm::FunctionType;
   using ::llvm::GlobalValue;
@@ -62,6 +67,9 @@ export namespace llvm {
   using ::llvm::TypeSize;
   using ::llvm::UndefValue;
   using ::llvm::Value;
+
+  using ::llvm::DS_Warning;
+  using ::llvm::DS_Error;
 
   namespace sys::fs {
     using ::llvm::sys::fs::OpenFlags;
@@ -101,11 +109,16 @@ export namespace llvm {
     using ::llvm::Intrinsic::ssub_with_overflow;
     using ::llvm::Intrinsic::usub_with_overflow;
 
+    using ::llvm::Intrinsic::coro_alloc;
     using ::llvm::Intrinsic::coro_begin;
     using ::llvm::Intrinsic::coro_destroy;
     using ::llvm::Intrinsic::coro_done;
+    using ::llvm::Intrinsic::coro_end;
+    using ::llvm::Intrinsic::coro_free;
     using ::llvm::Intrinsic::coro_id;
+    using ::llvm::Intrinsic::coro_promise;
     using ::llvm::Intrinsic::coro_resume;
+    using ::llvm::Intrinsic::coro_size;
     using ::llvm::Intrinsic::coro_suspend;
   }
 }

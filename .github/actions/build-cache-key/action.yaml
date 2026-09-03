@@ -1,0 +1,54 @@
+name: build-cache-key
+description: "Compose the cache key for a variant's CMake build tree, shared by every workflow that reads or writes it."
+
+inputs:
+  family:
+    description: "Cache family, naming the [cache.<family>] table in dependencies.toml that holds its generation."
+    required: false
+    default: "build"
+  os:
+    description: "Runner image the tree was built on; a tree from another image is not restorable."
+    required: true
+  compiler:
+    description: "Compiler family, e.g. `gcc`, `clang`, `msvc`."
+    required: false
+    default: "gcc"
+  version:
+    description: "Compiler major version. Empty for the compilers that ship with the image, e.g. MSVC."
+    required: false
+    default: ""
+  variant:
+    description: >-
+      Build variant name, matching the `name` field of the entry in a caller's `variants` list. Empty for a family
+      whose configuration is fixed, which then has one tree per runner rather than one per variant.
+    required: false
+    default: ""
+
+outputs:
+  key:
+    description: "Exact-match key, ending in the commit sha. Use for both the restore and the save."
+    value: ${{ steps.compose.outputs.key }}
+  prefix:
+    description: "The key without its commit sha, for restore-keys: the newest tree for this variant."
+    value: ${{ steps.compose.outputs.prefix }}
+
+runs:
+  using: composite
+  steps:
+    # Calls the key composition script.
+    - name: Compose cache key
+      id: compose
+      shell: bash
+      env:
+        FAMILY: ${{ inputs.family }}
+        OS: ${{ inputs.os }}
+        COMPILER: ${{ inputs.compiler }}
+        COMPILER_VERSION: ${{ inputs.version }}
+        VARIANT: ${{ inputs.variant }}
+        COMMIT_SHA: ${{ github.sha }}
+        # The files that decide what a build tree contains, hashed by the runner so the script needs no portable
+        # digest of its own. Add to this list rather than bumping a generation by hand: anything named here
+        # invalidates the tree automatically when it changes.
+        FILES_HASH: ${{ hashFiles('**/CMakeLists.txt', '.github/scripts/configure-cmake/configure.sh',
+          '.github/actions/configure-cmake/action.yaml') }}
+      run: bash .github/scripts/build-cache-key/compose-key.sh

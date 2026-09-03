@@ -5,7 +5,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_mov, R"(
     cls TestType { }
     sup TestType {
-        fun f(self) -> Void { }
+        fun f(self) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 )");
 
@@ -14,7 +16,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_mov_mut, R"(
     cls TestType { }
     sup TestType {
-        fun f(mut self) -> Void { }
+        fun f(mut self) -> Void {
+            std::mem::ops::drop(self)
+        }
     }
 )");
 
@@ -54,7 +58,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public x: Bool
     }
     sup TestType {
-        fun f(mut self) -> Void { self.x = true }
+        fun f(mut self) -> Void {
+            self.x = true
+            std::mem::ops::drop(self)
+        }
     }
 )");
 

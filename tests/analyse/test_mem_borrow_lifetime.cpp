@@ -49,6 +49,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let coro = c(&s)
             x = coro
         }
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(s)
     }
 )");
 
@@ -61,10 +63,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let s = Str::from("hello")
-        let x: Gen[&StrView]
         {
-            x = c(&s)
+            let x: Gen[&StrView]
+            {
+                x = c(&s)
+            }
         }
+        std::mem::ops::drop(s)
     }
 )");
 
@@ -104,5 +109,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let coro = c(&s1, &s2)
             x = coro
         }
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(s1)
+        std::mem::ops::drop(s2)
     }
 )");

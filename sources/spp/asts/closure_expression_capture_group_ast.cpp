@@ -11,11 +11,11 @@ import spp.asts.closure_expression_capture_ast;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.let_statement_initialized_ast;
-import spp.asts.object_initializer_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -99,26 +99,38 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   CompilerMetaData *meta)
   -> void {
   // Any borrowed captures need pinning and marking as extended borrows.
-  auto ass_sym = Shared<analyse::scopes::VariableSymbol>(nullptr);
+  auto ass_sym = static_cast<analyse::scopes::VariableSymbol*>(nullptr);
   if (meta->AssignmentTarget != nullptr) {
-    ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).First;
+    ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).first;
   }
   for (auto const &cap : Captures) {
     if (cap->Conv != nullptr) {
-      // Mark the pins on the capture and the target.
+      // Mark the borrow on the closure's own copy of the symbol.
       const auto cap_val = cap->Val->To<IdentifierAst>();
-      auto cap_sym = sm->CurrentScope->GetVarSymbol(cap_val);
+      const auto cap_sym = sm->CurrentScope->GetVarSymbol(cap_val);
       cap_sym->MemInfo->AstBorrowed = {cap->Conv.get(), sm->CurrentScope};
-      // if (ass_sym != nullptr) { ass_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get()); }
-      // TODO: New escaping borrow system needs using here
 
-      cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap_val);
-      // cap_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get());
+      // The closure object outlives the expression that created it, so a borrowed capture escapes the frame in the
+      // same way a borrow passed into a coroutine call does. Bind it to the closure handle in both directions, so the
+      // captured value can't move whilst the closure holds it, and the closure itself can't move either.
+      const auto outer_cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap_val);
+      if (ass_sym != nullptr and outer_cap_sym != nullptr) {
+        const auto is_mut = *cap->Conv == ConventionTag::MUT;
+        ass_sym->MemInfo->AstContainedEscapingBorrows.PushBack(
+          {cap->Val.get(), is_mut, meta->CurrentLambdaOuterScope});
+        outer_cap_sym->MemInfo->AstContainersOfEscapingBorrows.PushBack(
+          {ass_sym->Name.get(), cap->Val.get()});
+      }
     }
     else {
-      // Mark the symbol from the outer context as moved.
+      // Mark the symbol from the outer context as moved, unless
+      // the type of the capture is copyable, in which case no
+      // action needs to be taken. Todo: Remove nullptr check?
       const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
-      cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
+      const auto cap_type_sym = meta->CurrentLambdaOuterScope->GetTypeSymbol(cap_sym->Type.get());
+      if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
+        cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
+      }
     }
   }
 }
@@ -126,7 +138,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
   // variables get loaded from the environment struct.
@@ -138,11 +150,12 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
     // For the capture x, mock "let x = env.x".
     const auto cap_val = capture->Val->To<IdentifierAst>();
     const auto cap_ty = capture->InferType(sm, meta);
-    const auto cap_llvm_type = codegen::GetLlvmType(
-      *sm->CurrentScope->GetTypeSymbol(cap_ty.get()), ctx);
+    const auto cap_llvm_type = codegen::GetLlvmTypeOf(
+      *cap_ty, *sm->CurrentScope, ctx);
 
     // Create the alloca for the variable.
-    const auto alloca = codegen::llvm_entry_alloca(cap_llvm_type, "capture.alloca." + uid, ctx);
+    const auto alloca = codegen::LlvmEntryAlloca(
+      cap_llvm_type, "capture.alloca." + uid, ctx);
 
     const auto gep = ctx->Builder.CreateInBoundsGEP(
       ctx->CurrentClosureType,

@@ -1,11 +1,13 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 export module spp.asts.float_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
-import spp.utils.traits;
+import spp.utils.numbers;
 import spp.utils.types;
+import boost;
 import llvm;
 import std;
 
@@ -21,6 +23,14 @@ namespace spp::asts {
  * @c _f64. No postfix defaults the type to @c std::BigDec.
  */
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
+  inline static const auto kBounds = spp::utils::numbers::FloatLimitMap{
+    {spp::Str("f8"), spp::MakePair(boost::BigDec("-448"), boost::BigDec("448"))},
+    {spp::Str("f16"), LIMIT_F(11, 16)},
+    {spp::Str("f32"), LIMIT_F(24, 128)},
+    {spp::Str("f64"), LIMIT_F(53, 1024)},
+    {spp::Str("f128"), LIMIT_F(113, 16384)}
+  };
+
   SPP_GCC_VTABLE_FIX
 
   /**
@@ -52,12 +62,6 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
    */
   Str Type;
 
-  static auto FromSingleTok(
-    decltype(TokSign) &&tok_sign,
-    Unique<TokenAst> &&token,
-    Str &&type)
-    -> Unique<FloatLiteralAst>;
-
   /**
    * Construct the FloatLiteralAst with the arguments matching the members.
    * @param[in] tok_sign The optional sign of the float literal.
@@ -85,12 +89,34 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  template <typename T> requires utils::traits::floating_point<T>
-  auto CppVal() const -> T;
+  /**
+   * The exact value of this literal. Comp-time arithmetic works in this rather than in a fixed-width C++ float, so
+   * that a result the type cannot hold arrives as a value the compiler can reject rather than as an infinity.
+   * @return The literal's value.
+   */
+  SPP_ATTR_NODISCARD auto BigVal() const -> boost::BigDec;
+
+  /**
+   * Build a literal of the given type carrying an exact value, with the sign as its own token. The value is not range
+   * checked here - what produced it has no scope to report an error against - so a caller that can compute an out of
+   * range value pairs this with @c ValidateBounds .
+   * @param value The value the literal is to carry.
+   * @param type The float type name ("f32", "f64", ...).
+   * @return The literal.
+   */
+  static auto FromBigVal(boost::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
+
+  /**
+   * Raise if this literal's value is one its type cannot hold. A written literal is checked when it is analysed; one
+   * that comp-time arithmetic produced is checked where that arithmetic is invoked from.
+   * @param owner The ast to report the error against.
+   * @param sm The scope manager, for error reporting.
+   */
+  auto ValidateBounds(Ast const &owner, ScopeManager const &sm) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

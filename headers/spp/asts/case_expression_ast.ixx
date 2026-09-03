@@ -46,7 +46,23 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
    * The inner scope of the case branches. This is where the branches of the case expression are defined, and allows
    * symbols to be created inside the @c case expression scope, but available to all branches, if need be.
    */
-  UniqueVec<CaseExpressionBranchAst> Branches;
+  Vec<Unique<CaseExpressionBranchAst>> Branches;
+
+  /**
+   * Set when this @c case was produced by desugaring an @c is expression ("x is T(..)"), whose two branches yield
+   * @c true and @c false. This case always evaluates to a boolean, but typical usage omits the returning value when we
+   * need to actually catch it (e.g. a loop condition), so enforce that by this flag. Needed for the phi nodes.
+   * Todo: is this a more general problem? Does "loop case ... { }" fail to generate?,=
+   */
+  bool LoweredFromIsExpr = false;
+
+  /**
+   * Set when this @c case is the lowering of the @c "?" operator, whose value branch yields the operand's value and
+   * whose @c else branch returns. The operator is an expression wherever it is written, so the @c case standing in for
+   * it always yields a value - which is not something the surrounding code generation can be asked about, because the
+   * lowering deliberately detaches itself from the assignment the operator sits inside.
+   */
+  bool LoweredFromTryOperator = false;
 
   /**
    * Construct the CaseExpressionAst with the arguments matching the members.
@@ -93,7 +109,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
    */
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 

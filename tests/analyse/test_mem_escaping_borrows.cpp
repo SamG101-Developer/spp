@@ -1,9 +1,9 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMemoryEscapingBorrows,
-    test_invalid_memory_escaping_borrows_conflicting_borrow_mut_mut,
-    SppMemoryOverlapUsageError, R"(
+  TestMemoryEscapingBorrows,
+  test_invalid_memory_escaping_borrows_conflicting_borrow_mut_mut,
+  SppMemoryOverlapUsageError, R"(
     cor c(a: &mut Str) -> Gen[&StrView] {
         gen "0"
     }
@@ -16,9 +16,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMemoryEscapingBorrows,
-    test_invalid_memory_escaping_borrows_conflicting_borrow_mut_ref,
-    SppMemoryOverlapUsageError, R"(
+  TestMemoryEscapingBorrows,
+  test_invalid_memory_escaping_borrows_conflicting_borrow_mut_ref,
+  SppMemoryOverlapUsageError, R"(
     cor c1(a: &mut Str) -> Gen[&StrView] {
         gen "0"
     }
@@ -35,9 +35,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestMemoryEscapingBorrows,
-    test_invalid_memory_escaping_borrows_conflicting_borrow_ref_mut,
-    SppMemoryOverlapUsageError, R"(
+  TestMemoryEscapingBorrows,
+  test_invalid_memory_escaping_borrows_conflicting_borrow_ref_mut,
+  SppMemoryOverlapUsageError, R"(
     cor c1(a: &Str) -> Gen[&StrView] {
         gen "0"
     }
@@ -54,23 +54,26 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestMemoryEscapingBorrows,
-    test_valid_memory_escaping_borrows_conflicting_borrow_ref_ref, R"(
+  TestMemoryEscapingBorrows,
+  test_valid_memory_escaping_borrows_conflicting_borrow_ref_ref, R"(
     cor c(a: &Str) -> Gen[&StrView] {
         gen "0"
     }
 
     fun f() -> Void {
         let mut x = Str::from("123")
-        let coro1 = c(&x)
-        let coro2 = c(&x)
+        {
+            let coro1 = c(&x)
+            let coro2 = c(&x)
+        }
+        std::mem::ops::drop(x)
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_let,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_let,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun f() -> Void {
@@ -81,9 +84,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_assign_variable,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_assign_variable,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun f() -> Void {
@@ -95,9 +98,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_assign_attribute,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_assign_attribute,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     cls A {
@@ -113,9 +116,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_func_call,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_func_call,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun f(x: Str) -> Void { }
@@ -128,9 +131,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_object_init,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_object_init,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     cls A {
@@ -145,9 +148,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_inner_scope_return,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_inner_scope_return,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun h() -> Void {
@@ -160,13 +163,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_loop_escape,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_loop_escape,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun h() -> Void {
-        loop true {
+        let looped = loop true {
             let x = Str::from("hello world")
             let coroutine = g(&x)
             exit x
@@ -175,22 +178,22 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_gen,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_gen,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     cor h() -> Gen[Str, Bool] {
         let x = Str::from("hello world")
         let coroutine = g(&x)
-        gen x
+        let sent = gen x
     }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_invalid_memory_moving_pinned_borrow_ret,
-    SppMovingEscapingBorrowedMemoryError, R"(
+  TestAstEscapingBorrows,
+  test_invalid_memory_moving_pinned_borrow_ret,
+  SppMovingEscapingBorrowedMemoryError, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun h() -> Gen[Str, Bool] {
@@ -200,26 +203,26 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// Positive counterparts: a value is only pinned while a coroutine actually holds a borrow to it.
-
-// Moving a value that is NOT the one pinned by the coroutine is fine.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_valid_memory_move_value_not_pinned, R"(
+  TestAstEscapingBorrows,
+  test_valid_memory_move_value_not_pinned, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun f() -> Void {
         let x = Str::from("hello world")
         let y = Str::from("other")
-        let coroutine = g(&x)
-        let z = y
+        {
+            let coroutine = g(&x)
+            let z = y
+            std::mem::ops::drop(z)
+        }
+        std::mem::ops::drop(x)
     }
 )");
 
-// Once the coroutine holding the pin goes out of scope, the pin is released and the value can move.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstEscapingBorrows,
-    test_valid_memory_move_after_pinned_borrow_scope_released, R"(
+  TestAstEscapingBorrows,
+  test_valid_memory_move_after_pinned_borrow_scope_released, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun f() -> Void {
@@ -228,5 +231,34 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let coroutine = g(&x)
         }
         let y = x
+        std::mem::ops::drop(y)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstEscapingBorrows,
+  test_invalid_memory_move_after_pinned_borrow_held_by_outer_handle,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cor g(a: &Str) -> Gen[Str, Bool] { }
+
+    fun f() -> Void {
+        let x = Str::from("hello world")
+        let coroutine: Gen[Str, Bool]
+        {
+            coroutine = g(&x)
+        }
+        let y = x
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstEscapingBorrows,
+  test_valid_memory_deref_of_indexed_element_holds_no_escaping_borrow, R"(
+    fun f() -> Void {
+        let mut xs = Vec[U32]()
+        xs.append(1_u32)
+        let a = xs[0_uz]@
+        let b = xs
+        std::mem::ops::drop(b)
     }
 )");

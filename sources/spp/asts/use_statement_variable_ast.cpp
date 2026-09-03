@@ -106,7 +106,7 @@ auto spp::asts::UseStatementVariableAst::Stage3_GenTopLvlAliases(
     _Conversion->Type = scope->GetTypeSymbol(old_var_sym->Type.get())->FqName(false);
     old_var_sym->Type = _Conversion->Type;
 
-    _Conversion->_AliasSym->AliasSym = old_var_sym;
+    _Conversion->_AliasSym->AliasSym = old_var_sym->SharedFromThis<analyse::scopes::VariableSymbol>();
     _Conversion->_AliasSym->Type = _Conversion->Type;
     _Conversion->Stage3_GenTopLvlAliases(sm, meta);
     return;
@@ -175,10 +175,19 @@ auto spp::asts::UseStatementVariableAst::Stage9_CompTimeResolve(
 auto spp::asts::UseStatementVariableAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Code gen for the conversion AST.
   return _Conversion->Stage10_PreCodeGen(sm, meta, ctx);
+}
+
+auto spp::asts::UseStatementVariableAst::Stage11_CodeGen(
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx)
+  -> llvm::Value* {
+  // Code gen for the conversion AST.
+  return _Conversion->Stage11_CodeGen(sm, meta, ctx);
 }
 
 SPP_MOD_END

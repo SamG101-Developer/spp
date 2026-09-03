@@ -65,10 +65,9 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
     not IsPrimaryExprTypeValid(*Expr, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Expr));
 
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
@@ -82,13 +81,12 @@ auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
 auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the right-hand-side expression.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();
   const auto lhs_val = Op->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return lhs_val;
 }
 
@@ -96,13 +94,21 @@ auto spp::asts::UnaryExpressionAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
-  // Infer the type of the right-hand-side expression, adjusted by the operator.
-  meta->Save();
+  // Infer the type of the right-hand-side expression,
+  // adjusted by the operator.
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();
   auto type = Op->InferType(sm, meta);
-  meta->Restore();
 
   return type;
+}
+
+auto spp::asts::UnaryExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // The only unary operator is the "async" function call
+  // so there will be no specialization.
+  return MakeShared<UnaryExpressionAst>(AstClone(Op), AstClone(Expr->SubstituteGenericsExpr(args)));
 }
 
 SPP_MOD_END

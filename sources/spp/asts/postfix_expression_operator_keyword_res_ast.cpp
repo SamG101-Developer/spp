@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.analyse.errors.semantic_error;
@@ -10,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
@@ -19,15 +21,17 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.function_call_argument_group_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_layout;
+import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
+import genex;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
@@ -45,13 +49,13 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKey
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosStart() const
   -> std::size_t {
   // Use the "." token.
-  return TokDot != nullptr ? TokDot->PosStart() : FnArgGroup->PosStart();
+  return TokDot != nullptr ? TokDot->PosStart() : 0;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosEnd() const
   -> std::size_t {
   // Use the argument group if it exists, otherwise use the "res" token.
-  return FnArgGroup->PosEnd();
+  return FnArgGroup != nullptr ? FnArgGroup->PosEnd() : TokRes != nullptr ? TokRes->PosEnd() : 0;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const
@@ -95,10 +99,9 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   func_call->Source.OriginalExpr = this;
   _MappedFunc = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
 
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->IgnoreAccessModifierViolations = true; // Because of "Generated" Todo: Too broad?
   _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
@@ -112,57 +115,167 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // The left-hand side is a generator value: the { resume_fn, env } fat pointer. Resuming advances the state machine
-  // that "env" points at.
-  const auto uid = "." + spp::utils::Uid(this);
-  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto llvm_gen = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+  // The three-step operation for the "res" operation is to
+  // store the potential argument into the send slot of the
+  // env, resume the coroutine, then use the yielded value.
 
-  // Extract the resume function pointer and the env pointer. The lhs is the fat pointer value directly, or a
-  // borrowed generator, so read the two fields accordingly.
-  auto resume_fn = static_cast<llvm::Value*>(nullptr);
-  auto env_ptr = static_cast<llvm::Value*>(nullptr);
-  if (llvm_gen->getType()->isPointerTy()) {
-    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
-    const auto gen_ty = llvm::cast<llvm::StructType>(
-      codegen::GetLlvmType(*sm->CurrentScope->GetTypeSymbol(lhs_ty.get()), ctx));
-    resume_fn = ctx->Builder.CreateLoad(
-      ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 0), "gen.resume.fn" + uid);
-    env_ptr = ctx->Builder.CreateLoad(ptr_ty, ctx->Builder.CreateStructGEP(gen_ty, llvm_gen, 1), "gen.env" + uid);
+  // Step 0: Retrieve the correct generator environment from
+  // the llvm context, keyed by the address of the generator's
+  // storage. The left-hand-side is not necessarily a bare
+  // identifier - it can be a field, an element, or a temporary -
+  // so it is resolved to an address rather than to a symbol.
+  const auto llvm_generator_addr = codegen::llvm_addr_of(*meta->PostfixExpressionLhs, sm, meta, ctx);
+  const auto llvm_generator_it = ctx->LlvmGenerators.find(llvm_generator_addr);
+
+  // A generator that was produced by a coroutine call in this function was registered when that call was generated.
+  // One that arrived as a value was not: "loop item in self", inside a coroutine taking another generator as "self",
+  // resumes something this function never called. Its handle is not lost though - it is the first field of the
+  // generator value itself, which is exactly what the call site extracts before registering - so rebuild the
+  // environment from the value in storage, the same way and with the same field.
+  auto rebuilt_generator = Unique<codegen::LlvmGenerator>(nullptr);
+  if (llvm_generator_it == ctx->LlvmGenerators.end()) {
+    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta)->WithoutConvention();
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
+
+    const auto no_env_msg = Str(
+      "No generator environment was registered for this resumption, and none could be rebuilt from the value. The "
+      "resumed value is generator-typed but carries no coroutine handle, so there is nothing to resume");
+    RaiseIf<analyse::errors::SppInternalCompilerError>(
+      lhs_type_sym == nullptr or lhs_type_sym->LlvmInfo->LlvmType == nullptr,
+      {sm->CurrentScope}, ERR_ARGS(*this, no_env_msg));
+
+    const auto handle_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
+    const auto llvm_handle_ptr = ctx->Builder.CreateStructGEP(
+      lhs_type_sym->LlvmInfo->LlvmType, llvm_generator_addr, handle_idx, "gen.handle.slot");
+    const auto llvm_handle = ctx->Builder.CreateLoad(
+      llvm::PointerType::get(*ctx->Context, 0), llvm_handle_ptr, "gen.handle");
+
+    rebuilt_generator = MakeUnique<codegen::LlvmGenerator>();
+    rebuilt_generator->Handle = llvm_handle;
+    rebuilt_generator->State = codegen::GetLlvmGeneratorStateFromHandle(llvm_handle, ctx);
   }
-  else {
-    resume_fn = ctx->Builder.CreateExtractValue(llvm_gen, {0u}, "gen.resume.fn" + uid);
-    env_ptr = ctx->Builder.CreateExtractValue(llvm_gen, {1u}, "gen.env" + uid);
+
+  const auto &llvm_generator_env = rebuilt_generator != nullptr
+    ? rebuilt_generator
+    : llvm_generator_it->second;
+
+  // The yielded value is read with the yield type's own layout, because that is what the "gen" expression stored
+  // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
+  // and storing those into a narrower binding writes past it.
+  const auto uid = spp::utils::Uid(this);
+  const auto lhs_gen_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+  auto [generator_type, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
+    *lhs_gen_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
+  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*yield_type, *sm->CurrentScope, ctx);
+
+  const auto send_type = is_once
+    ? generate::common_types_precompiled::VOID
+    : generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
+  const auto llvm_send_ty = codegen::GetLlvmTypeOf(*send_type, *sm->CurrentScope, ctx);
+  const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(llvm_yield_ty, llvm_send_ty, ctx);
+
+  // Step 1: Place the value of the argument (if it exists),
+  // into the "send" slot on the generator state struct. A bare
+  // "res()" sends nothing, so there is simply no store to make:
+  // there is no such thing as a void value to write into the
+  // slot, and asking for one ("getNullValue" of a void type)
+  // is itself invalid. The receiver is an argument of the
+  // mapped ".send()" call too, and is not one of these.
+  const auto &args_group = _MappedFunc->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>()->FnArgGroup;
+  const auto send_arg = genex::find_if(
+    args_group->Args, [](auto const &x) { return x->GetSelfType() == nullptr; });
+
+  if (send_arg != args_group->Args.end()) {
+    const auto llvm_send_slot = codegen::GetLlvmGeneratorSlotPtr(
+      llvm_generator_env->State, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::SEND_SLOT,
+      "gen.send.slot", ctx);
+    const auto llvm_send_value = (*send_arg)->Stage11_CodeGen(sm, meta, ctx);
+    ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
   }
 
-  // The send value, if any. When there is no ".res(x)" argument (Send == Void), the env's send slot is a dummy i8,
-  // so pass a matching zero.
-  const auto llvm_send_value = FnArgGroup != nullptr and not FnArgGroup->Args.IsEmpty()
-    ? FnArgGroup->Args[0]->Stage11_CodeGen(sm, meta, ctx)
-    : static_cast<llvm::Value*>(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), 0));
+  const auto read_yielded_val = [&] {
+    const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
+      llvm_generator_env->State, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT,
+      "gen.yield.slot", ctx);
+    return ctx->Builder.CreateLoad(llvm_yield_ty, llvm_yield_slot, "gen.yield.value");
+  };
 
-  // Call the resume function "(env*, send) -> void" through the pointer.
-  ctx->Builder.CreateCall(
-    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty, llvm_send_value->getType()}, false),
-    resume_fn, {env_ptr, llvm_send_value});
+  // A "GenOnce" is guaranteed to yield exactly once before it completes, so there is no exhausted case to report and
+  // nothing to resume past: the value is already in the slot, put there by the ramp running up to the first suspend.
+  if (is_once) { return read_yielded_val(); }
 
-  // Return the generator value (unchanged fat pointer; its env has now advanced). Reading the yielded value is a
-  // separate access off the yield slot.
-  return llvm_gen;
+  // Otherwise the result says whether the generator had a value at all, so completion has to be tested before it is
+  // read. A coroutine parked on its final suspend has already run its body to the end and left nothing in the slot.
+  const auto llvm_done = ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_done, {}, {llvm_generator_env->Handle}, {}, "gen.done" + uid);
+
+  const auto llvm_func_target = ctx->Builder.GetInsertBlock()->getParent();
+  const auto yielded_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.yielded" + uid, llvm_func_target);
+  const auto exhausted_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.exhausted" + uid, llvm_func_target);
+  const auto joined_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.joined" + uid, llvm_func_target);
+  ctx->Builder.CreateCondBr(llvm_done, exhausted_bb, yielded_bb);
+
+  // The result type is "Yield or None", so both edges tag their way into it.
+  const auto res_type = InferType(sm, meta);
+  const auto llvm_res_ty = codegen::GetLlvmTypeOf(*res_type, *sm->CurrentScope, ctx);
+  const auto none_type = generate::common_types::None(PosStart());
+  const auto yield_tag = codegen::GetVariantIndexOfMember(*res_type, *yield_type, *sm->CurrentScope);
+  const auto none_tag = codegen::GetVariantIndexOfMember(*res_type, *none_type, *sm->CurrentScope);
+
+  const auto bad_shape_msg = Str(
+    "The result of a resumption is not the \"Yield or None\" variant it has to be, so there is no discriminant to "
+    "tag the yielded value or the exhausted case into");
+  RaiseIf<analyse::errors::SppInternalCompilerError>(
+    llvm_res_ty == nullptr or not yield_tag.has_value() or not none_tag.has_value(),
+    {sm->CurrentScope}, ERR_ARGS(*this, bad_shape_msg));
+
+  // Read before resuming, not after. The ramp already ran the body up to its first suspend, so the value waiting in
+  // the slot is this resumption's; resuming first would step over it and hand back the following one.
+  ctx->Builder.SetInsertPoint(yielded_bb);
+  const auto llvm_yielded_val = read_yielded_val();
+  ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle}, {}, "");
+  const auto llvm_some = codegen::BuildVariant(llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx);
+  const auto some_from_bb = ctx->Builder.GetInsertBlock();
+  ctx->Builder.CreateBr(joined_bb);
+
+  ctx->Builder.SetInsertPoint(exhausted_bb);
+  const auto llvm_none = codegen::BuildVariant(nullptr, llvm_res_ty, *none_tag, "gen.none" + uid, ctx);
+  const auto none_from_bb = ctx->Builder.GetInsertBlock();
+  ctx->Builder.CreateBr(joined_bb);
+
+  ctx->Builder.SetInsertPoint(joined_bb);
+  const auto llvm_res = ctx->Builder.CreatePHI(llvm_res_ty, 2, "gen.res" + uid);
+  llvm_res->addIncoming(llvm_some, some_from_bb);
+  llvm_res->addIncoming(llvm_none, none_from_bb);
+  return llvm_res;
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
-  // Get the generator type.
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
-  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-  auto [_, yield_type, _] = GetGenAndYieldTypes(
-    *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
-  return yield_type;
+  // The mapped ".send()" call is what says how much a resumption tells the caller: "Gen" declares it as
+  // "Generated[Yield or None]", because a "Gen" may be exhausted, and "GenOnce" as "Generated[Yield]", because it
+  // cannot be. Reading it off the declaration keeps the two in step instead of deciding it a second time here.
+  // "Generated" is the compiler-known wrapper the coroutine machinery travels in, and is unwrapped on the way out.
+  const auto send_type = _MappedFunc->InferType(sm, meta);
+  return send_type->LastTypePart()->GnArgGroup->TypeAt("Yield")->Val;
+}
+
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Unique<PostfixExpressionOperatorAst> {
+  // The potential resume arguments are expressions.
+  auto fn_arg_group = AstClone(FnArgGroup);
+  for (auto const &fn_arg : fn_arg_group->Args) {
+    fn_arg->Val = AstClone(fn_arg->Val->SubstituteGenericsExpr(args));
+  }
+
+  return MakeUnique<PostfixExpressionOperatorKeywordResAst>(
+    AstClone(TokDot), AstClone(TokRes), std::move(fn_arg_group));
 }
 
 SPP_MOD_END

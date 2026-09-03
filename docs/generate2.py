@@ -54,14 +54,20 @@ class DocumentGenerator:
                 return
             child, directory = package, directory.parent
 
-    def _write_toctree(self, path: Path, title: str, underline: str, entries: list[str], maxdepth: int = 1) -> None:
+    def _write_toctree(
+        self,
+        path: Path,
+        title: str,
+        underline: str,
+        entries: list[str],
+        maxdepth: int = 1,
+    ) -> None:
         with open(path, "w", encoding="utf-8") as f:
             f.write(f"{title}\n")
             f.write(underline * len(title) + "\n\n")
             f.write(".. toctree::\n")
             f.write(f"   :maxdepth: {maxdepth}\n\n")
-            for entry in entries:
-                f.write(f"   {entry}\n")
+            f.writelines(f"   {entry}\n" for entry in entries)
 
     def run_doxygen(self) -> None:
         self.doxygen_xml_dir.mkdir(parents=True, exist_ok=True)
@@ -107,7 +113,15 @@ class DocumentGenerator:
         name = SPHINX_BUILDERS[builder]
 
         out_dir = self.build_dir / name
-        command = [sys.executable, "-m", "sphinx", "-b", name, str(self.source_dir), str(out_dir)]
+        command = [
+            sys.executable,
+            "-m",
+            "sphinx",
+            "-b",
+            name,
+            str(self.source_dir),
+            str(out_dir),
+        ]
         if strict:
             # -W promotes warnings to errors; --keep-going reports all of them rather than dying on the first.
             command += ["-W", "--keep-going"]
@@ -138,7 +152,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--skip-doxygen", action="store_true", help="reuse the existing doxygen XML")
     parser.add_argument("--strict", action="store_true", help="treat Sphinx warnings as errors")
-    parser.add_argument("--builder", default="html", choices=sorted(SPHINX_BUILDERS), help="Sphinx builder to run (default: html)")
+    parser.add_argument(
+        "--builder",
+        default="html",
+        choices=sorted(SPHINX_BUILDERS),
+        help="Sphinx builder to run (default: html)",
+    )
     args = parser.parse_args()
 
     try:

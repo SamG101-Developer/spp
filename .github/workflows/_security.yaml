@@ -12,37 +12,44 @@ on:
         type: boolean
         default: false
 
+permissions: { }
+
 jobs:
   codeql:
     name: CodeQL
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read          # checkout
       security-events: write  # upload CodeQL results
       actions: read           # read workflow run metadata (private repos)
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
+      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
 
-      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
-      # secured under the above "harden-runner" step.
+      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      # For CodeQL, the GCC 16 build is used, so reuse the setup action with no cache to force a full rebuild.
+      # setup-toolchain loads the manifest itself, but not until after its own `with:` has been evaluated, so the
+      # loader runs here as well to put GCC_VERSION within reach of the step below.
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
+      # CodeQL analyses the blocking toolchain's build, so it tracks GCC_VERSION rather than naming a compiler of its
+      # own. No compiler cache: a cache hit skips the real compiler, and the extractor never sees the translation unit.
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
+          runner-image: ubuntu-24.04
           compiler: gcc
-          version: "16"
+          version: ${{ env.GCC_VERSION }}
           compiler-cache: "false"
 
       # Install the CodeQL action, with C/C++ support, and specify the query configurations. This is the only CodeQL
@@ -52,6 +59,7 @@ jobs:
         with:
           languages: c-cpp
           build-mode: manual
+          config-file: ./.github/codeql-config.yaml
           queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
 
       # Configure the cmake build specifically in debug mode.
@@ -72,7 +80,7 @@ jobs:
 
   osv:
     name: OSV Dependency Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read          # read the dependency manifests
@@ -84,24 +92,131 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
           egress-policy: audit
+          disable-sudo: true
 
-      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
-      # secured under the above "harden-runner" step.
+      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
           persist-credentials: false
 
+      # This job installs no toolchain, but the scanner's pinned release and digest live in the manifest with
+      # everything else, so the loader still has to run before the installation step can read them.
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
       - name: Install osv-scanner
         run: bash .github/scripts/security/install-osv-scanner.sh
 
+      # Vulnerabilities are a warning and a SARIF entry; a scanner that could not run is a failure. See the script for
+      # why those two are separated and for the one-line change that makes findings blocking.
       - name: Scan dependencies
-        continue-on-error: true
-        run: osv-scanner scan --recursive --format sarif --output osv.sarif ./
+        run: bash .github/scripts/security/scan-dependencies.sh osv.sarif
 
+      # Still uploaded when an earlier step failed, so a partial report is not thrown away, but only if a report
+      # actually exists: without the guard this step fails over a missing file and buries the real error above it.
       - name: Upload OSV results
+        if: always() && hashFiles('osv.sarif') != ''
         uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:
           sarif_file: osv.sarif
           category: osv-scanner
+
+      # The osv-scanner reads lockfiles, and the C++ dependency set is not one: the libraries are git commits and the
+      # prebuilt archives are versions, so it never sees them. This asks OSV about them directly.
+      - name: Scan pinned dependencies
+        run: python3 .github/scripts/security/scan-pinned-deps.py osv-pins.sarif
+
+      - name: Upload pinned dependency results
+        if: always() && hashFiles('osv-pins.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          sarif_file: osv-pins.sarif
+          category: osv-pinned-deps
+
+  secrets:
+    name: Secret Scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read          # read the tree and its history
+      security-events: write  # upload the gitleaks SARIF
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      # Full history unconditionally. The nightly scan reads every reachable commit, and a depth chosen by an
+      # expression is a trap here: `inputs.full-scan && 0 || 1` evaluates to 1 either way, because 0 is falsy.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # No toolchain here either, but the scanner's release and digest live in the manifest with everything else.
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
+      - name: Install gitleaks
+        run: bash .github/scripts/security/install-gitleaks.sh
+
+      # `dir` on a push, `git` on the nightly. See the script for why a secret is fatal where a CVE is a warning.
+      - name: Scan for secrets
+        run: bash .github/scripts/security/scan-secrets.sh gitleaks.sarif ${{ inputs.full-scan && 'git' || 'dir' }}
+
+      # Uploaded even when the scan failed, because a failed scan is precisely the one whose findings are worth
+      # reading, but only when a report exists: without the guard a missing file fails here and buries the real error.
+      - name: Upload gitleaks results
+        if: always() && hashFiles('gitleaks.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+  # Only a pull request has a base to diff the dependency graph against, so this is skipped on the nightly run.
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read  # read the dependency graph for both sides of the diff
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Blocks a pull request that introduces a high-severity advisory or a copyleft dependency. The licence list
+      # matters here specifically: this project ships under a dual licence, so a GPL dependency is not merely a
+      # preference to argue about but a thing that would make the commercial half unshippable.
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
+        with:
+          fail-on-severity: high
+          deny-licenses: AGPL-1.0-or-later, AGPL-3.0-or-later, GPL-2.0-or-later, GPL-3.0-or-later, LGPL-3.0-or-later
+          comment-summary-in-pr: never
+          show-openssf-scorecard: false

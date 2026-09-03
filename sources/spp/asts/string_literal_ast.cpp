@@ -13,6 +13,9 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_func;
+import spp.codegen.llvm_layout;
+import spp.codegen.llvm_type;
 import spp.utils.strings;
 import llvm;
 
@@ -78,16 +81,45 @@ auto spp::asts::StringLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::StringLiteralAst::Stage11_CodeGen(
-  ScopeManager *,
-  CompilerMetaData *,
-  codegen::LLvmCtx *ctx)
+  ScopeManager *sm,
+  CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // Decode the token (which includes its surrounding double quotes) into the raw bytes, resolving escape
-  // sequences, then emit a global string for it.
-  const auto bytes = spp::utils::strings::DecodeStringLiteral(Val->TokenData);
-  const auto str_alloc = ctx->Builder.CreateGlobalString(
-    bytes, "string_literal", 0, ctx->Module.get(), false);
-  return str_alloc;
+  //
+  using spp::utils::strings::DecodeStringLiteral;
+
+  // Decode the token (which includes its surrounding double
+  // quotes) into the raw bytes, resolving escape sequences,
+  // and emit either a string or byte string for it.
+  const auto bytes = DecodeStringLiteral(Val->TokenData);
+  const auto emission_module = codegen::GetEmissionModule(*ctx);
+  const auto llvm_bytes = ctx->Builder.CreateGlobalString(
+    bytes, "string_literal", 0, emission_module, false);
+
+  // A literal's type is "&StrView" (or "&View[U8]" behind the
+  // "b" prefix), and both of those are a { ptr, length } pair
+  // rather than a bare pointer. Everything in it is a compile
+  // time constant, so the view is emitted as its own constant
+  // global instead of being rebuilt on the stack at every use.
+  const auto view_type = InferType(sm, meta)->WithoutConvention();
+  const auto view_type_sym = sm->CurrentScope->GetTypeSymbol(view_type.get());
+  const auto llvm_view_type = view_type_sym != nullptr
+    ? llvm::dyn_cast_or_null<llvm::StructType>(codegen::GetLlvmType(*view_type_sym, ctx))
+    : nullptr;
+
+  // Build the view's fields, which are always a pointer and a
+  // length.
+  const auto ptr_idx = codegen::GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 0);
+  const auto length_idx = codegen::GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 1);
+  auto llvm_fields = Vec<llvm::Constant*>(llvm_view_type->getNumElements(), nullptr);
+  llvm_fields[ptr_idx] = llvm_bytes;
+  llvm_fields[length_idx] = llvm::ConstantInt::get(
+    llvm_view_type->getElementType(length_idx), bytes.size());
+
+  const auto llvm_view = llvm::ConstantStruct::get(
+    llvm_view_type, llvm_fields.ToStdVector());
+  return new llvm::GlobalVariable(
+    *emission_module, llvm_view_type, true, llvm::GlobalValue::PrivateLinkage, llvm_view, "string_literal.view");
 }
 
 auto spp::asts::StringLiteralAst::InferType(
@@ -106,10 +138,9 @@ auto spp::asts::StringLiteralAst::InferType(
 }
 
 auto spp::asts::StringLiteralAst::CppVal() const -> Str {
-  auto raw_data = StrView(Val->TokenData);
-  raw_data.remove_prefix(1);
-  raw_data.remove_suffix(1);
-  return Str(raw_data);
+  // Reuse the same decoding Stage11_CodeGen uses, so this matches the literal's actual (escape-resolved) value
+  // instead of the raw source text (which would still contain unresolved escapes like "\n" as two characters).
+  return spp::utils::strings::DecodeStringLiteral(Val->TokenData);
 }
 
 SPP_MOD_END

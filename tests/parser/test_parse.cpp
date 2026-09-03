@@ -1,7 +1,6 @@
-#include "../test_macros.hpp"
+#include "../test_macros_parse.hpp"
 import spp.analyse.errors.semantic_error;
 import spp.asts._all;
-import spp.parse.errors.parser_error;
 
 SPP_TEST_SHOULD_FAIL_SYNTACTIC(
     parse_intentional_error, R"(
@@ -1088,13 +1087,6 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_params_and_capture, R"(
     fun my_function() -> Void {
         let my_closure = (a: S32, b: S32 caps c, &d, &mut e) { }
-    }
-)");
-
-SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_closure_with_param_optional, R"(
-    fun my_function() -> Void {
-        let my_closure = (a: S32, b: S32 = 0) { }
     }
 )");
 

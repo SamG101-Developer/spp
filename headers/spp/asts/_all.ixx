@@ -35,6 +35,7 @@ export import spp.asts.convention_ast;
 export import spp.asts.convention_mut_ast;
 export import spp.asts.convention_ref_ast;
 export import spp.asts.coroutine_prototype_ast;
+export import spp.asts.defer_statement_ast;
 export import spp.asts.expression_ast;
 export import spp.asts.float_literal_ast;
 export import spp.asts.fold_expression_ast;

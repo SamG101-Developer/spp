@@ -10,6 +10,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct ExpressionAst;
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorSliceAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct TokenAst;
@@ -84,7 +85,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For
@@ -95,6 +96,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
    * @return
    */
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Unique<PostfixExpressionOperatorAst> override;
 
 private:
   Shared<PostfixExpressionAst> _MappedFunc;

@@ -8,14 +8,14 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
-import spp.asts.mixins.orderable_ast;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
@@ -72,7 +72,7 @@ auto spp::asts::FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
   // Perform default analysis steps.
   using analyse::errors::SppTypeMismatchError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);
 

@@ -12,6 +12,7 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
@@ -79,16 +80,23 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
       constraint->GetConvention() != nullptr,
       {sm->CurrentScope}, ERR_ARGS(*this, *this, "generic type constraint"));
 
-    // A constraint names a type without ever producing a value of it, so an abstract type is allowed here. This is
-    // the whole point of an abstract type: "[T: Add]" accepts every addable type, but never "Add" itself.
-    meta->Save();
-    meta->AllowAbstractType = true;
-    constraint->Stage7_AnalyseSemantics(sm, meta);
-    meta->Restore();
+    // A constraint names a type without ever producing a value
+    // of it, so an abstract type is allowed here. This is the
+    // whole point of an abstract type: "[T: Add]" accepts every
+    // addable type, but never "Add" itself.
+    {
+      const auto _meta_guard = meta::MetaGuard(meta);
+      meta->AllowAbstractType = true;
+      constraint->Stage7_AnalyseSemantics(sm, meta);
+    }
 
+    // Fix qualification for constraint as a known type vs as an
+    // alias. Todo: should this have been pre-qualified?
     auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics().get());
     fq_constraints.EmplaceBack(
-      constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->LastTypePart()->GnArgGroup)));
+      constraint_type_sym->Alias != nullptr
+        ? constraint_type_sym->FqName()->SubstituteGenerics(constraint->LastTypePart()->GnArgGroup->GetAllArgs())
+        : constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->LastTypePart()->GnArgGroup)));
   }
 
   // Replace the constraints with their fully qualified versions.

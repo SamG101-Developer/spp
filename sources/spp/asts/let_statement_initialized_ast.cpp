@@ -8,7 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
@@ -80,7 +80,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
 
   // An explicit type can only be applied if the left-hand-side is a single identifier.
   RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
@@ -94,7 +94,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   }
 
   // Add the type into the return type overload resolver.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->ReturnTypeOverloadResolverType = Type;
 
   // Check the value is a valid expression type.
@@ -105,7 +105,8 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
 
   meta->AssignmentTarget = Var->ExtractName();
 
-  // Ensure the value's type matches the type (if given), including variant matching.
+  // Ensure the value's type matches the type (if given),
+  // including variant matching.
   if (Type != nullptr) {
     meta->AssignmentTargetType = Type;
     const auto val_type = Val->InferType(sm, meta);
@@ -117,51 +118,68 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage7_AnalyseSemantics(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
-  meta->Save();
+  // Check the variable's memory (which in turn checks the
+  // values memory - must be done this way for destructuring).
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
   meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage8_CheckMemory(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Comptime resolve the value.
+  // Fix variable shadowing, where a newer version of the symbol is
+  // gotten because stage7 added it, when we are trying to use the
+  // original.
+  auto shadowed = Vec<Shared<analyse::scopes::VariableSymbol>>();
+  for (auto const &target : Var->ExtractNames()) {
+    if (auto sym = sm->CurrentScope->RemVarSymbol(target.get()); sym != nullptr) {
+      shadowed.EmplaceBack(std::move(sym));
+    }
+  }
   Val->Stage9_CompTimeResolve(sm, meta);
+  for (auto const &sym : shadowed) { sm->CurrentScope->AddVarSymbol(sym); }
 
   // Assign the comptime value to the variable.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
   meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage9_CompTimeResolve(sm, meta);
-  meta->Restore();
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // Delegate the code generation to the variable, after setting up the meta.
-  meta->Save();
+  // Setup a lot of meta information for the local variable to
+  // correctly generate the value.
+  // Todo: Inconsistent with lower level stages?
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
-  meta->AssignmentTargetType = Type ? Type : Val->InferType(sm, meta);
-  meta->LetStatementExplicitType = Type ? Type : Val->InferType(sm, meta);
+  meta->AssignmentTargetType = Type;
+  const auto val_type = Type ? Type : Val->InferType(sm, meta);
+
+  meta->AssignmentTargetType = val_type;
+  meta->LetStatementExplicitType = val_type;
   meta->LetStatementValue = Val.get();
+
+  // Delegate the code generation to the variable, after setting
+  // up the meta. Note that the "alloca" is returned even though
+  // this isn't an expression, for parent nodes that might need it.
+  // It's a hacky solution that should live on "meta" but no harm
+  // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return alloca;
 }
 

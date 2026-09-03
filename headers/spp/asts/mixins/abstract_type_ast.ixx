@@ -25,23 +25,48 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
 
   virtual ~AbstractTypeAst();
 
-  SPP_ATTR_NODISCARD virtual auto Iterator() const
-    -> Vec<Shared<const TypeIdentifierAst>> = 0;
+  /**
+   * Whether any part of this type satisfies @p pred .
+   *
+   * @n
+   * A type is a chain of nodes, and every caller of this asks a yes-or-no question about the parts rather than wanting
+   * the parts themselves. Answering with a container made each level allocate one and copy the level below into it -
+   * the same cost @c NsPartsInto exists to avoid - and, because the container held shared pointers, the walk also had
+   * to take a @c shared_from_this of each node, so it threw on any type owned outright rather than shared. Asking the
+   * question directly costs no allocation, stops at the first part that answers it, and works whoever owns the node.
+   *
+   * @param pred Applied to each part in turn; the walk stops at the first that returns true.
+   * @return Whether any part satisfied @p pred .
+   */
+  SPP_ATTR_NODISCARD virtual auto AnyPart(
+    std::function<bool(TypeIdentifierAst const&)> const &pred) const -> bool = 0;
 
   SPP_ATTR_NODISCARD virtual auto IsNeverType() const noexcept
     -> bool = 0;
 
+  /**
+   * Append this node's namespace parts to @p out , rather than answering with a container of its own. A type is a chain
+   * of nodes and each one concatenates what the nodes below it produced, so a value-returning walk allocates a vector
+   * per level and copies each level's result into the next; appending into one buffer makes the whole chain a single
+   * allocation. @c NsParts is the same walk with the buffer supplied for the caller.
+   */
+  virtual auto NsPartsInto(Vec<IdentifierAst const*> &out) const
+    -> void { for (auto const *part : NsParts()) { out.EmplaceBack(part); } }
+
+  virtual auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const
+    -> void { for (auto const *part : TypeParts()) { out.EmplaceBack(part); } }
+
   SPP_ATTR_NODISCARD virtual auto NsParts() const
-    -> Vec<Shared<const IdentifierAst>> = 0;
+    -> Vec<IdentifierAst const*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto NsParts()
-    -> Vec<Shared<IdentifierAst>> = 0;
+    -> Vec<IdentifierAst*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> = 0;
+    -> Vec<TypeIdentifierAst const*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> = 0;
+    -> Vec<TypeIdentifierAst*> = 0;
 
   SPP_ATTR_NODISCARD virtual auto LastTypePart() const
     -> TypeIdentifierAst const* = 0;

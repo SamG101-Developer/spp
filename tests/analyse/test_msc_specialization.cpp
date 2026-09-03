@@ -22,6 +22,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = v.test_func()
         x = 1234
         v.append(x.to_string())
+        std::mem::ops::drop(v)
     }
 )");
 
@@ -79,6 +80,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut b = u.test_func_1()
 
         b = a.to_string()
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -110,6 +112,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = MyType[U32]()
         let mut y = x.copy_only()
         y = 1
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -142,6 +145,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Pair[Bool, S32]()
         let mut y = x.second_is_s32()
         y = 1
+        std::mem::ops::drop(x)
     }
 )");
 

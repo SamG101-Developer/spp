@@ -8,13 +8,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.asts.generate.common_types_precompiled;
 import spp.codegen.llvm_sym_info;
 import spp.utils.uid;
 
@@ -59,7 +59,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   //
   using analyse::errors::SppDereferenceNonBorrowedTypeError;
   using analyse::errors::SppNonCopyableTypeError;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   using generate::common_types_precompiled::STR_VIEW;
   using generate::common_types_precompiled::VIEW;
 
@@ -94,7 +94,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Get the value underlying the borrow.
   const auto uid = "." + spp::utils::Uid(this);

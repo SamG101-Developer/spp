@@ -1,0 +1,202 @@
+# Every version, commit and digest the pipeline depends on. Loaded by .github/scripts/lib/pins.py and refreshed by
+# .github/scripts/security/refresh-pins.sh.
+#
+# Each [pin.<name>] table exports its version/commit/tag/asset/sha256 keys into the job environment as
+# <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
+
+[pin.gcc]
+version = "16"
+
+[pin.cmake]
+version = "4.4.0"
+
+[pin.ninja]
+version = "1.13.2"
+
+[pin.python]
+version = "3.14"
+
+[pin.llvm-lib]
+version = "23"
+
+# apt.llvm.org's installer, fetched and then run as root
+# by the Clang and LLVM steps.
+[pin.llvm-sh]
+sha256 = "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae"
+
+# The asset name is not derivable from the tag:
+# llvmorg-23.1.0-rc3 ships clang+llvm-23.0.0.3-*.
+[pin.llvm-win]
+tag = "llvmorg-23.1.0-rc3"
+asset = "clang+llvm-23.0.0.3-x86_64-pc-windows-msvc.tar.xz"
+sha256 = "9465632c6d96e65ab6b7f6fbf7ae447621803982b2348483221812bbf4c8b6af"
+
+# That Windows release names ZLIB::ZLIB, zstd::libzstd_static
+# and LibXml2::LibXml2 in its exported targets, and the runner
+# image has none of the three to resolve them with. Built from
+# source by install-llvm-deps-windows.sh. Pinned to release tags
+# rather than HEAD, so refresh-pins.sh leaves them alone.
+[pin.zlib]
+version = "1.3.1"
+commit = "51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf"
+
+[pin.zstd]
+version = "1.5.7"
+commit = "f8745da6ff1ad1e7bab384bd1f9d742439278e99"
+
+[pin.libxml2]
+version = "2.15.3"
+commit = "c94eb0210183b9d7cb43f8e7fddc6be55843ef49"
+
+# The <pthread.h> that MSVC does not ship, for pthread.ixx to wrap.
+# Pinned to this fork's HEAD: the release tags predate its CMake config.
+[pin.pthreads4w]
+version = "3.0.3"
+commit = "06e7608bfe926d2bd7176c0b02be0c98f40cced4"
+
+# Homebrew has no llvm@23 formula (llvm is still 22.1.x), so
+# macOS takes its whole toolchain - compiler, libc++ and dev
+# libraries - off the same release as Windows.
+[pin.llvm-mac]
+tag = "llvmorg-23.1.0-rc3"
+asset = "LLVM-23.1.0-rc3-macOS-ARM64.tar.xz"
+sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
+
+# macOS toolchains are tied to the Xcode app on the runner image.
+# Pin the developer directory explicitly so CI does not drift when GitHub updates the image. One key per image,
+# because the two do not overlap at the default: macos-15 boots on 16.4 and macos-26 on 26.6.
+[pin.xcode]
+developer-dir-macos-15 = "/Applications/Xcode_16.4.app/Contents/Developer"
+developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
+
+# Prebuilt from MarkusJx/prebuilt-boost, so one digest per
+# runner.
+[pin.boost]
+version = "1.92.0"
+osv-ecosystem = "OSS-Fuzz"
+osv-name = "boost"
+sha256-ubuntu-2404 = "9e95ffa5c2de721acc9e91db67c0393058b16cf643047462d719a41a76958b8c"
+sha256-ubuntu-2204 = "c24626810f61bc1363dd600aac18cf0cdec1f3962db5ea2381dd951c1782ef51"
+sha256-ubuntu-2204-arm64 = "8eeeb9c33af4d1d70c046f46557f95e389e1b549d5853bc2c4e3b55f21e1e136"
+sha256-macos-15 = "57897ee9a536a8cb159f635a6d59ed2e1e7705408bdc9c058c1e078c15ad7ebf"
+sha256-macos-26 = "71d0bbe7466921d0989777a7a01c7955225b7afde00fd5b687c8790a67886f2a"
+sha256-windows-2025 = "e3db0d60785471a624c29a444b5cb42fcbd3363d8a4dd92cf12739603ebdba5e"
+sha256-windows-2022 = "1dbbd1d7ac3fcabec5e4b24d3b1bc3143cd1b57aead2436276f2c56acb48ea5d"
+
+[pin.doxygen]
+version = "1.17.0"
+sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
+
+# Executed by python3 against the built test binary,
+# so pinned by commit.
+[pin.gtest-parallel]
+commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
+
+# Tools the pipeline runs, tracking published releases
+# rather than a branch tip.
+[pin.osv-scanner]
+version = "2.5.1"
+sha256 = "f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be"
+
+# Keep the version in step with the gitleaks rev in
+# .pre-commit-config.yaml.
+[pin.gitleaks]
+version = "8.30.1"
+sha256 = "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+
+# Built from source: distro packages are years behind and
+# cannot parse C++20 modules. Pinned by commit because
+# GitHub's generated tag archives are not byte-stable.
+[pin.cppcheck]
+version = "2.21.1"
+commit = "904cfdcf774c44b17db789c8a212e2f1c69fc833"
+
+# Install prefixes, exported as SPP_<KEY>_PREFIX. {home}
+# expands at load time.
+[runner]
+linux = "ubuntu-24.04"
+linux-arm = "ubuntu-24.04-arm"
+linux-old = "ubuntu-22.04"
+linux-old-arm = "ubuntu-22.04-arm"
+macos = "macos-26"
+macos-old = "macos-15"
+windows = "windows-2025"
+windows-old = "windows-2022"
+
+[prefix]
+local = "{home}/.local"
+doxygen = "{home}/.tools/doxygen"
+llvm-win = "{home}/llvm"
+llvm-mac = "{home}/llvm"
+llvm-deps-win = "{home}/llvm-deps"
+cppcheck = "{home}/.tools/cppcheck"
+
+[cache.build]
+generation = "v3"
+
+[cache.cross]
+generation = "v1"
+
+# The header/CMake dependencies, installed in order by
+# install-small-libs.sh.
+[[library]]
+name = "unordered_dense"
+repo = "https://github.com/martinus/unordered_dense.git"
+commit = "a544c8e8e7fc4c97100c33698405271139a844ec"
+
+[[library]]
+name = "mimalloc"
+repo = "https://github.com/microsoft/mimalloc.git"
+commit = "cd69707c3ca01a4c5fb358e8b92a710554f15356"
+cmake-flags = ["-DMI_SECURE=OFF"]
+
+[[library]]
+name = "json"
+repo = "https://github.com/nlohmann/json.git"
+commit = "35705d79d878db5ca1a282ec0f8243a80010d24e"
+cmake-flags = ["-DJSON_BuildTests=OFF"]
+
+[[library]]
+name = "tomlplusplus"
+repo = "https://github.com/marzer/tomlplusplus.git"
+commit = "1e8829b793b66ad17011732a146b8077d379b011"
+
+[[library]]
+name = "magic_enum"
+repo = "https://github.com/Neargye/magic_enum.git"
+commit = "591b64351ea8442f8b8fa044ff335d6943e8e6e0"
+cmake-flags = [
+  "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
+  "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
+]
+
+[[library]]
+name = "CLI11"
+repo = "https://github.com/CLIUtils/CLI11.git"
+commit = "c1cfe00d2f3d862aecfe6e69ec810414d5f4c906"
+cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
+
+[[library]]
+name = "range-v3"
+repo = "https://github.com/ericniebler/range-v3.git"
+commit = "108f93c279c8f9cec175dac361084983d0176e99"
+cmake-flags = [
+  "-DRANGE_V3_TESTS=OFF",
+  "-DRANGE_V3_EXAMPLES=OFF",
+  "-DRANGE_V3_DOCS=OFF",
+]
+
+[[library]]
+name = "googletest"
+repo = "https://github.com/SamG101-Developer/googletest.git"
+commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
+
+[[library]]
+name = "ColEx"
+repo = "https://github.com/SamG101-Developer/ColEx.git"
+commit = "02f3634266ee43e91cf7ee85559c429a70c01d0a"
+
+[[library]]
+name = "GenEx"
+repo = "https://github.com/SamG101-Developer/GenEx.git"
+commit = "1c46485ae4225460b3a174f20b067620d43b93b6"

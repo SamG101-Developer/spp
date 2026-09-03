@@ -54,7 +54,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureTupleAst final : LocalVari
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
@@ -62,4 +62,6 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureTupleAst final : LocalVari
 
 private:
   Vec<Unique<LetStatementInitializedAst>> _NewAsts;
+
+  Shared<IdentifierAst> _TmpName;
 };

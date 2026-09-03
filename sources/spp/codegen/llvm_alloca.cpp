@@ -3,10 +3,10 @@ import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
 
-auto spp::codegen::llvm_entry_alloca(
+auto spp::codegen::LlvmEntryAlloca(
   llvm::Type *const type,
   Str const &name,
-  LLvmCtx const *ctx)
+  LlvmCtx const *ctx)
   -> llvm::AllocaInst* {
   // Insert at the very top of the entry block, ahead of any "alloca"s already placed there.
   const auto func = ctx->Builder.GetInsertBlock()->getParent();

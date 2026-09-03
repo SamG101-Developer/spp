@@ -99,10 +99,6 @@ namespace spp::asts::generate::common_types {
     std::size_t pos)
     -> Shared<TypeAst>;
 
-  SPP_EXP_FUN auto StringType(
-    std::size_t pos)
-    -> Shared<TypeAst>;
-
   SPP_EXP_FUN auto StringViewType(
     std::size_t pos)
     -> Shared<TypeAst>;
@@ -112,6 +108,10 @@ namespace spp::asts::generate::common_types {
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto CopyType(
+    std::size_t pos)
+    -> Shared<TypeAst>;
+
+  SPP_EXP_FUN auto DropType(
     std::size_t pos)
     -> Shared<TypeAst>;
 
@@ -127,12 +127,12 @@ namespace spp::asts::generate::common_types {
 
   SPP_EXP_FUN auto VariantType(
     std::size_t pos,
-    SharedVec<TypeAst> &&inner_types)
+    Vec<Shared<TypeAst>> &&inner_types)
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto TupleType(
     std::size_t pos,
-    SharedVec<TypeAst> &&inner_types)
+    Vec<Shared<TypeAst>> &&inner_types)
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto TryType(
@@ -142,21 +142,6 @@ namespace spp::asts::generate::common_types {
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto FutureType(
-    std::size_t pos,
-    Shared<TypeAst> inner_type)
-    -> Shared<TypeAst>;
-
-  SPP_EXP_FUN auto OptionType(
-    std::size_t pos,
-    Shared<TypeAst> inner_type)
-    -> Shared<TypeAst>;
-
-  SPP_EXP_FUN auto MemoryType(
-    std::size_t pos,
-    Shared<TypeAst> inner_type)
-    -> Shared<TypeAst>;
-
-  SPP_EXP_FUN auto SingleType(
     std::size_t pos,
     Shared<TypeAst> inner_type)
     -> Shared<TypeAst>;
@@ -173,6 +158,11 @@ namespace spp::asts::generate::common_types {
 
   SPP_EXP_FUN auto None(
     std::size_t pos)
+    -> Shared<TypeAst>;
+
+  SPP_EXP_FUN auto NonNullType(
+    std::size_t pos,
+    Shared<TypeAst> inner_type)
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto GenType(

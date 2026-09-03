@@ -5,6 +5,7 @@ module spp.asts.function_parameter_self_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_info_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
@@ -73,6 +74,14 @@ auto spp::asts::FunctionParameterSelfAst::Stage7_AnalyseSemantics(
 
   // Apply the convention from the attribute.
   sym->Type = Type->WithConvention(AstClone(Conv));
+
+  // And record the borrow, which the base class could not: a "self" parameter keeps its convention in "Conv" rather
+  // than on "Type", so the base sees a bare type, reads no convention off it, and marks the symbol as owning its
+  // value. That left "&self" and "&mut self" unregistered as borrows for the whole memory model - nothing stopped a
+  // value being moved out of one.
+  if (Conv != nullptr) {
+    sym->MemInfo->AstBorrowed = {Conv.get(), sm->CurrentScope};
+  }
 }
 
 SPP_MOD_END

@@ -47,17 +47,23 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
 
   SPP_AST_KEY_FUNCTIONS
 
+  auto NsPartsInto(Vec<IdentifierAst const*> &out) const
+    -> void override;
+
+  auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const
+    -> void override;
+
   SPP_ATTR_NODISCARD auto NsParts() const
-    -> Vec<Shared<const IdentifierAst>> override;
+    -> Vec<IdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto NsParts()
-    -> Vec<Shared<IdentifierAst>> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst*> override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorNamespaceAst)

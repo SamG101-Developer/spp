@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
@@ -18,10 +18,10 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
-import spp.asts.token_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -87,10 +87,9 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   // Already analysed => return early.
-  using analyse::errors::SppExpressionAmbiguousIndexableError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   if (_MappedFunc != nullptr) { return; }
 
   // Determine the left-hand-side type.
@@ -133,7 +132,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward to the mapped function.
   return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
@@ -145,6 +144,18 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::InferType(
   -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
   return _MappedFunc->InferType(sm, meta);
+}
+
+auto spp::asts::PostfixExpressionOperatorIndexAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Unique<PostfixExpressionOperatorAst> {
+  // Substitute the inner expression inside the []
+  // tokens.
+  return MakeUnique<PostfixExpressionOperatorIndexAst>(
+    AstClone(TokL),
+    AstClone(TokMut),
+    AstClone(Expr->SubstituteGenericsExpr(args)),
+    AstClone(TokR));
 }
 
 SPP_MOD_END

@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
@@ -19,6 +20,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import spp.utils.ptr;
 import genex;
@@ -37,6 +39,8 @@ spp::asts::InnerScopeExpressionAst::InnerScopeExpressionAst(
   TokL(std::move(tok_l)),
   Members(std::move(members)),
   TokR(std::move(tok_r)) {
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_CURLY_BRACE, "{");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
 spp::asts::InnerScopeExpressionAst::~InnerScopeExpressionAst() = default;
@@ -75,6 +79,13 @@ auto spp::asts::InnerScopeExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::InnerScopeExpressionAst::DiscardsFinalMember() const
+  -> bool {
+  // A block's value is its final statement, handed to whoever
+  // wrote the block.
+  return false;
+}
+
 auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)
@@ -94,6 +105,19 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
 
   // Analyse the members of the inner scope.
   for (auto const &x : this->Members) { x->Stage7_AnalyseSemantics(sm, meta); }
+
+  // Every statement but the last has its value discarded; the last
+  // one is what this scope hands out, so whether it is discarded is
+  // decided by whoever receives it. A function body is the case
+  // where nobody does, which "DiscardsFinalMember" reports.
+  if (not Members.IsEmpty()) {
+    const auto discarded = DiscardsFinalMember() ? Members.Len() : Members.Len() - 1;
+    for (auto const &[i, m] : Members | genex::views::ptr | genex::views::enumerate) {
+      if (i >= discarded) { break; }
+      analyse::utils::expr_utils::ValidateDiscardedValue(*m, sm->CurrentScope, *sm, meta);
+    }
+  }
+
   sm->MoveOutOfCurrentScope();
 }
 
@@ -106,48 +130,55 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 
   // Move into the next scope.
   sm->MoveToNextScope();
+  SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Check the memory of each member.
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
 
-  // If the final expression of the inner scope is being used (ie assigned or outer variable), then memory check it.
-  if (const auto move = meta->AssignmentTarget; not Members.IsEmpty() and move != nullptr) {
+  // The final statement is the scope's value, so unless nothing receives it, it leaves the scope here - and leaving is
+  // a move out of whatever named it. "AssignmentTarget" is only set for an assignment, so gating on it missed every
+  // other way a scope's value gets used: a "ret case ... { .. x }" never recorded the move of "x", which then read as
+  // a value still owed at the closing brace even though it had just been returned.
+  if (not Members.IsEmpty() and not DiscardsFinalMember()) {
     if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
+      const auto move = meta->AssignmentTarget != nullptr
+        ? static_cast<Ast const*>(meta->AssignmentTarget.get())
+        : static_cast<Ast const*>(TokR.get());
       ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
     }
   }
 
+  // Ownership is linear, so nothing declared in this scope may still
+  // own a value once the scope ends. Checked after the members, so a
+  // value consumed by the last statement is already gone, and before
+  // the escaping borrows below are released, because releasing them
+  // is what clears the very state the check reads to tell that a
+  // symbol holding borrows is not something this scope owes.
+  if (not Terminates()) {
+    analyse::utils::linear_utils::CheckDeferredForScope(
+      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, "Scope end", *sm);
+    analyse::utils::linear_utils::CheckScopeExit(
+      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, "Scope end", *sm, meta);
+  }
+
   // Variable symbols' memory info structs contain the escaping borrow containers, and the contained escaping borrows.
-  // At the end of a scope, we need to check, for every symbol, if it contains any escaping borrows. If the
-  // containment happened in this scope, then we need to free the escaping borrows, as the container is now out of
-  // scope.
-  for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
-    auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows
-      | genex::views::filter([&](auto const &x) { return std::get<2>(x) == sm->CurrentScope; })
-      | genex::to<Vec>();
+  // At the end of a scope, every symbol declared *in* this scope dies, so the escaping borrows it holds are released
+  // with it. What matters is where the container was declared, not where the borrow was established: a handle
+  // declared further out ("let h: Gen[..]" and then "{ h = c(&p) }") carries the borrow on past this point.
+  for (auto const &sym : sm->CurrentScope->AllVarSymbols(true)) {
+    auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows;
 
     for (auto const &ceb : contained_escaping_borrows) {
       sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
-      const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
-      if (b == nullptr) { continue; }
-      sm->CurrentScope->GetVarSymbol(b.get())->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
+      const auto borrow = spp::get<0>(ceb);
+      const auto borrowed_sym = sm->CurrentScope->GetVarSymbolOutermost(*borrow).first;
+      if (borrowed_sym == nullptr) { continue; }
+      borrowed_sym->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
         [&](auto info) {
-          return *std::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
+          return *spp::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
         });
     }
   }
-
-  // Any escaping borrows that were defined in this scope need to be freed.
-  // for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
-  //     auto escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows; // Copy
-  //     for (auto const &eb : escaping_borrows) {
-  //         auto const &[ast, _, scope] = eb;
-  //         if (scope != sm->CurrentScope) { continue; }
-  //         sym->MemInfo->AstContainedEscapingBorrows.erase(
-  //             std::ranges::remove(sym->MemInfo->AstContainedEscapingBorrows, eb).begin(),
-  //             sym->MemInfo->AstContainedEscapingBorrows.end());
-  //     }
-  // }
 
   sm->MoveOutOfCurrentScope();
 }
@@ -159,9 +190,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
   // Comptime resolve each member of the inner scope.
   sm->MoveToNextScope();
   for (auto const &m : this->Members) {
-    const auto did_ret = m->template To<RetStatementAst>() != nullptr;
     m->Stage9_CompTimeResolve(sm, meta);
-    if (did_ret) { break; }
+    if (meta->CmpReturned) { break; }
   }
 
   // Exit the scope.
@@ -171,16 +201,29 @@ auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
 auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Add all the expressions/statements into the current scope.
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
+  // Nothing has been reached in this scope yet. Cleared on entry
+  // rather than left from a previous walk, because a generic
+  // base and its instantiations share this scope object across
+  // separate codegen passes.
+  sm->CurrentScope->DeferredReached.Clear();
+
+  // A statement's value is either bound or "Void", and a local
+  // is either moved on or taken apart, because stage 8 rejects
+  // anything else. So a scope leaves nothing behind to destroy,
+  // and none is emitted here.
   auto ret_val = static_cast<llvm::Value*>(nullptr);
   for (auto const &m : this->Members) {
     ret_val = m->Stage11_CodeGen(sm, meta, ctx);
   }
+
+  // Whatever this scope deferred runs as it is left, after the value it hands out has been produced.
+  codegen::EmitDeferredScope(*sm->CurrentScope, sm, meta, ctx);
 
   // Exit the scope.
   sm->MoveOutOfCurrentScope();

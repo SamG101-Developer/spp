@@ -146,7 +146,7 @@ auto spp::asts::UseStatementAst::Stage9_CompTimeResolve(
 auto spp::asts::UseStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Code gen for the conversion AST.
   return _Conversion->Stage10_PreCodeGen(sm, meta, ctx);
@@ -155,7 +155,7 @@ auto spp::asts::UseStatementAst::Stage10_PreCodeGen(
 auto spp::asts::UseStatementAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Code gen for the conversion AST.
   return _Conversion->Stage11_CodeGen(sm, meta, ctx);

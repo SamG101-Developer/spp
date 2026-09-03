@@ -61,23 +61,34 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ToString() const
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts() const
-  -> Vec<Shared<const IdentifierAst>> {
-  return {Ns};
+  -> Vec<IdentifierAst const*> {
+  return {Ns.get()};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts()
-  -> Vec<Shared<IdentifierAst>> {
-  return {Ns};
+  -> Vec<IdentifierAst*> {
+  return {Ns.get()};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
+  -> Vec<TypeIdentifierAst const*> {
   return {};
 }
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts()
-  -> Vec<Shared<TypeIdentifierAst>> {
+  -> Vec<TypeIdentifierAst*> {
   return {};
+}
+
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsPartsInto(
+  Vec<IdentifierAst const*> &out) const
+  -> void {
+  out.EmplaceBack(Ns.get());
+}
+
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*>&) const
+  -> void {
 }
 
 SPP_MOD_END

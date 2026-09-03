@@ -105,5 +105,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p = Point(x=5, y=5)
         let a = p.x
         let b = p.x
+        std::mem::ops::drop(p)
     }
 )");

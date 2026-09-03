@@ -6,7 +6,6 @@ import spp.utils.errors;
 import spp.utils.types;
 import boost;
 import std;
-import sys;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
@@ -53,16 +52,17 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppVariableObjectDestructureWithBoundRestPatternError;
   SPP_EXP_CLS struct SppExpressionNotBooleanError;
   SPP_EXP_CLS struct SppExpressionNotGeneratorError;
+  SPP_EXP_CLS struct SppExpressionNotTryError;
   SPP_EXP_CLS struct SppExpressionAmbiguousGeneratorError;
-  SPP_EXP_CLS struct SppExpressionAmbiguousIndexableError;
+  SPP_EXP_CLS struct SppExpressionAmbiguousTryError;
   SPP_EXP_CLS struct SppLoopTooManyControlFlowStatementsError;
   SPP_EXP_CLS struct SppObjectInitializerMultipleAutofillArgumentsError;
   SPP_EXP_CLS struct SppObjectInitializerInvalidArgumentError;
   SPP_EXP_CLS struct SppObjectInitializerVariantError;
+  SPP_EXP_CLS struct SppObjectInitializerGeneratorError;
   SPP_EXP_CLS struct SppAbstractTypeUseError;
   SPP_EXP_CLS struct SppArgumentNameInvalidError;
   SPP_EXP_CLS struct SppArgumentMissingError;
-  SPP_EXP_CLS struct SppEarlyReturnRequiresTryTypeError;
   SPP_EXP_CLS struct SppFunctionCallAbstractFunctionError;
   SPP_EXP_CLS struct SppFunctionCallTooManyArgumentsError;
   SPP_EXP_CLS struct SppFunctionCallNoValidSignaturesError;
@@ -74,6 +74,9 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppCoroutineContainsReturnStatementError;
   SPP_EXP_CLS struct SppFunctionSubroutineMissingReturnStatementError;
   SPP_EXP_CLS struct SppSuperimpositionCyclicExtensionError;
+  SPP_EXP_CLS struct SppTypeAliasCyclicError;
+  SPP_EXP_CLS struct SppDivisionByZeroError;
+  SPP_EXP_CLS struct SppShiftAmountOutOfBoundsError;
   SPP_EXP_CLS struct SppSuperimpositionDoubleExtensionError;
   SPP_EXP_CLS struct SppSuperimpositionSelfExtensionError;
   SPP_EXP_CLS struct SppSuperimpositionExtensionMethodInvalidError;
@@ -97,6 +100,9 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppAnnotationTargetNotAnAnnotationError;
   SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
   SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
+  SPP_EXP_CLS struct SppUnitTestInvalidSignatureError;
+  SPP_EXP_CLS struct SppUnitTestNotCallableError;
+  SPP_EXP_CLS struct SppFfiGenericParameterError;
   SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
   SPP_EXP_CLS struct SppAccessViolationError;
   SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
@@ -104,6 +110,34 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppMovingComptimeConstantMemoryError;
   SPP_EXP_CLS struct SppHigherOrderGenericsNotSupportedError;
   SPP_EXP_CLS struct SppGeneratedCodeError;
+  SPP_EXP_CLS struct SppCharLiteralOutOfBoundsError;
+  SPP_EXP_CLS struct SppLinearValueNotConsumedError;
+  SPP_EXP_CLS struct SppDiscardedValueError;
+  SPP_EXP_CLS struct SppLinearValueSkippedInDestructureError;
+  SPP_EXP_CLS struct SppDeferTerminatesError;
+  SPP_EXP_CLS struct SppDeferInCompileTimeFunctionError;
+  SPP_EXP_CLS struct SppDeferConsumesMovedValueError;
+  SPP_EXP_CLS struct SppFeatureNotYetSupportedError;
+
+  /**
+   * A feature the language means to have and does not have yet. Each one carries its own explanation of why it does
+   * not work today, so that reaching it reads as "not yet" rather than as a mistake in the code that reached it.
+   */
+  SPP_EXP_CLS enum class NotYetSupportedFeature {
+    NestedTypeBeforeSupScopes,
+  };
+
+  SPP_EXP_CLS enum class ErrorInformationKind {
+    HEADER, ERROR, CONTEXT, FOOTER,
+    WRAPPED
+  };
+
+  SPP_EXP_CLS struct ErrorInformation {
+    asts::Ast const *Ast;
+    ErrorInformationKind Kind;
+    Str Tag;
+    Str Msg;
+  };
 }
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
@@ -112,16 +146,20 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
 
   ~SemanticError() override = default;
 
-  enum class ErrorInformationType {
-    HEADER, ERROR, CONTEXT, FOOTER,
-    WRAPPED
-  };
-
-  Vec<std::tuple<asts::Ast const*, ErrorInformationType, Str, Str>> ErrorInfo;
+  Vec<ErrorInformation> ErrorInfo;
 
   auto AddHeaders(std::size_t err_code, Str &&msg) -> void;
 
   auto AddErr(asts::Ast const *ast, Str &&tag) -> void;
+
+  /**
+   * As @c AddErr , but marks the ast exactly as given rather than narrowing a call expression to its argument group.
+   * Use it when the error is about the expression as a whole - what its value is, or that nothing takes it - rather
+   * than about the call within it, where narrowing would point at the arguments and read as though they were at fault.
+   * @param ast The ast to mark.
+   * @param tag The message to attach to it.
+   */
+  auto AddErrExact(asts::Ast const *ast, Str &&tag) -> void;
 
   auto AddCtxForErr(asts::Ast const *ast, Str &&tag) -> void;
 
@@ -210,6 +248,15 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
   explicit SppFloatOutOfBoundsError(asts::Ast const &literal, boost::BigDec const &value,
     boost::BigDec const &lower, boost::BigDec const &upper, StrView what);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDivisionByZeroError final : SemanticError {
+  explicit SppDivisionByZeroError(asts::Ast const &operation, asts::Ast const &divisor);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppShiftAmountOutOfBoundsError final : SemanticError {
+  explicit SppShiftAmountOutOfBoundsError(asts::Ast const &operation, asts::Ast const &amount, StrView type,
+    std::size_t width);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIntegerOutOfBoundsError final : SemanticError {
@@ -304,12 +351,16 @@ SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotGeneratorError final : 
   explicit SppExpressionNotGeneratorError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
 };
 
+SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotTryError final : SemanticError {
+  explicit SppExpressionNotTryError(asts::Ast const &expr, asts::Ast const &type);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousGeneratorError final : SemanticError {
   explicit SppExpressionAmbiguousGeneratorError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousIndexableError final : SemanticError {
-  explicit SppExpressionAmbiguousIndexableError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
+SPP_EXP_CLS struct spp::analyse::errors::SppExpressionAmbiguousTryError final : SemanticError {
+  explicit SppExpressionAmbiguousTryError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppLoopTooManyControlFlowStatementsError final : SemanticError {
@@ -329,6 +380,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerVariantError final 
   explicit SppObjectInitializerVariantError(asts::Ast const &type);
 };
 
+SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerGeneratorError final : SemanticError {
+  explicit SppObjectInitializerGeneratorError(asts::Ast const &type, asts::Ast const &generator_type);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppAbstractTypeUseError final : SemanticError {
   explicit SppAbstractTypeUseError(asts::Ast const &type, asts::Ast const &unimplemented);
 };
@@ -341,10 +396,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppArgumentNameInvalidError final : Sem
 SPP_EXP_CLS struct spp::analyse::errors::SppArgumentMissingError final : SemanticError {
   explicit SppArgumentMissingError(asts::Ast const &target, StrView target_what, asts::Ast const &source,
     StrView source_what);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppEarlyReturnRequiresTryTypeError final : SemanticError {
-  explicit SppEarlyReturnRequiresTryTypeError(asts::Ast const &expr, asts::Ast const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallAbstractFunctionError final : SemanticError {
@@ -393,6 +444,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFunctionSubroutineMissingReturnState
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionCyclicExtensionError final : SemanticError {
   explicit SppSuperimpositionCyclicExtensionError(asts::Ast const &first_extension,
     asts::Ast const &second_extension);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppTypeAliasCyclicError final : SemanticError {
+  explicit SppTypeAliasCyclicError(asts::Ast const &first_alias,
+    asts::Ast const &cyclic_alias);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionDoubleExtensionError final : SemanticError {
@@ -501,6 +557,20 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstE
     asts::Ast const &annotation_definition);
 };
 
+SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestInvalidSignatureError final : SemanticError {
+  explicit SppUnitTestInvalidSignatureError(asts::Ast const &annotation, asts::Ast const &fun_name,
+    StrView requirement);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFfiGenericParameterError final : SemanticError {
+  explicit SppFfiGenericParameterError(
+    asts::Ast const &annotation, asts::Ast const &generic_parameter, StrView symbol);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestNotCallableError final : SemanticError {
+  explicit SppUnitTestNotCallableError(asts::Ast const &call_site, asts::Ast const &annotation);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidBinaryFoldExpressionError final : SemanticError {
   explicit SppInvalidBinaryFoldExpressionError(asts::Ast const &expr, asts::Ast const &tup_type,
     std::size_t tup_num_elems);
@@ -530,4 +600,45 @@ SPP_EXP_CLS struct spp::analyse::errors::SppHigherOrderGenericsNotSupportedError
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGeneratedCodeError final : SemanticError {
   explicit SppGeneratedCodeError(asts::Ast const &ast, Str &&wrapped_error);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCharLiteralOutOfBoundsError final : SemanticError {
+  explicit SppCharLiteralOutOfBoundsError(asts::Ast const &literal, std::uint32_t code_point);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueNotConsumedError final : SemanticError {
+  explicit SppLinearValueNotConsumedError(asts::Ast const &symbol_definition, asts::Ast const &exit_point,
+    StrView symbol_name, StrView type_name, StrView exit_what);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDiscardedValueError final : SemanticError {
+  explicit SppDiscardedValueError(asts::Ast const &expr, StrView type_name);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDeferTerminatesError final : SemanticError {
+  explicit SppDeferTerminatesError(asts::Ast const &tok_defer, asts::Ast const &expr);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFeatureNotYetSupportedError final : SemanticError {
+  /**
+   * @param feature Which unsupported feature was reached; selects the explanation.
+   * @param context The ast to point at for context - typically what the feature was used on.
+   * @param site The ast to point at as the error - typically where it was written.
+   */
+  explicit SppFeatureNotYetSupportedError(
+    NotYetSupportedFeature feature, asts::Ast const &context, asts::Ast const &site);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDeferConsumesMovedValueError final : SemanticError {
+  explicit SppDeferConsumesMovedValueError(asts::Ast const &deferred, asts::Ast const &consumed_at,
+    StrView symbol_name, StrView exit_what);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompileTimeFunctionError final : SemanticError {
+  explicit SppDeferInCompileTimeFunctionError(asts::Ast const &tok_defer);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError final : SemanticError {
+  explicit SppLinearValueSkippedInDestructureError(asts::Ast const &skip, asts::Ast const &destructure,
+    StrView attr_name, StrView type_name);
 };

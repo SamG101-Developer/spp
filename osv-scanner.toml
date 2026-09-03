@@ -1,0 +1,9 @@
+[[IgnoredVulns]]
+id = "OSV-2024-112"
+ignoreUntil = 2027-02-18
+reason = "Boost.Graph read_graphviz parser. This project includes only boost/multiprecision and boost/preprocessor, both header-only via Boost::boost, so the affected translation units are never compiled or linked. Re-evaluate if a Boost.Graph dependency is ever added."
+
+[[IgnoredVulns]]
+id = "OSV-2024-914"
+ignoreUntil = 2027-02-18
+reason = "Boost.Regex basic_regex_formatter. This project includes only boost/multiprecision and boost/preprocessor, both header-only via Boost::boost, so the affected translation units are never compiled or linked. Re-evaluate if a Boost.Regex dependency is ever added."

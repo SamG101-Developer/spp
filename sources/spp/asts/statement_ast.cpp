@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.statement_ast;
-import spp.asts.generate.common_types;
 import spp.asts.type_ast;
+import spp.asts.generate.common_types;
 
 SPP_MOD_BEGIN
 spp::asts::StatementAst::StatementAst() = default;

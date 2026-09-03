@@ -1,67 +1,25 @@
 #pragma once
 
-import spp.cli;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.lex.lexer;
-import spp.parse.errors.parser_error;
-import spp.parse.parser_spp;
-import spp.utils.files;
-import sys;
+// Declarations only. The definitions live in "test_boot.cpp", which is what needs "spp.cli" and the parser to build a
+// throwaway project - and importing those here made all ~120 test translation units pay for the whole compiler module
+// graph to call two functions.
+import spp.utils.types;
 import std;
 
-inline auto build_temp_project(std::string code, const bool add_main = true) -> void {
-  const auto cwd = std::filesystem::current_path();
-  constexpr auto fp = "../../tests/test_outputs";
+/**
+ * Create the project fixture the whole suite shares, if it is not already on disk.
+ *
+ * gtest-parallel runs one process per test, so this runs once per worker rather than once per run, and a cross process
+ * lock keeps the workers off each other. Running SppBootstrap.Fixture on its own first, as run-tests.sh does, keeps the
+ * [vcs] clone out of the parallel phase entirely.
+ */
+auto ensure_temp_project() -> void;
 
-  if (add_main) {
-    code = "fun main(args: Vec[Str]) -> Void { }\n" + code;
-  }
-
-  // Ensure the output directory exists before opening the lock file inside it.
-  std::filesystem::create_directories(cwd / fp);
-
-  // Acquire the same cross-process file lock that ModuleTree uses, so that
-  // initialization (handle_init + handle_vcs) is serialized across parallel
-  // test workers. Use spp.toml as the sentinel: it is written by handle_init,
-  // so its absence means initialization has not completed.
-  const auto lock_path = spp::utils::files::NativeString(cwd / fp / ".lock");
-  const int init_lock_fd = sys::open(lock_path.c_str(), sys::O_RDWR | sys::O_CREAT);
-  sys::flock(init_lock_fd, sys::LOCK_EX);
-
-  if (not std::filesystem::exists(cwd / fp / "spp.toml")) {
-    std::filesystem::current_path(cwd / fp);
-    spp::cli::handle_init();
-    spp::cli::handle_vcs();
-    std::filesystem::current_path(cwd);
-  }
-
-  sys::flock(init_lock_fd, sys::LOCK_UN);
-  sys::close(init_lock_fd);
-
-  // Build the project.
-  std::filesystem::create_directories(cwd / fp / "src");
-  std::filesystem::current_path(cwd / fp);
-  try {
-    spp::cli::unit_test("rel", std::move(code));
-  }
-  catch (const spp::analyse::errors::SemanticError &e) {
-    std::cout << e.what() << std::endl;
-    spp::analyse::scopes::ScopeManager::Cleanup();
-    throw;
-  }
-  catch (const spp::parse::errors::SppSyntaxError &e) {
-    std::cout << e.what() << std::endl;
-    spp::analyse::scopes::ScopeManager::Cleanup();
-    throw;
-  }
-  catch (const std::exception &e) {
-    std::cout << e.what() << std::endl;
-    spp::analyse::scopes::ScopeManager::Cleanup();
-    throw;
-  }
-
-  spp::analyse::scopes::ScopeManager::Cleanup();
-  std::filesystem::current_path(cwd);
-}
+/**
+ * Compile one module of code as a throwaway project.
+ * @param code The module source.
+ * @param add_main Whether to prepend an empty "main", which an executable project needs.
+ * @return The values the module's compile-time constants resolved to, by name. Reading a "cmp" back is the only way a
+ * test can check what comp-time resolution computed rather than merely that it finished; see SPP_TEST_CMP_VALUES.
+ */
+auto build_temp_project(std::string code, bool add_main = true) -> spp::Map<spp::Str, spp::Str>;

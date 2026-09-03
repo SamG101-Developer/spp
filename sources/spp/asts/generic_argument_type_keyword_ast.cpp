@@ -6,6 +6,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_group_ast;
@@ -17,15 +19,32 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.lex.tokens;
+import genex;
 
 SPP_MOD_BEGIN
 auto spp::asts::GenericArgumentTypeKeywordAst::FromSym(
   analyse::scopes::TypeSymbol const &sym)
   -> Unique<GenericArgumentTypeKeywordAst> {
   // Extract the value from the symbol's scope, if it exists.
-  auto value = sym.LinkedScope == nullptr
-    ? MakeShared<TypeIdentifierAst>(0, "Self", nullptr)
-    : sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()));
+  // Without a scope, fall back to the recorded generic value
+  // (the value is an unresolved generic parameter, so it names
+  // itself rather than a scope / true type).
+  //
+  // A tuple is the one type that can legitimately be written
+  // bare, because "()" has nothing to instantiate "Tup[..Items]"
+  // with and so resolves to the template itself - whose own
+  // name binds every parameter to itself.
+  const auto is_bare_tuple = sym.LinkedScope != nullptr
+    and sym.LinkedScope->TySym != nullptr
+    and analyse::utils::type_predicates::IsTupSymbol(*sym.LinkedScope->TySym);
+
+  auto value = sym.LinkedScope != nullptr
+    ? (is_bare_tuple
+      ? analyse::utils::generic_bindings::WithoutSelfBindingGenerics(sym.LinkedScope->TySym->FqName())
+      : sym.LinkedScope->TySym->FqName())->WithConvention(AstClone(sym.Convention.get()))
+    : sym.GenericVal != nullptr
+    ? AstCloneShared(sym.GenericVal)
+    : MakeShared<TypeIdentifierAst>(0, "Self", nullptr);
 
   // Wrap the value into a type argument.
   return MakeUnique<GenericArgumentTypeKeywordAst>(
@@ -96,12 +115,17 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
   if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 
-  // Analyse the name and value of the generic type argument.
-  const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val.get());
-  const auto tmp2 = tmp1->FqName();
-  auto tmp3 = AstClone(Val->GetConvention());
-  const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
-  Val = tmp4;
+  // Todo: Document.
+  const auto val_sym = sm->CurrentScope->GetTypeSymbol(Val.get());
+  auto val_name = meta->ResolveBoundCompGenerics
+    ? val_sym->BoundName()
+    : val_sym->FqName();
+
+  if (Val->LastTypePart()->GnArgGroup->Args.IsEmpty()) {
+    val_name = analyse::utils::generic_bindings::WithoutSelfBindingGenerics(val_name);
+  }
+
+  Val = val_name->WithConvention(AstClone(Val->GetConvention()));
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::ViewName() const

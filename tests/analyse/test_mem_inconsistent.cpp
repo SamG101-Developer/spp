@@ -1,9 +1,9 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_initialized_moved,
-    SppInconsistentlyInitializedMemoryUseError, R"(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_initialized_moved,
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -13,7 +13,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let p = Point(x=Str::from("5"), y=Str::from("5"))
 
         case 1 of {
-            == 1 { let r = p }
+            == 1 {
+                let r = p
+                std::mem::ops::drop(r)
+            }
             == 2 { }
         }
 
@@ -22,9 +25,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_initialized_initialized,
-    SppInconsistentlyInitializedMemoryUseError, R"(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_initialized_initialized,
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -42,9 +45,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_initialized_partially_moved_1,
-    SppInconsistentlyInitializedMemoryUseError, R"(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_initialized_partially_moved_1,
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -53,7 +56,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let x = p.x }
+            == 1 {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
             == 2 { }
         }
 
@@ -62,9 +68,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_initialized_partially_moved_2,
-    SppInconsistentlyInitializedMemoryUseError, R"(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_initialized_partially_moved_2,
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -73,8 +79,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let x = p.x }
-            == 2 { let y = p.y }
+            == 1 {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
+            == 2 {
+                let y = p.y
+                std::mem::ops::drop(y)
+            }
         }
 
         let r = p
@@ -82,9 +94,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_initialized_partially_initialized_1,
-    SppInconsistentlyInitializedMemoryUseError, R"(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_initialized_partially_initialized_1,
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -104,9 +116,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_initialized_partially_initialized_2,
-    SppInconsistentlyInitializedMemoryUseError, R"(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_initialized_partially_initialized_2,
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -127,9 +139,94 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_pinned_1,
-    SppInconsistentlyEscapingBorrows, R"(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_move_escaping_borrowed_value_in_branch,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(p: &Point) -> Gen[Bool] { }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        let g = c(&p)
+        case 1 of {
+            == 1 { let r = p }
+            == 2 { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_move_escaping_borrowed_attribute_in_branch,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(x: &Str) -> Gen[Bool] { }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        let g = c(&p.x)
+        case 1 of {
+            == 1 { let r = p.x }
+            == 2 { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_move_escaping_borrow_container_in_branch,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(p: &Point) -> Gen[Bool] { }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        let g = c(&p)
+        case 1 of {
+            == 1 { let h = g }
+            == 2 { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_conflicting_borrow_in_branch_while_escaping_borrow_live,
+  SppMemoryOverlapUsageError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(p: &mut Point) -> Gen[Bool] { }
+
+    fun g(p: &Point) -> Void { }
+
+    fun f() -> Void {
+        let mut p = Point(x=Str::from("5"), y=Str::from("5"))
+        let h = c(&mut p)
+        case 1 of {
+            == 1 { g(&p) }
+            == 2 { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_valid_memory_branch_local_escaping_borrow_released, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -145,13 +242,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(r)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_pinned_2,
-    SppInconsistentlyEscapingBorrows, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_valid_memory_branch_local_escaping_borrow_of_attribute_released, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -167,13 +264,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(r)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_invalid_memory_inconsistently_pinned_3,
-    SppInconsistentlyEscapingBorrows, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_valid_memory_branch_local_escaping_borrows_of_different_attributes_released, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -189,14 +286,15 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(r)
     }
 )");
 
 // Positive counterparts: when every branch leaves a symbol in the SAME memory state, there is no
 // inconsistency, so the post-case state is applied cleanly.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_valid_memory_consistently_moved, R"(
+  TestAstMemoryInconsistent,
+  test_valid_memory_consistently_moved, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -205,15 +303,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let r = p }
-            == 2 { let r = p }
+            == 1 {
+                let r = p
+                std::mem::ops::drop(r)
+            }
+            == 2 {
+                let r = p
+                std::mem::ops::drop(r)
+            }
         }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryInconsistent,
-    test_valid_memory_consistently_initialized, R"(
+  TestAstMemoryInconsistent,
+  test_valid_memory_consistently_initialized, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -224,6 +328,100 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 { p = Point(x=Str::from("5"), y=Str::from("5")) }
             == 2 { p = Point(x=Str::from("6"), y=Str::from("6")) }
+        }
+
+        let r = p
+        std::mem::ops::drop(r)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_valid_memory_borrow_after_branch_local_mut_escaping_borrow_released, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(p: &mut Point) -> Gen[Bool] { }
+
+    fun g(p: &Point) -> Void { }
+
+    fun f() -> Void {
+        let mut p = Point(x=Str::from("5"), y=Str::from("5"))
+        case 1 of {
+            == 1 { let h = c(&mut p) }
+            == 2 { }
+        }
+
+        g(&p)
+        std::mem::ops::drop(p)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_escaping_borrow_from_outer_handle,
+  SppInconsistentlyEscapingBorrows, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(p: &Point) -> Gen[Bool] { }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        let h: Gen[Bool]
+        case 1 of {
+            == 1 { h = c(&p) }
+            == 2 { }
+        }
+
+        let r = p
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_inconsistently_escaping_borrow_of_different_attributes_from_outer_handle,
+  SppInconsistentlyEscapingBorrows, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(x: &Str) -> Gen[Bool] { }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        let h: Gen[Bool]
+        case 1 of {
+            == 1 { h = c(&p.x) }
+            == 2 { h = c(&p.y) }
+        }
+
+        let r = p
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_move_escaping_borrowed_by_outer_handle_after_case,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    cor c(x: &Str) -> Gen[Bool] { }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        let h: Gen[Bool]
+        case 1 of {
+            == 1 { h = c(&p.x) }
+            == 2 { h = c(&p.x) }
         }
 
         let r = p

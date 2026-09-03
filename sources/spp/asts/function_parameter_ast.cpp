@@ -8,10 +8,11 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.let_statement_uninitialized_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -76,15 +77,14 @@ auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
 auto spp::asts::FunctionParameterAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the local variable so that the symbol table receives the alloca.
-  meta->Save();
+  const auto _meta_guard = meta::MetaGuard(meta);
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
   // It's not uninitialized but as the value is external we need this behaviour
   Var->Stage11_CodeGen(sm, meta, ctx);
-  meta->Restore();
   return nullptr;
 }
 

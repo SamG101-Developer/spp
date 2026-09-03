@@ -28,8 +28,6 @@ namespace spp::analyse::utils::bin_utils {
    * to function calls.
    */
   SPP_EXP_CLS const auto kBinMethods = std::map<lex::SppTokenType, Str>{
-    {lex::SppTokenType::KW_OR, "ior_"},
-    {lex::SppTokenType::KW_AND, "and_"},
     {lex::SppTokenType::TK_EQ, "eq"},
     {lex::SppTokenType::TK_NE, "ne"},
     {lex::SppTokenType::TK_LT, "lt"},
@@ -88,7 +86,16 @@ namespace spp::analyse::utils::bin_utils {
     lex::SppTokenType::TK_GE
   };
 
-  SPP_EXP_FUN auto CombineCompOps(
+  /**
+   * Rewrite a chain of comparisons into an @c and of the pairs it stands for: @code a < b < c@endcode becomes
+   * @code (a < b) and (b < c)@endcode , binding the middle operand to a temporary first when re-evaluating it would
+   * not be free. Anything that is not such a chain comes back unchanged.
+   * @param[in, out] bin_expr The expression to rewrite, whose operands are moved out of it.
+   * @param[in, out] sm The scope manager.
+   * @param[in, out] meta Associated metadata.
+   * @return The rewritten expression.
+   */
+  SPP_EXP_FUN auto CombineComparisonChain(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)

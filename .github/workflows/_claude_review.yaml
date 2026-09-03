@@ -1,0 +1,49 @@
+name: claude-review
+
+# Automated review pass over a pull request. Advisory in exactly the way Sonar is: it runs inside the PR pipeline and
+# reports, but it is deliberately left out of the ci-success `needs` list, so nothing it says blocks a merge.
+#
+# This has no trigger of its own. It is called from pr.yaml, which owns the concurrency group, so a new push cancels
+# the run this belongs to rather than leaving a stale review to post twice.
+
+on:
+  workflow_call:
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+permissions: { }
+
+jobs:
+  claude-review:
+    name: Claude Code Review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    steps:
+      # Secure the runner from external packages or actions.
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+
+      # Provide the ability to git-checkout external packages and actions.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@b76a0776ae74036e77cd11018083743453d7ad35
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Todo: pin this to a commit.
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'

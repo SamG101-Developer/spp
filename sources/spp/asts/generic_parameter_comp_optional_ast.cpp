@@ -7,7 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -73,7 +73,7 @@ auto spp::asts::GenericParameterCompOptionalAst::Stage7_AnalyseSemantics(
   -> void {
   // Analyse the default value.
   using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_utils::TypeEq;
+  using analyse::utils::type_compare::TypeEq;
   GenericParameterCompAst::Stage7_AnalyseSemantics(sm, meta);
   DefaultVal->Stage7_AnalyseSemantics(sm, meta);
 

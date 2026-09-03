@@ -30,8 +30,23 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
   Unique<ClosureExpressionParameterAndCaptureGroupAst> PcGroup;
 
   /**
+   * The optional @c -> token, present exactly when a return type is declared.
+   */
+  Unique<TokenAst> TokArrow;
+
+  /**
+   * The declared return type, or @c nullptr when it is left to be inferred from the body. Declaring one is what lets a
+   * closure hand back a variant, that the closure's body only produces a member of, the same way
+   * @code let x: Opt[S32] = Some(val=1)@endcode does: inferring from the body gives @c Some[S32] , and a caller
+   * holding it as @c Opt[S32] then reads the payload where the discriminant should be. A declared type is what the
+   * body is checked against and coerced into.
+   */
+  Shared<TypeAst> ReturnType;
+
+  /**
    * The body of the closure. This can be a single expression, like @code || 1 + 2@endcode, or an inner scope (type of
-   * expression), for more complex closures.
+   * expression), for more complex closures. A declared return type requires the braced form, because that is the only
+   * one a @c ret can be written in.
    */
   Unique<ExpressionAst> Body;
 
@@ -43,11 +58,15 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
    * Construct the ClosureExpressionAst with the arguments matching the members.
    * @param[in] tok The optional @c cor keyword.
    * @param[in] pc_group The parameter and capture group of the closure.
+   * @param[in] tok_arrow The optional @c -> token.
+   * @param[in] return_type The declared return type, or @c nullptr to infer it from the body.
    * @param[in] body The body of the closure.
    */
   ClosureExpressionAst(
     decltype(Tok) &&tok,
     decltype(PcGroup) &&pc_group,
+    decltype(TokArrow) &&tok_arrow,
+    decltype(ReturnType) return_type,
     decltype(Body) &&body);
 
   ~ClosureExpressionAst() override;
@@ -58,7 +77,7 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 

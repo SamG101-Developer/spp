@@ -2,12 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_else_ast;
-import spp.lex.tokens;
 import spp.asts.boolean_literal_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
@@ -55,9 +55,11 @@ auto spp::asts::CasePatternVariantElseAst::Stage9_CompTimeResolve(
 auto spp::asts::CasePatternVariantElseAst::Stage11_CodeGen(
   ScopeManager *,
   CompilerMetaData *,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // The "else" pattern always matches, so return "true".
+  // The "else" pattern always matches, so return "true". However,
+  // should a previous branch match before this one is reached,
+  // then that one will be selected.
   return llvm::ConstantInt::getTrue(*ctx->Context);
 }
 

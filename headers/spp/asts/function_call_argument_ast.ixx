@@ -58,13 +58,13 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAs
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   auto SetSelfType(Shared<TypeAst> self_type) -> void;
 
-  auto GetSelfType() -> Shared<TypeAst>;
+  SPP_ATTR_NODISCARD auto GetSelfType() const -> Shared<TypeAst>;
 
 private:
   /**

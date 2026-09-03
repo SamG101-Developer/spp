@@ -22,7 +22,7 @@ public:
     std::size_t ast_start_pos,
     std::size_t ast_size,
     Str &&tag_message)
-    -> std::tuple<Str, Str, Str, Str, Str>;
+    -> Tup<Str, Str, Str, Str, Str>;
 
   auto ErrorRawPos(
     std::size_t ast_start_pos,

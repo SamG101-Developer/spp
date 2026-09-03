@@ -1,8 +1,8 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinVirtualMethod,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinVirtualMethod,
+  test_valid_usage_on_method, R"(
     cls A { }
     sup A {
         !virtual_method
@@ -11,16 +11,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_BuiltinVirtualMethod,
-    test_invalid_usage_on_function,
-    SppCalledAnnotationAppliedToInvalidAstError, R"(
+  AnnotationAst_BuiltinVirtualMethod,
+  test_invalid_usage_on_function,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
     !virtual_method
     fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinAbstractMethod,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinAbstractMethod,
+  test_valid_usage_on_method, R"(
     cls A { }
     sup A {
         !abstract_method
@@ -29,16 +29,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_BuiltinAbstractMethod,
-    test_invalid_usage_on_function,
-    SppCalledAnnotationAppliedToInvalidAstError, R"(
+  AnnotationAst_BuiltinAbstractMethod,
+  test_invalid_usage_on_function,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
     !abstract_method
     fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPublic,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinPublic,
+  test_valid_usage_on_method, R"(
     cls A { }
 
     sup A {
@@ -48,23 +48,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPublic,
-    test_valid_usage_on_function, R"(
+  AnnotationAst_BuiltinPublic,
+  test_valid_usage_on_function, R"(
     !public
     fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPublic,
-    test_valid_usage_on_class, R"(
+  AnnotationAst_BuiltinPublic,
+  test_valid_usage_on_class, R"(
     !public
     cls A { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_BuiltinPublic,
-    test_invalid_usage_on_ext_method,
-    SppCalledAnnotationAppliedToInvalidAstError, R"(
+  AnnotationAst_BuiltinPublic,
+  test_invalid_usage_on_ext_method,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
     cls A { }
     sup A {
         !virtual_method
@@ -79,8 +79,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPackage,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinPackage,
+  test_valid_usage_on_method, R"(
     cls A { }
 
     sup A {
@@ -90,23 +90,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPackage,
-    test_valid_usage_on_function, R"(
+  AnnotationAst_BuiltinPackage,
+  test_valid_usage_on_function, R"(
     !package
     fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPackage,
-    test_valid_usage_on_class, R"(
+  AnnotationAst_BuiltinPackage,
+  test_valid_usage_on_class, R"(
     !package
     cls A { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_BuiltinPackage,
-    test_invalid_usage_on_ext_method,
-    SppCalledAnnotationAppliedToInvalidAstError, R"(
+  AnnotationAst_BuiltinPackage,
+  test_invalid_usage_on_ext_method,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
     cls A { }
     sup A {
         !virtual_method
@@ -121,8 +121,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinProtected,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinProtected,
+  test_valid_usage_on_method, R"(
     cls A { }
 
     sup A {
@@ -132,23 +132,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinProtected,
-    test_valid_usage_on_function, R"(
+  AnnotationAst_BuiltinProtected,
+  test_valid_usage_on_function, R"(
     !protected
     fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinProtected,
-    test_valid_usage_on_class, R"(
+  AnnotationAst_BuiltinProtected,
+  test_valid_usage_on_class, R"(
     !protected
     cls A { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_BuiltinProtected,
-    test_invalid_usage_on_ext_method,
-    SppCalledAnnotationAppliedToInvalidAstError, R"(
+  AnnotationAst_BuiltinProtected,
+  test_invalid_usage_on_ext_method,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
     cls A { }
     sup A {
         !virtual_method
@@ -163,8 +163,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPrivate,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinPrivate,
+  test_valid_usage_on_method, R"(
     cls A { }
 
     sup A {
@@ -174,23 +174,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPrivate,
-    test_valid_usage_on_function, R"(
+  AnnotationAst_BuiltinPrivate,
+  test_valid_usage_on_function, R"(
     !private
     fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinPrivate,
-    test_valid_usage_on_class, R"(
+  AnnotationAst_BuiltinPrivate,
+  test_valid_usage_on_class, R"(
     !private
     cls A { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_BuiltinPrivate,
-    test_invalid_usage_on_ext_method,
-    SppCalledAnnotationAppliedToInvalidAstError, R"(
+  AnnotationAst_BuiltinPrivate,
+  test_invalid_usage_on_ext_method,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
     cls A { }
     sup A {
         !virtual_method
@@ -205,8 +205,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinHot,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinHot,
+  test_valid_usage_on_method, R"(
     use std::llvm::hot
     cls A { }
 
@@ -217,8 +217,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinHot,
-    test_valid_usage_on_ext_method, R"(
+  AnnotationAst_BuiltinHot,
+  test_valid_usage_on_ext_method, R"(
     use std::llvm::hot
     cls A { }
     cls B { }
@@ -235,8 +235,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinHot,
-    test_valid_usage_on_function, R"(
+  AnnotationAst_BuiltinHot,
+  test_valid_usage_on_function, R"(
     use std::llvm::hot
 
     !hot
@@ -244,8 +244,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinCold,
-    test_valid_usage_on_method, R"(
+  AnnotationAst_BuiltinCold,
+  test_valid_usage_on_method, R"(
     use std::llvm::cold
     cls A { }
 
@@ -256,8 +256,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinCold,
-    test_valid_usage_on_ext_method, R"(
+  AnnotationAst_BuiltinCold,
+  test_valid_usage_on_ext_method, R"(
     use std::llvm::cold
     cls A { }
     cls B { }
@@ -274,8 +274,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_BuiltinCold,
-    test_valid_usage_on_function, R"(
+  AnnotationAst_BuiltinCold,
+  test_valid_usage_on_function, R"(
     use std::llvm::cold
 
     !cold
@@ -285,9 +285,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 //
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_Custom,
-    test_invalid_identifier,
-    SppAnnotationTargetNotAnAnnotationError, R"(
+  AnnotationAst_Custom,
+  test_invalid_identifier,
+  SppAnnotationTargetNotAnAnnotationError, R"(
     cls A { }
 
     fun invalid() -> Void { }
@@ -297,9 +297,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_Custom,
-    test_invalid_target_non_cmp,
-    SppAnnotationTargetNotACmpFunctionError, R"(
+  AnnotationAst_Custom,
+  test_invalid_target_non_cmp,
+  SppAnnotationTargetNotACmpFunctionError, R"(
     cls A { }
 
     !std::annotations::annotation
@@ -310,9 +310,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_Custom,
-    test_invalid_target_not_an_annotation,
-    SppAnnotationTargetNotAnAnnotationError, R"(
+  AnnotationAst_Custom,
+  test_invalid_target_not_an_annotation,
+  SppAnnotationTargetNotAnAnnotationError, R"(
     cls A { }
 
     cmp fun aaa() -> A { }
@@ -322,9 +322,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_Custom,
-    test_invalid_missing_args,
-    SppFunctionCallNoValidSignaturesError, R"(
+  AnnotationAst_Custom,
+  test_invalid_missing_args,
+  SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
 
     !annotation(target=Annotation::function)
@@ -335,9 +335,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst_Custom,
-    test_invalid_extra_args,
-    SppFunctionCallNoValidSignaturesError, R"(
+  AnnotationAst_Custom,
+  test_invalid_extra_args,
+  SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
 
     !annotation(target=Annotation::function)
@@ -348,8 +348,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_Custom,
-    test_valid_no_args, R"(
+  AnnotationAst_Custom,
+  test_valid_no_args, R"(
     !annotation(target=Annotation::function)
     cmp fun my_annotation() -> Void { }
 
@@ -358,8 +358,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst_Custom,
-    test_valid_with_args, R"(
+  AnnotationAst_Custom,
+  test_valid_with_args, R"(
     cls A { }
 
     !annotation(target=Annotation::function)

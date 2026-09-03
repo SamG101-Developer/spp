@@ -10,14 +10,14 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
-import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
+import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
 
@@ -42,7 +42,7 @@ auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
   // Ensure each element of the two array literals are equal.
   if (genex::all_of(
     genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr) | genex::to<Vec>(),
-    [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+    [](auto const &pair) { return *spp::get<0>(pair) == *spp::get<1>(pair); })) {
     return Ordering::equal;
   }
   return Ordering::less;
@@ -93,7 +93,7 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeBorrowed;
 
   // Analyse the elements in the tuple.
   for (auto const &elem : Elems) {
@@ -135,8 +135,9 @@ auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
   -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
-  for (auto const &elem : Elems) {
+  for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
+    Elems[i] = AstClone(meta->CmpResult);
     cmp_elems.EmplaceBack(std::move(meta->CmpResult));
   }
 
@@ -148,7 +149,7 @@ auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
 auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
   const auto uid = "." + spp::utils::Uid(this);
@@ -159,17 +160,46 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
 
   // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.
   if (not ctx->InConstantContext) {
-    const auto alloca = codegen::llvm_entry_alloca(llvm_type, "tuple.alloca" + uid, ctx);
+    const auto llvm_struct_type = llvm::cast<llvm::StructType>(llvm_type);
+
+    // Every element is generated up front, because whether the tuple as a whole is constant cannot be known until
+    // they have been.
+    auto elem_values = Vec<llvm::Value*>();
+    elem_values.Reserve(Elems.Len());
+    for (auto const &elem : Elems) {
+      const auto elem_value = elem->Stage11_CodeGen(sm, meta, ctx);
+      SPP_ASSERT(elem_value != nullptr);
+      elem_values.EmplaceBack(elem_value);
+    }
+
+    // If they all came back constant then so is the tuple, and it can be produced as a value rather than
+    // materialised: no stack slot, no per-field GEP and store, and no load to read it back. Being outside a constant
+    // context only says this was not written as a "cmp" initializer, which is no statement about the elements.
+    auto all_elems_constant = true;
+    for (auto i = 0uz; i < elem_values.Len(); ++i) {
+      const auto field_type = llvm_struct_type->getElementType(static_cast<unsigned>(i));
+      if (llvm::isa<llvm::Constant>(elem_values[i]) and elem_values[i]->getType() == field_type) { continue; }
+      all_elems_constant = false;
+      break;
+    }
+
+    if (all_elems_constant) {
+      auto llvm_ct_elems = Vec<llvm::Constant*>();
+      llvm_ct_elems.Reserve(elem_values.Len());
+      for (auto *elem_value : elem_values) {
+        llvm_ct_elems.EmplaceBack(llvm::cast<llvm::Constant>(elem_value));
+      }
+      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_elems.ToStdVector());
+    }
+
+    const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "tuple.alloca" + uid, ctx);
     SPP_ASSERT(alloca != nullptr);
 
     // Store each element into the tuple alloca.
-    for (auto i = 0uz; i < Elems.Len(); ++i) {
-      const auto elem_value = Elems[i]->Stage11_CodeGen(sm, meta, ctx);
-      SPP_ASSERT(elem_value != nullptr);
-
+    for (auto i = 0uz; i < elem_values.Len(); ++i) {
       const auto elem_ptr = ctx->Builder.CreateStructGEP(
         llvm_type, alloca, static_cast<std::uint32_t>(i), "tuple.elem.ptr" + uid);
-      ctx->Builder.CreateStore(elem_value, elem_ptr);
+      ctx->Builder.CreateStore(elem_values[i], elem_ptr);
     }
 
     // Load the tuple value from the alloca and return it.
@@ -204,6 +234,17 @@ auto spp::asts::TupleLiteralAst::InferType(
   auto tuple_type = TupleType(PosStart(), std::move(types_gen));
   tuple_type->Stage7_AnalyseSemantics(sm, meta);
   return tuple_type;
+}
+
+auto spp::asts::TupleLiteralAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // Each element is an expression so substitute them
+  // all too.
+  auto elems = Vec<Unique<ExpressionAst>>();
+  elems.Reserve(Elems.Len());
+  for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
+  return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
 SPP_MOD_END

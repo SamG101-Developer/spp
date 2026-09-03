@@ -13,9 +13,9 @@ import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
-import spp.asts.function_call_argument_positional_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -106,7 +106,7 @@ auto spp::asts::CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
 auto spp::asts::CasePatternVariantExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;

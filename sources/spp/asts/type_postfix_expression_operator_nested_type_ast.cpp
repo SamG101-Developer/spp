@@ -2,11 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.type_postfix_expression_operator_nested_type_ast;
-import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
@@ -64,23 +64,34 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ToString() const
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts() const
-  -> Vec<Shared<const IdentifierAst>> {
+  -> Vec<IdentifierAst const*> {
   return {};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts()
-  -> Vec<Shared<IdentifierAst>> {
+  -> Vec<IdentifierAst*> {
   return {};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts() const
-  -> Vec<Shared<const TypeIdentifierAst>> {
-  return {Name};
+  -> Vec<TypeIdentifierAst const*> {
+  return {Name.get()};
 }
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts()
-  -> Vec<Shared<TypeIdentifierAst>> {
-  return {Name};
+  -> Vec<TypeIdentifierAst*> {
+  return {Name.get()};
+}
+
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsPartsInto(
+  Vec<IdentifierAst const*>&) const
+  -> void {
+}
+
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*> &out) const
+  -> void {
+  out.EmplaceBack(Name.get());
 }
 
 SPP_MOD_END

@@ -8,8 +8,8 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
 import spp.asts.utils.orderable;
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
@@ -40,11 +40,13 @@ auto spp::asts::FunctionCallArgumentKeywordAst::PosEnd() const
 auto spp::asts::FunctionCallArgumentKeywordAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<FunctionCallArgumentKeywordAst>(
+  auto ast = MakeUnique<FunctionCallArgumentKeywordAst>(
     AstCloneShared(Name),
     AstClone(TokAssign),
     AstClone(Conv),
     AstClone(Val));
+  ast->SetSelfType(GetSelfType());
+  return ast;
 }
 
 auto spp::asts::FunctionCallArgumentKeywordAst::ToString() const

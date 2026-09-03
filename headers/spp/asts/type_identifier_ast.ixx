@@ -3,7 +3,9 @@ module;
 
 export module spp.asts.type_identifier_ast;
 import spp.asts.type_ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -75,10 +77,12 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto Iterator() const
-    -> Vec<Shared<const TypeIdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto AnyPart(
+    std::function<bool(TypeIdentifierAst const&)> const &pred) const -> bool override;
 
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept
     -> bool override;
@@ -86,17 +90,23 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_ATTR_NODISCARD auto IsSelfType() const noexcept
     -> bool override;
 
+  auto NsPartsInto(Vec<IdentifierAst const*> &out) const
+    -> void override;
+
+  auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const
+    -> void override;
+
   SPP_ATTR_NODISCARD auto NsParts() const
-    -> Vec<Shared<const IdentifierAst>> override;
+    -> Vec<IdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto NsParts()
-    -> Vec<Shared<IdentifierAst>> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts() const
-    -> Vec<Shared<const TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst const*> override;
 
   SPP_ATTR_NODISCARD auto TypeParts()
-    -> Vec<Shared<TypeIdentifierAst>> override;
+    -> Vec<TypeIdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto LastTypePart() const
     -> TypeIdentifierAst const* override;
@@ -144,6 +154,14 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_ATTR_NODISCARD auto ToView() const
     -> StrView;
 
+  /**
+   * Forget that this type was written in source. A type produced by substituting a generic argument is a clone of
+   * whatever the caller named, so it arrives carrying the caller's flag; analysed inside the template's module it
+   * then reads as an access written there, and a caller's own private type is reported illegal from inside std.
+   * Only what someone actually typed at a site is an access by that site.
+   */
+  auto ClearSourceWritten() -> void;
+
   auto MarkSourceWritten()
     -> void;
 
@@ -154,7 +172,20 @@ private:
 
   bool _IsSelfType = false;
 
+  /**
+   * Whether analysis has run over this node, used to skip a second run. Cleared by @c ResetCache so that a type can be
+   * analysed again at a different stage, which several prototypes do to enforce generic constraints early enough to
+   * keep error ordering sensible.
+   */
   bool _HasAnalysed = false;
+
+  /**
+   * Whether this node's @e value has settled - its generic arguments named, @c Self resolved, variants collapsed. Set
+   * when analysis completes and, unlike @c _HasAnalysed , never cleared afterwards: re-analysis re-runs the stage
+   * checks, it does not un-settle what the type is. Anything derived from the type keys off this, so that a forced
+   * re-analysis does not retire work that is still correct.
+   */
+  bool _Resolved = false;
 
   bool _IsSourceWritten = false;
 };

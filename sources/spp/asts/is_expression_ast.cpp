@@ -110,9 +110,10 @@ auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
 auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
-  // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
+  // If the lhs was an identifier, the "is" causes it to get
+  // flow typed, so we need to promote the original "alloca"
   // into the flow typed symbol.
   if (_LhsAsId) {
     const auto flow_typed_lhs_sym = sm->CurrentScope->GetVarSymbol(_LhsAsId.get(), true);
@@ -133,11 +134,6 @@ auto spp::asts::IsExpressionAst::InferType(
   -> Shared<TypeAst> {
   // Always return a boolean type (successful or failed match).
   return generate::common_types::BooleanType(_MappedFunc->PosStart());
-}
-
-auto spp::asts::IsExpressionAst::GetMappedFunc() const
-  -> Shared<CaseExpressionAst> {
-  return _MappedFunc;
 }
 
 SPP_MOD_END

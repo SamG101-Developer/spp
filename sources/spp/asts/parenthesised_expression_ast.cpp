@@ -92,7 +92,7 @@ auto spp::asts::ParenthesisedExpressionAst::Stage9_CompTimeResolve(
 auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the inner expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);
@@ -104,6 +104,16 @@ auto spp::asts::ParenthesisedExpressionAst::InferType(
   -> Shared<TypeAst> {
   // Get the inner expression's type.
   return Expr->InferType(sm, meta);
+}
+
+auto spp::asts::ParenthesisedExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const
+  -> Shared<ExpressionAst> {
+  // Substitute into the inner expression.
+  return MakeShared<ParenthesisedExpressionAst>(
+    AstClone(TokL),
+    AstClone(Expr->SubstituteGenericsExpr(args)),
+    AstClone(TokR));
 }
 
 SPP_MOD_END

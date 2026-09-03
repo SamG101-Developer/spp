@@ -15,6 +15,10 @@ namespace spp::asts {
   SPP_EXP_CLS struct TypeAst;
 }
 
+namespace spp::analyse::scopes {
+  SPP_EXP_CLS struct TypeSymbol;
+}
+
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst final : PostfixExpressionOperatorAst {
   /**
    * The @c :: token that indicates a static member access operation in a postfix expression.
@@ -43,9 +47,12 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<Ast*> override;
+
+private:
+  analyse::scopes::TypeSymbol *_LhsTypeSym;
 };

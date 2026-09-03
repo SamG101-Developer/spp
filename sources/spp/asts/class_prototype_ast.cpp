@@ -9,11 +9,13 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
-import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
+import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
@@ -152,14 +154,33 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   CompilerMetaData *meta)
   -> void {
   // Load the super scopes for the class body.
+  using analyse::utils::type_compare::TypeEq;
+  using generate::common_types_precompiled::COPY;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // Sync the type symbols' visibility from the AST.
-  if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.First; }
+  if (_ClsSym != nullptr) { _ClsSym->Visibility = Visibility.first; }
   if (sm->CurrentScope->TySym != nullptr) {
-    sm->CurrentScope->TySym->Visibility = Visibility.First;
+    sm->CurrentScope->TySym->Visibility = Visibility.first;
+  }
+
+  // Visibility patch for generic symbols ie Vec vs
+  // Vec[T]. Sync the visibility.
+  if (not GnParamGroup->Params.IsEmpty() and sm->CurrentScope->Parent != nullptr) {
+    const auto base_sym = sm->CurrentScope->Parent->GetTypeSymbol(Name->TypeParts()[0], true);
+    if (base_sym != nullptr) { base_sym->Visibility = Visibility.first; }
+  }
+
+  // Mark the "Copy" class itself as copyable. Minimise
+  // `TypeEq` calls.
+  if (_ClsSym != nullptr and Name->LastTypePart()->Name == COPY->LastTypePart()->Name) {
+    const auto fq_name = _ClsSym->FqName();
+    if (TypeEq(*fq_name, *COPY, *sm->CurrentScope, *sm->CurrentScope)) {
+      sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())->IsDirectlyCopyable = true;
+      _ClsSym->IsDirectlyCopyable = true;
+    }
   }
 
   // Add the "Self" symbol into the scope.
@@ -185,7 +206,7 @@ auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   Impl->Stage6_PreAnalyseSemantics(sm, meta);
 
   // Check the type isn't recursive.
-  const auto recursion = analyse::utils::type_utils::IsTypeRecursive(*this, *sm);
+  const auto recursion = analyse::utils::type_predicates::IsTypeRecursive(*this, *sm);
   RaiseIf<analyse::errors::SppRecursiveTypeError>(
     recursion != nullptr, {sm->CurrentScope},
     ERR_ARGS(*this, *recursion));
@@ -207,7 +228,7 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
     self_sym->Type = cls_sym->Type;
-    cls_sym->AliasedBySyms.EmplaceBack(self_sym);
+    cls_sym->AliasedBySyms.EmplaceBack(self_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
   }
 
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
@@ -242,7 +263,7 @@ auto spp::asts::ClassPrototypeAst::Stage9_CompTimeResolve(
 auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm,
   CompilerMetaData *,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for the class body.
   sm->MoveToNextScope();
@@ -258,11 +279,11 @@ auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
   // If this is a raw generic class like Vec[T], then generate the generic implementations.
   if (genex::any_of(sm->CurrentScope->AllTypeSymbols(), [](auto const &sym) { return sym->IsGeneric; })) {
     for (auto const &[generic_scope, generic_ast] : _GenericSubstitutions) {
-      generic_ast->_FillLlvmLayout(sm, generic_scope->TySym.get(), ctx);
+      generic_ast->FillLlvmLayout(sm, generic_scope->TySym.get(), ctx);
     }
   }
 
-  _FillLlvmLayout(sm, cls_sym.get(), ctx);
+  FillLlvmLayout(sm, cls_sym.get(), ctx);
 
   sm->MoveOutOfCurrentScope();
   return nullptr;
@@ -271,7 +292,7 @@ auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
 auto spp::asts::ClassPrototypeAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Get the class symbol.
   sm->MoveToNextScope();
@@ -293,7 +314,7 @@ auto spp::asts::ClassPrototypeAst::GetRegisteredGenericSubstitutions() const
   -> Vec<Pair<analyse::scopes::Scope*, ClassPrototypeAst*>> {
   // Return the generic substituted scopes as raw pointers.
   return _GenericSubstitutions
-    | genex::views::transform([](auto const &x) { return MakePair(x.First, x.Second.get()); })
+    | genex::views::transform([](auto const &x) { return MakePair(x.first, x.second.get()); })
     | genex::to<Vec>();
 }
 
@@ -321,13 +342,18 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
   sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_1);
   _ClsSym = sm->CurrentScope->TySym;
 
+  // A class that still declares parameters is a template, and a template has no layout: its attributes are written in
+  // terms of names that stand for nothing yet, so there is no size to give and nothing that can be built against it.
+  // Only its instantiations are real types. Its own symbol names it as "Vec[T=T]", which reads like an instantiation
+  // and is why this has to be said outright.
+  symbol_1->IsConcrete = GnParamGroup->Params.IsEmpty();
+
   // If the type was generic, like Vec[T], also create a base Vec symbol.
   if (not GnParamGroup->Params.IsEmpty()) {
     symbol_2 = MakeShared<analyse::scopes::TypeSymbol>(
       AstClone(Name->TypeParts()[0]), this, sm->CurrentScope, sm->CurrentScope,
       sm->CurrentScope->ParentModule(), false, is_dollar_type);
     symbol_2->GenericImpl = symbol_1.get();
-    sm->CurrentScope->TySym = symbol_2;
     const auto ret_sym = symbol_2.get();
     sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_2);
     return ret_sym;
@@ -341,26 +367,50 @@ static auto ApplyStructLayout(
   spp::Vec<llvm::Type*> const &field_types,
   const spp::codegen::StructLayout layout,
   spp::codegen::LlvmTypeSymInfo *sym_info,
-  spp::codegen::LLvmCtx const *ctx)
+  spp::codegen::LlvmCtx const *ctx)
   -> void {
+  // A struct body is only ever set once. "RegisterLlvmTypeInfo"
+  // lays the compiler-known types out itself, like "Var" is a
+  // { tag, payload } pair, "Generated" and the "Fun*" family
+  // are { fn_ptr, env_ptr } literals. As none of them declare
+  // attributes, we need to skip setting 0 fields, as this messes
+  // up the layout and subsequent GEP instructions.
+  const auto needs_body = struct_type->isOpaque();
+
+  // Fields that carry no value are not laid out at all, whichever convention is in force.
+  const auto kept = spp::codegen::DropValuelessFields(field_types);
+  auto kept_types = spp::Vec<llvm::Type*>();
+  auto kept_map = spp::Map<std::size_t, std::size_t>();
+  for (auto new_idx = 0uz; new_idx < kept.Len(); ++new_idx) {
+    kept_types.EmplaceBack(field_types[kept[new_idx]]);
+    kept_map[kept[new_idx]] = new_idx;
+  }
+  const auto dropped_any = kept.Len() != field_types.Len();
+
   switch (layout) {
     case spp::codegen::StructLayout::C: {
       // Keep declaration order, with natural alignment padding.
-      struct_type->setBody(field_types.ToStdVector(), false);
-      sym_info->FieldIndexMap.clear();
+      // This mirrors the C language / specifications. Seen in the
+      // FFI structs.
+      if (needs_body) { struct_type->setBody(kept_types.ToStdVector(), false); }
+      // An empty map means the declaration order was preserved outright, which it only is when nothing was dropped.
+      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
+      else { sym_info->FieldIndexMap.clear(); }
       break;
     }
     case spp::codegen::StructLayout::Packed: {
       // Keep declaration order, but remove all inter-field padding.
-      struct_type->setBody(field_types.ToStdVector(), true);
-      sym_info->FieldIndexMap.clear();
+      if (needs_body) { struct_type->setBody(kept_types.ToStdVector(), true); }
+      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
+      else { sym_info->FieldIndexMap.clear(); }
       break;
     }
     case spp::codegen::StructLayout::Spp: {
-      // Re-order the fields to minimize padding, and record where each declared attribute ended up, so that
-      // codegen can map a declaration index to its physical field index.
+      // Re-order the fields to minimize padding, and record where
+      // each declared attribute ended up, so that codegen can map
+      // a declaration index to its physical field index.
       auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
-      struct_type->setBody(sorted_types.ToStdVector(), false);
+      if (needs_body) { struct_type->setBody(sorted_types.ToStdVector(), false); }
       sym_info->FieldIndexMap = std::move(index_map);
       break;
     }
@@ -370,47 +420,87 @@ static auto ApplyStructLayout(
   }
 }
 
-auto spp::asts::ClassPrototypeAst::_FillLlvmLayout(
+auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   ScopeManager const *sm,
   analyse::scopes::TypeSymbol const *type_sym,
-  codegen::LLvmCtx const *ctx) const
+  codegen::LlvmCtx const *ctx) const
   -> void {
   // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
-  using analyse::utils::type_utils::IsTypeTup;
+  using analyse::utils::type_predicates::IsTypeTup;
+  using analyse::utils::type_members::GetAllAttrs;
+  using analyse::utils::type_predicates::GetSuperimposedFatPointerFieldCount;
 
-  // Non-struct types are compiler known special types, so don't have any field generation.
+  // Non-struct types are compiler known special types, so
+  // don't have any field generation. Things like numbers,
+  // booleans, functions etc.
   const auto lt = codegen::GetLlvmType(*type_sym, ctx);
   if (lt == nullptr or not llvm::isa<llvm::StructType>(lt)) {
     return;
   }
 
-  const auto is_tuple = IsTypeTup(*type_sym->FqName(), *sm->CurrentScope);
+  // A template wearing an instantiation's clothes has no layout to give: "Pass[T=T]" would take a field of its own
+  // type and build a cyclic llvm type, which nothing diagnoses - it simply recurses inside "DataLayout" until the
+  // stack runs out. Left opaque, it is skipped by everything downstream, exactly as the template it stands for is.
+  if (not type_sym->IsConcrete) { return; }
+
+
+  // Next we need to handle tuples (anonymous index-attribute
+  // based classes) vs standard struct classes.
+  const auto is_tuple = IsTypeTup(
+    *type_sym->FqName(), *sm->CurrentScope);
   auto types = Vec<llvm::Type*>();
 
-  // Tuple fields are positional based off of the types found in the generic arguments.
+  // The "Spp" layout sorts the fields by size and alignment, so
+  // every field has to be lowered all the way before any of them
+  // can be placed - a field still sitting as an opaque placeholder
+  // has no size to sort on. "GetLlvmType" does that on demand, so
+  // the order fields are reached in does not matter.
+  const auto lower_field = [&](analyse::scopes::TypeSymbol const *field_type_sym) -> llvm::Type* {
+    return field_type_sym != nullptr ? codegen::GetLlvmType(*field_type_sym, ctx) : nullptr;
+  };
+
+  // Tuple fields are positional based off of the types found
+  // in the generic arguments.
   if (is_tuple) {
     const auto elems = type_sym->FqName()->LastTypePart()->GnArgGroup->GetTypeArgs();
-    for (auto const &elem : elems) {
-      const auto elem_sym = sm->CurrentScope->GetTypeSymbol(elem->Val.get());
-      types.EmplaceBack(elem_sym != nullptr ? codegen::GetLlvmType(*elem_sym, ctx) : nullptr);
-    }
+    types = elems
+      | genex::views::transform([&](auto const &elem) { return sm->CurrentScope->GetTypeSymbol(elem->Val.get()); })
+      | genex::views::transform([&](auto const &type) { return lower_field(type); })
+      | genex::to<Vec>();
   }
 
   // Class attributes are read from the attribute types.
   else {
-    types = analyse::utils::type_utils::GetAllAttrs(*type_sym->FqName(), *sm)
-      | genex::views::transform([&](auto const &pair) { return codegen::GetLlvmType(*std::get<1>(pair), ctx); })
+    types = GetAllAttrs(*type_sym->FqName(), *sm)
+      | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair); })
+      | genex::views::transform([&](auto const &type) { return lower_field(type); })
       | genex::to<Vec>();
   }
 
-  // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
+  // A class that superimposes one of the "Fun*"/"Gen*" family (eg
+  // "Iterator[T]" over "Gen[T]") shares its exact runtime shape too.
+  // The fat pointer's fields go ahead of whatever fields this class
+  // declares of its own.
+  const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
+    *type_sym->FqName(), *sm->CurrentScope);
+  if (fat_pointer_field_count > 0) {
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    auto prefixed = Vec<llvm::Type*>(fat_pointer_field_count, ptr_ty);
+    prefixed.AppendRange(types);
+    types = std::move(prefixed);
+  }
+
+  // If there are any generic types present (llvm_type is nullptr), skip
+  // the layout generation. Tuples use "C" layout so they keep the order
+  // of types based on the type arguments (standard tuple design).
   if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
     const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
     const auto layout = is_tuple ? codegen::StructLayout::C : codegen::StructLayout::Spp;
     ApplyStructLayout(struct_type, types, layout, type_sym->LlvmInfo.get(), ctx);
   }
 
-  // Pass this layout to aliases too (the field re-ordering as well as the type itself).
+  // Pass this layout to aliases too (the field re-ordering as well as
+  // the type itself).
   for (auto const &alias : type_sym->AliasedBySyms) {
     alias->LlvmInfo->LlvmType = lt;
     alias->LlvmInfo->FieldIndexMap = type_sym->LlvmInfo->FieldIndexMap;

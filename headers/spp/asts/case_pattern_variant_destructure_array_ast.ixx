@@ -26,7 +26,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureArrayAst final : Case
    * The elements of the array destructuring pattern. This is a list of patterns that will be destructured from the
    * array. Each element can be a single identifier, a nested destructuring pattern, or a literal.
    */
-  UniqueVec<CasePatternVariantAst> Elems;
+  Vec<Unique<CasePatternVariantAst>> Elems;
 
   /**
    * The @code ]@endcode token that indicates the end of an array destructuring pattern.
@@ -49,7 +49,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureArrayAst final : Case
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

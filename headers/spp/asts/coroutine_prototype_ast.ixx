@@ -14,28 +14,20 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
   SPP_EXP_CLS struct CoroutinePrototypeAst;
+  SPP_EXP_CLS struct SubroutinePrototypeAst;
+  SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
-  /**
-   * The generator environment that this coroutine yields into, using the GenExpressionAst nodes. This is only set for
-   * coroutine prototypes.
-   */
-  llvm::Value *LlvmCoroGenEnv;
-
-  llvm::StructType *LlvmCoroGenEnvType;
-
-  llvm::Function *LlvmCoroResumeFunc;
-
   CoroutinePrototypeAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,
     decltype(TokFun) &&tok_fun,
-    decltype(Name) &&name,
+    decltype(Name) name,
     decltype(GnParamGroup) &&generic_param_group,
     decltype(FnParamGroup) &&param_group,
     decltype(TokArrow) &&tok_arrow,
-    decltype(ReturnType) &&return_type,
+    decltype(ReturnType) return_type,
     decltype(Impl) &&impl);
 
   ~CoroutinePrototypeAst() override;
@@ -44,7 +36,40 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto IsCoroutine() const -> bool override;
+
+  auto IsOnce() const -> bool;
+
+  /**
+   * The subroutine this coroutine was desugared into, or @c nullptr if it was not one that is (see @c _LowerGenOnce ).
+   * A call to a @c GenOnce coroutine targets this, not the coroutine itself.
+   */
+  SPP_ATTR_NODISCARD auto GenOnceLowered() const -> SubroutinePrototypeAst*;
+
+private:
+  bool _IsOnce = false;
+  Shared<TypeAst> _YieldType;
+  Shared<TypeAst> _SendType;
+  Unique<SubroutinePrototypeAst> _GenOnceLowered;
+
+  /**
+   * Desugar a @c GenOnce coroutine into a subroutine returning the yielded value: nothing ever resumes it, so there is
+   * no frame to build and no generator to hand back, and the one @c gen it runs is a @c ret . Idempotent, and a no-op
+   * on a coroutine that yields more than once.
+   *
+   * @n
+   * Moving the body out is only safe once Stage8 has read it as a coroutine's, which is why this is not done during
+   * analysis.
+   */
+  auto _LowerGenOnce() -> void;
+
+  /**
+   * Mark @p lowered @c alwaysinline when this coroutine yields a borrow, so that the storage the borrow points at
+   * ends up in the caller's frame - where the yield's lifetime says it belongs, and where it can be promoted away.
+   */
+  auto _ForceInlineBorrowedYield(SubroutinePrototypeAst const &lowered) const -> void;
 };

@@ -7,7 +7,6 @@ import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope_range;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
-import ankerl;
 import std;
 
 namespace spp::asts {
@@ -52,7 +51,7 @@ public:
    * created @c ScopeManager instances will share it. This allows any @c ScopeManager to analyse types and inject the
    * sup block logic into the manager.
    */
-  inline static ankerl::unordered_dense::map<TypeSymbol*, Vec<Scope*>> normal_sup_blocks = {};
+  inline static Map<TypeSymbol*, Vec<Scope*>> normal_sup_blocks = {};
 
   /**
    * This list contains the pure generic sup blocks, such as
@@ -63,6 +62,11 @@ public:
    */
   inline static Vec<Scope*> generic_sup_blocks = {};
 
+  /**
+   * Scopes that belong to no enclosing scope's @c Children, and so are owned here for the whole compilation. A scope
+   * names its ast with a raw pointer and does not keep it alive, so anything registered on one of these has to be
+   * owned for the same lifetime - see @c GenericParameterTypeAst::dummy_scope_asts .
+   */
   inline static Vec<Unique<Scope>> temp_scopes = {};
 
   /**
@@ -152,14 +156,10 @@ public:
     -> Scope*;
 
   /**
-   * Skip every scope belonging to the current scope. This moves the iterator such that iterating once more will move
-   * to the next sibling of this scope.
+   * Advance the iterator past every scope below the current one, leaving it on the last of them. Used by the stages
+   * that skip a subtree rather than walking it.
    */
-  auto ExhaustScope() -> void;
-
-  auto AttachLlvmTypeInfo(
-    asts::ModulePrototypeAst const &mod,
-    codegen::LLvmCtx *ctx) const
+  auto ExhaustScope()
     -> void;
 
   /**

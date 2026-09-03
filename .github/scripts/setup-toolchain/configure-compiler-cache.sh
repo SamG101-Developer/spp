@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Size the compiler cache and, on Windows, point sccache at the directory the cache step restores into.
+# Size the compiler cache and, on Windows, point sccache at
+# the directory the cache step restores into.
 set -euo pipefail
 
 if [ "$RUNNER_OS" = "Windows" ]; then

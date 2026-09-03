@@ -9,6 +9,8 @@ on:
     - cron: '0 4 * * *'  # 04:00 UTC daily
   workflow_dispatch: { }
 
+permissions: { }
+
 concurrency:
   group: nightly
   cancel-in-progress: false
@@ -26,26 +28,72 @@ jobs:
     with:
       full-scan: true
 
-  # The dependency cache key carries the UTC date and SPP_LIBS_CACHE_VERSION (see .github/actions/setup-toolchain), so
-  # the moment either changes the previous entries never used, but stay in the cache. The same goes for every compiler
-  # cache behind the newest one on its branch. This builds up to the 10GB limit, so prune once stale.
+  # Grades the things that cannot be seen from inside a workflow: token permissions, whether actions are pinned, and
+  # branch protection.
+  scorecard:
+    name: OpenSSF Scorecard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write  # upload the Scorecard SARIF
+      id-token: write         # only used when publish_results is turned on
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # publish_results is off: turning it on posts the score to the public OpenSSF API, which is what backs the
+      # README badge. Todo: Flip this when badge is ready.
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: false
+
+      - name: Upload Scorecard results
+        if: always() && hashFiles('scorecard.sarif') != ''
+        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          sarif_file: scorecard.sarif
+          category: scorecard
+
+  # Link rot is checked by the lychee pre-commit hook, not here.
+
+  # Superseded entries are never read again but still count against the repository's 10GB budget until they are
+  # evicted: every compiler cache behind the newest one on its branch, every dependency tree whose key hash has moved
+  # on, and every Doxygen build older than the pinned release. Prune them once they are stale.
   prune-caches:
     name: Prune Stale Caches
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
       actions: write  # delete the repository's Actions caches
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
+      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
 
-      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
-      # secured under the above "harden-runner" step.
+      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

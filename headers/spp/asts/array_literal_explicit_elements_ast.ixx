@@ -10,6 +10,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
@@ -37,7 +38,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
    * The list of expressions that are the elements of the array. Each element is an AST that represents an expression.
    * They will all infer to the same type.
    */
-  UniqueVec<ExpressionAst> Elems;
+  Vec<Unique<ExpressionAst>> Elems;
 
   /**
    * The token that represents the right square bracket @code ]@endcode in the array literal. This closes the array
@@ -116,7 +117,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
    * @param ctx The LLVM context to use for code generation.
    * @return The LLVM value representing the array literal.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of
@@ -126,6 +127,10 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
    * @return The @code std::array::Arr[T, n]@endcode type of the array literal.
    */
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralExplicitElementsAst)

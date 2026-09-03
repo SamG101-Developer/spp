@@ -5,7 +5,6 @@ export module spp.utils.strings;
 import spp.utils.traits;
 import spp.utils.types;
 import std;
-import boost;
 
 namespace std {
   SPP_EXP_FUN template <typename T> requires spp::utils::traits::floating_point<T>

@@ -1,7 +1,18 @@
+# general setup files
 .idea
 .gitignore
 *.spp
+cmake-build-*/
 
+# documentation folders/files
 docs/build/
 docs/source/compiler-api/
 __pycache__/
+
+# lychee link-check cache (pre-commit hook)
+.lycheecache
+
+# test fixture project and per-test logs
+tests/test_outputs/
+tests/test_output/
+tests/gtest-parallel-logs/

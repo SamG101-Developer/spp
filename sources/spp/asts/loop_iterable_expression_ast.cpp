@@ -4,8 +4,8 @@ module;
 module spp.asts.loop_iterable_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
@@ -21,14 +21,14 @@ import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
-import spp.asts.inner_scope_expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_ast;
-import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.loop_else_statement_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.loop_conditional_expression_ast;
+import spp.asts.loop_else_statement_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_keyword_res_ast;
@@ -85,6 +85,10 @@ auto spp::asts::LoopIterableExpressionAst::Clone() const
 auto spp::asts::LoopIterableExpressionAst::ToString() const
   -> Str {
   SPP_STRING_START;
+  if (_TransformedLoop != nullptr) {
+    SPP_STRING_APPEND(_TransformedLoop);
+    SPP_STRING_END;
+  }
   SPP_STRING_APPEND(TokLoop).append(" ");
   SPP_STRING_APPEND(Var).append(" ");
   SPP_STRING_APPEND(TokIn).append(" ");
@@ -111,46 +115,49 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   _IterableName = iterable_name;
 
   // Grab the generator's inner type.
-  auto [_, yield_type, _] = ( {
+  auto [_, yield_type, _] = [&] {
     auto clone_expr = AstClone(Iterable);
     auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope, sm->CurrentIterator());
     clone_expr->Stage7_AnalyseSemantics(&tm, meta);
     auto iterable_type = clone_expr->InferType(&tm, meta);
-    GetGenAndYieldTypes(
+    return GetGenAndYieldTypes(
       *iterable_type, *tm.CurrentScope, *Iterable, "loop iterable");
-  });
+  }();
 
   // Create the initial let statement to materialize the condition being iterated.
   // Translated: "let $_iter = <iterable>".
-  auto iterable_let = ( {
+  auto iterable_let = [&] {
     auto mut = std::make_unique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
     auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), iterable_name, nullptr);
     auto iterable_val = std::move(Iterable);
-    MakeUnique<LetStatementInitializedAst>(nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
-  });
+    return MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
+  }();
 
   // Create the let statement holding the loop's continuation flag, to control entering the else block.
   // Translated: "let mut $_ok = true".
-  auto flag_let = ( {
+  auto flag_let = [&] {
     auto mut = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
     auto flag_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), flag_name, nullptr);
     auto flag_val = BooleanLiteralAst::True(PosStart());
-    MakeUnique<LetStatementInitializedAst>(nullptr, std::move(flag_var), nullptr, nullptr, std::move(flag_val));
-  });
+    return MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(flag_var), nullptr, nullptr, std::move(flag_val));
+  }();
 
   // Create the "let" statement that increments the iterator.
   // Translated: "let $_res = $_iter.resume()".
-  auto resume_let = ( {
+  auto resume_let = [&] {
     auto resume_fn_call = MakeUnique<PostfixExpressionOperatorKeywordResAst>(nullptr, nullptr, nullptr);
     auto resume_val = MakeUnique<PostfixExpressionAst>(AstClone(iterable_name), std::move(resume_fn_call));
     auto resume_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, resume_name, nullptr);
-    MakeUnique<LetStatementInitializedAst>(nullptr, AstClone(resume_var), nullptr, nullptr, std::move(resume_val));
-  });
+    return MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(resume_var), nullptr, nullptr, std::move(resume_val));
+  }();
 
   // If the value is the iterable type, then use the inner body.
   // Translated: "<case-of-expr> is &Str::Str(..) { ... }".
-  auto case_valid_branch = ( {
+  auto case_valid_branch = [&] {
     auto ignore_fields = MakeUnique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(nullptr, nullptr);
     auto case_type_pattern = CasePatternVariantDestructureObjectAst::FromType(yield_type);
     case_type_pattern->Elems.EmplaceBack(std::move(ignore_fields));
@@ -160,24 +167,25 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     patterns.EmplaceBack(std::move(case_type_pattern));
 
     // Destructure the "$_res" variable into parts defined in "loop (v1, v2) in ..."
-    auto let_stmt = MakeUnique<LetStatementInitializedAst>(nullptr, std::move(Var), nullptr, nullptr,
-                                                           AstClone(resume_name));
+    auto let_stmt = MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(Var), nullptr, nullptr, AstClone(resume_name));
     Body->Members.Insert(Body->Members.begin(), std::move(let_stmt));
-    MakeUnique<CaseExpressionBranchAst>(std::move(is_tok), std::move(patterns), nullptr, std::move(Body));
-  });
+    return MakeUnique<CaseExpressionBranchAst>(
+      std::move(is_tok), std::move(patterns), nullptr, std::move(Body));
+  }();
 
   // Reaching the branch above is what counts as the loop having taken an iteration.
   case_valid_branch->MarkForIterLoopYield();
 
   // Otherwise, the generator is exhausted, so clear the continuation flag.
   // Translated: "<case-of-expr> else { $_ok = false }".
-  auto case_else_branch = ( {
+  auto case_else_branch = [&] {
     auto case_else_pattern = MakeUnique<CasePatternVariantElseAst>(nullptr);
     auto case_else_body = InnerScopeExpressionAst::NewEmpty();
     case_else_pattern->MarkForIterLoopExit();
 
-    auto flag_clear_lhs = UniqueVec<ExpressionAst>();
-    auto flag_clear_rhs = UniqueVec<ExpressionAst>();
+    auto flag_clear_lhs = Vec<Unique<ExpressionAst>>();
+    auto flag_clear_rhs = Vec<Unique<ExpressionAst>>();
     flag_clear_lhs.EmplaceBack(AstClone(flag_name));
     flag_clear_rhs.EmplaceBack(BooleanLiteralAst::False(PosStart()));
     auto flag_clear = MakeUnique<AssignmentStatementAst>(
@@ -187,23 +195,26 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     auto patterns = Vec<Unique<CasePatternVariantAst>>();
     patterns.EmplaceBack(std::move(case_else_pattern));
     case_else_body->Members.EmplaceBack(std::move(flag_clear));
-    MakeUnique<CaseExpressionBranchAst>(std::move(is_tok), std::move(patterns), nullptr, std::move(case_else_body));
-  });
+    return MakeUnique<CaseExpressionBranchAst>(
+      std::move(is_tok), std::move(patterns), nullptr, std::move(case_else_body));
+  }();
 
   // Case block to handle the resume value.
-  auto case_expr = ( {
+  auto case_expr = [&] {
     auto case_branches = Vec<Unique<CaseExpressionBranchAst>>();
     case_branches.EmplaceBack(std::move(case_valid_branch));
     case_branches.EmplaceBack(std::move(case_else_branch));
-    MakeUnique<CaseExpressionAst>(nullptr, AstClone(resume_name), nullptr, std::move(case_branches));
-  });
+    return MakeUnique<CaseExpressionAst>(
+      nullptr, AstClone(resume_name), nullptr, std::move(case_branches));
+  }();
 
   // New boolean loop that manually iterates the iterable.
   // Translated: "loop $_ok { ... } else { ... }".
-  auto loop_new = ( {
+  auto loop_new = [&] {
     auto cond = AstClone(flag_name);
-    MakeUnique<LoopConditionalExpressionAst>(nullptr, std::move(cond), nullptr, std::move(ElseBlock));
-  });
+    return MakeUnique<LoopConditionalExpressionAst>(
+      nullptr, std::move(cond), nullptr, std::move(ElseBlock));
+  }();
   loop_new->Body->Members.EmplaceBack(std::move(resume_let));
   loop_new->Body->Members.EmplaceBack(std::move(case_expr));
   loop_new->MarkAsIterDesugar();
@@ -230,11 +241,11 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
   // borrows it holds (e.g. the "&mut v" established by "v.iter_mut()").
   const auto iter_sym = sm->CurrentScope->GetVarSymbol(_IterableName.get());
   for (auto const &ceb : iter_sym->MemInfo->AstContainedEscapingBorrows) {
-    const auto b = std::get<0>(ceb)->To<IdentifierAst>();
+    const auto b = spp::get<0>(ceb)->To<IdentifierAst>();
     if (b == nullptr) { continue; }
     sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
       [&](auto info) {
-        return *std::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
+        return *spp::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
       });
   }
   iter_sym->MemInfo->AstContainedEscapingBorrows.Clear();
@@ -243,7 +254,7 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
 auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
-  codegen::LLvmCtx *ctx)
+  codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the code for the transformed loop.
   _TransformedLet->Stage11_CodeGen(sm, meta, ctx);

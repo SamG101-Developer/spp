@@ -5,7 +5,9 @@ module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
@@ -13,9 +15,10 @@ import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
-import spp.asts.type_statement_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import spp.utils.ptr;
@@ -39,6 +42,12 @@ spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
 
 spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
 
+auto spp::analyse::scopes::NamespaceSymbol::NeedsDeepCopy() const
+  -> bool {
+  // Nothing about a namespace is per-instantiation.
+  return false;
+}
+
 auto spp::analyse::scopes::NamespaceSymbol::operator==(
   NamespaceSymbol const &that) const
   -> bool {
@@ -60,30 +69,87 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   IsGeneric(is_generic),
   Visibility(visibility),
   MemInfo(MakeUnique<utils::mem_info_utils::MemoryInfo>()) {
-  LlvmInfo = MakeUnique<codegen::LlvmVarSymInfo>();
+  LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
   CompTimeValue = nullptr;
 }
 
 spp::analyse::scopes::VariableSymbol::VariableSymbol(
   VariableSymbol const &that) :
   Name(AstCloneShared(that.Name)),
-  Type(AstCloneShared(that.Type)),
+  Type(that.Type),
   ScopeDefinedIn(that.ScopeDefinedIn),
   IsMutable(that.IsMutable),
   IsGeneric(that.IsGeneric),
+  IsFlowNarrowing(that.IsFlowNarrowing),
+  NarrowsSym(that.NarrowsSym),
+  CallableAsType(that.CallableAsType),
   Visibility(that.Visibility),
   VisibilityAnnotation(that.VisibilityAnnotation),
   MemInfo(that.MemInfo->Clone()),
-  LlvmInfo(MakeUnique<codegen::LlvmVarSymInfo>()) {
+  LlvmInfo(MakeShared<codegen::LlvmVarSymInfo>()),
+  CompTimeValue(asts::AstClone(that.CompTimeValue)),
+  AliasSym(that.AliasSym) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
 }
 
 spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
 
+auto spp::analyse::scopes::VariableSymbol::NeedsDeepCopy() const
+  -> bool {
+  // The memory state and the alloca belong to one instantiation.
+  return true;
+}
+
 auto spp::analyse::scopes::VariableSymbol::operator==(
   VariableSymbol const &that) const
   -> bool {
   return this == &that;
+}
+
+auto spp::analyse::scopes::TypeSymbol::IsCopyable() const
+  -> bool {
+  using asts::generate::common_types_precompiled::COPY;
+  using utils::type_compare::TypeEq;
+
+  // Todo: Clean this mess up.
+  // From the superimposition graph:
+  // "sup [..Items: Copy] Tup[Items] ext Copy" makes a
+  // tuple copyable only when its items are, and
+  // "PruneUnsatisfiedSupConstraints" already removes the
+  // attachment from the instantiations whose items do not
+  // satisfy it - so the graph is the thing that knows.
+  // "IsDirectlyCopyable" is set once against the template,
+  // before any argument exists, and cannot express a
+  // conditional answer.
+  const auto has_generic_args = Name != nullptr and Name->GnArgGroup != nullptr
+    and not Name->GnArgGroup->Args.IsEmpty();
+
+  if (has_generic_args and LinkedScope != nullptr) {
+    for (auto const *sup_scope : LinkedScope->SupScopesConst()) {
+      if (sup_scope->TySym == nullptr) { continue; }
+      if (TypeEq(*sup_scope->TySym->FqName(), *COPY, *sup_scope, *LinkedScope)) { return true; }
+    }
+    return false;
+  }
+
+  return IsDirectlyCopyable
+    or (DerivesFromSym != nullptr and DerivesFromSym->IsCopyable());
+}
+
+auto spp::analyse::scopes::TypeSymbol::IsZeroType() const
+  -> bool {
+  return IsDirectlyZeroType or (DerivesFromSym != nullptr and DerivesFromSym->IsZeroType());
+}
+
+auto spp::analyse::scopes::VariableSymbol::BoundCompValue() const
+  -> asts::ExpressionAst* {
+  // Only a comp generic carries a binding, and only once an argument has been given for it.
+  if (not IsGeneric or MemInfo == nullptr or MemInfo->AstCompTime == nullptr) { return nullptr; }
+
+  // An instantiation records the argument the parameter was bound to; a template records the parameter itself, which
+  // is a declaration rather than a value, so it is not a binding.
+  const auto bound = MemInfo->AstCompTime->To<asts::GenericArgumentCompAst>();
+  return bound != nullptr ? bound->Val.get() : nullptr;
 }
 
 auto spp::analyse::scopes::VariableSymbol::FqName() const
@@ -138,13 +204,11 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
   IsGeneric(is_generic),
   GenericConstraints(generic_constraints),
   IsDirectlyCopyable(is_directly_copyable),
-  IsCopyable([this] { return this->IsDirectlyCopyable; }),
   Visibility(visibility),
   Convention(std::move(convention)),
   GenericImpl(this),
   LlvmInfo(MakeShared<codegen::LlvmTypeSymInfo>()),
-  IsDirectlyZeroType(false),
-  IsZeroType([this] { return this->IsDirectlyZeroType; }) {
+  IsDirectlyZeroType(false) {
 }
 
 spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
@@ -154,19 +218,28 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   ScopeDefinedIn(that.ScopeDefinedIn),
   ScopeModule(that.ScopeModule),
   IsGeneric(that.IsGeneric),
+  IsVariadic(that.IsVariadic),
   GenericConstraints(that.GenericConstraints),
+  GenericVal(that.GenericVal),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
-  IsCopyable(that.IsCopyable),
+  DerivesFromSym(that.DerivesFromSym),
   Visibility(that.Visibility),
   Convention(asts::AstClone(that.Convention)),
   GenericImpl(that.GenericImpl),
-  IsDirectlyZeroType(that.IsDirectlyZeroType),
-  IsZeroType(that.IsZeroType) {
-  AliasStmt = asts::AstClone(that.AliasStmt);
+  IsDirectlyZeroType(that.IsDirectlyZeroType) {
+  // Shared rather than cloned: an alias's description is fixed once resolved, and an instantiation of a generic
+  // alias builds its own (see "CreateGenericClsScope") rather than mutating one it was handed.
+  Alias = that.Alias;
   LlvmInfo = that.LlvmInfo;
 }
 
 spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
+
+auto spp::analyse::scopes::TypeSymbol::NeedsDeepCopy() const
+  -> bool {
+  // Only an alias is rewritten per instantiation.
+  return Alias != nullptr;
+}
 
 auto spp::analyse::scopes::TypeSymbol::operator==(
   TypeSymbol const &that) const
@@ -174,20 +247,38 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
   return this == &that;
 }
 
+auto spp::analyse::scopes::TypeSymbol::AsClassSymbol() const
+  -> TypeSymbol* {
+  // Already a class, or a name with nothing behind it either way. The symbol answered with is owned by the table or by
+  // the scope it links to, both of which outlive any caller, so it is borrowed rather than owned.
+  const auto self = const_cast<TypeSymbol*>(this);
+  if (Type != nullptr or LinkedScope == nullptr or LinkedScope->TySym == nullptr) { return self; }
+  return LinkedScope->TySym.get();
+}
+
 auto spp::analyse::scopes::TypeSymbol::FqName(
   const bool ignore_dollar) const
   -> Shared<asts::TypeAst> {
-  // For aliases, return the fully qualified name of the aliased type.
-  if (AliasStmt != nullptr) {
-    return AliasStmt->MappedOldType;
+  // An alias is transparent, so it answers with the type it resolves to rather than with its own name.
+  if (Alias != nullptr) {
+    return Alias->Resolved;
   }
 
-  // If the type is generic, or the name starts with a '$', return the name as-is.
-  if (IsGeneric or LinkedScope == nullptr
-    or (ignore_dollar and Name->IsCompilerGeneratedType())
-    or
-    Name->Name == "Self") {
+  // If the type is generic, or is "Self", return the name as-is.
+  if (IsGeneric or LinkedScope == nullptr or Name->IsSelfType()) {
     return Name;
+  }
+
+  if (Name->IsCompilerGeneratedType()
+    and (ignore_dollar or LinkedScope->Parent != LinkedScope->ParentModule())) {
+    return Name;
+  }
+
+  // Everything above returns a name that already exists. What is left builds one, walking the scopes above the linked
+  // scope and minting an ast node per namespace part, so it is worth not doing twice: the walk reads only the shape of
+  // the scope tree, which is fixed until a scope is re-parented.
+  if (_CachedFqNameGen == ScopeLinkageGeneration()) {
+    return _CachedFqName;
   }
 
   // Fully qualify the name from the root scope.
@@ -205,7 +296,34 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
   }
 
   // Re-add the convention of the type if it exists.
-  return Convention ? qualified_name->WithConvention(asts::AstClone(Convention)) : qualified_name;
+  _CachedFqName = Convention ? qualified_name->WithConvention(asts::AstClone(Convention)) : qualified_name;
+  _CachedFqNameGen = ScopeLinkageGeneration();
+  return _CachedFqName;
+}
+
+auto spp::analyse::scopes::TypeSymbol::InvalidateFqNameCache() const
+  -> void {
+  _CachedFqName = nullptr;
+  _CachedFqNameGen = 0;
+}
+
+auto spp::analyse::scopes::TypeSymbol::BoundName() const
+  -> Shared<asts::TypeAst> {
+  // Not a parameter, so there is no binding to follow and
+  // the name is the whole answer.
+  if (not IsGeneric) { return FqName(); }
+
+  // Bound to a real type: that type's own name, carrying
+  // over whatever convention the binding was written with.
+  if (LinkedScope != nullptr and LinkedScope->TySym != nullptr and LinkedScope->TySym.get() != this) {
+    auto bound = LinkedScope->TySym->FqName();
+    return Convention != nullptr ? bound->WithConvention(asts::AstClone(Convention)) : bound;
+  }
+
+  // Bound to another parameter, which has no scope of its own
+  // to reach: the recorded argument is the only record of the
+  // binding. Failing that, unbound, and it stands for itself.
+  return GenericVal != nullptr ? GenericVal : Name;
 }
 
 SPP_MOD_END

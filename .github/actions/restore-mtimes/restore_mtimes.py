@@ -24,9 +24,7 @@ import sys
 
 
 def git(*args: str) -> str:
-    return subprocess.run(
-        ["git", *args], capture_output=True, text=True, check=True
-    ).stdout
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
 
 def main() -> int:
@@ -47,8 +45,14 @@ def main() -> int:
     # `core.quotepath=off` keeps non-ASCII paths byte-identical to `ls-files`.
     log = subprocess.Popen(
         [
-            "git", "-c", "core.quotepath=off", "log",
-            "--format=@%at", "--name-only", "--no-renames", "HEAD",
+            "git",
+            "-c",
+            "core.quotepath=off",
+            "log",
+            "--format=@%at",
+            "--name-only",
+            "--no-renames",
+            "HEAD",
         ],
         stdout=subprocess.PIPE,
         text=True,

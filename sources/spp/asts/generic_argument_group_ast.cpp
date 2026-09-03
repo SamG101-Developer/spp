@@ -8,7 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.order_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_compare;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -28,7 +28,6 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ptr;
-import ankerl;
 import genex;
 
 SPP_MOD_BEGIN
@@ -68,7 +67,7 @@ auto spp::asts::GenericArgumentGroupAst::FromParams(
 }
 
 auto spp::asts::GenericArgumentGroupAst::FromMap(
-  analyse::utils::type_utils::GenericInferenceMap const &map)
+  analyse::utils::type_compare::GenericInferenceMap const &map)
   -> Unique<GenericArgumentGroupAst> {
   // Create the list of arguments, initially empty.
   auto mapped_args = Vec<Unique<GenericArgumentAst>>();
@@ -76,7 +75,7 @@ auto spp::asts::GenericArgumentGroupAst::FromMap(
   for (auto const &[arg_name, arg_val] : std::move(map)) {
     // Map type ASTs to keyword type arguments.
     if (const auto arg_val_for_type = arg_val->To<TypeAst>()) {
-      auto val = arg_val_for_type->shared_from_this(); // Todo: do we need to clone here?
+      auto val = AstCloneShared(arg_val_for_type);
       auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(arg_name, nullptr, std::move(val));
       mapped_args.EmplaceBack(std::move(arg));
     }
@@ -91,15 +90,6 @@ auto spp::asts::GenericArgumentGroupAst::FromMap(
 
   // Place the arguments into a group AST.
   return MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(mapped_args), nullptr);
-}
-
-auto spp::asts::GenericArgumentGroupAst::FromMap(
-  analyse::utils::func_utils::InferenceFinalTypeMap const &map)
-  -> Unique<GenericArgumentGroupAst> {
-  // Cast the values to "ExpressionAst const*".
-  auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
-  for (auto const &[k, v] : map) { mapped_args[k] = v.get(); }
-  return FromMap(mapped_args);
 }
 
 spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
@@ -223,7 +213,7 @@ auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
 
   RaiseIf<SppOrderInvalidError>(
     not unordered_args.IsEmpty(), {sm->CurrentScope},
-    ERR_ARGS(unordered_args[0].First, *unordered_args[0].Second, unordered_args[1].First, *unordered_args[1].Second));
+    ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
 
   // Analyse the arguments.
   for (auto const &x : Args) { x->Stage7_AnalyseSemantics(sm, meta); }
@@ -264,7 +254,8 @@ auto spp::asts::GenericArgumentGroupAst::CompAt(
 auto spp::asts::GenericArgumentGroupAst::MergeGenerics(
   decltype(Args) &&other_args)
   -> void {
-  // Append the other arguments to this argument group, checking named duplicates.
+  // Append the other arguments to this argument group, checking
+  // named duplicates.
   for (auto &&other_arg : std::move(other_args)) {
     if (const auto kw_comp = other_arg->To<GenericArgumentCompKeywordAst>(); kw_comp != nullptr) {
       if (CompAt(kw_comp->Name->ToUnchecked<TypeIdentifierAst>()->Name.c_str()) != nullptr) { continue; }
@@ -273,6 +264,10 @@ auto spp::asts::GenericArgumentGroupAst::MergeGenerics(
     else if (const auto kw_type = other_arg->To<GenericArgumentTypeKeywordAst>(); kw_type != nullptr) {
       if (TypeAt(kw_type->Name->ToUnchecked<TypeIdentifierAst>()->Name.c_str()) != nullptr) { continue; }
       Args.EmplaceBack(std::move(other_arg));
+    }
+    else {
+      const auto err = "generic argument '" + other_arg->ToString() + "' is still positional at a merge";
+      Raise<analyse::errors::SppInternalCompilerError>({}, ERR_ARGS(*other_arg, err));
     }
   }
 }

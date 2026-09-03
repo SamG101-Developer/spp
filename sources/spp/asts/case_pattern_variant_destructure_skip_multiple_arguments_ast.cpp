@@ -9,8 +9,8 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
-import spp.utils.ptr;
 import spp.lex.tokens;
+import spp.utils.ptr;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(

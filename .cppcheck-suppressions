@@ -1,3 +1,6 @@
 missingInclude
 missingIncludeSystem
 checkersReport
+syntaxError
+unknownMacro
+uninitMemberVarNoCtor

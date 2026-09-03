@@ -26,7 +26,8 @@ auto spp::asts::LocalVariableAst::ExtractNames() const
 
 auto spp::asts::LocalVariableAst::MarkFromCasePattern()
   -> void {
-  // Mark this local variable as being created from a case pattern.
+  // Mark this local variable as being created from a
+  // case pattern.
   _FromCasePattern = true;
 }
 

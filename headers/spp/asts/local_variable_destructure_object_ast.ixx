@@ -71,7 +71,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto ExtractNames() const
     -> Vec<Shared<IdentifierAst>> override;
@@ -84,4 +84,6 @@ private:
   Shared<analyse::scopes::VariableSymbol> _CondSym;
   Shared<analyse::scopes::VariableSymbol> _FlowSym;
   Unique<LetStatementInitializedAst> _CondLet;
+
+  Shared<IdentifierAst> _TmpName;
 };

@@ -23,7 +23,7 @@ namespace spp::codegen {
     asts::ExpressionAst &ast,
     analyse::scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta,
-    LLvmCtx *ctx)
+    LlvmCtx *ctx)
     -> asts::IdentifierAst*;
 
   /**
@@ -40,6 +40,6 @@ namespace spp::codegen {
     asts::ExpressionAst &ast,
     analyse::scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta,
-    LLvmCtx *ctx)
+    LlvmCtx *ctx)
     -> llvm::Value*;
 }

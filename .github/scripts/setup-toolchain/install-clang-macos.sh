@@ -1,17 +1,36 @@
 #!/usr/bin/env bash
-# Install the requested Clang from brew, point CC/CXX at it, and rewrite the libc++ module manifest with absolute paths
-# so module builds resolve it.
+# Point CC/CXX at the clang that install-llvm-macos.sh unpacked - the
+# same release the project links against, see the comment there - and
+# rewrite the libc++ module manifest with absolute paths so module
+# builds resolve it.
 set -euo pipefail
 
-formula="llvm${CLANG_VERSION:+@${CLANG_VERSION}}"
-brew install "$formula"
-prefix="$(brew --prefix "$formula")"
+prefix="$SPP_LLVM_MAC_PREFIX"
+
+# There is nothing to install a different version from: the compiler
+# is whichever one [pin.llvm-mac] names.
+pinned="${LLVM_MAC_TAG#llvmorg-}"
+pinned="${pinned%%.*}"
+if [ -n "${CLANG_VERSION:-}" ] && [ "$CLANG_VERSION" != "$pinned" ]; then
+  echo "::error::clang ${CLANG_VERSION} was asked for, but macOS builds with the pinned LLVM ${pinned}" >&2
+  exit 1
+fi
+
 {
   echo "CC=${prefix}/bin/clang"
   echo "CXX=${prefix}/bin/clang++"
-  echo "LDFLAGS=-L${prefix}/lib/c++ -Wl,-rpath,${prefix}/lib/c++"
-  echo "LLVM_PREFIX=${prefix}"
+  echo "LDFLAGS=-L${prefix}/lib -Wl,-rpath,${prefix}/lib"
 } >> "$GITHUB_ENV"
+
+# The manifest's paths are relative to its own directory, which sits
+# either in lib/ or lib/c++/ depending on how the release laid libc++
+# out, and they are read from the resource directory it is copied to
+# rather than from there.
+manifest="$(find "${prefix}/lib" -maxdepth 2 -name libc++.modules.json | head -n 1)"
+if [ -z "$manifest" ]; then
+  echo "::error::no libc++.modules.json under ${prefix}/lib; 'import std' has nothing to build from" >&2
+  exit 1
+fi
 resource_dir="$("${prefix}/bin/clang" -print-resource-dir)"
-sed "s|\"\.\./\.\./|\"${prefix}/|g" \
-  "${prefix}/lib/c++/libc++.modules.json" > "${resource_dir}/libc++.modules.json"
+sed "s|\"[^\"]*share/libc++/v1|\"${prefix}/share/libc++/v1|g" \
+  "$manifest" > "${resource_dir}/libc++.modules.json"

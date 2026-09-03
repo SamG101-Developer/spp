@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct BinaryExpressionAst;
   SPP_EXP_CLS struct CaseExpressionBranchAst;
   SPP_EXP_CLS struct CasePatternVariantAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
@@ -36,7 +37,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
    * The list of patterns that this branch matches against. There can be more than 1 pattern for non-destructuring
    * operations.
    */
-  UniqueVec<CasePatternVariantAst> Patterns;
+  Vec<Unique<CasePatternVariantAst>> Patterns;
 
   /**
    * The optional guard for the case branch. This is a boolean expression that must evaluate to true for destructuring
@@ -71,7 +72,7 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
@@ -79,6 +80,12 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
 private:
   bool _ForIterLoopYield = false;
+
+  /**
+   * Save the generated combined pattern expressions for code generation without needed to re-walk asts and scopes that
+   * messes up the scope manager's alignment.
+   */
+  Vec<Unique<BinaryExpressionAst>> _PatternComparisons;
 
   /**
    * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is
@@ -89,5 +96,5 @@ private:
    * @param ctx The llvm code generation context.
    * @return The llvm value representing the combined pattern matches.
    */
-  auto _CodegenCombinePatterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
+  auto _CodegenCombinePatterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
 };

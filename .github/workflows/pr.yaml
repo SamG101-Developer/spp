@@ -2,9 +2,11 @@ name: PR
 
 on:
   pull_request:
-    types: [ opened, synchronize, reopened, edited ]
+    types: [ opened, synchronize, reopened ]
   merge_group: { }
   workflow_dispatch: { }
+
+permissions: { }
 
 concurrency:
   # One group per PR branch / dispatch ref / merge-queue ref.
@@ -12,26 +14,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Skips the expensive jobs on docs-only / config-only changes. A skipped job counts as a pass for ci-success, so
-  # branch protection stays satisfied either way.
+  # Skips the expensive jobs on documentation-only changes, and only those: a skipped job counts as a pass for
+  # ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled.
   changes:
     name: Detect Code Changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
+      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
 
-      # Provide capability to git-checkout external packages and actions. Anything done via this will be automatically
-      # secured under the above "harden-runner" step. Nothing is built here, so the mtime pass is not needed.
+      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -46,39 +53,58 @@ jobs:
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha || github.sha }}
 
-  # PR title check and pre-commit, side by side.
+  # pre-commit over the whole tree. The PR title is checked by pr_title.yaml, which needs an `edited`
+  # trigger this workflow deliberately does not have.
   lint:
     name: Lint
     permissions:
       contents: read
-      pull-requests: read
     uses: ./.github/workflows/_lint.yaml
 
-  # Supported toolchain. "Release" and both "sanitiser" configurations build in parallel and fail-fast, so one broken
-  # variant stops the others immediately.
+  # Static analysis, gating the builds so a dozen toolchains are not spent on code cppcheck already rejects. It does
+  # not wait on `lint`: the only way to fix a pre-commit failure is another commit, which re-runs this workflow from
+  # scratch anyway, so serialising the two only lengthens the critical path of every green PR.
+  cppcheck:
+    name: Static Analysis
+    needs: [ changes ]
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/_cppcheck.yaml
+
+  # Supported toolchain. Every variant builds in parallel and fail-fast, so one broken variant stops the others
+  # immediately.
+  #
+  # "spp-mode" is a second axis over "build-type": it selects the optimisation pipeline the built compiler runs over
+  # the s++ fixtures, so "release-rel" and "release-dev" are the same C++ binary exercising O3 and O0 codegen. The
+  # sanitiser rides on "dev" rather than "rel" deliberately - it instruments the C++ compiler, whose sanitiser-visible
+  # code (the analysis stages) is identical in both modes, so the only thing "rel" would add is the wall-clock of an
+  # O3 pass pipeline on an already slow build.
   build-test:
     name: Build & Test
-    needs: [ changes ]
+    needs: [ changes, cppcheck ]
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_compile.yaml
     with:
-      os: ubuntu-latest
+      os: ubuntu-24.04
       compiler: gcc
       version: "16"
       fail-fast: true
       variants: >-
         [
-          {"name": "release", "build-type": "Release", "sanitizer": ""},
-          {"name": "asan", "build-type": "Debug", "sanitizer": "address+undefined+leak"}
+          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"},
+          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev"},
+          {"name": "asan-dev", "build-type": "Debug", "sanitizer": "address+undefined+leak", "spp-mode": "dev"}
         ]
 
   # Aspirational toolchains: they run and report red on failure, but are deliberately omitted from ci-success, so they
   # never block a merge.
   build-test-extra:
     name: Build & Test (non-blocking)
-    needs: [ changes ]
+    needs: [ changes, cppcheck ]
     if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
@@ -86,19 +112,34 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, compiler: clang, version: "22" }
-          - { os: macos-latest, compiler: clang, version: "" }
-          - { os: windows-latest, compiler: msvc, version: "" }
-          - { os: windows-latest, compiler: clang-cl, version: "" }
+          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", cache-tree: true }
+          - { os: ubuntu-24.04-arm, compiler: clang, version: "23", cache-tree: true }
+          - { os: ubuntu-24.04, compiler: clang, version: "23", cache-tree: true }
+          # - { os: macos-26, compiler: clang, version: "23", cache-tree: true }
+          - { os: macos-15, compiler: clang, version: "23", cache-tree: true }
+          - { os: windows-2025, compiler: msvc, version: "", cache-tree: true }
+          - { os: windows-2025, compiler: clang-cl, version: "", cache-tree: true }
+          # - { os: windows-2022, compiler: msvc, version: "", cache-tree: false }
     uses: ./.github/workflows/_compile.yaml
     with:
       os: ${{ matrix.os }}
       compiler: ${{ matrix.compiler }}
       version: ${{ matrix.version }}
       fail-fast: false
+      cache-build-tree: ${{ matrix.cache-tree }}
       variants: '[{"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""}]'
 
-  # Independent of the compile chain: doc breakage is worth hearing about even while the build is still running.
+  # Emit for architectures unlike the host - 32-bit, big-endian, non-x86 - and check the object and the datalayout
+  # that came out. Non-blocking to begin with. Todo: Add to ci-success once the matrix has been green for a while.
+  cross-codegen:
+    name: Cross Codegen (non-blocking)
+    needs: [ changes, cppcheck ]
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_cross_codegen.yaml
+
+  # Independent of the compilation chain: doc breakage is worth hearing about even while the build is still running.
   docs:
     name: Docs
     permissions:
@@ -107,6 +148,8 @@ jobs:
 
   security:
     name: Security
+    needs: [ changes ]
+    if: needs.changes.outputs.code == 'true'
     permissions:
       contents: read
       security-events: write
@@ -118,23 +161,51 @@ jobs:
   sonar:
     name: Sonar
     needs: [ changes ]
-    if: needs.changes.outputs.code == 'true'
+    if: |
+      needs.changes.outputs.code == 'true'
+      && (github.event_name != 'pull_request'
+        || github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # The single required status check for branch protection. Fails if any needed job failed or was cancelled; passes when
-  # they all succeeded or were skipped.
+  # Advisory, like Sonar, and omitted from ci-success for the same reason.
+  claude-review:
+    name: Claude Review
+    if: |
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    uses: ./.github/workflows/_claude_review.yaml
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # One of the two required status checks for branch protection, the other being "PR Title Format" from
+  # pr_title.yaml. Fails if any needed job failed or was cancelled; passes when they all succeeded or were skipped.
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, build-test, docs, security ] # sonar
-    runs-on: ubuntu-latest
+    needs: [ lint, cppcheck, build-test, docs, security ] # sonar
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
       - name: Verify all required jobs passed
         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         env:

@@ -5,7 +5,6 @@ export module spp.codegen.llvm_layout;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_sym_info;
 import spp.utils.types;
-import ankerl;
 import llvm;
 import std;
 
@@ -18,6 +17,15 @@ namespace spp::codegen {
   SPP_EXP_CLS enum class StructLayout { Spp, C, Packed };
 
   /**
+   * The declaration indices of the fields that are actually laid out, in declaration order.
+   * @param field_types The lowered types of the struct's fields, in declaration order.
+   * @return The declaration indices to lay out, in declaration order.
+   */
+  SPP_EXP_FUN auto DropValuelessFields(
+    Vec<llvm::Type*> const &field_types)
+    -> Vec<std::size_t>;
+
+  /**
    * Apply the S++ layout convention to LLVM struct field types. It works in the same way as the Rust convention,
    * where it re-orders the members to minimize padding and therefore overall object size.
    * @param field_types The LLVM types belonging to each field of a struct.
@@ -26,8 +34,8 @@ namespace spp::codegen {
    */
   SPP_EXP_FUN auto SortMembersForSppLayout(
     Vec<llvm::Type*> const &field_types,
-    spp::codegen::LLvmCtx const *ctx)
-    -> Pair<Vec<llvm::Type*>, ankerl::unordered_dense::map<std::size_t, std::size_t>>;
+    LlvmCtx const *ctx)
+    -> Pair<Vec<llvm::Type*>, Map<std::size_t, std::size_t>>;
 
   /**
    * Translate an attribute's declaration index (its position in @c GetAllAttrs) into the physical field index of the

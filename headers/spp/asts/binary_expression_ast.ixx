@@ -10,6 +10,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct BinaryExpressionAst;
+  SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -43,6 +44,19 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     std::size_t OriginalPosStart;
     std::size_t OriginalPosEnd;
   } Source;
+
+  /**
+   * Whether this is one of the two logical keyword operators, @c and or @c or.
+   *
+   * @n
+   * They are the only binary operators that do not map to a method on their left operand. Every other one does,
+   * which is what lets a type give it a meaning; these two cannot, because their meaning is control flow rather than
+   * a value: the right operand is evaluated only if the left one did not already settle the answer. A method call
+   * evaluates its argument to pass it, so an overloadable @c and would evaluate both sides whatever the left said -
+   * which is what @c not avoids by being built in, and what these now avoid the same way. Both operands are required
+   * to be @c Bool for the same reason.
+   */
+  SPP_ATTR_NODISCARD auto IsLogicalOperator() const -> bool;
 
   /**
    * Construct the BinaryExpressionAst with the arguments matching the members.
@@ -89,7 +103,7 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @param ctx The LLVM context to use for code generation.
    * @return The LLVM value generated from this AST.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /**
    * Forward the type checking to the mapped function. This just applies standard type inference from a function call.
@@ -99,6 +113,10 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    */
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<ExpressionAst> override;
+
 private:
   /**
    * The AST that represents the functional version of this binary expression. For example, @code 1 + 2@endcode
@@ -106,4 +124,20 @@ private:
    * @c std::number::S32::add(1, 2).
    */
   Shared<PostfixExpressionAst> _MappedFunc;
+
+  /**
+   * Whether the logical path has already analysed this expression. @c _MappedFunc is what marks every other operator
+   * as done - it is set once and returned early on afterwards - and a logical operator never gets one, so it needs a
+   * mark of its own. Without it the analysis runs again on each visit, and the comparison-chain rewrite moves the
+   * operands out of the expression a second time.
+   */
+  bool _LogicalAnalysed = false;
+
+  /**
+   * Whether the operator is @c and or @c or, decided from the token and then remembered. It cannot be read back off
+   * @c TokOp on demand: converting the expression into a call moves the operands and the operator out of it, so by
+   * the time anything asks, the token is gone. It is settled again after the comparison-chain rewrite, which is what
+   * turns @code a < b < c@endcode into an @c and that was not written as one.
+   */
+  bool _IsLogical;
 };

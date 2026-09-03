@@ -23,7 +23,6 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
 
   std::uint32_t Ctx = 0;
   asts::AnnotationAst *Definition = nullptr;
-  bool IsBuiltin = false;
 
   AnnotationInfo() = default;
   AnnotationInfo(AnnotationInfo const &) = default;
@@ -40,6 +39,7 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::BuiltinAnnotations {
   constexpr static auto kAbstractMethod = "std::annotations::abstract_method";
   constexpr static auto kFfi = "std::annotations::ffi";
   constexpr static auto kZeroType = "std::annotations::zero_type";
+  constexpr static auto kTest = "std::annotations::test";
   constexpr static auto kCfg = "std::annotations::cfg";
   constexpr static auto kVersioned = "std::annotations::versioned";
   constexpr static auto kLlvmInline = "std::llvm::inline";
