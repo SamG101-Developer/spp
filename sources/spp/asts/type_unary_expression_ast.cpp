@@ -71,9 +71,10 @@ auto spp::asts::TypeUnaryExpressionAst::PosEnd() const
 auto spp::asts::TypeUnaryExpressionAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<TypeUnaryExpressionAst>(
-    AstCloneShared(Op),
-    AstCloneShared(Rhs));
+  auto t = MakeUnique<TypeUnaryExpressionAst>(
+    Op, AstCloneShared(Rhs));
+  t->_CachedWithoutGenerics = _CachedWithoutGenerics;
+  return t;
 }
 
 auto spp::asts::TypeUnaryExpressionAst::ToString() const
@@ -122,7 +123,6 @@ auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
-
 auto spp::asts::TypeUnaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,
@@ -144,7 +144,7 @@ auto spp::asts::TypeUnaryExpressionAst::InferType(
 }
 
 auto spp::asts::TypeUnaryExpressionAst::AnyPart(
-  std::function<bool(TypeIdentifierAst const&)> const &pred) const
+  std::function<bool(TypeIdentifierAst const &)> const &pred) const
   -> bool {
   // Walk from the right-hand-side.
   return Rhs->AnyPart(pred);
@@ -191,7 +191,9 @@ auto spp::asts::TypeUnaryExpressionAst::TypeParts()
 
 auto spp::asts::TypeUnaryExpressionAst::LastTypePart() const
   -> TypeIdentifierAst const* {
-  // Unary operators (namespace, borrow) contribute no type parts, so the final part is always the rhs's.
+  // Unary operators (namespace, borrow) contribute
+  // no type parts, so the final part is always the
+  // rhs's.
   return std::as_const(*Rhs).LastTypePart();
 }
 
@@ -235,13 +237,16 @@ auto spp::asts::TypeUnaryExpressionAst::WithConvention(
 
 auto spp::asts::TypeUnaryExpressionAst::WithoutGenerics() const
   -> Shared<TypeAst> {
-  return MakeShared<TypeUnaryExpressionAst>(Op, Rhs->WithoutGenerics());
+  if (not _CachedWithoutGenerics) {
+    _CachedWithoutGenerics = MakeShared<TypeUnaryExpressionAst>(Op, Rhs->WithoutGenerics());
+  }
+  return _CachedWithoutGenerics;
 }
 
 auto spp::asts::TypeUnaryExpressionAst::SubstituteGenerics(
   Vec<GenericArgumentAst*> const &args) const
   -> Shared<TypeAst> {
-  return MakeShared<TypeUnaryExpressionAst>(AstClone(Op), Rhs->SubstituteGenerics(args));
+  return MakeShared<TypeUnaryExpressionAst>(Op, Rhs->SubstituteGenerics(args));
 }
 
 auto spp::asts::TypeUnaryExpressionAst::ContainsGenerics(
@@ -253,7 +258,8 @@ auto spp::asts::TypeUnaryExpressionAst::ContainsGenerics(
 auto spp::asts::TypeUnaryExpressionAst::WithGenerics(
   Unique<GenericArgumentGroupAst> &&arg_group) const
   -> Shared<TypeAst> {
-  // Clone this type and add the generics to the right most part.
+  // Clone this type and add the generics to
+  // the right most part.
   auto type_clone = AstClone(this);
   arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
   type_clone->LastTypePart()->GnArgGroup = std::move(arg_group);
@@ -262,20 +268,24 @@ auto spp::asts::TypeUnaryExpressionAst::WithGenerics(
 
 auto spp::asts::TypeUnaryExpressionAst::IsCompilerGeneratedType() const
   -> bool {
-  // Move into the rhs, ie for "std::annotations::$Public".
+  // Move into the rhs, ie for the type
+  // "std::annotations::$Public", it moves to
+  // the next part.
   return Rhs->IsCompilerGeneratedType();
 }
 
 auto spp::asts::TypeUnaryExpressionAst::ResetCache()
   -> void {
-  // Forward into the RHS to reach the inner TypeIdentifierAst.
+  // Forward into the RHS to reach the inner
+  // TypeIdentifierAst.
   Rhs->ResetCache();
 }
 
 auto spp::asts::TypeUnaryExpressionAst::NsPartsInto(
   Vec<IdentifierAst const*> &out) const
   -> void {
-  // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
+  // Both sides append into the caller's buffer, so
+  // a chain of any depth is one allocation.
   std::as_const(*Op).NsPartsInto(out);
   std::as_const(*Rhs).NsPartsInto(out);
 }
@@ -283,7 +293,8 @@ auto spp::asts::TypeUnaryExpressionAst::NsPartsInto(
 auto spp::asts::TypeUnaryExpressionAst::TypePartsInto(
   Vec<TypeIdentifierAst const*> &out) const
   -> void {
-  // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
+  // Both sides append into the caller's buffer, so
+  // a chain of any depth is one allocation.
   std::as_const(*Op).TypePartsInto(out);
   std::as_const(*Rhs).TypePartsInto(out);
 }
