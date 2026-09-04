@@ -97,6 +97,7 @@ find_package(stringzilla CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(GenEx CONFIG REQUIRED)
 find_package(ColEx CONFIG REQUIRED)
+find_package(NumEx CONFIG REQUIRED)
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_compile_options(${LLVM_DEFINITIONS_LIST})
 
@@ -240,6 +241,7 @@ target_link_libraries(
   CLI11::CLI11
   ColEx::ColEx
   GenEx::GenEx
+  NumEx::NumEx
 )
 
 if (WIN32)

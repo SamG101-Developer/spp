@@ -171,6 +171,19 @@ cmake-flags = [
 ]
 
 [[library]]
+name = "stringzilla"
+repo = "https://github.com/ashvardanian/stringzilla.git"
+commit = "a5ac71758f177eb8a27883cd1bbae75698ff2c78"
+cmake-flags = [
+  "-DSTRINGZILLA_INSTALL=ON",
+  "-DSTRINGZILLA_BUILD_TEST=OFF",
+  "-DSTRINGZILLA_BUILD_BENCHMARK=OFF",
+  "-DSTRINGZILLA_BUILD_SHARED=OFF",
+  "-DSTRINGZILLAS_BUILD_SHARED=OFF",
+  "-DSTRINGZILLA_BUILD_CUDA=OFF",
+]
+
+[[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
 commit = "c1cfe00d2f3d862aecfe6e69ec810414d5f4c906"
@@ -200,3 +213,9 @@ commit = "02f3634266ee43e91cf7ee85559c429a70c01d0a"
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
 commit = "1c46485ae4225460b3a174f20b067620d43b93b6"
+
+[[library]]
+name = "NumEx"
+repo = "https://github.com/SamG101-Developer/NumEx.git"
+commit = "1d650b1fda93f7d08ef4ad28ae3c3e532f6e668f"
+cmake-flags = ["-DNUMEX_BUILD_TESTS=OFF", "-DNUMEX_BUILD_BENCHMARKS=OFF"]

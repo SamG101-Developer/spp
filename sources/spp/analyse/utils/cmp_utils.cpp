@@ -28,8 +28,9 @@ import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.strings;
-import boost;
 import genex;
+import numex.big_dec;
+import numex.big_int;
 
 namespace spp::analyse::utils::cmp_utils {
   namespace {
@@ -42,7 +43,7 @@ namespace spp::analyse::utils::cmp_utils {
      */
     auto AssignInPlace(
       asts::IntegerLiteralAst &lhs,
-      Unique<asts::IntegerLiteralAst> result)
+      Unique<asts::IntegerLiteralAst> &&result)
       -> void {
       lhs.TokSign = std::move(result->TokSign);
       lhs.Val = std::move(result->Val);
@@ -51,7 +52,7 @@ namespace spp::analyse::utils::cmp_utils {
 
     auto AssignInPlace(
       asts::FloatLiteralAst &lhs,
-      Unique<asts::FloatLiteralAst> result)
+      Unique<asts::FloatLiteralAst> &&result)
       -> void {
       lhs.TokSign = std::move(result->TokSign);
       lhs.IntVal = std::move(result->IntVal);
@@ -63,7 +64,7 @@ namespace spp::analyse::utils::cmp_utils {
 
 auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
   asts::ObjectInitializerAst const *object,
-  asts::Ast *attribute,
+  asts::Ast const *attribute,
   Unique<asts::ExpressionAst> &&value,
   scopes::ScopeManager const *sm)
   -> void {
@@ -285,7 +286,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_abs(
   -> Unique<asts::IntegerLiteralAst> {
   // Perform absolute value on an integer literal.
   const auto value = val.BigVal();
-  return asts::IntegerLiteralAst::FromBigVal(boost::abs(val.BigVal()), val.Type);
+  return asts::IntegerLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_eq(
@@ -435,7 +436,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_smax(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform signed maximum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::max(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_umax(
@@ -443,7 +444,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_umax(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned maximum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::max(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_smin(
@@ -451,7 +452,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_smin(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform signed minimum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::min(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_umin(
@@ -459,7 +460,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_umin(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned minimum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::min(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_scmp(
@@ -467,7 +468,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_scmp(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform signed comparison on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().compare(rhs.BigVal()), lhs.Type);
+  const auto cmp = lhs.BigVal() <=> rhs.BigVal();
+  const auto res = std::is_gt(cmp) - std::is_lt(cmp);
+  return asts::IntegerLiteralAst::FromBigVal(numex::BigInt(res), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ucmp(
@@ -475,7 +478,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_ucmp(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned comparison on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().compare(rhs.BigVal()), lhs.Type);
+  const auto cmp = lhs.BigVal() <=> rhs.BigVal();
+  const auto res = std::is_gt(cmp) - std::is_lt(cmp);
+  return asts::IntegerLiteralAst::FromBigVal(numex::BigInt(res), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
@@ -518,7 +523,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_frem(
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
   // Perform remainder on two float literals.
-  return asts::FloatLiteralAst::FromBigVal(boost::fmod(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal().Fmod(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fneg(
@@ -532,7 +537,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fabs(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform absolute value on a float literal, exactly.
-  return asts::FloatLiteralAst::FromBigVal(boost::fabs(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax_val(
@@ -554,7 +559,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax(
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
   // Perform maximum on two float literals.
-  return asts::FloatLiteralAst::FromBigVal(boost::fmax(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin(
@@ -562,35 +567,35 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin(
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
   // Perform minimum on two float literals.
-  return asts::FloatLiteralAst::FromBigVal(boost::fmin(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ffloor(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform floor operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::floor(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Floor()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fceil(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform ceiling operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::ceil(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Ceil()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ftrunc(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform truncation operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::trunc(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Trunc()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fround(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform round operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::round(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Trunc()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_num_float_neg_one()

@@ -7,9 +7,10 @@ import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.numbers;
 import spp.utils.types;
-import boost;
 import llvm;
 import std;
+import numex.big_dec;
+import numex.big_int;
 
 namespace spp::asts {
   SPP_EXP_CLS struct FloatLiteralAst;
@@ -23,12 +24,12 @@ namespace spp::asts {
  * @c _f64. No postfix defaults the type to @c std::BigDec.
  */
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
-  inline static const auto kBounds = spp::utils::numbers::FloatLimitMap{
-    {spp::Str("f8"), spp::MakePair(boost::BigDec("-448"), boost::BigDec("448"))},
-    {spp::Str("f16"), LIMIT_F(11, 16)},
-    {spp::Str("f32"), LIMIT_F(24, 128)},
-    {spp::Str("f64"), LIMIT_F(53, 1024)},
-    {spp::Str("f128"), LIMIT_F(113, 16384)}
+  inline static const auto kBounds = utils::numbers::FloatLimitMap{
+    {Str("f8"), MakePair(numex::BigDec("-448"), numex::BigDec("448"))},
+    {Str("f16"), LIMIT_F(11, 16)},
+    {Str("f32"), LIMIT_F(24, 128)},
+    {Str("f64"), LIMIT_F(53, 1024)},
+    {Str("f128"), LIMIT_F(113, 16384)}
   };
 
   SPP_GCC_VTABLE_FIX
@@ -98,7 +99,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
    * that a result the type cannot hold arrives as a value the compiler can reject rather than as an infinity.
    * @return The literal's value.
    */
-  SPP_ATTR_NODISCARD auto BigVal() const -> boost::BigDec;
+  SPP_ATTR_NODISCARD auto BigVal() const -> numex::BigDec;
 
   /**
    * Build a literal of the given type carrying an exact value, with the sign as its own token. The value is not range
@@ -108,7 +109,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
    * @param type The float type name ("f32", "f64", ...).
    * @return The literal.
    */
-  static auto FromBigVal(boost::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
+  static auto FromBigVal(numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
 
   /**
    * Raise if this literal's value is one its type cannot hold. A written literal is checked when it is analysed; one

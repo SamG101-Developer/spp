@@ -19,7 +19,6 @@ import spp.lex.tokens;
 import spp.utils.numbers;
 import spp.utils.strings;
 import spp.utils.types;
-import boost;
 import llvm;
 
 SPP_MOD_BEGIN
@@ -103,12 +102,12 @@ auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FloatLiteralAst::BigVal() const
-  -> boost::BigDec {
+  -> numex::BigDec {
   //
   using spp::utils::strings::NormalizeFloatString;
 
   // The sign is a separate token, so it is applied after the digits are read.
-  auto value = boost::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
+  auto value = numex::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
     value = -value;
   }
@@ -126,20 +125,20 @@ auto spp::asts::FloatLiteralAst::ValidateBounds(
   auto const &[lower, upper] = kBounds.at(Type);
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
-    value.compare(lower) < 0 or value.compare(upper) > 0,
+    value < lower or value > upper,
     {sm.CurrentScope}, ERR_ARGS(owner, value, lower, upper, Type));
 }
 
 auto spp::asts::FloatLiteralAst::FromBigVal(
-  boost::BigDec const &value,
+  numex::BigDec const &value,
   Str const &type)
   -> Unique<FloatLiteralAst> {
   // "str" gives the shortest exact decimal, which omits the fractional part entirely for a whole number - and the
   // literal always carries one.
   // Todo: a magnitude large or small enough that "str" switches to exponent form has no literal spelling at all,
   //  because a float literal is an integer part and a fractional part with no exponent.
-  const auto is_negative = value.sign() < 0;
-  const auto digits = (is_negative ? -value : value).str();
+  const auto is_negative = value.IsNegative();
+  const auto digits = (is_negative ? -value : value).ToString();
   const auto point = digits.find('.');
 
   auto int_part = point == Str::npos ? digits : digits.substr(0, point);
@@ -187,14 +186,14 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   // Normalise the literal exactly as Stage7 does, then
   // apply the optional sign.
   auto const &semantics = llvm_type->getFltSemantics();
-  auto mapped_val = boost::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
+  auto mapped_val = numex::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
     mapped_val = -mapped_val;
   }
 
   // Create the LLVM constant float value from the
   // normalised decimal string (APFloat handled the sign).
-  const auto ap_float = llvm::APFloat(semantics, mapped_val.str());
+  const auto ap_float = llvm::APFloat(semantics, mapped_val.ToString());
   const auto co_float = llvm::ConstantFP::get(*ctx->Context, ap_float);
   return co_float;
 }

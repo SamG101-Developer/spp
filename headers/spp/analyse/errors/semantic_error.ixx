@@ -4,8 +4,9 @@ module;
 export module spp.analyse.errors.semantic_error;
 import spp.utils.errors;
 import spp.utils.types;
-import boost;
 import std;
+import numex.big_dec;
+import numex.big_int;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
@@ -246,8 +247,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
-  explicit SppFloatOutOfBoundsError(asts::Ast const &literal, boost::BigDec const &value,
-    boost::BigDec const &lower, boost::BigDec const &upper, StrView what);
+  explicit SppFloatOutOfBoundsError(asts::Ast const &literal, numex::BigDec const &value,
+    numex::BigDec const &lower, numex::BigDec const &upper, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDivisionByZeroError final : SemanticError {
@@ -260,8 +261,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppShiftAmountOutOfBoundsError final : 
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIntegerOutOfBoundsError final : SemanticError {
-  explicit SppIntegerOutOfBoundsError(asts::Ast const &literal, boost::BigInt const &value,
-    boost::BigInt const &lower, boost::BigInt const &upper, StrView what);
+  explicit SppIntegerOutOfBoundsError(asts::Ast const &literal, numex::BigInt const &value,
+    numex::BigInt const &lower, numex::BigInt const &upper, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppOrderInvalidError final : SemanticError {

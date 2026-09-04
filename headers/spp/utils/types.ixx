@@ -6,16 +6,16 @@ import ankerl;
 import std;
 
 export namespace std {
-  template <typename T>
+  template <typename T> requires std::integral<T>
   struct bit_shl {
-    constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
+    constexpr auto operator()(T lhs, T rhs) const -> T {
       return static_cast<T>(lhs << rhs);
     }
   };
 
-  template <typename T>
+  template <typename T> requires std::integral<T>
   struct bit_shr {
-    constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
+    constexpr auto operator()(T lhs, T rhs) const -> T {
       return static_cast<T>(lhs >> rhs);
     }
   };

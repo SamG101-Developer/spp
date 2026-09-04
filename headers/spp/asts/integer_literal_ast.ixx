@@ -10,10 +10,10 @@ import spp.lex.tokens;
 import spp.utils.numbers;
 import spp.utils.traits;
 import spp.utils.types;
-import boost;
 import llvm;
 import std;
 import sys;
+import numex.big_int;
 
 namespace spp::asts {
   SPP_EXP_CLS struct IntegerLiteralAst;
@@ -22,21 +22,21 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
-  inline static const auto kBounds = spp::utils::numbers::IntLimitMap{
-    {spp::Str("s8"), LIMIT_S(8)},
-    {spp::Str("s16"), LIMIT_S(16)},
-    {spp::Str("s32"), LIMIT_S(32)},
-    {spp::Str("s64"), LIMIT_S(64)},
-    {spp::Str("s128"), LIMIT_S(128)},
-    {spp::Str("s256"), LIMIT_S(256)},
-    {spp::Str("sz"), LIMIT_S(sizeof(sys::ssize_t) * 8)},
-    {spp::Str("u8"), LIMIT_U(8)},
-    {spp::Str("u16"), LIMIT_U(16)},
-    {spp::Str("u32"), LIMIT_U(32)},
-    {spp::Str("u64"), LIMIT_U(64)},
-    {spp::Str("u128"), LIMIT_U(128)},
-    {spp::Str("u256"), LIMIT_U(256)},
-    {spp::Str("uz"), LIMIT_U(sizeof(std::size_t) * 8)},
+  inline static const auto kBounds = utils::numbers::IntLimitMap{
+    {Str("s8"), LIMIT_S(8)},
+    {Str("s16"), LIMIT_S(16)},
+    {Str("s32"), LIMIT_S(32)},
+    {Str("s64"), LIMIT_S(64)},
+    {Str("s128"), LIMIT_S(128)},
+    {Str("s256"), LIMIT_S(256)},
+    {Str("sz"), LIMIT_S(sizeof(sys::ssize_t) * 8)},
+    {Str("u8"), LIMIT_U(8)},
+    {Str("u16"), LIMIT_U(16)},
+    {Str("u32"), LIMIT_U(32)},
+    {Str("u64"), LIMIT_U(64)},
+    {Str("u128"), LIMIT_U(128)},
+    {Str("u256"), LIMIT_U(256)},
+    {Str("uz"), LIMIT_U(sizeof(std::size_t) * 8)},
   };
 
   SPP_GCC_VTABLE_FIX
@@ -97,7 +97,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
    * one that silently wrapped on the way out.
    * @return The literal's value.
    */
-  SPP_ATTR_NODISCARD auto BigVal() const -> boost::BigInt;
+  SPP_ATTR_NODISCARD auto BigVal() const -> numex::BigInt;
 
   /**
    * Build a literal of the given type carrying an exact value, with the sign as its own token. The value is not
@@ -107,7 +107,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
    * @param type The integer type name ("s32", "u8", ...).
    * @return The literal.
    */
-  static auto FromBigVal(boost::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
+  static auto FromBigVal(numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
 
   /**
    * Build a literal the way a bit operation produces one: the value is taken within the type's own width and read
@@ -116,7 +116,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
    * @param type The integer type name ("s32", "u8", ...).
    * @return The literal, carrying the value as the type reads it.
    */
-  static auto FromWrappedBigVal(boost::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
+  static auto FromWrappedBigVal(numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
 
   /**
    * Raise if this literal's value is one its type cannot hold. A written literal is checked when it is analysed; one

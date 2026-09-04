@@ -136,7 +136,7 @@ namespace spp::analyse::utils::cmp_utils {
 
   SPP_EXP_FUN auto SetCompTimeAttrValue(
     asts::ObjectInitializerAst const *object,
-    asts::Ast *attribute,
+    asts::Ast const *attribute,
     Unique<asts::ExpressionAst> &&value,
     scopes::ScopeManager const *sm)
     -> void;

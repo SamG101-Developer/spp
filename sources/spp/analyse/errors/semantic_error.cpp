@@ -352,30 +352,30 @@ spp::analyse::errors::SppRecursiveTypeError::SppRecursiveTypeError(
 
 spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
   asts::Ast const &literal,
-  boost::BigDec const &value,
-  boost::BigDec const &lower,
-  boost::BigDec const &upper,
+  numex::BigDec const &value,
+  numex::BigDec const &lower,
+  numex::BigDec const &upper,
   const StrView what) {
   AddHeaders(16, "Float Out Of Bounds Error");
-  AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.str()));
+  AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.ToString()));
   AddFooter(
     "The value of this float is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
-    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") +
-    INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
+    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.ToString()) + INLINE_HELP(", ") +
+    INLINE_HELP(upper.ToString()) + INLINE_HELP("]") + ".");
 }
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
   asts::Ast const &literal,
-  boost::BigInt const &value,
-  boost::BigInt const &lower,
-  boost::BigInt const &upper,
+  numex::BigInt const &value,
+  numex::BigInt const &lower,
+  numex::BigInt const &upper,
   const StrView what) {
   AddHeaders(17, "Integer Out Of Bounds Error");
-  AddErr(&literal, "Integer introduced here with value " + INLINE_INFO(value.str()));
+  AddErr(&literal, "Integer introduced here with value " + INLINE_INFO(value.ToString()));
   AddFooter(
     "The value of this integer is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
-    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") +
-    INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
+    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.ToString()) + INLINE_HELP(", ") +
+    INLINE_HELP(upper.ToString()) + INLINE_HELP("]") + ".");
 }
 
 spp::analyse::errors::SppOrderInvalidError::SppOrderInvalidError(
