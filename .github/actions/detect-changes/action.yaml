@@ -1,5 +1,5 @@
 name: detect-changes
-description: "Decide whether this ref changed anything that can affect a build, test or analysis result."
+description: "Decide, per gated CI job, whether this ref changed anything that can affect that job's result."
 
 inputs:
   base:
@@ -13,31 +13,113 @@ inputs:
 
 outputs:
   code:
-    description: "'true' when a source, build-system or test-data path changed."
-    value: ${{ steps.filter.outputs.code }}
+    description: "'true' when a source, build-system, toolchain-pin or test-data path changed."
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.code_any_changed != 'false' }}
   cppcheck:
     description: "'true' when `code` is true, or a CI path the static analysis job reads changed."
-    value: ${{ steps.filter.outputs.cppcheck }}
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.code_any_changed != 'false'
+      || steps.filter.outputs.cppcheck_any_changed != 'false' }}
   compile:
     description: "'true' when `code` is true, or a CI path the build/test job reads changed."
-    value: ${{ steps.filter.outputs.compile }}
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.code_any_changed != 'false'
+      || steps.filter.outputs.compile_any_changed != 'false' }}
   cross_codegen:
     description: "'true' when `code` is true, or a CI path the cross-codegen job reads changed."
-    value: ${{ steps.filter.outputs.cross_codegen }}
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.code_any_changed != 'false'
+      || steps.filter.outputs.cross_codegen_any_changed != 'false' }}
   security:
     description: "'true' when `code` is true, or a CI path the security job reads changed."
-    value: ${{ steps.filter.outputs.security }}
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.code_any_changed != 'false'
+      || steps.filter.outputs.security_any_changed != 'false' }}
   sonar:
     description: "'true' when `code` is true, or a CI path the Sonar job reads changed."
-    value: ${{ steps.filter.outputs.sonar }}
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.code_any_changed != 'false'
+      || steps.filter.outputs.sonar_any_changed != 'false' }}
 
 runs:
   using: composite
   steps:
-    - name: Filter changed paths
-      id: filter
+    - name: Check the base commit is usable
+      id: base
       shell: bash
       env:
         BASE_SHA: ${{ inputs.base }}
-        HEAD_SHA: ${{ inputs.head }}
-      run: bash .github/scripts/detect-changes/filter-changed-paths.sh
+      run: bash .github/scripts/detect-changes/check-base.sh
+
+    - name: Filter changed paths
+      id: filter
+      if: steps.base.outputs.usable == 'true'
+      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96  # v47.0.6
+      with:
+        base_sha: ${{ inputs.base }}
+        sha: ${{ inputs.head }}
+        files_yaml: |
+          code:
+            - '**'
+            - '!docs/**'
+            - '!.vale/**'
+            - '!.idea/**'
+            - '!*.md'
+            - '!.gitignore'
+            - '!.github/**'
+            - '.github/dependencies.toml'
+            - '.github/scripts/lib/**'
+            - '.github/actions/detect-changes/**'
+            - '.github/scripts/detect-changes/**'
+          cppcheck:
+            - '.github/workflows/pr.yaml'
+            - '.github/workflows/_cppcheck.yaml'
+            - '.github/actions/setup-python/**'
+            - '.github/scripts/lint/**'
+          compile:
+            - '.github/workflows/pr.yaml'
+            - '.github/workflows/post_merge.yaml'
+            - '.github/workflows/_compile.yaml'
+            - '.github/actions/restore-mtimes/**'
+            - '.github/actions/setup-toolchain/**'
+            - '.github/actions/build-cache-key/**'
+            - '.github/actions/configure-cmake/**'
+            - '.github/actions/run-tests/**'
+            - '.github/scripts/setup-toolchain/**'
+            - '.github/scripts/build-cache-key/**'
+            - '.github/scripts/configure-cmake/**'
+            - '.github/scripts/run-tests/**'
+          cross_codegen:
+            - '.github/workflows/pr.yaml'
+            - '.github/workflows/_cross_codegen.yaml'
+            - '.github/actions/restore-mtimes/**'
+            - '.github/actions/setup-python/**'
+            - '.github/actions/setup-toolchain/**'
+            - '.github/actions/build-cache-key/**'
+            - '.github/actions/configure-cmake/**'
+            - '.github/scripts/setup-toolchain/**'
+            - '.github/scripts/build-cache-key/**'
+            - '.github/scripts/configure-cmake/**'
+            - '.github/scripts/cross-codegen/**'
+          security:
+            - '.github/workflows/pr.yaml'
+            - '.github/workflows/_security.yaml'
+            - '.github/actions/setup-python/**'
+            - '.github/actions/setup-toolchain/**'
+            - '.github/actions/configure-cmake/**'
+            - '.github/scripts/setup-toolchain/**'
+            - '.github/scripts/configure-cmake/**'
+            - '.github/scripts/security/**'
+          sonar:
+            - '.github/workflows/pr.yaml'
+            - '.github/workflows/post_merge.yaml'
+            - '.github/workflows/_sonar.yaml'
+            - '.github/actions/restore-mtimes/**'
+            - '.github/actions/setup-python/**'
+            - '.github/actions/setup-toolchain/**'
+            - '.github/actions/build-cache-key/**'
+            - '.github/actions/configure-cmake/**'
+            - '.github/scripts/setup-toolchain/**'
+            - '.github/scripts/build-cache-key/**'
+            - '.github/scripts/configure-cmake/**'
