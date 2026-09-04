@@ -7,7 +7,12 @@ name: Nightly
 on:
   schedule:
     - cron: '0 4 * * *'  # 04:00 UTC daily
-  workflow_dispatch: { }
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List the runs that would be deleted, without deleting them"
+        type: boolean
+        default: true
 
 permissions: { }
 
@@ -106,3 +111,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: bash .github/scripts/nightly/prune-caches.sh
+
+  prune-runs:
+    name: Prune Old Workflow Runs
+    runs-on: ubuntu-24.04
+    # Octokit's throttling plugin serialises writes onto one connection at a minimum of a second apart, so the job's
+    # wall-clock is roughly one second per run deleted. A steady night is a minute; the first run has a backlog of
+    # hundreds and needs the headroom, and anything it does not reach is simply picked up by the next night.
+    timeout-minutes: 60
+    permissions:
+      actions: write  # list and delete the repository's workflow runs
+    steps:
+      # Secure the runner from external packages or actions.
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      - name: Delete runs outside the retention window
+        uses: Mattraks/delete-workflow-runs@b3018382ca039b53d238908238bd35d1fb14f8ee  # v2.1.0
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 3
+          keep_minimum_runs: 1
+          dry_run: ${{ inputs.dry_run || false }}
