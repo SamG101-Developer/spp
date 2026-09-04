@@ -13,8 +13,23 @@ inputs:
 
 outputs:
   code:
-    description: "'true' when a compile/test/analysis-affecting path changed."
+    description: "'true' when a source, build-system or test-data path changed."
     value: ${{ steps.filter.outputs.code }}
+  cppcheck:
+    description: "'true' when `code` is true, or a CI path the static analysis job reads changed."
+    value: ${{ steps.filter.outputs.cppcheck }}
+  compile:
+    description: "'true' when `code` is true, or a CI path the build/test job reads changed."
+    value: ${{ steps.filter.outputs.compile }}
+  cross_codegen:
+    description: "'true' when `code` is true, or a CI path the cross-codegen job reads changed."
+    value: ${{ steps.filter.outputs.cross_codegen }}
+  security:
+    description: "'true' when `code` is true, or a CI path the security job reads changed."
+    value: ${{ steps.filter.outputs.security }}
+  sonar:
+    description: "'true' when `code` is true, or a CI path the Sonar job reads changed."
+    value: ${{ steps.filter.outputs.sonar }}
 
 runs:
   using: composite

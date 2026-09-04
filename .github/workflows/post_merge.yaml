@@ -25,6 +25,8 @@ jobs:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      compile: ${{ steps.filter.outputs.compile }}
+      sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       # Secure the runner from external packages or actions.
       - name: Harden Runner
@@ -91,7 +93,7 @@ jobs:
   build-test:
     name: Build & Test
     needs: [ changes ]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.compile == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_compile.yaml
@@ -110,7 +112,10 @@ jobs:
   sonar:
     name: Sonar
     needs: [ changes, build-test ]
-    if: needs.changes.outputs.code == 'true'
+    if: |
+      !cancelled()
+      && needs.changes.outputs.sonar == 'true'
+      && !contains(fromJSON('["failure", "cancelled"]'), needs['build-test'].result)
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml
