@@ -44,10 +44,10 @@ namespace spp {
   using Set = ankerl::unordered_dense::set<T, H, Eq>;
 
   SPP_EXP_CLS
-  using Str = std::string; // stringzilla::string;
+  using Str = std::string; // stringzilla
 
   SPP_EXP_CLS
-  using StrView = std::string_view; // stringzilla::string_view;
+  using StrView = std::string_view; // stringzilla
 
   SPP_EXP_CLS
   using Ordering = std::strong_ordering;
