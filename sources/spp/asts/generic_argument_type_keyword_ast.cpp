@@ -125,7 +125,9 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
     val_name = analyse::utils::generic_bindings::WithoutSelfBindingGenerics(val_name);
   }
 
-  Val = val_name->WithConvention(AstClone(Val->GetConvention()));
+  if (*Val->WithoutConvention() != *val_name) {
+    Val = val_name->WithConvention(AstClone(Val->GetConvention()));
+  }
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::ViewName() const
