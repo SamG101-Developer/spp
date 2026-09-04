@@ -28,6 +28,7 @@ enabled = true
 pattern = '\bstd::(?:map|unordered_map)\b'
 message = "use the ankerl map via spp::Map instead"
 files = '\.(?:cpp|ixx|hpp)$'
+allow = ["headers/spp/utils/types.ixx"]
 
 [[rule]]
 id = "no-std-set"

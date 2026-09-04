@@ -4,6 +4,7 @@ module;
 module spp.lex.lexer;
 import spp.compiler.prelude;
 import spp.utils.strings;
+import spp.utils.types;
 import genex;
 import magic_enum;
 
@@ -28,7 +29,7 @@ auto spp::lex::Lexer::Lex() const
   tokens.reserve(m_code.length() / 2);
 
   // Save keywords.
-  auto keywords = std::unordered_map<RawTokenType, Str>();
+  auto keywords = Map<RawTokenType, Str>();
   for (auto [kw, kw_string] : magic_enum::enum_entries<RawTokenType>()) {
     if (kw_string.starts_with("KW_")) {
       keywords[kw] = kw_string.substr(3)

@@ -22,7 +22,7 @@ SPP_EXP_CLS struct spp::parse::errors::SyntacticError : utils::errors::AbstractE
 
 SPP_EXP_CLS struct spp::parse::errors::SppSyntaxError final : SyntacticError {
   std::size_t pos;
-  std::set<lex::SppTokenType> tokens;
+  Set<lex::SppTokenType> tokens;
 
   explicit SppSyntaxError(Str &&header);
   ~SppSyntaxError() override = default;

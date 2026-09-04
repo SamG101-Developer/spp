@@ -506,7 +506,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
   // Create a map of the symbols' memory  information before
   // any branches are analysed.
-  auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
+  auto sym_mem_info = Map<scopes::VariableSymbol*, SymbolMemoryList>();
 
   // The lookup walks ancestors and super scopes, which can
   // reach one symbol by more than one route, and every list

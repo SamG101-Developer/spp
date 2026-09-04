@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.utils.progress;
+import spp.utils.types;
 import colex;
 import sys;
 
@@ -36,7 +37,7 @@ auto spp::utils::ProgressBar::Next()
   const auto half = halves % 2 != 0 and full < bar_width;
 
   // Fill colour by percentage, fully customizable.
-  static const auto fill_cols = std::map<double, std::string>{
+  static const auto fill_cols = OrderedMap<double, Str>{
     {33.3, colex::fg_bright_red + ""},
     {66.6, colex::fg_bright_yellow + ""},
     {100.0, colex::fg_bright_green + ""},
