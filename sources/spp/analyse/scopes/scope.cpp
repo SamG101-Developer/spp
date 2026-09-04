@@ -550,9 +550,17 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
   const bool exclusive,
   const bool sup_scope_search) const
   -> TypeSymbol* {
-  // Adjust the scope for the namespace of the type identifier if there is one.
   if (sym_name == nullptr) { return nullptr; }
 
+  // Answer from the cache before anything else.
+  const auto generation = TypeLookupGeneration();
+  const auto cacheable = not exclusive and sup_scope_search;
+  if (auto *cached = static_cast<TypeSymbol*>(nullptr);
+    cacheable and sym_name->TryCachedLookup(this, generation, cached)) {
+    return cached;
+  }
+
+  // Adjust the scope for the namespace of the type identifier if there is one.
   auto scope = this;
   auto sym_name_extracted = static_cast<asts::TypeIdentifierAst const*>(nullptr);
   if (sym_name->IsTypeIdentifier()) {
@@ -563,13 +571,6 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
     auto [scope_, sym_name_extracted_] = ShiftForNamespacedType(*this, *sym_name);
     scope = scope_;
     sym_name_extracted = sym_name_extracted_;
-  }
-
-  const auto generation = TypeLookupGeneration();
-  const auto cacheable = not exclusive and sup_scope_search;
-  if (auto *cached = static_cast<TypeSymbol*>(nullptr);
-    cacheable and sym_name->TryCachedLookup(this, generation, cached)) {
-    return cached;
   }
 
   // Get the symbol from the symbol table if it exists.
