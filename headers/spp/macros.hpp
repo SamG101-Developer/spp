@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spp/macros-platforms.hpp>
+
 constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_ATTR_NODISCARD [[nodiscard]]
@@ -81,6 +83,8 @@ constexpr auto SPP_VERSION = "0.1.0";
   auto Clone() const -> Unique<Ast> override { return nullptr; } \
   auto ToString() const -> Str override { return ""; }
 
+#if SPP_COMPILER_GCC
+
 #define SPP_GCC_VTABLE_FIX_BASE \
   virtual auto _spp_key_function() const -> void;
 
@@ -91,6 +95,12 @@ constexpr auto SPP_VERSION = "0.1.0";
   SPP_MOD_BEGIN                                   \
   auto Type::_spp_key_function() const -> void {} \
   SPP_MOD_END
+
+#else
+#define SPP_GCC_VTABLE_FIX_BASE
+#define SPP_GCC_VTABLE_FIX
+#define SPP_GCC_VTABLE_FIX_IMPL(Type)
+#endif
 
 #define SPP_RETURN_TYPE_OVERLOAD_HELPER(expr) \
   if (auto pe = expr->To<PostfixExpressionAst>(); pe != nullptr and pe->Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
