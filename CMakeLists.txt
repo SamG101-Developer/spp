@@ -196,6 +196,8 @@ target_compile_options(
 target_compile_definitions(
   ${PROJECT_NAME}_lib
   PRIVATE
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127193
+  ANKERL_UNORDERED_DENSE_HAS_SSE2=0
   $<$<BOOL:${SPP_ALL_TARGETS}>:SPP_ALL_TARGETS>
   SPP_HOST_TRIPLE="${LLVM_HOST_TRIPLE}")
 
