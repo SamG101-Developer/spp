@@ -20,7 +20,7 @@ import std;
 SPP_MOD_BEGIN
 constexpr auto kBinChars = spp::StrView("01");
 constexpr auto kOctChars = spp::StrView("01234567");
-constexpr auto kHexChars = spp::StrView("0123456789abcdefABCDEF");
+constexpr auto kHexChars = spp::StrView("0123456789abcdef");
 
 auto spp::parse::ParserSpp::parse()
   -> Unique<asts::ModulePrototypeAst> {
