@@ -14,6 +14,7 @@ SPP_EXP_CLS class spp::utils::ProgressBar {
   std::uint32_t _TotalSteps;
   std::uint32_t _CurrentSteps;
   bool _Enabled;
+  std::chrono::steady_clock::time_point _LastDraw;
 
 public:
   explicit ProgressBar(Str label, std::uint32_t total_steps, bool enabled = true);

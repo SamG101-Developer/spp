@@ -5,11 +5,8 @@ module;
 #define _CRT_NONSTDC_NO_WARNINGS
 #endif
 
-#include <errno.h>
+#include <cstring>
 #include <fcntl.h>
-#include <functional>
-#include <stdio.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -23,11 +20,7 @@ module;
 #include <unistd.h>
 #endif
 
-#define LEGACY_STDERR stderr
-#define LEGACY_STDIN stdin
-#define LEGACY_STDOUT stdout
-#define LEGACY_ERRNO errno
-#define LEGACY_S_ISDIR S_ISDIR
+#include <wrappers/sys_legacy.hpp>
 
 #undef stderr
 #undef stdin
@@ -68,14 +61,16 @@ export namespace sys {
   using ::stat;
   using ::write;
 
-  FILE *stdout = LEGACY_STDOUT;
-  FILE *stdin = LEGACY_STDIN;
-  FILE *stderr = LEGACY_STDERR;
-  constexpr auto O_RDONLY = 0;
-  constexpr auto O_RDWR = 2;
-  constexpr auto SEEK_SET = static_cast<short>(0);
-  int errno = LEGACY_ERRNO;
-  std::function<int(mode_t)> S_ISDIR = [](const mode_t mode) {
-    return LEGACY_S_ISDIR(mode);
-  };
+  const auto stdout = spp_sys_legacy::Stdout();
+  const auto stdin = spp_sys_legacy::Stdin();
+  const auto stderr = spp_sys_legacy::Stderr();
+  constexpr auto O_RDONLY = spp_sys_legacy::kORdonly;
+  constexpr auto O_RDWR = spp_sys_legacy::kORdwr;
+  constexpr auto SEEK_SET = spp_sys_legacy::kSeekSet;
+
+  thread_local auto &errno = spp_sys_legacy::Errno();
+
+  inline auto S_ISDIR(const mode_t mode) -> int {
+    return spp_sys_legacy::IsDir(mode);
+  }
 }
