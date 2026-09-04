@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_tuple_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : CasePatternVariantAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureTupleAst);
+
   /**
    * The @code (@endcode token that indicates the start of a tuple destructuring pattern.
    */
@@ -43,8 +47,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : Case
 
   ~CasePatternVariantDestructureTupleAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -55,3 +57,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : Case
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureTupleAst)

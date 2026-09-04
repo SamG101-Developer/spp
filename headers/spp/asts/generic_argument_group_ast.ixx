@@ -4,6 +4,7 @@ module;
 export module spp.asts.generic_argument_group_ast;
 import spp.analyse.utils.type_compare;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -24,6 +25,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericArgumentGroupAst);
 
   /**
    * The token that represents the left bracket @code [@endcode in the generic argument group. This introduces the
@@ -65,8 +67,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
     decltype(TokR) &&tok_r);
 
   ~GenericArgumentGroupAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto operator==(GenericArgumentGroupAst const &other) const -> bool;
 

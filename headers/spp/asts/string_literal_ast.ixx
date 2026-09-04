@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.string_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(StringLiteralAst);
 
   /**
    * The optional "b" prefix, converting the char into a byte string.
@@ -46,15 +48,13 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
     ExpressionAst const &other) const
     -> Ordering override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  auto CppVal() const -> Str;
+  SPP_ATTR_NODISCARD auto CppVal() const -> Str;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::StringLiteralAst)

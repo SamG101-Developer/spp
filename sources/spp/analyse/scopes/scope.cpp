@@ -50,7 +50,7 @@ namespace spp::analyse::scopes {
     auto ResolveSupTypeName(
       Scope const *scope)
       -> Shared<asts::TypeAst> {
-      const auto cls_proto = scope->AstNode->To<asts::ClassPrototypeAst>();
+      const auto cls_proto = AstAs<asts::ClassPrototypeAst>(scope->AstNode);
       const auto cls_sym = cls_proto != nullptr ? cls_proto->GetClsSym() : nullptr;
       if (cls_sym != nullptr and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) { return cls_sym->FqName(); }
       return scope->TySym->FqName();
@@ -835,7 +835,7 @@ auto spp::analyse::scopes::Scope::SupScopesConst() const
 auto spp::analyse::scopes::Scope::SupTypes() const
   -> Vec<Shared<asts::TypeAst>> {
   auto ts = SupScopes()
-    | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
+    | genex::views::filter([](auto *scope) { return AstAs<asts::ClassPrototypeAst>(scope->AstNode); })
     | genex::views::transform(ResolveSupTypeName)
     | genex::views::filter([](auto const &type) { return type != nullptr; }) // Todo: shouldn't need.
     | genex::to<Vec>();

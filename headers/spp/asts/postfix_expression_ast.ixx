@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionAst);
+
   /**
    * The left-hand side expression of the postfix expression. This is the base expression on which the postfix operation
    * is applied.
@@ -42,8 +46,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
   ~PostfixExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -61,3 +63,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionAst)

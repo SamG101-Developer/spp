@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.defer_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -21,6 +22,9 @@ namespace spp::asts {
  * it: falling off the end, a @c ret - including the one the @c "?" operator generates - or a loop @c exit or @c skip.
  */
 SPP_EXP_CLS struct spp::asts::DeferStatementAst final : StatementAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(DeferStatementAst);
+
   /**
    * The @c defer token that starts this statement.
    */
@@ -43,8 +47,6 @@ SPP_EXP_CLS struct spp::asts::DeferStatementAst final : StatementAst {
 
   ~DeferStatementAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -55,3 +57,5 @@ SPP_EXP_CLS struct spp::asts::DeferStatementAst final : StatementAst {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::DeferStatementAst)

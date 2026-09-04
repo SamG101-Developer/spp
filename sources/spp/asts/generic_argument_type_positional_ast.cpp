@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.type_ast;
@@ -69,7 +70,7 @@ auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
   // Handle the "Self" type.
   if (Val->IsSelfType() and
     sm->CurrentScope->AstNode != nullptr and
-    sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
+    AstAs<InnerScopeExpressionAst>(sm->CurrentScope->AstNode) == nullptr) { return; }
   if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 

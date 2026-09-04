@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.class_prototype_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.mixins.visibility_enabled_ast;
@@ -33,6 +34,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ClassPrototypeAst);
 
   /**
      * The list of annotations that are applied to this class prototype. Typically, access modifiers in this context.
@@ -79,8 +81,6 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
     decltype(Impl) &&impl);
 
   ~ClassPrototypeAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 

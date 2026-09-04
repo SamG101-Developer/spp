@@ -717,7 +717,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
         candidates.EmplaceBack(concrete_sym->FqName(), sm.CurrentScope);
         if (concrete_sym->LinkedScope != nullptr) {
           for (auto const *sup_scope : concrete_sym->LinkedScope->SupScopes()) {
-            if (sup_scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr) { continue; }
+            if (AstAs<asts::ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
             candidates.EmplaceBack(sup_scope->TySym->FqName(), sup_scope);
           }
         }

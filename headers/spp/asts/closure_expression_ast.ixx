@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.closure_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
@@ -17,6 +18,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ClosureExpressionAst);
+
   /**
    * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure. Otherwise, it will
    * default to @code fun@endcode.
@@ -71,8 +75,6 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   ~ClosureExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -96,3 +98,5 @@ private:
    */
   Shared<codegen::LlvmFuncWrapper> _LlvmFunc;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClosureExpressionAst)

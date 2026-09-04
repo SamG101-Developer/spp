@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantExpressionAst);
+
   /**
    * The expression that is used in the case pattern variant. This is the expression that will be matched against the
    * condition from the @c case statement.
@@ -29,8 +33,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatter
 
   ~CasePatternVariantExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -39,3 +41,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatter
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantExpressionAst)

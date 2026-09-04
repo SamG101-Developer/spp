@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.ast_kind;
 import spp.asts.generic_argument_type_ast;
 import spp.utils.types;
 import std;
@@ -22,6 +23,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericArgumentTypeKeywordAst);
 
   /**
    * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
@@ -56,8 +58,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
   SPP_ATTR_NODISCARD auto Equals(
     GenericArgumentAst const &other) const
     -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS
 
   auto Stage7_AnalyseSemantics(
     ScopeManager *sm,

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_slice_ast;
+import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -18,6 +19,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorSliceAst);
+
   /**
    * The @code [@endcode token that indicates the start of the slice expression.
    */
@@ -70,8 +74,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
    */
   ~PostfixExpressionOperatorSliceAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   /**
    * The analysis stage requires that the left-hand-side is "sliceable", in the same way that an iterator-based loop
    * expression's condition must be "iterable". Either @c SliceRef or @c SliceMut must be superimposed over the
@@ -104,3 +106,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
 private:
   Shared<PostfixExpressionAst> _MappedFunc;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorSliceAst)

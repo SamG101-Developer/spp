@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_comp_required_ast;
+import spp.asts.ast_kind;
 import spp.asts.generic_parameter_comp_ast;
 import spp.utils.types;
 import std;
@@ -15,6 +16,9 @@ namespace spp::asts {
  * superimpositions etc. They look like: @code cls MyClass[cmp n: USize] { ... }@endcode.
  */
 SPP_EXP_CLS struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericParameterCompRequiredAst);
+
   /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
      * @param tok_cmp The @c cmp token that represents the generic comp parameter.
@@ -32,6 +36,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompRequiredAst final : GenericPar
     decltype(Type) type);
 
   ~GenericParameterCompRequiredAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompRequiredAst)

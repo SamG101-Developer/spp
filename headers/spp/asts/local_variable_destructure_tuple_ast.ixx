@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_destructure_tuple_ast;
+import spp.asts.ast_kind;
 import spp.asts.local_variable_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -17,6 +18,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureTupleAst final : LocalVariableAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureTupleAst);
+
   /**
    * The @code (@endcode token that indicates the start of a tuple destructuring pattern.
    */
@@ -46,8 +50,6 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureTupleAst final : LocalVari
 
   ~LocalVariableDestructureTupleAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -65,3 +67,5 @@ private:
 
   Shared<IdentifierAst> _TmpName;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureTupleAst)

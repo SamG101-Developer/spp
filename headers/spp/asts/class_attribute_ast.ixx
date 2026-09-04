@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.class_attribute_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.class_member_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.utils.types;
@@ -22,6 +23,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mixins::VisibilityAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ClassAttributeAst);
 
   /**
    * The list of annotations that are applied to this class attribute. Typically, access modifiers in this context.
@@ -71,8 +73,6 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
     decltype(DefaultVal) &&default_val);
 
   ~ClassAttributeAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 

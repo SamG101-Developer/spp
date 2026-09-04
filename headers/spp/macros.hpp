@@ -71,17 +71,33 @@ constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_STRING_END return raw_string
 
-#define SPP_AST_KEY_FUNCTIONS                                       \
+#define SPP_AST_KIND(cls)                                                        \
+  SPP_ATTR_NODISCARD auto Kind() const noexcept -> spp::asts::AstKind override { \
+    return spp::asts::AstKind::k##cls;                                           \
+  }
+
+#define SPP_AST_KEY_FUNCTIONS(cls)                                  \
   SPP_ATTR_NODISCARD auto PosStart() const -> std::size_t override; \
   SPP_ATTR_NODISCARD auto PosEnd() const -> std::size_t override;   \
   SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;    \
-  SPP_ATTR_NODISCARD auto ToString() const -> Str override;
+  SPP_ATTR_NODISCARD auto ToString() const -> Str override;         \
+  SPP_AST_KIND(cls)
 
 #define SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL              \
   auto PosStart() const -> std::size_t override { return 0uz; }  \
   auto PosEnd() const -> std::size_t override { return 0uz; }    \
   auto Clone() const -> Unique<Ast> override { return nullptr; } \
   auto ToString() const -> Str override { return ""; }
+
+// Hide a pointer's value from the optimiser, so that a
+// null test on it is actually performed. Needed for "this",
+// which the compiler is entitled to assume is never null -
+// it both warns about the comparison and deletes it.
+#if SPP_COMPILER_GCC || SPP_COMPILER_CLANG
+#define SPP_OPAQUE_PTR(p) __asm__ volatile("" : "+r"(p))
+#else
+#define SPP_OPAQUE_PTR(p) ((void) 0)
+#endif
 
 #if SPP_COMPILER_GCC
 

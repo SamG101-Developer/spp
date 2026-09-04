@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -15,6 +16,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantLiteralAst);
+
   /**
    * The literal value of the case pattern variant. This can be a string, integer, float, boolean, but not a tuple or
    * array; special destructure syntax exists for those literals.
@@ -30,8 +34,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVa
 
   ~CasePatternVariantLiteralAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -42,3 +44,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVa
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantLiteralAst)

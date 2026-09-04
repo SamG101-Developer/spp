@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_call_argument_keyword_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_call_argument_ast;
 import spp.utils.types;
 import std;
@@ -17,6 +18,9 @@ namespace spp::asts {
  * to be matched by a keyword rather than an index.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentKeywordAst);
+
   /**
    * The name of the keyword argument. This is the identifier that is used to refer to the argument in the function
    * call.
@@ -43,6 +47,6 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCal
     decltype(Val) &&val);
 
   ~FunctionCallArgumentKeywordAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentKeywordAst)

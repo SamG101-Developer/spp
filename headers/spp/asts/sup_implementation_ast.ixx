@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.sup_implementation_ast;
+import spp.asts.ast_kind;
 import spp.asts.inner_scope_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<Ast>> {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KIND(SupImplementationAst)
+
   static auto NewEmpty() -> Unique<SupImplementationAst>;
 
   using InnerScopeAst::InnerScopeAst;
@@ -44,3 +48,5 @@ SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::SupImplementationAst)

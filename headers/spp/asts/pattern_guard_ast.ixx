@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.pattern_guard_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -15,6 +16,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PatternGuardAst);
+
   /**
      * The @c and keyword token. This is used to indicate that the pattern guard is being introduced, following a
      * pattern.
@@ -38,8 +42,6 @@ SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
 
   ~PatternGuardAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -48,3 +50,5 @@ SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PatternGuardAst)

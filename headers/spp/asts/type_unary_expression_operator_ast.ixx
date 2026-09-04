@@ -15,6 +15,8 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : Ast {
+  SPP_GCC_VTABLE_FIX
+
   using Ast::Ast;
 
   ~TypeUnaryExpressionOperatorAst() override;
@@ -63,3 +65,5 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : Ast {
   SPP_ATTR_NODISCARD virtual auto TypeParts()
     -> Vec<TypeIdentifierAst*> = 0;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorAst)

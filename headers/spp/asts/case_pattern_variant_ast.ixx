@@ -17,6 +17,8 @@ namespace spp::asts {
  * provide the conversion binding for creating variables defined in patterns.
  */
 SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
+  SPP_GCC_VTABLE_FIX
+
   CasePatternVariantAst();
 
   /**
@@ -42,3 +44,5 @@ protected:
    */
   Unique<LetStatementInitializedAst> _MappedLet;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantAst)

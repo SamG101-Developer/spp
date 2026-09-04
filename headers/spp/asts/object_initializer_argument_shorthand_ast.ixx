@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.object_initializer_argument_shorthand_ast;
+import spp.asts.ast_kind;
 import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
@@ -17,6 +18,9 @@ namespace spp::asts {
  * argument to be matched by shorthand value rather than a keyword.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitializerArgumentAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentShorthandAst);
+
   /**
    * The optional @c .. token that indicates an "else" argument. This fills all the missing attributes in the object
    * with the corresponding attributes from this argument.
@@ -47,7 +51,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
 
   ~ObjectInitializerArgumentShorthandAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentShorthandAst)

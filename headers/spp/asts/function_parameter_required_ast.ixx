@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_required_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
@@ -11,6 +12,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionParameterRequiredAst);
+
   /**
    * Construct the FunctionParameterRequiredAst with the arguments matching the members.
    * @param var The local variable declaration for this parameter.
@@ -26,6 +30,6 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParam
     decltype(Type) type);
 
   ~FunctionParameterRequiredAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterRequiredAst)

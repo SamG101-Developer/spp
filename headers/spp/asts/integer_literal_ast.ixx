@@ -3,6 +3,7 @@ module;
 #include <spp/analyse/macros.hpp>
 
 export module spp.asts.integer_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
@@ -40,6 +41,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   };
 
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(IntegerLiteralAst);
 
   /**
    * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
@@ -77,8 +79,6 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   SPP_ATTR_NODISCARD auto Equals(
     ExpressionAst const &other) const
     -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

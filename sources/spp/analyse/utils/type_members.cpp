@@ -106,7 +106,7 @@ namespace spp::analyse::utils::type_members {
 
       auto attrs = Vec<Pair<scopes::Scope*, scopes::VariableSymbol*>>{};
       for (auto *sup_scope : all_scopes) {
-        if (sup_scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr) { continue; }
+        if (AstAs<asts::ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
         for (auto *sym : sup_scope->AllVarSymbols(true)) {
           if (sym->IsGeneric) { continue; }
           attrs.PushBack(MakePair(sup_scope, sym));
@@ -179,7 +179,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   for (auto const *scope : all_scopes) {
     if (scope->AstNode == nullptr) { continue; }
 
-    const auto impl = scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr
+    const auto impl = AstAs<asts::ClassPrototypeAst>(scope->AstNode) == nullptr
       ? asts::AstBody(scope->AstNode)
       : Vec<asts::Ast*>{};
     if (impl.IsEmpty()) { continue; }

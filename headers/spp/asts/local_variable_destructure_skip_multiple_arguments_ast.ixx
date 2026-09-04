@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.ast_kind;
 import spp.asts.local_variable_ast;
 import spp.utils.types;
 import std;
@@ -15,6 +16,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureSkipMultipleArgumentsAst);
+
   /**
    * The @c .. token indicates the skip multiple arguments pattern. This is used to indicate that a group of arguments
    * is being skipped. Bindings are used for array and tuple destructuring, while object destructuring can only use an
@@ -40,9 +44,9 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst f
 
   ~LocalVariableDestructureSkipMultipleArgumentsAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst)

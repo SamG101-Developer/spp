@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_members;
+import spp.asts.ast_kind;
 import spp.asts.boolean_literal_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_parameter_group_ast;
@@ -644,6 +645,9 @@ auto spp::codegen::func_impls::simple_coro_iter(
   const auto i = MakeUnique<std::size_t>(not reverse ? n : 0);
 
   struct CustomExpr : asts::ExpressionAst {
+    SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+    SPP_AST_KIND(ExpressionAst)
+
     decltype(i) &I;
     decltype(arr_ty) &ArrTy;
     decltype(elem_ty) &ElemTy;
@@ -654,8 +658,6 @@ auto spp::codegen::func_impls::simple_coro_iter(
       decltype(i) &i, decltype(arr_ty) &arr_ty, decltype(elem_ty) &elem_ty, decltype(self_ptr) &self_ptr,
       decltype(borrow) &borrow)
       : I(i), ArrTy(arr_ty), ElemTy(elem_ty), SelfPtr(self_ptr), Borrow(borrow) {}
-
-    SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
       const auto idx_0 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0uz);
@@ -740,6 +742,7 @@ auto spp::codegen::func_impls::simple_coro_view_iter(
 
   struct CustomExpr : asts::ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+    SPP_AST_KIND(ExpressionAst)
 
     decltype(index) &_Index;
     decltype(data) &_Data;
@@ -793,13 +796,14 @@ auto spp::codegen::func_impls::simple_coro_non_null_fwd(
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_slot, "non_null.fwd.data");
 
   struct CustomExpr : asts::ExpressionAst {
+    SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+    SPP_AST_KIND(ExpressionAst)
+
     decltype(self_ptr) &SelfPtr;
 
     explicit CustomExpr(
       decltype(self_ptr) &self_ptr)
       : SelfPtr(self_ptr) {}
-
-    SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
       return SelfPtr;
@@ -847,6 +851,7 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
 
   struct CustomExpr : asts::ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+    SPP_AST_KIND(ExpressionAst)
 
     decltype(from_alloca) &_FromAlloca;
     decltype(upto_alloca) &_UptoAlloca;
@@ -927,6 +932,7 @@ auto spp::codegen::func_impls::simple_coro_contiguous_fwd(
 
   struct CustomExpr final : asts::ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+    SPP_AST_KIND(ExpressionAst)
 
     llvm::Value *_Data;
     llvm::Value *_Length;
@@ -1050,6 +1056,7 @@ auto spp::codegen::func_impls::simple_coro_view_index(
 
   struct CustomExpr : asts::ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+    SPP_AST_KIND(ExpressionAst)
 
     decltype(idx_alloca) &_IdxAlloca;
     decltype(self_ptr) &_SelfPtr;
@@ -2163,6 +2170,7 @@ auto spp::codegen::func_impls::std_slot_get_ref(
 
   struct CustomExpr : asts::ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
+    SPP_AST_KIND(ExpressionAst)
 
     decltype(self_ptr) &_SelfPtr;
 

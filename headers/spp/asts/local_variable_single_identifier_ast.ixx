@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_single_identifier_ast;
+import spp.asts.ast_kind;
 import spp.asts.local_variable_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -27,6 +28,9 @@ namespace spp::asts {
  * be introducing a symbol into the local scope.
  */
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LocalVariableSingleIdentifierAst);
+
   /**
    * A convention can ONLY be attached via the @c case expression pattern matching system. This allows borrows to be
    * introduced into an inner scope (the case branch scope), and is needed in this class as-well as
@@ -67,8 +71,6 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
 
   ~LocalVariableSingleIdentifierAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -81,3 +83,5 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableSingleIdentifierAst)

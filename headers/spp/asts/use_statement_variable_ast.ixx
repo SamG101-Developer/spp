@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.use_statement_variable_ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -26,6 +27,9 @@ namespace spp::asts {
  * without the associated namespace. Internal symbol mapping for variables or namespaces are used.
  */
 SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, ModuleMemberAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(UseStatementVariableAst);
+
   /**
    * The list of annotations that are applied to this use statement. Typically, access modifiers in this context.
    */
@@ -54,8 +58,6 @@ SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, Modu
     decltype(OldVar) old_var);
 
   ~UseStatementVariableAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
@@ -93,3 +95,5 @@ private:
    */
   Unique<CmpStatementAst> _Conversion;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UseStatementVariableAst)

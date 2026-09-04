@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -22,7 +23,8 @@ namespace spp::asts {
  * fragments that are the branches.
  */
 SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CaseExpressionAst);
 
   /**
    * The token that represents the @c case keyword in the case expression.
@@ -120,3 +122,5 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
    */
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CaseExpressionAst)

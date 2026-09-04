@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_call_argument_positional_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_call_argument_ast;
 import spp.utils.types;
 import std;
@@ -16,6 +17,9 @@ namespace spp::asts {
  * to be matched by an index rather than a keyword. It also support for unpacking a tuple into arguments.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentPositionalAst);
+
   /**
    * The token that represents the @c .. unpacking operator. This is used to indicate that the argument is a tuple
    * being unpacked into the resulting arguments.
@@ -34,6 +38,6 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallAr
     decltype(Val) &&val);
 
   ~FunctionCallArgumentPositionalAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentPositionalAst)

@@ -3,6 +3,7 @@ module;
 #include <spp/analyse/macros.hpp>
 
 export module spp.asts.float_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.numbers;
@@ -33,6 +34,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   };
 
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 
   /**
    * The optional sign of the float literal. This can be either a plus or minus sign.
@@ -83,8 +85,6 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   SPP_ATTR_NODISCARD auto EqualsFloatLiteral(FloatLiteralAst const &) const -> Ordering override;
 
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

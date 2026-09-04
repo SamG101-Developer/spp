@@ -14,6 +14,8 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
+  SPP_GCC_VTABLE_FIX
+
   PostfixExpressionOperatorAst();
 
   ~PostfixExpressionOperatorAst() override;
@@ -24,3 +26,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeIn
     Vec<GenericArgumentAst*> const &args) const
     -> Unique<PostfixExpressionOperatorAst>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorAst)

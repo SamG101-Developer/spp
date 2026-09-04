@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_early_return_ast;
+import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorEarlyReturnAst);
+
   /**
    * The @c ? token that indicates an early return in a postfix expression. This token is used to signify that the
    * expression should be checked for its result-type failure type, and if it matches, the expression will lift the
@@ -31,8 +35,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : Po
     decltype(TokQst) &&tok_qst);
 
   ~PostfixExpressionOperatorEarlyReturnAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -62,3 +64,5 @@ private:
    */
   Shared<InnerScopeExpressionAst> _TransformedExpr;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorEarlyReturnAst)

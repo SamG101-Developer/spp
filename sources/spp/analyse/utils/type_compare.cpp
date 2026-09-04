@@ -644,7 +644,7 @@ auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
     }) | genex::to<Vec>();
   sup_info.EmplaceBack(concrete_sym->FqName(), &concrete_scope);
   for (auto const *sup_scope : sup_scopes) {
-    if (sup_scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr) { continue; }
+    if (AstAs<asts::ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
     const auto &sup_sym = sup_scope->TySym;
     sup_info.EmplaceBack(sup_sym->FqName(), sup_scope);
   }

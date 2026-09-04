@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_index_ast;
+import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -18,6 +19,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorIndexAst);
+
   /**
    * The @code [@endcode token that indicates the start of the index expression.
    */
@@ -56,8 +60,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
    */
   ~PostfixExpressionOperatorIndexAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   /**
    * The analysis stage requires that the left-hand-side is "indexable", in the same way that an iterator-based loop
    * expression's condition must be "iterable". Either @c IterRef or @c IterMut must be superimposed over the
@@ -90,3 +92,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
 private:
   Shared<PostfixExpressionAst> _MappedFunc;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorIndexAst)

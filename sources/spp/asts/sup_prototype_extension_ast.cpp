@@ -14,6 +14,7 @@ import spp.analyse.utils.generic_bindings;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
+import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
@@ -278,7 +279,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   auto sup_scopes = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->LinkedScope->DirectSupScopes;
   sup_scopes |= genex::actions::insert(sup_scopes.begin(), sup_sym->LinkedScope);
   sup_scopes |= genex::actions::remove_if([](auto const &x) {
-    return x->AstNode->template To<ClassPrototypeAst>() == nullptr;
+    return AstAs<ClassPrototypeAst>(x->AstNode) == nullptr;
   });
 
   // Mark the class as copyable if the "Copy" type is the supertype.
@@ -458,7 +459,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
   //
   auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
     auto dummy = GenericInferenceMap();
-    const auto ext = sc->AstNode->To<SupPrototypeExtensionAst>();
+    const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
     return ext and
       RelaxedTypeEq(*ext->Name, *SuperClass, *sc, check_scope, dummy, false) and
       TypeEq(*ext->SuperClass, *Name, *sc, check_scope, false);
@@ -469,7 +470,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
   const auto existing_sup_scopes = sup_sym.LinkedScope->SupScopes()
     | genex::views::filter(check_cycle)
     | genex::views::transform([](auto *x) {
-      return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>());
+      return MakePair(x, AstAs<SupPrototypeExtensionAst>(x->AstNode));
     })
     | genex::to<Vec>();
 
@@ -491,7 +492,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
 
   auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
     auto dummy = GenericInferenceMap();
-    const auto ext = sc->AstNode->To<SupPrototypeExtensionAst>();
+    const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
     return ext != nullptr and
       RelaxedTypeEq(*ext->Name, *Name, *sc, check_scope, dummy, false, false) and
       TypeEq(*ext->SuperClass, *SuperClass, *sc, check_scope, false);
@@ -503,7 +504,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
   const auto existing_sup_scopes = all_sup_scopes
     | genex::views::filter(check_double)
     | genex::views::transform([](auto *x) {
-      return MakePair(x, x->AstNode->template To<SupPrototypeExtensionAst>());
+      return MakePair(x, AstAs<SupPrototypeExtensionAst>(x->AstNode));
     })
     | genex::to<Vec>();
 

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_identifier_ast;
+import spp.asts.ast_kind;
 import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -23,6 +24,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeIdentifierAst);
 
   /**
    * The name for the type. This is the name of the type, such as @c Str or @code Vec[BigInt]@endcode.
@@ -70,8 +72,6 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_ATTR_NODISCARD auto EqualsTypeIdentifier(TypeIdentifierAst const &other) const -> Ordering override;
 
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

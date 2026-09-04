@@ -265,7 +265,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
     // An iterable loop is rewritten into a conditional one before
     // this stage, so matching the conditional form covers both.
     const auto is_loop = scope->AstNode != nullptr
-      and scope->AstNode->To<asts::LoopConditionalExpressionAst>() != nullptr;
+      and AstAs<asts::LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
 
     if (is_loop) {
       // The loop after the ones being exited is the one a trailing

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_postfix_expression_operator_nested_type_ast;
+import spp.asts.ast_kind;
 import spp.asts.token_ast;
 import spp.asts.type_postfix_expression_operator_ast;
 import spp.utils.types;
@@ -15,6 +16,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfixExpressionOperatorAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionOperatorNestedTypeAst);
 
   /**
    * The @c :: operator token that represents the namespace operator.
@@ -45,8 +47,6 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
   SPP_ATTR_NODISCARD auto Equals(
     TypePostfixExpressionOperatorAst const &) const
     -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto NsPartsInto(Vec<IdentifierAst const*> &out) const
     -> void override;

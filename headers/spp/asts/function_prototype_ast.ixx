@@ -4,6 +4,7 @@ module;
 export module spp.asts.function_prototype_ast;
 import spp.analyse.utils.annotation_utils;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.mixins.visibility_enabled_ast;
@@ -42,6 +43,8 @@ namespace spp::analyse::scopes {
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionPrototypeAst);
+
   /**
    * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
    * implemented in subclasses.
@@ -177,8 +180,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     decltype(Impl) &&impl);
 
   ~FunctionPrototypeAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 

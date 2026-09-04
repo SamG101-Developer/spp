@@ -110,8 +110,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and sm->CurrentScope->AstNode->To<
-    InnerScopeExpressionAst>() == nullptr) { return; }
+  if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and AstAs<InnerScopeExpressionAst>(sm->CurrentScope->AstNode) == nullptr) { return; }
   if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 

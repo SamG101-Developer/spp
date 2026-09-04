@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_else_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantElseAst);
+
   /**
    * The @c else keyword that indicates this is an else branch of the case pattern variant.
    */
@@ -28,8 +32,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVaria
 
   ~CasePatternVariantElseAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -41,3 +43,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVaria
 private:
   bool _ForIterLoopExit = false;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantElseAst)

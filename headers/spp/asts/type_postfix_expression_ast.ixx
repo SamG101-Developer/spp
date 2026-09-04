@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_postfix_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.type_ast;
 import spp.asts.type_postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
@@ -21,6 +22,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionAst);
 
   /**
    * The left-hand side type of the postfix expression. This is the base type on which the postfix operation is
@@ -50,8 +52,6 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
   SPP_ATTR_NODISCARD auto EqualsTypePostfixExpression(TypePostfixExpressionAst const &) const -> Ordering override;
 
   SPP_ATTR_NODISCARD auto Equals(const ExpressionAst &) const -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

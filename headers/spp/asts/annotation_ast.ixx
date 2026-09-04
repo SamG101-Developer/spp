@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.annotation_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
@@ -27,6 +28,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(AnnotationAst);
 
   /**
      * The token that represents the @c ! sign in the annotation. This introduces the annotation.
@@ -65,8 +67,6 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
     decltype(FnArgGroup) &&fn_arg_group);
 
   ~AnnotationAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   /**
      * Custom comparison involves comparing the identifier of the annotation. This makes checking for duplicate

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_type_variadic_ast;
+import spp.asts.ast_kind;
 import spp.asts.generic_parameter_type_ast;
 import spp.utils.types;
 import std;
@@ -12,6 +13,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeVariadicAst final : GenericParameterTypeAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericParameterTypeVariadicAst);
+
   /**
    * The token that represents the @c .. ellipsis in the generic parameter. This indicates that the parameter is
    * variadic, meaning it can accept multiple values.
@@ -30,6 +34,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeVariadicAst final : GenericPar
     decltype(Constraints) &&constraints);
 
   ~GenericParameterTypeVariadicAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeVariadicAst)

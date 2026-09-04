@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_type_required_ast;
+import spp.asts.ast_kind;
 import spp.asts.generic_parameter_type_ast;
 import spp.utils.types;
 import std;
@@ -11,6 +12,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericParameterTypeRequiredAst);
+
   /**
    * Construct the GenericParameterTypeRequiredAst with the arguments matching the members.
    * @param name The name of the generic type parameter.
@@ -24,6 +28,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeRequiredAst final : GenericPar
     decltype(Constraints) &&constraints);
 
   ~GenericParameterTypeRequiredAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeRequiredAst)

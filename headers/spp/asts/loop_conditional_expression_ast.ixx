@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_conditional_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.loop_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LoopConditionalExpressionAst);
+
   /**
    * The condition of the loop. This will be an expression that evaluates to a boolean.
    */
@@ -33,8 +37,6 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
     decltype(ElseBlock) &&else_block);
 
   ~LoopConditionalExpressionAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -60,3 +62,5 @@ private:
    */
   bool _IterDesugar = false;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopConditionalExpressionAst)

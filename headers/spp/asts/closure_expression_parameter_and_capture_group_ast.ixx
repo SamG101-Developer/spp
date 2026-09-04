@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -19,6 +20,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ClosureExpressionParameterAndCaptureGroupAst);
+
   /**
    * The @c | token that indicates the start of the closure parameter and capture group.
    */
@@ -55,11 +59,11 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final
 
   ~ClosureExpressionParameterAndCaptureGroupAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClosureExpressionParameterAndCaptureGroupAst)

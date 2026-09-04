@@ -68,6 +68,8 @@ namespace spp::asts::detail {
  * inherited for the positional and keyword variants.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
+  SPP_GCC_VTABLE_FIX
+
   explicit GenericArgumentAst(utils::OrderableTag order_tag);
   ~GenericArgumentAst() override;
   auto operator<=>(GenericArgumentAst const &other) const -> Ordering;
@@ -84,3 +86,5 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
   SPP_ATTR_NODISCARD virtual auto Equals(GenericArgumentAst const &other) const -> Ordering = 0;
   SPP_ATTR_NODISCARD virtual auto ViewName() const -> StrView;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentAst)

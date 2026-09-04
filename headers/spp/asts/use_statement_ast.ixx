@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.use_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -23,6 +24,9 @@ namespace spp::asts {
  * @code type Str = std::Str@endcode.
  */
 SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMemberAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(UseStatementAst);
+
   /**
    * The list of annotations that are applied to this use statement. Typically, access modifiers in this context.
    */
@@ -52,7 +56,6 @@ SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMember
 
   ~UseStatementAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
@@ -90,3 +93,5 @@ private:
    */
   Unique<TypeStatementAst> _Conversion;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UseStatementAst)

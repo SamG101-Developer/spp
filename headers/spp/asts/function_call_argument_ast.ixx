@@ -24,6 +24,8 @@ namespace spp::asts {
  * "positional" and "keyword" variants.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAst, mixins::TypeInferrableAst {
+  SPP_GCC_VTABLE_FIX
+
   /**
    * Use the base Ast's constructors.
    */
@@ -73,3 +75,5 @@ private:
    */
   Shared<TypeAst> _InjectedSelfType;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentAst)

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_parameter_group_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -22,6 +23,9 @@ namespace spp::asts {
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionParameterGroupAst);
+
   /**
    * The token that represents the left parenthesis @code (@endcode in the function parameter group. This introduces
    * the function parameter group.
@@ -52,8 +56,6 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
 
   ~FunctionParameterGroupAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -72,3 +74,5 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetNonSelfParams() const -> Vec<FunctionParameterAst*>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterGroupAst)

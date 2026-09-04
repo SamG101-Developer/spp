@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_optional_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
@@ -17,6 +18,9 @@ namespace spp::asts {
  * parameters that are not required, and can be omitted when calling the function.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionParameterOptionalAst);
+
   /**
    * The token that separates the parameter name from the default value.
    */
@@ -44,9 +48,9 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParam
 
   ~FunctionParameterOptionalAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterOptionalAst)

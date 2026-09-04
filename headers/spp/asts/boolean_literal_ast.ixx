@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.boolean_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -20,7 +21,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS(BooleanLiteralAst);
 
   /**
    * The token that represents the boolean literal, either @c true or @code false@endcode.

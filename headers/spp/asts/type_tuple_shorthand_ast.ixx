@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.type_tuple_shorthand_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.mixins.temp_type_ast;
 import spp.utils.types;
 import std;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTypeAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeTupleShorthandAst);
+
   /**
    * The left parenthesis token that represents the start of the tuple type.
    */
@@ -42,8 +46,8 @@ SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTyp
 
   ~TypeTupleShorthandAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Convert()
     -> Unique<TypeAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeTupleShorthandAst)

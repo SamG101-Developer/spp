@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : CasePatternVariantAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureSkipMultipleArgumentsAst);
+
   /**
    * The @c .. token indicates the skip multiple arguments pattern. This is used to indicate that a group of arguments
    * is being skipped. Bindings are used for array and tuple destructuring, while object destructuring can only use an
@@ -39,7 +43,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArguments
 
   ~CasePatternVariantDestructureSkipMultipleArgumentsAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst)

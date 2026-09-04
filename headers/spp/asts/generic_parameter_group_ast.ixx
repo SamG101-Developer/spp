@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_group_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -17,6 +18,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericParameterGroupAst);
+
   /**
      * The token that represents the left bracket @code [@endcode in the generic parameter group. This introduces the
      * generic parameter group.
@@ -61,8 +65,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
     GenericParameterGroupAst const &other)
     -> GenericParameterGroupAst&;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -98,3 +100,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
   SPP_ATTR_NODISCARD auto OptToReq() const
     -> Unique<GenericParameterGroupAst>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterGroupAst)

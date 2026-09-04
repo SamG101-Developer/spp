@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_destructure_attribute_binding_ast;
+import spp.asts.ast_kind;
 import spp.asts.local_variable_ast;
 import spp.utils.types;
 import std;
@@ -13,6 +14,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureAttributeBindingAst);
+
   /**
    * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
    * destructured.
@@ -42,8 +46,9 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final 
 
   ~LocalVariableDestructureAttributeBindingAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
 
   SPP_ATTR_NODISCARD auto ExtractName() const
     -> Shared<IdentifierAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureAttributeBindingAst)

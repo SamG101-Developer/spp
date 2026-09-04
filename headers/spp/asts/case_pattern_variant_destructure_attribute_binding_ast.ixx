@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
@@ -14,7 +15,8 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureAttributeBindingAst);
 
   /**
    * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
@@ -47,3 +49,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst f
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureAttributeBindingAst)

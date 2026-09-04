@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.subroutine_prototype_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_prototype_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -13,6 +14,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KIND(SubroutinePrototypeAst)
+
   SubroutinePrototypeAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,
@@ -32,6 +36,7 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto IsCoroutine() const
-    -> bool override;
+  SPP_ATTR_NODISCARD auto IsCoroutine() const -> bool override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::SubroutinePrototypeAst)

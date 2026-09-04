@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.inner_scope_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.inner_scope_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -16,6 +17,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(InnerScopeExpressionAst);
+
   /**
    * The @c { token that represents the start of the inner scope. This is used to indicate the beginning of the scope
    * and is typically followed by a list of members or statements that belong to this scope.
@@ -45,8 +49,6 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
 
   ~InnerScopeExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -70,3 +72,5 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::InnerScopeExpressionAst)

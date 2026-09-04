@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.ast;
+export import spp.asts.ast_kind;
 import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
@@ -76,6 +77,13 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   SPP_ATTR_NODISCARD virtual auto AnkerlHash() const -> std::size_t;
 
   /**
+   * Which concrete ast class this node is. Answered by @c SPP_AST_KEY_FUNCTIONS(Ast);/ @c SPP_AST_KIND , and pure here so
+   * that a concrete class which does not name itself stays abstract rather than reporting the wrong kind.
+   * @return This node's kind.
+   */
+  SPP_ATTR_NODISCARD virtual auto Kind() const noexcept -> AstKind = 0;
+
+  /**
    * Non-constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
    * desired type, returning @c nullptr if the cast is impossible. Supports cross casting to AST mixin types too.
    * @tparam T The target AST type to cast to.
@@ -83,7 +91,19 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
    */
   template <typename T>
   auto To() -> T* {
-    return dynamic_cast<T*>(this);
+    if constexpr (AstKindRange<T>::Known) {
+      auto *self = this;
+      SPP_OPAQUE_PTR(self);
+      if (self == nullptr) { return nullptr; }
+
+      const auto kind = self->Kind();
+      return kind >= AstKindRange<T>::First and kind <= AstKindRange<T>::Last
+        ? static_cast<T*>(self)
+        : nullptr;
+    }
+    else {
+      return dynamic_cast<T*>(this);
+    }
   }
 
   /**
@@ -94,7 +114,19 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
    */
   template <typename T>
   auto To() const -> T const* {
-    return dynamic_cast<T const*>(this);
+    if constexpr (AstKindRange<T>::Known) {
+      auto *self = this;
+      SPP_OPAQUE_PTR(self);
+      if (self == nullptr) { return nullptr; }
+
+      const auto kind = self->Kind();
+      return kind >= AstKindRange<T>::First and kind <= AstKindRange<T>::Last
+        ? static_cast<T const*>(self)
+        : nullptr;
+    }
+    else {
+      return dynamic_cast<T const*>(this);
+    }
   }
 
   /**
@@ -161,3 +193,19 @@ protected:
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::Ast)
+
+namespace spp::asts {
+  /**
+   * Ask a node that might not be there what it is. A scope's @c AstNode is null for the global and namespace scopes,
+   * and a handful of callers lean on that: they reach through it and expect null back rather than checking first.
+   * That worked while @c Ast::To used @c dynamic_cast , which tolerates a null operand, and stops working now that it
+   * begins by reading the node's kind - a virtual call, which a null node has no vtable to answer.
+   * @tparam T The target ast type.
+   * @param ast The node to cast, which may be null.
+   * @return The node as a @p T , or null if it is not one, or is not there at all.
+   */
+  SPP_EXP_FUN template <typename T, typename U>
+  auto AstAs(U *const ast) -> decltype(ast->template To<T>()) {
+    return ast != nullptr ? ast->template To<T>() : nullptr;
+  }
+}

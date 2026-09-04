@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_member_ast;
@@ -35,6 +36,7 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
   StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeStatementAst);
 
   /**
    * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
@@ -94,8 +96,6 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
     decltype(OldType) old_type);
 
   ~TypeStatementAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.array_literal_repeated_element_ast;
 import spp.asts.array_literal_ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -26,7 +27,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
   SPP_GCC_VTABLE_FIX
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS(ArrayLiteralRepeatedElementAst);
 
   /**
    * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
