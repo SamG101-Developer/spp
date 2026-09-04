@@ -21,3 +21,24 @@ pattern = '\b(?:dynamic|const)_cast\s*<'
 message = "use the spp wrappers instead (dynamic_unique_cast, Ast::ToUnchecked, ...)"
 files = '\.(?:cpp|ixx|hpp)$'
 allow = ["headers/spp/utils/ptr.ixx"]
+
+[[rule]]
+id = "no-std-map"
+enabled = true
+pattern = '\bstd::(?:map|unordered_map)\b'
+message = "use the ankerl map via spp::Map instead"
+files = '\.(?:cpp|ixx|hpp)$'
+
+[[rule]]
+id = "no-std-set"
+enabled = true
+pattern = '\bstd::(?:set|unordered_set)\b'
+message = "use the ankerl set via spp::Set instead"
+files = '\.(?:cpp|ixx|hpp)$'
+
+[[rule]]
+id = "no-std-regex"
+enabled = true
+pattern = '\bstd::regex\b'
+message = "query about finding a new regex module instead"
+files = '\.(?:cpp|ixx|hpp)$'
