@@ -153,7 +153,7 @@ cmake-flags = ["-DMI_SECURE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "19386dd14af178fecd4a4a65549b07e240e092a9"
+commit = "09b6b6b5ba0610851fba2a79d66fbd801452a107"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -207,15 +207,15 @@ commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
 [[library]]
 name = "ColEx"
 repo = "https://github.com/SamG101-Developer/ColEx.git"
-commit = "02f3634266ee43e91cf7ee85559c429a70c01d0a"
+commit = "ed1fa93c3aaea8deb558948fa8d9f7901f245ecc"
 
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "139141fbf97e8ed7f30a0d6f4d90e8efac4834f3"
+commit = "dadaff62b39cf2785d711f4ddea08b3390f31d50"
 
 [[library]]
 name = "NumEx"
 repo = "https://github.com/SamG101-Developer/NumEx.git"
-commit = "1d650b1fda93f7d08ef4ad28ae3c3e532f6e668f"
+commit = "3d34acb7f847b48477148a9e81e82e353342c328"
 cmake-flags = ["-DNUMEX_BUILD_TESTS=OFF", "-DNUMEX_BUILD_BENCHMARKS=OFF"]
