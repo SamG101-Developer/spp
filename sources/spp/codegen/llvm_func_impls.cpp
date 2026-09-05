@@ -144,6 +144,176 @@ namespace {
 
     return ctx->Builder.CreateSelect(too_wide, llvm::ConstantInt::get(ty, 0), raw, "shift.result" + uid);
   }
+
+  /**
+   * The declaration of one of llvm's "with.overflow" intrinsics over @p ty .
+   *
+   * @n
+   * The name is built here rather than taken from @c Intrinsic::getOrInsertDeclaration , which goes through
+   * @c Intrinsic::getName . That call was returning a name with eight bytes of heap garbage in the middle of it until
+   * the libstdc++ shim in @c libstdcxx_string_compat.cpp went in, and while it is correct now, there is nothing to be
+   * gained by routing a name through it: this family is closed and only ever overloaded over a plain integer, so the
+   * whole of the mangling is "i<width>", and @c Function 's constructor recognises a correctly spelled intrinsic name
+   * and gives the declaration the right id and attributes by itself.
+   *
+   * @param ctx The llvm context whose module the declaration belongs to.
+   * @param intrinsic Which of the six; anything else is not a "with.overflow" intrinsic.
+   * @param ty The integer type the operation is over.
+   * @return The declaration, ready to call with two @p ty operands for a "{ty, i1}" result.
+   */
+  auto OverflowIntrinsic(
+    spp::codegen::LlvmCtx *const ctx,
+    const llvm::Intrinsic::IndependentIntrinsics intrinsic,
+    llvm::Type *const ty)
+    -> llvm::Function* {
+    auto op = std::string_view();
+    switch (intrinsic) {
+      case llvm::Intrinsic::sadd_with_overflow: op = "sadd"; break;
+      case llvm::Intrinsic::uadd_with_overflow: op = "uadd"; break;
+      case llvm::Intrinsic::ssub_with_overflow: op = "ssub"; break;
+      case llvm::Intrinsic::usub_with_overflow: op = "usub"; break;
+      case llvm::Intrinsic::smul_with_overflow: op = "smul"; break;
+      case llvm::Intrinsic::umul_with_overflow: op = "umul"; break;
+      default: std::unreachable();
+    }
+
+    const auto name = std::format("llvm.{}.with.overflow.i{}", op, ty->getIntegerBitWidth());
+    if (auto *const declared = ctx->Module->getFunction(name); declared != nullptr) { return declared; }
+
+    const auto ret_ty = llvm::StructType::get(*ctx->Context, {ty, llvm::Type::getInt1Ty(*ctx->Context)});
+    const auto fn_ty = llvm::FunctionType::get(ret_ty, {ty, ty}, false);
+    return llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+  }
+
+  /**
+   * The result of an arithmetic operation together with whether it overflowed.
+   *
+   * @n
+   * Each of these is one of llvm's "with.overflow" intrinsics, which the backend selects as the ordinary instruction
+   * plus a read of the flag that instruction already set - so a signed add and its check are "addq; jo", two
+   * instructions, with the check off the dependency chain entirely. Spelling the same question out by hand costs
+   * three or four instructions for the signed cases, because "did the sign come out wrong" is two exclusive-ors and a
+   * test where the hardware has a flag for it; that is what this used to do, before the name corruption these
+   * intrinsics were unusable through was traced to libstdc++ and shimmed (see @c libstdcxx_string_compat.cpp ).
+   *
+   * @param ctx The llvm context to emit into.
+   * @param op The operation; must be one of the "*Checked" members.
+   * @param a The left operand.
+   * @param b The right operand, already the same type as @p a .
+   * @return The wrapped result, and whether the true result was out of range for the type.
+   */
+  auto EmitOverflowPair(
+    spp::codegen::LlvmCtx *const ctx,
+    const spp::codegen::func_impls::BinOp op,
+    llvm::Value *const a,
+    llvm::Value *const b)
+    -> std::pair<llvm::Value*, llvm::Value*> {
+    using BinOp = spp::codegen::func_impls::BinOp;
+    const auto uid = "." + spp::utils::Uid();
+
+    auto intrinsic = llvm::Intrinsic::sadd_with_overflow;
+    switch (op) {
+      case BinOp::SAddChecked: intrinsic = llvm::Intrinsic::sadd_with_overflow; break;
+      case BinOp::UAddChecked: intrinsic = llvm::Intrinsic::uadd_with_overflow; break;
+      case BinOp::SSubChecked: intrinsic = llvm::Intrinsic::ssub_with_overflow; break;
+      case BinOp::USubChecked: intrinsic = llvm::Intrinsic::usub_with_overflow; break;
+      case BinOp::SMulChecked: intrinsic = llvm::Intrinsic::smul_with_overflow; break;
+      case BinOp::UMulChecked: intrinsic = llvm::Intrinsic::umul_with_overflow; break;
+      default: std::unreachable();
+    }
+
+    const auto pair = ctx->Builder.CreateCall(
+      OverflowIntrinsic(ctx, intrinsic, a->getType()), {a, b}, "arith.checked" + uid);
+    return {
+      ctx->Builder.CreateExtractValue(pair, 0, "arith.value" + uid),
+      ctx->Builder.CreateExtractValue(pair, 1, "arith.overflowed" + uid)};
+  }
+
+  /**
+   * Emit an arithmetic operation that aborts rather than wraps when its result does not fit its type.
+   *
+   * @n
+   * Wrapping is not what "+" means, so the language does not spell it that way: a sum too large for its type is a bug
+   * wherever it happens, and a build profile is not the place to decide whether a bug is reported. Rust's split -
+   * checked in dev, wrapping in release - means the shipped binary is the one build that keeps going after the thing
+   * the check was for, which is the wrong way round. So this is emitted for every profile, and the aim is to make it
+   * cheap enough that there is nothing to trade away.
+   *
+   * @n
+   * The check is a branch on the flag the arithmetic instruction already set, so it adds nothing to the dependency
+   * chain, and it is never taken, so it costs a statically predicted not-taken branch - "imul; jo" rather than
+   * "imul". Its failure edge ends in
+   * @c unreachable and traps, which is @c cold and @c noreturn : block placement sinks it past the return, and
+   * SimplifyCFG merges the failure edges of every check sharing a trap code into one landing block per function,
+   * after inlining. So a function's whole worth of checks costs one branch each on the hot path and a single
+   * three-byte @c ud1 off it, with no stack frame - the trap is used rather than a call to a message-printing abort
+   * precisely because a call would force a frame onto every leaf function that does arithmetic.
+   *
+   * @n
+   * The trap code says which check failed, so the three bytes are not wasted: a handler (or a debugger stopped on the
+   * @c SIGILL ) can read the immediate out of the faulting instruction and name the operation.
+   *
+   * @n
+   * The cost this does not avoid is vectorisation: a loop whose body can trap has an exit llvm's loop vectoriser will
+   * not widen, so an elementwise loop over "+" stays scalar where a wrapping one would not. Recovering that needs the
+   * checks hoisted out of the loop and folded into one test at its exit, which changes when the abort is observed
+   * relative to the loop's stores, so it is a deliberate transformation rather than something to do quietly here.
+   *
+   * @param ctx The llvm context to emit into. Left positioned at the block reached when the result fits, so the
+   * caller goes on building as if it had emitted the plain operation.
+   * @param op The operation being emitted; must be one of the "*Checked" members.
+   * @param a The left operand.
+   * @param b The right operand, already the same type as @p a .
+   * @return The result, valid on the only path that reaches the caller's next instruction.
+   */
+  auto EmitCheckedArith(
+    spp::codegen::LlvmCtx *const ctx,
+    const spp::codegen::func_impls::BinOp op,
+    llvm::Value *const a,
+    llvm::Value *const b)
+    -> llvm::Value* {
+    using BinOp = spp::codegen::func_impls::BinOp;
+    const auto uid = "." + spp::utils::Uid();
+
+    // One trap code per operation, so the landing block names the check that failed rather than just "arithmetic".
+    // Distinct codes cost one extra three-byte block per operation kind per function, which is why they are per
+    // operation and not per operation *site*.
+    auto code = 0U;
+    switch (op) {
+      case BinOp::SAddChecked: code = 0x10; break;
+      case BinOp::UAddChecked: code = 0x11; break;
+      case BinOp::SSubChecked: code = 0x12; break;
+      case BinOp::USubChecked: code = 0x13; break;
+      case BinOp::SMulChecked: code = 0x14; break;
+      case BinOp::UMulChecked: code = 0x15; break;
+      default: std::unreachable();
+    }
+
+    auto *const fn = ctx->Builder.GetInsertBlock()->getParent();
+    const auto [value, overflowed] = EmitOverflowPair(ctx, op, a, b);
+
+    const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "arith.ok" + uid, fn);
+    const auto trap_bb = llvm::BasicBlock::Create(*ctx->Context, "arith.trap" + uid, fn);
+    ctx->Builder.CreateCondBr(overflowed, trap_bb, ok_bb);
+
+    // No branch weights: "llvm.ubsantrap" is itself "cold noreturn" and the block ends in "unreachable", which is
+    // already everything block placement needs to sink it - measured identical with and without the metadata.
+    // Declared by name rather than through "Intrinsic::getOrInsertDeclaration" for the reason given on
+    // "EmitOverflowPair"; unlike the "with.overflow" family this one is not overloaded, so a name is all it needs.
+    ctx->Builder.SetInsertPoint(trap_bb);
+    const auto i8_ty = llvm::Type::getInt8Ty(*ctx->Context);
+    auto *trap_fn = ctx->Module->getFunction("llvm.ubsantrap");
+    if (trap_fn == nullptr) {
+      const auto trap_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {i8_ty}, false);
+      trap_fn = llvm::Function::Create(
+        trap_ty, llvm::Function::ExternalLinkage, "llvm.ubsantrap", ctx->Module.get());
+    }
+    ctx->Builder.CreateCall(trap_fn, {llvm::ConstantInt::get(i8_ty, code)});
+    ctx->Builder.CreateUnreachable();
+
+    ctx->Builder.SetInsertPoint(ok_bb);
+    return value;
+  }
 }
 
 auto spp::codegen::func_impls::simple_create_fn(
@@ -238,12 +408,12 @@ auto spp::codegen::func_impls::apply_bin_op(
     case BinOp::FMul: return ctx->Builder.CreateFMul(a, b, name);
     case BinOp::FDiv: return ctx->Builder.CreateFDiv(a, b, name);
     case BinOp::FRem: return ctx->Builder.CreateFRem(a, b, name);
-    case BinOp::NSWAdd: return ctx->Builder.CreateNSWAdd(a, b, name);
-    case BinOp::NUWAdd: return ctx->Builder.CreateNUWAdd(a, b, name);
-    case BinOp::NSWSub: return ctx->Builder.CreateNSWSub(a, b, name);
-    case BinOp::NUWSub: return ctx->Builder.CreateNUWSub(a, b, name);
-    case BinOp::NSWMul: return ctx->Builder.CreateNSWMul(a, b, name);
-    case BinOp::NUWMul: return ctx->Builder.CreateNUWMul(a, b, name);
+    case BinOp::SAddChecked:
+    case BinOp::UAddChecked:
+    case BinOp::SSubChecked:
+    case BinOp::USubChecked:
+    case BinOp::SMulChecked:
+    case BinOp::UMulChecked: return EmitCheckedArith(ctx, op, a, b);
     default: throw std::runtime_error(std::format("Unsupported BinOp type: {}", name));
   }
   SPP_ASSERT(false);
@@ -591,17 +761,24 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call_overflow(
   const auto fn = simple_create_fn(sm, proto, meta, ctx, ret_ty, Vec{elem_ty, elem_ty});
   const auto lhs = fn->arg_begin();
   const auto rhs = fn->arg_begin() + 1;
-  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {elem_ty});
-  const auto result = ctx->Builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
+  auto op = BinOp::SAddChecked;
+  switch (intrinsic) {
+    case llvm::Intrinsic::sadd_with_overflow: op = BinOp::SAddChecked; break;
+    case llvm::Intrinsic::uadd_with_overflow: op = BinOp::UAddChecked; break;
+    case llvm::Intrinsic::ssub_with_overflow: op = BinOp::SSubChecked; break;
+    case llvm::Intrinsic::usub_with_overflow: op = BinOp::USubChecked; break;
+    case llvm::Intrinsic::smul_with_overflow: op = BinOp::SMulChecked; break;
+    case llvm::Intrinsic::umul_with_overflow: op = BinOp::UMulChecked; break;
+    default: std::unreachable();
+  }
 
-  // The intrinsic hands back an anonymous "{T, i1}", while "(T, Bool)" lowers to the named struct every other tuple of
-  // that shape shares. Llvm types are compared by identity, not by layout, so the two are different types however
-  // alike they look, and the fields have to be moved across rather than the result returned as it stands.
+  // "ret_ty" is the named struct every "(T, Bool)" tuple shares, so the two halves are packed into one of those
+  // rather than returned as whatever anonymous pair they were computed as - llvm compares struct types by identity,
+  // not by layout, so an alike-looking "{T, i1}" is still a different type.
+  const auto [value, overflowed] = EmitOverflowPair(ctx, op, lhs, rhs);
   auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
-  packed = ctx->Builder.CreateInsertValue(
-    packed, ctx->Builder.CreateExtractValue(result, {0}, "intrinsic.value" + uid), {0}, "intrinsic.packed" + uid);
-  packed = ctx->Builder.CreateInsertValue(
-    packed, ctx->Builder.CreateExtractValue(result, {1}, "intrinsic.flag" + uid), {1}, "intrinsic.packed" + uid);
+  packed = ctx->Builder.CreateInsertValue(packed, value, {0}, "intrinsic.packed" + uid);
+  packed = ctx->Builder.CreateInsertValue(packed, overflowed, {1}, "intrinsic.packed" + uid);
   ctx->Builder.CreateRet(packed);
 }
 
@@ -1113,22 +1290,40 @@ auto spp::codegen::func_impls::simple_coro_view_index(
 // Layer 3: BinOp (simple_intrinsic_binop)
 // =========================================================================================================
 
-auto spp::codegen::func_impls::std_intrinsics_add(
+auto spp::codegen::func_impls::std_intrinsics_sadd(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Add);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SAddChecked);
 }
 
-auto spp::codegen::func_impls::std_intrinsics_sub(
+auto spp::codegen::func_impls::std_intrinsics_uadd(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Sub);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::UAddChecked);
 }
 
-auto spp::codegen::func_impls::std_intrinsics_mul(
+auto spp::codegen::func_impls::std_intrinsics_ssub(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Mul);
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SSubChecked);
+}
+
+auto spp::codegen::func_impls::std_intrinsics_usub(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
+  -> void {
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::USubChecked);
+}
+
+auto spp::codegen::func_impls::std_intrinsics_smul(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
+  -> void {
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SMulChecked);
+}
+
+auto spp::codegen::func_impls::std_intrinsics_umul(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
+  -> void {
+  simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::UMulChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sdiv(
@@ -1351,22 +1546,40 @@ auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
 // Layer 3: BinOp (simple_intrinsic_binop_assign)
 // =========================================================================================================
 
-auto spp::codegen::func_impls::std_intrinsics_add_assign(
+auto spp::codegen::func_impls::std_intrinsics_sadd_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Add);
+  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SAddChecked);
 }
 
-auto spp::codegen::func_impls::std_intrinsics_sub_assign(
+auto spp::codegen::func_impls::std_intrinsics_uadd_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Sub);
+  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::UAddChecked);
 }
 
-auto spp::codegen::func_impls::std_intrinsics_mul_assign(
+auto spp::codegen::func_impls::std_intrinsics_ssub_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::Mul);
+  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SSubChecked);
+}
+
+auto spp::codegen::func_impls::std_intrinsics_usub_assign(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
+  -> void {
+  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::USubChecked);
+}
+
+auto spp::codegen::func_impls::std_intrinsics_smul_assign(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
+  -> void {
+  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SMulChecked);
+}
+
+auto spp::codegen::func_impls::std_intrinsics_umul_assign(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
+  -> void {
+  simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::UMulChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sdiv_assign(

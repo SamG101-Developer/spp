@@ -68,13 +68,21 @@ export namespace spp::codegen::func_impls {
   // macros, no templates) identifying which operation to apply.
   // =====================================================================================================
 
-  /** Binary arithmetic/bitwise/comparison operations shareable across "(T, T) -> T" (or "-> Bool" for comparisons). */
+  /**
+   * Binary arithmetic/bitwise/comparison operations shareable across "(T, T) -> T" (or "-> Bool" for comparisons).
+   *
+   * @n
+   * The "*Checked" members are the trapping forms of "+", "-" and "*": they produce the same value as their plain
+   * counterpart whenever it fits, and abort rather than wrap when it does not. They are separately signed and
+   * unsigned because overflow is, unlike the wrapping result: llvm integers carry no signedness, so "Add" alone
+   * cannot say which half of the range is out of bounds. See @c EmitCheckedArith .
+   */
   enum class BinOp {
     Add, Sub, Mul, SDiv, UDiv, SRem, URem, Shl, LShr, Or, And, Xor,
     ICmpEQ, ICmpNE, ICmpSLT, ICmpULT, ICmpSLE, ICmpULE, ICmpSGT, ICmpUGT, ICmpSGE, ICmpUGE,
     FCmpOEQ, FCmpONE, FCmpOLT, FCmpOLE, FCmpOGT, FCmpOGE,
     FAdd, FSub, FMul, FDiv, FRem,
-    NSWAdd, NUWAdd, NSWSub, NUWSub, NSWMul, NUWMul,
+    SAddChecked, UAddChecked, SSubChecked, USubChecked, SMulChecked, UMulChecked,
   };
 
   /** Unary arithmetic operations shareable across "(T) -> T". */
@@ -268,9 +276,12 @@ export namespace spp::codegen::func_impls {
   // =====================================================================================================
 
   // --- BinOp (simple_intrinsic_binop) ---
-  auto std_intrinsics_add(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_intrinsics_sub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_intrinsics_mul(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_sadd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_uadd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_ssub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_usub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_smul(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_umul(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_sdiv(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_udiv(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_srem(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
@@ -309,9 +320,12 @@ export namespace spp::codegen::func_impls {
   auto std_intrinsics_umul_wrapping(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   // --- BinOp (simple_intrinsic_binop_assign) ---
-  auto std_intrinsics_add_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_intrinsics_sub_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_intrinsics_mul_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_sadd_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_uadd_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_ssub_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_usub_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_smul_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto std_intrinsics_umul_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_sdiv_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_udiv_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_intrinsics_srem_assign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
