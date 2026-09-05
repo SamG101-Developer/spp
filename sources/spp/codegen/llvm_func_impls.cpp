@@ -1293,60 +1293,70 @@ auto spp::codegen::func_impls::simple_coro_view_index(
 auto spp::codegen::func_impls::std_intrinsics_sadd(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular add intrinsic (checked).
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SAddChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uadd(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular add intrinsic (checked).
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::UAddChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ssub(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular sub intrinsic (checked).
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SSubChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_usub(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular sub intrinsic (checked).
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::USubChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_smul(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular mul intrinsic (checked).
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SMulChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umul(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular mul intrinsic (checked).
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::UMulChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sdiv(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular dev intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_udiv(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular dev intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::UDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_srem(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular rem intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::SRem);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_urem(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular rem intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::URem);
 }
 
@@ -1509,36 +1519,42 @@ auto spp::codegen::func_impls::std_intrinsics_frem(
 auto spp::codegen::func_impls::std_intrinsics_sadd_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Wrapping add intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Add);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uadd_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Wrapping add intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Add);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ssub_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Wrapping sub intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Sub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_usub_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Wrapping sub intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Sub);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_smul_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Wrapping mul intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Mul);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Wrapping mul intrinsic.
   simple_intrinsic_binop(sm, proto, meta, ctx, ty, BinOp::Mul);
 }
 
@@ -1549,60 +1565,70 @@ auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
 auto spp::codegen::func_impls::std_intrinsics_sadd_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular add intrinsic (checked).
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SAddChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_uadd_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular add intrinsic (checked).
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::UAddChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_ssub_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular sub intrinsic (checked).
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SSubChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_usub_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular sub intrinsic (checked).
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::USubChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_smul_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular mul intrinsic (checked).
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SMulChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_umul_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular mul intrinsic (checked).
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::UMulChecked);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_sdiv_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular div intrinsic.
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_udiv_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular div intrinsic.
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::UDiv);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_srem_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular rem intrinsic.
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::SRem);
 }
 
 auto spp::codegen::func_impls::std_intrinsics_urem_assign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
+  // Regular rem intrinsic.
   simple_intrinsic_binop_assign(sm, proto, meta, ctx, ty, BinOp::URem);
 }
 

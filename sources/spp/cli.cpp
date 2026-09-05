@@ -145,6 +145,13 @@ auto spp::cli::run_cli(
   auto app = CLI::App("SPP build tool", "spp");
   app.require_subcommand(1);
 
+  // Declared so that it parses and shows up in the help, but read in "main" rather than here: the working directory
+  // has to be settled before any subcommand callback runs, and every one of them resolves the project from it.
+  auto project_dir = Str();
+  app.add_option(
+    "--dir", project_dir,
+    "Project directory to work in; the sample project beside this binary by default.");
+
   // One variable per subcommand, each holding its own
   // default. A single shared one takes whichever default
   // was declared last, so "spp build" with no "-m" ran
@@ -168,26 +175,28 @@ auto spp::cli::run_cli(
     "target other than the host is compiled and an object emitted, but not linked - see the note the build prints.";
 
   app.add_subcommand("init", "Initialize the new project")
+     ->fallthrough()
      ->callback(handle_init);
 
   app.add_subcommand("vcs", "Initialize version control for the project")
+     ->fallthrough()
      ->callback([] { if (not handle_vcs()) { throw CLI::RuntimeError(1); } });
 
-  const auto build_cmd = app.add_subcommand("build", "Build the project");
+  const auto build_cmd = app.add_subcommand("build", "Build the project")->fallthrough();
   build_cmd->add_option("-m,--mode", build_mode, "Build mode (dev or rel)")
            ->check(CLI::IsMember({"dev", "rel"}))
            ->default_val("dev");
   build_cmd->add_option("-t,--target", build_target, target_help);
   build_cmd->callback([&build_mode, &build_target] { handle_build(build_mode, build_target); });
 
-  const auto run_cmd = app.add_subcommand("run", "Run the project");
+  const auto run_cmd = app.add_subcommand("run", "Run the project")->fallthrough();
   run_cmd->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
          ->check(CLI::IsMember({"dev", "rel"}))
          ->default_val("dev");
   run_cmd->add_option("-t,--target", run_target, target_help);
   run_cmd->callback([&run_mode, &run_target] { handle_run(run_mode, run_target); });
 
-  const auto clean_cmd = app.add_subcommand("clean", "Clean the project");
+  const auto clean_cmd = app.add_subcommand("clean", "Clean the project")->fallthrough();
   clean_cmd->add_option("-m,--mode", clean_mode, "Clean mode (dev, rel or all)")
            ->check(CLI::IsMember({"dev", "rel", "all"}))
            ->default_val("all");
@@ -200,7 +209,7 @@ auto spp::cli::run_cli(
   auto test_group_filter = spp::Str();
   auto test_libs = std::vector<spp::Str>();
   auto test_all_libs = false;
-  const auto test_cmd = app.add_subcommand("test", "Test the project");
+  const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
   test_cmd->add_option(
     "-f,--filter", test_name_filter,
     "Only run tests whose fully qualified name contains this");
@@ -221,9 +230,11 @@ auto spp::cli::run_cli(
   });
 
   app.add_subcommand("validate", "Validate the project")
+     ->fallthrough()
      ->callback([] { handle_validate(false); });
 
   app.add_subcommand("version", "Show version information")
+     ->fallthrough()
      ->callback(handle_version);
 
   // Parse the command line arguments.
