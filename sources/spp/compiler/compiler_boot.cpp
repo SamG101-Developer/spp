@@ -426,6 +426,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   if (not has_entry_point) { return; }
   const auto object_file = out.ObjectFile();
   FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
+  FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
 
   // A cross build stops at the object, no linking available for
