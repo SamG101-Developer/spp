@@ -1,6 +1,8 @@
 #pragma once
 
-#ifndef NDEBUG
+#include <spp/macros-platforms.hpp>
+
+#if SPP_DEBUG
 #define VALIDATE_LLVM                                                              \
   {                                                                                \
     if (ctx != nullptr and ctx->Builder.GetInsertBlock() != nullptr and            \

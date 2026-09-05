@@ -84,7 +84,7 @@ auto spp::compiler::Compiler::Compile() -> void {
   // We need the cleanup on error for the test suite runs
   // (parallel), but in debug it's one shot, and error checking
   // needs the full stack trace.
-#ifdef NDEBUG
+#if !SPP_DEBUG
   try {
 #endif
     m_boot->Lex(next_bar(), *m_modules);
@@ -111,7 +111,7 @@ auto spp::compiler::Compiler::Compile() -> void {
       m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
       m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
     }
-#ifdef NDEBUG
+#if !SPP_DEBUG
   }
   catch (...) {
     // Clear globals while the scope tree is still alive

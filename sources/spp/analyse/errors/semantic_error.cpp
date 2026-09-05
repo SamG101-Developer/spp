@@ -357,11 +357,11 @@ spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
   numex::BigDec const &upper,
   const StrView what) {
   AddHeaders(16, "Float Out Of Bounds Error");
-  AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.ToString()));
+  AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.Decimal()));
   AddFooter(
     "The value of this float is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
-    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.ToString()) + INLINE_HELP(", ") +
-    INLINE_HELP(upper.ToString()) + INLINE_HELP("]") + ".");
+    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.Decimal()) + INLINE_HELP(", ") +
+    INLINE_HELP(upper.Decimal()) + INLINE_HELP("]") + ".");
 }
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(

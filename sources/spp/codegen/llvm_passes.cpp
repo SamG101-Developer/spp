@@ -214,7 +214,7 @@ namespace {
   auto InitializeAllBackends()
     -> void {
     static const auto once = [] {
-#ifdef SPP_ALL_TARGETS
+#if defined(SPP_ALL_TARGETS)
       // All targets, including the host. This is used for
       // the CI pipeline cross-compilation checks, and for
       // normal cross-compilation.
@@ -385,7 +385,7 @@ auto spp::codegen::SelectTarget(
       llvm::errs() << "  (nothing; this llvm has no usable backend at all)\n";
     }
     llvm::errs() << "Any other triple whose backend is linked in is accepted too; these are the tested ones.\n";
-#ifndef SPP_ALL_TARGETS
+#if !defined(SPP_ALL_TARGETS)
     llvm::errs() << "Only the host backend is linked in; reconfigure with -DSPP_ALL_TARGETS=ON for the rest.\n";
 #endif
     return false;

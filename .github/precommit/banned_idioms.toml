@@ -43,3 +43,10 @@ enabled = true
 pattern = '\bstd::regex\b'
 message = "query about finding a new regex module instead"
 files = '\.(?:cpp|ixx|hpp)$'
+
+[[rule]]
+id = "processor-conditional-include"
+enabled = true
+pattern = '#ifdef|#ifndef'
+message = "use #if defined(...) instead of #ifdef or #ifndef"
+files = '\.(?:cpp|ixx|hpp)$'

@@ -1,12 +1,12 @@
 module;
-#ifndef SPP_NO_MIMALLOC
+#if !defined(SPP_NO_MIMALLOC)
 #include <mimalloc-new-delete.h>
 #include <mimalloc.h>
 #endif
 
 export module mimalloc;
 
-#ifndef SPP_NO_MIMALLOC
+#if !defined(SPP_NO_MIMALLOC)
 export using ::operator delete;
 export using ::operator delete[];
 export using ::operator new;

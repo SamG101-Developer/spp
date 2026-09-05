@@ -45,3 +45,12 @@
 #else
   #error "SPP: Unsupported compiler"
 #endif
+
+// MSVC's debug CRT sets _DEBUG; every other toolchain only
+// tells us the opposite, via NDEBUG in release builds.
+#define SPP_DEBUG 0
+
+#if defined(_DEBUG) || !defined(NDEBUG)
+  #undef  SPP_DEBUG
+  #define SPP_DEBUG 1
+#endif

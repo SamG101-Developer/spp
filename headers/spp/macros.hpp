@@ -19,9 +19,7 @@ constexpr auto SPP_VERSION = "0.1.0";
 #define SPP_ATTR_HOT [[gnu::hot]]
 #define SPP_ATTR_COLD [[gnu::cold]]
 
-#define SPP_IS_DEBUG_BUILD (defined(_DEBUG) || !defined(NDEBUG))
-
-#ifndef NDEBUG
+#if SPP_DEBUG
 #define SPP_ASSERT(x)                                                                                   \
   do {                                                                                                  \
     if (!(x)) {                                                                                         \
@@ -33,7 +31,7 @@ constexpr auto SPP_VERSION = "0.1.0";
 #define SPP_ASSERT(x) do {} while (0)
 #endif
 
-#ifndef NDEBUG
+#if SPP_DEBUG
 #define SPP_LOG(x)                                                                                        \
   do {                                                                                                    \
     std::cerr << "[SPP LOG] " << x << " (file " << __FILE__ << ", line " << __LINE__ << ")" << std::endl; \
