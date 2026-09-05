@@ -61,7 +61,12 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
   decltype(GnArgGroup) generic_arg_group) :
   Name(std::move(name)),
   GnArgGroup(std::move(generic_arg_group)),
-  _Pos(pos) {
+  _Pos(pos),
+  _IsNeverType(false),
+  _IsSelfType(false),
+  _HasAnalysed(false),
+  _Resolved(false),
+  _IsSourceWritten(false) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnArgGroup);
   if (Name == "Self") { _IsSelfType = true; }
 }
@@ -162,7 +167,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   RaiseIf<SppHigherOrderGenericsNotSupportedError>(
     Name == "Self" and GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
-  if (Name == "Self" and meta->CurrentStage < meta::CompilerStage::kAnalyseSemantics) {
+  if (Name == "Self" and meta->CurrentStage<meta::CompilerStage::kAnalyseSemantics) {
     _HasAnalysed = true;
     return;
   }
@@ -333,7 +338,7 @@ auto spp::asts::TypeIdentifierAst::Stage11_CodeGen(
 }
 
 auto spp::asts::TypeIdentifierAst::AnyPart(
-  std::function<bool(TypeIdentifierAst const&)> const &pred) const
+  std::function<bool(TypeIdentifierAst const &)> const &pred) const
   -> bool {
   // This node is a part in its own right.
   if (pred(*this)) { return true; }

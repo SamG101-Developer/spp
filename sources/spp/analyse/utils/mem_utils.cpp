@@ -71,31 +71,59 @@ namespace spp::analyse::utils::mem_utils {
     }
 
     /**
-     * Whether @p path names something inside the region @p prefix names, comparing them as paths rather than as raw
-     * text.
+     * The named steps of the access path @p ast spells, outermost first: the @c {a} , @c {b} , @c {c} of @c {a.b.c} .
+     * Empty for anything that is not a path into a local - a literal, or the result of a call - which owns a region
+     * of its own that nothing else can name.
      *
      * @n
-     * A region is reached from another by field access, indexing or a deref, so @c {a} contains @c {a.b} and @c {a[i]}
-     * and @c {a@} . What it does not contain is @c {ab} , and a plain @c starts_with says otherwise - which made a
-     * variable called @c s report as overlapping one called @c second . The rule is therefore that the prefix has to
-     * end where an identifier ends: anything but a further identifier character is a boundary, which keeps every
-     * genuine containment while dropping the ones that only share spelling.
+     * The steps that are *not* named are the point of this. Indexing contributes nothing, so @c {a[i]} has the same
+     * path as @c {a} and as @c {a[j]} : the compiler cannot tell whether @c i and @c j are the same element, so it
+     * says they meet, which is the safe answer and the only honest one. A deref is the same. What survives is exactly
+     * what can be told apart at compile time - which field of which variable - and that is all this needs to decide.
      *
-     * @todo: probably better to actually travel the member access asts for exact matching?
+     * @param ast The expression to read as a path.
+     * @return Its named steps, outermost first.
+     */
+    auto RegionPath(
+      asts::Ast const &ast)
+      -> Vec<asts::Ast*> {
+      auto const *const expr = ast.To<asts::ExpressionAst>();
+      return expr != nullptr ? expr->ExprParts() : Vec<asts::Ast*>();
+    }
+
+    /**
+     * Whether @p path names something inside the region @p prefix names, comparing them step by step as the paths
+     * they are rather than as the text they are spelled with.
+     *
+     * @n
+     * Text comparison was wrong in both directions. It said a variable called @c s overlapped one called @c second ,
+     * because one spelling starts with the other; and it said @c {v[mut i]} and @c {v[mut j]} were different places,
+     * because those two spellings differ - when @c {i == j} makes them one, which is how two mutable borrows of one
+     * element got past the law of exclusivity. Comparing the named steps answers both: @c s and @c second are
+     * different identifiers, and the two subscripts have no named step to differ in.
+     *
      * @param prefix The path of the containing region.
      * @param path The path that may sit inside it.
      * @return Whether @p path is @p prefix or something reached from it.
      */
     auto IsRegionPathPrefix(
-      Str const &prefix,
-      Str const &path) -> bool {
-      if (not path.starts_with(prefix)) { return false; }
-      if (path.size() == prefix.size()) { return true; }
+      Vec<asts::Ast*> const &prefix,
+      Vec<asts::Ast*> const &path) -> bool {
+      // Nothing to name is nothing to share: a temporary owns a region no
+      // other expression has a spelling for.
+      if (prefix.IsEmpty() or path.IsEmpty()) { return false; }
+      if (prefix.Len() > path.Len()) { return false; }
 
-      const auto c = path[prefix.size()];
-      const auto continues_identifier =
-        (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c == '_';
-      return not continues_identifier;
+      for (auto i = std::size_t{0}; i < prefix.Len(); ++i) {
+        auto const *const a = prefix[i]->To<asts::IdentifierAst>();
+        auto const *const b = path[i]->To<asts::IdentifierAst>();
+
+        // A step that is not an identifier is one this has no way to tell
+        // from any other, so the two are taken to meet.
+        if (a == nullptr or b == nullptr) { return true; }
+        if (a->NameId() != b->NameId()) { return false; }
+      }
+      return true;
     }
 
     /**
@@ -109,7 +137,7 @@ namespace spp::analyse::utils::mem_utils {
     auto MemRegionRightOverlap(
       asts::Ast const &ast_1,
       asts::Ast const &ast_2) -> bool {
-      return IsRegionPathPrefix(ast_1.ToString(), ast_2.ToString());
+      return IsRegionPathPrefix(RegionPath(ast_1), RegionPath(ast_2));
     }
   }
 }
@@ -118,9 +146,50 @@ auto spp::analyse::utils::mem_utils::MemRegionOverlap(
   asts::Ast const &ast_1,
   asts::Ast const &ast_2)
   -> bool {
-  const auto s1 = ast_1.ToString();
-  const auto s2 = ast_2.ToString();
-  return IsRegionPathPrefix(s1, s2) or IsRegionPathPrefix(s2, s1);
+  const auto p1 = RegionPath(ast_1);
+  const auto p2 = RegionPath(ast_2);
+  return IsRegionPathPrefix(p1, p2) or IsRegionPathPrefix(p2, p1);
+}
+
+auto spp::analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow(
+  asts::FunctionCallArgumentAst const &arg,
+  scopes::VariableSymbol const *const sym,
+  Vec<asts::Ast const*> &borrows_ref,
+  Vec<asts::Ast const*> &borrows_mut,
+  scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData *const meta)
+  -> void {
+  //
+  namespace errors = spp::analyse::errors;
+
+  // A borrow with a name is one the caller's own branches take, or one being
+  // passed along rather than taken here. Only the nameless case is this one's.
+  if (sym != nullptr) { return; }
+
+  // The convention as written, or, where nothing is written, the one the
+  // argument's type carries - which is where a subscript keeps it.
+  auto const *const conv = [&]() -> asts::ConventionAst const* {
+    if (arg.Conv != nullptr) { return arg.Conv.get(); }
+    const auto arg_type = arg.Val->InferType(&sm, meta);
+    return arg_type != nullptr ? arg_type->GetConvention() : nullptr;
+  }();
+  if (conv == nullptr) { return; }
+
+  // A mutable borrow meets every other borrow of the region; an immutable one
+  // meets only a mutable.
+  const auto is_mut = *conv == asts::ConventionTag::MUT;
+  auto candidates = is_mut
+    ? genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
+    : borrows_mut;
+  auto overlaps = candidates
+    | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg.Val); })
+    | genex::to<Vec>();
+
+  spp::RaiseIf<errors::SppMemoryOverlapUsageError>(
+    not overlaps.IsEmpty(), {sm.CurrentScope},
+    ERR_ARGS(*overlaps[0], *arg.Val));
+
+  (is_mut ? borrows_mut : borrows_ref).EmplaceBack(arg.Val.get());
 }
 
 auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(

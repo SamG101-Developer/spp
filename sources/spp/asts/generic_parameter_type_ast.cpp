@@ -27,7 +27,8 @@ spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
   decltype(Constraints) &&constraints,
   const utils::OrderableTag order_tag) :
   GenericParameterAst(std::move(name), order_tag),
-  Constraints(std::move(constraints)) {
+  Constraints(std::move(constraints)),
+  _DummyScopes({}) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Constraints);
 }
 

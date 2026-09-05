@@ -90,7 +90,7 @@ private:
    * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
    * consistent with each returning value of the closure body.
    */
-  Shared<TypeAst> _RetType;
+  Shared<TypeAst> _TrueRetType;
 
   /**
    * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to

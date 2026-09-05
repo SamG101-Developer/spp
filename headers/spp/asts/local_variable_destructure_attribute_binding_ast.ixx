@@ -46,7 +46,6 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final 
 
   ~LocalVariableDestructureAttributeBindingAst() override;
 
-
   SPP_ATTR_NODISCARD auto ExtractName() const
     -> Shared<IdentifierAst> override;
 };

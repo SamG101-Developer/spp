@@ -80,10 +80,9 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
 
 protected:
   mutable Shared<TypeAst> _CachedWithoutGenerics;
-  mutable analyse::scopes::Scope const *_LookupScope = nullptr;
-  mutable analyse::scopes::TypeSymbol *_LookupSym = nullptr;
-  mutable std::uint64_t _LookupGen = 0;
-
+  mutable analyse::scopes::Scope const *_LookupScope;
+  mutable analyse::scopes::TypeSymbol *_LookupSym;
+  mutable std::uint64_t _LookupGen;
   mutable Str _CachedStringification;
 };
 

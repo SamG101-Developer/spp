@@ -31,8 +31,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompPositionalAst final : GenericAr
 
   SPP_ATTR_NODISCARD auto EqualsGenericArgumentCompPositional(
     GenericArgumentCompPositionalAst const &other) const -> Ordering override;
-
-  SPP_ATTR_NODISCARD auto Equals(GenericArgumentAst const &other) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(
+    GenericArgumentAst const &other) const -> Ordering override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

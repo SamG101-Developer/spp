@@ -168,16 +168,16 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 private:
   std::size_t _Pos;
 
-  bool _IsNeverType = false;
+  bool _IsNeverType;
 
-  bool _IsSelfType = false;
+  bool _IsSelfType;
 
   /**
    * Whether analysis has run over this node, used to skip a second run. Cleared by @c ResetCache so that a type can be
    * analysed again at a different stage, which several prototypes do to enforce generic constraints early enough to
    * keep error ordering sensible.
    */
-  bool _HasAnalysed = false;
+  bool _HasAnalysed;
 
   /**
    * Whether this node's @e value has settled - its generic arguments named, @c Self resolved, variants collapsed. Set
@@ -185,9 +185,9 @@ private:
    * checks, it does not un-settle what the type is. Anything derived from the type keys off this, so that a forced
    * re-analysis does not retire work that is still correct.
    */
-  bool _Resolved = false;
+  bool _Resolved;
 
-  bool _IsSourceWritten = false;
+  bool _IsSourceWritten;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)

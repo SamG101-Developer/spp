@@ -66,7 +66,6 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVari
 
 private:
   Vec<Unique<LetStatementInitializedAst>> _NewAsts;
-
   Shared<IdentifierAst> _TmpName;
 };
 

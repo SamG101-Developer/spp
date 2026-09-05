@@ -126,10 +126,8 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
     -> bool;
 
 private:
-  bool _Generated = false;
-
-  bool _FromUseStatement = false;
-
+  bool _Generated;
+  bool _FromUseStatement;
   Shared<analyse::scopes::TypeSymbol> _AliasSym;
 };
 

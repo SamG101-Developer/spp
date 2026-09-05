@@ -133,7 +133,7 @@ private:
    * mark of its own. Without it the analysis runs again on each visit, and the comparison-chain rewrite moves the
    * operands out of the expression a second time.
    */
-  bool _LogicalAnalysed = false;
+  bool _LogicalAnalysed;
 
   /**
    * Whether the operator is @c and or @c or, decided from the token and then remembered. It cannot be read back off

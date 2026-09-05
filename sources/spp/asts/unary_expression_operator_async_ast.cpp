@@ -35,7 +35,8 @@ import spp.utils.uid;
 SPP_MOD_BEGIN
 spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
   decltype(TokAsync) &&tok_async) :
-  TokAsync(std::move(tok_async)) {
+  TokAsync(std::move(tok_async)),
+  _TransformedFunc(nullptr) {
 }
 
 spp::asts::UnaryExpressionOperatorAsyncAst::~UnaryExpressionOperatorAsyncAst() = default;

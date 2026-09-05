@@ -6,7 +6,14 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 
 SPP_MOD_BEGIN
-spp::asts::TypeAst::TypeAst() = default;
+spp::asts::TypeAst::TypeAst() :
+  _CachedWithoutGenerics(nullptr),
+  _LookupScope(nullptr),
+  _LookupSym(nullptr),
+  _LookupGen(0),
+  _CachedStringification("") {
+}
+
 spp::asts::TypeAst::~TypeAst() = default;
 
 auto spp::asts::TypeAst::SubstituteGenericsExpr(
@@ -17,4 +24,5 @@ auto spp::asts::TypeAst::SubstituteGenericsExpr(
   // job to it rather than repeating any of it.
   return SubstituteGenerics(args);
 }
+
 SPP_MOD_END

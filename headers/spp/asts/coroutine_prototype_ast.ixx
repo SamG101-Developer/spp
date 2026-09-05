@@ -55,7 +55,7 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
   SPP_ATTR_NODISCARD auto GenOnceLowered() const -> SubroutinePrototypeAst*;
 
 private:
-  bool _IsOnce = false;
+  bool _IsOnce;
   Shared<TypeAst> _YieldType;
   Shared<TypeAst> _SendType;
   Unique<SubroutinePrototypeAst> _GenOnceLowered;

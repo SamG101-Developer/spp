@@ -75,6 +75,8 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
   FnArgGroup(std::move(arg_group)),
   Fold(std::move(fold)),
   _OverloadInfo(std::nullopt),
+  _TransformedAst(nullptr),
+  _ClosureDummyArgGroup(nullptr),
   _ClosureDummyArg(nullptr),
   _ClosureDummyProto(nullptr),
   _IsAsync(nullptr),
@@ -474,8 +476,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // so there is nothing to tag and copy.
     const auto param_is_borrow = p < fn_params.Len() and (
       fn_params[p]->To<FunctionParameterSelfAst>() != nullptr
-        ? fn_params[p]->To<FunctionParameterSelfAst>()->Conv != nullptr
-        : fn_params[p]->Type->GetConvention() != nullptr);
+      ? fn_params[p]->To<FunctionParameterSelfAst>()->Conv != nullptr
+      : fn_params[p]->Type->GetConvention() != nullptr);
 
     if (param_type != nullptr and not param_is_borrow
       and sm->CurrentScope->GetTypeSymbol(param_type.get()) != nullptr) {
@@ -633,7 +635,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Target() const
   -> FunctionPrototypeAst* {
   if (not _OverloadInfo.has_value()) { return nullptr; }
   const auto target_proto = _OverloadInfo->Proto;
-  if (const auto coro_proto = target_proto->To<CoroutinePrototypeAst>(); coro_proto != nullptr and coro_proto->IsOnce()) {
+  if (const auto coro_proto = target_proto->To<CoroutinePrototypeAst>(); coro_proto != nullptr and coro_proto->
+    IsOnce()) {
     return coro_proto->GenOnceLowered();
   }
   return target_proto;

@@ -132,7 +132,7 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final :
   SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;
 
 private:
-  bool _FromUseStatement = false;
+  bool _FromUseStatement;
 
   Shared<analyse::scopes::VariableSymbol> _AliasSym;
 };

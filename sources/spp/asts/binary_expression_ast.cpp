@@ -46,6 +46,7 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
   TokOp(std::move(tok_op)),
   Rhs(std::move(rhs)),
   _MappedFunc(nullptr),
+  _LogicalAnalysed(false),
   _IsLogical(IsLogicalToken(TokOp.get())) {
   Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
   Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;

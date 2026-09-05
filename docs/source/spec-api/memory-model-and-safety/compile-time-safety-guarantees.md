@@ -109,7 +109,10 @@ the full rules.
 - [ ] Defined struct/enum validity invariants, checked at every trust boundary.
 - [ ] Alignment check on all raw deref in hardened builds (just the `@` operator?).
 - [ ] Aliasing metadata (`noalias` and friends) emitted only where exclusivity is actually proven for the whole call,
-  not merely where a parameter is spelled `&mut`; an overlap analysis that compares rendered expressions is not a proof.
+  not merely where a parameter is spelled `&mut`. The overlap analysis is no longer the thing standing in the way - it
+  compares access paths rather than rendered expressions now, and rejects the `swap(v[mut i], v[mut j])` case that made
+  `noalias` unsound - but a proof is what this needs, and pins taken through a coroutine handle with no name to hang
+  them on are a second route that has not been closed.
 - [ ] Defined behaviour for the operations C leaves open: signed overflow, shift past width, integer/float conversion
   out of range, null and misaligned access. Each traps or is defined, never "assume it cannot happen."
 

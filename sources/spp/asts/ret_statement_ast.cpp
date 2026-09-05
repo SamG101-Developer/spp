@@ -37,10 +37,10 @@ spp::asts::RetStatementAst::RetStatementAst(
   decltype(TokRet) &&tok_ret,
   decltype(Expr) &&val) :
   TokRet(std::move(tok_ret)),
-  Expr(std::move(val)) {
+  Expr(std::move(val)),
+  _RetType(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokRet, lex::SppTokenType::KW_RET, "ret", Expr ? Expr->PosStart() : 0);
   Source._OriginalRetType = nullptr;
-  _RetType = nullptr;
 }
 
 spp::asts::RetStatementAst::~RetStatementAst() = default;

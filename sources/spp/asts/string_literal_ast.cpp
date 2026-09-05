@@ -126,7 +126,8 @@ auto spp::asts::StringLiteralAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> Shared<TypeAst> {
-  // A char literal is either a StrView or Vec[U8] type, depending on the "b" byte prefix.
+  // A char literal is either a StrView or Vec[U8] type,
+  // depending on the "b" byte prefix.
   // Todo: static flag to check if the type's been analysed before? only has to be done once.
   using generate::common_types::StringViewType;
   using generate::common_types::ViewU8Type;
@@ -138,9 +139,12 @@ auto spp::asts::StringLiteralAst::InferType(
 }
 
 auto spp::asts::StringLiteralAst::CppVal() const -> Str {
-  // Reuse the same decoding Stage11_CodeGen uses, so this matches the literal's actual (escape-resolved) value
-  // instead of the raw source text (which would still contain unresolved escapes like "\n" as two characters).
-  return spp::utils::strings::DecodeStringLiteral(Val->TokenData);
+  // Reuse the same decoding Stage11_CodeGen uses, so this
+  // matches the literal's actual (escape-resolved) value
+  // instead of the raw source text (which would still
+  // contain unresolved escapes like "\n" as two characters).
+  using spp::utils::strings::DecodeStringLiteral;
+  return DecodeStringLiteral(Val->TokenData);
 }
 
 SPP_MOD_END

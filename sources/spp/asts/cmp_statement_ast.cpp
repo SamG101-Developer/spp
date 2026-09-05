@@ -43,7 +43,9 @@ spp::asts::CmpStatementAst::CmpStatementAst(
   TokColon(std::move(tok_colon)),
   Type(std::move(type)),
   TokAssign(std::move(tok_assign)),
-  Value(std::move(value)) {
+  Value(std::move(value)),
+  _FromUseStatement(false),
+  _AliasSym(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");

@@ -28,6 +28,7 @@ spp::asts::UseStatementVariableAst::UseStatementVariableAst(
   Annotations(std::move(annotations)),
   TokUse(std::move(tok_use)),
   OldVar(std::move(old_var)),
+  _Generated(false),
   _Conversion(nullptr) {
 }
 

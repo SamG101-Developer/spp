@@ -459,6 +459,15 @@ auto spp::asts::CaseExpressionAst::InferType(
     final_not_else and not meta->IgnoreMissingElseBranchForInference,
     {sm->CurrentScope}, ERR_ARGS(*this, *Branches.Back()));
 
+  // A "case" with no "else" can finish without running any branch at all, so whatever its branches are, it is not
+  // "Never": the fall-through path is reachable, and the value it produces on that path is no value. Handing back the
+  // branches' type here instead is what made "case a { case b { abort() } }" crash - the inner case reads as "Never",
+  // so the outer branch believes its body cannot complete and terminates the block the inner case falls through to
+  // with "unreachable", which is exactly the path taken whenever "b" is false.
+  //
+  // @n
+  // This is also half of the Todo above: a case that is not an expression yields nothing, and no "else" is the one
+  // case of that which can be told apart here, because an "else" is mandatory in expression position.
   if (final_not_else) { return VoidType(PosStart()); }
 
   // Return the branches' return type. If there are any

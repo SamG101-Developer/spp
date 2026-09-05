@@ -71,8 +71,7 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  SPP_ATTR_NODISCARD auto Name() const
-    -> Unique<IdentifierAst>;
+  SPP_ATTR_NODISCARD auto Name() const -> Unique<IdentifierAst>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ModulePrototypeAst)

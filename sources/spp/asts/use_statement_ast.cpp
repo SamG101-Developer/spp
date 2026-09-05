@@ -20,6 +20,7 @@ spp::asts::UseStatementAst::UseStatementAst(
   Annotations(std::move(annotations)),
   TokUse(std::move(tok_use)),
   OldType(std::move(old_type)),
+  _Generated(false),
   _Conversion(nullptr) {
 }
 

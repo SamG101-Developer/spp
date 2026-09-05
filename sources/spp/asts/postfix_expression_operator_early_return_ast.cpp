@@ -41,7 +41,8 @@ import spp.utils.uid;
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
   decltype(TokQst) &&tok_qst) :
-  TokQst(std::move(tok_qst)) {
+  TokQst(std::move(tok_qst)),
+  _TransformedExpr(nullptr) {
 }
 
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;

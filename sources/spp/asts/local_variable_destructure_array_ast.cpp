@@ -36,7 +36,8 @@ spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
   decltype(TokR) &&tok_r) :
   TokL(std::move(tok_l)),
   Elems(std::move(elems)),
-  TokR(std::move(tok_r)) {
+  TokR(std::move(tok_r)),
+  _TmpName(nullptr) {
 }
 
 spp::asts::LocalVariableDestructureArrayAst::~LocalVariableDestructureArrayAst() = default;

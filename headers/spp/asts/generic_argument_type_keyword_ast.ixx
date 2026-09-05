@@ -52,12 +52,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
   ~GenericArgumentTypeKeywordAst() override;
 
   SPP_ATTR_NODISCARD auto EqualsGenericArgumentTypeKeyword(
-    GenericArgumentTypeKeywordAst const &other) const
-    -> Ordering override;
-
+    GenericArgumentTypeKeywordAst const &other) const -> Ordering override;
   SPP_ATTR_NODISCARD auto Equals(
-    GenericArgumentAst const &other) const
-    -> Ordering override;
+    GenericArgumentAst const &other) const -> Ordering override;
 
   auto Stage7_AnalyseSemantics(
     ScopeManager *sm,

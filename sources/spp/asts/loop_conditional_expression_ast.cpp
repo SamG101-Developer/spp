@@ -34,7 +34,8 @@ spp::asts::LoopConditionalExpressionAst::LoopConditionalExpressionAst(
   decltype(Body) &&body,
   decltype(ElseBlock) &&else_block) :
   LoopExpressionAst(std::move(tok_loop), std::move(body), std::move(else_block)),
-  Cond(std::move(cond)) {
+  Cond(std::move(cond)),
+  _IterDesugar(false) {
 }
 
 spp::asts::LoopConditionalExpressionAst::~LoopConditionalExpressionAst() = default;

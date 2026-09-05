@@ -41,7 +41,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVaria
   SPP_ATTR_NODISCARD auto MarkedForIterLoopExit() const -> bool;
 
 private:
-  bool _ForIterLoopExit = false;
+  bool _ForIterLoopExit;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantElseAst)

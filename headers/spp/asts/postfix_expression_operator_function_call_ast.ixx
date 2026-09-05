@@ -108,19 +108,12 @@ private:
   };
 
   std::optional<_OInfo> _OverloadInfo;
-
   Unique<PostfixExpressionAst> _TransformedAst;
-
   Unique<FunctionCallArgumentGroupAst> _ClosureDummyArgGroup;
-
   Unique<FunctionCallArgumentPositionalAst> _ClosureDummyArg;
-
   Unique<FunctionPrototypeAst> _ClosureDummyProto;
-
   Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
-
   Ast *_IsAsync;
-
   bool _IsCoroAndAutoResume;
 
   auto _HandleFunctionFolding(

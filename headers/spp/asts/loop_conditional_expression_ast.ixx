@@ -60,7 +60,7 @@ private:
   /**
    * Whether this loop was desugared from an iterable loop. See @c MarkAsIterDesugar.
    */
-  bool _IterDesugar = false;
+  bool _IterDesugar;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopConditionalExpressionAst)

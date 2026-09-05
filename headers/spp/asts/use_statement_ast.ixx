@@ -56,7 +56,6 @@ SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMember
 
   ~UseStatementAst() override;
 
-
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
@@ -85,7 +84,7 @@ private:
    * @c use statements can be defined at the top level (module/sup) or inside function bodies. If defined inside a
    * function body, all steps of the analysis must be run together, otherwise they are ran in their correct layer.
    */
-  bool _Generated = false;
+  bool _Generated;
 
   /**
    * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new

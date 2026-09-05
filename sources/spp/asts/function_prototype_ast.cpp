@@ -91,6 +91,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   TokArrow(std::move(tok_arrow)),
   ReturnType(std::move(return_type)),
   Impl(std::move(impl)),
+  _NonGenericImpl(nullptr),
   _LlvmFunc(nullptr),
   _OwnerCtx(nullptr),
   _AnnotationInfo(nullptr) {

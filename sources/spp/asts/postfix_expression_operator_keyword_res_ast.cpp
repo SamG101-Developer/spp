@@ -40,7 +40,8 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeyw
   decltype(FnArgGroup) &&arg_group) :
   TokDot(std::move(tok_dot)),
   TokRes(std::move(tok_res)),
-  FnArgGroup(std::move(arg_group)) {
+  FnArgGroup(std::move(arg_group)),
+  _MappedFunc(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
 }
 

@@ -44,7 +44,7 @@ spp::asts::ClosureExpressionAst::ClosureExpressionAst(
   Body(std::move(body)) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Tok, lex::SppTokenType::KW_FUN, "fun");
   Source._OriginalRetType = nullptr;
-  _RetType = nullptr;
+  _TrueRetType = nullptr;
 }
 
 spp::asts::ClosureExpressionAst::~ClosureExpressionAst() = default;
@@ -70,7 +70,7 @@ auto spp::asts::ClosureExpressionAst::Clone() const
     AstClone(TokArrow),
     AstCloneShared(ReturnType),
     AstClone(Body));
-  c->_RetType = _RetType;
+  c->_TrueRetType = _TrueRetType;
   return c;
 }
 
@@ -147,18 +147,18 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
-    _RetType = not meta->EnclosingFunctionRetType.IsEmpty()
+    _TrueRetType = not meta->EnclosingFunctionRetType.IsEmpty()
       ? meta->EnclosingFunctionRetType[0]
       : Body->InferType(sm, meta);
-    _RetType->Stage7_AnalyseSemantics(sm, meta);
-    Source._OriginalRetType = _RetType;
+    _TrueRetType->Stage7_AnalyseSemantics(sm, meta);
+    Source._OriginalRetType = _TrueRetType;
 
     // The return type is inferred rather than declared, so it
     // never passes through the function prototype's return type
     // borrow check.
     RaiseIf<SppSecondClassBorrowViolationError>(
-      Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_RetType, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*this, *_RetType, "function return type"));
+      Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_TrueRetType, *sm),
+      {sm->CurrentScope}, ERR_ARGS(*this, *_TrueRetType, "function return type"));
   }
   meta->Restore();
 
@@ -225,7 +225,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     })
     | genex::to<Vec>();
   llvm_param_types.Insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
-  const auto llvm_ret_ty = codegen::GetLlvmTypeOf(*_RetType, *sm->CurrentScope, ctx);
+  const auto llvm_ret_ty = codegen::GetLlvmTypeOf(*_TrueRetType, *sm->CurrentScope, ctx);
 
   const auto llvm_fn_ty = llvm::FunctionType::get(
     llvm_ret_ty, llvm_param_types.ToStdVector(), PcGroup->ParamGroup->GetVariadicParams() != nullptr);
@@ -251,7 +251,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   sm->CurrentScope->AstNode = this;
   _LlvmFunc = MakeShared<codegen::LlvmFuncWrapper>(llvm_fn);
   meta->EnclosingFunctionScope = sm->CurrentScope;
-  meta->EnclosingFunctionRetType = {_RetType};
+  meta->EnclosingFunctionRetType = {_TrueRetType};
   meta->EnclosingFunctionSourceRetType = {Source._OriginalRetType};
   meta->EnclosingFunctionFlavour = Tok.get();
   ctx->CurrentClosureType = closure_env_ty;
@@ -381,7 +381,7 @@ auto spp::asts::ClosureExpressionAst::InferType(
     auto param_types = PcGroup->ParamGroup->Params
       | genex::views::transform([](auto const &x) { return x->Type; })
       | genex::to<Vec>();
-    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
+    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
   }
 
   // If there are captures, but no borrowed captures, return a
@@ -390,7 +390,7 @@ auto spp::asts::ClosureExpressionAst::InferType(
     auto param_types = PcGroup->ParamGroup->Params
       | genex::views::transform([](auto const &x) { return x->Type; })
       | genex::to<Vec>();
-    ty = FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
+    ty = FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
   }
 
   // If there are mutably borrowed captures, return a FunMut
@@ -399,7 +399,7 @@ auto spp::asts::ClosureExpressionAst::InferType(
     auto param_types = PcGroup->ParamGroup->Params
       | genex::views::transform([](auto const &x) { return x->Type; })
       | genex::to<Vec>();
-    ty = FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
+    ty = FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
   }
 
   // If there are immutable borrowed captures, return a FunRef
@@ -408,7 +408,7 @@ auto spp::asts::ClosureExpressionAst::InferType(
     auto param_types = PcGroup->ParamGroup->Params
       | genex::views::transform([](auto const &x) { return x->Type; })
       | genex::to<Vec>();
-    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _RetType);
+    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
   }
 
   // Analyse the type and return it.

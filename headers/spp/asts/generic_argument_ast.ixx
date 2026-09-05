@@ -84,6 +84,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
   SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypePositional(
     GenericArgumentTypePositionalAst const &) const -> Ordering;
   SPP_ATTR_NODISCARD virtual auto Equals(GenericArgumentAst const &other) const -> Ordering = 0;
+
   SPP_ATTR_NODISCARD virtual auto ViewName() const -> StrView;
 };
 

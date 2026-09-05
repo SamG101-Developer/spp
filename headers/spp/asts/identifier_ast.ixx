@@ -110,7 +110,7 @@ public:
 
 private:
   std::size_t _Pos;
-  std::size_t _ForTok = 0;
+  std::size_t _ForTok;
   utils::InternedId _NameId;
 };
 

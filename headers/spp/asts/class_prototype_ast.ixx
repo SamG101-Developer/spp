@@ -37,42 +37,42 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
   SPP_AST_KEY_FUNCTIONS(ClassPrototypeAst);
 
   /**
-     * The list of annotations that are applied to this class prototype. Typically, access modifiers in this context.
-     */
+   * The list of annotations that are applied to this class prototype. Typically, access modifiers in this context.
+   */
   Vec<Unique<AnnotationAst>> Annotations;
 
   /**
-     * The @c cls keyword that represents the start of the class prototype. This is used to indicate that a class is
-     * being defined.
-     */
+   * The @c cls keyword that represents the start of the class prototype. This is used to indicate that a class is
+   * being defined.
+   */
   Unique<TokenAst> TokCls;
 
   /**
-     * The name of the class prototype. This is the identifier that is used to refer to the class, and must be unique
-     * within the scope.
-     */
+   * The name of the class prototype. This is the identifier that is used to refer to the class, and must be unique
+   * within the scope.
+   */
   Shared<TypeAst> Name;
 
   /**
-     * An optional generic parameter group for the class prototype. This is used to define generic types that the class
-     * can use.
-     */
+   * An optional generic parameter group for the class prototype. This is used to define generic types that the class
+   * can use.
+   */
   Shared<GenericParameterGroupAst> GnParamGroup;
 
   /**
-     * The list of class attributes that are defined on the class prototype. These are the properties that the class
-     * will have, and can be accessed through instances of the class.
-     */
+   * The list of class attributes that are defined on the class prototype. These are the properties that the class
+   * will have, and can be accessed through instances of the class.
+   */
   Unique<ClassImplementationAst> Impl;
 
   /**
-     * Construct the ClassPrototypeAst with the arguments matching the members.
-     * @param[in] annotations The list of annotations that are applied to this class prototype.
-     * @param[in] tok_cls The @c cls keyword that represents the start of the class prototype.
-     * @param[in] name The name of the class prototype.
-     * @param[in] generic_param_group An optional generic parameter group for the class prototype.
-     * @param[in] impl The list of class attributes that are defined on the class prototype.
-     */
+   * Construct the ClassPrototypeAst with the arguments matching the members.
+   * @param[in] annotations The list of annotations that are applied to this class prototype.
+   * @param[in] tok_cls The @c cls keyword that represents the start of the class prototype.
+   * @param[in] name The name of the class prototype.
+   * @param[in] generic_param_group An optional generic parameter group for the class prototype.
+   * @param[in] impl The list of class attributes that are defined on the class prototype.
+   */
   ClassPrototypeAst(
     decltype(Annotations) &&annotations,
     decltype(TokCls) &&tok_cls,
@@ -104,14 +104,20 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto RegisterGenericSubstitution(analyse::scopes::Scope *scope, Unique<ClassPrototypeAst> &&new_ast) -> void;
+  auto RegisterGenericSubstitution(
+    analyse::scopes::Scope *scope,
+    Unique<ClassPrototypeAst> &&new_ast)
+    -> void;
 
-  SPP_ATTR_NODISCARD auto
-  GetRegisteredGenericSubstitutions() const -> Vec<Pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
+  SPP_ATTR_NODISCARD auto GetRegisteredGenericSubstitutions() const
+    -> Vec<Pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
 
-  SPP_ATTR_NODISCARD auto GetClsSym() const -> Shared<analyse::scopes::TypeSymbol>;
+  SPP_ATTR_NODISCARD auto GetClsSym() const
+    -> Shared<analyse::scopes::TypeSymbol>;
 
-  auto FillLlvmLayout(ScopeManager const *sm, analyse::scopes::TypeSymbol const *type_sym,
+  auto FillLlvmLayout(
+    ScopeManager const *sm,
+    analyse::scopes::TypeSymbol const *type_sym,
     codegen::LlvmCtx const *ctx) const -> void;
 
 private:
@@ -120,7 +126,6 @@ private:
   Shared<analyse::scopes::TypeSymbol> _ClsSym;
 
   auto _GenerateSymbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
-
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)
