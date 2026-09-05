@@ -26,7 +26,7 @@ SPP_EXP_CLS struct spp::codegen::LlvmCtx {
   bool InConstantContext = false;
 
   // Coroutine information.
-  std::map<llvm::Value*, Unique<LlvmGenerator>> LlvmGenerators;
+  Map<llvm::Value*, Unique<LlvmGenerator>> LlvmGenerators;
 
   // Closure tracking information.
   llvm::Type *CurrentClosureType = nullptr;

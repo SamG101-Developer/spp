@@ -27,7 +27,7 @@ namespace spp::analyse::utils::bin_utils {
    * The map of binary operators to their corresponding method names. This is used when converting binary expressions
    * to function calls.
    */
-  SPP_EXP_CLS const auto kBinMethods = std::map<lex::SppTokenType, Str>{
+  SPP_EXP_CLS const auto kBinMethods = Map<lex::SppTokenType, Str>{
     {lex::SppTokenType::TK_EQ, "eq"},
     {lex::SppTokenType::TK_NE, "ne"},
     {lex::SppTokenType::TK_LT, "lt"},
