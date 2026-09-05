@@ -407,13 +407,11 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // date as they move code around. Naming a stale lifetime marker back into
   // existence afterwards is worse than never having had it - the backend
   // colours stack slots by them, and reuses a slot that is still live.
-  codegen::RepairMisnamedIntrinsics(lto_module.get());
   codegen::RunOptimizationPipeline(lto_module.get(), opt_level);
 
   // And again, for the ones the pipeline introduced itself. These are
   // placed by the pass that built them, so they are correct where they
   // are; only their names are not.
-  codegen::RepairMisnamedIntrinsics(lto_module.get());
 
   auto ec = std::error_code();
   auto ir_out = llvm::raw_fd_ostream(

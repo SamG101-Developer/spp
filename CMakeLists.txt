@@ -70,6 +70,11 @@ if (SPP_SANITIZER)
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
 endif ()
 
+if (NOT MSVC)
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127228
+  add_compile_options(-fvisibility-inlines-hidden)
+endif ()
+
 # Only allow mimalloc for release, non-sanitizer builds.
 set(SPP_NO_MIMALLOC_GENEX $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)

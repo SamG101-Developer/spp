@@ -55,29 +55,20 @@ namespace spp::codegen {
   auto EmitObjectFile(void *llvm_module, char const *path) -> bool;
 
   /**
-   * Give back their real names to the @c llvm.* declarations that llvm no longer recognises as intrinsics.
+   * Check that llvm can still spell an overloaded intrinsic's name, and stop if it cannot.
    *
    * @n
-   * Workaround, not a fix. Every intrinsic name longer than fifteen characters is stored with trailing garbage in
-   * this build - "llvm.coro.suspend" comes out as "llvm.coro.suspend405\0\0..." padded to thirty-one bytes - so
-   * @c getIntrinsicID reads @c not_intrinsic and the declaration becomes an ordinary external symbol nothing
-   * defines. The damage is not confined to the link: the coroutine passes recognise "llvm.coro.id" (twelve
-   * characters) and "llvm.coro.begin" (fifteen) but not "llvm.coro.suspend", so they see a coroutine with no suspend
-   * points, flatten it instead of splitting it, and leave a generator returning a pointer to its own dead frame.
+   * The names arrive from @c Intrinsic::getName as a @c std::string, and there is a libstdc++ incompatibility that
+   * makes that come back padded with uninitialised bytes (see @c libstdcxx_string_compat.cpp ). While it bites, no
+   * overloaded intrinsic can be named correctly and every module holding one is rejected - by the verifier, whose
+   * complaint is about the name and says nothing about why the name is wrong. This asks for one name and compares
+   * it, so the failure is reported where the cause is rather than several layers downstream.
    *
    * @n
-   * The prefix is always intact, so the real name is recovered by finding the longest prefix llvm still resolves to
-   * an intrinsic, and rebuilding the declaration under it - a fresh @c llvm::Function recomputes its intrinsic id
-   * from its name. Truncating at the first unprintable byte would not do: the garbage is sometimes printable.
-   *
-   * @n
-   * The real problem is upstream: a string handed to llvm is read back with the wrong length, which also shows up in
-   * printed attribute lists and in the module's own target triple. Once that is resolved this should go.
-   *
-   * @param[in,out] llvm_module The @c llvm::Module to repair, as an opaque pointer.
-   * @return How many declarations were renamed.
+   * Runs its check once per process, so it costs nothing to call wherever it is convenient. The diagnosis is printed
+   * in any build; the assertion that stops on it is a debug one.
    */
-  auto RepairMisnamedIntrinsics(void *llvm_module) -> unsigned long;
+  auto AssertIntrinsicNamingIsSound() -> void;
 
   /**
    * Add a C @c main to @p llvm_module that calls @p spp_main_name , so the program has an entry point of the shape a
