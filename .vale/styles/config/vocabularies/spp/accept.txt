@@ -7,6 +7,7 @@ Todo
 [Aa]llocators?
 [Aa]sync
 [Aa]uditable
+[Bb]acktraces?
 [Bb]ooleans?
 [Cc]odegen
 [Cc]omptime
@@ -19,7 +20,7 @@ Todo
 [Dd]estructures?
 [Dd]estructured
 [Dd]estructuring
-[Ee]lemtwise
+[Ee]lementwise
 [Gg]lobals?
 [Ii]ntrinsics?
 [Ii]mmediates?
@@ -45,7 +46,8 @@ Todo
 [Ss]ubstring
 [Ss]uperimpositions?
 [Tt]oolchain
-[Uu]serpsaces?
+[Uu]serspaces?
+[Uu]noptimised
 [Vv]ariadic
 [Vv]ectorise
 
@@ -55,6 +57,7 @@ STL
 Deref
 Ptr
 Vec
+bool
 cmp
 config
 const
