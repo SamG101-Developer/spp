@@ -369,6 +369,10 @@ auto spp::cli::handle_build(
   // those are resolved once, on first use.
   if (not codegen::SelectTarget(target.c_str())) { return; }
 
+  // Before anything is generated, not after: if llvm cannot spell an intrinsic name, every module holding one is
+  // rejected by the verifier with a complaint about the name, and the cause is nowhere in that message.
+  codegen::AssertIntrinsicNamingIsSound();
+
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
   const auto out = compiler::OutLayout{
