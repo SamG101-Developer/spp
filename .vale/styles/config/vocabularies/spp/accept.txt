@@ -7,15 +7,18 @@ Todo
 [Aa]sync
 [Bb]ooleans?
 [Cc]odegen
+[Cc]omptime
 [Cc]oroutines?
 [Dd]eallocates?
 [Dd]eallocated
 [Dd]eallocation
+[Dd]ereferences?
 [Dd]ereferencing
 [Dd]estructures?
 [Dd]estructured
 [Dd]estructuring
 [Ii]ntrinsics
+[Ll]ockfiles?
 [Mm]onomorphiz(e|es|ed|ing|ation)
 [Mm]utexes
 [Nn]amespaces?
@@ -33,6 +36,10 @@ Todo
 [Ss]uperimpositions?
 [Tt]oolchain
 [Vv]ariadic
+Asan
+MSan
+Tsan
+UBsan
 
 # S++ identifiers and abbreviations that appear in running prose.
 APIs?
