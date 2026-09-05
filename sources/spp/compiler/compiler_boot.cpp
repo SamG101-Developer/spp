@@ -163,12 +163,20 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
     bar.Next();
   }
   bar.Finish();
+}
 
-  // Attach all super scopes now.
-  // Todo: New progress bar here
+auto spp::compiler::CompilerBoot::Stage5_5_AttachSupScopes(
+  utils::ProgressBar &bar,
+  analyse::scopes::ScopeManager *sm)
+  -> void {
+  // Attach all super scopes now. One pass over the whole
+  // scope tree rather than a walk over the modules, so there
+  // is no per-module progress to report, only the whole
+  // thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
   sm->AttachAllSuperScopes(&meta);
+  bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(

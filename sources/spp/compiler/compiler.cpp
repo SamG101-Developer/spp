@@ -59,41 +59,45 @@ spp::compiler::Compiler::~Compiler() = default;
 
 auto spp::compiler::Compiler::Compile() -> void {
   const auto is_exe = m_build_type == BuildType::EXE;
-  auto progress_bars = Vec<Unique<utils::ProgressBar>>();
   auto num_modules = static_cast<std::uint32_t>(m_modules->GetModules().Len());
-  for (auto stage : kCompilerStageNames) {
-    auto p = MakeUnique<utils::ProgressBar>(stage, num_modules, not m_for_cpp_google_test);
-    progress_bars.EmplaceBack(std::move(p));
-  }
+
+  // One bar at a time: each is created as its stage begins and torn down as the next one replaces it, because a bar
+  // animates itself and only one of them can own the terminal line.
+  auto stage_name = kCompilerStageNames.begin();
+  auto bar = Unique<utils::ProgressBar>();
+  const auto next_bar = [&]() -> utils::ProgressBar& {
+    bar = MakeUnique<utils::ProgressBar>(*stage_name++, num_modules, not m_for_cpp_google_test);
+    return *bar;
+  };
 
   // We need the cleanup on error for the test suite runs (parallel), but in debug it's one shot, and error checking
   // needs the full stack trace.
-  auto ps = progress_bars.begin();
 #ifdef NDEBUG
   try {
 #endif
-    m_boot->Lex(**ps++, *m_modules);
-    m_boot->Parse(**ps++, *m_modules);
+    m_boot->Lex(next_bar(), *m_modules);
+    m_boot->Parse(next_bar(), *m_modules);
     m_test_count = m_boot->TestCount;
     m_test_names = m_boot->TestNames;
     m_scope_manager = MakeUnique<analyse::scopes::ScopeManager>(
       analyse::scopes::Scope::NewGlobal(*m_modules->GetModules()[0]), nullptr);
     asts::generate::common_types_precompiled::InitTypes();
 
-    m_boot->Stage1_PreProcess(**ps++, *m_modules, nullptr);
-    m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
-    m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage1_PreProcess(next_bar(), *m_modules, nullptr);
+    m_boot->Stage2_GenTopLvlScopes(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage3_GenTopLvlAliases(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage4_QualifyTypes(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage5_LoadSupScopes(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage5_5_AttachSupScopes(next_bar(), m_scope_manager.get());
+    m_boot->Stage6_PreAnalyseSemantics(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage7_AnalyseSemantics(next_bar(), *m_modules, is_exe, m_scope_manager.get());
+    m_boot->Stage8_CheckMemory(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage9_CompTimeResolve(next_bar(), *m_modules, m_scope_manager.get());
     CollectCompTimeConstants();
     if (not m_for_cpp_google_test) {
-      m_boot->Stage9_5_Monomorphise(**ps++, *m_modules, m_scope_manager.get());
-      m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
-      m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
+      m_boot->Stage9_5_Monomorphise(next_bar(), *m_modules, m_scope_manager.get());
+      m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
+      m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
     }
 #ifdef NDEBUG
   }

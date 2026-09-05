@@ -23,10 +23,12 @@ inline constexpr auto kCompilerStageNames = std::array{
   "Generating Top-Level Aliases... ",
   "Qualifying Types............... ",
   "Loading Super Scopes........... ",
+  "Attaching Super Scopes......... ",
   "Pre-Analysing Semantics........ ",
   "Analysing Semantics............ ",
   "Checking Memory Safety......... ",
   "Resolving comptime constants... ",
+  "Collecting comptime results.... ",
   "Monomorphising generics........ ",
   "Generating Code (1)............ ",
   "Generating Code (2)............ "

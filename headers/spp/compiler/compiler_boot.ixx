@@ -78,6 +78,11 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     analyse::scopes::ScopeManager *sm)
     -> void;
 
+  auto Stage5_5_AttachSupScopes(
+    utils::ProgressBar &bar,
+    analyse::scopes::ScopeManager *sm)
+    -> void;
+
   auto Stage6_PreAnalyseSemantics(
     utils::ProgressBar &bar,
     ModuleTree &tree,
