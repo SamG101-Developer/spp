@@ -33,6 +33,19 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
     {Str("f128"), LIMIT_F(113, 16384)}
   };
 
+   /**
+   * How many fractional digits it takes to write any value of each type exactly, which is the exponent of its
+   * smallest subnormal: every representable value is a multiple of that, so its decimal expansion terminates by
+   * then. A comp-time division can still produce a recurring value, and this is where that one gets cut short.
+   */
+  inline static const auto kDecimalPlaces = Map<Str, std::uint64_t>{
+    {Str("f8"), 16},
+    {Str("f16"), 32},
+    {Str("f32"), 160},
+    {Str("f64"), 1100},
+    {Str("f128"), 16500}
+  };
+
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 

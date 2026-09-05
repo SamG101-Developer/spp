@@ -40,7 +40,8 @@ spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 auto spp::asts::FloatLiteralAst::EqualsFloatLiteral(
   FloatLiteralAst const &other) const
   -> Ordering {
-  // Equality based on the sign, integer part, fractional part, and type postfix.
+  // Equality based on the sign, integer part, fractional
+  // part, and type postfix.
   if (
     ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
     and IntVal->TokenData == other.IntVal->TokenData
@@ -106,7 +107,8 @@ auto spp::asts::FloatLiteralAst::BigVal() const
   //
   using spp::utils::strings::NormalizeFloatString;
 
-  // The sign is a separate token, so it is applied after the digits are read.
+  // The sign is a separate token, so it is applied after
+  // the digits are read.
   auto value = numex::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
     value = -value;
@@ -121,7 +123,8 @@ auto spp::asts::FloatLiteralAst::ValidateBounds(
   //
   using analyse::errors::SppFloatOutOfBoundsError;
 
-  // A value the type cannot hold is the same error whether it was written down or computed by comp-time arithmetic.
+  // A value the type cannot hold is the same error whether
+  // it was written down or computed by comp-time arithmetic.
   auto const &[lower, upper] = kBounds.at(Type);
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
@@ -133,12 +136,9 @@ auto spp::asts::FloatLiteralAst::FromBigVal(
   numex::BigDec const &value,
   Str const &type)
   -> Unique<FloatLiteralAst> {
-  // "str" gives the shortest exact decimal, which omits the fractional part entirely for a whole number - and the
-  // literal always carries one.
-  // Todo: a magnitude large or small enough that "str" switches to exponent form has no literal spelling at all,
-  //  because a float literal is an integer part and a fractional part with no exponent.
+  // "Decimal" gives the exact decimal, not in fraction form.
   const auto is_negative = value.IsNegative();
-  const auto digits = (is_negative ? -value : value).ToString();
+  const auto digits = (is_negative ? -value : value).Decimal(kDecimalPlaces.at(type));
   const auto point = digits.find('.');
 
   auto int_part = point == Str::npos ? digits : digits.substr(0, point);
@@ -159,7 +159,8 @@ auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *,
   CompilerMetaData *meta)
   -> void {
-  // Clone and return the float literal as is for compile-time resolution.
+  // Clone and return the float literal as is for compile-time
+  // resolution.
   meta->CmpResult = AstClone(this);
 }
 
@@ -186,14 +187,14 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   // Normalise the literal exactly as Stage7 does, then
   // apply the optional sign.
   auto const &semantics = llvm_type->getFltSemantics();
-  auto mapped_val = numex::BigDec(NormalizeFloatString(IntVal->TokenData, FracVal->TokenData));
+  auto mapped_val = NormalizeFloatString(IntVal->TokenData, FracVal->TokenData);
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
-    mapped_val = -mapped_val;
+    mapped_val = "-" + mapped_val;
   }
 
   // Create the LLVM constant float value from the
   // normalised decimal string (APFloat handled the sign).
-  const auto ap_float = llvm::APFloat(semantics, mapped_val.ToString());
+  const auto ap_float = llvm::APFloat(semantics, mapped_val);
   const auto co_float = llvm::ConstantFP::get(*ctx->Context, ap_float);
   return co_float;
 }
