@@ -19,6 +19,7 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts {
+  SPP_EXP_CLS struct AnnotationAst;
   SPP_EXP_CLS struct ClassPrototypeAst;
   SPP_EXP_CLS struct ClassImplementationAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
@@ -46,6 +47,12 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
    * being defined.
    */
   Unique<TokenAst> TokCls;
+
+  /**
+   * Optional @c \@zero_type annotation. This is used to indicate that the class is guaranteed to occupy no storage,
+   * which also makes it @c Copy .
+   */
+  AnnotationAst *ZeroTypeAnnotation;
 
   /**
    * The name of the class prototype. This is the identifier that is used to refer to the class, and must be unique

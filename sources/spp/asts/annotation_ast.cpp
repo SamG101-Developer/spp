@@ -217,6 +217,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics().get());
     type_sym->IsDirectlyZeroType = true;
+    if (cls_ctx) { cls_ctx->ZeroTypeAnnotation = this; }
   }
   else if (fq_name == A::kZeroType and _Ctx->To<TypeStatementAst>()) {
     const auto cls_ctx = _Ctx->To<TypeStatementAst>();

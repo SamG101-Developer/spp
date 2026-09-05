@@ -1196,6 +1196,23 @@ spp::analyse::errors::SppFfiGenericParameterError::SppFfiGenericParameterError(
     "receives, which " + INLINE_NOTE("CClosure::from") + " makes from a closure.");
 }
 
+spp::analyse::errors::SppEmptyBodyRequiredError::SppEmptyBodyRequiredError(
+  asts::Ast const &annotation,
+  asts::Ast const &member,
+  const StrView what,
+  const StrView reason) {
+  AddHeaders(102, "Empty Body Required Error");
+  AddCtxForErr(&annotation, "Marked as " + Str(what) + " here");
+  AddErr(&member, "Written inside the body");
+  // The annotation's own "ToString" renders its argument group too - "!zero_type()" for one that takes none - so the
+  // help names it the way it is written instead.
+  const auto *as_annotation = dynamic_cast<asts::AnnotationAst const*>(&annotation);
+  auto marker = as_annotation != nullptr ? "!" + as_annotation->Name->ToString() : annotation.ToString();
+  AddFooter(
+    "The body of " + INLINE_NOTE(Str(what)) + " must be empty: " + Str(reason) + ".",
+    "Empty the body, or remove the " + INLINE_HELP(std::move(marker)) + " annotation.");
+}
+
 spp::analyse::errors::SppUnitTestNotCallableError::SppUnitTestNotCallableError(
   asts::Ast const &call_site,
   asts::Ast const &annotation) {

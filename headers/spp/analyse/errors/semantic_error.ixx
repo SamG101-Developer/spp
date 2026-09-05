@@ -104,6 +104,7 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppUnitTestInvalidSignatureError;
   SPP_EXP_CLS struct SppUnitTestNotCallableError;
   SPP_EXP_CLS struct SppFfiGenericParameterError;
+  SPP_EXP_CLS struct SppEmptyBodyRequiredError;
   SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
   SPP_EXP_CLS struct SppAccessViolationError;
   SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
@@ -566,6 +567,17 @@ SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestInvalidSignatureError final 
 SPP_EXP_CLS struct spp::analyse::errors::SppFfiGenericParameterError final : SemanticError {
   explicit SppFfiGenericParameterError(
     asts::Ast const &annotation, asts::Ast const &generic_parameter, StrView symbol);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppEmptyBodyRequiredError final : SemanticError {
+  /**
+   * @param annotation The annotation that makes the body a declaration rather than a definition.
+   * @param member The first thing written in the body, which is what is rejected.
+   * @param what What the annotation marks the ast as, read into "Marked as ... here".
+   * @param reason Why that kind of ast can hold nothing, read into "The body of ... must be empty: ...".
+   */
+  explicit SppEmptyBodyRequiredError(
+    asts::Ast const &annotation, asts::Ast const &member, StrView what, StrView reason);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestNotCallableError final : SemanticError {

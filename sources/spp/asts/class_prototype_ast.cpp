@@ -45,6 +45,7 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
   decltype(Impl) &&impl) :
   Annotations(std::move(annotations)),
   TokCls(std::move(tok_cls)),
+  ZeroTypeAnnotation(nullptr),
   Name(std::move(name)),
   GnParamGroup(std::move(generic_param_group)),
   Impl(std::move(impl)),
@@ -77,6 +78,7 @@ auto spp::asts::ClassPrototypeAst::Clone() const
     AstClone(GnParamGroup),
     AstClone(Impl));
   ast->Visibility = Visibility;
+  ast->ZeroTypeAnnotation = ZeroTypeAnnotation;
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->_ClsSym = _ClsSym;
@@ -233,6 +235,15 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
 
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
+
+  // A "!zero_type" class is guaranteed to occupy no storage - that is what lets it be "Copy", and what every use of
+  // one assumes - so it cannot declare state of its own.
+  RaiseIf<analyse::errors::SppEmptyBodyRequiredError>(
+    ZeroTypeAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    {sm->CurrentScope}, ERR_ARGS(
+      *ZeroTypeAnnotation, *Impl->Members.Front(), "a '!zero_type' class",
+      "the type is guaranteed to occupy no storage, and an attribute would give it a size"));
+
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
@@ -442,7 +453,6 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   // type and build a cyclic llvm type, which nothing diagnoses - it simply recurses inside "DataLayout" until the
   // stack runs out. Left opaque, it is skipped by everything downstream, exactly as the template it stands for is.
   if (not type_sym->IsConcrete) { return; }
-
 
   // Next we need to handle tuples (anonymous index-attribute
   // based classes) vs standard struct classes.

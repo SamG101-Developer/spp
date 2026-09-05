@@ -24,6 +24,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
+import spp.codegen.llvm_sym_info;
 import spp.lex.tokens;
 import spp.utils.types;
 import genex;
@@ -48,16 +49,28 @@ constexpr auto kVariantTagBits = 64u;
 // vector/extended precision territory, which the layout code does not model either.
 constexpr std::uint64_t kMaxVariantPayloadAlign = 16;
 
-static auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
-  switch (bit_width) {
-    case 8: { return llvm::APFloatBase::IEEEhalf(); }
-    case 16: { return llvm::APFloatBase::IEEEhalf(); }
-    case 32: { return llvm::APFloatBase::IEEEsingle(); }
-    case 64: { return llvm::APFloatBase::IEEEdouble(); }
-    case 128: { return llvm::APFloatBase::IEEEquad(); }
-    default: std::unreachable();
+namespace spp::codegen {
+  namespace {
+    auto AdoptLlvmTypeInfo(
+      LlvmTypeSymInfo &target,
+      LlvmTypeSymInfo const &source)
+      -> void {
+      target.LlvmType = source.LlvmType;
+      target.FieldIndexMap = source.FieldIndexMap;
+    }
+
+    auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
+      switch (bit_width) {
+        case 8: { return llvm::APFloatBase::IEEEhalf(); }
+        case 16: { return llvm::APFloatBase::IEEEhalf(); }
+        case 32: { return llvm::APFloatBase::IEEEsingle(); }
+        case 64: { return llvm::APFloatBase::IEEEdouble(); }
+        case 128: { return llvm::APFloatBase::IEEEquad(); }
+        default: std::unreachable();
+      }
+      std::unreachable();
+    }
   }
-  std::unreachable();
 }
 
 auto spp::codegen::GetFatPointerFields(
@@ -296,7 +309,7 @@ auto spp::codegen::EnsureLlvmTypeComplete(
     if (not in_progress.insert(&type_sym).second) { return; }
 
     EnsureLlvmTypeComplete(*linked_sym, sm, ctx);
-    type_sym.LlvmInfo->LlvmType = linked_sym->LlvmInfo->LlvmType;
+    AdoptLlvmTypeInfo(*type_sym.LlvmInfo, *linked_sym->LlvmInfo);
     in_progress.erase(&type_sym);
     return;
   }
@@ -322,7 +335,7 @@ auto spp::codegen::EnsureLlvmTypeComplete(
     if (type_sym.LlvmInfo->LlvmType == nullptr
       and type_sym.LinkedScope != nullptr
       and type_sym.LinkedScope->TySym != nullptr) {
-      type_sym.LlvmInfo->LlvmType = type_sym.LinkedScope->TySym->LlvmInfo->LlvmType;
+      AdoptLlvmTypeInfo(*type_sym.LlvmInfo, *type_sym.LinkedScope->TySym->LlvmInfo);
     }
   }
 

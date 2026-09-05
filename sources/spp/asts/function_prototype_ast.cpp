@@ -539,6 +539,7 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
+  using analyse::errors::SppEmptyBodyRequiredError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_compare::TypeEq;
 
@@ -566,6 +567,20 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
       bad("does not return 'Void'");
     }
   }
+
+  // An ffi function body is in C, so there is no body
+  // expressible in S++.
+  RaiseIf<SppEmptyBodyRequiredError>(
+    FfiAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    {sm->CurrentScope}, ERR_ARGS(
+      *FfiAnnotation, *Impl->Members.Front(), "an '!ffi' function", "the linker resolves the implementation from C"));
+
+  // An abstract function body is never ran (unreachable)
+  // so must be empty.
+  RaiseIf<SppEmptyBodyRequiredError>(
+    AbstractAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    {sm->CurrentScope}, ERR_ARGS(
+      *AbstractAnnotation, *Impl->Members.Front(), "an '!abstract_method' method", "abstract methods aren't callable"));
 
   // Repeated convention check for generic substitutions.
   RaiseIf<SppSecondClassBorrowViolationError>(
