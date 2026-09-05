@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
+#include <spp/compiler/macros.hpp>
 #include <spp/parse/macros.hpp>
 
 module spp.compiler.compiler_boot;
@@ -34,6 +35,7 @@ import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
+import spp.utils.features;
 import spp.utils.files;
 import genex;
 import llvm;
@@ -425,7 +427,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // executable out of, and the ir is the whole of what it produces.
   if (not has_entry_point) { return; }
   const auto object_file = out.ObjectFile();
-  codegen::ApplyStackProtector(lto_module.get());
+  FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
 
   // A cross build stops at the object, no linking available for

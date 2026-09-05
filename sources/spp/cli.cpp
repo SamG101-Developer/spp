@@ -20,6 +20,7 @@ import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.compiler.out_layout;
 import spp.lex.tokens;
+import spp.utils.features;
 import spp.utils.files;
 import cli11;
 import genex;
@@ -78,7 +79,7 @@ namespace spp::cli {
      * @param command The command to run.
      * @return The command, prefixed with the limit, on the platforms whose shell can set one.
      */
-    auto WithMemoryLimit(spp::Str const &command) -> spp::Str {
+    auto WithMemoryLimit(Str const &command) -> Str {
 #if SPP_PLATFORM_WINDOWS
       return command;
 #else
@@ -97,7 +98,7 @@ namespace spp::cli {
      * @param args The arguments to pass to git.
      * @return @c true when git exited cleanly.
      */
-    auto RunGit(spp::Str const &args) -> bool {
+    auto RunGit(Str const &args) -> bool {
       const auto command = "git " + args;
       if (const auto status = std::system(command.c_str()); status != 0) {
         std::cerr << "Error: git failed (" << status << "): " << command << "\n";
@@ -106,21 +107,21 @@ namespace spp::cli {
       return true;
     }
 
-    auto HostOf(spp::Str const &url) -> spp::Str {
+    auto HostOf(Str const &url) -> Str {
       auto rest = spp::StrView(url);
-      if (const auto scheme = rest.find("://"); scheme != spp::StrView::npos) { rest.remove_prefix(scheme + 3); }
+      if (const auto scheme = rest.find("://"); scheme != StrView::npos) { rest.remove_prefix(scheme + 3); }
 
       // Only a "user@" before the first "/" is credentials;
       // an "@" further in belongs to the path.
       const auto slash = rest.find('/');
       if (const auto at = rest.find('@');
-        at != spp::StrView::npos and (slash == spp::StrView::npos or at < slash)) {
+        at != StrView::npos and (slash == StrView::npos or at < slash)) {
         rest.remove_prefix(at + 1);
       }
       return spp::Str(rest.substr(0, rest.find_first_of(":/?")));
     }
 
-    auto IsRemoteReachable(spp::Str const &url) -> bool {
+    auto IsRemoteReachable(Str const &url) -> bool {
       if (url.empty() or std::getenv("SPP_NO_NETWORK_CHECK") != nullptr) { return true; }
       const auto args =
         " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
@@ -232,6 +233,10 @@ auto spp::cli::run_cli(
   app.add_subcommand("validate", "Validate the project")
      ->fallthrough()
      ->callback([] { handle_validate(false); });
+
+  app.add_subcommand("config", "List every section and key 'spp.toml' accepts")
+     ->fallthrough()
+     ->callback([] { std::cout << utils::features::HelpText(); });
 
   app.add_subcommand("version", "Show version information")
      ->fallthrough()
@@ -395,6 +400,16 @@ auto spp::cli::handle_build(
     return;
   }
 
+  // Adopt this project's feature settings. Only this one: how
+  // a dependency configured itself is a property of that
+  // dependency's own build, and what comes out of here is
+  // one program, generated once.
+  auto config_errors = Vec<Str>();
+  if (not utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) {
+    for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
+    return;
+  }
+
   // Compile the code.
   auto c = compiler::Compiler(
     mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
@@ -533,7 +548,7 @@ auto spp::cli::handle_test(
     std::exit(1);
   }
 
-  auto scope = compiler::TestScope{.project = true, .all_libs = all_libs, .libs = libs};
+  const auto scope = compiler::TestScope{.project = true, .all_libs = all_libs, .libs = libs};
   auto c = compiler::Compiler(
     compiler::Compiler::Mode::REL, compiler::Compiler::BuildType::EXE, scope);
   c.SetTestFilters(name_filter, group_filter);
@@ -638,28 +653,21 @@ auto spp::cli::handle_validate(
     }
   }
 
-  // Parse the spp.toml config file and get the optional "project"
-  // section.
-  const auto toml = toml::parse_file(CONFIG_FILE);
-  if (not toml.contains("project")) {
-    std::cout << "Error: No [project] section found in spp.toml.\n";
+  // Check the file against the schema: every section and key
+  // it holds has to be one the compiler knows, and every
+  // required one has to be there. An unrecognised key is
+  // reported rather than ignored, because a mistyped one that
+  // silently does nothing is worse than no key - a protection
+  // turned off by a typo turns off nothing.
+  auto config_errors = Vec<Str>();
+  if (not utils::features::Validate(cwd / CONFIG_FILE, config_errors)) {
+    for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
+    std::cerr << "\nRun 'spp config' for everything spp.toml accepts.\n";
     return false;
   }
 
-  // Check the project section has a name, version and build type.
+  const auto toml = toml::parse_file(CONFIG_FILE);
   const auto project = toml["project"].as_table();
-  if (not project->contains("name")) {
-    std::cerr << "Error: No name found in [project] section of spp.toml.\n";
-    return false;
-  }
-  if (not project->contains("version")) {
-    std::cerr << "Error: No version found in [project] section of spp.toml.\n";
-    return false;
-  }
-  if (not project->contains("build")) {
-    std::cerr << "Error: No build type found in [project] section of spp.toml.\n";
-    return false;
-  }
 
   // Check the version follows "major.minor.patch" format.
   const auto version = project->at("version").value<Str>().value_or("");
