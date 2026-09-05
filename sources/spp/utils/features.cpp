@@ -171,10 +171,13 @@ namespace {
       // "stack", and naming only the outer half describes something the author never typed.
       auto written = path; // as spelled in the file, not just the outermost table
       for (auto const *walk = node.as_table(); walk != nullptr and walk->size() == 1;) {
-        auto const &only = *walk->begin();
-        if (not only.second.is_table()) { break; }
-        written += "." + spp::Str(only.first.str());
-        walk = only.second.as_table();
+        auto const *descend = static_cast<toml::table const*>(nullptr);
+        for (auto &&[only_key, only_node] : *walk) {
+          if (not only_node.is_table()) { break; }
+          written += "." + spp::Str(only_key.str());
+          descend = only_node.as_table();
+        }
+        walk = descend;
       }
 
       errors.EmplaceBack(
