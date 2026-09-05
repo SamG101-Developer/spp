@@ -13,6 +13,7 @@ A hardening measure that is implemented is on by default, and is turned off, if 
 [memory.stack]
 protect = false   # no stack canaries
 probe = false     # no page-by-page probing of a frame
+split = false     # one frame per function, not a safe and an unsafe one
 ```
 
 Nothing in "Language-level guarantees" has a key, and nothing in it ever will: those are what the language means, not a
@@ -153,8 +154,12 @@ the full rules.
 - [ ] Static stack depth analysis: compute worst-case frame usage per entry point, emit max depth into the binary
   metadata, error on unbounded recursion in `!no_recursion` contexts.
 - [ ] Guard pages on every thread stack, including coroutine/generator frames if and only if they are heap allocated.
-- [ ] Safe/split stacks: separate "safe" objects from "unsafe" ones, where unsafe objects are buffers and arrays, so an
-  overflow of one cannot reach a return address or a spilled pointer.
+- [x] Safe/split stacks: separate "safe" objects from "unsafe" ones, where unsafe objects are buffers and arrays, so an
+  overflow of one cannot reach a return address or a spilled pointer. This is the measure the canary is a sampling
+  approximation of - a canary notices a smashed return address after the fact, and only if the overflow crossed the one
+  word it watches, whereas a split frame has no return address in front of the buffer to reach. Which side an object
+  lands on is decided per object by LLVM's analysis of its uses, not by its type: on this codebase 43 of 142 functions
+  end up with an unsafe frame at all, and the rest keep the single frame they had.
 - [ ] Stack variable re-ordering: arrays below scalars, randomised ordering per build, alongside function randomisation.
 
 **Implementation notes**
@@ -163,6 +168,17 @@ the full rules.
 - Probing is the inline sequence (`probe-stack`=`inline-asm`), not a call out to `__probestack`, so there is nothing
   extra to link and the probe cannot itself be the thing that overflows. Set as a module flag as well as a function
   attribute, so a frame a later pass creates by cloning or outlining is probed too.
+- The split stack's unsafe half is a per-thread mapping with a guard page below it, and it is `sppc` that provides it:
+  `sppc_unsafe_stack_up` maps one and publishes its top in `__safestack_unsafe_stack_ptr`, the emitted runtime start-up
+  calls it for the main thread, and `_sppc_thread_entry` calls it for every other thread before the s++ callable runs.
+  The variable is `initial-exec` thread-local, which is what makes reading it one instruction in a prologue, and also
+  why the runtime has to be linked normally rather than `dlopen`ed.
+- The three measures compose rather than overlap: LLVM moves the canary's own slot onto the unsafe stack, where it goes
+  on guarding the objects that are still adjacent to each other, and the probe walks whichever frame is being claimed.
+- Split stacks are not yet sound across the green-thread runtime: `gt_switch` swaps the safe stack but not the unsafe
+  stack pointer, so two tasks on one OS thread would interleave on one unsafe stack. Latent rather than live, because
+  `async` is not wired up to `sppc_async` yet - but `gt_ctx` needs to carry the unsafe pointer, and each task needs an
+  unsafe stack of its own, before it is.
 
 ## Control flow integrity
 

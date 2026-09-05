@@ -255,6 +255,14 @@ auto spp::utils::features::Schema()
           .Default = true,
           .Help = "Claim a frame a page at a time, so a large one cannot step over the guard page below the stack."
         },
+        KeySpec{
+          .Key = ConfigKey::MemoryStackSplit,
+          .Name = "split",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Put the objects a callee could overflow on a stack of their own, away from return addresses."
+        },
       },
       .FreeForm = false,
     },

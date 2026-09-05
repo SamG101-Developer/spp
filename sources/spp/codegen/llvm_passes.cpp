@@ -72,10 +72,14 @@ namespace {
    * cannot. @c sppc_init installs the signal dispositions, the locale and the malloc tuning that everything after it
    * assumes, starts the green-thread runtime, and builds the three stdio mutexes; a failure leaves those half-built.
    * @param[in,out] llvm_mod The module to emit it into.
+   * @param[in] split_stacks Also map this thread's unsafe stack, which the frames @c ApplySafeStack splits are
+   * allocated out of. Placed after @c sppc_init and before anything s++, which is the whole of the requirement: no
+   * s++ frame exists before this returns, and none can be built after it without one.
    * @return The shim, existing or new.
    */
   auto RuntimeInitShim(
-    llvm::Module &llvm_mod)
+    llvm::Module &llvm_mod,
+    const bool split_stacks)
     -> llvm::Function* {
     if (auto *const existing = llvm_mod.getFunction(kRuntimeInitShim)) { return existing; }
 
@@ -90,6 +94,8 @@ namespace {
       "sppc_init", llvm::FunctionType::get(i32_ty, {}, false));
     const auto exit_fn = llvm_mod.getOrInsertFunction(
       "exit", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {i32_ty}, false));
+    const auto stack_up = llvm_mod.getOrInsertFunction(
+      "sppc_unsafe_stack_up", llvm::FunctionType::get(i32_ty, {}, false));
 
     // Create the shim, a non-parameter, void-returning
     // function with internal linkage, which will be
@@ -102,6 +108,7 @@ namespace {
     // function, requiring the entry, "up" and failed
     // blocks.
     const auto entry_bb = llvm::BasicBlock::Create(ctx, "entry", shim);
+    const auto stack_bb = split_stacks ? llvm::BasicBlock::Create(ctx, "rt.stack", shim) : nullptr;
     const auto up_bb = llvm::BasicBlock::Create(ctx, "rt.up", shim);
     const auto failed_bb = llvm::BasicBlock::Create(ctx, "rt.failed", shim);
 
@@ -112,13 +119,32 @@ namespace {
     auto builder = llvm::IRBuilder<>(entry_bb);
     const auto init_rc = builder.CreateCall(init, {}, "rt.init");
     const auto init_ok = builder.CreateICmpEQ(init_rc, llvm::ConstantInt::get(i32_ty, 0), "rt.init.ok");
-    builder.CreateCondBr(init_ok, up_bb, failed_bb);
+    builder.CreateCondBr(init_ok, stack_bb != nullptr ? stack_bb : up_bb, failed_bb);
 
-    // Assuming init failed, the failed block calls "exit",
-    // and marks the following zone as "unreachable" (ie if
-    // "exit" cannot return).
+    // Step 2, when the frames are split: map this thread's
+    // unsafe stack. Same shape as the step above, and the
+    // same failure - a runtime that did not come up is not
+    // one to carry on past.
+    auto stack_rc = static_cast<llvm::Value*>(nullptr);
+    if (stack_bb != nullptr) {
+      builder.SetInsertPoint(stack_bb);
+      stack_rc = builder.CreateCall(stack_up, {}, "rt.stack");
+      const auto stack_ok = builder.CreateICmpEQ(stack_rc, llvm::ConstantInt::get(i32_ty, 0), "rt.stack.ok");
+      builder.CreateCondBr(stack_ok, up_bb, failed_bb);
+    }
+
+    // Whichever step failed, the failed block calls "exit"
+    // with its code, and marks the following zone as
+    // "unreachable" (ie if "exit" cannot return).
     builder.SetInsertPoint(failed_bb);
-    builder.CreateCall(exit_fn, {init_rc})->setDoesNotReturn();
+    auto *code = static_cast<llvm::Value*>(init_rc);
+    if (stack_bb != nullptr) {
+      const auto phi = builder.CreatePHI(i32_ty, 2, "rt.failed.rc");
+      phi->addIncoming(init_rc, entry_bb);
+      phi->addIncoming(stack_rc, stack_bb);
+      code = phi;
+    }
+    builder.CreateCall(exit_fn, {code})->setDoesNotReturn();
     builder.CreateUnreachable();
 
     // The successful "up" block simply returns Void as
@@ -516,7 +542,8 @@ auto spp::codegen::RunInternalizePass(
 
 auto spp::codegen::EmitCEntryPoint(
   void *llvm_module,
-  char const *spp_main_name)
+  char const *spp_main_name,
+  const bool split_stacks)
   -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
@@ -552,7 +579,7 @@ auto spp::codegen::EmitCEntryPoint(
   }
 
   const auto atexit_ty = llvm::FunctionType::get(i32_ty, {ptr_ty}, false);
-  builder.CreateCall(RuntimeInitShim(llvm_mod), {});
+  builder.CreateCall(RuntimeInitShim(llvm_mod, split_stacks), {});
   builder.CreateCall(llvm_mod.getOrInsertFunction("atexit", atexit_ty), {RuntimeCleanupShim(llvm_mod)});
   builder.CreateCall(spp_main, {});
 
@@ -603,6 +630,26 @@ auto spp::codegen::ApplyStackClashProtection(
     if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
     if (fn.hasFnAttribute(kProbeStackAttr)) { continue; }
     fn.addFnAttr(kProbeStackAttr, kProbeStackInlineAsm);
+    stamped += 1;
+  }
+  return stamped;
+}
+
+
+auto spp::codegen::ApplySafeStack(
+  void *llvm_module)
+  -> unsigned long {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  auto stamped = 0UL;
+  for (auto &fn : llvm_mod) {
+    // The same two exemptions as the canary and the probe: a
+    // declaration has no frame on this side to split, and a naked
+    // function's prologue is whatever it says it is - and a split
+    // frame is nothing but prologue.
+    if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
+    if (fn.hasFnAttribute(llvm::Attribute::SafeStack)) { continue; }
+    fn.addFnAttr(llvm::Attribute::SafeStack);
     stamped += 1;
   }
   return stamped;

@@ -394,7 +394,9 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // free to be internalized into it along with everything else.
   auto has_entry_point = false;
   if (const auto entry = _EntryPointLlvmName(); not entry.empty()) {
-    has_entry_point = codegen::EmitCEntryPoint(lto_module.get(), entry.c_str());
+    has_entry_point = codegen::EmitCEntryPoint(
+      lto_module.get(), entry.c_str(),
+      utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit));
   }
 
   if (has_entry_point) {
@@ -427,6 +429,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   const auto object_file = out.ObjectFile();
   FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
   FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
+  FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
 
   // A cross build stops at the object, no linking available for

@@ -52,15 +52,22 @@ namespace spp::codegen {
    * step clean over that page and land in whatever mapping follows, and the first write into the new frame hits
    * memory the function was never given - the "stack clash" shape, and the one hole a canary cannot see, because
    * nothing was overwritten on the way past.
-   *
-   * @n
-   * The probe is what makes the guard page load-bearing rather than decorative. It costs one touch per page of a
-   * frame, so a frame under a page - which is nearly all of them - pays nothing at all.
-   *
    * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
    * @return How many functions were given one.
    */
   auto ApplyStackClashProtection(void *llvm_module) -> unsigned long;
+
+  /**
+   * Split every function's frame in two: the objects a callee could write past stay on a separate "unsafe" stack, and
+   * the frame the hardware knows about - the return address, the saved registers, the spills - keeps only what nothing
+   * can reach out of bounds. What decides which side an object goes is llvm's own analysis of the object's uses: a
+   * local whose address escapes into a call that may capture or write it is unsafe, and one only ever read and written
+   * in bounds is not.
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   * @return How many functions were stamped. Not how many were split: a function with nothing unsafe in it keeps one
+   * frame, and llvm decides that per function when it lowers.
+   */
+  auto ApplySafeStack(void *llvm_module) -> unsigned long;
 
   /**
    * Emit @p llvm_module as a native object file at @p path .
@@ -93,9 +100,12 @@ namespace spp::codegen {
    *
    * @param[in,out] llvm_module The combined @c llvm::Module, as an opaque pointer.
    * @param[in] spp_main_name The linkage name of the s++ entry point.
+   * @param[in] split_stacks Whether to bring the main thread's unsafe stack up as part of the runtime start-up. Must
+   * match what @c ApplySafeStack is asked to do later: a program whose functions read an unsafe stack pointer that was
+   * never set up writes its first split frame through a null one.
    * @return @c true if the entry point was added.
    */
-  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name) -> bool;
+  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> bool;
 
   /**
    * Lower the coroutine intrinsics in a module into real state machines, and move generator frames into their callers.
