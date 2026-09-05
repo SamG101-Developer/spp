@@ -18,6 +18,7 @@
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 #include <llvm/Transforms/Coroutines/CoroAnnotationElide.h>
+#include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
 #include <llvm/Transforms/IPO/Internalize.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -25,38 +26,68 @@
 #include <spp/codegen/llvm_passes.hpp>
 
 namespace {
+  /** What a coroutine intrinsic's name starts with; see @c PendingCoroUses . */
+  constexpr auto kCoroIntrinsicPrefix = llvm::StringLiteral("llvm.coro.");
+
+  /**
+   * How many calls to a coroutine intrinsic are still waiting to be lowered.
+   *
+   * @n
+   * This is what the lowering pipeline is driving to zero, and so what says whether another run of it is worth
+   * doing. The passes lower one intrinsic into another ("coro.resume" becomes "coro.subfn.addr"), so one run does
+   * not finish the job; running until the count stops falling does, without assuming how many rounds that takes.
+   *
+   * @param llvm_mod The module to count in.
+   * @return The number of uses of any @c "llvm.coro.*" declaration.
+   */
+  auto PendingCoroUses(
+    llvm::Module const &llvm_mod)
+    -> unsigned long {
+    auto pending = 0UL;
+    for (auto const &fn : llvm_mod) {
+      if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix)) { continue; }
+      pending += fn.getNumUses();
+    }
+    return pending;
+  }
+
+  /**
+   * Erase every @c "llvm.lifetime.*" marker, and the declarations they came from.
+   *
+   * @n
+   * These only hint at what the optimizer may do, so dropping them costs stack slot reuse and nothing else. They were
+   * dropped originally because they could not be named correctly, and that is fixed now (see
+   * @c libstdcxx_string_compat.cpp ) - but honouring them is a change to what the backend is allowed to do with a
+   * frame, not a change of name, so it belongs to whoever wants to make it deliberately rather than riding in on a
+   * bug fix. Keeping the existing behaviour keeps this fix to the one thing it is about.
+   *
+   * @param[in,out] llvm_mod The module to strip.
+   */
+  auto DropLifetimeMarkers(
+    llvm::Module &llvm_mod)
+    -> void {
+    auto dead = llvm::SmallVector<llvm::Function*>();
+    for (auto &fn : llvm_mod) {
+      if (fn.isDeclaration() and fn.getName().starts_with("llvm.lifetime.")) { dead.push_back(&fn); }
+    }
+    for (auto *fn : dead) {
+      auto calls = llvm::SmallVector<llvm::CallBase*>();
+      for (auto *user : fn->users()) {
+        auto *const call = llvm::dyn_cast<llvm::CallBase>(user);
+        if (call == nullptr or call->getCalledFunction() != fn) { calls.clear(); break; }
+        calls.push_back(call);
+      }
+      for (auto *call : calls) { call->eraseFromParent(); }
+      if (fn->use_empty()) { fn->eraseFromParent(); }
+    }
+  }
+
   /** What every intrinsic name starts with, and the shortest a prefix can usefully be trimmed to. */
   constexpr auto kIntrinsicPrefix = llvm::StringLiteral("llvm.");
 
   /** How many repair-then-lower rounds the coroutine pipeline is allowed; see @c RunCoroLoweringPipeline . */
   constexpr auto kMaxCoroLoweringRounds = 4U;
 
-  /** Intrinsics that only hint at what the optimizer may do; see @c RepairMisnamedIntrinsics . */
-  constexpr auto kHintIntrinsicPrefix = llvm::StringLiteral("llvm.lifetime.");
-
-  /** The width of the field an intrinsic name is read back out of, junk and all; see @c RepairMisnamedIntrinsics . */
-  constexpr auto kNameFieldWidth = 31U;
-
-  /**
-   * Erase @p fn and every call to it. Only done when every use is a plain call: anything else means this is not the
-   * shape being worked around, and it is left alone to fail visibly rather than be quietly changed.
-   * @param[in,out] fn The declaration to drop.
-   * @return @c true if it was dropped.
-   */
-  auto DropCallsTo(
-    llvm::Function *fn)
-    -> bool {
-    auto calls = llvm::SmallVector<llvm::CallBase*>();
-    for (auto *user : fn->users()) {
-      const auto call = llvm::dyn_cast<llvm::CallBase>(user);
-      if (call == nullptr or call->getCalledFunction() != fn) { return false; }
-      calls.push_back(call);
-    }
-
-    for (auto *call : calls) { call->eraseFromParent(); }
-    fn->eraseFromParent();
-    return true;
-  }
 
   /** The name the runtime start-up shim is emitted under; dotted, so it cannot collide with a mangled s++ name. */
   constexpr auto kRuntimeInitShim = llvm::StringLiteral("spp.rt.init");
@@ -360,15 +391,14 @@ auto spp::codegen::RunCoroLoweringPipeline(
   -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
-  // See "RepairMisnamedIntrinsics". A misnamed intrinsic is invisible to
-  // these passes, so the names are put back before each run - and it takes
-  // more than one run, because the passes lower one intrinsic into another
-  // ("coro.resume" becomes "coro.subfn.addr") and the replacement is
-  // misnamed in its turn, leaving the next pass nothing to work on. Settles
-  // in three rounds; the bound is there so a repair that never reaches a
-  // fixed point cannot spin.
+  // One run of the pipeline does not finish the job: the passes lower one intrinsic into another ("coro.resume"
+  // becomes "coro.subfn.addr"), leaving the next pass something to do. So this runs until the coroutine intrinsics
+  // stop disappearing, rather than a fixed number of times; the bound is there so a module that never reaches a
+  // fixed point cannot spin. Names are put back first because a misnamed intrinsic is invisible to these passes -
+  // that no longer happens (see "RepairMisnamedIntrinsics"), but it costs a walk of the module to be sure.
+  auto previous = PendingCoroUses(llvm_mod);
   for (auto round = 0U; round < kMaxCoroLoweringRounds; ++round) {
-    if (RepairMisnamedIntrinsics(&llvm_mod) == 0 and round > 0) { break; }
+    RepairMisnamedIntrinsics(&llvm_mod);
 
     auto loop_am = llvm::LoopAnalysisManager();
     auto func_am = llvm::FunctionAnalysisManager();
@@ -387,6 +417,10 @@ auto spp::codegen::RunCoroLoweringPipeline(
     auto module_pm = pass_builder.buildO0DefaultPipeline(llvm::OptimizationLevel::O0);
     module_pm.addPass(llvm::createModuleToPostOrderCGSCCPassAdaptor(llvm::CoroAnnotationElidePass()));
     module_pm.run(llvm_mod, module_am);
+
+    const auto pending = PendingCoroUses(llvm_mod);
+    if (pending == 0 or pending >= previous) { break; }
+    previous = pending;
   }
 }
 
@@ -421,6 +455,29 @@ auto spp::codegen::RunOptimizationPipeline(
       default: return llvm::OptimizationLevel::O3;
     }
   }();
+
+  // Inline the "always_inline" functions first, and strip the lifetime markers that puts in, before the rest of the
+  // pipeline is allowed to read them.
+  //
+  // @n
+  // The builtins built by the "simple_coro_*" helpers - "Arr::fwd_ref", "View::slice_ref" and the rest - hand back
+  // the address of an entry-block alloca of their own, on the understanding that it is the coroutine frame and so
+  // outlives the call. It is not: by the time these are codegen'd there is no frame left, and they are
+  // "alwaysinline", so what actually happens is that the inliner moves the alloca into the caller and brackets it
+  // with "llvm.lifetime.start/end" scoped to the inlined body. The caller then reads the view *after* that
+  // "lifetime.end", which is undefined, and the optimizer duly forwards undef into it - "sppc_memcpy(dst, undef,
+  // undef, 0, 0)", and "Str::from(7_u32)" prints nothing.
+  //
+  // @n
+  // Stripping the markers removes the only thing that exploits it, which is consistent with this compiler not using
+  // them anywhere else (see @c DropLifetimeMarkers ). It is a containment, not a fix: the builtins should be handing
+  // back storage the caller owns, and until they do this is load-bearing.
+  if (opt_level != 0) {
+    auto inline_pm = llvm::ModulePassManager();
+    inline_pm.addPass(llvm::AlwaysInlinerPass());
+    inline_pm.run(llvm_mod, module_am);
+    DropLifetimeMarkers(llvm_mod);
+  }
 
   auto module_pm = opt_level == 0
     ? pass_builder.buildO0DefaultPipeline(level)
@@ -520,38 +577,35 @@ auto spp::codegen::RepairMisnamedIntrinsics(
   void *llvm_module)
   -> unsigned long {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  DropLifetimeMarkers(llvm_mod);
 
   // Collected first, because the repair adds to and removes from
   // the function list that this is walking.
   auto broken = llvm::SmallVector<llvm::Function*>();
   for (auto &fn : llvm_mod) {
-    if (not fn.isDeclaration() or not fn.getName().starts_with("llvm.")) { continue; }
+    if (not fn.isDeclaration() or not fn.getName().starts_with(kIntrinsicPrefix)) { continue; }
+
+    // A declaration whose name llvm does not resolve is misnamed by definition. One it does resolve is only
+    // interesting when it is overloaded, since that is the half of the name that can disagree with the signature.
     const auto id = fn.getIntrinsicID();
-    if (id == llvm::Intrinsic::not_intrinsic or llvm::Intrinsic::isOverloaded(id)) { broken.push_back(&fn); }
+    if (id == llvm::Intrinsic::not_intrinsic) { broken.push_back(&fn); continue; }
+    if (not llvm::Intrinsic::isOverloaded(id)) { continue; }
+
+    auto tys = llvm::SmallVector<llvm::Type*>();
+    if (not llvm::Intrinsic::isSignatureValid(id, fn.getFunctionType(), tys)) { continue; }
+    if (fn.getName() != llvm::Intrinsic::getName(id, tys, &llvm_mod, fn.getFunctionType())) {
+      broken.push_back(&fn);
+    }
   }
 
   auto repaired = 0UL;
   for (auto *fn : broken) {
     // The longest prefix llvm resolves is the real name. Going longest-first
     // keeps the overload suffix on the mangled ones ("llvm.lifetime.start.p0"
-    // resolves, and so would "llvm.lifetime.start" on its own); going one
-    // character at a time is what stops printable garbage being taken for
-    // part of the name, which a scan for the first unprintable byte would do.
+    // resolves, and so would "llvm.lifetime.start" on its own).
     const auto name = fn->getName();
-    auto real_name = llvm::StringRef();
-    auto rebuilt = std::string();
-
-    // Bug (?) where all names are a fixed length, presenting
-    // as corrupt strings because the genuine name doesn't
-    // necessarily reach the 31-byte limit. Patch this by byte-
-    // stripping.
     auto base = llvm::StringRef();
-    if (const auto nul = name.find('\0'); nul != llvm::StringRef::npos and nul < kNameFieldWidth) {
-      base = llvm::StringRef(name.data(), nul);
-      if (llvm::Intrinsic::lookupIntrinsicID(base) == llvm::Intrinsic::not_intrinsic) { base = llvm::StringRef(); }
-    }
-
-    for (auto len = name.size(); base.empty() and len > kIntrinsicPrefix.size(); --len) {
+    for (auto len = name.size(); len > kIntrinsicPrefix.size(); --len) {
       const auto candidate = name.substr(0, len);
       if (llvm::Intrinsic::lookupIntrinsicID(candidate) == llvm::Intrinsic::not_intrinsic) { continue; }
       base = candidate;
@@ -559,40 +613,17 @@ auto spp::codegen::RepairMisnamedIntrinsics(
     }
     if (base.empty()) { continue; }
 
-    // Hints are dropped because of corruption. Todo: Can we now
-    // re-enable them now we have the byte-stripping in place for
-    // corrupt names?
-    if (base.starts_with(kHintIntrinsicPrefix)) {
-      if (DropCallsTo(fn)) { repaired += 1; }
-      continue;
-    }
-
-    rebuilt.assign(base.data(), base.size());
+    auto rebuilt = std::string(base);
     const auto id = llvm::Intrinsic::lookupIntrinsicID(base);
 
     if (llvm::Intrinsic::isOverloaded(id)) {
       auto tys = llvm::SmallVector<llvm::Type*>();
       if (not llvm::Intrinsic::isSignatureValid(id, fn->getFunctionType(), tys)) { continue; }
-
-      const auto mangled = llvm::Intrinsic::getName(id, tys, &llvm_mod, fn->getFunctionType());
-      const auto *const raw = mangled.c_str();
-      if (std::strlen(raw) >= kNameFieldWidth) { continue; }
-
-      const auto *const suffix = raw + kNameFieldWidth;
-      const auto suffix_len = std::strlen(suffix);
-      if (suffix_len == 0) { continue; }
-
-      // A name that already ends in the suffix is a name that
-      // was already right - either it was never damaged, or an
-      // earlier round repaired it.
-      const auto tail = base.size() >= suffix_len
-        ? llvm::StringRef(base.data() + base.size() - suffix_len, suffix_len)
-        : llvm::StringRef();
-      if (tail == llvm::StringRef(suffix, suffix_len)) { continue; }
-      rebuilt.append(suffix, suffix_len);
+      rebuilt = llvm::Intrinsic::getName(id, tys, &llvm_mod, fn->getFunctionType());
     }
 
-    real_name = llvm::StringRef(rebuilt.c_str(), std::strlen(rebuilt.c_str()));
+    const auto real_name = llvm::StringRef(rebuilt);
+    if (real_name == name) { continue; }
 
     // A declaration under the real name may already be here, from a call
     // site whose name survived. Reusing it is the point - two declarations
