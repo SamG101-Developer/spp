@@ -247,6 +247,14 @@ auto spp::utils::features::Schema()
           .Default = true,
           .Help = "Put a canary between a frame's locals and its return address, and check it before the frame is left."
         },
+        KeySpec{
+          .Key = ConfigKey::MemoryStackProbe,
+          .Name = "probe",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Claim a frame a page at a time, so a large one cannot step over the guard page below the stack."
+        },
       },
       .FreeForm = false,
     },

@@ -47,6 +47,22 @@ namespace spp::codegen {
   auto ApplyStackProtector(void *llvm_module) -> unsigned long;
 
   /**
+   * Give every function in @p llvm_module an inline stack probe, so a frame is claimed a page at a time rather than
+   * by one subtraction from the stack pointer. Without it a frame larger than the guard page below the stack can
+   * step clean over that page and land in whatever mapping follows, and the first write into the new frame hits
+   * memory the function was never given - the "stack clash" shape, and the one hole a canary cannot see, because
+   * nothing was overwritten on the way past.
+   *
+   * @n
+   * The probe is what makes the guard page load-bearing rather than decorative. It costs one touch per page of a
+   * frame, so a frame under a page - which is nearly all of them - pays nothing at all.
+   *
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   * @return How many functions were given one.
+   */
+  auto ApplyStackClashProtection(void *llvm_module) -> unsigned long;
+
+  /**
    * Emit @p llvm_module as a native object file at @p path .
    * @param[in] llvm_module The @c llvm::Module to emit, as an opaque pointer.
    * @param[in] path Where to write the object file.

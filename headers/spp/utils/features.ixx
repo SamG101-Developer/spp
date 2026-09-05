@@ -26,6 +26,7 @@ namespace spp::utils::features {
     ProjectVersion,
     ProjectBuild,
     MemoryStackProtect,
+    MemoryStackProbe,
   };
 
   SPP_EXP_CLS struct KeySpec {
