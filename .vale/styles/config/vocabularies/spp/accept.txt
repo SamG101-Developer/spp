@@ -4,7 +4,9 @@ Todo
 # variants are written as regexes rather than as separate entries: listing both
 # `coroutine` and `Coroutine` makes Vale.Terms treat one casing as canonical and
 # flag every use of the other.
+[Aa]llocators?
 [Aa]sync
+[Aa]uditable
 [Bb]ooleans?
 [Cc]odegen
 [Cc]omptime
@@ -17,29 +19,35 @@ Todo
 [Dd]estructures?
 [Dd]estructured
 [Dd]estructuring
-[Ii]ntrinsics
+[Ee]lemtwise
+[Gg]lobals?
+[Ii]ntrinsics?
+[Ii]mmediates?
 [Ll]ockfiles?
+[Ll]ockdown
 [Mm]onomorphiz(e|es|ed|ing|ation)
 [Mm]utexes
+[Mm]itigations?
 [Nn]amespaces?
 [Oo]ptionals
 [Pp]arameterization
+[Rr]eassociation
 [Rr]ebindable
 [Rr]ecompil(e|es|ed|ing|ation)
 [Rr]eborrow(s|ed|ing)?
 [Rr]edeclar(e|es|ed|ing|ation|ations)
 [Rr]einitialization
 [Rr]elocations
+[Ss]andboxed
+[Ss]erialisers?
 [Ss]tackless
 [Ss]ubfolders?
 [Ss]ubstring
 [Ss]uperimpositions?
 [Tt]oolchain
+[Uu]serpsaces?
 [Vv]ariadic
-Asan
-MSan
-Tsan
-UBsan
+[Vv]ectorise
 
 # S++ identifiers and abbreviations that appear in running prose.
 APIs?
@@ -50,4 +58,16 @@ Vec
 cmp
 config
 const
+interop
+ptrace
+syscall
 yielder
+vtables?
+Asan
+MSan
+Tsan
+UBsan
+LLVM
+MSVC
+GCC
+Clang
