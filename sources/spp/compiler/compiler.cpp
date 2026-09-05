@@ -58,11 +58,22 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
 spp::compiler::Compiler::~Compiler() = default;
 
 auto spp::compiler::Compiler::Compile() -> void {
+  // The global scope is anchored to the first module in the
+  // tree, and every stage below walks that tree, so an empty
+  // one has nothing to compile and nowhere to put it. Error
+  // here to prevent empty vector reads later on.
+  if (m_modules->GetModules().IsEmpty()) {
+    std::cerr
+      << "Error: No modules found. A project needs at least one '.spp' file under 'src'.\n";
+    return;
+  }
+
   const auto is_exe = m_build_type == BuildType::EXE;
   auto num_modules = static_cast<std::uint32_t>(m_modules->GetModules().Len());
 
-  // One bar at a time: each is created as its stage begins and torn down as the next one replaces it, because a bar
-  // animates itself and only one of them can own the terminal line.
+  // One bar at a time: each is created as its stage begins and
+  // torn down as the next one replaces it, because a bar animates
+  // itself and only one of them can own the terminal line.
   auto stage_name = kCompilerStageNames.begin();
   auto bar = Unique<utils::ProgressBar>();
   const auto next_bar = [&]() -> utils::ProgressBar& {
@@ -70,7 +81,8 @@ auto spp::compiler::Compiler::Compile() -> void {
     return *bar;
   };
 
-  // We need the cleanup on error for the test suite runs (parallel), but in debug it's one shot, and error checking
+  // We need the cleanup on error for the test suite runs
+  // (parallel), but in debug it's one shot, and error checking
   // needs the full stack trace.
 #ifdef NDEBUG
   try {
@@ -142,15 +154,18 @@ auto spp::compiler::Compiler::CollectCompTimeConstants() -> void {
     modules, [&](auto const *mod) { return mod->path == main_path and mod->module_ast != nullptr; });
   if (main_module == modules.end()) { return; }
 
-  // Comp-time resolution replaces a "cmp" statement's value with the literal it resolved to, so the module's own ast
-  // is the record of what was computed - and it lists exactly the constants the module declares, where the module's
-  // scope would also hold everything the prelude imported into it.
+  // Comp-time resolution replaces a "cmp" statement's value
+  // with the literal it resolved to, so the module's own ast
+  // is the record of what was computed - and it lists the
+  // constants the module declares, where the module's scope
+  // would also hold everything the prelude imported into it.
   for (auto const *member : asts::AstBody((*main_module)->module_ast.get())) {
     const auto *cmp = member->To<asts::CmpStatementAst>();
     if (cmp == nullptr or cmp->Value == nullptr) { continue; }
 
-    // A "use"-generated constant aliases another module's, and a compiler-generated type is a mock standing in for a
-    // function rather than a value that was written.
+    // A "use"-generated constant aliases another module's,
+    // and a compiler-generated type is a mock standing in for
+    // a function rather than a value that was written.
     if (cmp->IsFromUseStatement() or cmp->Type->IsCompilerGeneratedType()) { continue; }
     m_comp_time_constants[cmp->Name->Val] = cmp->Value->ToString();
   }
