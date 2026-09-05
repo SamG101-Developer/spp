@@ -12,9 +12,15 @@ auto main(const std::int32_t argc, char **argv) -> int {
   mi_option_disable(mi_option_verbose);
 #endif
 
-  // Temporary test code to test a small project.
-  std::filesystem::current_path(
-    std::filesystem::absolute(argv[0]).parent_path().parent_path() / "project");
+  // The project to work in: whatever "--dir" names, and the sample project beside the binary otherwise - running
+  // this straight out of a build tree, which is what pressing run in an ide does, has to land somewhere.
+  auto project = std::filesystem::absolute(argv[0]).parent_path().parent_path() / "project";
+  for (auto i = 1; i < argc - 1; ++i) {
+    if (std::string_view(argv[i]) == "--dir") { project = argv[i + 1]; }
+  }
+  auto ec = std::error_code();
+  std::filesystem::current_path(project, ec);
+  if (ec) { std::cerr << "Error: cannot enter " << project << ": " << ec.message() << "\n"; return 1; }
 
   // Bare invocation runs the corpus, which is what this binary is mostly used for by hand. Anything else goes to the
   // cli, which requires a subcommand and would otherwise reject an empty argv. The mode matches what "spp run" itself
