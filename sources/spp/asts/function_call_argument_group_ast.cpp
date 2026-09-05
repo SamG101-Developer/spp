@@ -190,6 +190,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   using analyse::errors::SppMemoryOverlapUsageError;
   using analyse::errors::SppInvalidMutationError;
   using analyse::utils::mem_utils::ValidateSymbolMemory;
+  using analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow;
   using analyse::utils::mem_utils::MemRegionOverlap;
 
   // If the target is a coroutine, or the target is called as "async", then pins are required.
@@ -232,6 +233,12 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     meta->AssignmentTarget = saved_assignment_target;
 
     auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*arg->Val);
+
+    // A borrow the argument list has to keep apart, but that is named neither by a spelled convention nor by an
+    // outermost symbol, and so is invisible to all three branches below. "v[mut i]" is the shape; see the note on
+    // "ValidateUnnamedArgumentBorrow" for why it arrives that way and why nothing else catches it.
+    ValidateUnnamedArgumentBorrow(*arg, sym, borrows_ref, borrows_mut, *sm, meta);
+
     if (sym == nullptr) { continue; }
 
     // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,

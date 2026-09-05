@@ -10,6 +10,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct Ast;
   SPP_EXP_CLS struct CaseExpressionBranchAst;
   SPP_EXP_CLS struct ExpressionAst;
+  SPP_EXP_CLS struct FunctionCallArgumentAst;
 }
 
 namespace spp::analyse::scopes {
@@ -35,6 +36,26 @@ namespace spp::analyse::utils::mem_utils {
     asts::Ast const &ast_1,
     asts::Ast const &ast_2)
     -> bool;
+
+  /**
+   * Account for the borrow @p arg takes when the borrow has no name, and raise if it meets one already held.
+   * @param arg The argument to account for.
+   * @param sym The argument's outermost symbol, or null when it has none. A non-null one returns immediately: that
+   * borrow is named, and so is either taken by the caller's own branches or is a borrow being passed along rather
+   * than a second one taken here - the @c self of a @c {&mut self} method is the latter.
+   * @param[in,out] borrows_ref The immutable borrows the argument list holds so far.
+   * @param[in,out] borrows_mut The mutable borrows the argument list holds so far.
+   * @param sm The scope manager, for the argument's type and for the scope an error is reported against.
+   * @param meta Associated metadata, for the argument's type.
+   */
+  SPP_EXP_FUN auto ValidateUnnamedArgumentBorrow(
+    asts::FunctionCallArgumentAst const &arg,
+    scopes::VariableSymbol const *sym,
+    Vec<asts::Ast const*> &borrows_ref,
+    Vec<asts::Ast const*> &borrows_mut,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * Many memory checks are performed here by analysing the ASTs present in the value's symbol, to ensure that memory
