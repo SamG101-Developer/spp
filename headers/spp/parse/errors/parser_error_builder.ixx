@@ -23,7 +23,7 @@ template <typename T>
 struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
   std::size_t Pos = 0;
 
-  std::set<lex::SppTokenType> Tokens = {};
+  Set<lex::SppTokenType> Tokens = {};
 
   SPP_ATTR_COLD SyntacticErrorBuilder() = default;
 
