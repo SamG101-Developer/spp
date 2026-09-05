@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <cstring>
 
 #include <llvm/ADT/StringSet.h>
@@ -74,7 +75,10 @@ namespace {
       auto calls = llvm::SmallVector<llvm::CallBase*>();
       for (auto *user : fn->users()) {
         auto *const call = llvm::dyn_cast<llvm::CallBase>(user);
-        if (call == nullptr or call->getCalledFunction() != fn) { calls.clear(); break; }
+        if (call == nullptr or call->getCalledFunction() != fn) {
+          calls.clear();
+          break;
+        }
         calls.push_back(call);
       }
       for (auto *call : calls) { call->eraseFromParent(); }
@@ -87,7 +91,6 @@ namespace {
 
   /** How many repair-then-lower rounds the coroutine pipeline is allowed; see @c RunCoroLoweringPipeline . */
   constexpr auto kMaxCoroLoweringRounds = 4U;
-
 
   /** The name the runtime start-up shim is emitted under; dotted, so it cannot collide with a mangled s++ name. */
   constexpr auto kRuntimeInitShim = llvm::StringLiteral("spp.rt.init");
@@ -107,32 +110,50 @@ namespace {
     -> llvm::Function* {
     if (auto *const existing = llvm_mod.getFunction(kRuntimeInitShim)) { return existing; }
 
+    // General llvm preparation, get the context and some
+    // types that need defining.
     auto &ctx = llvm_mod.getContext();
     const auto i32_ty = llvm::Type::getInt32Ty(ctx);
+
+    // Get the functions that are needed specifically for
+    // this shim: the "sppc_init" and "exit" functions.
     const auto init = llvm_mod.getOrInsertFunction(
       "sppc_init", llvm::FunctionType::get(i32_ty, {}, false));
     const auto exit_fn = llvm_mod.getOrInsertFunction(
       "exit", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {i32_ty}, false));
 
+    // Create the shim, a non-parameter, void-returning
+    // function with internal linkage, which will be
+    // called explicitly, and owns the setup calls.
     const auto shim = llvm::Function::Create(
       llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
       llvm::Function::InternalLinkage, kRuntimeInitShim, &llvm_mod);
 
+    // Standard building blocks setup for the shim
+    // function, requiring the entry, "up" and failed
+    // blocks.
     const auto entry_bb = llvm::BasicBlock::Create(ctx, "entry", shim);
     const auto up_bb = llvm::BasicBlock::Create(ctx, "rt.up", shim);
     const auto failed_bb = llvm::BasicBlock::Create(ctx, "rt.failed", shim);
 
+    // Step 1: call the sppc_init boot function in the,
+    // sppc C library, which itself calls a number of
+    // boot functions. Check the result of that call,
+    // and branch to "up" or "failed" depending on result.
     auto builder = llvm::IRBuilder<>(entry_bb);
     const auto init_rc = builder.CreateCall(init, {}, "rt.init");
     const auto init_ok = builder.CreateICmpEQ(init_rc, llvm::ConstantInt::get(i32_ty, 0), "rt.init.ok");
     builder.CreateCondBr(init_ok, up_bb, failed_bb);
 
-    // Marked here rather than left to the pipeline to infer, because the
-    // "unreachable" after it is only well-formed if "exit" cannot return.
+    // Assuming init failed, the failed block calls "exit",
+    // and marks the following zone as "unreachable" (ie if
+    // "exit" cannot return).
     builder.SetInsertPoint(failed_bb);
     builder.CreateCall(exit_fn, {init_rc})->setDoesNotReturn();
     builder.CreateUnreachable();
 
+    // The successful "up" block simply returns Void as
+    // everything passed inside sppc.
     builder.SetInsertPoint(up_bb);
     builder.CreateRetVoid();
     return shim;
@@ -150,16 +171,27 @@ namespace {
     -> llvm::Function* {
     if (auto *const existing = llvm_mod.getFunction(kRuntimeCleanupShim)) { return existing; }
 
+    // General llvm preparation, get the context and some
+    // types that need defining.
     auto &ctx = llvm_mod.getContext();
+
+    // Get the functions that are needed specifically for
+    // this shim: the "sppc_cleanup" function.
     const auto cleanup = llvm_mod.getOrInsertFunction(
       "sppc_cleanup", llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}, false));
 
+    // Create the shim, a non-parameter, void-returning
+    // function with internal linkage, which will be
+    // called explicitly, and owns the cleanup calls.
     const auto shim = llvm::Function::Create(
       llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
       llvm::Function::InternalLinkage, kRuntimeCleanupShim, &llvm_mod);
 
-    // The result is the errno a "pthread_mutex_destroy" of a stdio lock failed with: EBUSY means the program still
-    // held one as it exited, which is a bug in it, but this runs too late for anything to be told about it.
+    // As this is the program teardown, there isn't really
+    // anything a success vs failure can be measured with,
+    // so call the entry block and be done. Possible error
+    // from the "pthread_mutex_destroy" of a stdio lock
+    // (EBUSY) but again not much we can do here.
     auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(ctx, "entry", shim));
     builder.CreateCall(cleanup, {});
     builder.CreateRetVoid();
@@ -172,7 +204,11 @@ namespace {
    */
   auto HostTriple()
     -> llvm::Triple const& {
-    static const auto triple = llvm::Triple(llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple()));
+    // Pull the triple from the llcm-known default, and
+    // run it through normalization. Static because it's
+    // always going to be the same.
+    static const auto triple = llvm::Triple(
+      llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple()));
     return triple;
   }
 
@@ -184,11 +220,16 @@ namespace {
     -> void {
     static const auto once = [] {
 #ifdef SPP_ALL_TARGETS
+      // All targets, including the host. This is used for
+      // the CI pipeline cross-compilation checks, and for
+      // normal cross-compilation.
       llvm::InitializeAllTargetInfos();
       llvm::InitializeAllTargets();
       llvm::InitializeAllTargetMCs();
       llvm::InitializeAllAsmPrinters();
 #else
+      // Native targets only (normal compilation, default to
+      // the host).
       llvm::InitializeNativeTarget();
       llvm::InitializeNativeTargetAsmPrinter();
 #endif
@@ -456,22 +497,27 @@ auto spp::codegen::RunOptimizationPipeline(
     }
   }();
 
-  // Inline the "always_inline" functions first, and strip the lifetime markers that puts in, before the rest of the
+  // Inline the "always_inline" functions first, and strip the
+  // lifetime markers that puts in, before the rest of the
   // pipeline is allowed to read them.
   //
-  // @n
-  // The builtins built by the "simple_coro_*" helpers - "Arr::fwd_ref", "View::slice_ref" and the rest - hand back
-  // the address of an entry-block alloca of their own, on the understanding that it is the coroutine frame and so
-  // outlives the call. It is not: by the time these are codegen'd there is no frame left, and they are
-  // "alwaysinline", so what actually happens is that the inliner moves the alloca into the caller and brackets it
-  // with "llvm.lifetime.start/end" scoped to the inlined body. The caller then reads the view *after* that
-  // "lifetime.end", which is undefined, and the optimizer duly forwards undef into it - "sppc_memcpy(dst, undef,
-  // undef, 0, 0)", and "Str::from(7_u32)" prints nothing.
+  // The builtins built by the "simple_coro_*" helpers hand back
+  // the address of an entry-block alloca of their own, on the
+  // understanding that it is the coroutine frame and so outlives
+  // the call. It is not: by the time these are codegen'd there is
+  // no frame left, and they are "alwaysinline", so what actually
+  // happens is that the inliner moves the alloca into the caller
+  // and brackets it with "llvm.lifetime.start/end" scoped to the
+  // inlined body. The caller then reads the view *after* that
+  // "lifetime.end", which is undefined, and the optimizer forwards
+  // undef into it - "sppc_memcpy(dst, undef, undef, 0, 0)", and
+  // "Str::from(7_u32)" prints nothing.
   //
-  // @n
-  // Stripping the markers removes the only thing that exploits it, which is consistent with this compiler not using
-  // them anywhere else (see @c DropLifetimeMarkers ). It is a containment, not a fix: the builtins should be handing
-  // back storage the caller owns, and until they do this is load-bearing.
+  // Stripping the markers removes the only thing that exploits
+  // it, which is consistent with this compiler not using them
+  // anywhere else (see @c DropLifetimeMarkers ). It is a
+  // containment, not a fix: the builtins should be handing back
+  // storage the caller owns, and until they do this is load-bearing.
   if (opt_level != 0) {
     auto inline_pm = llvm::ModulePassManager();
     inline_pm.addPass(llvm::AlwaysInlinerPass());
@@ -588,7 +634,10 @@ auto spp::codegen::RepairMisnamedIntrinsics(
     // A declaration whose name llvm does not resolve is misnamed by definition. One it does resolve is only
     // interesting when it is overloaded, since that is the half of the name that can disagree with the signature.
     const auto id = fn.getIntrinsicID();
-    if (id == llvm::Intrinsic::not_intrinsic) { broken.push_back(&fn); continue; }
+    if (id == llvm::Intrinsic::not_intrinsic) {
+      broken.push_back(&fn);
+      continue;
+    }
     if (not llvm::Intrinsic::isOverloaded(id)) { continue; }
 
     auto tys = llvm::SmallVector<llvm::Type*>();
@@ -652,6 +701,24 @@ auto spp::codegen::RepairMisnamedIntrinsics(
     repaired += 1;
   }
   return repaired;
+}
+
+auto spp::codegen::ApplyStackProtector(
+  void *llvm_module)
+  -> unsigned long {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  auto stamped = 0UL;
+  for (auto &fn : llvm_mod) {
+    // A declaration has no frame to protect, and a naked
+    // function's prologue is whatever it says it is. Pre-
+    // protected functions can be skipped here too.
+    if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
+    if (fn.hasFnAttribute(llvm::Attribute::StackProtectStrong)) { continue; }
+    fn.addFnAttr(llvm::Attribute::StackProtectStrong);
+    stamped += 1;
+  }
+  return stamped;
 }
 
 auto spp::codegen::EmitObjectFile(

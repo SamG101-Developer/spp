@@ -40,6 +40,13 @@ namespace spp::codegen {
   auto ApplyTargetToModule(void *llvm_module) -> void;
 
   /**
+   * Give every function in @p llvm_module a stack protector.
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   * @return How many functions were given one.
+   */
+  auto ApplyStackProtector(void *llvm_module) -> unsigned long;
+
+  /**
    * Emit @p llvm_module as a native object file at @p path .
    * @param[in] llvm_module The @c llvm::Module to emit, as an opaque pointer.
    * @param[in] path Where to write the object file.
