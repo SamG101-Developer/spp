@@ -459,6 +459,8 @@ auto spp::asts::CaseExpressionAst::InferType(
     final_not_else and not meta->IgnoreMissingElseBranchForInference,
     {sm->CurrentScope}, ERR_ARGS(*this, *Branches.Back()));
 
+  if (final_not_else) { return VoidType(PosStart()); }
+
   // Return the branches' return type. If there are any
   // branches, otherwise Void.
   return branches_type_info.IsEmpty()
