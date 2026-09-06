@@ -29,6 +29,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_defer;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 

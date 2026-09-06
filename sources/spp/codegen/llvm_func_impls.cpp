@@ -34,6 +34,7 @@ import spp.codegen.llvm_layout;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.utils.ptr;
 import spp.utils.types;
 import spp.utils.uid;

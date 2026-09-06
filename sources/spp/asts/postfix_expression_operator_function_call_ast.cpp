@@ -61,6 +61,7 @@ import spp.codegen.llvm_coros;
 import spp.codegen.llvm_func;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;

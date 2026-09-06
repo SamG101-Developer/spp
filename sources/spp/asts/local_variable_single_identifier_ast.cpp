@@ -16,6 +16,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
