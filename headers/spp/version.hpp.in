@@ -1,0 +1,5 @@
+#pragma once
+
+// Generated from headers/spp/version.hpp.in by CMake. The value comes from the VERSION file at the repository root,
+// which is also what the release pipeline reads to name its artefacts; edit that file, never this one.
+constexpr auto SPP_VERSION = "@SPP_VERSION@";

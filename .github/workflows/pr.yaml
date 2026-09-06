@@ -28,6 +28,7 @@ jobs:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      release_gate: ${{ steps.filter.outputs.release_gate }}
       cppcheck: ${{ steps.filter.outputs.cppcheck }}
       compile: ${{ steps.filter.outputs.compile }}
       cross_codegen: ${{ steps.filter.outputs.cross_codegen }}
@@ -61,6 +62,45 @@ jobs:
         with:
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha || github.sha }}
+
+  # Every code change ships as a release, so the VERSION file needs updating to a newer version. Non-code changes like
+  # docs or CI don't need the bump.
+  version:
+    name: Version & Changelog
+    needs: [ changes ]
+    if: needs.changes.outputs.release_gate == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      # Full history and tags: the check diffs VERSION against the base and refuses a number that is already tagged.
+      # The "fetch-tags" key is used rather than left to fetch-depth, because a tag lookup that fails open would let a
+      # version already released through.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Check version bump and changelog entry
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash .github/scripts/version-check/check-version.sh
 
   # pre-commit over the whole tree. The PR title is checked by pr_title.yaml, which needs an `edited`
   # trigger this workflow deliberately does not have.
@@ -213,7 +253,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ lint, cppcheck, build-test, docs, security ] # sonar
+    needs: [ lint, version, cppcheck, build-test, docs, security ] # sonar
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }

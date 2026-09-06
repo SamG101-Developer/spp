@@ -41,6 +41,13 @@ on:
         required: false
         type: boolean
         default: true
+      binary-artifact:
+        description: >-
+          Upload the built `spp` executable under this artifact name, renamed to match it. Empty means
+          the binary is not kept.
+        required: false
+        type: string
+        default: ""
 
 permissions: { }
 
@@ -154,6 +161,30 @@ jobs:
         with:
           path: build
           key: ${{ steps.cache-key.outputs.key }}
+
+      # Named on the way out rather than on the way in, so the artifact and the file inside it carry the same
+      # release-identifying name and the publish step can attach them without a rename.
+      - name: Stage binary for release
+        if: inputs.binary-artifact != ''
+        shell: bash
+        env:
+          ARTIFACT: ${{ inputs.binary-artifact }}
+        run: |
+          mkdir -p staged
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp build/spp.exe "staged/${ARTIFACT}.exe"
+          else
+            cp build/spp "staged/${ARTIFACT}"
+          fi
+
+      - name: Upload binary
+        if: inputs.binary-artifact != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ${{ inputs.binary-artifact }}
+          path: staged
+          if-no-files-found: error
+          retention-days: 7
 
       # Launch the specialised parallel googletest script.
       - name: Run tests

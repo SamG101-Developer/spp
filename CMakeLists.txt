@@ -41,12 +41,23 @@ endif ()
 option(
   SPP_USE_DEV_RPATH
   "Bake in the local dev toolchain rpath (/usr/local/gcc-dev/lib64)"
-  ON
-)
+  ON)
 if (SPP_USE_DEV_RPATH)
   set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64;/usr/local/lib")
   set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 endif ()
+
+# The compiler's own version, single-sourced from the VERSION
+# file at the repository root.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" SPP_VERSION LIMIT_COUNT 1)
+string(STRIP "${SPP_VERSION}" SPP_VERSION)
+set_property(
+  DIRECTORY APPEND
+  PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/headers/spp/version.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/generated/spp/version.hpp"
+  @ONLY)
 
 # Build options (consumed by CI in the configure-cmake
 # composite action).
@@ -65,8 +76,7 @@ if (SPP_SANITIZER)
   add_compile_options(
     -fsanitize=${_SPP_SAN_LIST}
     -fno-omit-frame-pointer
-    -fno-optimize-sibling-calls
-  )
+    -fno-optimize-sibling-calls)
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
 endif ()
 
@@ -185,18 +195,15 @@ endif ()
 target_sources(
   ${PROJECT_NAME}_lib
   PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
-  PRIVATE ${SOURCE_FILES}
-)
+  PRIVATE ${SOURCE_FILES})
 
 target_compile_features(
   ${PROJECT_NAME}_lib
-  PUBLIC $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>
-)
+  PUBLIC $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>)
 
 target_compile_options(
   ${PROJECT_NAME}_lib
-  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>
-)
+  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>)
 
 target_compile_definitions(
   ${PROJECT_NAME}_lib
@@ -208,19 +215,21 @@ target_compile_definitions(
 
 target_include_directories(
   ${PROJECT_NAME}_lib
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers
-)
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+
 target_include_directories(
   ${PROJECT_NAME}_lib
-  SYSTEM
-  PUBLIC ${LLVM_INCLUDE_DIRS}
-)
+  PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 target_include_directories(
   ${PROJECT_NAME}_lib
   SYSTEM
-  PUBLIC $<TARGET_PROPERTY:mimalloc,INTERFACE_INCLUDE_DIRECTORIES>
-)
+  PUBLIC ${LLVM_INCLUDE_DIRS})
+
+target_include_directories(
+  ${PROJECT_NAME}_lib
+  SYSTEM
+  PUBLIC $<TARGET_PROPERTY:mimalloc,INTERFACE_INCLUDE_DIRECTORIES>)
 
 target_link_libraries(
   ${PROJECT_NAME}_lib

@@ -2,8 +2,6 @@
 
 #include <spp/macros-platforms.hpp>
 
-constexpr auto SPP_VERSION = "0.1.0";
-
 #define SPP_ATTR_NODISCARD [[nodiscard]]
 #define SPP_ATTR_DEPRECATED [[deprecated]]
 #define SPP_ATTR_MAYBE_UNUSED [[maybe_unused]]

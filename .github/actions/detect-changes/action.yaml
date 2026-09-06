@@ -16,6 +16,11 @@ outputs:
     description: "'true' when a source, build-system, toolchain-pin or test-data path changed."
     value: ${{ steps.base.outputs.usable != 'true'
       || steps.filter.outputs.code_any_changed != 'false' }}
+  release_gate:
+    description: "'true' when `code` is true, or the release gate's own inputs or check script changed."
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.code_any_changed != 'false'
+      || steps.filter.outputs.release_gate_any_changed != 'false' }}
   cppcheck:
     description: "'true' when `code` is true, or a CI path the static analysis job reads changed."
     value: ${{ steps.base.outputs.usable != 'true'
@@ -67,11 +72,18 @@ runs:
             - '!.idea/**'
             - '!*.md'
             - '!.gitignore'
+            - '!VERSION'
+            - '!changelog/**'
             - '!.github/**'
             - '.github/dependencies.toml'
             - '.github/scripts/lib/**'
             - '.github/actions/detect-changes/**'
             - '.github/scripts/detect-changes/**'
+          release_gate:
+            - 'VERSION'
+            - 'changelog/**'
+            - '.github/workflows/pr.yaml'
+            - '.github/scripts/version-check/**'
           cppcheck:
             - '.github/workflows/pr.yaml'
             - '.github/workflows/_cppcheck.yaml'
