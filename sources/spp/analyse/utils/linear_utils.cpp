@@ -108,7 +108,7 @@ namespace spp::analyse::utils::linear_utils {
       if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return true; }
 
       const auto owner = sym.Name->ToString();
-      for (auto const &attr : type_members::GetAllAttrs(*sym.Type, sm)) {
+      for (auto const &attr : type_members::GetAllAttrs(*sym.Type, *sm.CurrentScope)) {
         const auto attr_type_sym = spp::get<1>(attr);
         if (attr_type_sym == nullptr or attr_type_sym->IsCopyable()) { continue; }
 

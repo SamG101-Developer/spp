@@ -97,7 +97,7 @@ auto spp::codegen::EmitDrop(
   // Only a type that has no destructor of its own is destroyed
   // attribute by attribute, in reverse declaration order,
   // mirroring the order they were initialized in.
-  auto attrs = GetAllAttrs(*type_sym.FqName(), *sm);
+  auto attrs = GetAllAttrs(*type_sym.FqName(), *sm->CurrentScope);
   const auto struct_ty = GetLlvmType(type_sym, ctx);
   if (not llvm::isa<llvm::StructType>(struct_ty)) { return; }
 

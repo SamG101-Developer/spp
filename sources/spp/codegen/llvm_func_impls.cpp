@@ -1186,7 +1186,7 @@ auto spp::codegen::func_impls::simple_coro_vector_fwd(
 
   // The buffer lays its own fields out independently of the vector's, so its pointer is reached through its own map
   // rather than assumed to have stayed first.
-  const auto buffer_type_sym = spp::get<1>(GetAllAttrs(*vec_type, *sm)[0]);
+  const auto buffer_type_sym = spp::get<1>(GetAllAttrs(*vec_type, *sm->CurrentScope)[0]);
   const auto buffer_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*buffer_type_sym, ctx));
   const auto buffer_ptr_idx = GetPhysicalFieldIndex(*buffer_type_sym->LlvmInfo, 0);
 

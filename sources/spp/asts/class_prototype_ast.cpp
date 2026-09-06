@@ -481,7 +481,7 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
 
   // Class attributes are read from the attribute types.
   else {
-    types = GetAllAttrs(*type_sym->FqName(), *sm)
+    types = GetAllAttrs(*type_sym->FqName(), *sm->CurrentScope)
       | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair); })
       | genex::views::transform([&](auto const &type) { return lower_field(type); })
       | genex::to<Vec>();

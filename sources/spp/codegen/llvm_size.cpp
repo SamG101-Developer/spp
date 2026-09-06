@@ -190,7 +190,7 @@ namespace spp::codegen {
     // first, then largest, which is what minimizes the padding
     // between them.
     auto attr_layouts = Vec<Layout>();
-    for (auto const &attr : analyse::utils::type_members::GetAllAttrs(type, sm)) {
+    for (auto const &attr : analyse::utils::type_members::GetAllAttrs(type, *sm.CurrentScope)) {
       attr_layouts.EmplaceBack(LayoutOf(sm, *spp::get<1>(attr)->FqName()));
     }
     attr_layouts |= genex::actions::stable_sort([](auto const &a, auto const &b) {

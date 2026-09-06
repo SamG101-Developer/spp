@@ -190,7 +190,7 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   // the recursion is bounded by the nesting depth of the
   // type.
   return genex::any_of(
-    GetAllAttrs(*type_sym.FqName(), sm), [&](auto const &attr) {
+    GetAllAttrs(*type_sym.FqName(), *sm.CurrentScope), [&](auto const &attr) {
       const auto attr_type_sym = std::get<1>(attr);
       return attr_type_sym != nullptr and attr_type_sym != &type_sym and NeedsDrop(*attr_type_sym, sm, meta);
     });
@@ -231,7 +231,7 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
 
     // Otherwise destruction is attribute by attribute, and it is
     // their destructors that have to exist.
-    for (auto const &attr : GetAllAttrs(*sym.FqName(), sm)) {
+    for (auto const &attr : GetAllAttrs(*sym.FqName(), *sm.CurrentScope)) {
       const auto attr_type_sym = std::get<1>(attr);
       if (attr_type_sym == nullptr or attr_type_sym == &sym) { continue; }
       self(self, *attr_type_sym);

@@ -128,7 +128,7 @@ namespace spp::analyse::utils::case_utils {
       // named attribute's declaration index has to be resolved
       // through the type's own field index map.
       else {
-        const auto decl_index = GetFieldIndexInType(*bare_type, field_name, sm);
+        const auto decl_index = GetFieldIndexInType(*bare_type, field_name, *sm.CurrentScope);
         const auto field_index = codegen::GetPhysicalFieldIndex(*base_type_sym->LlvmInfo, decl_index);
         field_ptr = ctx->Builder.CreateStructGEP(
           llvm_base_ty, base_ptr, field_index, "case.pattern.field_ptr" + uid);

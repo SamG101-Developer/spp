@@ -93,14 +93,14 @@ namespace spp::analyse::utils::type_members {
      * to walk separately - one over the symbol table, one over the class prototype's members, and only one of them
      * skipping generic symbols - so a single generic-typed attribute silently desynchronised them.
      * @param type The type whose attributes are wanted.
-     * @param sm The scope manager, used to resolve @p type to its symbol.
+     * @param scope The scope, used to resolve @p type to its symbol.
      * @return One pair per attribute, ordered by the type itself then its super scopes.
      */
     auto CollectAttrSyms(
       asts::TypeAst const &type,
-      scopes::ScopeManager const &sm)
+      scopes::Scope const &scope)
       -> Vec<Pair<scopes::Scope*, scopes::VariableSymbol*>> {
-      const auto cls_sym = sm.CurrentScope->GetTypeSymbol(&type);
+      const auto cls_sym = scope.GetTypeSymbol(&type);
       auto all_scopes = Vec{cls_sym->LinkedScope};
       all_scopes.AppendRange(cls_sym->LinkedScope->SupScopes());
 
@@ -119,10 +119,10 @@ namespace spp::analyse::utils::type_members {
 
 auto spp::analyse::utils::type_members::GetAllAttrs(
   asts::TypeAst const &type,
-  scopes::ScopeManager const &sm)
+  scopes::Scope const &scope)
   -> Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>> {
   auto extended_syms = Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>>{};
-  for (auto const &[sup_scope, sym] : CollectAttrSyms(type, sm)) {
+  for (auto const &[sup_scope, sym] : CollectAttrSyms(type, scope)) {
     extended_syms.PushBack({sym->Name, sup_scope->GetTypeSymbol(sym->Type.get()), sup_scope});
   }
 
@@ -225,13 +225,13 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
 
 auto spp::analyse::utils::type_members::GetAllAttrAsts(
   asts::TypeAst const &type,
-  scopes::ScopeManager const &sm)
+  scopes::Scope const &scope)
   -> Vec<asts::ClassAttributeAst*> {
   // Driven off the same walk as "GetAllAttrs" so the two line up index for index, then resolved to an ast by name
   // within the scope the symbol came from. Enumerating the prototype's members directly is what let the two lists
   // drift, because the member list has no notion of the generic symbols the other walk skips.
   auto attr_asts = Vec<asts::ClassAttributeAst*>{};
-  for (auto const &[sup_scope, sym] : CollectAttrSyms(type, sm)) {
+  for (auto const &[sup_scope, sym] : CollectAttrSyms(type, scope)) {
     const auto cls_proto = sup_scope->AstNode->ToUnchecked<asts::ClassPrototypeAst>();
     auto *found = static_cast<asts::ClassAttributeAst*>(nullptr);
     for (auto const &member : cls_proto->Impl->Members) {
@@ -253,15 +253,15 @@ auto spp::analyse::utils::type_members::GetAllAttrAsts(
 auto spp::analyse::utils::type_members::GetFieldIndexInType(
   asts::TypeAst const &type_sym,
   asts::IdentifierAst const &field_name,
-  scopes::ScopeManager const &sm)
+  scopes::Scope const &scope)
   -> std::size_t {
   // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that interface's fat-pointer fields prepended ahead of
   // its own declared attributes (see "ClassPrototypeAst::FillLlvmLayout"), so an attribute's declared index has
   // to be shifted past them.
-  const auto base = type_predicates::GetSuperimposedFatPointerFieldCount(type_sym, *sm.CurrentScope);
+  const auto base = type_predicates::GetSuperimposedFatPointerFieldCount(type_sym, scope);
 
   // Get all the attributes on the type.
-  const auto all_attrs = GetAllAttrs(type_sym, sm);
+  const auto all_attrs = GetAllAttrs(type_sym, scope);
 
   // Find the field index.
   for (auto index = 0uz; index < all_attrs.Len(); ++index) {

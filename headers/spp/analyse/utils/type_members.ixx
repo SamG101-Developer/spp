@@ -16,14 +16,17 @@ namespace spp::asts {
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
   SPP_EXP_CLS struct TypeSymbol;
 }
 
 namespace spp::analyse::utils::type_members {
+  /**
+   * The attributes of a type and all of its super types, each with the symbol of its own type and the scope that type
+   * resolves in. All this needs is a scope to look @p type up from.
+   */
   SPP_EXP_FUN auto GetAllAttrs(
     asts::TypeAst const &type,
-    scopes::ScopeManager const &sm)
+    scopes::Scope const &scope)
     -> Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>>;
 
   /**
@@ -57,12 +60,12 @@ namespace spp::analyse::utils::type_members {
    */
   SPP_EXP_FUN auto GetAllAttrAsts(
     asts::TypeAst const &type,
-    scopes::ScopeManager const &sm)
+    scopes::Scope const &scope)
     -> Vec<asts::ClassAttributeAst*>;
 
   SPP_EXP_FUN auto GetFieldIndexInType(
     asts::TypeAst const &type_sym,
     asts::IdentifierAst const &field_name,
-    scopes::ScopeManager const &sm)
+    scopes::Scope const &scope)
     -> std::size_t;
 }

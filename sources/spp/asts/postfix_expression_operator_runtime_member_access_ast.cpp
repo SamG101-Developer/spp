@@ -394,7 +394,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
     // because the S++ layout re-orders the fields to minimize
     // padding, so the declaration index has to be resolved
     // through the type's field index map.
-    const auto decl_index = GetFieldIndexInType(*lhs_type, *Name, *sm);
+    const auto decl_index = GetFieldIndexInType(*lhs_type, *Name, *sm->CurrentScope);
     const auto field_index = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, decl_index);
     field_ptr = ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
   }
