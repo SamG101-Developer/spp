@@ -159,7 +159,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   // Todo: See why this might be happening anyway, and remove this check preferably.
   if (_OverloadInfo.has_value()) { return; }
 
-  // Analyse the generic arguments and the function call arguments before determining the overload.
+  // Analyse the generic arguments and the function call
+  // arguments before determining the overload.
   {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
@@ -177,7 +178,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   // Resolve the overload for this function call.
   auto [overload, is_closure] = DetermineOverload(*this, sm, meta);
 
-  // Special case for closures; apply the convention the closure name to ensure is it movable/mutable etc.
+  // Special case for closures; apply the convention the
+  // closure name to ensure is it movable/mutable etc.
   if (is_closure) {
     const auto lhs_type = IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
     auto dummy_self_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
@@ -204,22 +206,27 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   }
   FnArgGroup->Args = std::move(overload.FnArgs->Args);
 
-  // A unit test belongs to the harness, not to the program. Calling one would run it as part of whatever called it,
-  // and there is no sensible meaning for that, so the call is rejected wherever it appears.
+  // A unit test belongs to the harness, not to the program.
+  // Calling one would run it as part of whatever called it,
+  // and there is no sensible meaning for that, so the call
+  // is rejected wherever it appears.
   if (const auto test_annotation = _OverloadInfo->Proto->TestAnnotation;
     test_annotation != nullptr and not meta->IsTestHarness) {
     Raise<analyse::errors::SppUnitTestNotCallableError>(
       {sm->CurrentScope}, ERR_ARGS(*this, *test_annotation));
   }
 
-  // Check that if we are in a cmp context, that the overload is also cmp.
+  // Check that if we are in a cmp context, that the overload
+  // is also cmp.
   RaiseIf<SppInvalidComptimeOperationError>(
     meta->EnclosingFunctionCmp != nullptr and _OverloadInfo->Proto->TokCmp == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*this));
 
-  // Special case for GenOnce called as a coroutine => auto move into the "Yield" type.
+  // Special case for GenOnce called as a coroutine => auto
+  // move into the "Yield" type.
   if (_OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_COR and not meta->PreventAutoGeneratorResume) {
-    // This needs to be any type that EXTENDS GenOnce, not just GenOnce itself.
+    // This needs to be any type that EXTENDS GenOnce, not
+    // just GenOnce itself.
     auto [_, _, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
       *_OverloadInfo->Proto->ReturnType, *sm->CurrentScope, *meta->PostfixExpressionLhs, "GenOnce collapse");
     _IsCoroAndAutoResume = is_once;
@@ -233,7 +240,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
       *ret_type->WithoutConvention(), *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *ret_type, "function return type"));
 
-  // Copy some properties into the transform (clone arg group for the self arg convention).
+  // Copy some properties into the transform (clone arg
+  // group for the self arg convention).
   if (_TransformedAst) {
     const auto transformed_op = _TransformedAst->Op->To<PostfixExpressionOperatorFunctionCallAst>();
     transformed_op->FnArgGroup = AstClone(FnArgGroup);
@@ -249,13 +257,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // If a fold is taking place, analyse the folded transformations.
+  // If a fold is taking place, analyse the folded
+  // transformations.
   if (Fold != nullptr) {
     for (auto const &ast : _FoldedAsts) { ast->Stage8_CheckMemory(sm, meta); }
     return;
   }
 
-  // If a closure is being called, apply memory rules to the symbolic target.
+  // If a closure is being called, apply memory rules to
+  // the symbolic target.
   if (_ClosureDummyArg != nullptr) {
     auto closure_args = Vec<Unique<FunctionCallArgumentAst>>();
     closure_args.EmplaceBack(std::move(_ClosureDummyArg));
@@ -264,7 +274,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     _ClosureDummyArgGroup->Stage8_CheckMemory(sm, meta);
   }
 
-  // Check the argument group, now the old borrows have been invalidated.
+  // Check the argument group, now the old borrows have
+  // been invalidated.
   GnArgGroup->Stage8_CheckMemory(sm, meta);
 
   const auto _meta_guard = meta::MetaGuard(meta);
@@ -281,7 +292,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   using analyse::errors::SppCompileTimeConstantError;
   using analyse::errors::SppCompileTimeConstantError;
 
-  // When coming from stage7 (also limit this allowance based on meta->CurrentStage for when we expand to cmp generics?)
+  // When coming from stage7 (also limit this allowance based
+  // on meta->CurrentStage for when we expand to cmp generics?)
   auto revoke = false;
   if (not _OverloadInfo.has_value()) {
     revoke = true;
@@ -299,8 +311,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     Fold != nullptr,
     {sm->CurrentScope}, ERR_ARGS(*Fold));
 
-  // Create the argument map for the function to use. Positional arguments (including the implicit "self"
-  // injected for method-call syntax) are matched to parameters by position; keyword arguments by name.
+  // Create the argument map for the function to use. Positional
+  // arguments (including the implicit "self" injected for
+  // method-call syntax) are matched to parameters by position;
+  // keyword arguments by name.
   const auto fn_params = fn_proto->FnParamGroup->GetAllParams();
   auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
   for (auto const &[i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
@@ -327,10 +341,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
   }
 
-  // Every function reaches comp-time resolution through here, so this is where an integer result is checked against
-  // what its type can hold. Comp-time arithmetic is exact, so a result that does not fit arrives intact rather than
-  // having wrapped on the way out. Checking per call - rather than once at the end - is what makes it agree with the
-  // same expression at runtime: an intermediate that overflows overflows either way.
+  // Every function reaches comp-time resolution through here,
+  // so this is where an integer result is checked against what
+  // its type can hold. Comp-time arithmetic is exact, so a
+  // result that does not fit arrives intact rather than having
+  // wrapped on the way out. Checked per call to catch overflow.
   const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
   if (const auto int_result = meta->CmpResult != nullptr ? meta->CmpResult->To<IntegerLiteralAst>() : nullptr) {
     int_result->ValidateBounds(*owner, *sm);
@@ -365,25 +380,30 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     return merge->Stage11_CodeGen(sm, meta, ctx);
   }
 
-  // Closure calls: the left-hand side is a closure value, a FunXXX type, which lowers to a { fn_ptr, env_ptr } pair.
-  // Extract the two pointers and call through fn_ptr, prepending the environment pointer (the closure function is
-  // compiled as "(env*, ...params) -> ret").
+  // Closure calls: the left-hand side is a closure value, a
+  // FunXXX type, which lowers to a { fn_ptr, env_ptr } pair.
+  // Extract the two pointers and call through fn_ptr,
+  // prepending the environment pointer (the closure function
+  // is compiled as "(env*, ...params) -> ret").
   if (_ClosureDummyProto != nullptr) {
     const auto closure_uid = "." + spp::utils::Uid(this);
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto closure_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
 
-    // The lhs' static type determines the physical field indices of "{ fn_ptr, env_ptr }": a plain "FunXXX" has no
-    // extra fields, but a class that superimposes one (see "GetFatPointerFields") may declare its own attributes
-    // too, and the "Spp" layout can reorder any of them - "GetPhysicalFieldIndex" maps back from the fixed
+    // The lhs' static type determines the physical field indices
+    // of "{ fn_ptr, env_ptr }": a plain "FunXXX" has no extra
+    // fields, but a class that superimposes one may declare its
+    // own attributes too, and the "spp" layout can reorder any of
+    // them - "GetPhysicalFieldIndex" maps back from the fixed
     // declared prefix (0, 1) to wherever they actually ended up.
     const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_ty.get());
     const auto fn_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
     const auto env_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 1);
 
-    // The lhs is the { fn_ptr, env_ptr } value directly, or for a borrowed closure, a pointer to it, so read the
-    // fields accordingly.
+    // The lhs is the { fn_ptr, env_ptr } value directly, or for
+    // a borrowed closure, a pointer to it, so read the fields
+    // accordingly.
     auto fn_ptr = static_cast<llvm::Value*>(nullptr);
     auto env_ptr = static_cast<llvm::Value*>(nullptr);
     if (closure_val->getType()->isPointerTy()) {
@@ -398,29 +418,54 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       env_ptr = ctx->Builder.CreateExtractValue(closure_val, {env_ptr_idx}, "closure.env_ptr" + closure_uid);
     }
 
-    // Generate the argument values, prepending the environment pointer.
+    // Generate the argument values, prepending the environment
+    // pointer.
     auto closure_args = FnArgGroup->Args
       | genex::views::transform([sm, meta, ctx](auto const &x) { return x->Stage11_CodeGen(sm, meta, ctx); })
       | genex::to<Vec>();
     closure_args.Insert(closure_args.begin(), env_ptr);
 
-    // Reconstruct the closure's function type ("(env*, ...params) -> ret") to call through the pointer.
+    // Reconstruct the closure's function type
+    // ("(env*, ...params) -> ret") to call through the pointer.
     auto closure_param_tys = closure_args
       | genex::views::transform([](auto const &v) { return v->getType(); })
       | genex::to<Vec>();
-    const auto closure_ret_ty = codegen::GetLlvmTypeOf(*InferType(sm, meta), *sm->CurrentScope, ctx);
-    const auto closure_fn_ty = llvm::FunctionType::get(closure_ret_ty, closure_param_tys.ToStdVector(), false);
 
-    // A call returning Void cannot be given a name (llvm forbids naming void values).
-    return closure_ret_ty->isVoidTy()
-      ? ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args.ToStdVector())
-      : ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args.ToStdVector(), "closure.call" + closure_uid);
+    // Bandaid for resolving generic issues with closure return
+    // types, before any variant coercion is done. Todo: tidy this
+    // up.
+    const auto expected_ret_type = InferType(sm, meta);
+    auto actual_ret_type = expected_ret_type;
+    if (const auto callable_ty = analyse::utils::type_utils::GetFunctionalType(*lhs_ty, *sm->CurrentScope);
+      callable_ty != nullptr) {
+      if (const auto out = callable_ty->LastTypePart()->GnArgGroup->TypeAt("Out"); out != nullptr) {
+        actual_ret_type = out->Val;
+      }
+    }
+
+    const auto closure_ret_ty = codegen::GetLlvmTypeOf(
+      *actual_ret_type, *sm->CurrentScope, ctx);
+    const auto closure_fn_ty = llvm::FunctionType::get(
+      closure_ret_ty, closure_param_tys.ToStdVector(), false);
+
+    // A call returning Void cannot be given a name (llvm forbids
+    // naming void values).
+    if (closure_ret_ty->isVoidTy()) {
+      return ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args.ToStdVector());
+    }
+
+    // Build the proper (named) call and then do the variant
+    // coercion.
+    const auto closure_call = ctx->Builder.CreateCall(
+      closure_fn_ty, fn_ptr, closure_args.ToStdVector(), "closure.call" + closure_uid);
+    return codegen::CoerceToVariant(
+      closure_call, *expected_ret_type, *actual_ret_type, *sm->CurrentScope, "closure.ret" + closure_uid, ctx);
   }
 
-  // Coroutine calls: calling a coroutine does not run its body, it
-  // constructs a generator. The frame is owned by the llvm coroutine
-  // intrinsics, and the value handed back is nothing but the
-  // "llvm.coro.begin" handle.
+  // Coroutine calls: calling a coroutine does not run its body,
+  // it constructs a generator. The frame is owned by the llvm
+  // coroutine intrinsics, and the value handed back is nothing
+  // but the "llvm.coro.begin" handle.
   const auto is_coroutine_call = Target()->IsCoroutine();
 
   // For generically converted function prototypes, generate
