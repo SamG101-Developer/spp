@@ -47,10 +47,6 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC("std.generator.GenOnce.drop", std_generator_drop);
   SPP_DEFINE_BUILTIN_FUNC("std.generator.GenOnce.send", std_generator_once_send);
 
-  SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.get_ref", std_slot_get_ref);
-  SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.get_mut", std_slot_get_mut);
-  SPP_DEFINE_BUILTIN_FUNC("std.slot.Slot.replace", std_slot_replace);
-
   SPP_DEFINE_BUILTIN_FUNC("std.string_view.StrView.slice_ref", std_string_view_slice_ref);
   SPP_DEFINE_BUILTIN_FUNC("std.string_view.StrView.slice_mut", std_string_view_slice_mut);
 

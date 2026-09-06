@@ -157,7 +157,7 @@ export namespace spp::codegen::func_impls {
    * "(&self, val: T, order: U8) -> T": "Atom[T]::fetch_*"/"exchange" all share this exact shape - atomically apply
    * an "AtomicRmwOp" between "self.val" and "val", returning "self.val"'s value from *before* the operation (which
    * is exactly what "llvm.atomicrmw" itself returns, so no extra load/store choreography is needed). These are
-   * methods (not coroutines, and not free "_inner" functions), so - like "std_slot_replace" - this builds directly
+   * methods (not coroutines, and not free "_inner" functions), so this builds directly
    * into the already-declared/open function rather than via "simple_create_fn".
    */
   auto simple_atomic_fetch_rmw(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, AtomicRmwOp op) -> void;
@@ -453,9 +453,6 @@ export namespace spp::codegen::func_impls {
   auto std_generator_drop(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_generator_once_send(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
-  auto std_slot_get_ref(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_slot_get_mut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto std_slot_replace(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto std_string_view_slice_ref(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto std_string_view_slice_mut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;

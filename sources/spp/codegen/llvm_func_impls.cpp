@@ -688,7 +688,7 @@ static auto read_atomic_ordering(
 auto spp::codegen::func_impls::simple_atomic_fetch_rmw(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const AtomicRmwOp op) -> void {
   // "(&self, val: T, order: U8) -> T": a plain method (not a coroutine, and not a free "_inner" function), so its
-  // "llvm::Function" is already declared/opened by the time this runs - same as "std_slot_replace" - and "self" is
+  // "llvm::Function" is already declared/opened by the time this runs, and "self" is
   // already bound; no "simple_create_fn"/env indirection needed.
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
@@ -2396,66 +2396,6 @@ auto spp::codegen::func_impls::std_generator_drop(
   const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get());
   EmitDrop(*self_ty_sym, self_sym->LlvmInfo->Alloca, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
-}
-
-auto spp::codegen::func_impls::std_slot_get_ref(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  //
-  using asts::generate::common_types_precompiled::SELF_VAR;
-  const auto uid = "." + utils::Uid();
-  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
-  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto self_ptr = ctx->Builder.CreateLoad(
-    ptr_ty, self_sym->LlvmInfo->Alloca, "slot.self" + uid);
-
-  struct CustomExpr : asts::ExpressionAst {
-    SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
-    SPP_AST_KIND(ExpressionAst)
-
-    decltype(self_ptr) &_SelfPtr;
-
-    explicit CustomExpr(
-      decltype(self_ptr) &self_ptr) :
-      _SelfPtr(self_ptr) {}
-
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
-      return _SelfPtr;
-    }
-  };
-
-  const auto mock_gen = MakeUnique<asts::GenExpressionAst>(
-    nullptr, nullptr, MakeUnique<CustomExpr>(self_ptr));
-  mock_gen->Stage11_CodeGen(sm, meta, ctx);
-}
-
-auto spp::codegen::func_impls::std_slot_get_mut(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
-  //
-  std_slot_get_ref(sm, proto, meta, ctx, ty);
-}
-
-auto spp::codegen::func_impls::std_slot_replace(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  //
-  using asts::generate::common_types_precompiled::SELF_VAR;
-  const auto uid = "." + utils::Uid();
-  const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
-  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "slot.replace.self" + uid);
-  const auto slot_ty = llvm::cast<llvm::StructType>(
-    GetLlvmType(*sm->CurrentScope->GetTypeSymbol(self_sym->Type.get()), ctx));
-
-  const auto val_field_ptr = ctx->Builder.CreateStructGEP(slot_ty, self_ptr, 0, "slot.replace.val_ptr" + uid);
-  const auto val_ty = slot_ty->getElementType(0);
-
-  const auto new_val_param = proto->FnParamGroup->GetNonSelfParams()[0];
-  const auto new_val_sym = sm->CurrentScope->GetVarSymbol(new_val_param->ExtractName().get());
-  const auto new_val_ptr = new_val_sym->LlvmInfo->Alloca;
-
-  const auto old_val = ctx->Builder.CreateLoad(val_ty, val_field_ptr, "slot.replace.old" + uid);
-  const auto new_val = ctx->Builder.CreateLoad(val_ty, new_val_ptr, "slot.replace.new" + uid);
-  ctx->Builder.CreateStore(new_val, val_field_ptr);
-  ctx->Builder.CreateRet(old_val);
 }
 
 auto spp::codegen::func_impls::std_string_view_slice_ref(
