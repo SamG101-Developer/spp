@@ -224,6 +224,16 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
 
+  // An identifier that reaches code generation with no symbol
+  // behind it is an internal error. Report it as one, naming the
+  // identifier, rather than reading through the null pointer -
+  // the same way the missing-allocation check below does. Todo:
+  // This *can* trigger when a symbol is used on the left and right
+  // like "let x = x.something()" when rebinding symbol names.
+  RaiseIf<SppInternalCompilerError>(
+    var_sym == nullptr, {sm->CurrentScope},
+    ERR_ARGS(*this, "Target identifier has no symbol"));
+
   // Void identifiers could be created via generic
   // implementation, to prevent any usages of it as this
   // level too.
