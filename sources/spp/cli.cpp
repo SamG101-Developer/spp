@@ -1,6 +1,7 @@
 module;
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
+#include <spp/version.hpp>
 #include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
@@ -206,9 +207,9 @@ auto spp::cli::run_cli(
     "Only clean this target's tree; every target's by default");
   clean_cmd->callback([&clean_mode, &clean_target] { handle_clean(clean_mode, clean_target); });
 
-  auto test_name_filter = spp::Str();
-  auto test_group_filter = spp::Str();
-  auto test_libs = std::vector<spp::Str>();
+  auto test_name_filter = Str();
+  auto test_group_filter = Str();
+  auto test_libs = std::vector<Str>();
   auto test_all_libs = false;
   const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
   test_cmd->add_option(
@@ -376,7 +377,8 @@ auto spp::cli::handle_build(
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
   const auto out = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode};
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode
+  };
   std::filesystem::create_directories(out.OutRoot());
 
   // Remove the executable first, so a build that fails leaves
@@ -443,7 +445,8 @@ auto spp::cli::handle_run(
   // trying to run something that was never produced.
   const auto cwd = std::filesystem::current_path();
   const auto exe_file = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode}.ExecutablePath();
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode
+  }.ExecutablePath();
   if (not std::filesystem::exists(exe_file)) {
     std::cerr << "Error: No executable was built at '" << utils::files::DisplayString(exe_file) << "'.\n";
     return;
@@ -537,7 +540,8 @@ auto spp::cli::handle_test(
   // executable there too - see the Compiler constructed below.
   const auto cwd = std::filesystem::current_path();
   const auto out = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = "rel"};
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = "rel"
+  };
   std::filesystem::create_directories(out.OutRoot());
 
   // Remove the executable before building, so a build that
