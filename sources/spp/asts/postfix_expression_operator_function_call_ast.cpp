@@ -683,7 +683,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Target() const
   const auto target_proto = _OverloadInfo->Proto;
   if (const auto coro_proto = target_proto->To<CoroutinePrototypeAst>(); coro_proto != nullptr and coro_proto->
     IsOnce()) {
-    return coro_proto->GenOnceLowered();
+    // Not every "GenOnce" is lowered: one whose body defers
+    // stays a real coroutine, because the deferred expression
+    // has to outlive the yield (see "_LowerGenOnce"). Such a
+    // call targets the coroutine itself.
+    if (const auto lowered = coro_proto->GenOnceLowered(); lowered != nullptr) { return lowered; }
   }
   return target_proto;
 }
