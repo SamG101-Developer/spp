@@ -96,8 +96,9 @@ auto spp::asts::IntegerLiteralAst::BigVal() const
   //
   using spp::utils::strings::NormaliseIntegerString;
 
-  // Same normalisation Stage7 does: "0o" is spelled "00"
-  // for boost, and the sign is a separate token.
+  // Same normalisation Stage7 does: underscores out, and the
+  // sign is a separate token. The base prefix is left alone -
+  // numex reads "0x", "0o" and "0b" itself.
   const auto data = Val->TokenData;
   auto value = numex::BigInt(NormaliseIntegerString(data));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
@@ -189,8 +190,7 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
 
   // Normalise the literal exactly as Stage7 does, then
   // apply the optional sign.
-  auto data = Val->TokenData;
-  data |= genex::actions::replace('o', '0');
+  const auto data = Val->TokenData;
   auto mapped_val = numex::BigInt(NormaliseIntegerString(data));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
     mapped_val = -mapped_val;
