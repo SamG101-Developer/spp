@@ -22,10 +22,12 @@ Todo
 [Dd]estructuring
 [Ee]lementwise
 [Gg]lobals?
+[Ii]nitialisers?
 [Ii]ntrinsics?
 [Ii]mmediates?
 [Ll]ockfiles?
 [Ll]ockdown
+[Mm]ultiprecision
 [Mm]onomorphiz(e|es|ed|ing|ation)
 [Mm]utexes
 [Mm]itigations?
