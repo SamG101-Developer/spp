@@ -443,6 +443,14 @@ namespace spp::analyse::utils::overload_utils {
       const auto names_self = [](asts::TypeAst const &type) {
         return type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; });
       };
+
+      // We need this so that for example when a TcpSocket method
+      // is called that belongs to Socket, the "self=TcpSocket"
+      // IR is available, not "self=Socket" + weird slicing / owned
+      // value mismatch - for borrows it's fine because opaque ptrs.
+      const auto self_param = fn_proto.FnParamGroup->GetSelfParam();
+      if (self_param != nullptr and self_param->Conv == nullptr) { return true; }
+
       return names_self(*fn_proto.ReturnType)
         or genex::any_of(fn_proto.FnParamGroup->GetNonSelfParams(), [&](auto const *p) { return names_self(*p->Type); });
     }
