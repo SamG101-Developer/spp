@@ -225,6 +225,17 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType.get())->IsDirectlyZeroType = true;
   }
 
+  // Mark a type symbol as a thread hazard, so neither it nor anything holding one may cross a thread boundary.
+  else if (fq_name == A::kThreadHazard and _Ctx->To<ClassPrototypeAst>()) {
+    const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
+    sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics().get())->IsDirectlyThreadHazard = true;
+  }
+  else if (fq_name == A::kThreadHazard and _Ctx->To<TypeStatementAst>()) {
+    const auto cls_ctx = _Ctx->To<TypeStatementAst>();
+    sm->CurrentScope->GetTypeSymbol(cls_ctx->NewType->WithoutGenerics().get())->IsDirectlyThreadHazard = true;
+    sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType.get())->IsDirectlyThreadHazard = true;
+  }
+
   // Mark a function as being a "unit test" (makes it non-callable etc).
   else if (fq_name == A::kTest) {
     const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
