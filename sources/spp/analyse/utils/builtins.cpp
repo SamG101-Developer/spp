@@ -140,8 +140,8 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.sge", std_intrinsics_sge);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.uge", std_intrinsics_uge);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.oge", std_intrinsics_oge);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.min_val", std_intrinsics_min_val);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.max_val", std_intrinsics_max_val);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.min_val", std_intrinsics_min_val, true);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.max_val", std_intrinsics_max_val, true);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.smax", std_intrinsics_smax);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.umax", std_intrinsics_umax);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.smin", std_intrinsics_smin);
@@ -179,8 +179,8 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC("std.intrinsics.float_log2", std_intrinsics_flog2);
   SPP_DEFINE_BUILTIN_FUNC("std.intrinsics.float_log10", std_intrinsics_flog10);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_abs", std_intrinsics_fabs);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_max_val", std_intrinsics_fmax_val);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_min_val", std_intrinsics_fmin_val);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_max_val", std_intrinsics_fmax_val, true);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_min_val", std_intrinsics_fmin_val, true);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_max", std_intrinsics_fmax);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_min", std_intrinsics_fmin);
   SPP_DEFINE_BUILTIN_FUNC("std.intrinsics.float_copysign", std_intrinsics_fcopysign);
