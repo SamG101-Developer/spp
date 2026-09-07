@@ -8,10 +8,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun g() -> Void {
-        let v = Vec[FunMov[(), Str]]()
         let mut x = v[1_u64]()
         x = false
-        std::mem::ops::drop(v)
     }
 )");
 
