@@ -67,6 +67,9 @@ namespace {
   /** The name the runtime tear-down shim is emitted under; dotted, for the same reason. */
   constexpr auto kRuntimeCleanupShim = llvm::StringLiteral("spp.rt.cleanup");
 
+  /** Marks a function that cannot have split stacks. */
+  constexpr auto kNoSplitStack = llvm::StringLiteral("spp-no-split-stack");
+
   /**
    * Emit, once per module, an internal @c void(void) that brings the ffi runtime up and does not come back if it
    * cannot. @c sppc_init installs the signal dispositions, the locale and the malloc tuning that everything after it
@@ -103,6 +106,10 @@ namespace {
     const auto shim = llvm::Function::Create(
       llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
       llvm::Function::InternalLinkage, kRuntimeInitShim, &llvm_mod);
+
+    // The function that maps the unsafe stack cannot be
+    // a function that stands on one.
+    shim->addFnAttr(kNoSplitStack);
 
     // Standard building blocks setup for the shim
     // function, requiring the entry, "up" and failed
@@ -569,6 +576,11 @@ auto spp::codegen::EmitCEntryPoint(
   const auto main_fn = llvm::Function::Create(
     main_ty, llvm::Function::ExternalLinkage, "main", &llvm_mod);
 
+  // Nothing has mapped an unsafe stack at the point this function's
+  // own prologue runs - the call that maps it is the first thing in
+  // the body - so this frame stays whole.
+  main_fn->addFnAttr(kNoSplitStack);
+
   auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(ctx, "entry", main_fn));
 
   // Failsafe "main" check for 0-arg "main", but S++ semantic
@@ -577,6 +589,9 @@ auto spp::codegen::EmitCEntryPoint(
     llvm::errs() << "The entry point " << spp_main_name << " takes arguments; it must take none\n";
     return false;
   }
+
+  // Todo: This might break performance.
+  if (split_stacks) { spp_main->addFnAttr(llvm::Attribute::NoInline); }
 
   const auto atexit_ty = llvm::FunctionType::get(i32_ty, {ptr_ty}, false);
   builder.CreateCall(RuntimeInitShim(llvm_mod, split_stacks), {});
@@ -649,6 +664,7 @@ auto spp::codegen::ApplySafeStack(
     // frame is nothing but prologue.
     if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
     if (fn.hasFnAttribute(llvm::Attribute::SafeStack)) { continue; }
+    if (fn.hasFnAttribute(kNoSplitStack)) { continue; }
     fn.addFnAttr(llvm::Attribute::SafeStack);
     stamped += 1;
   }
