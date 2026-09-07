@@ -34,6 +34,7 @@ Todo
 [Nn]amespaces?
 [Oo]ptionals
 [Pp]arameterization
+[Rr]eachability
 [Rr]eassociation
 [Rr]ebindable
 [Rr]ecompil(e|es|ed|ing|ation)
@@ -42,6 +43,7 @@ Todo
 [Rr]einitialization
 [Rr]elocations
 [Ss]andboxed
+[Ss]endable
 [Ss]erialisers?
 [Ss]tackless
 [Ss]ubfolders?
