@@ -463,15 +463,6 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
     const auto staged = lib_dir / lib.filename();
     std::filesystem::copy_file(lib, staged, std::filesystem::copy_options::overwrite_existing);
     command += " " + utils::files::NativeString(staged);
-
-    // What the loader asks for at run time is the library's so
-    // name, not the name of the file it was linked from, and
-    // a runtime shipped as "sppc.so" calls itself "libsppc.so".
-    const auto name = utils::files::NativeString(staged.filename());
-    if (not name.starts_with("lib")) {
-      std::filesystem::copy_file(
-        staged, lib_dir / ("lib" + name), std::filesystem::copy_options::overwrite_existing);
-    }
   }
 
   command += " -lm";
