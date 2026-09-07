@@ -190,14 +190,18 @@ auto spp::cli::run_cli(
            ->check(CLI::IsMember({"dev", "rel"}))
            ->default_val("dev");
   build_cmd->add_option("-t,--target", build_target, target_help);
-  build_cmd->callback([&build_mode, &build_target] { handle_build(build_mode, build_target); });
+  build_cmd->callback([&build_mode, &build_target] {
+    if (not handle_build(build_mode, build_target)) { throw CLI::RuntimeError(1); }
+  });
 
   const auto run_cmd = app.add_subcommand("run", "Run the project")->fallthrough();
   run_cmd->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
          ->check(CLI::IsMember({"dev", "rel"}))
          ->default_val("dev");
   run_cmd->add_option("-t,--target", run_target, target_help);
-  run_cmd->callback([&run_mode, &run_target] { handle_run(run_mode, run_target); });
+  run_cmd->callback([&run_mode, &run_target] {
+    if (not handle_run(run_mode, run_target)) { throw CLI::RuntimeError(1); }
+  });
 
   const auto clean_cmd = app.add_subcommand("clean", "Clean the project")->fallthrough();
   clean_cmd->add_option("-m,--mode", clean_mode, "Clean mode (dev, rel or all)")
@@ -234,7 +238,7 @@ auto spp::cli::run_cli(
 
   app.add_subcommand("validate", "Validate the project")
      ->fallthrough()
-     ->callback([] { handle_validate(false); });
+     ->callback([] { if (not handle_validate(false)) { throw CLI::RuntimeError(1); } });
 
   app.add_subcommand("config", "List every section and key 'spp.toml' accepts")
      ->fallthrough()
@@ -250,6 +254,7 @@ auto spp::cli::run_cli(
   }
   catch (CLI::CallForHelp const &e) { return app.exit(e); }
   catch (CLI::CallForAllHelp const &e) { return app.exit(e); }
+  catch (CLI::RuntimeError const &e) { return e.get_exit_code(); }
   catch (CLI::ParseError const &e) {
     std::cerr << e.what() << "\n\n" << app.help();
     return e.get_exit_code();
@@ -362,14 +367,14 @@ auto spp::cli::handle_build(
   Str const &mode,
   Str const &target,
   const bool skip_vcs)
-  -> void {
+  -> bool {
   // Validate the project structure first.
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_STRUCTURE_OR(false, false);
 
   // Choose the target before anything is compiled: every module
   // carries the triple and the data layout it was built for, and
   // those are resolved once, on first use.
-  if (not codegen::SelectTarget(target.c_str())) { return; }
+  if (not codegen::SelectTarget(target.c_str())) { return false; }
 
   // Before anything is generated, not after: if llvm cannot spell an intrinsic name, every module holding one is
   // rejected by the verifier with a complaint about the name, and the cause is nowhere in that message.
@@ -393,18 +398,18 @@ auto spp::cli::handle_build(
   // instead.
   if (not skip_vcs and not handle_vcs()) {
     std::cerr << "Error: Aborting the build; the [vcs] dependencies could not be fetched.\n";
-    return;
+    return false;
   }
 
   // Revalidate (after including the VCS folders).
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_STRUCTURE_OR(false, false);
   const auto build_type =
     toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<Str>();
 
   // Validate the mode is "dev" or "rel".
   if (mode != "dev" and mode != "rel") {
     std::cerr << "Error: Invalid mode. Mode must be 'dev' or 'rel'.\n";
-    return;
+    return false;
   }
 
   // Adopt this project's feature settings. Only this one: how
@@ -414,7 +419,7 @@ auto spp::cli::handle_build(
   auto config_errors = Vec<Str>();
   if (not utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) {
     for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
-    return;
+    return false;
   }
 
   // Compile the code.
@@ -422,6 +427,7 @@ auto spp::cli::handle_build(
     mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
     build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
   c.Compile();
+  return true;
 }
 
 auto spp::cli::handle_run(
@@ -438,7 +444,7 @@ auto spp::cli::handle_run(
     std::cerr
       << "Error: Cannot run a build for '" << codegen::TargetFolderName()
       << "'; only a build for the host can be executed here.\n";
-    return;
+    return false;
   }
 
   // A build that did not get as far as linking has said why
@@ -450,7 +456,7 @@ auto spp::cli::handle_run(
   }.ExecutablePath();
   if (not std::filesystem::exists(exe_file)) {
     std::cerr << "Error: No executable was built at '" << utils::files::DisplayString(exe_file) << "'.\n";
-    return;
+    return false;
   }
 
   // Pull the returned status code from the run process (ie
@@ -702,7 +708,6 @@ auto spp::cli::handle_validate(
   }
 
   // Check the FFI subfolders are structured properly.
-  const auto ext = get_system_shared_library_extension();
   for (auto const &ffi_dir : SafeDirectoryIterator(cwd / FFI_FOLDER)) {
     if (not std::filesystem::is_directory(ffi_dir)) {
       std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(
@@ -723,26 +728,21 @@ auto spp::cli::handle_validate(
     // get the expected library binary name and extension that will
     // be checked against.
     const auto expected = utils::files::SharedLibraryName(lib_name);
-    auto host_libraries = Vec<Str>();
-    for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
-      if (not entry.is_regular_file()) { continue; }
-      if (utils::files::NativeString(entry.path().extension()) != "." + ext) { continue; }
-      host_libraries.EmplaceBack(utils::files::NativeString(entry.path().filename()));
-    }
-
-    // Nothing for this host is not a problem: a package may ship
-    // only a library for another platform, and it is the import
-    // of its stub that fails, not the shape of its folder.
-    if (host_libraries.IsEmpty()) { continue; }
-
-    // Check the expected shared library file has been found. If
-    // not, error and return false.
-    if (genex::any_of(host_libraries, [&](auto const &found) { return found == expected; })) { continue; }
+    if (std::filesystem::exists(ffi_dir.path() / expected)) { continue; }
 
     auto found_names = Str();
-    for (auto const &found : host_libraries) { found_names += (found_names.empty() ? "" : ", ") + found; }
+    for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
+      if (not entry.is_regular_file()) { continue; }
+      const auto found = utils::files::NativeString(entry.path().filename());
+      if (found == STUB_FILE) { continue; }
+      found_names += (found_names.empty() ? "" : ", ") + found;
+    }
+
     std::cerr
-      << "Error: 'ffi/" + lib_name + "' has no '" + expected + "'; it holds " + found_names + ".\n";
+      << "Error: 'ffi/" + lib_name + "' has no '" + expected + "'; it holds "
+      + (found_names.empty() ? Str("nothing but its stub") : found_names) + ".\n"
+      << "  A package is linked through the library named for it, so one built for another platform does not "
+      << "stand in for this host's.\n";
     return false;
   }
 
@@ -764,15 +764,6 @@ auto spp::cli::create_default_config_for(
   const auto pos = contents.find('$');
   contents.replace(pos, 1, project_name);
   return contents;
-}
-
-auto spp::cli::get_system_shared_library_extension()
-  -> Str {
-  // Asked of one place, which is also where the sweep that
-  // collects a project's libraries asks: the shape a project is
-  // validated against and the shape the linker is handed have to
-  // be the same shape.
-  return utils::files::SharedLibraryExtension();
 }
 
 auto spp::cli::run_cpp_google_test(
