@@ -141,9 +141,19 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     | genex::views::not_in(assigned_attributes, genex::meta::deref, genex::meta::deref)
     | genex::to<Vec>();
 
+  // A case pattern tests its subject rather than taking
+  // it apart, so a borrowed subject is matched by a pattern
+  // naming the bare type: "case p is Point(&x, ..)" where
+  // "p" is a "&Point". The tuple and array destructures
+  // already read past the convention here, because they
+  // check the shape ("IsTypeTup" / "IsTypeArr"). Manually
+  // apply the same semantics here.
+  const auto conv_only_mismatch = _FromCasePattern
+    and TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope, false);
+
   // Check the type matches.
   RaiseIf<SppTypeMismatchError>(
-    not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern),
+    not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern) and not conv_only_mismatch,
     {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Source.OriginalType, *Type));
 
   // Only 1 "multi-skip" allowed in a destructure.
@@ -178,7 +188,9 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 
   // Handle nested flow typing, like seen in the case pattern handler for object destructure. This narrows whatever the
   // elements index, so it is layered on top of the temporary rather than on the value.
-  if (_FromCasePattern and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
+  if (_FromCasePattern
+    and not conv_only_mismatch
+    and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
     const auto uid = spp::utils::Uid(this);
     uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
     auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
