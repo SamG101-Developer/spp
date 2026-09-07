@@ -168,6 +168,10 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     Name == "Self" and GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
   if (Name == "Self" and meta->CurrentStage<meta::CompilerStage::kAnalyseSemantics) {
+    if (meta->CurrentStage >= meta::CompilerStage::kLoadSupScopes) {
+      const auto self_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
+      static_cast<void>(GetTypeSymOrError(*self_scope, *this, *sm));
+    }
     _HasAnalysed = true;
     return;
   }
