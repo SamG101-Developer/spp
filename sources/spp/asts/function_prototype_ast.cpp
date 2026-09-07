@@ -396,8 +396,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
 
-  // Analyse the parameter and return types before sup
-  // scopes are attached.
+  // Analyse the signature before sup scopes are attached.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
@@ -421,7 +420,6 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     }
   }
 
-  // Carry the convention for error purposes.
   FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
   ReturnType->Stage7_AnalyseSemantics(sm, meta);
   ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType.get())->FqName()->WithConvention(
