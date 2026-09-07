@@ -626,6 +626,7 @@ auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
   -> asts::TypeAst const* {
   // Note: concrete scope is where the type is being used; concrete_sym->LinkedScope is the scope of the type
   // definition.
+  using asts::generate::common_types_precompiled::THREAD_SAFE;
 
   // Determine the concrete symbol, and if non-generic, add its scope.
   const auto concrete_sym = concrete_scope.GetTypeSymbol(&concrete_type);
@@ -651,6 +652,13 @@ auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
 
   // Compare each constraint against the concrete type and its supertypes.
   for (auto const &constraint : constraints) {
+    // Todo: document thread safety here.
+    if (constraint->LastTypePart()->Name == THREAD_SAFE->LastTypePart()->Name
+      and TypeEq(*constraint, *THREAD_SAFE, constraints_owner_scope, constraints_owner_scope)) {
+      if (concrete_sym->IsThreadSafe()) { continue; }
+      return constraint.get();
+    }
+
     auto matched = false;
     for (auto const &[sup_type, sup_scope] : sup_info) {
       matched = TypeEq(*constraint, *sup_type, constraints_owner_scope, *sup_scope);
