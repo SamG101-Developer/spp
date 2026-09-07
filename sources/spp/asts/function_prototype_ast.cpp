@@ -13,6 +13,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.builtins;
 import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.instantiation_queue;
 import spp.analyse.utils.linear_utils;
