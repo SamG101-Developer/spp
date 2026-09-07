@@ -58,6 +58,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut p = Point(x=1, y=2)
         case p is Point(&mut x, ..) { x@ += 1 }
+        std::mem::ops::drop(p)
     }
 )");
 
@@ -75,6 +76,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut h = Holder(v=1)
         h.get_mut()@ += 1
+        std::mem::ops::drop(h)
     }
 )");
 
@@ -91,6 +93,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut o = Outer(inner=Inner(v=1))
         g(&mut o.inner.v)
+        std::mem::ops::drop(o)
     }
 )");
 

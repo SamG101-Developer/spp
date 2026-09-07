@@ -88,6 +88,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder[S32]::new()
         let a = h.pick()
+        std::mem::ops::drop(h)
     }
 )");
 

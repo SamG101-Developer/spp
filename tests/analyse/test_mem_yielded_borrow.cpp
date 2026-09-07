@@ -324,6 +324,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
                 else { Str::from("") }
             }
             std::mem::ops::drop(z)
+            std::mem::ops::drop(x)
         }
         std::mem::ops::drop(object)
     }
@@ -349,6 +350,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
                 else { Str::from("") }
             }
             std::mem::ops::drop(z)
+            std::mem::ops::drop(x)
         }
         std::mem::ops::drop(object)
     }

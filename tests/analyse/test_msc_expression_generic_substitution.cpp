@@ -7,6 +7,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_literal_default_is_carried_through, R"(
     fun f[T](t: T, n: S32 = 5) -> S32 {
+        std::mem::ops::drop(t)
         ret n
     }
 

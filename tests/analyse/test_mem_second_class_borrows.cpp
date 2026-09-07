@@ -28,6 +28,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder(val=1)
         let a = h.peek()@
+        std::mem::ops::drop(h)
     }
 )");
 
@@ -89,5 +90,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = X[1]()
+        std::mem::ops::drop(a)
     }
 )");
