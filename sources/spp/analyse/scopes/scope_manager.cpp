@@ -142,11 +142,24 @@ auto spp::analyse::scopes::ScopeManager::AttachAllSuperScopes(
   // constraint check. This is order-independent because it does not depend on other types' super scopes already being
   // attached. The issue before was that some generic constraints checks were failing deep down because constraints
   // themselves are modelled as sup-scopes. Note for future: just trust this comment.
-  Reset();
   auto deferred = Vec<DeferredSupConstraint>();
-  for (auto *scope : Iter()) {
-    if (scope->TySym == nullptr) { continue; }
-    AttachSpecificSuperScopes(*scope, meta, &deferred);
+
+  // The sweep creates scopes as it runs: attaching a
+  // constrained sup instantiates the substituted type, and
+  // that instantiation attaches its own sups on the spot -
+  // through the on-demand path, where the constraint is
+  // checked inline against a graph that is still half-built,
+  // and a failed check drops the sup for good.
+  auto processed = Set<Scope*>();
+  for (auto found_new = true; found_new;) {
+    found_new = false;
+    Reset();
+    for (auto *scope : Iter()) {
+      if (scope->TySym == nullptr) { continue; }
+      if (not processed.insert(scope).second) { continue; }
+      AttachSpecificSuperScopes(*scope, meta, &deferred);
+      found_new = true;
+    }
   }
 
   // Now that every type has its super scopes, validate the deferred generic constraints and prune any attachment
