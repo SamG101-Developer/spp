@@ -468,6 +468,15 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   command += " -lm";
   command += " -Wl,-rpath,'$ORIGIN/lib'";
 
+  // Binary hardening, done by attaching flags to the linker.
+  FEATURE_GATE(BinaryLinkHarden) {
+    command += " -pie";                     // No fixed load address to write an exploit against.
+    command += " -Wl,-z,relro,-z,now";      // Read-only after startup, and nothing left to bind later.
+    command += " -Wl,-z,noexecstack";       // The stack is data; say so in the header rather than by accident.
+    command += " -Wl,-z,separate-code";     // Code in its own mapping, so no data shares a page with it.
+    command += " -Wl,-z,defs";              // A symbol nothing defines is a link error, not a run-time surprise.
+  }
+
   std::cout << "Linking: " << exe_file << std::endl;
   if (const auto status = std::system(command.c_str()); status != 0) {
     llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
@@ -479,17 +488,23 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 auto spp::compiler::CompilerBoot::_FfiLibraries(
   std::filesystem::path const &project_root)
   -> Vec<std::filesystem::path> {
-  // "<package>/ffi/<name>/lib/<name>.so" is what a package ships
-  // its native code as, both for the project itself and for
-  // anything it has vendored, so the whole tree is swept for
-  // that shape rather than any one place being named.
+  // "<package>/ffi/<name>/lib<name>.so" is what a package ships
+  // its native code as, beside the stub that declares it, both
+  // for the project itself and for anything it has vendored, so
+  // the whole tree is swept for that shape rather than any one
+  // place being named.
   auto libraries = Vec<std::filesystem::path>();
   if (not std::filesystem::exists(project_root)) { return libraries; }
 
+  // What counts as a library is the host's own extension, not
+  // ".so" everywhere: a package may ship one library per platform
+  // beside its stub, and the ones for other hosts are not this
+  // link's to make sense of.
+  const auto extension = "." + utils::files::SharedLibraryExtension();
   for (auto const &entry : std::filesystem::recursive_directory_iterator(project_root)) {
-    if (not entry.is_regular_file() or entry.path().extension() != ".so") { continue; }
-    const auto lib_dir = entry.path().parent_path();
-    if (lib_dir.filename() != "lib" or lib_dir.parent_path().parent_path().filename() != "ffi") { continue; }
+    if (not entry.is_regular_file()) { continue; }
+    if (utils::files::NativeString(entry.path().extension()) != extension) { continue; }
+    if (entry.path().parent_path().parent_path().filename() != "ffi") { continue; }
 
     // One name, one library: a package and something it vendored
     // can both ship the same runtime, and linking two copies of
