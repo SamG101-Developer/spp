@@ -439,6 +439,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_type()
   PARSE_ALTERNATE(
     p1, asts::GenericArgumentTypeAst, parse_generic_argument_type_keyword, parse_generic_argument_type_positional);
   PARSE_NEGATE(lex::RawTokenType::TK_LEFT_PARENTHESIS)
+  PARSE_NEGATE(lex::RawTokenType::TK_COLON)
   return FORWARD_AST(p1);
 }
 
