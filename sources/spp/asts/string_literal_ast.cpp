@@ -121,6 +121,7 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
   const auto llvm_global_view = new llvm::GlobalVariable(
     *emission_module, llvm_view_type, true, llvm::GlobalValue::PrivateLinkage, llvm_view, "string_literal.view");
 
+  // Harden string storage.
   llvm_global_view->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
   return llvm_global_view;
 }
