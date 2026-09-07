@@ -52,6 +52,14 @@ namespace spp::analyse::scopes {
       return nullptr;
     }
 
+    auto SupDeclaresAPack(
+      Scope const &sup_scope)
+      -> bool {
+      //
+      auto const *params = GetSupGenericParamsFromScope(sup_scope);
+      return params != nullptr and params->GetVariadicParams() != nullptr;
+    }
+
     auto SupConstrainsItsParams(
       Scope const &sup_scope)
       -> bool {
@@ -233,7 +241,8 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     auto defer_constraint = false;
 
     // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
-    if (not scope_generics->Args.IsEmpty()
+    if ((not scope_generics->Args.IsEmpty()
+        or (SupDeclaresAPack(*sup_scope) and not asts::AstName(sup_scope->AstNode)->IsCompilerGeneratedType()))
       and not genex::contains(generic_sup_blocks, sup_scope)) {
       const auto external_generics = scope.TySym->ScopeDefinedIn->GetExtendedGenericSymbols(
         scope_generics->GetAllArgs());
