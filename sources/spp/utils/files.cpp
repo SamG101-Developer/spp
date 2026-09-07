@@ -14,6 +14,7 @@ module;
 #endif
 
 module spp.utils.files;
+import genex;
 import std;
 
 auto spp::utils::files::DisplayString(
@@ -139,13 +140,18 @@ SPP_MOD_END
 auto spp::utils::files::GlobSpp(
   std::filesystem::path const &path)
   -> Vec<std::filesystem::path> {
-  // Use the filesystem iterator to recursively walk the path, finding all ".spp" files.
+  // Use the filesystem iterator to recursively walk the path,
+  // finding all ".spp" files.
   auto paths = Vec<std::filesystem::path>();
   for (auto const &entry : std::filesystem::recursive_directory_iterator(path)) {
     if (not entry.is_regular_file()) { continue; }
     if (entry.path().extension() != ".spp") { continue; }
     paths.EmplaceBack(entry.path());
   }
+
+  // Normalise file order across machines for consistent erroring
+  // although file and declarations dhould be order agnostic.
+  paths |= genex::actions::sort;
   return paths;
 }
 
