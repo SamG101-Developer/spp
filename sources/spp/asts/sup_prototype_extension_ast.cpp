@@ -458,13 +458,19 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
   using analyse::utils::type_compare::RelaxedTypeEq;
   using analyse::utils::type_compare::TypeEq;
 
-  //
+  // Both directions are tried, for the reason given over "check_double" below: a variadic pack binds an argument
+  // list only when it sits on the right, so which of the two blocks was attached first would otherwise decide
+  // whether the cycle is seen at all.
   auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
-    auto dummy = GenericInferenceMap();
     const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-    return ext and
-      RelaxedTypeEq(*ext->Name, *SuperClass, *sc, check_scope, dummy, false) and
-      TypeEq(*ext->SuperClass, *Name, *sc, check_scope, false);
+    if (ext == nullptr) { return false; }
+    if (not TypeEq(*ext->SuperClass, *Name, *sc, check_scope, false)) { return false; }
+
+    auto fwd = GenericInferenceMap();
+    auto rev = GenericInferenceMap();
+    return
+      RelaxedTypeEq(*ext->Name, *SuperClass, *sc, check_scope, fwd, false) or
+      RelaxedTypeEq(*SuperClass, *ext->Name, check_scope, *sc, rev, false);
   };
 
   // Prevent cyclic inheritance by checking if the scopes
