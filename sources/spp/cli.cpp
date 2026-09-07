@@ -21,6 +21,7 @@ import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.compiler.out_layout;
 import spp.lex.tokens;
+import spp.utils.errors;
 import spp.utils.features;
 import spp.utils.files;
 import cli11;
@@ -61,6 +62,34 @@ namespace spp::cli {
       return std::filesystem::exists(dir)
         ? std::filesystem::directory_iterator(dir)
         : std::filesystem::directory_iterator();
+    }
+
+    /**
+     * Run a compilation, reporting a mistake in the source being compiled as the mistake it is.
+     * @param[in,out] c The compiler to run.
+     * @return @c true if the compilation finished; @c false once the error has been printed.
+     */
+    auto CompileReportingErrors(
+      spp::compiler::Compiler &c)
+      -> bool {
+#if SPP_DEBUG
+      // A debug build deliberately does not: "Compiler::Compile" leaves
+      // its own catch out under the same condition, so the stack is still
+      // standing where the throw happened and a debugger can be pointed
+      // at it. That build is the compiler's own; this is the one a
+      // program is compiled with.
+      c.Compile();
+      return true;
+#else
+      try {
+        c.Compile();
+        return true;
+      }
+      catch (spp::utils::errors::AbstractError const &e) {
+        std::cerr << e.what() << "\n";
+        return false;
+      }
+#endif
     }
 
     /**
@@ -426,8 +455,7 @@ auto spp::cli::handle_build(
   auto c = compiler::Compiler(
     mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
     build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
-  c.Compile();
-  return true;
+  return CompileReportingErrors(c);
 }
 
 auto spp::cli::handle_run(
@@ -568,7 +596,7 @@ auto spp::cli::handle_test(
   auto c = compiler::Compiler(
     compiler::Compiler::Mode::REL, compiler::Compiler::BuildType::EXE, scope);
   c.SetTestFilters(name_filter, group_filter);
-  c.Compile();
+  if (not CompileReportingErrors(c)) { std::exit(1); }
 
   if (c.TestCount() == 0) {
     std::cerr << "No unit tests matched. Mark a function in 'tst' with '!test'";
