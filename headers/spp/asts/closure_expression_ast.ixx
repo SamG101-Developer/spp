@@ -11,6 +11,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct ClassPrototypeAst;
   SPP_EXP_CLS struct ClosureExpressionAst;
   SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
   SPP_EXP_CLS struct TokenAst;
@@ -85,7 +86,38 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
 
+  /**
+   * Release the class prototypes minted for closure types. They are held for the run because the scopes and symbols
+   * built against them outlive the expression that produced them, so a compile has to let go of them itself.
+   */
+  static auto ClearMockAsts() -> void;
+
 private:
+  /**
+   * The @c FunRef / @c FunMut / @c FunMov type the closure's parameters, return type and captures decide. This is what
+   * the closure's own type superimposes, rather than what it is.
+   */
+  SPP_ATTR_NODISCARD auto _FunctionalType(ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
+
+  /**
+   * Mint the closure's own nominal type - a @c "$closure..." class superimposing @c _FunctionalType - and register it
+   * where the closure was written. Thread safety is decided by what a closure captured, and two closures of the same
+   * signature capture different things, so there is nowhere on the shared @c "FunMov[Args, Out]" instantiation to
+   * record it; a plain function has had a @c "$" mock of its own since stage 1 for the same reason.
+   */
+  auto _MakeMockType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
+
+  /**
+   * The class prototypes behind the minted closure types, owned for the length of the compile.
+   */
+  inline static Vec<Unique<Ast>> _MockAsts = {};
+
+  /**
+   * The closure's own type, minted in stage 7. Null until then, and null on a clone that is never re-analysed, which
+   * is why @c InferType falls back to the functional type rather than assuming it is there.
+   */
+  Shared<TypeAst> _MockType;
+
   /**
    * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
    * consistent with each returning value of the closure body.

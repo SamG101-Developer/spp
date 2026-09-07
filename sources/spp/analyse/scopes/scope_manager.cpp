@@ -12,6 +12,7 @@ import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.closure_expression_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
@@ -394,6 +395,7 @@ auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   generic_sup_blocks.Clear();
   temp_scopes.Clear();
   asts::GenericParameterTypeAst::ClearDummyScopes();
+  asts::ClosureExpressionAst::ClearMockAsts();
 }
 
 SPP_MOD_END

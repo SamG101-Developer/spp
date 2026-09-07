@@ -10,12 +10,16 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_predicates;
+import spp.asts.annotation_ast;
+import spp.asts.class_implementation_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
 import spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -23,6 +27,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.visibility;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
@@ -71,6 +76,7 @@ auto spp::asts::ClosureExpressionAst::Clone() const
     AstCloneShared(ReturnType),
     AstClone(Body));
   c->_TrueRetType = _TrueRetType;
+  c->_MockType = _MockType;
   return c;
 }
 
@@ -108,8 +114,9 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
       | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
       | genex::to<Vec>();
 
-    // Update the meta args with the closure information for body analysis.
-    // The closure-wide save/restore allows for the "ret" to match the closure's inferred return type.
+    // Update the meta args with the closure information for
+    // body analysis. The closure-wide save/restore allows for
+    // the "ret" to match the closure's inferred return type.
     meta->Save();
     meta->EnclosingFunctionScope = sm->CurrentScope; // this will be the closure-outer scope
     sm->CurrentScope->Parent = sm->CurrentScope->ParentModule();
@@ -164,6 +171,10 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
 
   // Set the scope back.
   sm->CurrentScope = parent_scope;
+
+  // Minted last, because the functional type it superimposes is
+  // not known until the body has given up its return type.
+  _MockType = _MakeMockType(sm, meta);
 }
 
 auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
@@ -319,8 +330,8 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     const auto llvm_size_ty = llvm::Type::getInt64Ty(*ctx->Context);
     const auto llvm_malloc = codegen::GetEmissionModule(*ctx)->getOrInsertFunction(
       "sppc_malloc", llvm::FunctionType::get(llvm::PointerType::get(*ctx->Context, 0), {llvm_size_ty}, false));
-    const auto env_size = codegen::GetEmissionModule(*ctx)->getDataLayout()
-      .getTypeAllocSize(closure_env_ty).getFixedValue();
+    const auto env_size = codegen::GetEmissionModule(
+      *ctx)->getDataLayout().getTypeAllocSize(closure_env_ty).getFixedValue();
     return ctx->Builder.CreateCall(
       llvm_malloc, {llvm::ConstantInt::get(llvm_size_ty, env_size)}, "closure.env.heap." + uid);
   }();
@@ -363,6 +374,17 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 auto spp::asts::ClosureExpressionAst::InferType(
   ScopeManager *sm,
   CompilerMetaData *meta)
+  -> Shared<TypeAst> {
+  // A closure is its own special type, which superimposes the
+  // functional one. Before stage 7 has minted it there is nothing
+  // to give but the functional type itself, which is what every
+  // reader saw before closures had a type of their own.
+  return _MockType != nullptr ? _MockType : _FunctionalType(sm, meta);
+}
+
+auto spp::asts::ClosureExpressionAst::_FunctionalType(
+  ScopeManager *sm,
+  CompilerMetaData *meta) const
   -> Shared<TypeAst> {
   // Create the type as a nullptr, so it can be analysed
   // later.
@@ -414,6 +436,79 @@ auto spp::asts::ClosureExpressionAst::InferType(
   // Analyse the type and return it.
   ty->Stage7_AnalyseSemantics(sm, meta);
   return ty;
+}
+
+auto spp::asts::ClosureExpressionAst::_MakeMockType(
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> Shared<TypeAst> {
+  using analyse::scopes::BumpTypeStructureGeneration;
+  using analyse::scopes::Scope;
+  using analyse::scopes::ScopeBlockName;
+  using analyse::scopes::TypeSymbol;
+
+  // The functional type is what the mock superimposes, so it
+  // has to resolve before there is anything to attach to.
+  const auto fun_type = _FunctionalType(sm, meta);
+  const auto fun_sym = sm->CurrentScope->GetTypeSymbol(fun_type.get());
+  if (fun_sym == nullptr or fun_sym->LinkedScope == nullptr) { return fun_type; }
+
+  // Registered globally rather than against the frame or the
+  // module the closure was written in. A closure handed to a
+  // generic is resolved again inside that generic's own scope.
+  const auto mod_scope = sm->GlobalScope.get();
+  auto mock_name = MakeShared<TypeIdentifierAst>(
+    PosStart(), Str("$closure") + spp::utils::Uid(this), nullptr);
+  auto mock_ast = MakeUnique<ClassPrototypeAst>(
+    SPP_NO_ANNOTATIONS, nullptr, mock_name, nullptr, nullptr);
+  auto mock_scope = MakeUnique<Scope>(
+    ScopeBlockName::FromParts("closure-type", {mock_name.get()}, PosStart()),
+    mod_scope, mock_ast.get());
+
+  // Build the symbol for this mock type name, for storage in
+  // the symbol table.
+  const auto mock_sym = MakeShared<TypeSymbol>(
+    mock_name, mock_ast.get(), mock_scope.get(),
+    mod_scope, mod_scope, false, false, utils::Visibility::kPublic);
+
+  // Hook the genuine function type into the closure mock type's
+  // sup scope list, as happens with normal overload resolution
+  // of functions / methods.
+  BumpTypeStructureGeneration();
+  mock_scope->DirectSupScopes.EmplaceBack(fun_sym->LinkedScope);
+  mock_scope->TySym = mock_sym;
+
+  // Use the captures to determine if the closure can be copied
+  // which is based on the state of the captures values; if they
+  // are all copyable, so is the closure.
+  mock_sym->IsDirectlyCopyable = genex::all_of(
+    PcGroup->CaptureGroup->Captures,
+    [](auto const &cap) { return cap->Conv != nullptr and *cap->Conv == ConventionTag::REF; });
+
+  // As the $closure types are unique per closure, we can directly
+  // attach the ThreadSafe constraint to the mock type. This is
+  // required for the thread `spawn` function.
+  mock_sym->IsDirectlyThreadHazard = genex::any_of(
+    PcGroup->CaptureGroup->Captures, [&](auto const &cap) {
+      if (cap->Conv != nullptr) { return true; }
+      const auto cap_sym = sm->CurrentScope->GetVarSymbol(cap->Val->template To<IdentifierAst>());
+      const auto cap_type_sym = sm->CurrentScope->GetTypeSymbol(cap_sym->Type.get());
+      return cap_type_sym != nullptr and not cap_type_sym->IsThreadSafe();
+    });
+
+  // Add the $closure type symbol into the module scope and save
+  // then scope into the temp scopes for persistence.
+  mod_scope->AddTypeSymbol(mock_sym);
+  _MockAsts.EmplaceBack(std::move(mock_ast));
+  analyse::scopes::ScopeManager::temp_scopes.EmplaceBack(
+    std::move(mock_scope));
+  return mock_name;
+}
+
+auto spp::asts::ClosureExpressionAst::ClearMockAsts()
+  -> void {
+  // Empty the temp asts (manual memory freeing).
+  _MockAsts.Clear();
 }
 
 auto spp::asts::ClosureExpressionAst::GetLlvmFunc() const

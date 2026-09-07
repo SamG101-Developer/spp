@@ -118,9 +118,20 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   analyse::scopes::ScopeManager const &sm,
   LlvmCtx const *ctx)
   -> void {
-  // Get the class symbol from the scope that owns it. This pulls
-  // the correct generic instantiation for struct types.
+  // Get the class symbol from the scope that owns it. This
+  // pulls the correct generic instantiation for struct types.
   const auto cls_sym = scope->TySym;
+
+  // A "$" mock reached through its scope rather than its
+  // prototype - the shape a closure's own type has - lowers
+  // to the same { fn_ptr, env_ptr } pair as the function
+  // type it superimposes. Walking its (empty) definition
+  // instead would measure it as a zero-sized struct.
+  if (cls_sym != nullptr and cls_sym->Name != nullptr and cls_sym->Name->IsCompilerGeneratedType()) {
+    const auto mock_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {mock_ptr_ty, mock_ptr_ty});
+    return;
+  }
 
   // For compiler known types, specialize the llvm type symbols.
   const auto parts = scope->Ancestors()

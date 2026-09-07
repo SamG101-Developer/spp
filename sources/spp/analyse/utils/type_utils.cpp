@@ -83,7 +83,8 @@ auto spp::analyse::utils::type_utils::GetFunctionalType(
 
   // Check the type itself and all its supertypes (a type
   // superimposing a function type is also callable).
-  auto sup_types = Vec{type.shared_from_this()};
+  auto sup_types = Vec<Shared<const asts::TypeAst>>();
+  if (not type.IsCompilerGeneratedType()) { sup_types.EmplaceBack(type.shared_from_this()); }
   sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
   for (auto const &sup_type : sup_types) {
     if (type_predicates::IsTypeFunc(*sup_type, scope)) { return sup_type; }
