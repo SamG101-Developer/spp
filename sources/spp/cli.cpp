@@ -35,20 +35,21 @@ inline constexpr spp::Str TST_FOLDER = "tst";
 
 inline constexpr spp::Str MAIN_FILE = "main.spp";
 inline constexpr spp::Str CONFIG_FILE = "spp.toml";
+inline constexpr spp::Str STUB_FILE = "stub.spp";
 
 inline const spp::Str MAIN_FILE_CONTENTS = R"(
-    fun main() -> Void {
-        std::io::println("Hello world!")
-    })";
+fun main() -> Void {
+    std::io::println("Hello world!")
+})";
 
 inline const spp::Str CONFIG_FILE_CONTENTS = R"(
-    [project]
-    name = "$"
-    version = "0.1.0"
-    build = "exe"
+[project]
+name = "$"
+version = "0.1.0"
+build = "exe"
 
-    [vcs]
-    std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
+[vcs]
+std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
 namespace spp::cli {
   namespace {
@@ -709,17 +710,40 @@ auto spp::cli::handle_validate(
       return false;
     }
 
-    // Check for "{library_name}/lib/{library_name}.{ext}" and "{library_name/stub.spp}" files.
-    // if (not std::filesystem::exists(ffi_dir.path() / "lib" / (ffi_dir.path().filename().string() + "." + ext))) {
-    //     std::cerr << "Error: Missing shared library file in 'ffi/"s + ffi_dir.path().filename().string() + "/lib' folder.\n";
-    //     return false;
-    // }
-    //
-    // // Check for stub file.
-    // if (not std::filesystem::exists(ffi_dir.path() / "stub.spp")) {
-    //     std::cerr << "Error: Missing 'stub.spp' file in 'ffi/"s + ffi_dir.path().filename().string() + "' folder.\n";
-    //     return false;
-    // }
+    const auto lib_name = utils::files::NativeString(ffi_dir.path().filename());
+
+    // Check for a stub file for each ffi package. This is what
+    // s++ uses (s++ code) to hook into the shared library.
+    if (not std::filesystem::exists(ffi_dir.path() / STUB_FILE)) {
+      std::cerr << "Error: Missing '"s + STUB_FILE + "' file in 'ffi/" + lib_name + "' folder.\n";
+      return false;
+    }
+
+    // Collect the shared library binaries within the folder, and
+    // get the expected library binary name and extension that will
+    // be checked against.
+    const auto expected = utils::files::SharedLibraryName(lib_name);
+    auto host_libraries = Vec<Str>();
+    for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
+      if (not entry.is_regular_file()) { continue; }
+      if (utils::files::NativeString(entry.path().extension()) != "." + ext) { continue; }
+      host_libraries.EmplaceBack(utils::files::NativeString(entry.path().filename()));
+    }
+
+    // Nothing for this host is not a problem: a package may ship
+    // only a library for another platform, and it is the import
+    // of its stub that fails, not the shape of its folder.
+    if (host_libraries.IsEmpty()) { continue; }
+
+    // Check the expected shared library file has been found. If
+    // not, error and return false.
+    if (genex::any_of(host_libraries, [&](auto const &found) { return found == expected; })) { continue; }
+
+    auto found_names = Str();
+    for (auto const &found : host_libraries) { found_names += (found_names.empty() ? "" : ", ") + found; }
+    std::cerr
+      << "Error: 'ffi/" + lib_name + "' has no '" + expected + "'; it holds " + found_names + ".\n";
+    return false;
   }
 
   // All checks passed.
@@ -744,14 +768,11 @@ auto spp::cli::create_default_config_for(
 
 auto spp::cli::get_system_shared_library_extension()
   -> Str {
-  // Return the appropriate shared library extension for the current OS.
-#if SPP_PLATFORM_WINDOWS
-  return "dll";
-#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
-  return "dylib";
-#else
-  return "so";
-#endif
+  // Asked of one place, which is also where the sweep that
+  // collects a project's libraries asks: the shape a project is
+  // validated against and the shape the linker is handed have to
+  // be the same shape.
+  return utils::files::SharedLibraryExtension();
 }
 
 auto spp::cli::run_cpp_google_test(
