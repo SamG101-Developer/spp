@@ -565,9 +565,6 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
   // 3. Bind the generic parameters, against the instantiation itself.
   auto tm = scopes::ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
   RegisterGenericSyms(external_generic_syms, generic_args.Args, new_sup_scope_ptr, &tm, meta);
-
-  const auto self_type = asts::AstName(old_sup_scope.AstNode)->SubstituteGenerics(generic_args.GetAllArgs());
-  AnalyseSubstitutedType(*self_type, &tm, meta, false, true);
   AddSelfTypeSym(*new_sup_scope_ptr, &new_cls_scope, *sm);
 
   // 4. Substitute the bindings into what the clone inherited: the block's "type" aliases and its "cmp" constants.
