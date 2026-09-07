@@ -92,6 +92,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   -> void {
   //
   using analyse::errors::SppMemberAccessNonIndexableError;
+  using analyse::utils::expr_utils::ClosestScopes;
+  using analyse::utils::expr_utils::RaiseIfAmbiguous;
+  using analyse::utils::expr_utils::ScopesDeclaringVar;
   using analyse::errors::SppMemberAccessOutOfBoundsError;
   using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
@@ -168,63 +171,42 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
     }
 
-    auto all_scopes_and_syms = (genex::views::concat(
-          Vec{lhs_type_sym->LinkedScope},
-          lhs_type_sym->LinkedScope->SupScopes())
-        | genex::to<Vec>())
-      | genex::views::transform([name=Name.get()](auto const &x) {
-        return MakePair(x, x->GetVarSymbol(name, true, false));
-      })
-      | genex::to<Vec>()
-      | genex::views::filter([](auto const &x) { return x.second != nullptr; })
-      | genex::views::transform([&](auto const &x) {
-        return MakeTuple(lhs_type_sym->LinkedScope->DepthDiff(x.first), x.first, x.second);
-      })
-      | genex::to<Vec>();
+    auto all_scopes_and_syms = ScopesDeclaringVar(
+      *lhs_type_sym->LinkedScope, *Name, false);
 
     // Enforce visibility on functional (method) members.
     // Their mock ("$"-typed) symbols are excluded from the
     // attribute handling below, so without this the
     // visibility check never runs for method accesses.
     auto fn_scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return spp::get<2>(x)->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return x.Symbol->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
+
     if (not fn_scopes_and_syms.IsEmpty()) {
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
       const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
-        return IsTypeMemberVisible(*spp::get<2>(x), *cls_scope, *sm, *meta);
+        return IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
       });
       if (not any_visible) {
-        CheckTypeMemberVisibility(*spp::get<2>(fn_scopes_and_syms.Back()), *Name, *cls_scope, *sm, *meta);
+        CheckTypeMemberVisibility(*fn_scopes_and_syms.Back().Symbol, *Name, *cls_scope, *sm, *meta);
       }
     }
 
-    auto scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return not spp::get<2>(x)->Type->IsCompilerGeneratedType(); })
+    const auto scopes_and_syms = all_scopes_and_syms
+      | genex::views::filter([](auto const &x) { return not x.Symbol->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
 
     // If we only have functional types, just return.
     if (scopes_and_syms.Len() < 1) { return; }
-
-    auto min_depth = genex::min_element(scopes_and_syms
-      | spp::views::tuple_nth<0>
-      | genex::to<Vec>());
-
-    auto closest = scopes_and_syms
-      | genex::views::filter([min_depth](auto const &x) { return spp::get<0>(x) == min_depth; })
-      | genex::views::transform([](auto const &x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
-      | genex::to<Vec>();
+    const auto closest = ClosestScopes(scopes_and_syms);
 
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
-      const auto scope = closest[0].first->NonGenericScope;
+      const auto scope = closest[0].Where->NonGenericScope;
       CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get(), true), *Name, *scope, *sm, *meta);
     }
 
-    if (closest.Len() <= 1) { return; }
-    Raise<analyse::errors::SppAmbiguousMemberAccessError>(
-      {closest[0].first, closest[1].first, sm->CurrentScope},
-      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *Name));
+    RaiseIfAmbiguous(closest, *Name, *sm);
   }
 }
 

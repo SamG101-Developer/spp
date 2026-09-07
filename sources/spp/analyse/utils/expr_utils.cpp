@@ -122,6 +122,147 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name)));
 }
 
+namespace spp::analyse::utils::expr_utils {
+  namespace {
+    /**
+     * The body both @c ScopesDeclaringVar and @c ScopesDeclaringType are: walk the type's own scope and its
+     * superimpositions, ask each one for the name, and record how far it sits from where the lookup began.
+     */
+    template <typename Entry, typename Name, typename Lookup>
+    auto ScopesDeclaring(
+      scopes::Scope &type_scope,
+      Name const &name,
+      Lookup &&lookup)
+      -> Vec<Entry> {
+      // Build a vector of the type scope and all of its
+      // super scopes (of any level).
+      auto scopes = Vec{&type_scope};
+      scopes.AppendRange(type_scope.SupScopes());
+
+      // If we discover the symbol within the scope, keep
+      // it, otherwise discard. We are left only with the
+      // scopes that found contain the symbol directly.
+      auto out = Vec<Entry>();
+      for (auto *const scope : scopes) {
+        if (auto *const sym = lookup(*scope, name); sym != nullptr) {
+          out.EmplaceBack(Entry{.Depth = type_scope.DepthDiff(scope), .Where = scope, .Symbol = sym});
+        }
+      }
+      return out;
+    }
+
+    /**
+     * The body both @c ClosestScopes overloads are.
+     */
+    template <typename Entry>
+    auto ClosestScopesImpl(
+      Vec<Entry> const &candidates)
+      -> Vec<Entry> {
+      // Find the minimum depth from all the provided info
+      // blocks. This is the depth that must be unique for
+      // a non-ambiguous lookup.
+      if (candidates.IsEmpty()) { return {}; }
+      auto min_depth = candidates[0].Depth;
+      for (auto const &c : candidates) { min_depth = std::min(min_depth, c.Depth); }
+
+      // Only keep the info blocks whose depth matches the
+      // minimum depth. This could be any number of the
+      // scopes, and we check the count for an error later.
+      auto out = Vec<Entry>();
+      for (auto const &c : candidates) {
+        if (c.Depth == min_depth) { out.EmplaceBack(c); }
+      }
+      return out;
+    }
+
+    /**
+     * The body both @c RaiseIfAmbiguous overloads are.
+     */
+    template <typename Entry>
+    auto RaiseIfAmbiguousImpl(
+      Vec<Entry> const &closest,
+      asts::Ast const &access,
+      scopes::ScopeManager const &sm)
+      -> void {
+      // If there is a maximum of 1 scope containing the
+      // target identifier/type-identifier, then return.
+      // Otherwise, there is an ambiguity, so raise an
+      // error.
+      using errors::SppAmbiguousMemberAccessError;
+      if (closest.Len() <= 1) { return; }
+      Raise<SppAmbiguousMemberAccessError>(
+        {closest[0].Where, closest[1].Where, sm.CurrentScope},
+        ERR_ARGS(*closest[0].Symbol->Name, *closest[1].Symbol->Name, access));
+    }
+  }
+}
+
+auto spp::analyse::utils::expr_utils::ScopesDeclaringVar(
+  scopes::Scope &type_scope,
+  asts::IdentifierAst const &name,
+  const bool sup_scope_search)
+  -> Vec<DeclaringVarScope> {
+  // So a super scope search filtered to the scopes
+  // that contain the variable symbol specified by
+  // the identifier.
+  return ScopesDeclaring<DeclaringVarScope>(
+    type_scope, name, [sup_scope_search](scopes::Scope const &scope, asts::IdentifierAst const &n) {
+      return scope.GetVarSymbol(&n, true, sup_scope_search);
+    });
+}
+
+auto spp::analyse::utils::expr_utils::ScopesDeclaringType(
+  scopes::Scope &type_scope,
+  asts::TypeIdentifierAst const &name,
+  const bool sup_scope_search)
+  -> Vec<DeclaringTypeScope> {
+  // So a super scope search filtered to the scopes
+  // that contain the type symbol specified by the
+  // type identifier.
+  return ScopesDeclaring<DeclaringTypeScope>(
+    type_scope, name, [sup_scope_search](scopes::Scope const &scope, asts::TypeIdentifierAst const &n) {
+      return scope.GetTypeSymbol(&n, true, sup_scope_search);
+    });
+}
+
+auto spp::analyse::utils::expr_utils::ClosestScopes(
+  Vec<DeclaringVarScope> const &candidates)
+  -> Vec<DeclaringVarScope> {
+  // Wrap the implementation function to filter to
+  // the info blocks containing minimum depth scopes.
+  return ClosestScopesImpl(candidates);
+}
+
+auto spp::analyse::utils::expr_utils::ClosestScopes(
+  Vec<DeclaringTypeScope> const &candidates)
+  -> Vec<DeclaringTypeScope> {
+  // Wrap the implementation function to filter to
+  // the info blocks containing minimum depth scopes.
+  return ClosestScopesImpl(candidates);
+}
+
+auto spp::analyse::utils::expr_utils::RaiseIfAmbiguous(
+  Vec<DeclaringVarScope> const &closest,
+  asts::Ast const &access,
+  scopes::ScopeManager const &sm)
+  -> void {
+  // Wrap the implementation function to raise an error
+  // if there are more than 1 scopes at the equal minimum
+  // level => ambiguous lookup.
+  RaiseIfAmbiguousImpl(closest, access, sm);
+}
+
+auto spp::analyse::utils::expr_utils::RaiseIfAmbiguous(
+  Vec<DeclaringTypeScope> const &closest,
+  asts::Ast const &access,
+  scopes::ScopeManager const &sm)
+  -> void {
+  // Wrap the implementation function to raise an error
+  // if there are more than 1 scopes at the equal minimum
+  // level => ambiguous lookup.
+  RaiseIfAmbiguousImpl(closest, access, sm);
+}
+
 auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
   asts::IdentifierAst const &identifier,
   Vec<scopes::VariableSymbol*> const &var_symbols,

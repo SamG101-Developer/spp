@@ -75,7 +75,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
   using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
-  using analyse::errors::SppAmbiguousMemberAccessError;
+  using analyse::utils::expr_utils::ClosestScopes;
+  using analyse::utils::expr_utils::RaiseIfAmbiguous;
+  using analyse::utils::expr_utils::ScopesDeclaringVar;
   using analyse::errors::SppMemberAccessRuntimeOperatorExpectedError;
 
   // Handle types on the left-hand-side of a static member access.
@@ -106,41 +108,25 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
       return;
     }
 
-    auto scopes_and_syms = (genex::views::concat(Vec{_LhsTypeSym->LinkedScope}, _LhsTypeSym->LinkedScope->SupScopes())
-        | genex::to<Vec>())
-      | genex::views::transform([name=Name.get()](auto &&x) { return MakePair(x, x->GetVarSymbol(name, true)); })
-      | genex::to<Vec>()
-      | genex::views::filter([](auto &&x) { return x.second != nullptr; })
-      | genex::views::transform([&](auto &&x) {
-        return MakeTuple(_LhsTypeSym->LinkedScope->DepthDiff(x.first), x.first, x.second);
-      })
-      | genex::to<Vec>();
-
-    auto min_depth = genex::min_element(scopes_and_syms
-      | genex::views::transform([](auto &&x) { return spp::get<0>(x); })
-      | genex::to<Vec>());
-
-    auto closest = scopes_and_syms
-      | genex::views::filter([min_depth](auto &&x) { return spp::get<0>(x) == min_depth; })
-      | genex::views::transform([](auto &&x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
-      | genex::to<Vec>();
+    // Which declaration the access resolves to: the nearest scope that can reach the name, supers included.
+    const auto closest = ClosestScopes(ScopesDeclaringVar(
+      *_LhsTypeSym->LinkedScope, *Name, true));
 
     // Enforce visibility on the accessed member. Visibility is
     // read off the non-generic scope, because that is where the
     // member was written and so where its annotation lives; an
     // instantiation's copy of a symbol is not the declaration.
     if (not closest.IsEmpty()) {
-      const auto scope = closest[0].first->NonGenericScope;
+      const auto scope = closest[0].Where->NonGenericScope;
       const auto declared_sym = scope->GetVarSymbol(Name.get());
       CheckTypeMemberVisibility(
-        declared_sym != nullptr ? *declared_sym : *closest[0].second, *Name,
-        declared_sym != nullptr ? *scope : *closest[0].first, *sm, *meta);
+        declared_sym != nullptr ? *declared_sym : *closest[0].Symbol, *Name,
+        declared_sym != nullptr ? *scope : *closest[0].Where, *sm, *meta);
     }
 
-    if (closest.Len() <= 1) { return; }
-    Raise<SppAmbiguousMemberAccessError>(
-      {closest[0].first, closest[1].first, sm->CurrentScope},
-      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *Name));
+    RaiseIfAmbiguous(ClosestScopes(ScopesDeclaringVar(
+      *_LhsTypeSym->LinkedScope, *Name, false)), *Name, *sm);
+    return;
   }
 
   // Otherwise, we are handling a namespace left-hand-side.
