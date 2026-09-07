@@ -12,6 +12,5 @@ auto main(const std::int32_t argc, char **argv) -> int {
   mi_option_disable(mi_option_verbose);
 #endif
 
-  spp::cli::run_cli(argc, argv);
-  return 0;
+  return spp::cli::run_cli(argc, argv);
 }
