@@ -433,9 +433,10 @@ auto spp::cli::handle_build(
 auto spp::cli::handle_run(
   Str const &mode,
   Str const &target)
-  -> void {
-  // Build the project first (skip VCS).
-  handle_build(mode, target, false);
+  -> bool {
+  // Build the project first (skip VCS). Don't run the old
+  // binary when the current code causes an error.
+  if (not handle_build(mode, target, false)) { return false; }
 
   // Nothing this machine can execute comes out of a cross build,
   // so say that rather than reporting the missing executable as
