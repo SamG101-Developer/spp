@@ -281,7 +281,14 @@ namespace spp::analyse::utils::overload_utils {
       else if (lhs_as_ident != nullptr) {
         fn_owner_type = nullptr;
         fn_name = asts::AstCloneShared(lhs_as_ident);
-        fn_owner_scope = sm.CurrentScope->ParentModule();
+
+        // A name declared inside the function (a function-type
+        // variable) is a value being called, not a module function
+        // spelled the same.
+        const auto mod_scope = sm.CurrentScope->ParentModule();
+        const auto sym = sm.CurrentScope->GetVarSymbol(lhs_as_ident);
+        const auto is_local = sym != nullptr and sym->ScopeDefinedIn != mod_scope;
+        fn_owner_scope = is_local ? nullptr : mod_scope;
       }
 
       // Non-callable AST.
@@ -1149,11 +1156,18 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   //  as function targets, due to scope lookup.
   auto temp = Shared<asts::ExpressionAst>(nullptr);
   if (const auto id = lhs->To<asts::IdentifierAst>()) {
-    const auto mod_scope = sm->CurrentScope->ParentModule();
-    const auto x = mod_scope != nullptr ? mod_scope->GetVarSymbol(id) : sm->CurrentScope->GetVarSymbol(id);
-    if (x and x->MemInfo->AstCompTime) {
-      temp = x->FqName();
-      lhs = temp.get();
+
+    // A name declared inside the function (a function-type
+    // variable) is a value being called, not a module function
+    // spelled the same.
+    const auto local = sm->CurrentScope->GetVarSymbol(id);
+    if (local == nullptr or local->MemInfo->AstCompTime != nullptr) {
+      const auto mod_scope = sm->CurrentScope->ParentModule();
+      const auto x = mod_scope != nullptr ? mod_scope->GetVarSymbol(id) : local;
+      if (x and x->MemInfo->AstCompTime) {
+        temp = x->FqName();
+        lhs = temp.get();
+      }
     }
   }
 
