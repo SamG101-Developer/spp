@@ -217,5 +217,5 @@ commit = "dadaff62b39cf2785d711f4ddea08b3390f31d50"
 [[library]]
 name = "NumEx"
 repo = "https://github.com/SamG101-Developer/NumEx.git"
-commit = "3d34acb7f847b48477148a9e81e82e353342c328"
+commit = "4fe46f12b06aee968e0eee9f2fef5968c46d20ea"
 cmake-flags = ["-DNUMEX_BUILD_TESTS=OFF", "-DNUMEX_BUILD_BENCHMARKS=OFF"]
