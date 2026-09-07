@@ -477,6 +477,15 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
     command += " -Wl,-z,defs";              // A symbol nothing defines is a link error, not a run-time surprise.
   }
 
+  // "-z nodlopen" is not here on purpose: it sets a flag on a shared
+  // object saying it may not be opened by name, and a linker asked
+  // for it while building an executable drops it rather than
+  // recording anything. It belongs on the library link, once there
+  // is one, and a flag that produces no bit in the artefact is worse
+  // than an absent one - the whole point of writing the mitigations
+  // down is that a built binary can be audited for what it actually
+  // got.
+
   std::cout << "Linking: " << exe_file << std::endl;
   if (const auto status = std::system(command.c_str()); status != 0) {
     llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
