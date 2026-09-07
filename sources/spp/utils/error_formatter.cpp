@@ -10,27 +10,47 @@ import std;
 import sys;
 
 SPP_MOD_BEGIN
-spp::utils::errors::ErrorFormatter::ErrorFormatter(Vec<lex::RawToken> tokens, Str file_path) :
+spp::utils::errors::ErrorFormatter::ErrorFormatter(
+  Vec<lex::RawToken> tokens, Str file_path, const std::size_t prelude_token_index) :
   _Tokens(std::move(tokens)),
-  _FilePath(std::move(file_path)) {
+  _FilePath(std::move(file_path)),
+  _PreludeTokenIndex(prelude_token_index) {
+}
+
+auto spp::utils::errors::ErrorFormatter::IsPastUserSource(
+  const std::size_t token_pos) const
+  -> bool {
+  return token_pos >= _PreludeTokenIndex;
 }
 
 auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
   std::size_t ast_start_pos,
   std::size_t ast_size,
   Str &&tag_message)
-  -> Tup<Str, Str, Str, Str, Str> {
+  -> Tup<Str, Str, Str, Str, Str, Str> {
   using lex::RawTokenType;
   using namespace std::literals;
 
   ast_size = ast_size > 1000 ? 1 : ast_size;
   ast_start_pos = ast_start_pos > _Tokens.Len() ? _Tokens.Len() - 1 : ast_start_pos;
 
-  // Synthetic/generated ASTs have no real source position (pos == 0 is the lexer's
-  // prepended newline sentinel). Show a placeholder rather than pointing at the wrong line.
+  // Synthetic/generated ASTs have no real source position
+  // (pos == 0 is the lexer's prepended newline sentinel).
+  // Show a placeholder rather than pointing at the wrong
+  // line.
   if (ast_start_pos == 0) {
     return {
-      _FilePath, "?"_str, "<generated code>"_str, ""_str,
+      _FilePath, "in generated code"_str, ""_str, "<generated code>"_str, ""_str,
+      " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
+    };
+  }
+
+  // Past the end of what the author wrote, and into the prelude
+  // appended behind it. Quoting that back would show a "use" nobody
+  // typed, at a line number past the end of the file.
+  if (IsPastUserSource(ast_start_pos)) {
+    return {
+      _FilePath, "at the end of the file"_str, ""_str, "<end of file>"_str, ""_str,
       " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
     };
   }
@@ -94,7 +114,7 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
   carets.insert(0, Str(char_offset + 1, ' '));
   carets += (colex::fg_bright_white & colex::st_bold) + " <- "s + tag_message;
   const auto left_padding = Str(error_line_number.length(), ' ');
-  return {_FilePath, error_line_number, error_line_as_string, left_padding, carets};
+  return {_FilePath, "on line "s + error_line_number, error_line_number, error_line_as_string, left_padding, carets};
 }
 
 auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
@@ -106,13 +126,13 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
   //
   using namespace std::string_literals;
 
-  auto [file_path, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(
+  auto [file_path, location, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(
     ast_start_pos, ast_size, std::move(tag_message));
 
   // file_path = "\033]8;;"s + file_path + "\033" + file_path + "\033]8;;\033"; // Make the file path clickable in supporting terminals.
 
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + " ', on line "s +
-    line_number + ":\n";
+  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + " ', "s +
+    location + ":\n";
   const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
   const auto line3 = (colex::fg_bright_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
   const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
@@ -129,10 +149,10 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
   //
   using namespace std::string_literals;
 
-  auto [file_path, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(
+  auto [file_path, location, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(
     ast_start_pos, ast_size, std::move(tag_message));
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Context from file '"s + file_path + "', on line "s +
-    line_number + ":\n";
+  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Context from file '"s + file_path + "', "s +
+    location + ":\n";
   const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
   const auto line3 = (colex::fg_bright_green & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
   const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;

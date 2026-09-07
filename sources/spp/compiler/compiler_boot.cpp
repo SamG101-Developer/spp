@@ -57,9 +57,10 @@ auto spp::compiler::CompilerBoot::Lex(
   -> void {
   // Lexing stage.
   for (auto const &mod : tree) {
-    mod->tokens = lex::Lexer(mod->code, not utils::files::NativeString(mod->path).contains("/src/std/")).Lex();
-    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(mod->tokens,
-                                                                     utils::files::DisplayString(mod->path));
+    auto lexer = lex::Lexer(mod->code, not utils::files::NativeString(mod->path).contains("/src/std/"));
+    mod->tokens = lexer.Lex();
+    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
+      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
     bar.Next();
   }
   bar.Finish();
@@ -82,9 +83,10 @@ auto spp::compiler::CompilerBoot::Parse(
   for (auto const &mod : tree) {
     if (not mod->is_test_harness) { continue; }
     mod->code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
-    mod->tokens = lex::Lexer(mod->code, true).Lex();
+    auto lexer = lex::Lexer(mod->code, true);
+    mod->tokens = lexer.Lex();
     mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
-      mod->tokens, utils::files::DisplayString(mod->path));
+      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
     mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
     _Modules.EmplaceBack(mod->module_ast.get());
     bar.Next();

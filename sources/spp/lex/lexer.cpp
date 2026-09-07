@@ -14,11 +14,12 @@ spp::lex::Lexer::Lexer(Str code, const bool add_prelude)
   // Add the prelude at the end so it doesn't offset line numbers from the actual code. Due to the order-agnostic
   // definition system, this is fine.
   if (add_prelude) {
+    m_PreludeCharOffset = m_code.length();
     m_code += "\n" + compiler::kPrelude;
   }
 }
 
-auto spp::lex::Lexer::Lex() const
+auto spp::lex::Lexer::Lex()
   -> Vec<RawToken> {
   // Define tracker variables.
   auto tokens = Vec<RawToken>();
@@ -41,6 +42,14 @@ auto spp::lex::Lexer::Lex() const
   // Iterate the source code.
   auto i = 0uz;
   while (i < m_code.length()) {
+    // The first token at or past where the prelude was appended is
+    // the first token that is not the author's. Taken on the way
+    // through rather than worked out afterwards, because a token
+    // carries no source offset to work it out from.
+    if (i >= m_PreludeCharOffset and m_PreludeTokenIndex == Str::npos) {
+      m_PreludeTokenIndex = tokens.Len();
+    }
+
     const auto c = m_code[i];
 
     // Skip any characters in a single-line comment (except terminating newline character).
