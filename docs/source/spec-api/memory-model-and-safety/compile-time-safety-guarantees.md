@@ -314,7 +314,7 @@ Each of these is a target capability, so each needs the fallback policy from "Bu
 
 ## Concurrency
 
-- [ ] Enforce the `thread_hazard`/`ThreadSafe` auto types (maybe for async too?).
+- [x] Enforce the `thread_hazard`/`ThreadSafe` auto types. Not yet applied to `async`.
 - [ ] Static lock ordering analysis for deadlock detection.
 - [ ] No "relaxed-by-default" atomics: sequential consistency is the default.
 - [ ] Coroutine cancellation safety.
