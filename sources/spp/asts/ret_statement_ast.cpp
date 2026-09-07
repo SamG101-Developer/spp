@@ -185,6 +185,15 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
+  // A "GenOnce" is lowered into an ordinary subroutine, where
+  // a "gen" reads as the return. A "ret" written after one is
+  // therefore unreachable: the block it lands in has already
+  // returned. Todo: This is a bandaid until dead code detection
+  // is fixed.
+  if (const auto block = ctx->Builder.GetInsertBlock(); block != nullptr and block->hasTerminator()) {
+    return nullptr;
+  }
+
   // Inside a coroutine, "ret" ends the generator rather than
   // returning anything (stage 7 rejects one carrying a value),
   // so it leaves the body the same way running off the end
@@ -202,6 +211,18 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   if (Expr == nullptr) {
     codegen::EmitDeferredUnwind(
       *sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
+
+    // A bare "ret" reached in a function that owes a value is a
+    // "GenOnce" lowered to a subroutine finishing on a path that
+    // never yielded - an ordinary subroutine could not get here,
+    // because stage 7 rejects a valueless "ret" from one. There
+    // is nothing to return, so the coroutine's own guarantee is
+    // what has been broken.
+    const auto block = ctx->Builder.GetInsertBlock();
+    RaiseIf<analyse::errors::SppGenOnceFinishesWithoutYieldingError>(
+      block != nullptr and block->getParent() != nullptr and not block->getParent()->getReturnType()->isVoidTy(),
+      {sm->CurrentScope}, ERR_ARGS(*this));
+
     ctx->Builder.CreateRetVoid();
     return nullptr;
   }

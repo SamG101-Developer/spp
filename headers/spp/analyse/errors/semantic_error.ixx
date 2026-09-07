@@ -101,6 +101,7 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppAnnotationTargetNotAnAnnotationError;
   SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
   SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
+  SPP_EXP_CLS struct SppGenOnceFinishesWithoutYieldingError;
   SPP_EXP_CLS struct SppUnitTestInvalidSignatureError;
   SPP_EXP_CLS struct SppUnitTestNotCallableError;
   SPP_EXP_CLS struct SppFfiGenericParameterError;
@@ -654,4 +655,13 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompileTimeFunctionError fina
 SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError final : SemanticError {
   explicit SppLinearValueSkippedInDestructureError(asts::Ast const &skip, asts::Ast const &destructure,
     StrView attr_name, StrView type_name);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError final : SemanticError {
+  /**
+   * A @c GenOnce coroutine reached a @c ret without having yielded, which its own contract forbids: a @c GenOnce is
+   * guaranteed to yield exactly once, which is what lets a caller collapse it into the value rather than test for one.
+   * @param ret_stmt The @c ret that finishes the coroutine.
+   */
+  explicit SppGenOnceFinishesWithoutYieldingError(asts::Ast const &ret_stmt);
 };

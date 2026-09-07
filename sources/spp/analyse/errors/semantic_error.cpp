@@ -1432,4 +1432,14 @@ spp::analyse::errors::SppDeferInCompileTimeFunctionError::SppDeferInCompileTimeF
     "Run the expression where it is needed instead of deferring it, or make the function a runtime one.");
 }
 
+spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
+  asts::Ast const &ret_stmt) {
+  AddHeaders(104, "GenOnce Finishes Without Yielding Error");
+  AddErr(&ret_stmt, "Finishes the coroutine here, on a path that has not yielded");
+  AddFooter(
+    "A 'GenOnce' is guaranteed to yield exactly once, which is what lets a caller read it as the value it yields\n\t"
+    "rather than as a generator to be tested. A 'ret' reached before any 'gen' breaks that guarantee.",
+    "Yield a value on this path before returning, or make the coroutine a 'Gen', which may yield nothing.");
+}
+
 SPP_MOD_END
