@@ -284,8 +284,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
    */
   Shared<asts::TypeAst> GenericVal;
 
-  bool IsDirectlyCopyable = false;
-
   /**
    * The symbol this one takes its derived properties from - copyability, zero-type-ness - when it does not carry
    * them itself: the template a generic substitution was made from, or the type an alias resolves to. Held as a
@@ -308,7 +306,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
   Vec<Shared<TypeSymbol>> AliasedBySyms;
 
+  bool IsDirectlyCopyable = false;
+
   bool IsDirectlyZeroType;
+
+  bool IsDirectlyThreadHazard = false;
+
 
   /**
    * The result of the qualifying walk in @c FqName , and the scope-linkage generation it was computed under. The walk
@@ -354,6 +357,21 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
    * @return Whether this type, or the type it derives it from, is a zero type.
    */
   SPP_ATTR_NODISCARD auto IsZeroType() const -> bool;
+
+  /**
+   * Whether a value of this type may cross a thread boundary. Every type may, unless @c !thread_hazard was written on
+   * it or on something it reaches through its generic arguments or attributes,. A generic parameter is the one exception to "safe by
+   * default": until it is bound there is nothing stopping it being instantiated with a hazard, so it answers yes only
+   * where it was constrained to.
+   *
+   * @n
+   * There is no separate "shareable" answer to give, the way Rust separates @c Send from @c Sync : the two differ only
+   * where a value can be mutated through a shared borrow, and the exclusivity law leaves no way to do that. Nor is there an
+   * opposite marker: nothing may claim to be safe while holding a hazard, and the types that guard shared state hold
+   * their value behind a pointer rather than behind anything hazardous, so they answer honestly here.
+   * @return Whether this type is thread-safe.
+   */
+  SPP_ATTR_NODISCARD auto IsThreadSafe() const -> bool;
 
   auto operator==(
     TypeSymbol const &that) const
