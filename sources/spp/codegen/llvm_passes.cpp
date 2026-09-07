@@ -54,10 +54,6 @@ namespace {
     return pending;
   }
 
-
-  /** What every intrinsic name starts with, and the shortest a prefix can usefully be trimmed to. */
-  constexpr auto kIntrinsicPrefix = llvm::StringLiteral("llvm.");
-
   /** How many repair-then-lower rounds the coroutine pipeline is allowed; see @c RunCoroLoweringPipeline . */
   constexpr auto kMaxCoroLoweringRounds = 4U;
 
