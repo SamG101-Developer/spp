@@ -104,6 +104,9 @@ auto spp::asts::ClassAttributeAst::Stage4_QualifyTypes(
   -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
+  const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
+  sym->Visibility = Visibility.first;
+  sym->VisibilityAnnotation = Visibility.second;
 }
 
 auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
