@@ -101,6 +101,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         let t4 = (false,)
         t4.f()
+        std::mem::ops::drop(t2)
         std::mem::ops::drop(t3)
     }
 )");

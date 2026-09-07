@@ -59,7 +59,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemRegionOverlap,
   test_valid_borrows_of_sibling_fields, R"(
-    cls P { !public a: Str, !public b: Str }
+    cls P {
+        !public a: Str
+        !public b: Str
+    }
 
     fun g(x: &mut Str, y: &Str) -> Void { }
 
@@ -114,7 +117,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestMemRegionOverlap,
   test_invalid_whole_value_and_one_of_its_fields,
   SppMemoryOverlapUsageError, R"(
-    cls P { !public a: Str, !public b: Str }
+    cls P {
+        !public a: Str
+        !public b: Str
+    }
 
     fun g(x: &mut P, y: &Str) -> Void { }
 

@@ -6,9 +6,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder[T] { }
 
     sup [T] Holder[T] {
-        cmp fallback: U8 = 7_u8
+        !public cmp fallback: U8 = 7_u8
 
-        fun pick[cmp order: U8 = Self::fallback]() -> U8 {
+        !public fun pick[cmp order: U8 = Self::fallback]() -> U8 {
             ret order
         }
     }
@@ -24,9 +24,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder[T] { }
 
     sup [T] Holder[T] {
-        cmp fallback: U8 = 7_u8
+        !public cmp fallback: U8 = 7_u8
 
-        fun pick[cmp order: U8 = Self::fallback]() -> U8 {
+        !public fun pick[cmp order: U8 = Self::fallback]() -> U8 {
             ret order
         }
     }
@@ -42,9 +42,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder[T] { }
 
     sup [T] Holder[T] {
-        cmp fallback: U8 = 7_u8
+        !public cmp fallback: U8 = 7_u8
 
-        fun pick[cmp order: U8 = Self::fallback]() -> U8 {
+        !public fun pick[cmp order: U8 = Self::fallback]() -> U8 {
             ret order
         }
     }
@@ -60,7 +60,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder[T] { }
 
     sup [T] Holder[T] {
-        fun pick[cmp order: U8 = 7_u8]() -> U8 {
+        !public fun pick[cmp order: U8 = 7_u8]() -> U8 {
             ret order
         }
     }
@@ -76,11 +76,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder[T] { }
 
     sup [T] Holder[T] {
-        cmp fallback: U8 = 7_u8
+        !public cmp fallback: U8 = 7_u8
 
         fun new() -> Self { ret Holder[T]() }
 
-        fun pick[cmp order: U8 = Self::fallback](&self) -> U8 {
+        !public fun pick[cmp order: U8 = Self::fallback](&self) -> U8 {
             ret order
         }
     }
@@ -97,9 +97,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder[T] { }
 
     sup [T] Holder[T] {
-        cmp fallback: U8 = 7_u8
+        !public cmp fallback: U8 = 7_u8
 
-        fun pick[cmp order: U8 = Self::fallback]() -> U8 {
+        !public fun pick[cmp order: U8 = Self::fallback]() -> U8 {
             ret order
         }
     }

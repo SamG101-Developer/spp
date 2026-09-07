@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder { !public val: S32 }
 
     sup Holder {
-        cor peek(&self) -> std::generator::GenOnce[&S32] {
+        !public cor peek(&self) -> std::generator::GenOnce[&S32] {
             gen &self.val
         }
     }

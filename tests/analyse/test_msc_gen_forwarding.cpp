@@ -13,7 +13,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup Wrapper {
-        cor get(&self) -> std::generator::GenOnce[&Inner] {
+        !public cor get(&self) -> std::generator::GenOnce[&Inner] {
             gen self
         }
     }

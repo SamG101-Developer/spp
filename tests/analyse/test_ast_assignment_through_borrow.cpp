@@ -50,7 +50,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AssignmentThroughBorrowAst,
   test_valid_write_through_a_borrow_bound_by_a_case_pattern, R"(
-    cls Point { !public x: S32, !public y: S32 }
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
 
     fun f() -> Void {
         let mut p = Point(x=1, y=2)
@@ -64,7 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder { !public v: S32 }
 
     sup Holder {
-        cor get_mut(&mut self) -> std::generator::GenOnce[&mut S32] {
+        !public cor get_mut(&mut self) -> std::generator::GenOnce[&mut S32] {
             gen &mut self.v
         }
     }
