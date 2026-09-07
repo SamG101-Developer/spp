@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -105,7 +106,9 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   CompilerMetaData *meta)
   -> void {
   //
-  using analyse::errors::SppAmbiguousMemberAccessError;
+  using analyse::utils::expr_utils::ClosestScopes;
+  using analyse::utils::expr_utils::RaiseIfAmbiguous;
+  using analyse::utils::expr_utils::ScopesDeclaringType;
 
   // Move through the left-hand-side type.
   Lhs->Stage7_AnalyseSemantics(sm, meta);
@@ -116,35 +119,9 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
 
   // Check there is only 1 target field on the lhs at the highest level.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  auto sup_scopes = lhs_type_sym->LinkedScope->SupScopes();
-  sup_scopes.Insert(sup_scopes.begin(), lhs_type_sym->LinkedScope);
-  auto scopes_and_syms = sup_scopes
-    | genex::views::transform([name=op_nested->Name.get()](auto &&x) {
-      return MakePair(x, x->GetTypeSymbol(name, true));
-    })
-    | genex::to<Vec>()
-    | genex::views::filter([](auto &&x) { return x.second != nullptr; })
-    | genex::views::transform([&](auto &&x) {
-      return MakeTuple(lhs_type_sym->LinkedScope->DepthDiff(x.first), x.first, x.second);
-    })
-    | genex::to<Vec>();
-
-  auto min_depth = scopes_and_syms.IsEmpty()
-    ? 0
-    : genex::min_element(
-      scopes_and_syms | genex::views::transform([](auto &&x) { return spp::get<0>(x); }) | genex::to<Vec>());
-
-  auto closest = scopes_and_syms
-    | genex::views::filter([min_depth](auto &&x) { return spp::get<0>(x) == min_depth; })
-    | genex::views::transform([](auto &&x) { return MakePair(spp::get<1>(x), spp::get<2>(x)); })
-    | genex::to<Vec>();
-
-  // Can't use raise_if because closest[1] may be out of bounds.
-  if (closest.Len() > 1) {
-    Raise<SppAmbiguousMemberAccessError>(
-      {closest[0].first, closest[1].first, sm->CurrentScope},
-      ERR_ARGS(*closest[0].second->Name, *closest[1].second->Name, *op_nested->Name));
-  }
+  RaiseIfAmbiguous(
+    ClosestScopes(ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
+    *op_nested->Name, *sm);
 
   // Ensure the type exists on the "lhs" part.
   const auto _meta_guard = meta::MetaGuard(meta);
