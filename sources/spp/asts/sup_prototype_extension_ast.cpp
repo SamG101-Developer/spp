@@ -384,14 +384,16 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     if (cls_sym->Type)
       EnforceGenericConstraintsAllArgs(
-        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
+        *sm->CurrentScope, *sm, *meta);
 
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->Type->Name->IsCompilerGeneratedType()) {
       const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
       EnforceGenericConstraintsAllArgs(
-        *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+        *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
+        *sm->CurrentScope, *sm, *meta);
     }
   }
 
@@ -491,11 +493,20 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
   if (cls_sym.Name->IsCompilerGeneratedType()) { return; }
 
   auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
-    auto dummy = GenericInferenceMap();
     const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-    return ext != nullptr and
-      RelaxedTypeEq(*ext->Name, *Name, *sc, check_scope, dummy, false, false) and
-      TypeEq(*ext->SuperClass, *SuperClass, *sc, check_scope, false);
+    if (ext == nullptr) { return false; }
+
+    // The superclass is compared first: it rejects the large
+    // majority of candidates for a fraction of the cost of a
+    // name comparison, which is the type-symbol lookup this
+    // compiler spends most of its time on.
+    if (not TypeEq(*ext->SuperClass, *SuperClass, *sc, check_scope, false)) { return false; }
+
+    auto fwd = GenericInferenceMap();
+    auto rev = GenericInferenceMap();
+    return
+      RelaxedTypeEq(*ext->Name, *Name, *sc, check_scope, fwd, false, false) or
+      RelaxedTypeEq(*Name, *ext->Name, check_scope, *sc, rev, false, false);
   };
 
   // Prevent double inheritance by checking if the scopes
