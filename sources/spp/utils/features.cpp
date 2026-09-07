@@ -266,6 +266,22 @@ auto spp::utils::features::Schema()
       },
       .FreeForm = false,
     },
+    SectionSpec{
+      .Name = "binary.link",
+      .Help = "What the linker is asked to make of the sections code generation produced.",
+      .Keys = Vec<KeySpec>{
+        KeySpec{
+          .Key = ConfigKey::BinaryLinkHarden,
+          .Name = "harden",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Make every section that only startup writes read-only once startup is over, and leave the stack "
+                  "non-executable, the code its own mapping, and the program unopenable by dlopen."
+        },
+      },
+      .FreeForm = false,
+    },
   };
   return schema;
 }

@@ -28,6 +28,7 @@ namespace spp::utils::features {
     MemoryStackProtect,
     MemoryStackProbe,
     MemoryStackSplit,
+    BinaryLinkHarden,
   };
 
   SPP_EXP_CLS struct KeySpec {
