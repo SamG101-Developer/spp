@@ -423,7 +423,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMemberAccessStaticOperatorExpectedEr
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError final : SemanticError {
-  explicit SppMemberAccessRuntimeOperatorExpectedError(asts::Ast const &lhs, asts::Ast const &access);
+  explicit SppMemberAccessRuntimeOperatorExpectedError(asts::Ast const &lhs, asts::Ast const &access, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericTypeInvalidUsageError final : SemanticError {

@@ -807,13 +807,14 @@ spp::analyse::errors::SppMemberAccessStaticOperatorExpectedError::SppMemberAcces
 
 spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError::SppMemberAccessRuntimeOperatorExpectedError(
   asts::Ast const &lhs,
-  asts::Ast const &access) {
+  asts::Ast const &access,
+  const StrView what) {
   AddHeaders(54, "Member Access Runtime Operator Expected Error");
-  AddCtxForErr(&lhs, "" + INLINE_INFO("variable") + " identifier introduced here");
+  AddCtxForErr(&lhs, "" + INLINE_INFO(what) + " identifier introduced here");
   AddErr(&access, "Static member access operator " + INLINE_INFO("::") + " introduced here");
   AddFooter(
-    "A runtime operator is required for " + INLINE_NOTE("variable") + " member access.",
-    "Use the " + INLINE_HELP(".") + " operator, or change the variable to a namespace.");
+    "A runtime operator is required for " + INLINE_NOTE(what) + " member access.",
+    "Use the " + INLINE_HELP(".") + " operator.");
 }
 
 spp::analyse::errors::SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsageError(
