@@ -61,3 +61,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x: &View[S32] = a["hello" to 2_uz]
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorSliceAst,
+  test_invalid_slicing_a_function,
+  SppMemberAccessNonIndexableError, R"(
+    cls Holder[T] { }
+
+    sup [T] Holder[T] {
+        !public fun pick() -> U8 { ret 7_u8 }
+    }
+
+    fun f() -> Void {
+        let x = Holder[S32]::pick[0_uz to 1_uz]
+    }
+)");
