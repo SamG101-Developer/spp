@@ -861,7 +861,8 @@ namespace spp::analyse::utils::overload_utils {
           // has to match exactly; and a relaxed match that only
           // held by binding such a generic is not a match either.
           auto inferred = type_compare::GenericInferenceMap();
-          const auto relaxed_matched = not IsRigidGenericAtCaller(*p_type, *sm->CurrentScope)
+          const auto relaxed_matched = type_compare::ConventionEq(*p_type, *a_type)
+            and not IsRigidGenericAtCaller(*p_type, *sm->CurrentScope)
             and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, inferred)
             and not genex::any_of(inferred, [&](auto const &binding) {
               return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
