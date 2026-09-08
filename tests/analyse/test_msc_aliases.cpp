@@ -288,6 +288,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         let mut v2 = g()
         v2 = Vec[Bool]::new()
+
+        std::mem::ops::drop(v1)
+        std::mem::ops::drop(v2)
     }
 )");
 
