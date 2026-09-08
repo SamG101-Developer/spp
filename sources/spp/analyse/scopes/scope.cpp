@@ -23,6 +23,7 @@ import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -635,31 +636,40 @@ auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
     return is_valid_postfix_expression.operator()<asts::PostfixExpressionOperatorStaticMemberAccessAst>(ast);
   };
 
+  auto is_valid_postfix_expression_deref = [is_valid_postfix_expression](auto *ast) -> bool {
+    return is_valid_postfix_expression.operator()<asts::PostfixExpressionOperatorDerefAst>(ast);
+  };
+
   auto adjusted_name = &expr;
   if (is_valid_postfix_expression_runtime(&expr)) {
-    // Keep moving into the left-hand-side until there is no left-hand-side: "a.b.c" becomes "a".
-    while (is_valid_postfix_expression_runtime(adjusted_name)) {
+    // Keep moving into the left-hand-side until there is
+    // no left-hand-side: "a.b.c" becomes "a".
+    while (is_valid_postfix_expression_runtime(adjusted_name) or is_valid_postfix_expression_deref(adjusted_name)) {
       adjusted_name = adjusted_name->To<asts::PostfixExpressionAst>()->Lhs.get();
     }
 
-    // Get the symbol (will be in this scope), and return it with the scope.
+    // Get the symbol (will be in this scope), and return
+    // it with the scope.
     auto sym = GetVarSymbol(adjusted_name->To<asts::IdentifierAst>());
     return {sym, this};
   }
 
   if (is_valid_postfix_expression_static(&expr)) {
-    // This is possible with a left-hand-side type or namespace.
+    // This is possible with a left-hand-side type or
+    // namespace.
     const auto postfix_expr = expr.ToUnchecked<asts::PostfixExpressionAst>();
     const auto postfix_op = postfix_expr->Op->ToUnchecked<asts::PostfixExpressionOperatorStaticMemberAccessAst>();
 
-    // Type based left-hand-side, such as "some_namespace::Type::static_member()"
+    // Type based left-hand-side, such as
+    // "some_namespace::Type::static_member()"
     if (const auto type_lhs = postfix_expr->Lhs->To<asts::TypeAst>()) {
       const auto type_sym = GetTypeSymbol(type_lhs);
       const auto var_sym = type_sym->LinkedScope->GetVarSymbol(postfix_op->Name.get());
       return {var_sym, const_cast<Scope const*>(type_sym->LinkedScope)};
     }
 
-    // Namespace based left-hand-side, such as "a::b::c::my_function()"
+    // Namespace based left-hand-side, such as
+    // "a::b::c::my_function()"
     auto namespace_scope = this;
     if (is_valid_postfix_expression_static(adjusted_name)) {
       adjusted_name = adjusted_name->To<asts::PostfixExpressionAst>()->Lhs.get();
