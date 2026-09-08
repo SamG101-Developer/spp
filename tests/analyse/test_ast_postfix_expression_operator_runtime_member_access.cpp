@@ -232,3 +232,38 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         Point.f()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorRuntimeMemberAccessAst,
+    test_valid_attribute_read_through_a_value_over_a_constant_of_one_name, R"(
+    cls Point {
+        !public x: U32
+    }
+
+    sup Point {
+        !public cmp x: Bool = true
+    }
+
+    fun f() -> Void {
+        let p = Point(x=1_u32)
+        let a: U32 = p.x
+        drop(p)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorRuntimeMemberAccessAst,
+    test_invalid_constant_read_through_a_value,
+    SppMemberAccessStaticOperatorExpectedError, R"(
+    cls Point { }
+
+    sup Point {
+        !public cmp x: Bool = true
+    }
+
+    fun f() -> Void {
+        let p = Point()
+        let a = p.x
+        drop(p)
+    }
+)");
