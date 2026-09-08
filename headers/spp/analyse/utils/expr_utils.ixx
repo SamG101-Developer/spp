@@ -77,6 +77,51 @@ namespace spp::analyse::utils::expr_utils {
     scopes::TypeSymbol *Symbol;
   };
 
+  SPP_EXP_CLS enum class MemberAccessForm {
+    Runtime, // Accessed with "."
+    Static, // Accessed with "::"
+  };
+
+  /**
+   * Whether a member can be reached by a given access form. This is needed in determining if a field can be accessed as
+   * a runtime field or static field; sometimes as both if a class is defined in such a way.
+   * @param sym The member's symbol.
+   * @param form How the member was named.
+   * @return Whether that form reaches it.
+   */
+  SPP_EXP_FUN auto MemberReachableBy(
+    scopes::VariableSymbol const &sym,
+    MemberAccessForm form)
+    -> bool;
+
+  /**
+   * The candidates a given access form can reach, keeping the rest out of the depth comparison entirely: a level
+   * declaring the name in the other form must neither answer the access nor hide one further out that declares it in
+   * this form.
+   * @param candidates The declaring scopes to filter.
+   * @param form How the member was named.
+   * @return Those of @p candidates that @p form reaches.
+   */
+  SPP_EXP_FUN auto MembersReachableBy(
+    Vec<DeclaringVarScope> const &candidates,
+    MemberAccessForm form)
+    -> Vec<DeclaringVarScope>;
+
+  /**
+   * Lookup the field of a type, restricted to the members the given access form can reach. A type may declare an
+   * attribute and a constant of one name, and one level may declare either where another declares the other, so the
+   * symbol table's own answer cannot say which member an access meant.
+   * @param type_scope The scope of the type the access was written against.
+   * @param name The member being accessed.
+   * @param form How the member was named.
+   * @return The nearest member that form reaches, or @c nullptr if it reaches none.
+   */
+  SPP_EXP_FUN auto LookupMemberForAccess(
+    scopes::Scope &type_scope,
+    asts::IdentifierAst const &name,
+    MemberAccessForm form)
+    -> scopes::VariableSymbol*;
+
   /**
    * Every scope that contains the variable requested. These are then inter-compared for depths, to determine if there
    * are ambiguous lookups or not.

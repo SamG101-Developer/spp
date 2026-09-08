@@ -26,6 +26,31 @@ import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 
+namespace {
+  auto StaticMemberOf(
+    spp::analyse::scopes::Scope &type_scope,
+    spp::asts::IdentifierAst const &name)
+    -> spp::analyse::scopes::VariableSymbol* {
+    using spp::analyse::utils::expr_utils::LookupMemberForAccess;
+    using spp::analyse::utils::expr_utils::MemberAccessForm;
+    using spp::analyse::utils::expr_utils::MemberReachableBy;
+
+    // If the scope symbol exists (nullptr check for type
+    // forwarding), and the member can be runtime-accessed,
+    // then return the found symbol.
+    const auto found = type_scope.GetVarSymbol(&name, true);
+    if (found == nullptr or MemberReachableBy(
+      *found, MemberAccessForm::Static)) { return found; }
+
+    // If the cheap check gave a runtime symbol, then
+    // search more deeply through the super scopes to
+    // find the member in a static context.
+    const auto member = LookupMemberForAccess(
+      type_scope, name, MemberAccessForm::Static);
+    return member != nullptr ? member : found;
+  }
+}
+
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
   decltype(TokDblColon) &&tok_dbl_colon,
@@ -77,6 +102,10 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
   using analyse::utils::expr_utils::ClosestScopes;
   using analyse::utils::expr_utils::RaiseIfAmbiguous;
+  using analyse::utils::expr_utils::LookupMemberForAccess;
+  using analyse::utils::expr_utils::MemberAccessForm;
+  using analyse::utils::expr_utils::MemberReachableBy;
+  using analyse::utils::expr_utils::MembersReachableBy;
   using analyse::utils::expr_utils::ScopesDeclaringVar;
   using analyse::errors::SppMemberAccessRuntimeOperatorExpectedError;
 
@@ -90,7 +119,9 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
       auto [fwd_ref_type, fwd_mut_type] = analyse::utils::type_utils::GetFwdTypes(*lhs_type_sym->FqName(), *sm);
       const auto temp = fwd_ref_type ? fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val.get() : nullptr;
       const auto lhs_fwd_ref_type_sym = temp ? sm->CurrentScope->GetTypeSymbol(temp) : nullptr;
-      const auto found = lhs_fwd_ref_type_sym ? lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true) : false;
+      const auto found = lhs_fwd_ref_type_sym
+        ? lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)
+        : false;
       if (fwd_ref_type == nullptr or (fwd_ref_type != nullptr and not found)) {
         // Todo: Need to filter these candidates to function groups who contain a static overload.
         // Todo: Add fwd-ref type member candidates
@@ -108,9 +139,25 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
       return;
     }
 
-    // Which declaration the access resolves to: the nearest scope that can reach the name, supers included.
-    const auto closest = ClosestScopes(ScopesDeclaringVar(
-      *_LhsTypeSym->LinkedScope, *Name, true));
+    // A class attribute belongs to a value of the type rather
+    // than to the type, so it is reached with "." instead.
+    const auto found = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
+    if (found != nullptr and not MemberReachableBy(*found, MemberAccessForm::Static)) {
+      const auto member = LookupMemberForAccess(
+        *_LhsTypeSym->LinkedScope, *Name, MemberAccessForm::Static);
+
+      RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
+        member == nullptr, {sm->CurrentScope},
+        ERR_ARGS(*Name, *TokDblColon, "attribute"));
+    }
+
+    // Which declaration the access resolves to: the nearest
+    // scope that can reach the name, supers included. Only
+    // the members "::" reaches are in the running, so a class
+    // attribute of the same name neither answers this nor makes
+    // it ambiguous.
+    const auto closest = ClosestScopes(MembersReachableBy(
+      ScopesDeclaringVar(*_LhsTypeSym->LinkedScope, *Name, true), MemberAccessForm::Static));
 
     // Enforce visibility on the accessed member. Visibility is
     // read off the non-generic scope, because that is where the
@@ -124,8 +171,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
         declared_sym != nullptr ? *scope : *closest[0].Where, *sm, *meta);
     }
 
-    RaiseIfAmbiguous(ClosestScopes(ScopesDeclaringVar(
-      *_LhsTypeSym->LinkedScope, *Name, false)), *Name, *sm);
+    RaiseIfAmbiguous(
+      ClosestScopes(
+        MembersReachableBy(
+          ScopesDeclaringVar(*_LhsTypeSym->LinkedScope, *Name, false), MemberAccessForm::Static)), *Name,
+      *sm);
     return;
   }
 
@@ -136,7 +186,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
   // Check the lhs is a namespace and not a variable.
   RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
     lhs_var_sym != nullptr, {sm->CurrentScope},
-    ERR_ARGS(*meta->PostfixExpressionLhs, *TokDblColon));
+    ERR_ARGS(*meta->PostfixExpressionLhs, *TokDblColon, "variable"));
 
   // Check the constant exists inside the namespace.
   // Todo: inconsistent "true" for exclusive here vs ns
@@ -160,7 +210,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeR
   -> void {
   // Handle accessing a symbol on a type.
   if (_LhsTypeSym != nullptr) {
-    const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
+    const auto sym = StaticMemberOf(*_LhsTypeSym->LinkedScope, *Name);
     auto tm = ScopeManager(sm->GlobalScope, _LhsTypeSym->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CmpResult = AstClone(meta->CmpResult);
@@ -187,14 +237,14 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   // result from the meta context.
   if (ctx->InConstantContext) {
     Stage9_CompTimeResolve(sm, meta);
-    if (auto folded = std::move(meta->CmpResult); folded != nullptr) {
+    if (const auto folded = std::move(meta->CmpResult); folded != nullptr) {
       return folded->Stage11_CodeGen(sm, meta, ctx);
     }
   }
 
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
   if (_LhsTypeSym != nullptr) {
-    const auto var_sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
+    const auto var_sym = StaticMemberOf(*_LhsTypeSym->LinkedScope, *Name);
     if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
     SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
     const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
@@ -226,7 +276,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
     // todo: const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
-    const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
+    const auto sym = StaticMemberOf(*lhs_type_sym->LinkedScope, *Name);
     if (sym != nullptr) { return sym->Type; }
 
     // This is where we need to handle the FwdRef/FwdMut logic.

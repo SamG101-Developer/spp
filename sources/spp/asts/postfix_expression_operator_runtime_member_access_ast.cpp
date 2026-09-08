@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
@@ -41,6 +42,32 @@ import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 
+namespace {
+  auto RuntimeMemberOf(
+    spp::analyse::scopes::Scope &type_scope,
+    spp::asts::IdentifierAst const &name)
+    -> spp::analyse::scopes::VariableSymbol* {
+    //
+    using spp::analyse::utils::expr_utils::LookupMemberForAccess;
+    using spp::analyse::utils::expr_utils::MemberAccessForm;
+    using spp::analyse::utils::expr_utils::MemberReachableBy;
+
+    // If the scope symbol exists (nullptr check for type
+    // forwarding), and the member can be runtime-accessed,
+    // then return the found symbol.
+    const auto found = type_scope.GetVarSymbol(&name);
+    if (found == nullptr or MemberReachableBy(
+      *found, MemberAccessForm::Runtime)) { return found; }
+
+    // If the cheap check gave a static symbol, then search
+    // more deeply through the super scopes to find the
+    // member in a runtime context.
+    const auto member = LookupMemberForAccess(
+      type_scope, name, MemberAccessForm::Runtime);
+    return member != nullptr ? member : found;
+  }
+}
+
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
   decltype(TokDot) &&tok_dot,
@@ -69,8 +96,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PosEnd() const
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast, sharing the mapped
-  // forwarding access so a clone taken after analysis keeps
-  // it.
+  // forwarding access so a clone taken after analysis
+  // keeps it.
   auto ast = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     AstClone(TokDot),
     AstClone(Name));
@@ -92,15 +119,17 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   -> void {
   //
   using analyse::errors::SppMemberAccessNonIndexableError;
-  using analyse::utils::expr_utils::ClosestScopes;
-  using analyse::utils::expr_utils::RaiseIfAmbiguous;
-  using analyse::utils::expr_utils::ScopesDeclaringVar;
   using analyse::errors::SppMemberAccessOutOfBoundsError;
   using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
+  using analyse::utils::expr_utils::ClosestScopes;
+  using analyse::utils::expr_utils::MemberAccessForm;
+  using analyse::utils::expr_utils::MembersReachableBy;
+  using analyse::utils::expr_utils::RaiseIfAmbiguous;
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
-  using analyse::utils::type_utils::BuildFwdCall;
+  using analyse::utils::expr_utils::ScopesDeclaringVar;
   using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
   using analyse::utils::type_predicates::IsIndexWithinBound;
+  using analyse::utils::type_utils::BuildFwdCall;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
   using analyse::utils::visibility_utils::IsTypeMemberVisible;
 
@@ -192,13 +221,25 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
       }
     }
 
-    const auto scopes_and_syms = all_scopes_and_syms
+    const auto members = all_scopes_and_syms
       | genex::views::filter([](auto const &x) { return not x.Symbol->Type->IsCompilerGeneratedType(); })
       | genex::to<Vec>();
 
+    const auto runtime_members = MembersReachableBy(
+      members, MemberAccessForm::Runtime);
+
+    // A "cmp" constant belongs to the type rather than to any
+    // value of it, so it is reached with "::" instead. This
+    // is also what picks an attribute out where the type declares
+    // a constant of the same name: the two are different members,
+    // and only how the access is written says which one was meant.
+    RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
+      runtime_members.IsEmpty() and not members.IsEmpty(), {sm->CurrentScope},
+      ERR_ARGS(*Name, *TokDot, "constant"));
+
     // If we only have functional types, just return.
-    if (scopes_and_syms.Len() < 1) { return; }
-    const auto closest = ClosestScopes(scopes_and_syms);
+    if (runtime_members.Len() < 1) { return; }
+    const auto closest = ClosestScopes(runtime_members);
 
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
@@ -410,9 +451,11 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
     return elem_type;
   }
 
-  // Get the field symbol and return its type.
+  // Get the field symbol and return its type. Resolved by
+  // access form, so that an attribute is what this reads on
+  // a type that also declares a constant of that name.
   const auto lhs_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
-  const auto var_sym = lhs_sym->LinkedScope->GetVarSymbol(Name.get());
+  const auto var_sym = RuntimeMemberOf(*lhs_sym->LinkedScope, *Name);
   const auto field_type = var_sym->Type;
   return lhs_sym->LinkedScope->GetTypeSymbol(field_type.get())->FqName();
 }
