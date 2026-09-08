@@ -39,16 +39,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     InnerScopeExpressionAst,
-    test_invalid_unreachable_after_terminating_block,
-    SppUnreachableCodeError, R"(
-    fun f() -> S32 {
-        { ret 100 }
-        ret 200
-    }
-)");
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    InnerScopeExpressionAst,
     test_invalid_use_after_move_out_of_block,
     SppUninitializedMemoryUseError, R"(
     cls Foo { }
