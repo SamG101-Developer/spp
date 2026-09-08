@@ -110,14 +110,6 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
 
   const auto type_name = type->ToString();
   if (IsTypeVoid(*type, *scope) or IsTypeNever(*type, *scope)) { return; }
-  // Todo: See the note on the same environment variable in
-  //  "linear_utils.cpp" - a migration aid, to be removed once
-  //  the standard library is linear-clean.
-  if (std::getenv("SPP_LINEAR_SURVEY") != nullptr) {
-    try { Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name))); }
-    catch (errors::SemanticError const &e) { std::cerr << "LINEAR|" << e.what() << "\n"; }
-    return;
-  }
   Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name)));
 }
 
