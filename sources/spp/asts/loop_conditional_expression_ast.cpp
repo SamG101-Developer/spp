@@ -313,8 +313,11 @@ auto spp::asts::LoopConditionalExpressionAst::MarkAsIterDesugar()
 
 auto spp::asts::LoopConditionalExpressionAst::Terminates() const
   -> bool {
-  // The loop conditional expression only terminates if the body terminates.
-  return Body->Terminates();
+  // A conditional loop never terminates the scope it is
+  // written in: the condition is checked before the first
+  // iteration, so a loop whose body returns can still run
+  // zero times and fall through to whatever follows.
+  return false;
 }
 
 SPP_MOD_END

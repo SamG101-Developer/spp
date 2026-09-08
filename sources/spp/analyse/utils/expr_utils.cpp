@@ -51,13 +51,12 @@ auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
   //
   using errors::SppUnreachableCodeError;
 
-  // Check for statements after a terminating statement
-  // has been reached.
+  // Check for statements after a terminating statement has been reached. Asked of the statement rather than matched
+  // against "ret" and "exit"/"skip" by hand: a block whose last statement returns, or a "case" whose every branch
+  // does, ends the scope just as surely, and only the two written forms were being caught.
   for (auto const &[i, member] : members | genex::views::enumerate) {
-    const auto ret_stmt = member->To<asts::RetStatementAst>();
-    const auto loop_flow_stmt = member->To<asts::LoopControlFlowStatementAst>();
     RaiseIf<SppUnreachableCodeError>(
-      (ret_stmt or loop_flow_stmt) and (member != members.Back()),
+      member->Terminates() and member != members.Back(),
       {sm.CurrentScope}, ERR_ARGS(*member, *members[i + 1]));
   }
 }

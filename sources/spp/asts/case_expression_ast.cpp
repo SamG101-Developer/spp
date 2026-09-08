@@ -479,7 +479,13 @@ auto spp::asts::CaseExpressionAst::InferType(
 
 auto spp::asts::CaseExpressionAst::Terminates() const
   -> bool {
-  // The case expression only terminates if all branches terminate.
+  // Every branch has to terminate, and there has to be a branch
+  // that always runs. Without a final "else" the case can match
+  // nothing and fall straight through, so "case a { gen 1 ret }"
+  // ends the scope only when "a" holds - and the statement after
+  // it is reachable.
+  if (Branches.IsEmpty()) { return false; }
+  if (Branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>() == nullptr) { return false; }
   return not genex::any_of(
     Branches, [](auto const &branch) { return not branch->Body->Terminates(); });
 }
