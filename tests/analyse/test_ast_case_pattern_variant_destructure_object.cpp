@@ -174,7 +174,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f(p: Point) -> Void {
         case p is Point(x=[a, b], y) { }
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -187,7 +186,58 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f(p: Point) -> Void {
         case p is Point(x=(a, b), y) { }
-        std::mem::ops::drop(p)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectAst,
+  test_valid_nested_class_in_object_all_bound, R"(
+    # The same, one class inside another, where the parts are attributes rather than indexed elements.
+    cls Inner {
+        !public a: Str
+        !public b: Str
+    }
+
+    cls Outer {
+        !public i: Inner
+        !public y: Str
+    }
+
+    fun f(p: Outer) -> Void {
+        case p is Outer(i=Inner(a, b), y) { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CasePatternVariantDestructureObjectAst,
+  test_invalid_nested_tuple_in_object_partially_bound,
+  SppLinearValueNotConsumedError, R"(
+    # Only the first element of the tuple is bound, so "p.x" is not accounted for and "p" still owns something.
+    cls Point {
+        !public x: (Str, Str)
+        !public y: Str
+    }
+    fun f(p: Point) -> Void {
+        case p is Point(x=(a, ..), y) { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CasePatternVariantDestructureObjectAst,
+  test_invalid_nested_class_in_object_partially_bound,
+  SppLinearValueNotConsumedError, R"(
+    cls Inner {
+        !public a: Str
+        !public b: Str
+    }
+
+    cls Outer {
+        !public i: Inner
+        !public y: Str
+    }
+
+    fun f(p: Outer) -> Void {
+        case p is Outer(i=Inner(a, ..), y) { }
     }
 )");
 

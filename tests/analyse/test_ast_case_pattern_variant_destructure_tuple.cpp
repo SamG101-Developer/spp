@@ -39,7 +39,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureTupleAst,
   test_valid_value_and_single_skip, R"(
     fun f(p: (Str, Str)) -> Void {
-        case p is (x, _) { }
+        # Bound by borrow: the skipped element is never taken,
+        # so binding by value would leave "p" owning it with
+        # nothing left able to consume it.
+        case p is (&x, _) { }
+        std::mem::ops::drop(p)
     }
 )");
 
@@ -47,7 +51,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureTupleAst,
   test_valid_value_and_unbound_multi_skip, R"(
     fun f(p: (Str, Str)) -> Void {
-        case p is (x, ..) { }
+        case p is (&x, ..) { }
+        std::mem::ops::drop(p)
     }
 )");
 
