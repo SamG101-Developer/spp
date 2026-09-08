@@ -10,6 +10,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
@@ -20,6 +21,7 @@ import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -127,6 +129,39 @@ auto spp::analyse::utils::type_members::GetAllAttrs(
   }
 
   return extended_syms;
+}
+
+auto spp::analyse::utils::type_members::CheckShadowedCmpAgreesInType(
+  asts::CmpStatementAst const &cmp_member,
+  scopes::Scope &cls_scope,
+  scopes::Scope const &own_scope,
+  scopes::ScopeManager const &sm)
+  -> void {
+  //
+  using errors::SppSuperimpositionExtensionCmpStatementInvalidError;
+
+  // Skip this for $Types which are mock types over functions
+  // and have unique function overload covering types.
+  if (cmp_member.Type->IsCompilerGeneratedType()) { return; }
+
+  // Iterate over every scope that declares the name directly:
+  // the type's scope and each of its superimpositions, which
+  // is the same walk the ambiguity checks are built on.
+  for (auto const &declared : expr_utils::ScopesDeclaringVar(cls_scope, *cmp_member.Name, false)) {
+    if (declared.Where == &own_scope) { continue; }
+
+    // A class attribute is a different member reached a different
+    // way, not another declaration of this constant.
+    const auto sym = declared.Symbol;
+    if (sym->MemInfo->AstCompTime == nullptr) { continue; }
+    if (sym->Type->IsCompilerGeneratedType()) { continue; }
+
+    // If the type is inconsistent with the cmp statement being
+    // checked then raise an error here.
+    RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
+      not type_compare::TypeEq(*sym->Type, *cmp_member.Type, *declared.Where, own_scope, false),
+      {declared.Where, sm.CurrentScope}, ERR_ARGS(cmp_member, *sym->Name));
+  }
 }
 
 auto spp::analyse::utils::type_members::ClearUnimplementedAbstractMethodsCache()

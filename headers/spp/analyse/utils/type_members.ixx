@@ -9,6 +9,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct ClassAttributeAst;
+  SPP_EXP_CLS struct CmpStatementAst;
   SPP_EXP_CLS struct FunctionPrototypeAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TypeAst;
@@ -16,6 +17,7 @@ namespace spp::asts {
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
+  SPP_EXP_CLS class ScopeManager;
   SPP_EXP_CLS struct TypeSymbol;
 }
 
@@ -28,6 +30,21 @@ namespace spp::analyse::utils::type_members {
     asts::TypeAst const &type,
     scopes::Scope const &scope)
     -> Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>>;
+
+  /**
+   * Check all instances of the constant in the scope and super scopes have the same type.
+   * @param cmp_member The constant being declared.
+   * @param cls_scope The scope of the type the superimposition is over.
+   * @param own_scope The scope of the superimposition block declaring it, whose own declaration is not compared
+   * against itself.
+   * @param sm The scope manager, for the scope errors are reported against.
+   */
+  SPP_EXP_FUN auto CheckShadowedCmpAgreesInType(
+    asts::CmpStatementAst const &cmp_member,
+    scopes::Scope &cls_scope,
+    scopes::Scope const &own_scope,
+    scopes::ScopeManager const &sm)
+    -> void;
 
   /**
    * Drop everything @c GetUnimplementedAbstractMethods has remembered. Its cache is keyed on scope addresses, so it
