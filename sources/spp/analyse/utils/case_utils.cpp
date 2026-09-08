@@ -544,15 +544,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
 
     for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
-      sym->MemInfo->AstInitialization = {
-        old_mem_status.AstInitialization,
-        spp::get<1>(sym->MemInfo->AstInitialization)
-      };
-      sym->MemInfo->AstMoved = {old_mem_status.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
-      sym->MemInfo->AstPartialMoves = old_mem_status.AstPartialMoves;
-      sym->MemInfo->AstContainedEscapingBorrows = old_mem_status.AstContainedEscapingBorrows;
-      sym->MemInfo->AstContainersOfEscapingBorrows = old_mem_status.AstContainersOfEscapingBorrows;
-      sym->MemInfo->InitializationCounter = old_mem_status.InitializationCounter;
+      sym->MemInfo->FillFromSnapshot(old_mem_status);
 
       // Save this memory status for subsequent inter-branch
       // status comparisons.
@@ -592,14 +584,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
     // Assuming all new memory states are consistent across
     // branches, update to the first "new" state list.
-    sym->MemInfo->AstInitialization = {
-      first_branch_mem_info.AstInitialization, spp::get<1>(sym->MemInfo->AstInitialization)
-    };
-    sym->MemInfo->AstMoved = {first_branch_mem_info.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
-    sym->MemInfo->AstPartialMoves = first_branch_mem_info.AstPartialMoves;
-    sym->MemInfo->AstContainedEscapingBorrows = first_branch_mem_info.AstContainedEscapingBorrows;
-    sym->MemInfo->AstContainersOfEscapingBorrows = first_branch_mem_info.AstContainersOfEscapingBorrows;
-    sym->MemInfo->InitializationCounter = first_branch_mem_info.InitializationCounter;
+    sym->MemInfo->FillFromSnapshot(first_branch_mem_info);
 
     // Check the new memory status for each symbol is
     // consistent across all branches that don't terminate.
