@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.bin_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.fold_expression_ast;
@@ -199,7 +200,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     // its pairs first, so that the "and" it produces is
     // analysed as one - conditional right operand and all -
     // rather than being turned straight into a call.
-    auto combined = CombineComparisonChain(*this, sm, meta);
+    const auto combined = CombineComparisonChain(*this, sm, meta);
     Lhs = std::move(combined->Lhs);
     TokOp = std::move(combined->TokOp);
     Rhs = std::move(combined->Rhs);
@@ -245,12 +246,17 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
+  //
+  using analyse::utils::mem_utils::ValidateSymbolMemory;
+
   // A logical operator has no mapped function to forward to.
   // Both operands are checked as at worst, they both evaluate,
   // so must both be valid. Maintains consistency in all code.
   if (IsLogicalOperator()) {
     Lhs->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*Lhs, *this, *sm, true, true, false, false, meta);
     Rhs->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(*Rhs, *this, *sm, true, true, false, false, meta);
     return;
   }
 
