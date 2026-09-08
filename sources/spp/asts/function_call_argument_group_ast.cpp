@@ -239,7 +239,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // "ValidateUnnamedArgumentBorrow" for why it arrives that way and why nothing else catches it.
     ValidateUnnamedArgumentBorrow(*arg, sym, borrows_ref, borrows_mut, *sm, meta);
 
-    if (sym == nullptr) { continue; }
+    // An argument with no outermost symbol is a temporary, so
+    // the borrow bookkeeping below has nothing to key on. But
+    // in the special case that the unnamed argument is a tuple
+    // or array, we need to check the elements inside it.
+    if (sym == nullptr) {
+      if (arg->Conv == nullptr) { ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta); }
+      continue;
+    }
 
     // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
     // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
