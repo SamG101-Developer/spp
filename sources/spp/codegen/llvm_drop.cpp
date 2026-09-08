@@ -32,6 +32,10 @@ auto spp::codegen::EmitDrop(
   using analyse::utils::drop_utils::FindDropOverload;
   using analyse::utils::drop_utils::NeedsDrop;
   using analyse::utils::type_members::GetAllAttrs;
+  using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
+  using analyse::utils::type_predicates::IsIndexWithinBound;
+  using analyse::utils::type_predicates::IsTypeArr;
+  using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
 
   // Destroying a value that owns nothing is a no-op;
   // an "S32" local, or a struct built only from them,
@@ -94,11 +98,47 @@ auto spp::codegen::EmitDrop(
     return;
   }
 
+  const auto elem_ty = GetLlvmType(type_sym, ctx);
+
+  // A bound generic parameter stands for its argument: the symbol keeps the parameter's name ("T"), which is not a
+  // name the checks below can read a tuple or an array off. "NeedsDrop" resolves through for the same reason.
+  auto const *const bare_sym = type_sym.IsGeneric and type_sym.LinkedScope != nullptr
+    and type_sym.LinkedScope->TySym != nullptr and type_sym.LinkedScope->TySym.get() != &type_sym
+    ? type_sym.LinkedScope->TySym.get()
+    : &type_sym;
+  const auto bare_name = bare_sym->FqName();
+
+  // Positional checks for tuple / array types, as they don't
+  // hold attribute names.
+  if (IsTypeCompTimeIndexable(*bare_name, *sm->CurrentScope)) {
+    const auto is_arr = IsTypeArr(*bare_name, *sm->CurrentScope);
+    const auto elems = IsIndexWithinBound(0uz, *bare_name, *sm->CurrentScope).second;
+    const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+
+    // Reverse order, as with attributes below: the last
+    // element built is the first one destroyed.
+    for (auto i = elems; i > 0uz; --i) {
+      const auto index = static_cast<std::uint32_t>(i - 1uz);
+      const auto elem_type = GetNthTypeOfIndexableType(i - 1uz, *bare_name, *sm->CurrentScope);
+      const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type.get());
+      if (elem_type_sym == &type_sym or elem_type_sym == bare_sym) { continue; }
+      if (not NeedsDrop(*elem_type_sym, *sm, meta)) { continue; }
+
+      const auto name = "drop.elem" + uid + "." + std::to_string(index);
+      const auto elem_ptr = is_arr
+        ? ctx->Builder.CreateGEP(
+          elem_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)}, name)
+        : ctx->Builder.CreateStructGEP(elem_ty, ptr, index, name);
+      EmitDrop(*elem_type_sym, elem_ptr, sm, meta, ctx);
+    }
+    return;
+  }
+
   // Only a type that has no destructor of its own is destroyed
   // attribute by attribute, in reverse declaration order,
   // mirroring the order they were initialized in.
   auto attrs = GetAllAttrs(*type_sym.FqName(), *sm->CurrentScope);
-  const auto struct_ty = GetLlvmType(type_sym, ctx);
+  const auto struct_ty = elem_ty;
   if (not llvm::isa<llvm::StructType>(struct_ty)) { return; }
 
   for (auto i = attrs.Len(); i > 0uz; --i) {

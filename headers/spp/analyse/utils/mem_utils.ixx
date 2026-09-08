@@ -20,6 +20,17 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::mem_utils {
+  SPP_EXP_CLS enum class MemRegionRelation {
+    Disjoint, // Non overlapping regions of memory: "a" vs "b" or "a.b" vs "a.c"
+    Contains, // The first place has a region containing the second: "a" vs "a.b"
+    ContainedBy, // The first place's region is contained by the second: "a.b" vs "a"
+  };
+
+  SPP_EXP_FUN auto MemRegionRelate(
+    asts::Ast const &region,
+    Vec<Str> const &steps)
+    -> MemRegionRelation;
+
   /**
    * Two memory regions overlap, if one of the symbols is a strict subset of the other. Sharing a common owner does
    * not guarantee an overlap. For example, @c a overlaps with @c a. This is the most basic overlap example.

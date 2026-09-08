@@ -24,6 +24,29 @@ import genex;
 namespace spp::analyse::utils::drop_utils {
   namespace {
     /**
+     * Number of types that need checking; for a tuple it is every type as they can all be different; for an array it is
+     * just the first type, as every array element is the same.
+     * @param type_sym The symbol of the tuple or array type.
+     * @param sm The scope manager, positioned anywhere the type resolves from.
+     * @return The number of elements to look at, which is zero for an empty tuple or a zero-length array.
+     */
+    auto ElementCountToCheck(
+      scopes::TypeSymbol const &type_sym,
+      scopes::ScopeManager const &sm)
+      -> std::size_t {
+      // Get the length of the array or tuple, determined
+      // by the compile-time generic information.
+      const auto elems = type_predicates::IsIndexWithinBound(
+        0uz, *type_sym.FqName(), *sm.CurrentScope).second;
+
+      // Maintain the total length for a tuple, and reduce
+      // to 1 for an array.
+      return type_predicates::IsTypeArr(*type_sym.FqName(), *sm.CurrentScope)
+        ? std::min(elems, 1uz)
+        : elems;
+    }
+
+    /**
      * The whole overload record for a type's destructor, rather than just its prototype: instantiating it needs the
      * block that declares it and the arguments that block was bound with as well.
      * @param type_sym The symbol of the type being destroyed.
@@ -127,7 +150,7 @@ namespace spp::analyse::utils::drop_utils {
       const bool instantiate)
       -> asts::FunctionPrototypeAst* {
       auto const &sym = ResolveBoundSym(type_sym);
-      auto overload = FindDropOverloadInfo(sym, sm, meta);
+      const auto overload = FindDropOverloadInfo(sym, sm, meta);
       if (overload.Proto == nullptr or sym.LinkedScope == nullptr) { return overload.Proto; }
 
       auto tm = scopes::ScopeManager(sm.GlobalScope, sym.LinkedScope);
@@ -155,6 +178,8 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   -> bool {
   //
   using type_members::GetAllAttrs;
+  using type_predicates::GetNthTypeOfIndexableType;
+  using type_predicates::IsTypeCompTimeIndexable;
   using type_predicates::IsTypeGen;
 
   // A borrow does not own what it points at, so nothing
@@ -173,17 +198,28 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   }
   if (IsTypeGen(*type_sym.FqName(), *sm.CurrentScope)) { return true; }
 
-  // A copyable value owns nothing that has to be released: copying leaves the original in place, so there was never
-  // a single owner to answer for it. Checked before the overload lookup, which now walks the whole sup chain and so
-  // reaches the blanket "sup Copy ext Drop" for every copyable type. That impl exists so a "Drop" constraint accepts
-  // a number, not so that anything is emitted for one - its "self" is typed at "Copy", which no concrete value can
-  // be passed as by value.
+  // A copyable value does not need dropping because it
+  // can't ever be moved, so "dropping" it is meaningless.
   if (type_sym.IsCopyable()) { return false; }
 
-  // A destructor of its own settles it without having to look at the attributes at all. Asked of the overload rather
-  // than through "FindDropOverload", because whether one exists is a property of the type, and does not depend on an
-  // instantiation of it having been minted yet.
+  // A destructor of its own settles it without having to
+  // look at the attributes at all
   if (FindDropOverloadInfo(type_sym, sm, meta).Proto != nullptr) { return true; }
+
+  // A tuple or an array holds its elements positionally
+  // rather than as attributes.
+  if (IsTypeCompTimeIndexable(*type_sym.FqName(), *sm.CurrentScope)) {
+    // Every element of an array is the same type, so
+    // one of them answers for all of them.
+    const auto elems = ElementCountToCheck(type_sym, sm);
+    for (auto i = 0uz; i < elems; ++i) {
+      const auto elem_type = GetNthTypeOfIndexableType(i, *type_sym.FqName(), *sm.CurrentScope);
+      const auto elem_type_sym = sm.CurrentScope->GetTypeSymbol(elem_type.get());
+      if (elem_type_sym == &type_sym) { continue; }
+      if (NeedsDrop(*elem_type_sym, sm, meta)) { return true; }
+    }
+    return false;
+  }
 
   // Otherwise the type is only worth dropping if something
   // it holds is. A type cannot contain itself by value, so
@@ -192,7 +228,7 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   return genex::any_of(
     GetAllAttrs(*type_sym.FqName(), *sm.CurrentScope), [&](auto const &attr) {
       const auto attr_type_sym = std::get<1>(attr);
-      return attr_type_sym != nullptr and attr_type_sym != &type_sym and NeedsDrop(*attr_type_sym, sm, meta);
+      return attr_type_sym != &type_sym and NeedsDrop(*attr_type_sym, sm, meta);
     });
 }
 
@@ -203,9 +239,12 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
   -> void {
   //
   using type_members::GetAllAttrs;
+  using type_predicates::GetNthTypeOfIndexableType;
+  using type_predicates::IsTypeCompTimeIndexable;
   using type_predicates::IsTypeGen;
   auto seen = Set<scopes::TypeSymbol const*>();
 
+  // Todo: can we use c++23/26 explicit "self" here?
   const auto walk = [&](auto const &self, scopes::TypeSymbol const &sym) -> void {
     if (sym.Convention != nullptr or sym.LinkedScope == nullptr) { return; }
     if (not seen.insert(&sym).second) { return; }
@@ -229,14 +268,29 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     // attributes, because the destructor is what answers for them.
     if (DropProtoFor(sym, sm, meta, true) != nullptr) { return; }
 
+    // A tuple's and an array's elements are positional, and
+    // reached the same way as in "NeedsDrop". Array just needs
+    // to check 1 type, tuple every type ("elem_count").
+    if (IsTypeCompTimeIndexable(*sym.FqName(), *sm.CurrentScope)) {
+      const auto elem_count = ElementCountToCheck(sym, sm);
+      for (auto i = 0uz; i < elem_count; ++i) {
+        const auto elem_type = GetNthTypeOfIndexableType(i, *sym.FqName(), *sm.CurrentScope);
+        const auto elem_type_sym = sm.CurrentScope->GetTypeSymbol(elem_type.get());
+        if (elem_type_sym == &sym) { continue; }
+        self(self, *elem_type_sym);
+      }
+      return;
+    }
+
     // Otherwise destruction is attribute by attribute, and it is
     // their destructors that have to exist.
     for (auto const &attr : GetAllAttrs(*sym.FqName(), *sm.CurrentScope)) {
       const auto attr_type_sym = std::get<1>(attr);
-      if (attr_type_sym == nullptr or attr_type_sym == &sym) { continue; }
+      if (attr_type_sym == &sym) { continue; }
       self(self, *attr_type_sym);
     }
   };
 
+  // Recursive drop search.
   walk(walk, type_sym);
 }

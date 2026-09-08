@@ -49,7 +49,7 @@ namespace spp::analyse::utils::linear_utils {
     asts::Ast const &exit_point,
     StrView exit_what,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData const *meta)
     -> void;
 
   /**
@@ -66,7 +66,7 @@ namespace spp::analyse::utils::linear_utils {
     asts::Ast const &exit_point,
     StrView exit_what,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData const *meta)
     -> void;
 
   /**
@@ -86,6 +86,6 @@ namespace spp::analyse::utils::linear_utils {
     std::size_t num_exits,
     bool has_skip,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData const *meta)
     -> void;
 }
