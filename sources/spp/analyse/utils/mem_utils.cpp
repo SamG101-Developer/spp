@@ -47,13 +47,13 @@ namespace spp::analyse::utils::mem_utils {
      * @param sm The scope manager, for resolving each borrow's source.
      */
     auto EnforceEscapingBorrowsOutlive(
-      Vec<spp::Tup<asts::Ast const*, bool, scopes::Scope*>> const &escaping_borrows,
+      Vec<Tup<asts::Ast const*, bool, scopes::Scope*>> const &escaping_borrows,
       scopes::VariableSymbol const &lhs,
       asts::Ast *owner,
       scopes::ScopeManager const &sm)
       -> void {
       //
-      namespace errors = spp::analyse::errors;
+      using errors::SppBorrowLifetimeIncreaseError;
       const auto lhs_init_scope = lhs.ScopeDefinedIn;
       if (lhs_init_scope == nullptr) { return; }
 
@@ -65,7 +65,7 @@ namespace spp::analyse::utils::mem_utils {
         // what finding it among the destination's ancestors says.
         const auto found_at = genex::position(
           lhs_init_scope->Ancestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
-        spp::RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
+        spp::RaiseIf<SppBorrowLifetimeIncreaseError>(
           found_at < 0, {sm.CurrentScope}, ERR_ARGS(*owner, *lhs.Name, *e));
       }
     }
