@@ -18,6 +18,7 @@ import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_index_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -97,6 +98,15 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
+      // A deref under a member access is not a use of the whole
+      // value: "b@.v" reads one field through the borrow and
+      // "b@.v = 2" writes one, and neither copies nor moves what
+      // "b" points at.
+      meta->AllowMoveDeref = meta->AllowMoveDeref
+        or Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
+
+      // Standard analysis of the lhs (which is not a type), and
+      // checking that the lhs is a valid form of primary expression.
       Lhs->Stage7_AnalyseSemantics(sm, meta);
       RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
