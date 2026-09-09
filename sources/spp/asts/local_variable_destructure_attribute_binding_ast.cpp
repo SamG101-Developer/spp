@@ -50,6 +50,12 @@ auto spp::asts::LocalVariableDestructureAttributeBindingAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::BindsByMove() const
+  -> bool {
+  // "x=<pattern>" and "x as y" bind whatever their value pattern binds.
+  return Val != nullptr and Val->BindsByMove();
+}
+
 auto spp::asts::LocalVariableDestructureAttributeBindingAst::ExtractName() const
   -> Shared<IdentifierAst> {
   // Return the direct name of this attribute binding => this is the attribute being bound.

@@ -153,6 +153,14 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::CasePatternVariantDestructureObjectAst::BindsByMove() const
+  -> bool {
+  // A destructure binds if any of its elements does. An
+  // empty one, or one made only of skips, is a shape test
+  // and takes nothing.
+  return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
+}
+
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)

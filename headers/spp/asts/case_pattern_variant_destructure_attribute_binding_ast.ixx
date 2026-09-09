@@ -47,6 +47,8 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst f
 
   ~CasePatternVariantDestructureAttributeBindingAst() override;
 
+  SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
+
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
 

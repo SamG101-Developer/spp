@@ -64,6 +64,12 @@ auto spp::asts::LocalVariableSingleIdentifierAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::LocalVariableSingleIdentifierAst::BindsByMove() const
+  -> bool {
+  // A name binds what it stands for, unless it asks for it through a borrow, which leaves the value where it was.
+  return Conv == nullptr;
+}
+
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)

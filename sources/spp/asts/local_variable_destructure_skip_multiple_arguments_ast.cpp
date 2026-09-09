@@ -50,6 +50,11 @@ auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ToString() con
   SPP_STRING_END;
 }
 
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::TakesRest() const
+  -> bool {
+  return Binding != nullptr;
+}
+
 auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ExtractNames() const
   -> Vec<Shared<IdentifierAst>> {
   // If there is a binding, use it, otherwise there are no names for this.

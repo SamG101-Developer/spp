@@ -44,6 +44,8 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst f
 
   ~LocalVariableDestructureSkipMultipleArgumentsAst() override;
 
+  SPP_ATTR_NODISCARD auto TakesRest() const -> bool override;
+
   SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;

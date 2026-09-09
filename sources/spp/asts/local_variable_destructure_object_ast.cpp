@@ -94,6 +94,13 @@ auto spp::asts::LocalVariableDestructureObjectAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::LocalVariableDestructureObjectAst::BindsByMove() const
+  -> bool {
+  // A destructure binds if any of its elements does. An empty one, or one made only of skips, is a shape test and
+  // takes nothing.
+  return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
+}
+
 auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)
@@ -261,12 +268,24 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   // typing introduced one.
   if (_CondLet) { _CondLet->Stage8_CheckMemory(sm, meta); }
   // Check the memory state of the elements.
-  for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
+  // Each expanded binding reads one field off the value, so each records a partial move of it, and the destructure
+  // marks the whole value moved once they are done. Flagged so the checks that refuse a value being taken apart a
+  // piece at a time can tell that apart from a destructure, which is the sanctioned way to take one apart.
+  {
+    const auto _meta_guard = meta::MetaGuard(meta);
+    meta->DestructuringValue = true;
+    for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
+  }
 
   // Taking every element off a value takes the value, so the
   // symbol holding it is left moved rather than partly moved.
   if (_TmpName == nullptr) {
-    analyse::utils::destructure_utils::ConsumeDestructureSource(*this, _FromCasePattern, *sm, meta);
+    // A pattern that takes something apart has to account for every owned part of what it took; one that only tests
+    // the shape, or that binds the rest into a name of its own, has nothing left over to answer for.
+    const auto accounts_for_parts = BindsByMove()
+      and not genex::any_of(Elems, [](auto const &elem) { return elem->TakesRest(); });
+    analyse::utils::destructure_utils::ConsumeDestructureSource(
+      *this, _FromCasePattern, accounts_for_parts, *sm, meta);
   }
 }
 
