@@ -14,7 +14,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   AssignmentTargetType = nullptr;
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
-  CaseConsumedSubject = nullptr;
+  CaseConsumedSubjects.Clear();
   ClsSym = nullptr;
   EnclosingFunctionScope = nullptr;
   EnclosingFunctionFlavour = nullptr;
@@ -29,6 +29,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
+  DestructuringValue = false;
   LetStatementPrecomputedValue = nullptr;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
@@ -73,7 +74,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.AssignmentTargetType = AssignmentTargetType;
   s.IgnoreMissingElseBranchForInference = IgnoreMissingElseBranchForInference;
   s.CaseCondition = CaseCondition;
-  s.CaseConsumedSubject = CaseConsumedSubject;
+  s.CaseConsumedSubjects = CaseConsumedSubjects;
   s.WithinDeferTok = WithinDeferTok;
   s.ClsSym = ClsSym;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
@@ -89,6 +90,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
+  s.DestructuringValue = DestructuringValue;
   s.LetStatementPrecomputedValue = LetStatementPrecomputedValue;
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
@@ -140,7 +142,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AssignmentTargetType = std::move(state.AssignmentTargetType);
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
-  CaseConsumedSubject = state.CaseConsumedSubject;
+  CaseConsumedSubjects = state.CaseConsumedSubjects;
   WithinDeferTok = state.WithinDeferTok;
   ClsSym = state.ClsSym;
   if (heavy) {
@@ -158,6 +160,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
+  DestructuringValue = state.DestructuringValue;
   LetStatementPrecomputedValue = state.LetStatementPrecomputedValue;
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;

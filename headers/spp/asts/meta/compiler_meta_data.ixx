@@ -89,16 +89,12 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   ExpressionAst *CaseCondition;
 
   /**
-   * The symbol a surrounding @c "case ... of" takes when its patterns bind by move, while its branches are being
-   * walked. The take is marked once, after the branches, because they have to bind off the value first - but a @c ret
-   * or a loop jump inside a branch is checked before that happens, and would otherwise report the subject as a value
-   * the branch abandoned when the @c case is exactly what consumed it.
-   *
-   * @n
-   * Todo: Only the innermost such @c case is tracked, because @c Save copies one pointer. A @c ret inside an inner
-   *  @c case still reports an outer @c case 's subject.
+   * The symbols the surrounding @c "case ... of" expressions take when their patterns bind by move, while their
+   * branches are being walked. The take is marked once, after the branches, because they have to bind off the value
+   * first - but a @c ret or a loop jump inside a branch is checked before that happens, and would otherwise report a
+   * subject as a value the branch abandoned when the @c case is exactly what consumed it.
    */
-  Shared<IdentifierAst> CaseConsumedSubject;
+  Vec<Shared<IdentifierAst>> CaseConsumedSubjects;
 
   /**
    * The @c defer keyword whose expression is currently being analysed, or @c nullptr outside one. A deferred
@@ -121,6 +117,15 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Shared<TypeAst> LetStatementExplicitType;
   ExpressionAst *LetStatementValue;
   bool LetStatementFromUninitialized;
+
+  /**
+   * Set while a destructure's expanded bindings are checked. Each binding reads one field off the value, so each one
+   * records a partial move of it, and the destructure marks the whole value moved once they are done. That makes the
+   * expansion look identical to taking the value apart a piece at a time, which is the one thing a value with a
+   * destructor may not have done to it - so the checks that refuse that have to know which of the two they are
+   * looking at.
+   */
+  bool DestructuringValue;
 
   /**
    * When set, a local variable's initializer is this already-generated llvm value rather than the result of
@@ -146,6 +151,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Shared<GenericInferenceBindings> InferSource;
   Shared<GenericInferenceBindings> InferTarget;
   ExpressionAst *PostfixExpressionLhs;
+
   ExpressionAst *UnaryExpressionRhs;
   bool SkipTypeAnalysisGenericChecks;
   analyse::scopes::Scope *TypeAnalysisTypeScope;
