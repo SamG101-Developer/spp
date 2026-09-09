@@ -37,6 +37,26 @@ work_dir="${PWD}/tests/test_outputs"
 mkdir -p "$work_dir"
 cd "$work_dir"
 
+# -------------------- TEMP TEST --------------------
+echo "::group::CPU topology"
+cpus="$(python3 -c 'import multiprocessing; print(multiprocessing.cpu_count())')"
+echo "logical cpus: ${cpus}"
+echo "gtest-parallel workers: ${WORKERS:-${cpus} (cpu_count default)}"
+case "$RUNNER_OS" in
+  Linux)
+    fields='^(Architecture|CPU\(s\)|Thread\(s\) per core|Core\(s\) per socket|Model name):'
+    lscpu 2> /dev/null | grep -E "$fields" || true
+    ;;
+  macOS)
+    sysctl -n machdep.cpu.brand_string hw.ncpu hw.physicalcpu || true
+    ;;
+  Windows)
+    echo "logical processors: ${NUMBER_OF_PROCESSORS:-unknown}"
+    ;;
+esac
+echo "::endgroup::"
+# -------------------- TEMP TEST --------------------
+
 # Seed the fixture serially before the parallel sweep, so the
 # [vcs] clone happens once in a phase where git is the only
 # thing that can fail, rather than inside whichever worker
