@@ -600,8 +600,8 @@ spp::analyse::errors::SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwne
   AddCtxForErr(&value, "Value taken apart here");
   AddErr(&destructure, "" + INLINE_INFO(part) + " is left with no owner");
   AddFooter(
-    "A destructure takes a value apart, so a part it does not bind is left with nothing holding it.",
-    "Bind " + INLINE_HELP(part) + " and use it, or bind it and discard it explicitly.");
+    "A destructure cannot drop fields in the background.",
+    "Bind " + INLINE_HELP(part) + " and use it, or bind it and drop it explicitly.");
 }
 
 spp::analyse::errors::SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
@@ -612,8 +612,7 @@ spp::analyse::errors::SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDe
   AddCtxForErr(&destructor, "" + INLINE_INFO(type_name) + " is destroyed here");
   AddErr(&move, "Part taken out of it here");
   AddFooter(
-    "A destructor is given the whole value, so a value that has had a part taken out of it can never be destroyed: "
-    "it cannot be dropped, and it cannot be destructured either.",
+    "A type with a specified " + INLINE_NOTE("drop") + " method cannot be partially destructured.",
     "Destructure the whole value instead, or take the part by borrow.");
 }
 
