@@ -153,7 +153,7 @@ cmake-flags = ["-DMI_SECURE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "09b6b6b5ba0610851fba2a79d66fbd801452a107"
+commit = "b17c272f469c2ba0ca6439e3f77470862a19f739"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -217,5 +217,5 @@ commit = "dadaff62b39cf2785d711f4ddea08b3390f31d50"
 [[library]]
 name = "NumEx"
 repo = "https://github.com/SamG101-Developer/NumEx.git"
-commit = "4fe46f12b06aee968e0eee9f2fef5968c46d20ea"
+commit = "cd012e527528627339d89268a4c3aa480627d0f1"
 cmake-flags = ["-DNUMEX_BUILD_TESTS=OFF", "-DNUMEX_BUILD_BENCHMARKS=OFF"]
