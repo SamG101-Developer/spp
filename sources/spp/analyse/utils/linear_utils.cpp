@@ -60,7 +60,7 @@ namespace spp::analyse::utils::linear_utils {
       // For index field access like "tuple.0", use the type_predicate
       // nth type helper.
       if (type_predicates::IsTypeCompTimeIndexable(type, scope)) {
-        const auto index = std::atoll(step.c_str());
+        const auto index = std::stoul(step);
         return {type_predicates::GetNthTypeOfIndexableType(index, type, scope), &scope};
       }
 
