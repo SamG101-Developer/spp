@@ -25,6 +25,7 @@ jobs:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      ci_pins_only: ${{ steps.filter.outputs.ci_pins_only }}
       compile: ${{ steps.filter.outputs.compile }}
       sonar: ${{ steps.filter.outputs.sonar }}
     steps:
@@ -59,6 +60,8 @@ jobs:
 
   docs:
     name: Docs
+    needs: [ changes ]
+    if: needs.changes.outputs.ci_pins_only != 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_docs.yaml
