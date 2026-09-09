@@ -52,6 +52,10 @@ namespace spp::analyse::utils::case_utils {
     asts::meta::CompilerMetaData *meta)
     -> Tup<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>>;
 
+  SPP_EXP_FUN auto PatternBindsByMove(
+    asts::CasePatternVariantAst const &pattern)
+    -> bool;
+
   SPP_EXP_FUN auto ValidateInconsistentMemory(
     asts::Ast *parent,
     Vec<asts::CaseExpressionBranchAst*> const &branches,

@@ -493,6 +493,40 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   return {cast_master_branch_type_info, cast_branches_type_info};
 }
 
+auto spp::analyse::utils::case_utils::PatternBindsByMove(
+  asts::CasePatternVariantAst const &pattern)
+  -> bool {
+  // A name binds what it is matched against, unless it asks for
+  // it through a borrow, which leaves the value where it was.
+  if (const auto single = pattern.To<asts::CasePatternVariantSingleIdentifierAst>()) {
+    return single->Conv == nullptr;
+  }
+
+  // "x=<pattern>" and "x as y" bind whatever their value pattern
+  // binds.
+  if (const auto attr = pattern.To<asts::CasePatternVariantDestructureAttributeBindingAst>()) {
+    return attr->Val != nullptr and PatternBindsByMove(*attr->Val);
+  }
+
+  // A destructure binds if any of its elements does. An empty one,
+  // or one made only of skips, is a shape test and takes nothing.
+  const auto any_elem_binds = [](auto const &elems) {
+    return genex::any_of(elems, [](auto const &e) { return PatternBindsByMove(*e); });
+  };
+
+  if (const auto obj = pattern.To<asts::CasePatternVariantDestructureObjectAst>()) {
+    return any_elem_binds(obj->Elems);
+  }
+  if (const auto tup = pattern.To<asts::CasePatternVariantDestructureTupleAst>()) {
+    return any_elem_binds(tup->Elems);
+  }
+  if (const auto arr = pattern.To<asts::CasePatternVariantDestructureArrayAst>()) {
+    return any_elem_binds(arr->Elems);
+  }
+
+  return false;
+}
+
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   asts::Ast *parent,
   Vec<asts::CaseExpressionBranchAst*> const &branches,

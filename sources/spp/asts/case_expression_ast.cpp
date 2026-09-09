@@ -197,52 +197,12 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-/**
- * Whether this pattern takes a value out of the subject, rather than only testing it. A pattern that binds a name
- * without a borrow convention takes what it names; a literal, an expression, a skip and an @c else all only look.
- */
-namespace spp::asts {
-  namespace {
-    auto PatternBindsByMove(
-      CasePatternVariantAst const &pattern)
-      -> bool {
-      // A name binds what it is matched against, unless it asks for
-      // it through a borrow, which leaves the value where it was.
-      if (const auto single = pattern.To<CasePatternVariantSingleIdentifierAst>()) {
-        return single->Conv == nullptr;
-      }
-
-      // "x=<pattern>" and "x as y" bind whatever their value pattern
-      // binds.
-      if (const auto attr = pattern.To<CasePatternVariantDestructureAttributeBindingAst>()) {
-        return attr->Val != nullptr and PatternBindsByMove(*attr->Val);
-      }
-
-      // A destructure binds if any of its elements does. An empty one,
-      // or one made only of skips, is a shape test and takes nothing.
-      const auto any_elem_binds = [](auto const &elems) {
-        return genex::any_of(elems, [](auto const &e) { return PatternBindsByMove(*e); });
-      };
-      if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
-        return any_elem_binds(obj->Elems);
-      }
-      if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
-        return any_elem_binds(tup->Elems);
-      }
-      if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
-        return any_elem_binds(arr->Elems);
-      }
-
-      return false;
-    }
-  }
-}
-
 auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
+  using analyse::utils::case_utils::PatternBindsByMove;
   using analyse::utils::case_utils::ValidateInconsistentMemory;
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
@@ -280,7 +240,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
     meta->CaseCondition = Cond.get();
     if (takes_subject) { meta->CaseConsumedSubject = cond_sym->Name; }
     ValidateInconsistentMemory(
-      this, Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
+      this, Branches | genex::views::ptr | genex::to<Vec>(), takes_subject ? cond_sym : nullptr, sm, meta);
   }
 
   // The mark is made here, after the branches have bound off the subject and outside the per-branch snapshots
