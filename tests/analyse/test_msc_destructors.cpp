@@ -299,3 +299,89 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         drop(h)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_partial_move_out_of_a_value_with_a_destructor_then_repaired, R"(
+    cls Holder { !public val: Str }
+
+    sup Holder ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Holder(val) = self
+            drop(val)
+        }
+    }
+
+    fun main() -> Void {
+        let mut h = Holder(val=Str::new())
+        let v = h.val
+        drop(v)
+        h.val = Str::new()
+        drop(h)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstDestructors,
+    test_invalid_partial_move_out_of_a_value_with_a_destructor_never_repaired,
+    SppPartialMoveOfDestructibleValueError, R"(
+    cls Holder { !public val: Str }
+
+    sup Holder ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Holder(val) = self
+            drop(val)
+        }
+    }
+
+    fun main() -> Void {
+        let mut h = Holder(val=Str::new())
+        let v = h.val
+        drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstDestructors,
+    test_invalid_partial_move_repaired_but_value_never_consumed,
+    SppLinearValueNotConsumedError, R"(
+    cls Holder { !public val: Str }
+
+    sup Holder ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Holder(val) = self
+            drop(val)
+        }
+    }
+
+    fun main() -> Void {
+        let mut h = Holder(val=Str::new())
+        let v = h.val
+        drop(v)
+        h.val = Str::new()
+    }
+)");
+
+// Todo: Deliberately red. The partial move of "inner.val" is recorded against "outer", whose own type has no
+//  destructor, so the check in "CheckDestructorStillReachable" never asks about "Inner" - the type whose "drop" is
+//  the one that can no longer run. See the matching Todo at the check.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstDestructors,
+    test_invalid_partial_move_out_of_a_nested_value_with_a_destructor,
+    SppPartialMoveOfDestructibleValueError, R"(
+    cls Inner { !public val: Str }
+    cls Outer { !public inner: Inner }
+
+    sup Inner ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Inner(val) = self
+            drop(val)
+        }
+    }
+
+    fun main() -> Void {
+        let mut o = Outer(inner=Inner(val=Str::new()))
+        let v = o.inner.val
+        drop(v)
+    }
+)");
