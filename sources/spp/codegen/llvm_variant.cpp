@@ -18,7 +18,6 @@ import genex;
 import llvm;
 import std;
 
-
 namespace spp::codegen {
   namespace {
     /**
@@ -119,11 +118,6 @@ namespace spp::codegen {
     }
   }
 }
-
-// Width of a variant's discriminant. Matches the
-// "sizeof(std::size_t)" discriminator that "SizeOf"
-// accounts for.
-constexpr auto kVariantTagBits = 64u;
 
 auto spp::codegen::GetVariantTagType(
   LlvmCtx const *ctx)
