@@ -153,9 +153,10 @@ jobs:
 
       # Save the build tree to the cache. A tree whose configure
       # failed is worse than no tree: its cached check results
-      # come back on every later run.
+      # come back on every later run, so the configure gate is
+      # the whole of the check.
       - name: Save build tree
-        if: ${{ !cancelled() && inputs.cache-build-tree && steps.configure.outcome == 'success' }}
+        if: ${{ always() && inputs.cache-build-tree && steps.configure.outcome == 'success' }}
         continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
