@@ -160,3 +160,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = a["hello"]
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorIndexAst,
+  test_invalid_indexing_a_function,
+  SppMemberAccessNonIndexableError, R"(
+    cls Holder[T] { }
+
+    sup [T] Holder[T] {
+        !public fun pick() -> U8 { ret 7_u8 }
+    }
+
+    fun f() -> Void {
+        let x = Holder[S32]::pick[0_uz]
+    }
+)");

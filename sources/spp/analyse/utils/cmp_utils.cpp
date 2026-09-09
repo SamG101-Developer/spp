@@ -1,4 +1,6 @@
 module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
 module spp.analyse.utils.cmp_utils;
@@ -11,6 +13,9 @@ import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.float_literal_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.object_initializer_argument_ast;
@@ -22,27 +27,71 @@ import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_size;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.strings;
-import boost;
 import genex;
+import numex.big_dec;
+import numex.big_int;
 
 namespace spp::analyse::utils::cmp_utils {
   namespace {
-    /**
-     * An "op_assign" intrinsic is its "op" applied in place: the result replaces what @p lhs holds. Seventeen of
-     * these were written out longhand, each nine lines differing only in which "op" it called and which fields the
-     * literal carries - exactly the shape that lets one copy drift away from the others unnoticed.
-     * @param lhs The literal being assigned into.
-     * @param result What the operation produced.
-     */
+    auto SizedNumericLiteralTypeName(
+      asts::TypeAst const &type)
+      -> Str {
+      // Get the "w" cmp argument from the last part
+      // of the type identifier (ie it will be fully
+      // qualified at this point).
+      auto const *const part = type.LastTypePart();
+      auto const *const width_arg = part->GnArgGroup->CompAt("w");
+      if (width_arg == nullptr) { return Str(); }
+
+      // Convert the numeric cmp arg into a integer
+      // literal as it is guaranteed to be, and get
+      // its value as a string.
+      auto const *const width_lit = width_arg->Val->To<asts::IntegerLiteralAst>();
+      if (width_lit == nullptr) { return Str(); }
+      const auto width = width_lit->Val->ToString();
+
+      // A floating-point type has a width and nothing else;
+      // an integer one also says whether it is signed.
+      auto const *const signed_arg = part->GnArgGroup->CompAt("signed");
+      if (signed_arg == nullptr) { return "f" + width; }
+
+      // Check the signedness of the integer type, and
+      // build the "u" or "s" suffix.
+      auto const *const signed_lit = signed_arg->Val->To<asts::BooleanLiteralAst>();
+      const auto is_signed = signed_lit->CppVal();
+      return (is_signed ? "s" : "u") + width;
+    }
+
+    auto SizedNumericLiteralTypeNameOrError(
+      scopes::ScopeManager const &sm,
+      Vec<asts::TypeAst*> const &types,
+      const bool is_float)
+      -> Str {
+      // Get the type suffix for this integer or float
+      // type, and check that it is known.
+      SPP_ASSERT(not types.IsEmpty());
+      const auto name = SizedNumericLiteralTypeName(*types[0]);
+      const auto known = is_float
+        ? asts::FloatLiteralAst::kBounds.contains(name)
+        : asts::IntegerLiteralAst::kBounds.contains(name);
+
+      // ICE failsafe to prevent worse downstream errors.
+      RaiseIf<errors::SppInternalCompilerError>(
+        not known, {sm.CurrentScope},
+        ERR_ARGS(*types[0], "no numeric bounds for this type"));
+      return name;
+    }
+
     auto AssignInPlace(
       asts::IntegerLiteralAst &lhs,
-      Unique<asts::IntegerLiteralAst> result)
+      Unique<asts::IntegerLiteralAst> &&result)
       -> void {
       lhs.TokSign = std::move(result->TokSign);
       lhs.Val = std::move(result->Val);
@@ -51,7 +100,7 @@ namespace spp::analyse::utils::cmp_utils {
 
     auto AssignInPlace(
       asts::FloatLiteralAst &lhs,
-      Unique<asts::FloatLiteralAst> result)
+      Unique<asts::FloatLiteralAst> &&result)
       -> void {
       lhs.TokSign = std::move(result->TokSign);
       lhs.IntVal = std::move(result->IntVal);
@@ -63,7 +112,7 @@ namespace spp::analyse::utils::cmp_utils {
 
 auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
   asts::ObjectInitializerAst const *object,
-  asts::Ast *attribute,
+  asts::Ast const *attribute,
   Unique<asts::ExpressionAst> &&value,
   scopes::ScopeManager const *sm)
   -> void {
@@ -285,7 +334,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_abs(
   -> Unique<asts::IntegerLiteralAst> {
   // Perform absolute value on an integer literal.
   const auto value = val.BigVal();
-  return asts::IntegerLiteralAst::FromBigVal(boost::abs(val.BigVal()), val.Type);
+  return asts::IntegerLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_eq(
@@ -417,17 +466,23 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_oge(
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_max_val(
-  asts::IntegerLiteralAst const &val)
+  scopes::ScopeManager const &sm,
+  Vec<asts::TypeAst*> const &types)
   -> Unique<asts::IntegerLiteralAst> {
-  // Return the maximum value for the type of the integer literal.
-  return asts::IntegerLiteralAst::FromBigVal(asts::IntegerLiteralAst::kBounds.at(val.Type).first, val.Type);
+  // The highest value the type argument can represent.
+  const auto name = SizedNumericLiteralTypeNameOrError(sm, types, false);
+  return asts::IntegerLiteralAst::FromBigVal(
+    asts::IntegerLiteralAst::kBounds.at(name).second, name);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_min_val(
-  asts::IntegerLiteralAst const &val)
+  scopes::ScopeManager const &sm,
+  Vec<asts::TypeAst*> const &types)
   -> Unique<asts::IntegerLiteralAst> {
-  // Return the minimum value for the type of the integer literal.
-  return asts::IntegerLiteralAst::FromBigVal(asts::IntegerLiteralAst::kBounds.at(val.Type).second, val.Type);
+  // The lowest value the type argument can represent.
+  const auto name = SizedNumericLiteralTypeNameOrError(sm, types, false);
+  return asts::IntegerLiteralAst::FromBigVal(
+    asts::IntegerLiteralAst::kBounds.at(name).first, name);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_smax(
@@ -435,7 +490,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_smax(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform signed maximum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::max(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_umax(
@@ -443,7 +498,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_umax(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned maximum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::max(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_smin(
@@ -451,7 +506,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_smin(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform signed minimum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::min(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_umin(
@@ -459,7 +514,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_umin(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned minimum on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(boost::min(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_scmp(
@@ -467,7 +522,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_scmp(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform signed comparison on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().compare(rhs.BigVal()), lhs.Type);
+  const auto cmp = lhs.BigVal() <=> rhs.BigVal();
+  const auto res = std::is_gt(cmp) - std::is_lt(cmp);
+  return asts::IntegerLiteralAst::FromBigVal(numex::BigInt(res), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ucmp(
@@ -475,7 +532,9 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_ucmp(
   asts::IntegerLiteralAst const &rhs)
   -> Unique<asts::IntegerLiteralAst> {
   // Perform unsigned comparison on two integer literals.
-  return asts::IntegerLiteralAst::FromBigVal(lhs.BigVal().compare(rhs.BigVal()), lhs.Type);
+  const auto cmp = lhs.BigVal() <=> rhs.BigVal();
+  const auto res = std::is_gt(cmp) - std::is_lt(cmp);
+  return asts::IntegerLiteralAst::FromBigVal(numex::BigInt(res), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
@@ -518,7 +577,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_frem(
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
   // Perform remainder on two float literals.
-  return asts::FloatLiteralAst::FromBigVal(boost::fmod(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal().Fmod(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fneg(
@@ -532,21 +591,25 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fabs(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform absolute value on a float literal, exactly.
-  return asts::FloatLiteralAst::FromBigVal(boost::fabs(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax_val(
-  asts::FloatLiteralAst const &val)
+  scopes::ScopeManager const &sm,
+  Vec<asts::TypeAst*> const &types)
   -> Unique<asts::FloatLiteralAst> {
-  // Get the largest finite value that this float type can hold.
-  return asts::FloatLiteralAst::FromBigVal(asts::FloatLiteralAst::kBounds.at(val.Type).first, val.Type);
+  // The largest finite value the type argument can represent.
+  const auto name = SizedNumericLiteralTypeNameOrError(sm, types, true);
+  return asts::FloatLiteralAst::FromBigVal(asts::FloatLiteralAst::kBounds.at(name).second, name);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin_val(
-  asts::FloatLiteralAst const &val)
+  scopes::ScopeManager const &sm,
+  Vec<asts::TypeAst*> const &types)
   -> Unique<asts::FloatLiteralAst> {
-  // Get the most negative finite value that this float type can hold.
-  return asts::FloatLiteralAst::FromBigVal(asts::FloatLiteralAst::kBounds.at(val.Type).second, val.Type);
+  // The most negative finite value the type argument can represent.
+  const auto name = SizedNumericLiteralTypeNameOrError(sm, types, true);
+  return asts::FloatLiteralAst::FromBigVal(asts::FloatLiteralAst::kBounds.at(name).first, name);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax(
@@ -554,7 +617,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax(
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
   // Perform maximum on two float literals.
-  return asts::FloatLiteralAst::FromBigVal(boost::fmax(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin(
@@ -562,35 +625,35 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin(
   asts::FloatLiteralAst const &rhs)
   -> Unique<asts::FloatLiteralAst> {
   // Perform minimum on two float literals.
-  return asts::FloatLiteralAst::FromBigVal(boost::fmin(lhs.BigVal(), rhs.BigVal()), lhs.Type);
+  return asts::FloatLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ffloor(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform floor operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::floor(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Floor()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fceil(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform ceiling operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::ceil(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Ceil()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ftrunc(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform truncation operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::trunc(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Trunc()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fround(
   asts::FloatLiteralAst const &val)
   -> Unique<asts::FloatLiteralAst> {
   // Perform round operation on a float literal.
-  return asts::FloatLiteralAst::FromBigVal(boost::round(val.BigVal()), val.Type);
+  return asts::FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Trunc()), val.Type);
 }
 
 auto spp::analyse::utils::cmp_utils::std_num_float_neg_one()

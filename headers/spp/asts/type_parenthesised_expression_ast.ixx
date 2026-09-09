@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.type_parenthesised_expression_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.mixins.temp_type_ast;
 import spp.utils.types;
 import std;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins::TempTypeAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeParenthesisedExpressionAst);
+
   /**
    * The left parenthesis token that represents the start of the parenthesised expression.
    */
@@ -42,7 +46,7 @@ SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins
 
   ~TypeParenthesisedExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Convert() -> Unique<TypeAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeParenthesisedExpressionAst)

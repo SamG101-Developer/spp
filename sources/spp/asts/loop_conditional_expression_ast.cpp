@@ -34,7 +34,8 @@ spp::asts::LoopConditionalExpressionAst::LoopConditionalExpressionAst(
   decltype(Body) &&body,
   decltype(ElseBlock) &&else_block) :
   LoopExpressionAst(std::move(tok_loop), std::move(body), std::move(else_block)),
-  Cond(std::move(cond)) {
+  Cond(std::move(cond)),
+  _IterDesugar(false) {
 }
 
 spp::asts::LoopConditionalExpressionAst::~LoopConditionalExpressionAst() = default;
@@ -312,8 +313,11 @@ auto spp::asts::LoopConditionalExpressionAst::MarkAsIterDesugar()
 
 auto spp::asts::LoopConditionalExpressionAst::Terminates() const
   -> bool {
-  // The loop conditional expression only terminates if the body terminates.
-  return Body->Terminates();
+  // A conditional loop never terminates the scope it is
+  // written in: the condition is checked before the first
+  // iteration, so a loop whose body returns can still run
+  // zero times and fall through to whatever follows.
+  return false;
 }
 
 SPP_MOD_END

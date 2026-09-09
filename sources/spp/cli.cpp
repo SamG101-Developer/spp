@@ -1,6 +1,7 @@
 module;
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
+#include <spp/version.hpp>
 #include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
@@ -20,6 +21,8 @@ import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.compiler.out_layout;
 import spp.lex.tokens;
+import spp.utils.errors;
+import spp.utils.features;
 import spp.utils.files;
 import cli11;
 import genex;
@@ -33,20 +36,21 @@ inline constexpr spp::Str TST_FOLDER = "tst";
 
 inline constexpr spp::Str MAIN_FILE = "main.spp";
 inline constexpr spp::Str CONFIG_FILE = "spp.toml";
+inline constexpr spp::Str STUB_FILE = "stub.spp";
 
 inline const spp::Str MAIN_FILE_CONTENTS = R"(
-    fun main() -> Void {
-        std::io::println("Hello world!")
-    })";
+fun main() -> Void {
+    std::io::println("Hello world!")
+})";
 
 inline const spp::Str CONFIG_FILE_CONTENTS = R"(
-    [project]
-    name = "$"
-    version = "0.1.0"
-    build = "exe"
+[project]
+name = "$"
+version = "0.1.0"
+build = "exe"
 
-    [vcs]
-    std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
+[vcs]
+std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
 namespace spp::cli {
   namespace {
@@ -58,6 +62,34 @@ namespace spp::cli {
       return std::filesystem::exists(dir)
         ? std::filesystem::directory_iterator(dir)
         : std::filesystem::directory_iterator();
+    }
+
+    /**
+     * Run a compilation, reporting a mistake in the source being compiled as the mistake it is.
+     * @param[in,out] c The compiler to run.
+     * @return @c true if the compilation finished; @c false once the error has been printed.
+     */
+    auto CompileReportingErrors(
+      spp::compiler::Compiler &c)
+      -> bool {
+#if SPP_DEBUG
+      // A debug build deliberately does not: "Compiler::Compile" leaves
+      // its own catch out under the same condition, so the stack is still
+      // standing where the throw happened and a debugger can be pointed
+      // at it. That build is the compiler's own; this is the one a
+      // program is compiled with.
+      c.Compile();
+      return true;
+#else
+      try {
+        c.Compile();
+        return true;
+      }
+      catch (spp::utils::errors::AbstractError const &e) {
+        std::cerr << e.what() << "\n";
+        return false;
+      }
+#endif
     }
 
     /**
@@ -78,7 +110,7 @@ namespace spp::cli {
      * @param command The command to run.
      * @return The command, prefixed with the limit, on the platforms whose shell can set one.
      */
-    auto WithMemoryLimit(spp::Str const &command) -> spp::Str {
+    auto WithMemoryLimit(Str const &command) -> Str {
 #if SPP_PLATFORM_WINDOWS
       return command;
 #else
@@ -97,7 +129,7 @@ namespace spp::cli {
      * @param args The arguments to pass to git.
      * @return @c true when git exited cleanly.
      */
-    auto RunGit(spp::Str const &args) -> bool {
+    auto RunGit(Str const &args) -> bool {
       const auto command = "git " + args;
       if (const auto status = std::system(command.c_str()); status != 0) {
         std::cerr << "Error: git failed (" << status << "): " << command << "\n";
@@ -106,21 +138,21 @@ namespace spp::cli {
       return true;
     }
 
-    auto HostOf(spp::Str const &url) -> spp::Str {
+    auto HostOf(Str const &url) -> Str {
       auto rest = spp::StrView(url);
-      if (const auto scheme = rest.find("://"); scheme != spp::StrView::npos) { rest.remove_prefix(scheme + 3); }
+      if (const auto scheme = rest.find("://"); scheme != StrView::npos) { rest.remove_prefix(scheme + 3); }
 
       // Only a "user@" before the first "/" is credentials;
       // an "@" further in belongs to the path.
       const auto slash = rest.find('/');
       if (const auto at = rest.find('@');
-        at != spp::StrView::npos and (slash == spp::StrView::npos or at < slash)) {
+        at != StrView::npos and (slash == StrView::npos or at < slash)) {
         rest.remove_prefix(at + 1);
       }
       return spp::Str(rest.substr(0, rest.find_first_of(":/?")));
     }
 
-    auto IsRemoteReachable(spp::Str const &url) -> bool {
+    auto IsRemoteReachable(Str const &url) -> bool {
       if (url.empty() or std::getenv("SPP_NO_NETWORK_CHECK") != nullptr) { return true; }
       const auto args =
         " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
@@ -145,6 +177,13 @@ auto spp::cli::run_cli(
   auto app = CLI::App("SPP build tool", "spp");
   app.require_subcommand(1);
 
+  // Declared so that it parses and shows up in the help, but read in "main" rather than here: the working directory
+  // has to be settled before any subcommand callback runs, and every one of them resolves the project from it.
+  auto project_dir = Str();
+  app.add_option(
+    "--dir", project_dir,
+    "Project directory to work in; the sample project beside this binary by default.");
+
   // One variable per subcommand, each holding its own
   // default. A single shared one takes whichever default
   // was declared last, so "spp build" with no "-m" ran
@@ -168,26 +207,32 @@ auto spp::cli::run_cli(
     "target other than the host is compiled and an object emitted, but not linked - see the note the build prints.";
 
   app.add_subcommand("init", "Initialize the new project")
+     ->fallthrough()
      ->callback(handle_init);
 
   app.add_subcommand("vcs", "Initialize version control for the project")
+     ->fallthrough()
      ->callback([] { if (not handle_vcs()) { throw CLI::RuntimeError(1); } });
 
-  const auto build_cmd = app.add_subcommand("build", "Build the project");
+  const auto build_cmd = app.add_subcommand("build", "Build the project")->fallthrough();
   build_cmd->add_option("-m,--mode", build_mode, "Build mode (dev or rel)")
            ->check(CLI::IsMember({"dev", "rel"}))
            ->default_val("dev");
   build_cmd->add_option("-t,--target", build_target, target_help);
-  build_cmd->callback([&build_mode, &build_target] { handle_build(build_mode, build_target); });
+  build_cmd->callback([&build_mode, &build_target] {
+    if (not handle_build(build_mode, build_target)) { throw CLI::RuntimeError(1); }
+  });
 
-  const auto run_cmd = app.add_subcommand("run", "Run the project");
+  const auto run_cmd = app.add_subcommand("run", "Run the project")->fallthrough();
   run_cmd->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
          ->check(CLI::IsMember({"dev", "rel"}))
          ->default_val("dev");
   run_cmd->add_option("-t,--target", run_target, target_help);
-  run_cmd->callback([&run_mode, &run_target] { handle_run(run_mode, run_target); });
+  run_cmd->callback([&run_mode, &run_target] {
+    if (not handle_run(run_mode, run_target)) { throw CLI::RuntimeError(1); }
+  });
 
-  const auto clean_cmd = app.add_subcommand("clean", "Clean the project");
+  const auto clean_cmd = app.add_subcommand("clean", "Clean the project")->fallthrough();
   clean_cmd->add_option("-m,--mode", clean_mode, "Clean mode (dev, rel or all)")
            ->check(CLI::IsMember({"dev", "rel", "all"}))
            ->default_val("all");
@@ -196,11 +241,11 @@ auto spp::cli::run_cli(
     "Only clean this target's tree; every target's by default");
   clean_cmd->callback([&clean_mode, &clean_target] { handle_clean(clean_mode, clean_target); });
 
-  auto test_name_filter = spp::Str();
-  auto test_group_filter = spp::Str();
-  auto test_libs = std::vector<spp::Str>();
+  auto test_name_filter = Str();
+  auto test_group_filter = Str();
+  auto test_libs = std::vector<Str>();
   auto test_all_libs = false;
-  const auto test_cmd = app.add_subcommand("test", "Test the project");
+  const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
   test_cmd->add_option(
     "-f,--filter", test_name_filter,
     "Only run tests whose fully qualified name contains this");
@@ -221,9 +266,15 @@ auto spp::cli::run_cli(
   });
 
   app.add_subcommand("validate", "Validate the project")
-     ->callback([] { handle_validate(false); });
+     ->fallthrough()
+     ->callback([] { if (not handle_validate(false)) { throw CLI::RuntimeError(1); } });
+
+  app.add_subcommand("config", "List every section and key 'spp.toml' accepts")
+     ->fallthrough()
+     ->callback([] { std::cout << utils::features::HelpText(); });
 
   app.add_subcommand("version", "Show version information")
+     ->fallthrough()
      ->callback(handle_version);
 
   // Parse the command line arguments.
@@ -232,6 +283,7 @@ auto spp::cli::run_cli(
   }
   catch (CLI::CallForHelp const &e) { return app.exit(e); }
   catch (CLI::CallForAllHelp const &e) { return app.exit(e); }
+  catch (CLI::RuntimeError const &e) { return e.get_exit_code(); }
   catch (CLI::ParseError const &e) {
     std::cerr << e.what() << "\n\n" << app.help();
     return e.get_exit_code();
@@ -344,19 +396,24 @@ auto spp::cli::handle_build(
   Str const &mode,
   Str const &target,
   const bool skip_vcs)
-  -> void {
+  -> bool {
   // Validate the project structure first.
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_STRUCTURE_OR(false, false);
 
   // Choose the target before anything is compiled: every module
   // carries the triple and the data layout it was built for, and
   // those are resolved once, on first use.
-  if (not codegen::SelectTarget(target.c_str())) { return; }
+  if (not codegen::SelectTarget(target.c_str())) { return false; }
+
+  // Before anything is generated, not after: if llvm cannot spell an intrinsic name, every module holding one is
+  // rejected by the verifier with a complaint about the name, and the cause is nowhere in that message.
+  codegen::AssertIntrinsicNamingIsSound();
 
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
   const auto out = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode};
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode
+  };
   std::filesystem::create_directories(out.OutRoot());
 
   // Remove the executable first, so a build that fails leaves
@@ -370,33 +427,44 @@ auto spp::cli::handle_build(
   // instead.
   if (not skip_vcs and not handle_vcs()) {
     std::cerr << "Error: Aborting the build; the [vcs] dependencies could not be fetched.\n";
-    return;
+    return false;
   }
 
   // Revalidate (after including the VCS folders).
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_STRUCTURE_OR(false, false);
   const auto build_type =
     toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<Str>();
 
   // Validate the mode is "dev" or "rel".
   if (mode != "dev" and mode != "rel") {
     std::cerr << "Error: Invalid mode. Mode must be 'dev' or 'rel'.\n";
-    return;
+    return false;
+  }
+
+  // Adopt this project's feature settings. Only this one: how
+  // a dependency configured itself is a property of that
+  // dependency's own build, and what comes out of here is
+  // one program, generated once.
+  auto config_errors = Vec<Str>();
+  if (not utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) {
+    for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
+    return false;
   }
 
   // Compile the code.
   auto c = compiler::Compiler(
     mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
     build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
-  c.Compile();
+  return CompileReportingErrors(c);
 }
 
 auto spp::cli::handle_run(
   Str const &mode,
   Str const &target)
-  -> void {
-  // Build the project first (skip VCS).
-  handle_build(mode, target, false);
+  -> bool {
+  // Build the project first (skip VCS). Don't run the old
+  // binary when the current code causes an error.
+  if (not handle_build(mode, target, false)) { return false; }
 
   // Nothing this machine can execute comes out of a cross build,
   // so say that rather than reporting the missing executable as
@@ -405,7 +473,7 @@ auto spp::cli::handle_run(
     std::cerr
       << "Error: Cannot run a build for '" << codegen::TargetFolderName()
       << "'; only a build for the host can be executed here.\n";
-    return;
+    return false;
   }
 
   // A build that did not get as far as linking has said why
@@ -413,10 +481,11 @@ auto spp::cli::handle_run(
   // trying to run something that was never produced.
   const auto cwd = std::filesystem::current_path();
   const auto exe_file = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode}.ExecutablePath();
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode
+  }.ExecutablePath();
   if (not std::filesystem::exists(exe_file)) {
     std::cerr << "Error: No executable was built at '" << utils::files::DisplayString(exe_file) << "'.\n";
-    return;
+    return false;
   }
 
   // Pull the returned status code from the run process (ie
@@ -507,7 +576,8 @@ auto spp::cli::handle_test(
   // executable there too - see the Compiler constructed below.
   const auto cwd = std::filesystem::current_path();
   const auto out = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = "rel"};
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = "rel"
+  };
   std::filesystem::create_directories(out.OutRoot());
 
   // Remove the executable before building, so a build that
@@ -522,11 +592,11 @@ auto spp::cli::handle_test(
     std::exit(1);
   }
 
-  auto scope = compiler::TestScope{.project = true, .all_libs = all_libs, .libs = libs};
+  const auto scope = compiler::TestScope{.project = true, .all_libs = all_libs, .libs = libs};
   auto c = compiler::Compiler(
     compiler::Compiler::Mode::REL, compiler::Compiler::BuildType::EXE, scope);
   c.SetTestFilters(name_filter, group_filter);
-  c.Compile();
+  if (not CompileReportingErrors(c)) { std::exit(1); }
 
   if (c.TestCount() == 0) {
     std::cerr << "No unit tests matched. Mark a function in 'tst' with '!test'";
@@ -627,28 +697,21 @@ auto spp::cli::handle_validate(
     }
   }
 
-  // Parse the spp.toml config file and get the optional "project"
-  // section.
-  const auto toml = toml::parse_file(CONFIG_FILE);
-  if (not toml.contains("project")) {
-    std::cout << "Error: No [project] section found in spp.toml.\n";
+  // Check the file against the schema: every section and key
+  // it holds has to be one the compiler knows, and every
+  // required one has to be there. An unrecognised key is
+  // reported rather than ignored, because a mistyped one that
+  // silently does nothing is worse than no key - a protection
+  // turned off by a typo turns off nothing.
+  auto config_errors = Vec<Str>();
+  if (not utils::features::Validate(cwd / CONFIG_FILE, config_errors)) {
+    for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
+    std::cerr << "\nRun 'spp config' for everything spp.toml accepts.\n";
     return false;
   }
 
-  // Check the project section has a name, version and build type.
+  const auto toml = toml::parse_file(CONFIG_FILE);
   const auto project = toml["project"].as_table();
-  if (not project->contains("name")) {
-    std::cerr << "Error: No name found in [project] section of spp.toml.\n";
-    return false;
-  }
-  if (not project->contains("version")) {
-    std::cerr << "Error: No version found in [project] section of spp.toml.\n";
-    return false;
-  }
-  if (not project->contains("build")) {
-    std::cerr << "Error: No build type found in [project] section of spp.toml.\n";
-    return false;
-  }
 
   // Check the version follows "major.minor.patch" format.
   const auto version = project->at("version").value<Str>().value_or("");
@@ -674,7 +737,6 @@ auto spp::cli::handle_validate(
   }
 
   // Check the FFI subfolders are structured properly.
-  const auto ext = get_system_shared_library_extension();
   for (auto const &ffi_dir : SafeDirectoryIterator(cwd / FFI_FOLDER)) {
     if (not std::filesystem::is_directory(ffi_dir)) {
       std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(
@@ -682,17 +744,35 @@ auto spp::cli::handle_validate(
       return false;
     }
 
-    // Check for "{library_name}/lib/{library_name}.{ext}" and "{library_name/stub.spp}" files.
-    // if (not std::filesystem::exists(ffi_dir.path() / "lib" / (ffi_dir.path().filename().string() + "." + ext))) {
-    //     std::cerr << "Error: Missing shared library file in 'ffi/"s + ffi_dir.path().filename().string() + "/lib' folder.\n";
-    //     return false;
-    // }
-    //
-    // // Check for stub file.
-    // if (not std::filesystem::exists(ffi_dir.path() / "stub.spp")) {
-    //     std::cerr << "Error: Missing 'stub.spp' file in 'ffi/"s + ffi_dir.path().filename().string() + "' folder.\n";
-    //     return false;
-    // }
+    const auto lib_name = utils::files::NativeString(ffi_dir.path().filename());
+
+    // Check for a stub file for each ffi package. This is what
+    // s++ uses (s++ code) to hook into the shared library.
+    if (not std::filesystem::exists(ffi_dir.path() / STUB_FILE)) {
+      std::cerr << "Error: Missing '"s + STUB_FILE + "' file in 'ffi/" + lib_name + "' folder.\n";
+      return false;
+    }
+
+    // Collect the shared library binaries within the folder, and
+    // get the expected library binary name and extension that will
+    // be checked against.
+    const auto expected = utils::files::SharedLibraryName(lib_name);
+    if (std::filesystem::exists(ffi_dir.path() / expected)) { continue; }
+
+    auto found_names = Str();
+    for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
+      if (not entry.is_regular_file()) { continue; }
+      const auto found = utils::files::NativeString(entry.path().filename());
+      if (found == STUB_FILE) { continue; }
+      found_names += (found_names.empty() ? "" : ", ") + found;
+    }
+
+    std::cerr
+      << "Error: 'ffi/" + lib_name + "' has no '" + expected + "'; it holds "
+      + (found_names.empty() ? Str("nothing but its stub") : found_names) + ".\n"
+      << "  A package is linked through the library named for it, so one built for another platform does not "
+      << "stand in for this host's.\n";
+    return false;
   }
 
   // All checks passed.
@@ -713,18 +793,6 @@ auto spp::cli::create_default_config_for(
   const auto pos = contents.find('$');
   contents.replace(pos, 1, project_name);
   return contents;
-}
-
-auto spp::cli::get_system_shared_library_extension()
-  -> Str {
-  // Return the appropriate shared library extension for the current OS.
-#if SPP_PLATFORM_WINDOWS
-  return "dll";
-#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
-  return "dylib";
-#else
-  return "so";
-#endif
 }
 
 auto spp::cli::run_cpp_google_test(

@@ -12,6 +12,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
@@ -43,7 +44,9 @@ spp::asts::CmpStatementAst::CmpStatementAst(
   TokColon(std::move(tok_colon)),
   Type(std::move(type)),
   TokAssign(std::move(tok_assign)),
-  Value(std::move(value)) {
+  Value(std::move(value)),
+  _FromUseStatement(false),
+  _AliasSym(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
@@ -152,6 +155,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
   for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -160,9 +164,12 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   Type->Stage4_QualifyTypes(sm, meta);
   Type->Stage7_AnalyseSemantics(sm, meta);
 
-  if (not _FromUseStatement and not Type->IsSelfType()) {
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
-    _AliasSym->Type = Type;
+  if (not _FromUseStatement) {
+    Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
+    if (not Type->IsSelfType()) { // Todo: is this "if" needed?
+      Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+      _AliasSym->Type = Type;
+    }
   }
   sm->MoveOutOfCurrentScope();
 }

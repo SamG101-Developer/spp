@@ -38,9 +38,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(func: FunRef[(), U32]) -> Void { }
 
     fun f() -> Void {
-        let a = 5_u32
+        let a = Str::from("x")
         let x = (caps &a) 123_u32
         g(x)
+        std::mem::ops::drop(a)
     }
 )");
 
@@ -82,9 +83,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_closure_with_capture_mov,
   SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
-        let a = "test"
+        let a = Str::from("test")
         let x = (caps a) a
         let b = a
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(b)
     }
 )");
 
@@ -277,9 +280,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(x: &StrView) -> Void { }
 
     fun f() -> Void {
-        let some_variable = "hello world"
+        let some_variable = Str::from("hello world")
         let x = (caps some_variable) 123_u32
         g(&some_variable)
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(some_variable)
     }
 )");
 

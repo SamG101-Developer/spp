@@ -12,7 +12,11 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
+  SPP_GCC_VTABLE_FIX
+
   UnaryExpressionOperatorAst();
 
   ~UnaryExpressionOperatorAst() override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UnaryExpressionOperatorAst)

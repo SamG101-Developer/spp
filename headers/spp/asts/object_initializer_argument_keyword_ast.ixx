@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.object_initializer_argument_keyword_ast;
+import spp.asts.ast_kind;
 import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
@@ -16,6 +17,9 @@ namespace spp::asts {
  * argument to be matched by a keyword rather than shorthand value.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerArgumentAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentKeywordAst);
+
   /**
    * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
    * argument from the expression that is being passed as the argument's value.
@@ -34,6 +38,6 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : Object
     decltype(Val) &&val);
 
   ~ObjectInitializerArgumentKeywordAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentKeywordAst)

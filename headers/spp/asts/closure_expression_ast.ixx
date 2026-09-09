@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.closure_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
@@ -10,6 +11,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct ClassPrototypeAst;
   SPP_EXP_CLS struct ClosureExpressionAst;
   SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
   SPP_EXP_CLS struct TokenAst;
@@ -17,6 +19,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ClosureExpressionAst);
+
   /**
    * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure. Otherwise, it will
    * default to @code fun@endcode.
@@ -71,8 +76,6 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   ~ClosureExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -83,12 +86,43 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
 
+  /**
+   * Release the class prototypes minted for closure types. They are held for the run because the scopes and symbols
+   * built against them outlive the expression that produced them, so a compile has to let go of them itself.
+   */
+  static auto ClearMockAsts() -> void;
+
 private:
+  /**
+   * The @c FunRef / @c FunMut / @c FunMov type the closure's parameters, return type and captures decide. This is what
+   * the closure's own type superimposes, rather than what it is.
+   */
+  SPP_ATTR_NODISCARD auto _FunctionalType(ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
+
+  /**
+   * Mint the closure's own nominal type - a @c "$closure..." class superimposing @c _FunctionalType - and register it
+   * where the closure was written. Thread safety is decided by what a closure captured, and two closures of the same
+   * signature capture different things, so there is nowhere on the shared @c "FunMov[Args, Out]" instantiation to
+   * record it; a plain function has had a @c "$" mock of its own since stage 1 for the same reason.
+   */
+  auto _MakeMockType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
+
+  /**
+   * The class prototypes behind the minted closure types, owned for the length of the compile.
+   */
+  inline static Vec<Unique<Ast>> _MockAsts = {};
+
+  /**
+   * The closure's own type, minted in stage 7. Null until then, and null on a clone that is never re-analysed, which
+   * is why @c InferType falls back to the functional type rather than assuming it is there.
+   */
+  Shared<TypeAst> _MockType;
+
   /**
    * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
    * consistent with each returning value of the closure body.
    */
-  Shared<TypeAst> _RetType;
+  Shared<TypeAst> _TrueRetType;
 
   /**
    * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to
@@ -96,3 +130,5 @@ private:
    */
   Shared<codegen::LlvmFuncWrapper> _LlvmFunc;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClosureExpressionAst)

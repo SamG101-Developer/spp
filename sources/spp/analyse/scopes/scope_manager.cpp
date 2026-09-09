@@ -12,6 +12,7 @@ import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.closure_expression_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
@@ -42,13 +43,21 @@ namespace spp::analyse::scopes {
       -> asts::GenericParameterGroupAst const* {
       //
       using namespace spp::asts;
-      if (auto const *fns = sup_scope.AstNode->To<SupPrototypeFunctionsAst>(); fns != nullptr) {
+      if (auto const *fns = AstAs<SupPrototypeFunctionsAst>(sup_scope.AstNode); fns != nullptr) {
         return fns->GnParamGroup.get();
       }
-      if (auto const *ext = sup_scope.AstNode->To<SupPrototypeExtensionAst>(); ext != nullptr) {
+      if (auto const *ext = AstAs<SupPrototypeExtensionAst>(sup_scope.AstNode); ext != nullptr) {
         return ext->GnParamGroup.get();
       }
       return nullptr;
+    }
+
+    auto SupDeclaresAPack(
+      Scope const &sup_scope)
+      -> bool {
+      //
+      auto const *params = GetSupGenericParamsFromScope(sup_scope);
+      return params != nullptr and params->GetVariadicParams() != nullptr;
     }
 
     auto SupConstrainsItsParams(
@@ -141,11 +150,24 @@ auto spp::analyse::scopes::ScopeManager::AttachAllSuperScopes(
   // constraint check. This is order-independent because it does not depend on other types' super scopes already being
   // attached. The issue before was that some generic constraints checks were failing deep down because constraints
   // themselves are modelled as sup-scopes. Note for future: just trust this comment.
-  Reset();
   auto deferred = Vec<DeferredSupConstraint>();
-  for (auto *scope : Iter()) {
-    if (scope->TySym == nullptr) { continue; }
-    AttachSpecificSuperScopes(*scope, meta, &deferred);
+
+  // The sweep creates scopes as it runs: attaching a
+  // constrained sup instantiates the substituted type, and
+  // that instantiation attaches its own sups on the spot -
+  // through the on-demand path, where the constraint is
+  // checked inline against a graph that is still half-built,
+  // and a failed check drops the sup for good.
+  auto processed = Set<Scope*>();
+  for (auto found_new = true; found_new;) {
+    found_new = false;
+    Reset();
+    for (auto *scope : Iter()) {
+      if (scope->TySym == nullptr) { continue; }
+      if (not processed.insert(scope).second) { continue; }
+      AttachSpecificSuperScopes(*scope, meta, &deferred);
+      found_new = true;
+    }
   }
 
   // Now that every type has its super scopes, validate the deferred generic constraints and prune any attachment
@@ -162,17 +184,30 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
   Vec<DeferredSupConstraint> *deferred) const
   -> void {
   // Handle type symbols.
-  if (scope.TySym != nullptr) {
-    const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics().get());
-    auto scopes = normal_sup_blocks[non_generic_sym];
-    scopes.AppendRange(generic_sup_blocks);
-    AttachSpecificSuperScopesImpl(scope, std::move(scopes), meta, deferred);
+  if (scope.TySym == nullptr) { return; }
+  const auto non_generic_sym = scope.GetTypeSymbol(scope.TySym->FqName()->WithoutGenerics().get());
+
+  // Looked up rather than indexed: three quarters of the types reaching here have no sup block of their own, and
+  // "operator[]" would insert an empty entry for each of them - tens of thousands of dead keys the rest of the
+  // compilation then hashes past - as well as copying the list out on every call.
+  const auto it = normal_sup_blocks.find(non_generic_sym);
+  auto const *const normal = it != normal_sup_blocks.end() ? &it->second : nullptr;
+
+  // A pure generic block ("sup [T] T") names no type, so it applies to every one of them and has to be merged in.
+  // There are usually none at all, and then the stored list is handed over as it stands.
+  if (generic_sup_blocks.IsEmpty()) {
+    if (normal != nullptr) { AttachSpecificSuperScopesImpl(scope, *normal, meta, deferred); }
+    return;
   }
+
+  auto scopes = normal != nullptr ? *normal : Vec<Scope*>();
+  scopes.AppendRange(generic_sup_blocks);
+  AttachSpecificSuperScopesImpl(scope, scopes, meta, deferred);
 }
 
 auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
   Scope &scope,
-  Vec<Scope*> &&sup_scopes,
+  Vec<Scope*> const &sup_scopes,
   asts::meta::CompilerMetaData *meta,
   Vec<DeferredSupConstraint> *deferred) const
   -> void {
@@ -206,7 +241,8 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     auto defer_constraint = false;
 
     // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
-    if (not scope_generics->Args.IsEmpty()
+    if ((not scope_generics->Args.IsEmpty()
+        or (SupDeclaresAPack(*sup_scope) and not asts::AstName(sup_scope->AstNode)->IsCompilerGeneratedType()))
       and not genex::contains(generic_sup_blocks, sup_scope)) {
       const auto external_generics = scope.TySym->ScopeDefinedIn->GetExtendedGenericSymbols(
         scope_generics->GetAllArgs());
@@ -223,7 +259,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
       defer_constraint = deferred != nullptr;
     }
     else {
-      const auto sup_proto = sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>();
+      const auto sup_proto = AstAs<asts::SupPrototypeExtensionAst>(sup_scope->AstNode);
       new_sup_scope = sup_scope;
       new_cls_scope = sup_proto ? scope.GetTypeSymbol(sup_proto->SuperClass.get())->LinkedScope : nullptr;
       sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
@@ -241,7 +277,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     }
 
     // Prevent double inheritance, cyclic inheritance and self extension.
-    if (const auto ext_ast = sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
+    if (const auto ext_ast = AstAs<asts::SupPrototypeExtensionAst>(sup_scope->AstNode); ext_ast != nullptr) {
       ext_ast->CheckCyclicExtension(*sup_sym, *sup_scope);
       ext_ast->CheckDoubleExtension(*cls_sym, *sup_scope);
       ext_ast->CheckSelfExtension(*sup_scope);
@@ -269,8 +305,8 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     }
 
     // Check for conflicting "cmp" or "type" statements in the super scopes.
-    if (sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>() or
-      sup_scope->AstNode->To<asts::SupPrototypeFunctionsAst>()) {
+    if (AstAs<asts::SupPrototypeExtensionAst>(sup_scope->AstNode) or
+      AstAs<asts::SupPrototypeFunctionsAst>(sup_scope->AstNode)) {
       CheckConflictingTypeOrCmpStatements(*cls_sym, *sup_scope);
     }
   }
@@ -320,8 +356,8 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
   auto dummy = utils::type_compare::GenericInferenceMap();
   const auto existing_scopes = cls_sym.LinkedScope->DirectSupScopes
     | genex::views::filter([&](auto *scope) {
-      return scope->AstNode->template To<asts::SupPrototypeExtensionAst>()
-        or scope->AstNode->template To<asts::SupPrototypeFunctionsAst>();
+      return AstAs<asts::SupPrototypeExtensionAst>(scope->AstNode)
+        or AstAs<asts::SupPrototypeFunctionsAst>(scope->AstNode);
     })
     | genex::views::filter([&](auto *scope) {
       return utils::type_compare::RelaxedTypeEq(
@@ -381,6 +417,7 @@ auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   generic_sup_blocks.Clear();
   temp_scopes.Clear();
   asts::GenericParameterTypeAst::ClearDummyScopes();
+  asts::ClosureExpressionAst::ClearMockAsts();
 }
 
 SPP_MOD_END

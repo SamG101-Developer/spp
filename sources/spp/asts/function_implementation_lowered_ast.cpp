@@ -19,9 +19,9 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func_impls;
 import spp.codegen.llvm_type;
 import spp.utils.traits;
-import boost;
 import genex;
 import std;
+import numex.big_int;
 
 SPP_MOD_BEGIN
 auto spp::asts::FunctionImplementationLoweredAst::NewEmpty()
@@ -76,8 +76,8 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateZeroDivision(
   const auto int_divisor = divisor.To<IntegerLiteralAst>();
   const auto flt_divisor = divisor.To<FloatLiteralAst>();
   const auto is_zero =
-    (int_divisor != nullptr and int_divisor->BigVal().is_zero())
-    or (flt_divisor != nullptr and flt_divisor->BigVal().is_zero());
+    (int_divisor != nullptr and int_divisor->BigVal() == 0) or
+    (flt_divisor != nullptr and flt_divisor->BigVal() == 0);
 
   RaiseIf<SppDivisionByZeroError>(
     is_zero, {sm->CurrentScope}, ERR_ARGS(*this, divisor));
@@ -108,10 +108,10 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateShiftAmount(
   const auto digits = value->Type
     | genex::views::filter([](auto c) { return std::isdigit(static_cast<unsigned char>(c)); })
     | genex::to<Str>();
-  const auto width = digits.empty() ? sizeof(void*) * 8 : std::stoul(digits);
+  const auto width = digits.empty() ? static_cast<std::int64_t>(sizeof(void*)) * 8 : std::stol(digits);
 
   RaiseIf<SppShiftAmountOutOfBoundsError>(
-    amount->BigVal().compare(boost::BigInt(width)) >= 0,
+    amount->BigVal() >= numex::BigInt(width),
     {sm->CurrentScope}, ERR_ARGS(*this, *args[1], value->Type, width));
 }
 

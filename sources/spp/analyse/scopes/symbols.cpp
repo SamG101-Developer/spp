@@ -6,9 +6,11 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
@@ -141,12 +143,139 @@ auto spp::analyse::scopes::TypeSymbol::IsZeroType() const
   return IsDirectlyZeroType or (DerivesFromSym != nullptr and DerivesFromSym->IsZeroType());
 }
 
+namespace {
+  using spp::analyse::scopes::TypeSymbol;
+
+  /**
+   * Whether a marker annotation was written on this type or on the template it substitutes. An instantiation is built
+   * fresh rather than copied from its template, so "!thread_hazard" on "Rc" only reaches "Rc[S32]" along the
+   * "DerivesFromSym" chain - the same route "IsZeroType" takes.
+   * @param sym The symbol to start the walk at.
+   * @param flag The marker being asked about.
+   * @return Whether the marker was written anywhere along the chain.
+   */
+  auto DirectThreadMarker(
+    TypeSymbol const *sym,
+    bool TypeSymbol::*flag)
+    -> bool {
+    // Look at a symbol and move through its derivations
+    // to check the "flag", such as thread safety etc.
+    for (auto const *s = sym; s != nullptr; s = s->DerivesFromSym.get()) {
+      if (s->*flag) { return true; }
+    }
+    return false;
+  }
+
+  /**
+   * Whether a generic parameter was declared with a "ThreadSafe" constraint, which is the only thing that can make an
+   * unbound one safe.
+   * @param sym The generic parameter's symbol.
+   * @return Whether one of its constraints is "ThreadSafe".
+   */
+  auto HasThreadSafeConstraint(
+    TypeSymbol const &sym)
+    -> bool {
+    using spp::analyse::utils::type_compare::TypeEq;
+    using spp::asts::generate::common_types_precompiled::THREAD_SAFE;
+
+    const auto scope = sym.ScopeDefinedIn != nullptr
+      ? sym.ScopeDefinedIn
+      : sym.LinkedScope;
+    if (scope == nullptr) { return false; }
+
+    // Simple sup-scope search and comparison against the
+    // special "ThreadSafe" type.
+    return genex::any_of(sym.GenericConstraints, [&](auto const &c) {
+      return TypeEq(*c, *THREAD_SAFE, *scope, *scope);
+    });
+  }
+
+  auto IsThreadSafeRec(
+    TypeSymbol const *sym,
+    spp::Set<TypeSymbol const*> &seen)
+    -> bool {
+    using spp::analyse::utils::type_compare::TypeEq;
+    using spp::analyse::utils::type_members::GetAllAttrs;
+    using namespace spp::asts::generate::common_types_precompiled;
+
+    // A symbol that could not be resolved is not evidence
+    // of a hazard. A type reached twice ie via a cycle,
+    // adds nothing the first visit did not already account for.
+    if (sym == nullptr) { return true; }
+    if (not seen.insert(sym).second) { return true; }
+
+    // A hazard stays one however it is wrapped.
+    if (DirectThreadMarker(sym, &TypeSymbol::IsDirectlyThreadHazard)) {
+      return false;
+    }
+
+    // A generic bound to a real type answers with whatever it
+    // was bound to; an unbound one is safe only where it was
+    // constrained to be, because nothing else stops it being
+    // instantiated with a hazard.
+    if (sym->IsGeneric) {
+      const auto bound = sym->LinkedScope != nullptr ? sym->LinkedScope->TySym.get() : nullptr;
+      if (bound != nullptr and bound != sym and not bound->IsGeneric) { return IsThreadSafeRec(bound, seen); }
+      const auto ok = HasThreadSafeConstraint(*sym);
+      return ok;
+    }
+
+    const auto arg_scope = sym->ScopeDefinedIn != nullptr
+      ? sym->ScopeDefinedIn
+      : sym->LinkedScope;
+
+    // There are some types that don't hold attributes in the
+    // std library, but are representative of internal values,
+    // lowered directly from LLVM, such as a NonNull owning a
+    // T value, but not written in the compiler. Todo: this
+    // looks like is needs strengthening with the equality.
+    const auto compiler_special_type = [&] {
+      if (sym->Name == nullptr or arg_scope == nullptr) { return false; }
+      const auto bare = sym->Name->WithoutGenerics();
+      return genex::any_of(
+        spp::Vec{TUP, VAR, ARR, NON_NULL, GEN, GEN_ONCE, FUT},
+        [&](auto const &known) { return bare->LastTypePart()->Name == known->LastTypePart()->Name; });
+    }();
+
+    if (compiler_special_type and sym->Name->GnArgGroup != nullptr) {
+      for (auto const &arg : sym->Name->GnArgGroup->Args) {
+        const auto type_arg = arg->To<spp::asts::GenericArgumentTypeAst>();
+        if (type_arg == nullptr) { continue; }
+        if (not IsThreadSafeRec(arg_scope->GetTypeSymbol(type_arg->Val.get()), seen)) { return false; }
+      }
+    }
+
+    // Recurse into the attributes of the type; if there is a
+    // unsafe attribute type, then the overall type is also
+    // unsafe.
+    if (sym->LinkedScope != nullptr and sym->Type != nullptr) {
+      for (auto const &attr : GetAllAttrs(*sym->FqName(), *sym->LinkedScope)) {
+        if (not IsThreadSafeRec(spp::get<1>(attr), seen)) { return false; }
+      }
+    }
+
+    return true;
+  }
+}
+
+auto spp::analyse::scopes::TypeSymbol::IsThreadSafe() const
+  -> bool {
+  // Only ever asked where a "ThreadSafe" constraint was
+  // actually written, so the walk is not memoised: it runs
+  // a handful of times per program rather than once per
+  // type comparison.
+  auto seen = Set<TypeSymbol const*>();
+  return IsThreadSafeRec(this, seen);
+}
+
 auto spp::analyse::scopes::VariableSymbol::BoundCompValue() const
   -> asts::ExpressionAst* {
-  // Only a comp generic carries a binding, and only once an argument has been given for it.
-  if (not IsGeneric or MemInfo == nullptr or MemInfo->AstCompTime == nullptr) { return nullptr; }
+  // Only a comp generic carries a binding, and only once an
+  // argument has been given for it.
+  if (not IsGeneric or MemInfo->AstCompTime == nullptr) { return nullptr; }
 
-  // An instantiation records the argument the parameter was bound to; a template records the parameter itself, which
+  // An instantiation records the argument the parameter was
+  // bound to; a template records the parameter itself, which
   // is a declaration rather than a value, so it is not a binding.
   const auto bound = MemInfo->AstCompTime->To<asts::GenericArgumentCompAst>();
   return bound != nullptr ? bound->Val.get() : nullptr;
@@ -203,11 +332,11 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
   ScopeModule(scope_module),
   IsGeneric(is_generic),
   GenericConstraints(generic_constraints),
-  IsDirectlyCopyable(is_directly_copyable),
   Visibility(visibility),
   Convention(std::move(convention)),
   GenericImpl(this),
   LlvmInfo(MakeShared<codegen::LlvmTypeSymInfo>()),
+  IsDirectlyCopyable(is_directly_copyable),
   IsDirectlyZeroType(false) {
 }
 
@@ -221,14 +350,17 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   IsVariadic(that.IsVariadic),
   GenericConstraints(that.GenericConstraints),
   GenericVal(that.GenericVal),
-  IsDirectlyCopyable(that.IsDirectlyCopyable),
   DerivesFromSym(that.DerivesFromSym),
   Visibility(that.Visibility),
   Convention(asts::AstClone(that.Convention)),
   GenericImpl(that.GenericImpl),
-  IsDirectlyZeroType(that.IsDirectlyZeroType) {
-  // Shared rather than cloned: an alias's description is fixed once resolved, and an instantiation of a generic
-  // alias builds its own (see "CreateGenericClsScope") rather than mutating one it was handed.
+  IsDirectlyCopyable(that.IsDirectlyCopyable),
+  IsDirectlyZeroType(that.IsDirectlyZeroType),
+  IsDirectlyThreadHazard(that.IsDirectlyThreadHazard) {
+  // Shared rather than cloned: an alias's description is
+  // fixed once resolved, and an instantiation of a generic
+  // alias builds its own ("CreateGenericClsScope") rather
+  // than mutating one it was handed.
   Alias = that.Alias;
   LlvmInfo = that.LlvmInfo;
 }
@@ -249,17 +381,31 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
 
 auto spp::analyse::scopes::TypeSymbol::AsClassSymbol() const
   -> TypeSymbol* {
-  // Already a class, or a name with nothing behind it either way. The symbol answered with is owned by the table or by
-  // the scope it links to, both of which outlive any caller, so it is borrowed rather than owned.
+  // Already a class, or a name with nothing behind it either
+  // way. The symbol answered with is owned by the table or by
+  // the scope it links to, both of which outlive any caller,
+  // so it is borrowed rather than owned.
   const auto self = const_cast<TypeSymbol*>(this);
   if (Type != nullptr or LinkedScope == nullptr or LinkedScope->TySym == nullptr) { return self; }
   return LinkedScope->TySym.get();
 }
 
+auto spp::analyse::scopes::TypeSymbol::AsBoundSymbol() const
+  -> TypeSymbol* {
+  // Borrowed rather than owned, as with "AsClassSymbol": the
+  // symbol answered with is owned by the scope it links to.
+  const auto self = const_cast<TypeSymbol*>(this);
+  if (IsGeneric and LinkedScope != nullptr and LinkedScope->TySym != nullptr and LinkedScope->TySym.get() != self) {
+    return LinkedScope->TySym->AsBoundSymbol();
+  }
+  return self;
+}
+
 auto spp::analyse::scopes::TypeSymbol::FqName(
   const bool ignore_dollar) const
   -> Shared<asts::TypeAst> {
-  // An alias is transparent, so it answers with the type it resolves to rather than with its own name.
+  // An alias is transparent, so it answers with the type it
+  // resolves to rather than with its own name.
   if (Alias != nullptr) {
     return Alias->Resolved;
   }
@@ -274,8 +420,10 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
     return Name;
   }
 
-  // Everything above returns a name that already exists. What is left builds one, walking the scopes above the linked
-  // scope and minting an ast node per namespace part, so it is worth not doing twice: the walk reads only the shape of
+  // Everything above returns a name that already exists. What
+  // is left builds one, walking the scopes above the linked
+  // scope and minting an ast node per namespace part, so it
+  // is worth not doing twice: the walk reads only the shape of
   // the scope tree, which is fixed until a scope is re-parented.
   if (_CachedFqNameGen == ScopeLinkageGeneration()) {
     return _CachedFqName;

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -20,6 +21,9 @@ namespace spp::analyse::scopes {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorStaticMemberAccessAst);
+
   /**
    * The @c :: token that indicates a static member access operation in a postfix expression.
    */
@@ -41,8 +45,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
   ~PostfixExpressionOperatorStaticMemberAccessAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -51,8 +53,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<Ast*> override;
+  SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
 private:
   analyse::scopes::TypeSymbol *_LhsTypeSym;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorStaticMemberAccessAst)

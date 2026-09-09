@@ -19,7 +19,7 @@ fi
 {
   echo "CC=${prefix}/bin/clang"
   echo "CXX=${prefix}/bin/clang++"
-  echo "LDFLAGS=-L${prefix}/lib -Wl,-rpath,${prefix}/lib"
+  echo "LDFLAGS=-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lc++abi"
 } >> "$GITHUB_ENV"
 
 # The manifest's paths are relative to its own directory, which sits

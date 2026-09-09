@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.convention_ref_ast;
+import spp.asts.ast_kind;
 import spp.asts.convention_ast;
 import spp.utils.types;
 import std;
@@ -16,6 +17,9 @@ namespace spp::asts {
  * mutable values.
  */
 SPP_EXP_CLS struct spp::asts::ConventionRefAst final : ConventionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ConventionRefAst);
+
   /**
    * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
    * being made.
@@ -30,6 +34,6 @@ SPP_EXP_CLS struct spp::asts::ConventionRefAst final : ConventionAst {
     decltype(TokBorrow) &&tok_borrow);
 
   ~ConventionRefAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ConventionRefAst)

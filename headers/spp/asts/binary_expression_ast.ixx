@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.binary_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -23,7 +24,8 @@ namespace spp::asts {
  * @code 1.add(2)@endcode.
  */
 SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(BinaryExpressionAst);
 
   /**
    * The left-hand side expression of the binary expression. This is the first operand.
@@ -131,7 +133,7 @@ private:
    * mark of its own. Without it the analysis runs again on each visit, and the comparison-chain rewrite moves the
    * operands out of the expression a second time.
    */
-  bool _LogicalAnalysed = false;
+  bool _LogicalAnalysed;
 
   /**
    * Whether the operator is @c and or @c or, decided from the token and then remembered. It cannot be read back off
@@ -141,3 +143,5 @@ private:
    */
   bool _IsLogical;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BinaryExpressionAst)

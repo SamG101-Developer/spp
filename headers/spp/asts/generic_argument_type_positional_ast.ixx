@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_type_positional_ast;
+import spp.asts.ast_kind;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.utils.types;
@@ -17,6 +18,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericArgumentTypePositionalAst);
 
   /**
    * Construct the GenericArgumentTypePositionalAst with the arguments matching the members.
@@ -28,14 +30,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
   ~GenericArgumentTypePositionalAst() override;
 
   SPP_ATTR_NODISCARD auto EqualsGenericArgumentTypePositional(
-    GenericArgumentTypePositionalAst const &other) const
-    -> Ordering override;
-
+    GenericArgumentTypePositionalAst const &other) const -> Ordering override;
   SPP_ATTR_NODISCARD auto Equals(
-    GenericArgumentAst const &other) const
-    -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
+    GenericArgumentAst const &other) const -> Ordering override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

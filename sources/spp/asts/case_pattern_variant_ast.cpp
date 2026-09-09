@@ -19,6 +19,13 @@ auto spp::asts::CasePatternVariantAst::Stage9_CompTimeResolve(
   // defined here (maybe GCC bug).
 }
 
+auto spp::asts::CasePatternVariantAst::BindsByMove() const
+  -> bool {
+  // Only the patterns that name something take anything;
+  // every other kind is a test.
+  return false;
+}
+
 auto spp::asts::CasePatternVariantAst::ConvToVar(
   meta::CompilerMetaData *)
   -> Unique<LocalVariableAst> {

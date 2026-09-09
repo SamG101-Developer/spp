@@ -25,6 +25,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
@@ -38,7 +39,8 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
   Op(std::move(op)),
   Patterns(std::move(patterns)),
   Guard(std::move(guard)),
-  Body(std::move(body)) {
+  Body(std::move(body)),
+  _ForIterLoopYield(false) {
   // Default the body to empty.
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Body);
 }
@@ -111,15 +113,15 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   // Build the comparison the branch actually tests, over the
   // real operands. This is to retained, rather than needing to
   // rebuild at codegen time. Only needed for "case ... of".
-  _PatternComparisons = Vec<Unique<BinaryExpressionAst>>(Patterns.Len());
+  _MappedPatFuncs = Vec<Unique<BinaryExpressionAst>>(Patterns.Len());
   if (Op != nullptr and Op->TokenType != lex::SppTokenType::KW_IS) {
     for (auto const &[i, p] : Patterns | genex::views::ptr | genex::views::enumerate) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();
       if (pe == nullptr) { continue; }
 
-      _PatternComparisons[i] = MakeUnique<BinaryExpressionAst>(
+      _MappedPatFuncs[i] = MakeUnique<BinaryExpressionAst>(
         AstClone(meta->CaseCondition), AstClone(Op), AstClone(pe->Expr));
-      _PatternComparisons[i]->Stage7_AnalyseSemantics(sm, meta);
+      _MappedPatFuncs[i]->Stage7_AnalyseSemantics(sm, meta);
     }
   }
 
@@ -162,8 +164,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
   for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
     auto *tested = tests_condition_directly and meta->CaseCondition != nullptr
       ? static_cast<Ast*>(meta->CaseCondition)
-      : i < _PatternComparisons.Len() and _PatternComparisons[i] != nullptr
-      ? static_cast<Ast*>(_PatternComparisons[i].get())
+      : i < _MappedPatFuncs.Len() and _MappedPatFuncs[i] != nullptr
+      ? static_cast<Ast*>(_MappedPatFuncs[i].get())
       : static_cast<Ast*>(pattern);
     tested->Stage9_CompTimeResolve(sm, meta);
 
@@ -322,8 +324,8 @@ auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
   // Reuse either the generated pattern combinations, or the normal
   // pattern codegen if there was no combinations performed.
   const auto codegen_pattern = [&](const std::size_t i) -> llvm::Value* {
-    return i < _PatternComparisons.Len() and _PatternComparisons[i] != nullptr
-      ? _PatternComparisons[i]->Stage11_CodeGen(sm, meta, ctx)
+    return i < _MappedPatFuncs.Len() and _MappedPatFuncs[i] != nullptr
+      ? _MappedPatFuncs[i]->Stage11_CodeGen(sm, meta, ctx)
       : Patterns[i]->Stage11_CodeGen(sm, meta, ctx);
   };
 

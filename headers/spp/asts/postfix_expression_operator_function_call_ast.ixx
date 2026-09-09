@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -30,6 +31,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorFunctionCallAst);
+
   /**
    * The generic argument group that contains the generic arguments for the function call.
    */
@@ -64,8 +68,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
     decltype(Fold) &&fold);
 
   ~PostfixExpressionOperatorFunctionCallAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -106,19 +108,12 @@ private:
   };
 
   std::optional<_OInfo> _OverloadInfo;
-
   Unique<PostfixExpressionAst> _TransformedAst;
-
   Unique<FunctionCallArgumentGroupAst> _ClosureDummyArgGroup;
-
   Unique<FunctionCallArgumentPositionalAst> _ClosureDummyArg;
-
   Unique<FunctionPrototypeAst> _ClosureDummyProto;
-
   Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
-
   Ast *_IsAsync;
-
   bool _IsCoroAndAutoResume;
 
   auto _HandleFunctionFolding(
@@ -126,3 +121,5 @@ private:
     CompilerMetaData *meta)
     -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorFunctionCallAst)

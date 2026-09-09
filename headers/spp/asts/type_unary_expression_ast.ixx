@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_unary_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -22,6 +23,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionAst);
 
   /**
    * The operator token that represents the unary operation. This indicates the type of operation being performed.
@@ -54,8 +56,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_ATTR_NODISCARD auto Equals(
     ExpressionAst const &other) const
     -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

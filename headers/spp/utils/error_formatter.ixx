@@ -16,13 +16,20 @@ namespace spp::utils::errors {
 
 SPP_EXP_CLS class spp::utils::errors::ErrorFormatter {
 public:
-  ErrorFormatter(Vec<lex::RawToken> tokens, Str file_path);
+  ErrorFormatter(
+    Vec<lex::RawToken> tokens,
+    Str file_path,
+    std::size_t prelude_token_index = Str::npos);
+
+  SPP_ATTR_NODISCARD auto IsPastUserSource(
+    std::size_t token_pos) const
+    -> bool;
 
   auto InternalParseErrorRawPos(
     std::size_t ast_start_pos,
     std::size_t ast_size,
     Str &&tag_message)
-    -> Tup<Str, Str, Str, Str, Str>;
+    -> Tup<Str, Str, Str, Str, Str, Str>;
 
   auto ErrorRawPos(
     std::size_t ast_start_pos,
@@ -51,4 +58,5 @@ public:
 private:
   Vec<lex::RawToken> _Tokens;
   Str _FilePath;
+  std::size_t _PreludeTokenIndex;
 };

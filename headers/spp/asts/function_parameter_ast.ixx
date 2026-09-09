@@ -23,6 +23,8 @@ namespace spp::asts {
  * the required, optional, variadic and self parameters, and provides the common functionality for all of them.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
+  SPP_GCC_VTABLE_FIX
+
   /**
    * The local variable declaration for this parameter. This is used to create a local variable for the parameter,
    * using the same syntax as variables, such as destructuring.
@@ -70,3 +72,5 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterAst)

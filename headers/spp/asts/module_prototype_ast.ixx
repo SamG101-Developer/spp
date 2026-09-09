@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.module_prototype_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -24,6 +25,8 @@ namespace spp::asts {
  * the module.
  */
 SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+
   /**
    * The file path of the module prototype. This is interacted with by the compiler to resolve module imports. Not got
    * from parsing children AST nodes.
@@ -44,7 +47,7 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   ~ModulePrototypeAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_AST_KEY_FUNCTIONS(ModulePrototypeAst);
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
@@ -68,6 +71,7 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  SPP_ATTR_NODISCARD auto Name() const
-    -> Unique<IdentifierAst>;
+  SPP_ATTR_NODISCARD auto Name() const -> Unique<IdentifierAst>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ModulePrototypeAst)

@@ -18,7 +18,6 @@ import spp.lex.tokens;
 import spp.utils.numbers;
 import spp.utils.strings;
 import spp.utils.types;
-import boost;
 import genex;
 import llvm;
 
@@ -93,17 +92,17 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::IntegerLiteralAst::BigVal() const
-  -> boost::BigInt {
+  -> numex::BigInt {
   //
   using spp::utils::strings::NormaliseIntegerString;
 
-  // Same normalisation Stage7 does: "0o" is spelled "00"
-  // for boost, and the sign is a separate token.
-  auto data = Val->TokenData;
-  data |= genex::actions::replace('o', '0');
-  auto value = boost::BigInt(NormaliseIntegerString(data));
+  // Same normalisation Stage7 does: underscores out, and the
+  // sign is a separate token. The base prefix is left alone -
+  // numex reads "0x", "0o" and "0b" itself.
+  const auto data = Val->TokenData;
+  auto value = numex::BigInt(NormaliseIntegerString(data));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
-    value.backend().negate();
+    value = -value;
   }
   return value;
 }
@@ -120,41 +119,41 @@ auto spp::asts::IntegerLiteralAst::ValidateBounds(
   auto const &[lower, upper] = kBounds.at(Type);
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
-    value.compare(lower) < 0 or value.compare(upper) > 0,
+    value < lower or value > upper,
     {sm.CurrentScope}, ERR_ARGS(owner, value, lower, upper, Type));
 }
 
 auto spp::asts::IntegerLiteralAst::FromBigVal(
-  boost::BigInt const &value,
+  numex::BigInt const &value,
   Str const &type)
   -> Unique<IntegerLiteralAst> {
   // The sign travels as its own token, so the value token
   // carries the magnitude alone.
-  const auto is_negative = value.sign() < 0;
+  const auto is_negative = value.IsNegative();
   auto magnitude = value;
-  if (is_negative) { magnitude.backend().negate(); }
+  if (is_negative) { magnitude = -magnitude; }
 
   auto sign_tok = is_negative
     ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::tok_to_string(lex::SppTokenType::TK_SUB))
     : nullptr;
-  auto val_tok = MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, magnitude.str());
+  auto val_tok = MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, magnitude.ToString());
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
 }
 
 auto spp::asts::IntegerLiteralAst::FromWrappedBigVal(
-  boost::BigInt const &value,
+  numex::BigInt const &value,
   Str const &type)
   -> Unique<IntegerLiteralAst> {
   //
   auto const &[lower, upper] = kBounds.at(type);
-  const auto modulus = boost::BigInt(upper - lower + 1);
+  const auto modulus = upper - lower + 1;
 
   // Take the value within the span, then read it back where
   // the type puts it: a pattern past the top of the range
   // is the negative one the same bits stand for.
-  auto wrapped = boost::BigInt(value % modulus);
-  if (wrapped.sign() < 0) { wrapped = boost::BigInt(wrapped + modulus); }
-  if (wrapped.compare(upper) > 0) { wrapped = boost::BigInt(wrapped - modulus); }
+  auto wrapped = value % modulus;
+  if (wrapped.IsNegative()) { wrapped = wrapped + modulus; }
+  if (wrapped > upper) { wrapped = wrapped - modulus; }
   return FromBigVal(wrapped, type);
 }
 
@@ -191,16 +190,15 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
 
   // Normalise the literal exactly as Stage7 does, then
   // apply the optional sign.
-  auto data = Val->TokenData;
-  data |= genex::actions::replace('o', '0');
-  auto mapped_val = boost::BigInt(NormaliseIntegerString(data));
+  const auto data = Val->TokenData;
+  auto mapped_val = numex::BigInt(NormaliseIntegerString(data));
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
-    mapped_val.backend().negate();
+    mapped_val = -mapped_val;
   }
 
   // Create the LLVM constant integer value from the
   // normalised decimal string (APInt handles the sign).
-  const auto ap_int = llvm::APInt(bit_width, mapped_val.str(), 10);
+  const auto ap_int = llvm::APInt(bit_width, mapped_val.ToString(), 10);
   const auto co_int = llvm::ConstantInt::get(*ctx->Context, ap_int);
   return co_int;
 }

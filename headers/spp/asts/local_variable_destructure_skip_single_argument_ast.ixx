@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.asts.ast_kind;
 import spp.asts.local_variable_ast;
 import spp.utils.types;
 import std;
@@ -13,6 +14,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVariableAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureSkipSingleArgumentAst);
+
   /**
    * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
    * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object
@@ -29,9 +33,9 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst fina
 
   ~LocalVariableDestructureSkipSingleArgumentAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureSkipSingleArgumentAst)

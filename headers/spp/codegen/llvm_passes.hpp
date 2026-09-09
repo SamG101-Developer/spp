@@ -40,6 +40,36 @@ namespace spp::codegen {
   auto ApplyTargetToModule(void *llvm_module) -> void;
 
   /**
+   * Give every function in @p llvm_module a stack protector.
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   * @return How many functions were given one.
+   */
+  auto ApplyStackProtector(void *llvm_module) -> unsigned long;
+
+  /**
+   * Give every function in @p llvm_module an inline stack probe, so a frame is claimed a page at a time rather than
+   * by one subtraction from the stack pointer. Without it a frame larger than the guard page below the stack can
+   * step clean over that page and land in whatever mapping follows, and the first write into the new frame hits
+   * memory the function was never given - the "stack clash" shape, and the one hole a canary cannot see, because
+   * nothing was overwritten on the way past.
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   * @return How many functions were given one.
+   */
+  auto ApplyStackClashProtection(void *llvm_module) -> unsigned long;
+
+  /**
+   * Split every function's frame in two: the objects a callee could write past stay on a separate "unsafe" stack, and
+   * the frame the hardware knows about - the return address, the saved registers, the spills - keeps only what nothing
+   * can reach out of bounds. What decides which side an object goes is llvm's own analysis of the object's uses: a
+   * local whose address escapes into a call that may capture or write it is unsafe, and one only ever read and written
+   * in bounds is not.
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   * @return How many functions were stamped. Not how many were split: a function with nothing unsafe in it keeps one
+   * frame, and llvm decides that per function when it lowers.
+   */
+  auto ApplySafeStack(void *llvm_module) -> unsigned long;
+
+  /**
    * Emit @p llvm_module as a native object file at @p path .
    * @param[in] llvm_module The @c llvm::Module to emit, as an opaque pointer.
    * @param[in] path Where to write the object file.
@@ -48,29 +78,20 @@ namespace spp::codegen {
   auto EmitObjectFile(void *llvm_module, char const *path) -> bool;
 
   /**
-   * Give back their real names to the @c llvm.* declarations that llvm no longer recognises as intrinsics.
+   * Check that llvm can still spell an overloaded intrinsic's name, and stop if it cannot.
    *
    * @n
-   * Workaround, not a fix. Every intrinsic name longer than fifteen characters is stored with trailing garbage in
-   * this build - "llvm.coro.suspend" comes out as "llvm.coro.suspend405\0\0..." padded to thirty-one bytes - so
-   * @c getIntrinsicID reads @c not_intrinsic and the declaration becomes an ordinary external symbol nothing
-   * defines. The damage is not confined to the link: the coroutine passes recognise "llvm.coro.id" (twelve
-   * characters) and "llvm.coro.begin" (fifteen) but not "llvm.coro.suspend", so they see a coroutine with no suspend
-   * points, flatten it instead of splitting it, and leave a generator returning a pointer to its own dead frame.
+   * The names arrive from @c Intrinsic::getName as a @c std::string, and there is a libstdc++ incompatibility that
+   * makes that come back padded with uninitialised bytes (see @c libstdcxx_string_compat.cpp ). While it bites, no
+   * overloaded intrinsic can be named correctly and every module holding one is rejected - by the verifier, whose
+   * complaint is about the name and says nothing about why the name is wrong. This asks for one name and compares
+   * it, so the failure is reported where the cause is rather than several layers downstream.
    *
    * @n
-   * The prefix is always intact, so the real name is recovered by finding the longest prefix llvm still resolves to
-   * an intrinsic, and rebuilding the declaration under it - a fresh @c llvm::Function recomputes its intrinsic id
-   * from its name. Truncating at the first unprintable byte would not do: the garbage is sometimes printable.
-   *
-   * @n
-   * The real problem is upstream: a string handed to llvm is read back with the wrong length, which also shows up in
-   * printed attribute lists and in the module's own target triple. Once that is resolved this should go.
-   *
-   * @param[in,out] llvm_module The @c llvm::Module to repair, as an opaque pointer.
-   * @return How many declarations were renamed.
+   * Runs its check once per process, so it costs nothing to call wherever it is convenient. The diagnosis is printed
+   * in any build; the assertion that stops on it is a debug one.
    */
-  auto RepairMisnamedIntrinsics(void *llvm_module) -> unsigned long;
+  auto AssertIntrinsicNamingIsSound() -> void;
 
   /**
    * Add a C @c main to @p llvm_module that calls @p spp_main_name , so the program has an entry point of the shape a
@@ -79,9 +100,12 @@ namespace spp::codegen {
    *
    * @param[in,out] llvm_module The combined @c llvm::Module, as an opaque pointer.
    * @param[in] spp_main_name The linkage name of the s++ entry point.
+   * @param[in] split_stacks Whether to bring the main thread's unsafe stack up as part of the runtime start-up. Must
+   * match what @c ApplySafeStack is asked to do later: a program whose functions read an unsafe stack pointer that was
+   * never set up writes its first split frame through a null one.
    * @return @c true if the entry point was added.
    */
-  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name) -> bool;
+  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> bool;
 
   /**
    * Lower the coroutine intrinsics in a module into real state machines, and move generator frames into their callers.

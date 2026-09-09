@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_variadic_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
@@ -16,6 +17,9 @@ namespace spp::asts {
  * parameters that can accept an arbitrary number of arguments, such as @c *args in Python.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParameterAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionParameterVariadicAst);
+
   /**
    * The token that represents the @c .. ellipsis in the function parameter. This indicates that the parameter is
    * variadic, meaning it can accept a variable number of arguments.
@@ -36,6 +40,6 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParam
     decltype(Type) type);
 
   ~FunctionParameterVariadicAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterVariadicAst)

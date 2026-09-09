@@ -374,7 +374,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   // Create a new class symbol, based on the new class scope, and copy over important information. The instantiation is
   // copyable, and a zero type, exactly when the template it substitutes is.
   const auto new_cls_sym = MakeShared<scopes::TypeSymbol>(
-    name_clone, new_cls_scope->AstNode->To<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->CurrentScope,
+    name_clone, AstAs<asts::ClassPrototypeAst>(new_cls_scope->AstNode), new_cls_scope.get(), sm->CurrentScope,
     old_cls_scope->Parent, old_cls_sym->IsGeneric, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
   new_cls_sym->DerivesFromSym = old_cls_sym;
 
@@ -421,7 +421,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
 
   // Register the instantiation's own ast against the template. Its parameter list is emptied, which is what marks it as
   // an instantiation rather than the template it was cloned from.
-  auto new_ast = asts::AstClone(old_cls_scope->AstNode->To<asts::ClassPrototypeAst>());
+  auto new_ast = asts::AstClone(AstAs<asts::ClassPrototypeAst>(old_cls_scope->AstNode));
   new_ast->SetAstScope(new_cls_scope_ptr);
   new_ast->GnParamGroup->Params.Clear();
   const auto new_ast_ptr = new_ast.get();
@@ -565,9 +565,6 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
   // 3. Bind the generic parameters, against the instantiation itself.
   auto tm = scopes::ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
   RegisterGenericSyms(external_generic_syms, generic_args.Args, new_sup_scope_ptr, &tm, meta);
-
-  const auto self_type = asts::AstName(old_sup_scope.AstNode)->SubstituteGenerics(generic_args.GetAllArgs());
-  AnalyseSubstitutedType(*self_type, &tm, meta, false, true);
   AddSelfTypeSym(*new_sup_scope_ptr, &new_cls_scope, *sm);
 
   // 4. Substitute the bindings into what the clone inherited: the block's "type" aliases and its "cmp" constants.
@@ -595,7 +592,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
 
   // Create the scope for the new super class type. This will handle recursive sup-scope creation.
   auto super_cls_scope = static_cast<scopes::Scope*>(nullptr);
-  if (const auto ext_ast = old_sup_scope.AstNode->To<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
+  if (const auto ext_ast = AstAs<asts::SupPrototypeExtensionAst>(old_sup_scope.AstNode); ext_ast != nullptr) {
     const auto new_fq_super_type = ext_ast->SuperClass->SubstituteGenerics(generic_args.GetAllArgs());
     AnalyseSubstitutedType(*new_fq_super_type, &tm, meta, true, true);
     super_cls_scope = new_cls_scope.GetTypeSymbol(new_fq_super_type.get())->LinkedScope;

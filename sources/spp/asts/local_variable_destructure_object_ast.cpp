@@ -32,6 +32,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
@@ -45,7 +46,11 @@ spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
   Type(std::move(type)),
   TokL(std::move(tok_l)),
   Elems(std::move(elems)),
-  TokR(std::move(tok_r)) {
+  TokR(std::move(tok_r)),
+  _CondSym(nullptr),
+  _FlowSym(nullptr),
+  _CondLet(nullptr),
+  _TmpName(nullptr) {
   //
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
@@ -87,6 +92,13 @@ auto spp::asts::LocalVariableDestructureObjectAst::ToString() const
   SPP_STRING_EXTEND(Elems, ", ");
   SPP_STRING_APPEND(TokR);
   SPP_STRING_END;
+}
+
+auto spp::asts::LocalVariableDestructureObjectAst::BindsByMove() const
+  -> bool {
+  // A destructure binds if any of its elements does. An empty one, or one made only of skips, is a shape test and
+  // takes nothing.
+  return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
@@ -136,9 +148,19 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     | genex::views::not_in(assigned_attributes, genex::meta::deref, genex::meta::deref)
     | genex::to<Vec>();
 
+  // A case pattern tests its subject rather than taking
+  // it apart, so a borrowed subject is matched by a pattern
+  // naming the bare type: "case p is Point(&x, ..)" where
+  // "p" is a "&Point". The tuple and array destructures
+  // already read past the convention here, because they
+  // check the shape ("IsTypeTup" / "IsTypeArr"). Manually
+  // apply the same semantics here.
+  const auto conv_only_mismatch = _FromCasePattern
+    and TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope, false);
+
   // Check the type matches.
   RaiseIf<SppTypeMismatchError>(
-    not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern),
+    not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern) and not conv_only_mismatch,
     {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Source.OriginalType, *Type));
 
   // Only 1 "multi-skip" allowed in a destructure.
@@ -173,7 +195,9 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 
   // Handle nested flow typing, like seen in the case pattern handler for object destructure. This narrows whatever the
   // elements index, so it is layered on top of the temporary rather than on the value.
-  if (_FromCasePattern and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
+  if (_FromCasePattern
+    and not conv_only_mismatch
+    and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
     const auto uid = spp::utils::Uid(this);
     uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
     auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
@@ -243,13 +267,22 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   // Check the flow-typing variable's memory next if flow
   // typing introduced one.
   if (_CondLet) { _CondLet->Stage8_CheckMemory(sm, meta); }
-  // Check the memory state of the elements.
+  // Check the memory state of the elements. Each expanded binding reads one field off the value, so each records a
+  // partial move of it, and the destructure marks the whole value moved once they are done.
   for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
 
   // Taking every element off a value takes the value, so the
   // symbol holding it is left moved rather than partly moved.
-  if (_TmpName == nullptr) {
-    analyse::utils::destructure_utils::ConsumeDestructureSource(*this, _FromCasePattern, *sm, meta);
+  if (_TmpName != nullptr) {
+    analyse::utils::destructure_utils::ConsumeDestructureTemp(*_TmpName, *sm);
+  }
+  else {
+    // A pattern that takes something apart has to account for every owned part of what it took; one that only tests
+    // the shape, or that binds the rest into a name of its own, has nothing left over to answer for.
+    const auto accounts_for_parts = BindsByMove()
+      and not genex::any_of(Elems, [](auto const &elem) { return elem->TakesRest(); });
+    analyse::utils::destructure_utils::ConsumeDestructureSource(
+      *this, _FromCasePattern, accounts_for_parts, *sm, meta);
   }
 }
 

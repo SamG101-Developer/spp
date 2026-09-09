@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.identifier_ast;
+import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.interner;
@@ -18,6 +19,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, EnableLocalSharedFromThis<IdentifierAst> {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(IdentifierAst);
 
   Str Val;
 
@@ -74,8 +76,6 @@ public:
     ExpressionAst const &other) const
     -> Ordering override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -85,14 +85,14 @@ public:
   auto InferType(ScopeManager *sm, CompilerMetaData *meta)
     -> Shared<TypeAst> override;
 
-  auto ToFuncIdentifier() const
+  SPP_ATTR_NODISCARD auto ToFuncIdentifier() const
     -> Unique<IdentifierAst>;
 
-  auto AnkerlHash() const
+  SPP_ATTR_NODISCARD auto AnkerlHash() const
     -> std::size_t override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const
-    -> Vec<Ast*> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
@@ -110,7 +110,7 @@ public:
 
 private:
   std::size_t _Pos;
-  std::size_t _ForTok = 0;
+  std::size_t _ForTok;
   utils::InternedId _NameId;
 };
 

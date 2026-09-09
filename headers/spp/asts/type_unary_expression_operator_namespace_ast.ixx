@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.ast_kind;
 import spp.asts.type_unary_expression_operator_ast;
 import spp.utils.types;
 import std;
@@ -15,6 +16,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionOperatorNamespaceAst);
 
   /**
    * The namespace token that represents the namespace in which the type is defined.
@@ -44,8 +46,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
   SPP_ATTR_NODISCARD auto Equals(
     TypeUnaryExpressionOperatorAst const &) const
     -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS
 
   auto NsPartsInto(Vec<IdentifierAst const*> &out) const
     -> void override;

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.cmp_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_member_ast;
@@ -29,8 +30,11 @@ namespace spp::asts {
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
-SPP_EXP_CLS struct
-  spp::asts::CmpStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+SPP_EXP_CLS struct spp::asts::CmpStatementAst final :
+  StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CmpStatementAst);
+
   friend struct UseStatementVariableAst;
   // Todo: Copy the "_Generated" logic from the "UseStatementAst" and add local insertions into testing?
 
@@ -101,8 +105,6 @@ SPP_EXP_CLS struct
 
   ~CmpStatementAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
@@ -130,7 +132,9 @@ SPP_EXP_CLS struct
   SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;
 
 private:
-  bool _FromUseStatement = false;
+  bool _FromUseStatement;
 
   Shared<analyse::scopes::VariableSymbol> _AliasSym;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CmpStatementAst)

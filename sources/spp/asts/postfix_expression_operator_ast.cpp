@@ -10,7 +10,7 @@ spp::asts::PostfixExpressionOperatorAst::PostfixExpressionOperatorAst() = defaul
 spp::asts::PostfixExpressionOperatorAst::~PostfixExpressionOperatorAst() = default;
 
 auto spp::asts::PostfixExpressionOperatorAst::ExprParts() const
-  -> Vec<Ast*> {
+  -> Vec<IdentifierAst*> {
   return {};
 }
 

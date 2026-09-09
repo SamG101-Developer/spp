@@ -13,7 +13,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup Wrapper {
-        cor get(&self) -> std::generator::GenOnce[&Inner] {
+        !public cor get(&self) -> std::generator::GenOnce[&Inner] {
             gen self
         }
     }
@@ -21,6 +21,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let w = Wrapper(inner=Inner(v=1))
         let a = w.get()@.v
+        std::mem::ops::drop(w)
     }
 )");
 
@@ -39,6 +40,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let w = Wrapper(inner=Inner(v=1))
         let a = w.fwd_ref()@.v
+        std::mem::ops::drop(w)
     }
 )");
 
@@ -57,6 +59,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut w = Wrapper(inner=Inner(v=1))
         w.fwd_mut()@.v = 2
+        std::mem::ops::drop(w)
     }
 )");
 

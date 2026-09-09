@@ -197,47 +197,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-/**
- * Whether this pattern takes a value out of the subject, rather than only testing it. A pattern that binds a name
- * without a borrow convention takes what it names; a literal, an expression, a skip and an @c else all only look.
- */
-namespace spp::asts {
-  namespace {
-    auto PatternBindsByMove(
-      CasePatternVariantAst const &pattern)
-      -> bool {
-      // A name binds what it is matched against, unless it asks for
-      // it through a borrow, which leaves the value where it was.
-      if (const auto single = pattern.To<CasePatternVariantSingleIdentifierAst>()) {
-        return single->Conv == nullptr;
-      }
-
-      // "x=<pattern>" and "x as y" bind whatever their value pattern
-      // binds.
-      if (const auto attr = pattern.To<CasePatternVariantDestructureAttributeBindingAst>()) {
-        return attr->Val != nullptr and PatternBindsByMove(*attr->Val);
-      }
-
-      // A destructure binds if any of its elements does. An empty one,
-      // or one made only of skips, is a shape test and takes nothing.
-      const auto any_elem_binds = [](auto const &elems) {
-        return genex::any_of(elems, [](auto const &e) { return PatternBindsByMove(*e); });
-      };
-      if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
-        return any_elem_binds(obj->Elems);
-      }
-      if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
-        return any_elem_binds(tup->Elems);
-      }
-      if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
-        return any_elem_binds(arr->Elems);
-      }
-
-      return false;
-    }
-  }
-}
-
 auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
@@ -262,7 +221,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   // "moves_value", repeated here because marking the move directly is what skips it.
   const auto binds_by_move = TokOf != nullptr and not LoweredFromIsExpr and genex::any_of(
     Branches, [](auto const &branch) {
-      return genex::any_of(branch->Patterns, [](auto const &p) { return PatternBindsByMove(*p); });
+      return genex::any_of(branch->Patterns, [](auto const &p) { return p->BindsByMove(); });
     });
 
   const auto cond_type = binds_by_move ? Cond->InferType(sm, meta) : nullptr;
@@ -270,6 +229,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   const auto cond_sym = cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
     ? sm->CurrentScope->GetVarSymbolOutermost(*Cond).first
     : nullptr;
+
   const auto takes_subject = cond_sym != nullptr
     and cond_type->GetConvention() == nullptr
     and spp::get<0>(cond_sym->MemInfo->AstBorrowed) == nullptr;
@@ -278,9 +238,9 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->CaseCondition = Cond.get();
-    if (takes_subject) { meta->CaseConsumedSubject = cond_sym->Name; }
+    if (takes_subject) { meta->CaseConsumedSubjects.EmplaceBack(cond_sym->Name); }
     ValidateInconsistentMemory(
-      this, Branches | genex::views::ptr | genex::to<Vec>(), sm, meta);
+      this, Branches | genex::views::ptr | genex::to<Vec>(), takes_subject ? cond_sym : nullptr, sm, meta);
   }
 
   // The mark is made here, after the branches have bound off the subject and outside the per-branch snapshots
@@ -459,6 +419,17 @@ auto spp::asts::CaseExpressionAst::InferType(
     final_not_else and not meta->IgnoreMissingElseBranchForInference,
     {sm->CurrentScope}, ERR_ARGS(*this, *Branches.Back()));
 
+  // A "case" with no "else" can finish without running any branch at all, so whatever its branches are, it is not
+  // "Never": the fall-through path is reachable, and the value it produces on that path is no value. Handing back the
+  // branches' type here instead is what made "case a { case b { abort() } }" crash - the inner case reads as "Never",
+  // so the outer branch believes its body cannot complete and terminates the block the inner case falls through to
+  // with "unreachable", which is exactly the path taken whenever "b" is false.
+  //
+  // @n
+  // This is also half of the Todo above: a case that is not an expression yields nothing, and no "else" is the one
+  // case of that which can be told apart here, because an "else" is mandatory in expression position.
+  if (final_not_else) { return VoidType(PosStart()); }
+
   // Return the branches' return type. If there are any
   // branches, otherwise Void.
   return branches_type_info.IsEmpty()
@@ -468,7 +439,13 @@ auto spp::asts::CaseExpressionAst::InferType(
 
 auto spp::asts::CaseExpressionAst::Terminates() const
   -> bool {
-  // The case expression only terminates if all branches terminate.
+  // Every branch has to terminate, and there has to be a branch
+  // that always runs. Without a final "else" the case can match
+  // nothing and fall straight through, so "case a { gen 1 ret }"
+  // ends the scope only when "a" holds - and the statement after
+  // it is reachable.
+  if (Branches.IsEmpty()) { return false; }
+  if (Branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>() == nullptr) { return false; }
   return not genex::any_of(
     Branches, [](auto const &branch) { return not branch->Body->Terminates(); });
 }

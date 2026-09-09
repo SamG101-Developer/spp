@@ -12,6 +12,18 @@ spp::asts::LocalVariableAst::LocalVariableAst() :
 
 spp::asts::LocalVariableAst::~LocalVariableAst() = default;
 
+auto spp::asts::LocalVariableAst::BindsByMove() const
+  -> bool {
+  // Only the patterns that name something take anything; every other kind is a test.
+  return false;
+}
+
+auto spp::asts::LocalVariableAst::TakesRest() const
+  -> bool {
+  // Only the rest pattern can bind the rest, and only when it is given a name to bind it to.
+  return false;
+}
+
 auto spp::asts::LocalVariableAst::ExtractName() const
   -> Shared<IdentifierAst> {
   // Default implementation returns nullptr.

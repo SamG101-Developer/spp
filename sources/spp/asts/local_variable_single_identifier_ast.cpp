@@ -16,6 +16,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
@@ -61,6 +62,12 @@ auto spp::asts::LocalVariableSingleIdentifierAst::ToString() const
   SPP_STRING_APPEND(Name).append(Alias ? " " : "");
   SPP_STRING_APPEND(Alias);
   SPP_STRING_END;
+}
+
+auto spp::asts::LocalVariableSingleIdentifierAst::BindsByMove() const
+  -> bool {
+  // A name binds what it stands for, unless it asks for it through a borrow, which leaves the value where it was.
+  return Conv == nullptr;
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(

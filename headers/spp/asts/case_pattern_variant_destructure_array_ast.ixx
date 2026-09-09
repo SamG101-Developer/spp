@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_array_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -15,7 +16,8 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureArrayAst final : CasePatternVariantAst {
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureArrayAst);
 
   /**
    * The @code [@endcode token that indicates the start of an array destructuring pattern.
@@ -43,6 +45,8 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureArrayAst final : Case
 
   ~CasePatternVariantDestructureArrayAst() override;
 
+  SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -53,3 +57,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureArrayAst final : Case
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureArrayAst)

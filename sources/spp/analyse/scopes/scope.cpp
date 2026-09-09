@@ -23,6 +23,7 @@ import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -50,7 +51,7 @@ namespace spp::analyse::scopes {
     auto ResolveSupTypeName(
       Scope const *scope)
       -> Shared<asts::TypeAst> {
-      const auto cls_proto = scope->AstNode->To<asts::ClassPrototypeAst>();
+      const auto cls_proto = AstAs<asts::ClassPrototypeAst>(scope->AstNode);
       const auto cls_sym = cls_proto != nullptr ? cls_proto->GetClsSym() : nullptr;
       if (cls_sym != nullptr and scope->TySym->Name->GnArgGroup->Args.IsEmpty()) { return cls_sym->FqName(); }
       return scope->TySym->FqName();
@@ -550,9 +551,17 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
   const bool exclusive,
   const bool sup_scope_search) const
   -> TypeSymbol* {
-  // Adjust the scope for the namespace of the type identifier if there is one.
   if (sym_name == nullptr) { return nullptr; }
 
+  // Answer from the cache before anything else.
+  const auto generation = TypeLookupGeneration();
+  const auto cacheable = not exclusive and sup_scope_search;
+  if (auto *cached = static_cast<TypeSymbol*>(nullptr);
+    cacheable and sym_name->TryCachedLookup(this, generation, cached)) {
+    return cached;
+  }
+
+  // Adjust the scope for the namespace of the type identifier if there is one.
   auto scope = this;
   auto sym_name_extracted = static_cast<asts::TypeIdentifierAst const*>(nullptr);
   if (sym_name->IsTypeIdentifier()) {
@@ -563,13 +572,6 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
     auto [scope_, sym_name_extracted_] = ShiftForNamespacedType(*this, *sym_name);
     scope = scope_;
     sym_name_extracted = sym_name_extracted_;
-  }
-
-  const auto generation = TypeLookupGeneration();
-  const auto cacheable = not exclusive and sup_scope_search;
-  if (auto *cached = static_cast<TypeSymbol*>(nullptr);
-    cacheable and sym_name->TryCachedLookup(this, generation, cached)) {
-    return cached;
   }
 
   // Get the symbol from the symbol table if it exists.
@@ -634,31 +636,40 @@ auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
     return is_valid_postfix_expression.operator()<asts::PostfixExpressionOperatorStaticMemberAccessAst>(ast);
   };
 
+  auto is_valid_postfix_expression_deref = [is_valid_postfix_expression](auto *ast) -> bool {
+    return is_valid_postfix_expression.operator()<asts::PostfixExpressionOperatorDerefAst>(ast);
+  };
+
   auto adjusted_name = &expr;
   if (is_valid_postfix_expression_runtime(&expr)) {
-    // Keep moving into the left-hand-side until there is no left-hand-side: "a.b.c" becomes "a".
-    while (is_valid_postfix_expression_runtime(adjusted_name)) {
+    // Keep moving into the left-hand-side until there is
+    // no left-hand-side: "a.b.c" becomes "a".
+    while (is_valid_postfix_expression_runtime(adjusted_name) or is_valid_postfix_expression_deref(adjusted_name)) {
       adjusted_name = adjusted_name->To<asts::PostfixExpressionAst>()->Lhs.get();
     }
 
-    // Get the symbol (will be in this scope), and return it with the scope.
+    // Get the symbol (will be in this scope), and return
+    // it with the scope.
     auto sym = GetVarSymbol(adjusted_name->To<asts::IdentifierAst>());
     return {sym, this};
   }
 
   if (is_valid_postfix_expression_static(&expr)) {
-    // This is possible with a left-hand-side type or namespace.
+    // This is possible with a left-hand-side type or
+    // namespace.
     const auto postfix_expr = expr.ToUnchecked<asts::PostfixExpressionAst>();
     const auto postfix_op = postfix_expr->Op->ToUnchecked<asts::PostfixExpressionOperatorStaticMemberAccessAst>();
 
-    // Type based left-hand-side, such as "some_namespace::Type::static_member()"
+    // Type based left-hand-side, such as
+    // "some_namespace::Type::static_member()"
     if (const auto type_lhs = postfix_expr->Lhs->To<asts::TypeAst>()) {
       const auto type_sym = GetTypeSymbol(type_lhs);
       const auto var_sym = type_sym->LinkedScope->GetVarSymbol(postfix_op->Name.get());
       return {var_sym, const_cast<Scope const*>(type_sym->LinkedScope)};
     }
 
-    // Namespace based left-hand-side, such as "a::b::c::my_function()"
+    // Namespace based left-hand-side, such as
+    // "a::b::c::my_function()"
     auto namespace_scope = this;
     if (is_valid_postfix_expression_static(adjusted_name)) {
       adjusted_name = adjusted_name->To<asts::PostfixExpressionAst>()->Lhs.get();
@@ -834,7 +845,7 @@ auto spp::analyse::scopes::Scope::SupScopesConst() const
 auto spp::analyse::scopes::Scope::SupTypes() const
   -> Vec<Shared<asts::TypeAst>> {
   auto ts = SupScopes()
-    | genex::views::filter([](auto *scope) { return scope->AstNode->template To<asts::ClassPrototypeAst>(); })
+    | genex::views::filter([](auto *scope) { return AstAs<asts::ClassPrototypeAst>(scope->AstNode); })
     | genex::views::transform(ResolveSupTypeName)
     | genex::views::filter([](auto const &type) { return type != nullptr; }) // Todo: shouldn't need.
     | genex::to<Vec>();

@@ -47,13 +47,13 @@ namespace spp::analyse::utils::mem_utils {
      * @param sm The scope manager, for resolving each borrow's source.
      */
     auto EnforceEscapingBorrowsOutlive(
-      Vec<spp::Tup<asts::Ast const*, bool, scopes::Scope*>> const &escaping_borrows,
+      Vec<Tup<asts::Ast const*, bool, scopes::Scope*>> const &escaping_borrows,
       scopes::VariableSymbol const &lhs,
       asts::Ast *owner,
       scopes::ScopeManager const &sm)
       -> void {
       //
-      namespace errors = spp::analyse::errors;
+      using errors::SppBorrowLifetimeIncreaseError;
       const auto lhs_init_scope = lhs.ScopeDefinedIn;
       if (lhs_init_scope == nullptr) { return; }
 
@@ -65,62 +65,134 @@ namespace spp::analyse::utils::mem_utils {
         // what finding it among the destination's ancestors says.
         const auto found_at = genex::position(
           lhs_init_scope->Ancestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
-        spp::RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
+        spp::RaiseIf<SppBorrowLifetimeIncreaseError>(
           found_at < 0, {sm.CurrentScope}, ERR_ARGS(*owner, *lhs.Name, *e));
       }
     }
 
-    /**
-     * Whether @p path names something inside the region @p prefix names, comparing them as paths rather than as raw
-     * text.
-     *
-     * @n
-     * A region is reached from another by field access, indexing or a deref, so @c {a} contains @c {a.b} and @c {a[i]}
-     * and @c {a@} . What it does not contain is @c {ab} , and a plain @c starts_with says otherwise - which made a
-     * variable called @c s report as overlapping one called @c second . The rule is therefore that the prefix has to
-     * end where an identifier ends: anything but a further identifier character is a boundary, which keeps every
-     * genuine containment while dropping the ones that only share spelling.
-     *
-     * @todo: probably better to actually travel the member access asts for exact matching?
-     * @param prefix The path of the containing region.
-     * @param path The path that may sit inside it.
-     * @return Whether @p path is @p prefix or something reached from it.
-     */
-    auto IsRegionPathPrefix(
-      Str const &prefix,
-      Str const &path) -> bool {
-      if (not path.starts_with(prefix)) { return false; }
-      if (path.size() == prefix.size()) { return true; }
+    auto SameRegionSection(
+      asts::IdentifierAst const &step,
+      asts::IdentifierAst const *other)
+      -> bool {
+      // Compare identifier name ids.
+      return step.NameId() == other->NameId();
+    }
 
-      const auto c = path[prefix.size()];
-      const auto continues_identifier =
-        (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c == '_';
-      return not continues_identifier;
+    auto SameRegionSection(
+      asts::IdentifierAst const &step,
+      Str const &name)
+      -> bool {
+      // String based overload of the region section check, using
+      // standard comparison.
+      return step.Val == name;
     }
 
     /**
-     * This function is another, slightly more relaxed memory region overlap check. It does the same as
-     * @ref memory_region_overlap, but only checks one way. This means that @c {a R_OVERLAP a.b} will result in a
-     * positive match, but @c {a.b R_OVERLAP a.b} will not.
-     * @param ast_1 The lhs AST to check for overlap.
-     * @param ast_2 The rhs AST to check for overlap.
-     * @return Whether the two memory regions overlap in the right direction.
+     * How two regions relate to each other. Do a section scan on each region, and compare for inequality, and then
+     * length to determine who contains who if they aren't disjoint.
+     * @param path The path of the region being related.
+     * @param steps The steps of the place to relate it to.
+     * @return How @p path sits against @p steps.
      */
-    auto MemRegionRightOverlap(
-      asts::Ast const &ast_1,
-      asts::Ast const &ast_2) -> bool {
-      return IsRegionPathPrefix(ast_1.ToString(), ast_2.ToString());
+    template <typename Steps>
+    auto RelateSteps(
+      Vec<asts::IdentifierAst*> const &path,
+      Steps const &steps)
+      -> MemRegionRelation {
+      // Failsafe - nothing to name is nothing to share: a
+      // temporary owns a region no other expression has a
+      // spelling for. This should never happen.
+      if (path.IsEmpty() or steps.IsEmpty()) { return MemRegionRelation::Disjoint; }
+
+      // Iterate through the two paths and look for a mismatch
+      // at an equal level, ie "a" vs "b", or "a.b" vs "a.c" on
+      // the second part.
+      for (auto i = 0uz; i < std::min(path.Len(), steps.Len()); ++i) {
+        if (not SameRegionSection(*path[i], steps[i])) { return MemRegionRelation::Disjoint; }
+      }
+
+      // If there were no equal-level mismatches, then by length
+      // check who contains who. Two regions of the same path ie
+      // "a" and "a" are marked as "contains".
+      return path.Len() <= steps.Len()
+        ? MemRegionRelation::Contains
+        : MemRegionRelation::ContainedBy;
     }
   }
+}
+
+auto spp::analyse::utils::mem_utils::RegionPath(
+  asts::Ast const &ast)
+  -> Vec<asts::IdentifierAst*> {
+  // Get the expression parts from the ast, provided it casts
+  // validly to the expression ast variant.
+  auto const *const expr = ast.To<asts::ExpressionAst>();
+  return expr != nullptr ? expr->ExprParts() : Vec<asts::IdentifierAst*>();
+}
+
+auto spp::analyse::utils::mem_utils::MemRegionRelate(
+  asts::Ast const &region,
+  Vec<Str> const &steps)
+  -> MemRegionRelation {
+  // A hypothetical place is only ever asked about to decide
+  // whether it was consumed, and a step this cannot name
+  // must not let "it might have been" read as "it was".
+  return RelateSteps(RegionPath(region), steps);
 }
 
 auto spp::analyse::utils::mem_utils::MemRegionOverlap(
   asts::Ast const &ast_1,
   asts::Ast const &ast_2)
   -> bool {
-  const auto s1 = ast_1.ToString();
-  const auto s2 = ast_2.ToString();
-  return IsRegionPathPrefix(s1, s2) or IsRegionPathPrefix(s2, s1);
+  // Either holding the other is an overlap, so anything
+  // but "no relation" is one.
+  return RelateSteps(RegionPath(ast_1), RegionPath(ast_2)) !=
+    MemRegionRelation::Disjoint;
+}
+
+auto spp::analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow(
+  asts::FunctionCallArgumentAst const &arg,
+  scopes::VariableSymbol const *const sym,
+  Vec<asts::Ast const*> &borrows_ref,
+  Vec<asts::Ast const*> &borrows_mut,
+  scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData *const meta)
+  -> void {
+  //
+  using errors::SppMemoryOverlapUsageError;
+
+  // A borrow with a name is one the caller's own branches
+  // take, or one being passed along rather than taken here.
+  // Only the nameless case is this one's.
+  if (sym != nullptr) { return; }
+
+  // The convention as written, or, where nothing is written,
+  // the one the argument's type carries - which is where a
+  // subscript keeps it.
+  auto arg_type = Shared<asts::TypeAst>(nullptr);
+  if (arg.Conv == nullptr) { arg_type = arg.Val->InferType(&sm, meta); }
+
+  const auto conv = arg.Conv != nullptr
+    ? arg.Conv.get()
+    : arg_type->GetConvention();
+  if (conv == nullptr) { return; }
+
+  // A mutable borrow meets every other borrow of the region;
+  // an immutable one meets only a mutable.
+  const auto is_mut = *conv == asts::ConventionTag::MUT;
+  auto candidates = is_mut
+    ? genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
+    : borrows_mut;
+
+  auto overlaps = candidates
+    | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg.Val); })
+    | genex::to<Vec>();
+
+  spp::RaiseIf<SppMemoryOverlapUsageError>(
+    not overlaps.IsEmpty(), {sm.CurrentScope},
+    ERR_ARGS(*overlaps[0], *arg.Val));
+
+  (is_mut ? borrows_mut : borrows_ref).EmplaceBack(arg.Val.get());
 }
 
 auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
@@ -132,7 +204,8 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   const bool check_move_from_borrowed_ctx,
   const bool mark_moves,
   asts::meta::CompilerMetaData *meta,
-  const bool check_escaping_borrow_move) -> void {
+  const bool check_escaping_borrow_move,
+  const bool place_is_written) -> void {
   // For tuple and array literals, recursively analyse each element.
   if (auto const *arr_literal = value_ast.To<asts::ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
     const auto x = arr_literal->Elem.get();
@@ -236,8 +309,18 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // moves (directly moving a partial move).
   if (check_partial_move and not var_sym->MemInfo->AstPartialMoves.IsEmpty() and value_ast.To<asts::IdentifierAst>() ==
     nullptr) {
+    // "Contains" covers the move naming the place exactly
+    // as well as the move naming something the place sits
+    // inside of. Writing "o.inner.val" puts the first back
+    // but cannot put "o.inner" back, so a write keeps only
+    // the second.
+    const auto steps = RegionPath(value_ast);
     const auto overlaps = var_sym->MemInfo->AstPartialMoves
-      | genex::views::filter([&](auto const &x) { return MemRegionRightOverlap(*x, value_ast); })
+      | genex::views::filter([&](auto const &x) {
+        const auto path = RegionPath(*x);
+        return RelateSteps(path, steps) == MemRegionRelation::Contains
+          and (not place_is_written or path.Len() < steps.Len());
+      })
       | genex::to<Vec>();
     if (not overlaps.IsEmpty()) {
       const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
@@ -262,14 +345,14 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // "x" named, not merely the branch-local symbol standing
   // for it. Walked up the chain, since a pattern can narrow
   // what an enclosing pattern already narrowed.
-  const auto mark_chain = [](scopes::VariableSymbol *sym, auto &&mark) {
+  const auto mark_chain = [](const auto sym, auto &&mark) {
     for (auto *s = sym; s != nullptr; s = s->NarrowsSym.get()) { mark(s); }
   };
 
   // Mark the symbol as moved/partially-moved if it is not
   // copyable.
   if (mark_moves and value_ast.To<asts::IdentifierAst>() != nullptr and not copies) {
-    mark_chain(var_sym, [&](scopes::VariableSymbol *s) { s->MemInfo->MovedBy(value_ast, sm.CurrentScope); });
+    mark_chain(var_sym, [&](const auto s) { s->MemInfo->MovedBy(value_ast, sm.CurrentScope); });
   }
 
   // Only whole moves carry up the chain. A pattern binding

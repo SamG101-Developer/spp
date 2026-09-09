@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.assignment_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -27,6 +28,9 @@ namespace spp::asts {
  * anyway. Some checks are copied from this class (symbolic target, etc.).
  */
 SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(AssignmentStatementAst);
+
   /**
    * The list of left-hand side expressions in the assignment statement. These are the variables or properties that
    * are being assigned a value.
@@ -57,8 +61,6 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
     decltype(Rhs) &&rhs);
 
   ~AssignmentStatementAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   /**
    * An assignment statement ast node must have symbolic left-hand-side nodes. This ensures that the left-hand-side
@@ -130,3 +132,5 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
    */
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::AssignmentStatementAst)

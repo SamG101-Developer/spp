@@ -281,7 +281,14 @@ namespace spp::analyse::utils::overload_utils {
       else if (lhs_as_ident != nullptr) {
         fn_owner_type = nullptr;
         fn_name = asts::AstCloneShared(lhs_as_ident);
-        fn_owner_scope = sm.CurrentScope->ParentModule();
+
+        // A name declared inside the function (a function-type
+        // variable) is a value being called, not a module function
+        // spelled the same.
+        const auto mod_scope = sm.CurrentScope->ParentModule();
+        const auto sym = sm.CurrentScope->GetVarSymbol(lhs_as_ident);
+        const auto is_local = sym != nullptr and sym->ScopeDefinedIn != mod_scope;
+        fn_owner_scope = is_local ? nullptr : mod_scope;
       }
 
       // Non-callable AST.
@@ -443,6 +450,14 @@ namespace spp::analyse::utils::overload_utils {
       const auto names_self = [](asts::TypeAst const &type) {
         return type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; });
       };
+
+      // We need this so that for example when a TcpSocket method
+      // is called that belongs to Socket, the "self=TcpSocket"
+      // IR is available, not "self=Socket" + weird slicing / owned
+      // value mismatch - for borrows it's fine because opaque ptrs.
+      const auto self_param = fn_proto.FnParamGroup->GetSelfParam();
+      if (self_param != nullptr and self_param->Conv == nullptr) { return true; }
+
       return names_self(*fn_proto.ReturnType)
         or genex::any_of(fn_proto.FnParamGroup->GetNonSelfParams(), [&](auto const *p) { return names_self(*p->Type); });
     }
@@ -846,7 +861,8 @@ namespace spp::analyse::utils::overload_utils {
           // has to match exactly; and a relaxed match that only
           // held by binding such a generic is not a match either.
           auto inferred = type_compare::GenericInferenceMap();
-          const auto relaxed_matched = not IsRigidGenericAtCaller(*p_type, *sm->CurrentScope)
+          const auto relaxed_matched = type_compare::ConventionEq(*p_type, *a_type)
+            and not IsRigidGenericAtCaller(*p_type, *sm->CurrentScope)
             and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, inferred)
             and not genex::any_of(inferred, [&](auto const &binding) {
               return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
@@ -1141,11 +1157,18 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   //  as function targets, due to scope lookup.
   auto temp = Shared<asts::ExpressionAst>(nullptr);
   if (const auto id = lhs->To<asts::IdentifierAst>()) {
-    const auto mod_scope = sm->CurrentScope->ParentModule();
-    const auto x = mod_scope != nullptr ? mod_scope->GetVarSymbol(id) : sm->CurrentScope->GetVarSymbol(id);
-    if (x and x->MemInfo->AstCompTime) {
-      temp = x->FqName();
-      lhs = temp.get();
+
+    // A name declared inside the function (a function-type
+    // variable) is a value being called, not a module function
+    // spelled the same.
+    const auto local = sm->CurrentScope->GetVarSymbol(id);
+    if (local == nullptr or local->MemInfo->AstCompTime != nullptr) {
+      const auto mod_scope = sm->CurrentScope->ParentModule();
+      const auto x = mod_scope != nullptr ? mod_scope->GetVarSymbol(id) : local;
+      if (x and x->MemInfo->AstCompTime) {
+        temp = x->FqName();
+        lhs = temp.get();
+      }
     }
   }
 

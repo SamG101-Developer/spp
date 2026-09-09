@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.convention_ast;
@@ -159,7 +160,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
 
     const auto gep = ctx->Builder.CreateInBoundsGEP(
       ctx->CurrentClosureType,
-      ctx->CurrentClosureScope->AstNode->To<ClosureExpressionAst>()->GetLlvmFunc()->Target->getArg(0),
+      AstAs<ClosureExpressionAst>(ctx->CurrentClosureScope->AstNode)->GetLlvmFunc()->Target->getArg(0),
       Vec<llvm::Value*>{zero, idx}.ToStdVector());
 
     const auto load = ctx->Builder.CreateLoad(cap_llvm_type, gep, "capture.load." + uid);

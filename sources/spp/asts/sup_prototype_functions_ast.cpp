@@ -12,9 +12,11 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
@@ -88,7 +90,8 @@ auto spp::asts::SupPrototypeFunctionsAst::ToString() const
 auto spp::asts::SupPrototypeFunctionsAst::Stage1_PreProcess(
   Ast *ctx)
   -> void {
-  // Pre-process the AST by calling the base class method and then processing the implementation.
+  // Pre-process the AST by calling the base class method
+  // and then processing the implementation.
   Ast::Stage1_PreProcess(ctx);
   Impl->Stage1_PreProcess(this);
 }
@@ -112,14 +115,16 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
   RaiseIf<SppSuperimpositionOptionalGenericParameterError>(
     not optional.IsEmpty(), {sm->CurrentScope}, ERR_ARGS(*optional[0]));
 
-  // Check every generic parameter is constrained by the type.
+  // Check every generic parameter is constrained by the
+  // type.
   const auto unconstrained = GnParamGroup->GetAllParams()
     | genex::views::filter([this](auto const &x) { return not Name->ContainsGenerics(*x); })
     | genex::to<Vec>();
   RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(
     not unconstrained.IsEmpty(), {sm->CurrentScope}, ERR_ARGS(*unconstrained[0]));
 
-  // Generate symbols for the generic parameter group, and the self type.
+  // Generate symbols for the generic parameter group, and
+  // the self type.
   GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
   Impl->Stage2_GenTopLvlScopes(sm, meta);
   sm->MoveOutOfCurrentScope();
@@ -160,7 +165,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Analyse the type being superimposed over. An abstract type is allowed here, because this is where its abstract
+  // Analyse the type being superimposed over. An abstract
+  // type is allowed here, because this is where its abstract
   // methods are declared.
   {
     const auto _meta_guard = meta::MetaGuard(meta);
@@ -205,9 +211,21 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
+  //
+  using analyse::utils::type_members::CheckShadowedCmpAgreesInType;
+
   // Move to the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+
+  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+  for (auto const &member : Impl->Members) {
+    if (const auto cmp_member = member->To<CmpStatementAst>()) {
+      // Check the constant agrees in type with every declaration
+      // of that name on the type and its super types.
+      CheckShadowedCmpAgreesInType(*cmp_member, *cls_sym->LinkedScope, *sm->CurrentScope, *sm);
+    }
+  }
 
   // Name->Stage7_AnalyseSemantics(sm, meta);
   Impl->Stage6_PreAnalyseSemantics(sm, meta);

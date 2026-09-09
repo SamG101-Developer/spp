@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.ast_kind;
 import spp.asts.type_unary_expression_operator_ast;
 import spp.utils.types;
 import std;
@@ -15,6 +16,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressionOperatorAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionOperatorBorrowAst);
 
   /**
    * The convention token representing the borrowing convention. This indicates how the type is borrowed, immutably or
@@ -38,8 +40,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
   SPP_ATTR_NODISCARD auto Equals(
     TypeUnaryExpressionOperatorAst const &) const
     -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   SPP_ATTR_NODISCARD auto NsParts() const
     -> Vec<IdentifierAst const*> override;

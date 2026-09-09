@@ -352,30 +352,30 @@ spp::analyse::errors::SppRecursiveTypeError::SppRecursiveTypeError(
 
 spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
   asts::Ast const &literal,
-  boost::BigDec const &value,
-  boost::BigDec const &lower,
-  boost::BigDec const &upper,
+  numex::BigDec const &value,
+  numex::BigDec const &lower,
+  numex::BigDec const &upper,
   const StrView what) {
   AddHeaders(16, "Float Out Of Bounds Error");
-  AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.str()));
+  AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.Decimal()));
   AddFooter(
     "The value of this float is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
-    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") +
-    INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
+    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.Decimal()) + INLINE_HELP(", ") +
+    INLINE_HELP(upper.Decimal()) + INLINE_HELP("]") + ".");
 }
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
   asts::Ast const &literal,
-  boost::BigInt const &value,
-  boost::BigInt const &lower,
-  boost::BigInt const &upper,
+  numex::BigInt const &value,
+  numex::BigInt const &lower,
+  numex::BigInt const &upper,
   const StrView what) {
   AddHeaders(17, "Integer Out Of Bounds Error");
-  AddErr(&literal, "Integer introduced here with value " + INLINE_INFO(value.str()));
+  AddErr(&literal, "Integer introduced here with value " + INLINE_INFO(value.ToString()));
   AddFooter(
     "The value of this integer is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
-    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") +
-    INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
+    "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.ToString()) + INLINE_HELP(", ") +
+    INLINE_HELP(upper.ToString()) + INLINE_HELP("]") + ".");
 }
 
 spp::analyse::errors::SppOrderInvalidError::SppOrderInvalidError(
@@ -590,6 +590,33 @@ spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError::Spp
   AddFooter(
     "An object destructure cannot contain a bound rest pattern.",
     "Remove the bound rest pattern from the destructure.");
+}
+
+spp::analyse::errors::SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwnedPartError(
+  asts::Ast const &destructure,
+  asts::Ast const &value,
+  const StrView part) {
+  AddHeaders(105, "Destructure Skips Owned Part Error");
+  AddCtxForErr(&value, "Value taken apart here");
+  AddErr(&destructure, "" + INLINE_INFO(part) + " is left with no owner");
+  AddFooter(
+    "A destructure cannot drop fields in the background.",
+    "Bind " + INLINE_HELP(part) + " and use it, or bind it and drop it explicitly.");
+}
+
+spp::analyse::errors::SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
+  asts::Ast const &exit_point,
+  asts::Ast const &move,
+  asts::Ast const &destructor,
+  const StrView type_name) {
+  AddHeaders(106, "Partial Move Of Destructible Value Error");
+  AddCtxForErr(&destructor, "" + INLINE_INFO(type_name) + " is destroyed here");
+  AddCtxForErr(&move, "Part taken out of it here");
+  AddErr(&exit_point, "Still missing that part here");
+  AddFooter(
+    "A type with a " + INLINE_NOTE("drop") + " method must be whole when it is destroyed, so a part moved out of one "
+    "has to be put back before the value goes out of scope.",
+    "Assign the part back, or destructure the whole value instead of taking it apart a piece at a time.");
 }
 
 spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
@@ -807,13 +834,14 @@ spp::analyse::errors::SppMemberAccessStaticOperatorExpectedError::SppMemberAcces
 
 spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError::SppMemberAccessRuntimeOperatorExpectedError(
   asts::Ast const &lhs,
-  asts::Ast const &access) {
+  asts::Ast const &access,
+  const StrView what) {
   AddHeaders(54, "Member Access Runtime Operator Expected Error");
-  AddCtxForErr(&lhs, "" + INLINE_INFO("variable") + " identifier introduced here");
+  AddCtxForErr(&lhs, "" + INLINE_INFO(what) + " identifier introduced here");
   AddErr(&access, "Static member access operator " + INLINE_INFO("::") + " introduced here");
   AddFooter(
-    "A runtime operator is required for " + INLINE_NOTE("variable") + " member access.",
-    "Use the " + INLINE_HELP(".") + " operator, or change the variable to a namespace.");
+    "A runtime operator is required for " + INLINE_NOTE(what) + " member access.",
+    "Use the " + INLINE_HELP(".") + " operator.");
 }
 
 spp::analyse::errors::SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsageError(
@@ -1196,6 +1224,23 @@ spp::analyse::errors::SppFfiGenericParameterError::SppFfiGenericParameterError(
     "receives, which " + INLINE_NOTE("CClosure::from") + " makes from a closure.");
 }
 
+spp::analyse::errors::SppEmptyBodyRequiredError::SppEmptyBodyRequiredError(
+  asts::Ast const &annotation,
+  asts::Ast const &member,
+  const StrView what,
+  const StrView reason) {
+  AddHeaders(102, "Empty Body Required Error");
+  AddCtxForErr(&annotation, "Marked as " + Str(what) + " here");
+  AddErr(&member, "Written inside the body");
+  // The annotation's own "ToString" renders its argument group too - "!zero_type()" for one that takes none - so the
+  // help names it the way it is written instead.
+  const auto *as_annotation = dynamic_cast<asts::AnnotationAst const*>(&annotation);
+  auto marker = as_annotation != nullptr ? "!" + as_annotation->Name->ToString() : annotation.ToString();
+  AddFooter(
+    "The body of " + INLINE_NOTE(Str(what)) + " must be empty: " + Str(reason) + ".",
+    "Empty the body, or remove the " + INLINE_HELP(std::move(marker)) + " annotation.");
+}
+
 spp::analyse::errors::SppUnitTestNotCallableError::SppUnitTestNotCallableError(
   asts::Ast const &call_site,
   asts::Ast const &annotation) {
@@ -1413,6 +1458,16 @@ spp::analyse::errors::SppDeferInCompileTimeFunctionError::SppDeferInCompileTimeF
   AddFooter(
     "Compile-time evaluation has no scope exit to run a deferred expression at.",
     "Run the expression where it is needed instead of deferring it, or make the function a runtime one.");
+}
+
+spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
+  asts::Ast const &ret_stmt) {
+  AddHeaders(104, "GenOnce Finishes Without Yielding Error");
+  AddErr(&ret_stmt, "Finishes the coroutine here, on a path that has not yielded");
+  AddFooter(
+    "A 'GenOnce' is guaranteed to yield exactly once, which is what lets a caller read it as the value it yields\n\t"
+    "rather than as a generator to be tested. A 'ret' reached before any 'gen' breaks that guarantee.",
+    "Yield a value on this path before returning, or make the coroutine a 'Gen', which may yield nothing.");
 }
 
 SPP_MOD_END

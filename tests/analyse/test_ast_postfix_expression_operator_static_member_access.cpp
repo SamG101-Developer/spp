@@ -88,3 +88,130 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_attribute_and_constant_of_one_name_coexist, R"(
+    cls Point {
+        !public x: U32
+    }
+
+    sup Point {
+        !public cmp x: Bool = true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_constant_read_through_the_type, R"(
+    cls Point { }
+
+    sup Point {
+        !public cmp x: Bool = true
+    }
+
+    fun f() -> Void {
+        let a: Bool = Point::x
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_constant_read_through_the_type_over_an_attribute_of_one_name, R"(
+    cls Point {
+        !public x: U32
+    }
+
+    sup Point {
+        !public cmp x: Bool = true
+    }
+
+    fun f() -> Void {
+        let a: Bool = Point::x
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_invalid_attribute_read_through_the_type,
+    SppMemberAccessRuntimeOperatorExpectedError, R"(
+    cls Point {
+        !public x: U32
+    }
+
+    fun f() -> Void {
+        let a = Point::x
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_constant_on_a_base_and_attribute_on_the_derived_type, R"(
+    cls Base { }
+
+    sup Base {
+        !public cmp x: Bool = true
+    }
+
+    cls Point {
+        !public x: U32
+    }
+
+    sup Point ext Base { }
+
+    fun f() -> Void {
+        let p = Point(x=1_u32)
+        let a: U32 = p.x
+        let b: Bool = Point::x
+        drop(p)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_attribute_on_a_base_and_constant_on_the_derived_type, R"(
+    cls Base {
+        !public x: U32
+    }
+
+    cls Point { }
+
+    sup Point ext Base { }
+
+    sup Point {
+        !public cmp x: Bool = true
+    }
+
+    fun f() -> Void {
+        let p = Point(x=1_u32)
+        let a: U32 = p.x
+        let b: Bool = Point::x
+        drop(p)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_invalid_two_inherited_constants_of_one_name,
+    SppAmbiguousMemberAccessError, R"(
+    cls B { }
+
+    sup B {
+        !public cmp x: Bool = true
+    }
+
+    cls C { }
+
+    sup C {
+        !public cmp x: Bool = false
+    }
+
+    cls A { }
+
+    sup A ext B { }
+    sup A ext C { }
+
+    fun f() -> Void {
+        let a = A::x
+    }
+)");

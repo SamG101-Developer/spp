@@ -273,7 +273,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
   auto overload_scopes = Vec<FunctionOverload>();
 
   auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
-    const auto ext = scope->AstNode->template To<asts::SupPrototypeExtensionAst>();
+    const auto ext = AstAs<asts::SupPrototypeExtensionAst>(scope->AstNode);
     if (ext == nullptr) { return false; }
     const auto ext_name = dynamic_shared_cast<asts::TypeIdentifierAst>(ext->Name);
     return ext_name != nullptr and ext_name->Name == mapped_name->Val;
@@ -303,7 +303,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     // If a class scope was provided, get all the sup scopes
     // attached to it, otherwise use the specific sup scope
     // exclusively.
-    const auto sup_scopes = target_scope->AstNode->To<asts::ClassPrototypeAst>() != nullptr
+    const auto sup_scopes = AstAs<asts::ClassPrototypeAst>(target_scope->AstNode) != nullptr
       ? target_scope->SupScopesConst()
       : Vec{target_scope};
 

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.fold_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.utils.types;
 import std;
@@ -13,6 +14,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FoldExpressionAst);
+
   /**
    * The @c .. fold token that indicates a fold operation. Used in binary and function call contexts.
    */
@@ -27,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
 
   ~FoldExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FoldExpressionAst)

@@ -136,7 +136,7 @@ namespace spp::analyse::utils::cmp_utils {
 
   SPP_EXP_FUN auto SetCompTimeAttrValue(
     asts::ObjectInitializerAst const *object,
-    asts::Ast *attribute,
+    asts::Ast const *attribute,
     Unique<asts::ExpressionAst> &&value,
     scopes::ScopeManager const *sm)
     -> void;
@@ -403,11 +403,13 @@ namespace spp::analyse::utils::cmp_utils {
     -> Unique<asts::BooleanLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_max_val(
-    asts::IntegerLiteralAst const &val)
+    scopes::ScopeManager const &sm,
+    Vec<asts::TypeAst*> const &types)
     -> Unique<asts::IntegerLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_min_val(
-    asts::IntegerLiteralAst const &val)
+    scopes::ScopeManager const &sm,
+    Vec<asts::TypeAst*> const &types)
     -> Unique<asts::IntegerLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_smax(
@@ -499,11 +501,13 @@ namespace spp::analyse::utils::cmp_utils {
     -> Unique<asts::FloatLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_fmax_val(
-    asts::FloatLiteralAst const &val)
+    scopes::ScopeManager const &sm,
+    Vec<asts::TypeAst*> const &types)
     -> Unique<asts::FloatLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_fmin_val(
-    asts::FloatLiteralAst const &val)
+    scopes::ScopeManager const &sm,
+    Vec<asts::TypeAst*> const &types)
     -> Unique<asts::FloatLiteralAst>;
 
   SPP_EXP_FUN auto std_intrinsics_fmax(

@@ -51,10 +51,18 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ToString() con
   SPP_STRING_END;
 }
 
+auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::BindsByMove() const
+  -> bool {
+  // "x=<pattern>" and "x as y" bind whatever their value
+  // pattern binds.
+  return Val != nullptr and Val->BindsByMove();
+}
+
 auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ConvToVar(
   CompilerMetaData *meta)
   -> Unique<LocalVariableAst> {
-  // Create the local variable destructure attribute binding AST.
+  // Create the local variable destructure attribute binding
+  // AST.
   auto var = MakeUnique<LocalVariableDestructureAttributeBindingAst>(
     AstCloneShared(Name), nullptr, Val->ConvToVar(meta));
   var->MarkFromCasePattern();

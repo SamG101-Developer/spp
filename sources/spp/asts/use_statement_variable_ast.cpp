@@ -28,6 +28,7 @@ spp::asts::UseStatementVariableAst::UseStatementVariableAst(
   Annotations(std::move(annotations)),
   TokUse(std::move(tok_use)),
   OldVar(std::move(old_var)),
+  _Generated(false),
   _Conversion(nullptr) {
 }
 
@@ -86,7 +87,7 @@ auto spp::asts::UseStatementVariableAst::Stage2_GenTopLvlScopes(
 
   // Create the conversion.
   // Todo: Error based on ordering. move this into stage 3?
-  auto identifier = AstCloneShared(OldVar->ExprParts().Back()->To<IdentifierAst>());
+  auto identifier = AstCloneShared(OldVar->ExprParts().Back());
   _Conversion = MakeUnique<CmpStatementAst>(
     std::move(Annotations), nullptr, std::move(identifier), nullptr, nullptr, nullptr, AstClone(OldVar));
   _Conversion->MarkFromUseStatement();

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.case_expression_branch_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.mixins.type_inferrable_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -25,7 +26,8 @@ namespace spp::asts {
  * expression against, can be "guarded", and contains the body of the block.
  */
 SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeInferrableAst {
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CaseExpressionBranchAst);
 
   /**
    * The optional comparison operator. This is for cases pattern matching cases that look something like
@@ -79,13 +81,13 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   auto MarkForIterLoopYield() -> void;
 
 private:
-  bool _ForIterLoopYield = false;
+  bool _ForIterLoopYield;
 
   /**
    * Save the generated combined pattern expressions for code generation without needed to re-walk asts and scopes that
    * messes up the scope manager's alignment.
    */
-  Vec<Unique<BinaryExpressionAst>> _PatternComparisons;
+  Vec<Unique<BinaryExpressionAst>> _MappedPatFuncs;
 
   /**
    * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is
@@ -98,3 +100,5 @@ private:
    */
   auto _CodegenCombinePatterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CaseExpressionBranchAst)

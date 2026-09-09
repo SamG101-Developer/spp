@@ -10,6 +10,8 @@ namespace spp::asts {
   SPP_EXP_CLS struct Ast;
   SPP_EXP_CLS struct CaseExpressionBranchAst;
   SPP_EXP_CLS struct ExpressionAst;
+  SPP_EXP_CLS struct FunctionCallArgumentAst;
+  SPP_EXP_CLS struct IdentifierAst;
 }
 
 namespace spp::analyse::scopes {
@@ -19,6 +21,21 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::mem_utils {
+  SPP_EXP_CLS enum class MemRegionRelation {
+    Disjoint, // Non overlapping regions of memory: "a" vs "b" or "a.b" vs "a.c"
+    Contains, // The first place has a region containing the second: "a" vs "a.b"
+    ContainedBy, // The first place's region is contained by the second: "a.b" vs "a"
+  };
+
+  SPP_EXP_FUN auto RegionPath(
+    asts::Ast const &ast)
+    -> Vec<asts::IdentifierAst*>;
+
+  SPP_EXP_FUN auto MemRegionRelate(
+    asts::Ast const &region,
+    Vec<Str> const &steps)
+    -> MemRegionRelation;
+
   /**
    * Two memory regions overlap, if one of the symbols is a strict subset of the other. Sharing a common owner does
    * not guarantee an overlap. For example, @c a overlaps with @c a. This is the most basic overlap example.
@@ -35,6 +52,26 @@ namespace spp::analyse::utils::mem_utils {
     asts::Ast const &ast_1,
     asts::Ast const &ast_2)
     -> bool;
+
+  /**
+   * Account for the borrow @p arg takes when the borrow has no name, and raise if it meets one already held.
+   * @param arg The argument to account for.
+   * @param sym The argument's outermost symbol, or null when it has none. A non-null one returns immediately: that
+   * borrow is named, and so is either taken by the caller's own branches or is a borrow being passed along rather
+   * than a second one taken here - the @c self of a @c {&mut self} method is the latter.
+   * @param[in,out] borrows_ref The immutable borrows the argument list holds so far.
+   * @param[in,out] borrows_mut The mutable borrows the argument list holds so far.
+   * @param sm The scope manager, for the argument's type and for the scope an error is reported against.
+   * @param meta Associated metadata, for the argument's type.
+   */
+  SPP_EXP_FUN auto ValidateUnnamedArgumentBorrow(
+    asts::FunctionCallArgumentAst const &arg,
+    scopes::VariableSymbol const *sym,
+    Vec<asts::Ast const*> &borrows_ref,
+    Vec<asts::Ast const*> &borrows_mut,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * Many memory checks are performed here by analysing the ASTs present in the value's symbol, to ensure that memory
@@ -58,6 +95,9 @@ namespace spp::analyse::utils::mem_utils {
    * on everywhere the destination goes unweighed; turned off by a caller that follows this with
    * @c PreventBorrowLifetimeExtension , which compares the destination's lifetime against the borrows' own and is the
    * more precise answer.
+   * @param place_is_written Whether @p value_ast names a place being written rather than read. A write re-initializes
+   * the place it names, so a move of that exact place is the hole the write fills rather than one it reads; only a
+   * move of something the place sits inside of is still a hole. A read has no such exemption.
    */
   SPP_EXP_FUN auto ValidateSymbolMemory(
     asts::ExpressionAst &value_ast,
@@ -68,7 +108,8 @@ namespace spp::analyse::utils::mem_utils {
     bool check_move_from_borrowed_ctx,
     bool mark_moves,
     asts::meta::CompilerMetaData *meta,
-    bool check_escaping_borrow_move = true)
+    bool check_escaping_borrow_move = true,
+    bool place_is_written = false)
     -> void;
 
 

@@ -23,8 +23,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestLinearExemptions,
     test_valid_abstract_method_parameters_not_reported, R"(
-    use std::annotations::abstract_method
-
     cls T { }
     cls Base { }
 
@@ -77,8 +75,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestLinearExemptions,
     test_invalid_zero_type_is_not_copy,
     SppLinearValueNotConsumedError, R"(
-    use std::annotations::zero_type
-
     !zero_type
     cls Marker { }
 

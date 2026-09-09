@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_destructure_array_ast;
+import spp.asts.ast_kind;
 import spp.asts.local_variable_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -17,6 +18,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureArrayAst);
+
   /**
    * The @code [@endcode token that indicates the start of an array destructuring pattern.
    */
@@ -46,7 +50,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVari
 
   ~LocalVariableDestructureArrayAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -64,6 +68,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVari
 
 private:
   Vec<Unique<LetStatementInitializedAst>> _NewAsts;
-
   Shared<IdentifierAst> _TmpName;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureArrayAst)

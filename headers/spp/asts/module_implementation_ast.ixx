@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.module_implementation_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -17,6 +18,9 @@ namespace spp::asts {
  * module members that define the functionality and structure of the module.
  */
 SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ModuleImplementationAst);
+
   /**
    * The list of module members in the implementation. This can include function implementations, class implementations,
    * and other module-level constructs.
@@ -31,8 +35,6 @@ SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : Ast {
     decltype(Members) &&members);
 
   ~ModuleImplementationAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
@@ -56,3 +58,5 @@ SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : Ast {
 
   auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ModuleImplementationAst)

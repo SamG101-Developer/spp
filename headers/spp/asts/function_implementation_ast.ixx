@@ -17,6 +17,8 @@ namespace spp::asts {
  * InnerScopeAst.
  */
 SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAst {
+  SPP_GCC_VTABLE_FIX
+
   static auto NewEmpty() -> Unique<FunctionImplementationAst>;
 
   using InnerScopeExpressionAst::InnerScopeExpressionAst;
@@ -29,3 +31,5 @@ SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAs
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionImplementationAst)

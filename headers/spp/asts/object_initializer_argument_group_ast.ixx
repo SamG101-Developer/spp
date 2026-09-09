@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.object_initializer_argument_group_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
@@ -19,6 +20,9 @@ namespace spp::asts {
  * multiple shorthand or keyword arguments together in a object initializer.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentGroupAst);
+
   /**
    * The token that represents the left parenthesis @code (@endcode in the object initializer argument group. This
    * introduces the object initializer argument group.
@@ -54,8 +58,6 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
 
   ~ObjectInitializerArgumentGroupAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -77,3 +79,5 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
   auto GetKeywordArgs()
     -> Vec<ObjectInitializerArgumentKeywordAst*>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentGroupAst)

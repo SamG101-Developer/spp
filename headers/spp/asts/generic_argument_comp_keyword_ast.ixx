@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.ast_kind;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.token_ast;
 import spp.utils.types;
@@ -22,6 +23,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericArgumentCompKeywordAst);
 
   /**
    * The name of the keyword argument. This is the identifier that is used to refer to the argument in the generic
@@ -50,12 +52,10 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
 
   ~GenericArgumentCompKeywordAst() override;
 
-  SPP_ATTR_NODISCARD auto
-  EqualsGenericArgumentCompKeyword(GenericArgumentCompKeywordAst const &other) const -> Ordering override;
-
-  SPP_ATTR_NODISCARD auto Equals(GenericArgumentAst const &other) const -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_ATTR_NODISCARD auto EqualsGenericArgumentCompKeyword(
+    GenericArgumentCompKeywordAst const &other) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(
+    GenericArgumentAst const &other) const -> Ordering override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

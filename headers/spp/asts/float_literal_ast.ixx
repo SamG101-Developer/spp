@@ -3,13 +3,15 @@ module;
 #include <spp/analyse/macros.hpp>
 
 export module spp.asts.float_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.numbers;
 import spp.utils.types;
-import boost;
 import llvm;
 import std;
+import numex.big_dec;
+import numex.big_int;
 
 namespace spp::asts {
   SPP_EXP_CLS struct FloatLiteralAst;
@@ -23,15 +25,29 @@ namespace spp::asts {
  * @c _f64. No postfix defaults the type to @c std::BigDec.
  */
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
-  inline static const auto kBounds = spp::utils::numbers::FloatLimitMap{
-    {spp::Str("f8"), spp::MakePair(boost::BigDec("-448"), boost::BigDec("448"))},
-    {spp::Str("f16"), LIMIT_F(11, 16)},
-    {spp::Str("f32"), LIMIT_F(24, 128)},
-    {spp::Str("f64"), LIMIT_F(53, 1024)},
-    {spp::Str("f128"), LIMIT_F(113, 16384)}
+  inline static const auto kBounds = utils::numbers::FloatLimitMap{
+    {Str("f8"), MakePair(numex::BigDec("-448"), numex::BigDec("448"))},
+    {Str("f16"), LIMIT_F(11, 16)},
+    {Str("f32"), LIMIT_F(24, 128)},
+    {Str("f64"), LIMIT_F(53, 1024)},
+    {Str("f128"), LIMIT_F(113, 16384)}
+  };
+
+   /**
+   * How many fractional digits it takes to write any value of each type exactly, which is the exponent of its
+   * smallest subnormal: every representable value is a multiple of that, so its decimal expansion terminates by
+   * then. A comp-time division can still produce a recurring value, and this is where that one gets cut short.
+   */
+  inline static const auto kDecimalPlaces = Map<Str, std::uint64_t>{
+    {Str("f8"), 16},
+    {Str("f16"), 32},
+    {Str("f32"), 160},
+    {Str("f64"), 1100},
+    {Str("f128"), 16500}
   };
 
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 
   /**
    * The optional sign of the float literal. This can be either a plus or minus sign.
@@ -83,8 +99,6 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -98,7 +112,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
    * that a result the type cannot hold arrives as a value the compiler can reject rather than as an infinity.
    * @return The literal's value.
    */
-  SPP_ATTR_NODISCARD auto BigVal() const -> boost::BigDec;
+  SPP_ATTR_NODISCARD auto BigVal() const -> numex::BigDec;
 
   /**
    * Build a literal of the given type carrying an exact value, with the sign as its own token. The value is not range
@@ -108,7 +122,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
    * @param type The float type name ("f32", "f64", ...).
    * @return The literal.
    */
-  static auto FromBigVal(boost::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
+  static auto FromBigVal(numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
 
   /**
    * Raise if this literal's value is one its type cannot hold. A written literal is checked when it is analysed; one

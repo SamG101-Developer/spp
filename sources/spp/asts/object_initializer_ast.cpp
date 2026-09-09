@@ -27,6 +27,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.utils.algorithms;
 import spp.utils.uid;
 import genex;
@@ -199,7 +200,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  const auto attr_names = GetAllAttrs(*type_sym->FqName(), *sm)
+  const auto attrs = GetAllAttrs(*type_sym->FqName(), *sm->CurrentScope);
+  const auto attr_names = attrs
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
 
@@ -223,15 +225,23 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
     *type_sym->FqName(), *sm->CurrentScope);
 
+  // Where an argument's attribute sits in the type's own
+  // declaration order. Every argument names an attribute -
+  // analysis rejects a name that is not one - so the search
+  // always finds it.
+  const auto spp_attr_index_of = [&](IdentifierAst const &name) {
+    const auto index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
+    SPP_ASSERT(index >= 0);
+    return static_cast<std::size_t>(index);
+  };
+
   // The physical field order isn't the declaration order,
   // because the S++ layout re-orders the fields to minimize
   // padding, so every attribute's index has to be resolved
   // through the type's field index map.
-  const auto field_index = [&](IdentifierAst const &name) {
-    const auto decl_index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
-    SPP_ASSERT(decl_index >= 0);
+  const auto llvm_attr_index = [&](const std::size_t attr_index) {
     return codegen::GetPhysicalFieldIndex(
-      *type_sym->LlvmInfo, fat_pointer_field_count + static_cast<std::size_t>(decl_index));
+      *type_sym->LlvmInfo, fat_pointer_field_count + attr_index);
   };
 
   // Runtime pathway.
@@ -245,9 +255,21 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
     for (auto const &arg : ArgGroup->Args) {
       // No value for Void type arguments (from the generic
       // implementations), so skip them.
-      const auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
+      auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
       if (val == nullptr) { continue; }
-      arg_values.EmplaceBack(MakePair(field_index(*arg->Name), val));
+
+      // An attribute whose type is a variant takes any one of
+      // its member types, and the value has to be tagged and
+      // widened on the way in - the same coercion a by-value
+      // argument gets at a function call.
+      const auto attr_index = spp_attr_index_of(*arg->Name);
+      if (const auto attr_type_sym = spp::get<1>(attrs[attr_index]); attr_type_sym != nullptr) {
+        val = codegen::CoerceToVariant(
+          val, *attr_type_sym->FqName(), *arg->Val->InferType(sm, meta),
+          *sm->CurrentScope, "obj_init.variant" + uid, ctx);
+      }
+
+      arg_values.EmplaceBack(MakePair(llvm_attr_index(attr_index), val));
     }
 
     // If every field is filled by a constant of the right
@@ -296,7 +318,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
     if (comp_val == nullptr) { continue; }
-    comp_fields[field_index(*arg->Name)] = llvm::cast<llvm::Constant>(comp_val);
+    comp_fields[llvm_attr_index(spp_attr_index_of(*arg->Name))] = llvm::cast<llvm::Constant>(comp_val);
   }
 
   // Anything the arguments did not cover - a synthesized

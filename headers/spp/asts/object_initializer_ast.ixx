@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.object_initializer_ast;
+import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ObjectInitializerAst);
+
   /**
    * The type being initialized by the object initializer. This is the type of the object being created.
    */
@@ -42,8 +46,6 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
 
   ~ObjectInitializerAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -60,3 +62,5 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerAst)

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.tuple_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -17,6 +18,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TupleLiteralAst);
 
   /**
    * The left parenthesis token that represents the start of the tuple literal.
@@ -49,8 +51,6 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
   SPP_ATTR_NODISCARD auto EqualsTupleLiteral(TupleLiteralAst const &) const -> Ordering override;
 
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

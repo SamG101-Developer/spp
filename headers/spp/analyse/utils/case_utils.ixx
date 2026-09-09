@@ -8,6 +8,7 @@ import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class ScopeManager;
+  SPP_EXP_CLS struct VariableSymbol;
 }
 
 namespace spp::asts {
@@ -46,6 +47,7 @@ namespace spp::analyse::utils::case_utils {
     asts::meta::CompilerMetaData *meta)
     -> void;
 
+
   SPP_EXP_FUN auto ValidateInconsistentTypes(
     Vec<asts::CaseExpressionBranchAst*> const &branches,
     scopes::ScopeManager &sm,
@@ -55,6 +57,7 @@ namespace spp::analyse::utils::case_utils {
   SPP_EXP_FUN auto ValidateInconsistentMemory(
     asts::Ast *parent,
     Vec<asts::CaseExpressionBranchAst*> const &branches,
+    scopes::VariableSymbol *subject,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> void;

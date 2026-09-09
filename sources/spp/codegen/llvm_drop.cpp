@@ -31,7 +31,11 @@ auto spp::codegen::EmitDrop(
   //
   using analyse::utils::drop_utils::FindDropOverload;
   using analyse::utils::drop_utils::NeedsDrop;
-  using analyse::utils::type_members::GetAllAttrs;
+  using analyse::utils::type_members::GetAllParts;
+  using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
+  using analyse::utils::type_predicates::IsIndexWithinBound;
+  using analyse::utils::type_predicates::IsTypeArr;
+  using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
 
   // Destroying a value that owns nothing is a no-op;
   // an "S32" local, or a struct built only from them,
@@ -94,26 +98,42 @@ auto spp::codegen::EmitDrop(
     return;
   }
 
-  // Only a type that has no destructor of its own is destroyed
-  // attribute by attribute, in reverse declaration order,
-  // mirroring the order they were initialized in.
-  auto attrs = GetAllAttrs(*type_sym.FqName(), *sm);
-  const auto struct_ty = GetLlvmType(type_sym, ctx);
-  if (not llvm::isa<llvm::StructType>(struct_ty)) { return; }
+  const auto elem_ty = GetLlvmType(type_sym, ctx);
 
-  for (auto i = attrs.Len(); i > 0uz; --i) {
-    const auto attr_index = i - 1uz;
-    const auto attr_type_sym = std::get<1>(attrs[attr_index]);
-    if (attr_type_sym == nullptr or attr_type_sym == &type_sym) { continue; }
-    if (not NeedsDrop(*attr_type_sym, *sm, meta)) { continue; }
+  // A bound generic parameter stands for its argument: the symbol keeps the parameter's name ("T"), which is not a
+  // name the checks below can read a tuple or an array off. "NeedsDrop" resolves through for the same reason.
+  auto const *const bare_sym = type_sym.AsBoundSymbol();
+  const auto bare_name = bare_sym->FqName();
 
-    // The S++ layout re-orders fields to minimize padding,
-    // so the declaration index has to be mapped through to
-    // wherever the field actually ended up in the lowered
-    // struct.
-    const auto field_index = GetPhysicalFieldIndex(*type_sym.LlvmInfo, attr_index);
-    const auto field_ptr = ctx->Builder.CreateStructGEP(
-      struct_ty, ptr, field_index, "drop.field" + uid + "." + std::get<0>(attrs[attr_index])->Val);
-    EmitDrop(*attr_type_sym, field_ptr, sm, meta, ctx);
+  // Only a type that has no destructor of its own is destroyed part by part - its elements when it is a tuple or an
+  // array, its attributes otherwise. A struct's parts are reached through its lowered form, which has to be one.
+  const auto is_indexable = IsTypeCompTimeIndexable(*bare_name, *sm->CurrentScope);
+  const auto is_arr = is_indexable and IsTypeArr(*bare_name, *sm->CurrentScope);
+  if (not is_indexable and not llvm::isa<llvm::StructType>(elem_ty)) { return; }
+
+  const auto parts = GetAllParts(*bare_name, *sm->CurrentScope);
+  const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+
+  // Reverse order: the last part built is the first one
+  // destroyed, mirroring the order they were initialized in.
+  for (auto i = parts.Len(); i > 0uz; --i) {
+    auto const &part = parts[i - 1uz];
+    if (part.Sym == nullptr or part.Sym == &type_sym or part.Sym == bare_sym) { continue; }
+    if (not NeedsDrop(*part.Sym, *sm, meta)) { continue; }
+
+    // An array is one value repeated, so its elements are reached by indexing into it; a tuple's and a struct's are
+    // separate fields. The S++ layout re-orders a struct's fields to minimize padding, so a declaration index has to
+    // be mapped through to wherever the field actually ended up.
+    const auto index = static_cast<std::uint32_t>(part.Index);
+    const auto part_ptr = is_arr
+      ? ctx->Builder.CreateGEP(
+        elem_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
+        "drop.elem" + uid + "." + part.Step)
+      : is_indexable
+        ? ctx->Builder.CreateStructGEP(elem_ty, ptr, index, "drop.elem" + uid + "." + part.Step)
+        : ctx->Builder.CreateStructGEP(
+          elem_ty, ptr, GetPhysicalFieldIndex(*type_sym.LlvmInfo, part.Index),
+          "drop.field" + uid + "." + part.Step);
+    EmitDrop(*part.Sym, part_ptr, sm, meta, ctx);
   }
 }

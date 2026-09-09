@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.use_statement_variable_ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -26,6 +27,9 @@ namespace spp::asts {
  * without the associated namespace. Internal symbol mapping for variables or namespaces are used.
  */
 SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, ModuleMemberAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(UseStatementVariableAst);
+
   /**
    * The list of annotations that are applied to this use statement. Typically, access modifiers in this context.
    */
@@ -55,8 +59,6 @@ SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, Modu
 
   ~UseStatementVariableAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
@@ -85,7 +87,7 @@ private:
    * @c use statements can be defined at the top level (module/sup) or inside function bodies. If defined inside a
    * function body, all steps of the analysis must be run together, otherwise they are ran in their correct layer.
    */
-  bool _Generated = false;
+  bool _Generated;
 
   /**
    * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new
@@ -93,3 +95,5 @@ private:
    */
   Unique<CmpStatementAst> _Conversion;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UseStatementVariableAst)

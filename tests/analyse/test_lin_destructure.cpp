@@ -3,8 +3,8 @@
 // Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp.
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearDestructure,
-    test_valid_destructure_consumes_whole_value, R"(
+  TestLinearDestructure,
+  test_valid_destructure_consumes_whole_value, R"(
     cls Handle { !public fd: S32 }
 
     fun f() -> Void {
@@ -14,8 +14,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearDestructure,
-    test_valid_tuple_destructure_consumes, R"(
+  TestLinearDestructure,
+  test_valid_tuple_destructure_consumes, R"(
     cls Handle { !public fd: S32 }
 
     fun f() -> Void {
@@ -27,8 +27,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearDestructure,
-    test_valid_fieldless_value_destructured, R"(
+  TestLinearDestructure,
+  test_valid_fieldless_value_destructured, R"(
     cls Marker { }
 
     fun f() -> Void {
@@ -38,9 +38,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearDestructure,
-    test_invalid_fieldless_value_left_live,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearDestructure,
+  test_invalid_fieldless_value_left_live,
+  SppLinearValueNotConsumedError, R"(
     cls Marker { }
 
     fun f() -> Void {
@@ -49,9 +49,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearDestructure,
-    test_invalid_copy_attribute_read_does_not_consume,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearDestructure,
+  test_invalid_copy_attribute_read_does_not_consume,
+  SppLinearValueNotConsumedError, R"(
     cls Handle { !public fd: S32 }
 
     fun f() -> Void {
@@ -60,11 +60,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// A "let" destructure takes the value apart, so it needs to own it - the grammar has no place for a convention on
-// one. Through a borrow the attributes are read instead, which is what leaves the borrowed value untouched.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearDestructure,
-    test_valid_reading_through_a_borrow_does_not_consume, R"(
+  TestLinearDestructure,
+  test_valid_reading_through_a_borrow_does_not_consume, R"(
     cls Handle { !public fd: S32 }
 
     fun peek(h: &Handle) -> S32 {
@@ -72,15 +70,76 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// ...and taking it apart through one is refused, because that would need to own it.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearDestructure,
-    test_invalid_destructure_through_a_borrow,
-    SppTypeMismatchError, R"(
+  TestLinearDestructure,
+  test_invalid_destructure_through_a_borrow,
+  SppTypeMismatchError, R"(
     cls Handle { !public fd: S32 }
 
     fun peek(h: &Handle) -> S32 {
         let Handle(fd) = h
         ret fd
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearDestructure,
+  test_invalid_destructure_skips_an_owned_attribute,
+  SppDestructureSkipsOwnedPartError, R"(
+    cls Point { !public x: Str
+                !public y: Str }
+
+    fun f(p: Point) -> Void {
+        let Point(x, ..) = p
+        drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearDestructure,
+  test_invalid_tuple_destructure_skips_an_owned_element,
+  SppDestructureSkipsOwnedPartError, R"(
+    fun f(t: (Str, Str)) -> Void {
+        let (a, ..) = t
+        drop(a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearDestructure,
+  test_invalid_case_branch_skips_an_owned_attribute,
+  SppDestructureSkipsOwnedPartError, R"(
+    cls Point { !public x: Str
+                !public y: Str }
+
+    fun f(p: Point) -> Void {
+        case p of {
+            is Point(x, ..) { drop(x) }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestLinearDestructure,
+  test_valid_destructure_skips_a_copyable_attribute, R"(
+    cls Point { !public x: Str
+                !public y: U32 }
+
+    fun f(p: Point) -> Void {
+        let Point(x, ..) = p
+        drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestLinearDestructure,
+  test_valid_shape_test_takes_nothing_apart, R"(
+    cls Point { !public x: Str
+                !public y: Str }
+
+    fun f(p: Point) -> Void {
+        let b = p is Point(..)
+        drop(b)
+        drop(p)
     }
 )");

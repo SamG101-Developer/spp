@@ -14,8 +14,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Skips the expensive jobs on documentation-only changes, and only those: a skipped job counts as a pass for
-  # ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled.
+  # Skips the expensive jobs on changes that cannot move their result, and only those: a skipped job counts as a pass
+  # for ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled.
+  #
+  # One output per gated job rather than one shared boolean, because a CI-only change (a dependabot action-pin bump,
+  # say) moves only the jobs that actually read the file it touched - a bump confined to claude.yaml gates nothing,
+  # and one to _compile.yaml runs the builds without dragging cppcheck, security and sonar along with it.
   changes:
     name: Detect Code Changes
     runs-on: ubuntu-24.04
@@ -24,6 +28,12 @@ jobs:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      release_gate: ${{ steps.filter.outputs.release_gate }}
+      cppcheck: ${{ steps.filter.outputs.cppcheck }}
+      compile: ${{ steps.filter.outputs.compile }}
+      cross_codegen: ${{ steps.filter.outputs.cross_codegen }}
+      security: ${{ steps.filter.outputs.security }}
+      sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       # Secure the runner from external packages or actions.
       - name: Harden Runner
@@ -53,6 +63,45 @@ jobs:
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha || github.sha }}
 
+  # Every code change ships as a release, so the VERSION file needs updating to a newer version. Non-code changes like
+  # docs or CI don't need the bump.
+  version:
+    name: Version & Changelog
+    needs: [ changes ]
+    if: needs.changes.outputs.release_gate == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      # Full history and tags: the check diffs VERSION against the base and refuses a number that is already tagged.
+      # The "fetch-tags" key is used rather than left to fetch-depth, because a tag lookup that fails open would let a
+      # version already released through.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Check version bump and changelog entry
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash .github/scripts/version-check/check-version.sh
+
   # pre-commit over the whole tree. The PR title is checked by pr_title.yaml, which needs an `edited`
   # trigger this workflow deliberately does not have.
   lint:
@@ -67,7 +116,7 @@ jobs:
   cppcheck:
     name: Static Analysis
     needs: [ changes ]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.cppcheck == 'true'
     permissions:
       contents: read
       security-events: write
@@ -75,6 +124,10 @@ jobs:
 
   # Supported toolchain. Every variant builds in parallel and fail-fast, so one broken variant stops the others
   # immediately.
+  #
+  # The `if` opts out of the implicit success() over `needs` because `cppcheck` is now gated on its own filter output
+  # and can legitimately be skipped while this job runs; a skipped need would otherwise skip this job too. The
+  # `contains` check is what success() would have given us - cppcheck red still stops the build.
   #
   # "spp-mode" is a second axis over "build-type": it selects the optimisation pipeline the built compiler runs over
   # the s++ fixtures, so "release-rel" and "release-dev" are the same C++ binary exercising O3 and O0 codegen. The
@@ -84,7 +137,10 @@ jobs:
   build-test:
     name: Build & Test
     needs: [ changes, cppcheck ]
-    if: needs.changes.outputs.code == 'true'
+    if: |
+      !cancelled()
+      && needs.changes.outputs.compile == 'true'
+      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
     permissions:
       contents: read
     uses: ./.github/workflows/_compile.yaml
@@ -92,11 +148,13 @@ jobs:
       os: ubuntu-24.04
       compiler: gcc
       version: "16"
-      fail-fast: true
+      fail-fast: false
       variants: >-
         [
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"},
-          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev"},
+          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 0, "shard-count": 2},
+          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 1, "shard-count": 2},
+          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 0, "shard-count": 2},
+          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 1, "shard-count": 2},
           {"name": "asan-dev", "build-type": "Debug", "sanitizer": "address+undefined+leak", "spp-mode": "dev"}
         ]
 
@@ -105,7 +163,10 @@ jobs:
   build-test-extra:
     name: Build & Test (non-blocking)
     needs: [ changes, cppcheck ]
-    if: needs.changes.outputs.code == 'true'
+    if: |
+      !cancelled()
+      && needs.changes.outputs.compile == 'true'
+      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
     permissions:
       contents: read
     strategy:
@@ -134,7 +195,10 @@ jobs:
   cross-codegen:
     name: Cross Codegen (non-blocking)
     needs: [ changes, cppcheck ]
-    if: needs.changes.outputs.code == 'true'
+    if: |
+      !cancelled()
+      && needs.changes.outputs.cross_codegen == 'true'
+      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
     permissions:
       contents: read
     uses: ./.github/workflows/_cross_codegen.yaml
@@ -149,7 +213,7 @@ jobs:
   security:
     name: Security
     needs: [ changes ]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.security == 'true'
     permissions:
       contents: read
       security-events: write
@@ -162,7 +226,7 @@ jobs:
     name: Sonar
     needs: [ changes ]
     if: |
-      needs.changes.outputs.code == 'true'
+      needs.changes.outputs.sonar == 'true'
       && (github.event_name != 'pull_request'
         || github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
@@ -179,7 +243,7 @@ jobs:
       && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
     uses: ./.github/workflows/_claude_review.yaml
@@ -191,7 +255,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ lint, cppcheck, build-test, docs, security ] # sonar
+    needs: [ lint, version, cppcheck, build-test, docs, security ] # sonar
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }

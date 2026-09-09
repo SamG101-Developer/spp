@@ -1,8 +1,8 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupType,
-    test_valid_superimposition_extension_type_statement_diff_levels, R"(
+  TestDuplicateMembers_SupType,
+  test_valid_superimposition_extension_type_statement_diff_levels, R"(
     cls A { }
     sup A {
         !public type X = std::number::S32
@@ -15,9 +15,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupType,
-    test_invalid_superimposition_extension_type_statement_same_levels,
-    SppIdentifierDuplicateError, R"(
+  TestDuplicateMembers_SupType,
+  test_invalid_superimposition_extension_type_statement_same_levels,
+  SppIdentifierDuplicateError, R"(
     cls A { }
     sup A {
         !public type X = std::number::S32
@@ -29,8 +29,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupType,
-    test_valid_superimposition_extension_type_statement_same_levels_via_inheritance, R"(
+  TestDuplicateMembers_SupType,
+  test_valid_superimposition_extension_type_statement_same_levels_via_inheritance, R"(
     cls B { }
     sup B {
         !public type X = std::number::S32
@@ -47,9 +47,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupType,
-    test_invalid_superimposition_extension_type_statement_same_levels_via_inheritance_with_ambiguous_access_1,
-    SppAmbiguousMemberAccessError, R"(
+  TestDuplicateMembers_SupType,
+  test_invalid_superimposition_extension_type_statement_same_levels_via_inheritance_with_ambiguous_access_1,
+  SppAmbiguousMemberAccessError, R"(
     cls B { }
     sup B {
         !public type X = std::number::S32
@@ -70,9 +70,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupType,
-    test_invalid_superimposition_extension_type_statement_same_levels_via_inheritance_with_ambiguous_access_2,
-    SppAmbiguousMemberAccessError, R"(
+  TestDuplicateMembers_SupType,
+  test_invalid_superimposition_extension_type_statement_same_levels_via_inheritance_with_ambiguous_access_2,
+  SppAmbiguousMemberAccessError, R"(
     cls B { }
     sup B {
         !public type X = std::number::S32
@@ -93,8 +93,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupType,
-    test_valid_superimposition_extension_type_statement_same_levels_via_inheritance_with_unique_override, R"(
+  TestDuplicateMembers_SupType,
+  test_valid_superimposition_extension_type_statement_same_levels_via_inheritance_with_unique_override, R"(
     cls B { }
     sup B {
         !public type X = std::number::S32
@@ -118,8 +118,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupCmp,
-    test_valid_superimposition_extension_cmp_statement_diff_levels, R"(
+  TestDuplicateMembers_SupCmp,
+  test_valid_superimposition_extension_cmp_statement_diff_levels, R"(
     cls A { }
     sup A {
         !public cmp x: std::number::S32 = 123
@@ -132,9 +132,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupCmp,
-    test_invalid_superimposition_extension_cmp_statement_diff_levels_diff_types,
-    SppSuperimpositionExtensionCmpStatementInvalidError, R"(
+  TestDuplicateMembers_SupCmp,
+  test_invalid_superimposition_extension_cmp_statement_diff_levels_diff_types,
+  SppSuperimpositionExtensionCmpStatementInvalidError, R"(
     cls A { }
     sup A {
         !public cmp x: std::number::S32 = 123
@@ -147,9 +147,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupCmp,
-    test_invalid_superimposition_extension_cmp_statement_same_levels,
-    SppIdentifierDuplicateError, R"(
+  TestDuplicateMembers_SupCmp,
+  test_invalid_superimposition_extension_cmp_statement_same_levels,
+  SppIdentifierDuplicateError, R"(
     cls A { }
     sup A {
         !public cmp x: std::number::S32 = 123
@@ -161,8 +161,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupCmp,
-    test_valid_superimposition_extension_cmp_statement_same_levels_via_inheritance, R"(
+  TestDuplicateMembers_SupCmp,
+  test_valid_superimposition_extension_cmp_statement_same_levels_via_inheritance, R"(
     cls B { }
     sup B {
         !public cmp x: std::number::S32 = 123
@@ -179,9 +179,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupCmp,
-    test_invalid_superimposition_extension_cmp_statement_same_levels_via_inheritance_with_ambiguous_access_1,
-    SppAmbiguousMemberAccessError, R"(
+  TestDuplicateMembers_SupCmp,
+  test_invalid_superimposition_extension_cmp_statement_same_levels_via_inheritance_with_ambiguous_access_1,
+  SppAmbiguousMemberAccessError, R"(
     cls B { }
     sup B {
         !public cmp x: std::number::USize = 123_uz
@@ -201,10 +201,53 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDuplicateMembers_SupCmp,
+  test_valid_superimposition_extension_cmp_statement_same_levels_via_extension_with_unique_override_same_type, R"(
+    cls B { }
+    sup B {
+        !public cmp x: std::number::U64 = 123_u64
+    }
+
+    cls C { }
+    sup C {
+        !public cmp x: std::number::U64 = 456_u64
+    }
+
+    cls A { }
+    sup A ext B { }
+    sup A ext C { }
+    sup A {
+        cmp x: std::number::U64 = 789_u64
+    }
+
+    fun f() -> std::void::Void {
+        let x = A::x
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDuplicateMembers_SupCmp,
+  test_valid_superimposition_same_named_methods_are_not_conflicting_constants, R"(
+    cls B { }
+    sup B {
+        !public fun m(&self) -> std::number::U64 { ret 1_u64 }
+    }
+
+    cls C { }
+    sup C {
+        !public fun m(&self, k: std::boolean::Bool) -> std::boolean::Bool { ret k }
+    }
+
+    cls A { }
+    sup A ext B { }
+    sup A ext C { }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupCmp,
-    test_invalid_superimposition_extension_cmp_statement_same_levels_via_extension_with_unique_override_diff_types,
-    SppSuperimpositionExtensionCmpStatementInvalidError, R"(
+  TestDuplicateMembers_SupCmp,
+  test_invalid_superimposition_extension_cmp_statement_same_levels_via_extension_with_unique_override_diff_types,
+  SppSuperimpositionExtensionCmpStatementInvalidError, R"(
     cls B { }
     sup B {
         !public cmp x: std::number::USize = 123_uz
@@ -228,8 +271,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupClsAttr,
-    test_valid_superimposition_extension_cls_attr_statement_diff_levels, R"(
+  TestDuplicateMembers_SupClsAttr,
+  test_valid_superimposition_extension_cls_attr_statement_diff_levels, R"(
     cls A {
         !public a: std::number::S32
     }
@@ -242,9 +285,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupClsAttr,
-    test_invalid_superimposition_extension_cls_attr_statement_same_levels,
-    SppIdentifierDuplicateError, R"(
+  TestDuplicateMembers_SupClsAttr,
+  test_invalid_superimposition_extension_cls_attr_statement_same_levels,
+  SppIdentifierDuplicateError, R"(
     cls A {
         a: std::number::S32
         a: std::string::Str
@@ -252,8 +295,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupClsAttr,
-    test_valid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance, R"(
+  TestDuplicateMembers_SupClsAttr,
+  test_valid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance, R"(
     cls B {
         !public a: std::number::S32
     }
@@ -268,9 +311,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupClsAttr,
-    test_invalid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance_with_ambiguous_access,
-    SppAmbiguousMemberAccessError, R"(
+  TestDuplicateMembers_SupClsAttr,
+  test_invalid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance_with_ambiguous_access,
+  SppAmbiguousMemberAccessError, R"(
     cls B {
         !public a: std::number::S32
     }
@@ -289,8 +332,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupClsAttr,
-    test_valid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance_with_unique_override, R"(
+  TestDuplicateMembers_SupClsAttr,
+  test_valid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance_with_unique_override, R"(
     cls B {
         !public a: std::number::S32
     }
@@ -311,12 +354,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Methods (functions in a sup block) at the SAME level: identical signatures conflict, but different
-// signatures are a valid overload set (overriding across levels is covered in test_msc_overrides).
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupFunction,
-    test_invalid_superimposition_function_same_levels_identical_signature,
-    SppFunctionPrototypeConflictError, R"(
+  TestDuplicateMembers_SupFunction,
+  test_invalid_superimposition_function_same_levels_identical_signature,
+  SppFunctionPrototypeConflictError, R"(
     cls A { }
     sup A {
         !public fun f(&self) -> std::void::Void { }
@@ -328,9 +369,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupFunction,
-    test_invalid_superimposition_function_same_block_identical_signature,
-    SppFunctionPrototypeConflictError, R"(
+  TestDuplicateMembers_SupFunction,
+  test_invalid_superimposition_function_same_block_identical_signature,
+  SppFunctionPrototypeConflictError, R"(
     cls A { }
     sup A {
         !public fun f(&self) -> std::void::Void { }
@@ -339,8 +380,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDuplicateMembers_SupFunction,
-    test_valid_superimposition_function_same_levels_different_signature, R"(
+  TestDuplicateMembers_SupFunction,
+  test_valid_superimposition_function_same_levels_different_signature, R"(
     cls A { }
     sup A {
         !public fun f(&self) -> std::void::Void { }
@@ -351,11 +392,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Two coroutines with identical signatures conflict just like two subroutines do.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDuplicateMembers_SupFunction,
-    test_invalid_superimposition_coroutine_same_levels_identical_signature,
-    SppFunctionPrototypeConflictError, R"(
+  TestDuplicateMembers_SupFunction,
+  test_invalid_superimposition_coroutine_same_levels_identical_signature,
+  SppFunctionPrototypeConflictError, R"(
     cls A { }
     sup A {
         !public cor c(&self) -> std::generator::Gen[std::boolean::Bool] { }

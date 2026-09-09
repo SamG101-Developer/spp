@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.let_statement_initialized_ast;
+import spp.asts.ast_kind;
 import spp.asts.let_statement_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -17,6 +18,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LetStatementInitializedAst);
+
   /**
    * The @c let token that starts this statement. It is used to indicate the beginning of a let statement.
    */
@@ -67,8 +71,6 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
 
   ~LetStatementInitializedAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -77,3 +79,5 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LetStatementInitializedAst)

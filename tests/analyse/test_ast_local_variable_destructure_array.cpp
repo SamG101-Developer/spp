@@ -121,7 +121,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let points = [Point(x=1, y=2), Point(x=3, y=4)]
-        let [Point(x, mut y), ..] = points
+        let [Point(x, mut y), Point(x as x2, y as y2)] = points
         y = 5
     }
 )");
@@ -246,7 +246,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let t = [Str::from("a"), Str::from("b")]
-        let [a, ..] = t
+        let [a, b] = t
         let u = t
     }
 )");

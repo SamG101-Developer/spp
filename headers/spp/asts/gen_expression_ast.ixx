@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.gen_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -20,6 +21,9 @@ namespace spp::asts {
  * to create foundational structures like iterators.
  */
 SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenExpressionAst);
+
   /**
    * The token that represents a generation point. This is the @c gen keyword in the source code, which indicates that
    * the coroutine is suspending its execution and yielding a value.
@@ -51,8 +55,6 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 
   ~GenExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -65,3 +67,5 @@ private:
   Shared<TypeAst> _GenType;
   bool _IsOnce;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenExpressionAst)

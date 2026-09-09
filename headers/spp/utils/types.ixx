@@ -6,16 +6,16 @@ import ankerl;
 import std;
 
 export namespace std {
-  template <typename T>
+  template <typename T> requires std::integral<T>
   struct bit_shl {
-    constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
+    constexpr auto operator()(T lhs, T rhs) const -> T {
       return static_cast<T>(lhs << rhs);
     }
   };
 
-  template <typename T>
+  template <typename T> requires std::integral<T>
   struct bit_shr {
-    constexpr auto operator()(T const &lhs, T const &rhs) const -> T {
+    constexpr auto operator()(T lhs, T rhs) const -> T {
       return static_cast<T>(lhs >> rhs);
     }
   };
@@ -43,11 +43,14 @@ namespace spp {
   SPP_EXP_CLS template <typename T, typename H=Hash<T>, typename Eq=std::equal_to<T>>
   using Set = ankerl::unordered_dense::set<T, H, Eq>;
 
-  SPP_EXP_CLS
-  using Str = std::string; // stringzilla::string;
+  SPP_EXP_CLS template <typename K, typename V>
+  using OrderedMap = std::map<K, V>;
 
   SPP_EXP_CLS
-  using StrView = std::string_view; // stringzilla::string_view;
+  using Str = std::string; // stringzilla
+
+  SPP_EXP_CLS
+  using StrView = std::string_view; // stringzilla
 
   SPP_EXP_CLS
   using Ordering = std::strong_ordering;

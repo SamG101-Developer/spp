@@ -35,6 +35,20 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 
+namespace {
+  auto VisibilityOf(
+    spp::Str const &fq_name)
+    -> std::optional<spp::asts::utils::Visibility> {
+    using A = spp::analyse::utils::annotation_utils::BuiltinAnnotations;
+    using V = spp::asts::utils::Visibility;
+    if (fq_name == A::kPublic) { return V::kPublic; }
+    if (fq_name == A::kPackage) { return V::kPackage; }
+    if (fq_name == A::kProtected) { return V::kProtected; }
+    if (fq_name == A::kPrivate) { return V::kPrivate; }
+    return std::nullopt;
+  }
+}
+
 SPP_MOD_BEGIN
 spp::asts::AnnotationAst::AnnotationAst(
   decltype(TokExclamationMark) &&tok_exclamation_mark,
@@ -122,6 +136,12 @@ auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
   const auto fq_name = sym->FqName()->ToString();
   const auto func_ctx = _Ctx->To<FunctionPrototypeAst>();
 
+  if (const auto vis = VisibilityOf(fq_name); vis.has_value()) {
+    if (const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>()) {
+      vis_ctx->Visibility = {*vis, this};
+    }
+  }
+
   // If this is a "!annotation" annotation, mark it.
   if (fq_name == "std::annotations::annotation") {
     RaiseIf<analyse::errors::SppAnnotationTargetNotACmpFunctionError>(
@@ -150,7 +170,8 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->IgnoreAccessModifierViolations = true;
-    if (const auto pf = Name->To<PostfixExpressionAst>(); pf and pf->Op->To<PostfixExpressionOperatorFunctionCallAst>()) {
+    if (const auto pf = Name->To<PostfixExpressionAst>(); pf and pf->Op->To<
+      PostfixExpressionOperatorFunctionCallAst>()) {
       pf->Lhs->Stage7_AnalyseSemantics(sm, meta);
     }
     else {
@@ -169,28 +190,12 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     if (func_ctx) { func_ctx->BuiltinAnnotation = this; }
   }
 
-  // Mark a visibility-enabled ast as having "public" visibility.
-  else if (fq_name == A::kPublic) {
+  // Mark a visibility-enabled ast with the visibility it names.
+  // Needed in stage 4 and 5 for some analysis fixes (just leave
+  // it for now).
+  else if (const auto vis = VisibilityOf(fq_name); vis.has_value()) {
     const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPublic, this}; }
-  }
-
-  // Mark a visibility-enabled ast as having "package" visibility.
-  else if (fq_name == A::kPackage) {
-    const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPackage, this}; }
-  }
-
-  // Mark a visibility-enabled ast as having "protected" visibility.
-  else if (fq_name == A::kProtected) {
-    const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kProtected, this}; }
-  }
-
-  // Mark a visibility-enabled ast as having "private" visibility.
-  else if (fq_name == A::kPrivate) {
-    const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = {utils::Visibility::kPrivate, this}; }
+    if (vis_ctx) { vis_ctx->Visibility = {*vis, this}; }
   }
 
   // Mark a method ast as being "virtual", enabling overriding.
@@ -217,11 +222,23 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
     const auto type_sym = sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics().get());
     type_sym->IsDirectlyZeroType = true;
+    if (cls_ctx) { cls_ctx->ZeroTypeAnnotation = this; }
   }
   else if (fq_name == A::kZeroType and _Ctx->To<TypeStatementAst>()) {
     const auto cls_ctx = _Ctx->To<TypeStatementAst>();
     sm->CurrentScope->GetTypeSymbol(cls_ctx->NewType->WithoutGenerics().get())->IsDirectlyZeroType = true;
     sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType.get())->IsDirectlyZeroType = true;
+  }
+
+  // Mark a type symbol as a thread hazard, so neither it nor anything holding one may cross a thread boundary.
+  else if (fq_name == A::kThreadHazard and _Ctx->To<ClassPrototypeAst>()) {
+    const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
+    sm->CurrentScope->GetTypeSymbol(cls_ctx->Name->WithoutGenerics().get())->IsDirectlyThreadHazard = true;
+  }
+  else if (fq_name == A::kThreadHazard and _Ctx->To<TypeStatementAst>()) {
+    const auto cls_ctx = _Ctx->To<TypeStatementAst>();
+    sm->CurrentScope->GetTypeSymbol(cls_ctx->NewType->WithoutGenerics().get())->IsDirectlyThreadHazard = true;
+    sm->CurrentScope->GetTypeSymbol(cls_ctx->OldType.get())->IsDirectlyThreadHazard = true;
   }
 
   // Mark a function as being a "unit test" (makes it non-callable etc).

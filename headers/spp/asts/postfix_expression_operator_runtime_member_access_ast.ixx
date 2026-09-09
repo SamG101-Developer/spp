@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -17,6 +18,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorRuntimeMemberAccessAst);
+
   /**
    * The @c . token that indicates a runtime member access operation in a postfix expression.
    */
@@ -26,6 +30,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
    * The identifier that represents the member being accessed. This is the name of the member in the class or struct.
    */
   Shared<IdentifierAst> Name;
+
+  struct {
+    Ast *OriginalExpr; // Original asts mapped into member accesses - (try? op for example)
+  } Source;
 
   /**
    * Construct the PostfixExpressionOperatorMemberAccessAst with the arguments matching the members.
@@ -38,8 +46,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
 
   ~PostfixExpressionOperatorRuntimeMemberAccessAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -49,7 +55,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const
-    -> Vec<Ast*> override;
+    -> Vec<IdentifierAst*> override;
 
   /**
    * The call that forwards the left-hand-side to the type this member was found on, that is the
@@ -69,3 +75,5 @@ private:
    */
   Shared<PostfixExpressionAst> _MappedFwd;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst)

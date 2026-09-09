@@ -98,8 +98,21 @@ namespace spp::analyse::utils::destructure_utils {
   SPP_EXP_FUN auto ConsumeDestructureSource(
     asts::Ast const &owner,
     bool from_case_pattern,
+    bool any_binding_is_moving,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData const *meta)
+    -> void;
+
+  /**
+   * Consume a destructure's hidden temporary, for the path where one was bound. The expanded @c let statements read
+   * the temporary a part at a time, so it is left covered in partial moves; the destructure took the whole of it, so
+   * say so. Without this the temporary looks like a value someone took a piece out of and then abandoned.
+   * @param[in] tmp_name The name returned by @ref BindDestructureTemporary.
+   * @param[in, out] sm The scope manager to get the temporary's symbol from.
+   */
+  SPP_EXP_FUN auto ConsumeDestructureTemp(
+    asts::IdentifierAst const &tmp_name,
+    scopes::ScopeManager const &sm)
     -> void;
 
   /**
@@ -112,8 +125,8 @@ namespace spp::analyse::utils::destructure_utils {
    */
   SPP_EXP_FUN auto DestructureTempStage9(
     Shared<asts::IdentifierAst> const &tmp_name,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    scopes::ScopeManager const &sm,
+    asts::meta::CompilerMetaData const *meta)
     -> void;
 
   /**

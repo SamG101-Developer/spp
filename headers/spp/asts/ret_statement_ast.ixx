@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.ret_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(RetStatementAst);
+
   /**
    * The @c ret token that starts this statement.
    */
@@ -42,8 +46,6 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
 
   ~RetStatementAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -57,3 +59,5 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
 private:
   Shared<TypeAst> _RetType;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::RetStatementAst)

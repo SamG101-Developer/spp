@@ -4,6 +4,7 @@ module;
 export module spp.asts.function_prototype_ast;
 import spp.analyse.utils.annotation_utils;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.mixins.visibility_enabled_ast;
@@ -42,6 +43,8 @@ namespace spp::analyse::scopes {
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionPrototypeAst);
+
   /**
    * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
    * implemented in subclasses.
@@ -178,8 +181,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   ~FunctionPrototypeAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -245,26 +246,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     Unique<analyse::scopes::Scope> OwnedScope;
     Unique<FunctionPrototypeAst> Proto;
     Unique<GenericArgumentGroupAst> GnArgs;
-
-    /**
-     * Whether this instantiation names real types the whole way down - both the arguments it was built from and the
-     * signature it ended up with. Decided once, where it is built (see
-     * @c PotentiallyGenerateGenericSubstitutedPrototype ), because every later reader must reach the same answer:
-     * declaration and emission disagreeing leaves a call with no target, and a body built against a type that has no
-     * size produces ir that does not verify.
-     *
-     * @n
-     * A false one is still built and still analysed - the call it came from is type checked against its signature -
-     * it is simply never given an @c llvm::Function nor a body.
-     */
     bool IsConcrete = false;
-
-    /**
-     * Whether the monomorphisation stage has already considered this instantiation. Set whether or not a body was
-     * actually analysed, because an instantiation declined once (still generic, or never filled in) is declined for
-     * good - the drain re-reads the whole list every time its template comes up, and this is what keeps that from
-     * being quadratic and from re-analysing a body that is already analysed.
-     */
     bool BodyAnalysed = false;
 
     /**
@@ -304,14 +286,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   /**
    * Analyse the bodies of every instantiation registered against this prototype that has not been analysed yet.
-   *
-   * @n
-   * An instantiation is built from the signature alone - @c PotentiallyGenerateGenericSubstitutedPrototype substitutes
-   * the parameters and return type, because that is all overload resolution needs - so its body arrives here still
-   * being the template's, written in terms of parameters this instantiation has since bound. Analysing it is what
-   * turns it into this instantiation's body, and is also the only thing that discovers what *it* calls: every
-   * instantiation reached only from inside another generic body exists because of this walk.
-   *
    * @param[in] sm The scope manager, used for its global scope only - each instantiation is analysed through a manager
    * rooted at its own scope.
    * @param[in] meta The compiler meta data.

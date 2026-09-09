@@ -24,6 +24,7 @@ set(
 
 if (MSVC)
   add_compile_options($<IF:$<CONFIG:Debug>,/MDd,/MD> /Zc:preprocessor)
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 endif ()
 
 # The LTO-aware binutils wrappers only exist for GCC; clang
@@ -41,12 +42,23 @@ endif ()
 option(
   SPP_USE_DEV_RPATH
   "Bake in the local dev toolchain rpath (/usr/local/gcc-dev/lib64)"
-  ON
-)
+  ON)
 if (SPP_USE_DEV_RPATH)
   set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64;/usr/local/lib")
   set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 endif ()
+
+# The compiler's own version, single-sourced from the VERSION
+# file at the repository root.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" SPP_VERSION LIMIT_COUNT 1)
+string(STRIP "${SPP_VERSION}" SPP_VERSION)
+set_property(
+  DIRECTORY APPEND
+  PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/headers/spp/version.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/generated/spp/version.hpp"
+  @ONLY)
 
 # Build options (consumed by CI in the configure-cmake
 # composite action).
@@ -65,9 +77,13 @@ if (SPP_SANITIZER)
   add_compile_options(
     -fsanitize=${_SPP_SAN_LIST}
     -fno-omit-frame-pointer
-    -fno-optimize-sibling-calls
-  )
+    -fno-optimize-sibling-calls)
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
+endif ()
+
+if (NOT MSVC)
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127228
+  add_compile_options(-fvisibility-inlines-hidden)
 endif ()
 
 # Only allow mimalloc for release, non-sanitizer builds.
@@ -85,7 +101,7 @@ if (WIN32)
   find_package(LibXml2 CONFIG REQUIRED)
   find_package(pthreads4w CONFIG REQUIRED)
 endif ()
-find_package(Boost 1.91.0 REQUIRED)
+find_package(Boost 1.91.0 REQUIRED COMPONENTS preprocessor)
 find_package(LLVM 23.1.0 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
@@ -93,9 +109,11 @@ find_package(unordered_dense CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
+find_package(stringzilla CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(GenEx CONFIG REQUIRED)
 find_package(ColEx CONFIG REQUIRED)
+find_package(NumEx CONFIG REQUIRED)
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_compile_options(${LLVM_DEFINITIONS_LIST})
 
@@ -178,45 +196,46 @@ endif ()
 target_sources(
   ${PROJECT_NAME}_lib
   PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
-  PRIVATE ${SOURCE_FILES}
-)
+  PRIVATE ${SOURCE_FILES})
 
 target_compile_features(
   ${PROJECT_NAME}_lib
-  PUBLIC $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>
-)
+  PUBLIC $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:cxx_std_26>)
 
 target_compile_options(
   ${PROJECT_NAME}_lib
-  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>
-)
+  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>)
 
 target_compile_definitions(
   ${PROJECT_NAME}_lib
   PRIVATE
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127193
+  ANKERL_UNORDERED_DENSE_HAS_SSE2=0
   $<$<BOOL:${SPP_ALL_TARGETS}>:SPP_ALL_TARGETS>
   SPP_HOST_TRIPLE="${LLVM_HOST_TRIPLE}")
 
 target_include_directories(
   ${PROJECT_NAME}_lib
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers
-)
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+
 target_include_directories(
   ${PROJECT_NAME}_lib
-  SYSTEM
-  PUBLIC ${LLVM_INCLUDE_DIRS}
-)
+  PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 target_include_directories(
   ${PROJECT_NAME}_lib
   SYSTEM
-  PUBLIC $<TARGET_PROPERTY:mimalloc,INTERFACE_INCLUDE_DIRECTORIES>
-)
+  PUBLIC ${LLVM_INCLUDE_DIRS})
+
+target_include_directories(
+  ${PROJECT_NAME}_lib
+  SYSTEM
+  PUBLIC $<TARGET_PROPERTY:mimalloc,INTERFACE_INCLUDE_DIRECTORIES>)
 
 target_link_libraries(
   ${PROJECT_NAME}_lib
   PUBLIC
-  Boost::boost
+  Boost::preprocessor
   LLVMCore
   LLVMSupport
   LLVMCodeGen
@@ -235,9 +254,11 @@ target_link_libraries(
   tomlplusplus::tomlplusplus
   nlohmann_json::nlohmann_json
   magic_enum::magic_enum
+  stringzilla::header
   CLI11::CLI11
   ColEx::ColEx
   GenEx::GenEx
+  NumEx::NumEx
 )
 
 if (WIN32)

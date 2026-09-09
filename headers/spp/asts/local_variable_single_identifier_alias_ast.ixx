@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
@@ -13,6 +14,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LocalVariableSingleIdentifierAliasAst);
+
   /**
    * The @c as token that indicates the alias for the local variable. This separates the identifier from the alias.
    */
@@ -34,6 +38,6 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast 
     decltype(Name) &&name);
 
   ~LocalVariableSingleIdentifierAliasAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableSingleIdentifierAliasAst)

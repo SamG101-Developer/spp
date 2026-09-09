@@ -24,6 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
@@ -202,9 +203,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, true, true, true, true, meta, false);
 
     if (IsAttr(lhs_expr, sm)) {
-      const auto pf = lhs_expr->To<PostfixExpressionAst>();
-      const auto check_partial_move = IsAttr(pf->Lhs.get(), sm);
-      ValidateSymbolMemory(*lhs_expr, *TokAssign, *sm, true, check_partial_move, false, false, meta);
+      ValidateSymbolMemory(*lhs_expr, *TokAssign, *sm, true, true, false, false, meta, true, true);
     }
 
     // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.

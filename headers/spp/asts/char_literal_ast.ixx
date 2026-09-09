@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.char_literal_ast;
+import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CharLiteralAst);
 
   /**
    * The optional "b" prefix, converting the char into a U8 byte type.
@@ -45,8 +47,6 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
   SPP_ATTR_NODISCARD auto Equals(
     ExpressionAst const &other) const
     -> Ordering override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

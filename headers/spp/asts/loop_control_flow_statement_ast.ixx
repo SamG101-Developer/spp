@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_control_flow_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LoopControlFlowStatementAst);
+
   /**
    * The list of @c exit tokens. This allows for a statement to exit an arbitrary number of loops. If there are no
    * @c exit tokens, then the @c skip token will be present, in @c tok_skip_or_expr. This is ensured by the parser.
@@ -49,8 +53,6 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
   ~LoopControlFlowStatementAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -67,3 +69,5 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopControlFlowStatementAst)

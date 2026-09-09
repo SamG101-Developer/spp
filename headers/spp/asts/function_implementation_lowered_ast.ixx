@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_implementation_lowered_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_implementation_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -14,6 +15,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final : FunctionImplementationAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KIND(FunctionImplementationLoweredAst)
+
 private:
   Str _ScopePtr;
 
@@ -46,3 +50,5 @@ public:
 
   auto SetProtoPtr(FunctionPrototypeAst *proto) -> void;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionImplementationLoweredAst)

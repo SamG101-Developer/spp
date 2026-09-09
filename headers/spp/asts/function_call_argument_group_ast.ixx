@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_call_argument_group_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
@@ -19,7 +20,8 @@ namespace spp::asts {
  * positional or keyword arguments together in a function call.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentGroupAst);
 
   /**
    * The token that represents the left parenthesis @code (@endcode in the function call argument group. This
@@ -66,5 +68,7 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
 
   auto At(const char *key) const -> FunctionCallArgumentAst const*;
 
-  auto ConvertToPositional() const -> Unique<FunctionCallArgumentGroupAst>;
+  SPP_ATTR_NODISCARD auto ConvertToPositional() const -> Unique<FunctionCallArgumentGroupAst>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentGroupAst)

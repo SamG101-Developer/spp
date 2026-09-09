@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -22,6 +23,7 @@ import spp.asts.case_pattern_variant_destructure_tuple_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
+import spp.asts.case_pattern_variant_single_identifier_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
@@ -128,7 +130,7 @@ namespace spp::analyse::utils::case_utils {
       // named attribute's declaration index has to be resolved
       // through the type's own field index map.
       else {
-        const auto decl_index = GetFieldIndexInType(*bare_type, field_name, sm);
+        const auto decl_index = GetFieldIndexInType(*bare_type, field_name, *sm.CurrentScope);
         const auto field_index = codegen::GetPhysicalFieldIndex(*base_type_sym->LlvmInfo, decl_index);
         field_ptr = ctx->Builder.CreateStructGEP(
           llvm_base_ty, base_ptr, field_index, "case.pattern.field_ptr" + uid);
@@ -496,6 +498,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   asts::Ast *parent,
   Vec<asts::CaseExpressionBranchAst*> const &branches,
+  scopes::VariableSymbol *const subject,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> void {
@@ -506,7 +509,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
   // Create a map of the symbols' memory  information before
   // any branches are analysed.
-  auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
+  auto sym_mem_info = Map<scopes::VariableSymbol*, SymbolMemoryList>();
 
   // The lookup walks ancestors and super scopes, which can
   // reach one symbol by more than one route, and every list
@@ -518,13 +521,10 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     if (seen_syms.insert(sym).second) { vs.EmplaceBack(sym); }
   }
 
+  // The states before any branch has run. Each branch is restored to these before the next one is analysed, and they
+  // stand in as a final pseudo-branch for the consistency comparison below - the same snapshot serving both, since
+  // nothing between the two uses moves them apart.
   auto pre_analysis_mem_info = vs
-    | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
-    | genex::to<Vec>();
-
-  // Make a record of the symbols' memory status in the scope
-  // before the branch is analysed.
-  auto old_symbol_mem_info = vs
     | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
     | genex::to<Vec>();
 
@@ -532,6 +532,26 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     // Analyse the memory and then recheck the symbols' memory
     // status.
     branch->Stage8_CheckMemory(sm, meta);
+
+    // A branch binding parts off the subject takes the whole
+    // of it - the "case" marks the subject moved once every
+    // branch has run - so a part this branch left unbound is
+    // a part nothing holds. Check all movable fields have been
+    // bound, so dropping can take place.
+    const auto branch_binds = subject != nullptr and genex::any_of(
+      branch->Patterns, [](auto const &pattern) { return pattern->BindsByMove(); });
+    if (branch_binds) {
+      if (const auto skipped = linear_utils::FirstUnaccountedPart(
+        *subject, Vec{subject->Name->Val}, *sm); not skipped.empty()) {
+        auto const *const blamed = branch->Patterns.IsEmpty()
+          ? static_cast<asts::Ast const*>(branch)
+          : static_cast<asts::Ast const*>(branch->Patterns[0].get());
+
+        Raise<errors::SppDestructureSkipsOwnedPartError>(
+          {sm->CurrentScope}, ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
+      }
+    }
+
     auto new_symbol_mem_info = vs
       | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
       | genex::to<Vec>();
@@ -543,16 +563,8 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     // inside the loop made recording one branch's states quadratic in the number of symbols in scope.
     auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
 
-    for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
-      sym->MemInfo->AstInitialization = {
-        old_mem_status.AstInitialization,
-        spp::get<1>(sym->MemInfo->AstInitialization)
-      };
-      sym->MemInfo->AstMoved = {old_mem_status.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
-      sym->MemInfo->AstPartialMoves = old_mem_status.AstPartialMoves;
-      sym->MemInfo->AstContainedEscapingBorrows = old_mem_status.AstContainedEscapingBorrows;
-      sym->MemInfo->AstContainersOfEscapingBorrows = old_mem_status.AstContainersOfEscapingBorrows;
-      sym->MemInfo->InitializationCounter = old_mem_status.InitializationCounter;
+    for (auto &&[sym, old_mem_status] : pre_analysis_mem_info) {
+      sym->MemInfo->FillFromSnapshot(old_mem_status);
 
       // Save this memory status for subsequent inter-branch
       // status comparisons.
@@ -592,14 +604,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
     // Assuming all new memory states are consistent across
     // branches, update to the first "new" state list.
-    sym->MemInfo->AstInitialization = {
-      first_branch_mem_info.AstInitialization, spp::get<1>(sym->MemInfo->AstInitialization)
-    };
-    sym->MemInfo->AstMoved = {first_branch_mem_info.AstMoved, spp::get<1>(sym->MemInfo->AstMoved)};
-    sym->MemInfo->AstPartialMoves = first_branch_mem_info.AstPartialMoves;
-    sym->MemInfo->AstContainedEscapingBorrows = first_branch_mem_info.AstContainedEscapingBorrows;
-    sym->MemInfo->AstContainersOfEscapingBorrows = first_branch_mem_info.AstContainersOfEscapingBorrows;
-    sym->MemInfo->InitializationCounter = first_branch_mem_info.InitializationCounter;
+    sym->MemInfo->FillFromSnapshot(first_branch_mem_info);
 
     // Check the new memory status for each symbol is
     // consistent across all branches that don't terminate.
@@ -612,13 +617,14 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
     for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
       // Check for consistent initialization.
-      if ((first_branch_mem_info.AstInitialization == nullptr) != (branch_memory_info_list.AstInitialization ==
-        nullptr)) {
+      if ((spp::get<0>(first_branch_mem_info.AstInitialization) == nullptr)
+        != (spp::get<0>(branch_memory_info_list.AstInitialization) == nullptr)) {
         sym->MemInfo->IsInconsistentlyInitialized = {first_branch, branch};
       }
 
       // Check for consistent moved state.
-      if ((first_branch_mem_info.AstMoved == nullptr) != (branch_memory_info_list.AstMoved == nullptr)) {
+      if ((spp::get<0>(first_branch_mem_info.AstMoved) == nullptr)
+        != (spp::get<0>(branch_memory_info_list.AstMoved) == nullptr)) {
         sym->MemInfo->IsInconsistentlyMoved = {first_branch, branch};
       }
 

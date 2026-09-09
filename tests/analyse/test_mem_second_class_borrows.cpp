@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder { !public val: S32 }
 
     sup Holder {
-        cor peek(&self) -> std::generator::GenOnce[&S32] {
+        !public cor peek(&self) -> std::generator::GenOnce[&S32] {
             gen &self.val
         }
     }
@@ -28,6 +28,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder(val=1)
         let a = h.peek()@
+        std::mem::ops::drop(h)
     }
 )");
 
@@ -89,5 +90,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = X[1]()
+        std::mem::ops::drop(a)
     }
 )");

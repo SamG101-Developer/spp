@@ -75,6 +75,14 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::CasePatternVariantDestructureArrayAst::BindsByMove() const
+  -> bool {
+  // A destructure binds if any of its elements does. An
+  // empty one, or one made only of skips, is a shape test
+  // and takes nothing.
+  return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
+}
+
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)
@@ -82,14 +90,16 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage7_AnalyseSemantics(
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
 
-  // Create the new variable from the pattern in the patterns scope.
+  // Create the new variable from the pattern in the patterns
+  // scope.
   auto var = ConvToVar(meta);
   _MappedLet = MakeUnique<LetStatementInitializedAst>(
     nullptr, std::move(var), nullptr, nullptr,
     AstClone(meta->CaseCondition));
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
 
-  // Note there is no nested analysis of "elems", because the "let" statement handles it.
+  // Note there is no nested analysis of "elems", because the
+  // "let" statement handles it.
   CreateAndAnalysePatternEqFuncsDummyCore(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
@@ -106,12 +116,14 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Transform the pattern into comptime values; all need to be true.
+  // Transform the pattern into comptime values; all need
+  // to be true.
   using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
   auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 
-  // All must be true for the pattern to match (look for any false).
+  // All must be true for the pattern to match (look for
+  // any false).
   const auto all_true = genex::all_of(
     comptime_transforms,
     [](auto const &x) { return x->template To<BooleanLiteralAst>()->IsTrue(); });
@@ -119,7 +131,8 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
   // Generate the "let" statement to introduce all the symbols.
   _MappedLet->Stage9_CompTimeResolve(sm, meta);
 
-  // Based on the result, return the corresponding comptime value.
+  // Based on the result, return the corresponding comptime
+  // value.
   const auto p = PosStart();
   meta->CmpResult = all_true
     ? BooleanLiteralAst::True(p)
@@ -134,7 +147,8 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
 
-  // Run the codegen on the transformed "let" ast to introduce symbols into the llvm function.
+  // Run the codegen on the transformed "let" ast to introduce
+  // symbols into the llvm function.
   if (_MappedLet != nullptr) {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
@@ -159,12 +173,14 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
 auto spp::asts::CasePatternVariantDestructureArrayAst::ConvToVar(
   CompilerMetaData *meta)
   -> Unique<LocalVariableAst> {
-  // Recursively map the elements to their local variable counterparts.
+  // Recursively map the elements to their local variable
+  // counterparts.
   auto mapped_elems = Elems
     | genex::views::transform([meta](auto const &x) { return x->ConvToVar(meta); })
     | genex::to<Vec>();
 
-  // Create the final local variable wrapping, tag it and return it.
+  // Create the final local variable wrapping, tag it and return
+  // it.
   auto var = MakeUnique<LocalVariableDestructureArrayAst>(nullptr, std::move(mapped_elems), nullptr);
   var->MarkFromCasePattern();
   return var;

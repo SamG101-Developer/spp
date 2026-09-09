@@ -52,7 +52,11 @@ spp::asts::LoopIterableExpressionAst::LoopIterableExpressionAst(
   LoopExpressionAst(std::move(tok_loop), std::move(body), std::move(else_block)),
   Var(std::move(var)),
   TokIn(std::move(tok_in)),
-  Iterable(std::move(iterable)) {
+  Iterable(std::move(iterable)),
+  _TransformedLet(nullptr),
+  _TransformedFlagLet(nullptr),
+  _TransformedLoop(nullptr),
+  _IterableName(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokIn, lex::SppTokenType::KW_IN, "in");
 }
 

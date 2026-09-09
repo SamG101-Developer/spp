@@ -63,6 +63,13 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::CasePatternVariantSingleIdentifierAst::BindsByMove() const
+  -> bool {
+  // A name binds what it stands for, unless it asks for it
+  // through a borrow, which leaves the value where it was.
+  return Conv == nullptr;
+}
+
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)
@@ -98,8 +105,10 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
 auto spp::asts::CasePatternVariantSingleIdentifierAst::ConvToVar(
   CompilerMetaData *)
   -> Unique<LocalVariableAst> {
-  // Create the local variable single identifier binding AST. (Note no convention is propagated into the variable,
-  // as conventions are only relevant at the pattern matching site, not the variable declaration site).
+  // Create the local variable single identifier binding AST.
+  // (Note no convention is propagated into the variable, as
+  // conventions are only relevant at the pattern matching site,
+  // not the variable declaration site).
   auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
     AstClone(TokMut), AstCloneShared(Name), AstClone(Alias));
   var->Conv = AstClone(Conv);

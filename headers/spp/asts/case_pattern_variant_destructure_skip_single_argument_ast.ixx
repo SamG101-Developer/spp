@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_skip_single_argument_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
@@ -13,6 +14,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureSkipSingleArgumentAst);
+
   /**
    * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
    * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object
@@ -29,7 +33,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst
 
   ~CasePatternVariantDestructureSkipSingleArgumentAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst)

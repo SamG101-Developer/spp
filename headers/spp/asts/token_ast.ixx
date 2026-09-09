@@ -4,6 +4,7 @@ module;
 
 export module spp.asts.token_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.lex.tokens;
 import spp.utils.types;
 import std;
@@ -20,6 +21,9 @@ namespace spp::asts {
  * to is the start position.
  */
 SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TokenAst);
+
   /**
    * Very similar to the constructor, but requires for the macro'd unified "new_empty" caller for defaulting
    * attributes. The pos isn't wlawys given so is optional.
@@ -51,8 +55,6 @@ SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
 
   ~TokenAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   /**
    * Two tokens are equal if their token types are equal.
    * @param[in] that The other TokenAst to compare with.
@@ -65,3 +67,5 @@ SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
 private:
   std::size_t _Pos;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TokenAst)

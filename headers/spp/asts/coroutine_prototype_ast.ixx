@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.coroutine_prototype_ast;
+import spp.asts.ast_kind;
 import spp.asts.function_prototype_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -19,6 +20,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KIND(CoroutinePrototypeAst)
+
   CoroutinePrototypeAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,
@@ -51,7 +55,7 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
   SPP_ATTR_NODISCARD auto GenOnceLowered() const -> SubroutinePrototypeAst*;
 
 private:
-  bool _IsOnce = false;
+  bool _IsOnce;
   Shared<TypeAst> _YieldType;
   Shared<TypeAst> _SendType;
   Unique<SubroutinePrototypeAst> _GenOnceLowered;
@@ -72,4 +76,11 @@ private:
    * ends up in the caller's frame - where the yield's lifetime says it belongs, and where it can be promoted away.
    */
   auto _ForceInlineBorrowedYield(SubroutinePrototypeAst const &lowered) const -> void;
+
+  /**
+   * Give the lowering's allocas a lifetime of their own; see the definition. Needs the body, so runs after it.
+   */
+  auto _DeclareBorrowedYieldStorage(SubroutinePrototypeAst const &lowered) const -> void;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CoroutinePrototypeAst)

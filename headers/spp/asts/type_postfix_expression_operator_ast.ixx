@@ -14,6 +14,8 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
+  SPP_GCC_VTABLE_FIX
+
   TypePostfixExpressionOperatorAst();
 
   ~TypePostfixExpressionOperatorAst() override;
@@ -64,3 +66,5 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
   SPP_ATTR_NODISCARD virtual auto LastTypePart()
     -> TypeIdentifierAst* { return nullptr; }
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypePostfixExpressionOperatorAst)

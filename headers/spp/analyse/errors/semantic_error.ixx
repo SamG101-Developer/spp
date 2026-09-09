@@ -4,8 +4,9 @@ module;
 export module spp.analyse.errors.semantic_error;
 import spp.utils.errors;
 import spp.utils.types;
-import boost;
 import std;
+import numex.big_dec;
+import numex.big_int;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
@@ -50,6 +51,8 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppVariableTupleDestructureTupleTypeMismatchError;
   SPP_EXP_CLS struct SppVariableTupleDestructureTupleSizeMismatchError;
   SPP_EXP_CLS struct SppVariableObjectDestructureWithBoundRestPatternError;
+  SPP_EXP_CLS struct SppDestructureSkipsOwnedPartError;
+  SPP_EXP_CLS struct SppPartialMoveOfDestructibleValueError;
   SPP_EXP_CLS struct SppExpressionNotBooleanError;
   SPP_EXP_CLS struct SppExpressionNotGeneratorError;
   SPP_EXP_CLS struct SppExpressionNotTryError;
@@ -100,9 +103,11 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppAnnotationTargetNotAnAnnotationError;
   SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
   SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
+  SPP_EXP_CLS struct SppGenOnceFinishesWithoutYieldingError;
   SPP_EXP_CLS struct SppUnitTestInvalidSignatureError;
   SPP_EXP_CLS struct SppUnitTestNotCallableError;
   SPP_EXP_CLS struct SppFfiGenericParameterError;
+  SPP_EXP_CLS struct SppEmptyBodyRequiredError;
   SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
   SPP_EXP_CLS struct SppAccessViolationError;
   SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
@@ -246,8 +251,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
-  explicit SppFloatOutOfBoundsError(asts::Ast const &literal, boost::BigDec const &value,
-    boost::BigDec const &lower, boost::BigDec const &upper, StrView what);
+  explicit SppFloatOutOfBoundsError(asts::Ast const &literal, numex::BigDec const &value,
+    numex::BigDec const &lower, numex::BigDec const &upper, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDivisionByZeroError final : SemanticError {
@@ -260,8 +265,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppShiftAmountOutOfBoundsError final : 
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIntegerOutOfBoundsError final : SemanticError {
-  explicit SppIntegerOutOfBoundsError(asts::Ast const &literal, boost::BigInt const &value,
-    boost::BigInt const &lower, boost::BigInt const &upper, StrView what);
+  explicit SppIntegerOutOfBoundsError(asts::Ast const &literal, numex::BigInt const &value,
+    numex::BigInt const &lower, numex::BigInt const &upper, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppOrderInvalidError final : SemanticError {
@@ -343,6 +348,16 @@ SPP_EXP_CLS struct spp::analyse::errors::SppVariableObjectDestructureWithBoundRe
   explicit SppVariableObjectDestructureWithBoundRestPatternError(asts::Ast const &var, asts::Ast const &rest_pattern);
 };
 
+SPP_EXP_CLS struct spp::analyse::errors::SppDestructureSkipsOwnedPartError final : SemanticError {
+  explicit SppDestructureSkipsOwnedPartError(
+    asts::Ast const &destructure, asts::Ast const &value, StrView part);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppPartialMoveOfDestructibleValueError final : SemanticError {
+  explicit SppPartialMoveOfDestructibleValueError(
+    asts::Ast const &exit_point, asts::Ast const &move, asts::Ast const &destructor, StrView type_name);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotBooleanError final : SemanticError {
   explicit SppExpressionNotBooleanError(asts::Ast const &expr, asts::Ast const &expr_type, StrView what);
 };
@@ -420,7 +435,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMemberAccessStaticOperatorExpectedEr
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError final : SemanticError {
-  explicit SppMemberAccessRuntimeOperatorExpectedError(asts::Ast const &lhs, asts::Ast const &access);
+  explicit SppMemberAccessRuntimeOperatorExpectedError(asts::Ast const &lhs, asts::Ast const &access, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericTypeInvalidUsageError final : SemanticError {
@@ -567,6 +582,17 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFfiGenericParameterError final : Sem
     asts::Ast const &annotation, asts::Ast const &generic_parameter, StrView symbol);
 };
 
+SPP_EXP_CLS struct spp::analyse::errors::SppEmptyBodyRequiredError final : SemanticError {
+  /**
+   * @param annotation The annotation that makes the body a declaration rather than a definition.
+   * @param member The first thing written in the body, which is what is rejected.
+   * @param what What the annotation marks the ast as, read into "Marked as ... here".
+   * @param reason Why that kind of ast can hold nothing, read into "The body of ... must be empty: ...".
+   */
+  explicit SppEmptyBodyRequiredError(
+    asts::Ast const &annotation, asts::Ast const &member, StrView what, StrView reason);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestNotCallableError final : SemanticError {
   explicit SppUnitTestNotCallableError(asts::Ast const &call_site, asts::Ast const &annotation);
 };
@@ -641,4 +667,13 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompileTimeFunctionError fina
 SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError final : SemanticError {
   explicit SppLinearValueSkippedInDestructureError(asts::Ast const &skip, asts::Ast const &destructure,
     StrView attr_name, StrView type_name);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError final : SemanticError {
+  /**
+   * A @c GenOnce coroutine reached a @c ret without having yielded, which its own contract forbids: a @c GenOnce is
+   * guaranteed to yield exactly once, which is what lets a caller collapse it into the value rather than test for one.
+   * @param ret_stmt The @c ret that finishes the coroutine.
+   */
+  explicit SppGenOnceFinishesWithoutYieldingError(asts::Ast const &ret_stmt);
 };

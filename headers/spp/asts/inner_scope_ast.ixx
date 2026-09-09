@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.inner_scope_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -10,9 +11,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast; // TODO: GCC BUG REQUIRES THIS
-  SPP_EXP_CLS
-  template <typename T>
-  struct InnerScopeAst;
+  SPP_EXP_CLS template <typename T> struct InnerScopeAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -23,10 +22,10 @@ namespace spp::asts {
  * inference etc.
  * @tparam T The type of the members in the inner scope.
  */
-SPP_EXP_CLS
-
-template <typename T>
+SPP_EXP_CLS template <typename T>
 struct spp::asts::InnerScopeAst : Ast {
+  SPP_AST_KEY_FUNCTIONS(InnerScopeAst);
+
   /**
    * The @c { token that represents the start of the inner scope. This is used to indicate the beginning of the scope
    * and is typically followed by a list of members or statements that belong to this scope.
@@ -60,8 +59,6 @@ struct spp::asts::InnerScopeAst : Ast {
     decltype(TokR) &&tok_r);
 
   ~InnerScopeAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

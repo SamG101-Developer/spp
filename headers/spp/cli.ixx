@@ -31,22 +31,27 @@ namespace spp::cli {
    * object emitted for it, but not linked: the linker driver is the host's, and the ffi runtimes a project ships are
    * host objects, so there is nothing to link a foreign object against.
    * @param[in] skip_vcs Whether to skip fetching the [vcs] dependencies first.
+   * @return @c true if the build ran to completion. Every failure has already said what it was, so a caller reports
+   * nothing further - but it has to ask, because "an executable is there" is a different question: a build that
+   * stopped before it could clear the last one away leaves one behind that has nothing to do with this build.
    */
   SPP_EXP_FUN auto handle_build(
     Str const &mode,
     Str const &target = "",
     bool skip_vcs = false)
-    -> void;
+    -> bool;
 
   /**
    * Compile the project and execute what it produced. Only a host build can be run.
    * @param[in] mode "dev" or "rel".
    * @param[in] target The target triple, or empty for the host.
+   * @return Only ever @c false, and only when there was nothing to run: the program's own status is what this exits
+   * with once it does run, so a return at all means the run did not happen.
    */
   SPP_EXP_FUN auto handle_run(
     Str const &mode,
     Str const &target = "")
-    -> void;
+    -> bool;
 
   /**
    * Remove built artifacts.
@@ -89,9 +94,6 @@ namespace spp::cli {
 
   SPP_EXP_FUN auto create_default_config_for(
     Str const &project_name)
-    -> Str;
-
-  SPP_EXP_FUN auto get_system_shared_library_extension()
     -> Str;
 
   /**

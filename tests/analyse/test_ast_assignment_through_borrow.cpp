@@ -50,11 +50,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AssignmentThroughBorrowAst,
   test_valid_write_through_a_borrow_bound_by_a_case_pattern, R"(
-    cls Point { !public x: S32, !public y: S32 }
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
 
     fun f() -> Void {
         let mut p = Point(x=1, y=2)
         case p is Point(&mut x, ..) { x@ += 1 }
+        std::mem::ops::drop(p)
     }
 )");
 
@@ -64,7 +68,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder { !public v: S32 }
 
     sup Holder {
-        cor get_mut(&mut self) -> std::generator::GenOnce[&mut S32] {
+        !public cor get_mut(&mut self) -> std::generator::GenOnce[&mut S32] {
             gen &mut self.v
         }
     }
@@ -72,6 +76,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut h = Holder(v=1)
         h.get_mut()@ += 1
+        std::mem::ops::drop(h)
     }
 )");
 
@@ -88,6 +93,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut o = Outer(inner=Inner(v=1))
         g(&mut o.inner.v)
+        std::mem::ops::drop(o)
     }
 )");
 

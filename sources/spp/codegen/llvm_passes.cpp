@@ -1,4 +1,6 @@
+#include <cstdlib>
 #include <cstring>
+#include <iostream>
 
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
@@ -18,45 +20,42 @@
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 #include <llvm/Transforms/Coroutines/CoroAnnotationElide.h>
+#include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
 #include <llvm/Transforms/IPO/Internalize.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
+#include <spp/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
 
 namespace {
-  /** What every intrinsic name starts with, and the shortest a prefix can usefully be trimmed to. */
-  constexpr auto kIntrinsicPrefix = llvm::StringLiteral("llvm.");
+  /** What a coroutine intrinsic's name starts with; see @c PendingCoroUses . */
+  constexpr auto kCoroIntrinsicPrefix = llvm::StringLiteral("llvm.coro.");
+
+  /**
+   * How many calls to a coroutine intrinsic are still waiting to be lowered.
+   *
+   * @n
+   * This is what the lowering pipeline is driving to zero, and so what says whether another run of it is worth
+   * doing. The passes lower one intrinsic into another ("coro.resume" becomes "coro.subfn.addr"), so one run does
+   * not finish the job; running until the count stops falling does, without assuming how many rounds that takes.
+   *
+   * @param llvm_mod The module to count in.
+   * @return The number of uses of any @c "llvm.coro.*" declaration.
+   */
+  auto PendingCoroUses(
+    llvm::Module const &llvm_mod)
+    -> unsigned long {
+    auto pending = 0UL;
+    for (auto const &fn : llvm_mod) {
+      if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix)) { continue; }
+      pending += fn.getNumUses();
+    }
+    return pending;
+  }
 
   /** How many repair-then-lower rounds the coroutine pipeline is allowed; see @c RunCoroLoweringPipeline . */
   constexpr auto kMaxCoroLoweringRounds = 4U;
-
-  /** Intrinsics that only hint at what the optimizer may do; see @c RepairMisnamedIntrinsics . */
-  constexpr auto kHintIntrinsicPrefix = llvm::StringLiteral("llvm.lifetime.");
-
-  /** The width of the field an intrinsic name is read back out of, junk and all; see @c RepairMisnamedIntrinsics . */
-  constexpr auto kNameFieldWidth = 31U;
-
-  /**
-   * Erase @p fn and every call to it. Only done when every use is a plain call: anything else means this is not the
-   * shape being worked around, and it is left alone to fail visibly rather than be quietly changed.
-   * @param[in,out] fn The declaration to drop.
-   * @return @c true if it was dropped.
-   */
-  auto DropCallsTo(
-    llvm::Function *fn)
-    -> bool {
-    auto calls = llvm::SmallVector<llvm::CallBase*>();
-    for (auto *user : fn->users()) {
-      const auto call = llvm::dyn_cast<llvm::CallBase>(user);
-      if (call == nullptr or call->getCalledFunction() != fn) { return false; }
-      calls.push_back(call);
-    }
-
-    for (auto *call : calls) { call->eraseFromParent(); }
-    fn->eraseFromParent();
-    return true;
-  }
 
   /** The name the runtime start-up shim is emitted under; dotted, so it cannot collide with a mangled s++ name. */
   constexpr auto kRuntimeInitShim = llvm::StringLiteral("spp.rt.init");
@@ -64,44 +63,95 @@ namespace {
   /** The name the runtime tear-down shim is emitted under; dotted, for the same reason. */
   constexpr auto kRuntimeCleanupShim = llvm::StringLiteral("spp.rt.cleanup");
 
+  /** Marks a function that cannot have split stacks. */
+  constexpr auto kNoSplitStack = llvm::StringLiteral("spp-no-split-stack");
+
   /**
    * Emit, once per module, an internal @c void(void) that brings the ffi runtime up and does not come back if it
    * cannot. @c sppc_init installs the signal dispositions, the locale and the malloc tuning that everything after it
    * assumes, starts the green-thread runtime, and builds the three stdio mutexes; a failure leaves those half-built.
    * @param[in,out] llvm_mod The module to emit it into.
+   * @param[in] split_stacks Also map this thread's unsafe stack, which the frames @c ApplySafeStack splits are
+   * allocated out of. Placed after @c sppc_init and before anything s++, which is the whole of the requirement: no
+   * s++ frame exists before this returns, and none can be built after it without one.
    * @return The shim, existing or new.
    */
   auto RuntimeInitShim(
-    llvm::Module &llvm_mod)
+    llvm::Module &llvm_mod,
+    const bool split_stacks)
     -> llvm::Function* {
     if (auto *const existing = llvm_mod.getFunction(kRuntimeInitShim)) { return existing; }
 
+    // General llvm preparation, get the context and some
+    // types that need defining.
     auto &ctx = llvm_mod.getContext();
     const auto i32_ty = llvm::Type::getInt32Ty(ctx);
+
+    // Get the functions that are needed specifically for
+    // this shim: the "sppc_init" and "exit" functions.
     const auto init = llvm_mod.getOrInsertFunction(
       "sppc_init", llvm::FunctionType::get(i32_ty, {}, false));
     const auto exit_fn = llvm_mod.getOrInsertFunction(
       "exit", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {i32_ty}, false));
+    const auto stack_up = llvm_mod.getOrInsertFunction(
+      "sppc_unsafe_stack_up", llvm::FunctionType::get(i32_ty, {}, false));
 
+    // Create the shim, a non-parameter, void-returning
+    // function with internal linkage, which will be
+    // called explicitly, and owns the setup calls.
     const auto shim = llvm::Function::Create(
       llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
       llvm::Function::InternalLinkage, kRuntimeInitShim, &llvm_mod);
 
+    // The function that maps the unsafe stack cannot be
+    // a function that stands on one.
+    shim->addFnAttr(kNoSplitStack);
+
+    // Standard building blocks setup for the shim
+    // function, requiring the entry, "up" and failed
+    // blocks.
     const auto entry_bb = llvm::BasicBlock::Create(ctx, "entry", shim);
+    const auto stack_bb = split_stacks ? llvm::BasicBlock::Create(ctx, "rt.stack", shim) : nullptr;
     const auto up_bb = llvm::BasicBlock::Create(ctx, "rt.up", shim);
     const auto failed_bb = llvm::BasicBlock::Create(ctx, "rt.failed", shim);
 
+    // Step 1: call the sppc_init boot function in the,
+    // sppc C library, which itself calls a number of
+    // boot functions. Check the result of that call,
+    // and branch to "up" or "failed" depending on result.
     auto builder = llvm::IRBuilder<>(entry_bb);
     const auto init_rc = builder.CreateCall(init, {}, "rt.init");
     const auto init_ok = builder.CreateICmpEQ(init_rc, llvm::ConstantInt::get(i32_ty, 0), "rt.init.ok");
-    builder.CreateCondBr(init_ok, up_bb, failed_bb);
+    builder.CreateCondBr(init_ok, stack_bb != nullptr ? stack_bb : up_bb, failed_bb);
 
-    // Marked here rather than left to the pipeline to infer, because the
-    // "unreachable" after it is only well-formed if "exit" cannot return.
+    // Step 2, when the frames are split: map this thread's
+    // unsafe stack. Same shape as the step above, and the
+    // same failure - a runtime that did not come up is not
+    // one to carry on past.
+    auto stack_rc = static_cast<llvm::Value*>(nullptr);
+    if (stack_bb != nullptr) {
+      builder.SetInsertPoint(stack_bb);
+      stack_rc = builder.CreateCall(stack_up, {}, "rt.stack");
+      const auto stack_ok = builder.CreateICmpEQ(stack_rc, llvm::ConstantInt::get(i32_ty, 0), "rt.stack.ok");
+      builder.CreateCondBr(stack_ok, up_bb, failed_bb);
+    }
+
+    // Whichever step failed, the failed block calls "exit"
+    // with its code, and marks the following zone as
+    // "unreachable" (ie if "exit" cannot return).
     builder.SetInsertPoint(failed_bb);
-    builder.CreateCall(exit_fn, {init_rc})->setDoesNotReturn();
+    auto *code = static_cast<llvm::Value*>(init_rc);
+    if (stack_bb != nullptr) {
+      const auto phi = builder.CreatePHI(i32_ty, 2, "rt.failed.rc");
+      phi->addIncoming(init_rc, entry_bb);
+      phi->addIncoming(stack_rc, stack_bb);
+      code = phi;
+    }
+    builder.CreateCall(exit_fn, {code})->setDoesNotReturn();
     builder.CreateUnreachable();
 
+    // The successful "up" block simply returns Void as
+    // everything passed inside sppc.
     builder.SetInsertPoint(up_bb);
     builder.CreateRetVoid();
     return shim;
@@ -119,16 +169,27 @@ namespace {
     -> llvm::Function* {
     if (auto *const existing = llvm_mod.getFunction(kRuntimeCleanupShim)) { return existing; }
 
+    // General llvm preparation, get the context and some
+    // types that need defining.
     auto &ctx = llvm_mod.getContext();
+
+    // Get the functions that are needed specifically for
+    // this shim: the "sppc_cleanup" function.
     const auto cleanup = llvm_mod.getOrInsertFunction(
       "sppc_cleanup", llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}, false));
 
+    // Create the shim, a non-parameter, void-returning
+    // function with internal linkage, which will be
+    // called explicitly, and owns the cleanup calls.
     const auto shim = llvm::Function::Create(
       llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
       llvm::Function::InternalLinkage, kRuntimeCleanupShim, &llvm_mod);
 
-    // The result is the errno a "pthread_mutex_destroy" of a stdio lock failed with: EBUSY means the program still
-    // held one as it exited, which is a bug in it, but this runs too late for anything to be told about it.
+    // As this is the program teardown, there isn't really
+    // anything a success vs failure can be measured with,
+    // so call the entry block and be done. Possible error
+    // from the "pthread_mutex_destroy" of a stdio lock
+    // (EBUSY) but again not much we can do here.
     auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(ctx, "entry", shim));
     builder.CreateCall(cleanup, {});
     builder.CreateRetVoid();
@@ -141,7 +202,11 @@ namespace {
    */
   auto HostTriple()
     -> llvm::Triple const& {
-    static const auto triple = llvm::Triple(llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple()));
+    // Pull the triple from the llcm-known default, and
+    // run it through normalization. Static because it's
+    // always going to be the same.
+    static const auto triple = llvm::Triple(
+      llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple()));
     return triple;
   }
 
@@ -152,12 +217,17 @@ namespace {
   auto InitializeAllBackends()
     -> void {
     static const auto once = [] {
-#ifdef SPP_ALL_TARGETS
+#if defined(SPP_ALL_TARGETS)
+      // All targets, including the host. This is used for
+      // the CI pipeline cross-compilation checks, and for
+      // normal cross-compilation.
       llvm::InitializeAllTargetInfos();
       llvm::InitializeAllTargets();
       llvm::InitializeAllTargetMCs();
       llvm::InitializeAllAsmPrinters();
 #else
+      // Native targets only (normal compilation, default to
+      // the host).
       llvm::InitializeNativeTarget();
       llvm::InitializeNativeTargetAsmPrinter();
 #endif
@@ -276,6 +346,11 @@ namespace {
     }();
     return machine;
   }
+
+
+  /** The attribute a backend reads to decide whether a prologue probes, and the value asking it to do so inline. */
+  constexpr auto kProbeStackAttr = llvm::StringLiteral("probe-stack");
+  constexpr auto kProbeStackInlineAsm = llvm::StringLiteral("inline-asm");
 }
 
 auto spp::codegen::SelectTarget(
@@ -313,7 +388,7 @@ auto spp::codegen::SelectTarget(
       llvm::errs() << "  (nothing; this llvm has no usable backend at all)\n";
     }
     llvm::errs() << "Any other triple whose backend is linked in is accepted too; these are the tested ones.\n";
-#ifndef SPP_ALL_TARGETS
+#if !defined(SPP_ALL_TARGETS)
     llvm::errs() << "Only the host backend is linked in; reconfigure with -DSPP_ALL_TARGETS=ON for the rest.\n";
 #endif
     return false;
@@ -360,15 +435,12 @@ auto spp::codegen::RunCoroLoweringPipeline(
   -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
-  // See "RepairMisnamedIntrinsics". A misnamed intrinsic is invisible to
-  // these passes, so the names are put back before each run - and it takes
-  // more than one run, because the passes lower one intrinsic into another
-  // ("coro.resume" becomes "coro.subfn.addr") and the replacement is
-  // misnamed in its turn, leaving the next pass nothing to work on. Settles
-  // in three rounds; the bound is there so a repair that never reaches a
+  // One run of the pipeline does not finish the job: the passes lower one intrinsic into another ("coro.resume"
+  // becomes "coro.subfn.addr"), leaving the next pass something to do. So this runs until the coroutine intrinsics
+  // stop disappearing, rather than a fixed number of times; the bound is there so a module that never reaches a
   // fixed point cannot spin.
+  auto previous = PendingCoroUses(llvm_mod);
   for (auto round = 0U; round < kMaxCoroLoweringRounds; ++round) {
-    if (RepairMisnamedIntrinsics(&llvm_mod) == 0 and round > 0) { break; }
 
     auto loop_am = llvm::LoopAnalysisManager();
     auto func_am = llvm::FunctionAnalysisManager();
@@ -387,6 +459,10 @@ auto spp::codegen::RunCoroLoweringPipeline(
     auto module_pm = pass_builder.buildO0DefaultPipeline(llvm::OptimizationLevel::O0);
     module_pm.addPass(llvm::createModuleToPostOrderCGSCCPassAdaptor(llvm::CoroAnnotationElidePass()));
     module_pm.run(llvm_mod, module_am);
+
+    const auto pending = PendingCoroUses(llvm_mod);
+    if (pending == 0 or pending >= previous) { break; }
+    previous = pending;
   }
 }
 
@@ -469,7 +545,8 @@ auto spp::codegen::RunInternalizePass(
 
 auto spp::codegen::EmitCEntryPoint(
   void *llvm_module,
-  char const *spp_main_name)
+  char const *spp_main_name,
+  const bool split_stacks)
   -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
@@ -495,6 +572,11 @@ auto spp::codegen::EmitCEntryPoint(
   const auto main_fn = llvm::Function::Create(
     main_ty, llvm::Function::ExternalLinkage, "main", &llvm_mod);
 
+  // Nothing has mapped an unsafe stack at the point this function's
+  // own prologue runs - the call that maps it is the first thing in
+  // the body - so this frame stays whole.
+  main_fn->addFnAttr(kNoSplitStack);
+
   auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(ctx, "entry", main_fn));
 
   // Failsafe "main" check for 0-arg "main", but S++ semantic
@@ -504,8 +586,11 @@ auto spp::codegen::EmitCEntryPoint(
     return false;
   }
 
+  // Todo: This might break performance.
+  if (split_stacks) { spp_main->addFnAttr(llvm::Attribute::NoInline); }
+
   const auto atexit_ty = llvm::FunctionType::get(i32_ty, {ptr_ty}, false);
-  builder.CreateCall(RuntimeInitShim(llvm_mod), {});
+  builder.CreateCall(RuntimeInitShim(llvm_mod, split_stacks), {});
   builder.CreateCall(llvm_mod.getOrInsertFunction("atexit", atexit_ty), {RuntimeCleanupShim(llvm_mod)});
   builder.CreateCall(spp_main, {});
 
@@ -516,111 +601,101 @@ auto spp::codegen::EmitCEntryPoint(
   return true;
 }
 
-auto spp::codegen::RepairMisnamedIntrinsics(
+
+auto spp::codegen::ApplyStackProtector(
   void *llvm_module)
   -> unsigned long {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
-  // Collected first, because the repair adds to and removes from
-  // the function list that this is walking.
-  auto broken = llvm::SmallVector<llvm::Function*>();
+  auto stamped = 0UL;
   for (auto &fn : llvm_mod) {
-    if (not fn.isDeclaration() or not fn.getName().starts_with("llvm.")) { continue; }
-    const auto id = fn.getIntrinsicID();
-    if (id == llvm::Intrinsic::not_intrinsic or llvm::Intrinsic::isOverloaded(id)) { broken.push_back(&fn); }
+    // A declaration has no frame to protect, and a naked
+    // function's prologue is whatever it says it is. Pre-
+    // protected functions can be skipped here too.
+    if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
+    if (fn.hasFnAttribute(llvm::Attribute::StackProtectStrong)) { continue; }
+    fn.addFnAttr(llvm::Attribute::StackProtectStrong);
+    stamped += 1;
   }
+  return stamped;
+}
 
-  auto repaired = 0UL;
-  for (auto *fn : broken) {
-    // The longest prefix llvm resolves is the real name. Going longest-first
-    // keeps the overload suffix on the mangled ones ("llvm.lifetime.start.p0"
-    // resolves, and so would "llvm.lifetime.start" on its own); going one
-    // character at a time is what stops printable garbage being taken for
-    // part of the name, which a scan for the first unprintable byte would do.
-    const auto name = fn->getName();
-    auto real_name = llvm::StringRef();
-    auto rebuilt = std::string();
 
-    // Bug (?) where all names are a fixed length, presenting
-    // as corrupt strings because the genuine name doesn't
-    // necessarily reach the 31-byte limit. Patch this by byte-
-    // stripping.
-    auto base = llvm::StringRef();
-    if (const auto nul = name.find('\0'); nul != llvm::StringRef::npos and nul < kNameFieldWidth) {
-      base = llvm::StringRef(name.data(), nul);
-      if (llvm::Intrinsic::lookupIntrinsicID(base) == llvm::Intrinsic::not_intrinsic) { base = llvm::StringRef(); }
-    }
+auto spp::codegen::ApplyStackClashProtection(
+  void *llvm_module)
+  -> unsigned long {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  auto &ctx = llvm_mod.getContext();
 
-    for (auto len = name.size(); base.empty() and len > kIntrinsicPrefix.size(); --len) {
-      const auto candidate = name.substr(0, len);
-      if (llvm::Intrinsic::lookupIntrinsicID(candidate) == llvm::Intrinsic::not_intrinsic) { continue; }
-      base = candidate;
-      break;
-    }
-    if (base.empty()) { continue; }
+  // The module flag as well as the attribute, because a function
+  // a later pass clones or outlines reads the flag; without it a
+  // frame created after this point would inherit nothing.
+  llvm_mod.addModuleFlag(
+    llvm::Module::Override, kProbeStackAttr, llvm::MDString::get(ctx, kProbeStackInlineAsm));
 
-    // Hints are dropped because of corruption. Todo: Can we now
-    // re-enable them now we have the byte-stripping in place for
-    // corrupt names?
-    if (base.starts_with(kHintIntrinsicPrefix)) {
-      if (DropCallsTo(fn)) { repaired += 1; }
-      continue;
-    }
-
-    rebuilt.assign(base.data(), base.size());
-    const auto id = llvm::Intrinsic::lookupIntrinsicID(base);
-
-    if (llvm::Intrinsic::isOverloaded(id)) {
-      auto tys = llvm::SmallVector<llvm::Type*>();
-      if (not llvm::Intrinsic::isSignatureValid(id, fn->getFunctionType(), tys)) { continue; }
-
-      const auto mangled = llvm::Intrinsic::getName(id, tys, &llvm_mod, fn->getFunctionType());
-      const auto *const raw = mangled.c_str();
-      if (std::strlen(raw) >= kNameFieldWidth) { continue; }
-
-      const auto *const suffix = raw + kNameFieldWidth;
-      const auto suffix_len = std::strlen(suffix);
-      if (suffix_len == 0) { continue; }
-
-      // A name that already ends in the suffix is a name that
-      // was already right - either it was never damaged, or an
-      // earlier round repaired it.
-      const auto tail = base.size() >= suffix_len
-        ? llvm::StringRef(base.data() + base.size() - suffix_len, suffix_len)
-        : llvm::StringRef();
-      if (tail == llvm::StringRef(suffix, suffix_len)) { continue; }
-      rebuilt.append(suffix, suffix_len);
-    }
-
-    real_name = llvm::StringRef(rebuilt.c_str(), std::strlen(rebuilt.c_str()));
-
-    // A declaration under the real name may already be here, from a call
-    // site whose name survived. Reusing it is the point - two declarations
-    // of one intrinsic would leave the second renamed and unrecognised
-    // again. Only ever reused when the types agree; a mismatch is not the
-    // shape being worked around, so it is left to fail visibly.
-    auto *fixed = llvm_mod.getFunction(real_name);
-    if (fixed == fn) { continue; }
-    if (fixed != nullptr and fixed->getFunctionType() != fn->getFunctionType()) { continue; }
-    if (fixed == nullptr) {
-      fixed = llvm::Function::Create(
-        fn->getFunctionType(), llvm::GlobalValue::ExternalLinkage, real_name, &llvm_mod);
-      fixed->copyAttributesFrom(fn);
-    }
-
-    // Nothing is gained by a rename that llvm reads back as broken as what
-    // it replaced, and the old declaration is worth keeping in that case so
-    // the failure is still visible downstream.
-    if (fixed->getIntrinsicID() == llvm::Intrinsic::not_intrinsic) {
-      if (fixed != fn and fixed->use_empty()) { fixed->eraseFromParent(); }
-      continue;
-    }
-
-    fn->replaceAllUsesWith(fixed);
-    fn->eraseFromParent();
-    repaired += 1;
+  auto stamped = 0UL;
+  for (auto &fn : llvm_mod) {
+    // The same two exemptions as the canary: a declaration has no
+    // prologue on this side, and a naked function's prologue is
+    // whatever it says it is.
+    if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
+    if (fn.hasFnAttribute(kProbeStackAttr)) { continue; }
+    fn.addFnAttr(kProbeStackAttr, kProbeStackInlineAsm);
+    stamped += 1;
   }
-  return repaired;
+  return stamped;
+}
+
+
+auto spp::codegen::ApplySafeStack(
+  void *llvm_module)
+  -> unsigned long {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  auto stamped = 0UL;
+  for (auto &fn : llvm_mod) {
+    // The same two exemptions as the canary and the probe: a
+    // declaration has no frame on this side to split, and a naked
+    // function's prologue is whatever it says it is - and a split
+    // frame is nothing but prologue.
+    if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
+    if (fn.hasFnAttribute(llvm::Attribute::SafeStack)) { continue; }
+    if (fn.hasFnAttribute(kNoSplitStack)) { continue; }
+    fn.addFnAttr(llvm::Attribute::SafeStack);
+    stamped += 1;
+  }
+  return stamped;
+}
+
+
+auto spp::codegen::AssertIntrinsicNamingIsSound()
+  -> void {
+  // Once per process, and not a walk of anything: this asks
+  // llvm to mangle one intrinsic name and checks the answer,
+  // because the failure being guarded against is not in any
+  // particular module - it is that "Intrinsic::getName" itself
+  // comes back wrong, which makes every overloaded intrinsic
+  // in every module unnameable at once.
+  [[maybe_unused]] static const auto checked = [] {
+    auto ctx = llvm::LLVMContext();
+    auto scratch = llvm::Module("spp.intrinsic.naming.check", ctx);
+    auto *const i32 = llvm::Type::getInt32Ty(ctx);
+    auto *const i1 = llvm::Type::getInt1Ty(ctx);
+    auto *const fn_ty = llvm::FunctionType::get(llvm::StructType::get(ctx, {i32, i1}), {i32, i32}, false);
+
+    const auto expected = llvm::StringRef("llvm.sadd.with.overflow.i32");
+    const auto actual = llvm::Intrinsic::getName(llvm::Intrinsic::sadd_with_overflow, {i32}, &scratch, fn_ty);
+    if (actual == expected) { return true; }
+
+    llvm::errs()
+      << "spp: llvm is mangling intrinsic names wrongly - got '" << actual << "', expected '" << expected << "'.\n"
+      << "     Every overloaded intrinsic will now fail module verification. This is the libstdc++ '_M_create'\n"
+      << "     incompatibility, which '-fvisibility-inlines-hidden' keeps this compiler clear of; see\n"
+      << "     'docs/libstdcxx-m-create-abi-regression.md'.\n";
+    return false;
+  }();
+
+  SPP_ASSERT(checked);
 }
 
 auto spp::codegen::EmitObjectFile(

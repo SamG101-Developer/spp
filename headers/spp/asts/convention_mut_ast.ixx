@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.convention_mut_ast;
+import spp.asts.ast_kind;
 import spp.asts.convention_ast;
 import spp.utils.types;
 import std;
@@ -16,6 +17,9 @@ namespace spp::asts {
  * be mutably defined.
  */
 SPP_EXP_CLS struct spp::asts::ConventionMutAst final : ConventionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(ConventionMutAst);
+
   /**
    * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
    * being made.
@@ -38,6 +42,6 @@ SPP_EXP_CLS struct spp::asts::ConventionMutAst final : ConventionAst {
     decltype(TokMut) &&tok_mut);
 
   ~ConventionMutAst() override;
-
-  SPP_AST_KEY_FUNCTIONS;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ConventionMutAst)

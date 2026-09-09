@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.sup_prototype_extension_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.codegen.llvm_ctx;
@@ -35,6 +36,9 @@ namespace spp::asts {
  * @endcode
  */
 SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMemberAst, SupMemberAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(SupPrototypeExtensionAst);
+
   /**
    * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
    * being extended with additional methods.
@@ -95,8 +99,6 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
 
   ~SupPrototypeExtensionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
@@ -133,3 +135,5 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
     analyse::scopes::Scope &check_scope) const
     -> void;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::SupPrototypeExtensionAst)

@@ -190,6 +190,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   using analyse::errors::SppMemoryOverlapUsageError;
   using analyse::errors::SppInvalidMutationError;
   using analyse::utils::mem_utils::ValidateSymbolMemory;
+  using analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow;
   using analyse::utils::mem_utils::MemRegionOverlap;
 
   // If the target is a coroutine, or the target is called as "async", then pins are required.
@@ -232,7 +233,20 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     meta->AssignmentTarget = saved_assignment_target;
 
     auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*arg->Val);
-    if (sym == nullptr) { continue; }
+
+    // A borrow the argument list has to keep apart, but that is named neither by a spelled convention nor by an
+    // outermost symbol, and so is invisible to all three branches below. "v[mut i]" is the shape; see the note on
+    // "ValidateUnnamedArgumentBorrow" for why it arrives that way and why nothing else catches it.
+    ValidateUnnamedArgumentBorrow(*arg, sym, borrows_ref, borrows_mut, *sm, meta);
+
+    // An argument with no outermost symbol is a temporary, so
+    // the borrow bookkeeping below has nothing to key on. But
+    // in the special case that the unnamed argument is a tuple
+    // or array, we need to check the elements inside it.
+    if (sym == nullptr) {
+      if (arg->Conv == nullptr) { ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta); }
+      continue;
+    }
 
     // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
     // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check

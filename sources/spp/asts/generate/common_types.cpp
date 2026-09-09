@@ -230,6 +230,14 @@ auto spp::asts::generate::common_types::DropType(std::size_t pos) -> Shared<Type
   FINISH_TYPE();
 }
 
+auto spp::asts::generate::common_types::ThreadSafeType(std::size_t pos) -> Shared<TypeAst> {
+  MAKE_TYPE("ThreadSafe");
+  ADD_NAMESPACE("safe");
+  ADD_NAMESPACE("threading");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
+}
+
 auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAst> elem_type,
   Unique<ExpressionAst> &&size) -> Shared<TypeAst> {
   MAKE_GENERICS()

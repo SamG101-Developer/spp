@@ -76,3 +76,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = [(1, 2), (3, 4)]
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ArrayLiteralExplicitElementsAst,
+  test_valid_array_literal_argument_consumes_its_elements, R"(
+    fun f(p: Str, q: Str) -> Void {
+        drop([p, q])
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ArrayLiteralExplicitElementsAst,
+  test_invalid_use_of_an_element_moved_into_an_array_literal_argument,
+  SppUninitializedMemoryUseError, R"(
+    fun f(p: Str, q: Str) -> Void {
+        drop([p, q])
+        drop(p)
+    }
+)");

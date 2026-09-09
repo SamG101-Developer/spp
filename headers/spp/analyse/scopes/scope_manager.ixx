@@ -223,7 +223,7 @@ private:
    */
   auto AttachSpecificSuperScopesImpl(
     Scope &scope,
-    Vec<Scope*> &&sup_scopes,
+    Vec<Scope*> const &sup_scopes,
     asts::meta::CompilerMetaData *meta,
     Vec<DeferredSupConstraint> *deferred) const
     -> void;

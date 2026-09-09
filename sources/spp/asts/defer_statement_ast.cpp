@@ -131,7 +131,7 @@ auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
   //  accounted for, and the value will still read as owed.
   Consumed.Clear();
   for (auto const &[sym, snapshot] : saved) {
-    const auto was_moved = snapshot.AstMoved != nullptr;
+    const auto was_moved = spp::get<0>(snapshot.AstMoved) != nullptr;
     const auto now_moved = spp::get<0>(sym->MemInfo->AstMoved) != nullptr;
     if (not was_moved and now_moved) { Consumed.EmplaceBack(sym->Name); }
     sym->MemInfo->FillFromSnapshot(snapshot);

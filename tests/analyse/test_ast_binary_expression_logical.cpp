@@ -152,3 +152,33 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let c = a and true
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  BinaryExpressionLogicalAst,
+  test_invalid_uninitialized_symbol_on_the_left_of_and,
+  SppUninitializedMemoryUseError, R"(
+    fun f() -> Void {
+        let elem: Bool
+        let a = elem and true
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  BinaryExpressionLogicalAst,
+  test_invalid_uninitialized_symbol_on_the_right_of_and,
+  SppUninitializedMemoryUseError, R"(
+    fun f() -> Void {
+        let elem: Bool
+        let a = true and elem
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  BinaryExpressionLogicalAst,
+  test_invalid_uninitialized_symbol_on_the_right_of_or,
+  SppUninitializedMemoryUseError, R"(
+    fun f() -> Void {
+        let elem: Bool
+        let a = false or elem
+    }
+)");

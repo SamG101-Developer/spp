@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_statement_ast;
+import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_member_ast;
@@ -35,6 +36,7 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
   StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
   SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(TypeStatementAst);
 
   /**
    * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
@@ -95,8 +97,6 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
 
   ~TypeStatementAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
@@ -126,10 +126,8 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
     -> bool;
 
 private:
-  bool _Generated = false;
-
-  bool _FromUseStatement = false;
-
+  bool _Generated;
+  bool _FromUseStatement;
   Shared<analyse::scopes::TypeSymbol> _AliasSym;
 };
 

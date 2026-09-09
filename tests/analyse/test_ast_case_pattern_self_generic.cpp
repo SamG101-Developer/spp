@@ -12,7 +12,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             ret std::option::Some(val=self)
         }
 
-        fun present(self) -> Bool {
+        !public fun present(self) -> Bool {
             case self.maybe() is std::option::Some[Self](val) { ret true }
             ret false
         }
@@ -36,7 +36,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             ret std::option::Some(val=self)
         }
 
-        fun present(self) -> Bool {
+        !public fun present(self) -> Bool {
             case self.maybe() is std::option::Some[Self](val) { ret true }
             ret false
         }
@@ -77,7 +77,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             ret std::option::Some(val=self)
         }
 
-        fun present(self) -> Bool {
+        !public fun present(self) -> Bool {
             ret case self.maybe() of {
                 is std::option::Some[Self](val) { true }
                 else { false }

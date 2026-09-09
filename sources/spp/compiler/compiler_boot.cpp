@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
+#include <spp/compiler/macros.hpp>
 #include <spp/parse/macros.hpp>
 
 module spp.compiler.compiler_boot;
@@ -34,6 +35,7 @@ import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
+import spp.utils.features;
 import spp.utils.files;
 import genex;
 import llvm;
@@ -55,9 +57,10 @@ auto spp::compiler::CompilerBoot::Lex(
   -> void {
   // Lexing stage.
   for (auto const &mod : tree) {
-    mod->tokens = lex::Lexer(mod->code, not utils::files::NativeString(mod->path).contains("/src/std/")).Lex();
-    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(mod->tokens,
-                                                                     utils::files::DisplayString(mod->path));
+    auto lexer = lex::Lexer(mod->code, not utils::files::NativeString(mod->path).contains("/src/std/"));
+    mod->tokens = lexer.Lex();
+    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
+      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
     bar.Next();
   }
   bar.Finish();
@@ -80,9 +83,10 @@ auto spp::compiler::CompilerBoot::Parse(
   for (auto const &mod : tree) {
     if (not mod->is_test_harness) { continue; }
     mod->code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
-    mod->tokens = lex::Lexer(mod->code, true).Lex();
+    auto lexer = lex::Lexer(mod->code, true);
+    mod->tokens = lexer.Lex();
     mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
-      mod->tokens, utils::files::DisplayString(mod->path));
+      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
     mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
     _Modules.EmplaceBack(mod->module_ast.get());
     bar.Next();
@@ -163,12 +167,20 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
     bar.Next();
   }
   bar.Finish();
+}
 
-  // Attach all super scopes now.
-  // Todo: New progress bar here
+auto spp::compiler::CompilerBoot::Stage5_5_AttachSupScopes(
+  utils::ProgressBar &bar,
+  analyse::scopes::ScopeManager *sm)
+  -> void {
+  // Attach all super scopes now. One pass over the whole
+  // scope tree rather than a walk over the modules, so there
+  // is no per-module progress to report, only the whole
+  // thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
   sm->AttachAllSuperScopes(&meta);
+  bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
@@ -384,7 +396,9 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // free to be internalized into it along with everything else.
   auto has_entry_point = false;
   if (const auto entry = _EntryPointLlvmName(); not entry.empty()) {
-    has_entry_point = codegen::EmitCEntryPoint(lto_module.get(), entry.c_str());
+    has_entry_point = codegen::EmitCEntryPoint(
+      lto_module.get(), entry.c_str(),
+      utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit));
   }
 
   if (has_entry_point) {
@@ -397,13 +411,11 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // date as they move code around. Naming a stale lifetime marker back into
   // existence afterwards is worse than never having had it - the backend
   // colours stack slots by them, and reuses a slot that is still live.
-  codegen::RepairMisnamedIntrinsics(lto_module.get());
   codegen::RunOptimizationPipeline(lto_module.get(), opt_level);
 
   // And again, for the ones the pipeline introduced itself. These are
   // placed by the pass that built them, so they are correct where they
   // are; only their names are not.
-  codegen::RepairMisnamedIntrinsics(lto_module.get());
 
   auto ec = std::error_code();
   auto ir_out = llvm::raw_fd_ostream(
@@ -417,6 +429,9 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // executable out of, and the ir is the whole of what it produces.
   if (not has_entry_point) { return; }
   const auto object_file = out.ObjectFile();
+  FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
+  FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
+  FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
 
   // A cross build stops at the object, no linking available for
@@ -450,19 +465,28 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
     const auto staged = lib_dir / lib.filename();
     std::filesystem::copy_file(lib, staged, std::filesystem::copy_options::overwrite_existing);
     command += " " + utils::files::NativeString(staged);
-
-    // What the loader asks for at run time is the library's so
-    // name, not the name of the file it was linked from, and
-    // a runtime shipped as "sppc.so" calls itself "libsppc.so".
-    const auto name = utils::files::NativeString(staged.filename());
-    if (not name.starts_with("lib")) {
-      std::filesystem::copy_file(
-        staged, lib_dir / ("lib" + name), std::filesystem::copy_options::overwrite_existing);
-    }
   }
 
   command += " -lm";
   command += " -Wl,-rpath,'$ORIGIN/lib'";
+
+  // Binary hardening, done by attaching flags to the linker.
+  FEATURE_GATE(BinaryLinkHarden) {
+    command += " -pie";                     // No fixed load address to write an exploit against.
+    command += " -Wl,-z,relro,-z,now";      // Read-only after startup, and nothing left to bind later.
+    command += " -Wl,-z,noexecstack";       // The stack is data; say so in the header rather than by accident.
+    command += " -Wl,-z,separate-code";     // Code in its own mapping, so no data shares a page with it.
+    command += " -Wl,-z,defs";              // A symbol nothing defines is a link error, not a run-time surprise.
+  }
+
+  // "-z nodlopen" is not here on purpose: it sets a flag on a shared
+  // object saying it may not be opened by name, and a linker asked
+  // for it while building an executable drops it rather than
+  // recording anything. It belongs on the library link, once there
+  // is one, and a flag that produces no bit in the artefact is worse
+  // than an absent one - the whole point of writing the mitigations
+  // down is that a built binary can be audited for what it actually
+  // got.
 
   std::cout << "Linking: " << exe_file << std::endl;
   if (const auto status = std::system(command.c_str()); status != 0) {
@@ -475,17 +499,23 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 auto spp::compiler::CompilerBoot::_FfiLibraries(
   std::filesystem::path const &project_root)
   -> Vec<std::filesystem::path> {
-  // "<package>/ffi/<name>/lib/<name>.so" is what a package ships
-  // its native code as, both for the project itself and for
-  // anything it has vendored, so the whole tree is swept for
-  // that shape rather than any one place being named.
+  // "<package>/ffi/<name>/lib<name>.so" is what a package ships
+  // its native code as, beside the stub that declares it, both
+  // for the project itself and for anything it has vendored, so
+  // the whole tree is swept for that shape rather than any one
+  // place being named.
   auto libraries = Vec<std::filesystem::path>();
   if (not std::filesystem::exists(project_root)) { return libraries; }
 
+  // What counts as a library is the host's own extension, not
+  // ".so" everywhere: a package may ship one library per platform
+  // beside its stub, and the ones for other hosts are not this
+  // link's to make sense of.
+  const auto extension = "." + utils::files::SharedLibraryExtension();
   for (auto const &entry : std::filesystem::recursive_directory_iterator(project_root)) {
-    if (not entry.is_regular_file() or entry.path().extension() != ".so") { continue; }
-    const auto lib_dir = entry.path().parent_path();
-    if (lib_dir.filename() != "lib" or lib_dir.parent_path().parent_path().filename() != "ffi") { continue; }
+    if (not entry.is_regular_file()) { continue; }
+    if (utils::files::NativeString(entry.path().extension()) != extension) { continue; }
+    if (entry.path().parent_path().parent_path().filename() != "ffi") { continue; }
 
     // One name, one library: a package and something it vendored
     // can both ship the same runtime, and linking two copies of

@@ -1,9 +1,9 @@
 name: Post-merge
 
-# The "post-merge" workflow consists of two jobs: publish the site, and rebuild master so its build-tree caches are
-# fresh. The second part is important as GitHub only lets a PR branch read caches from its own branch and from the base
-# branch, so a warm master is what lets a brand-new PR compile incrementally. As this is post-merge, it doesn't slow
-# down the merge process or act as a blocker.
+# The "post-merge" workflow publishes the site, rebuilds master so its build-tree caches are fresh, and cuts the
+# release for the version the merged PR bumped to. The cache part is important as GitHub only lets a PR branch read
+# caches from its own branch and from the base branch, so a warm master is what lets a brand-new PR compile
+# incrementally. As this is post-merge, it doesn't slow down the merge process or act as a blocker.
 
 on:
   push:
@@ -25,6 +25,8 @@ jobs:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      compile: ${{ steps.filter.outputs.compile }}
+      sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       # Secure the runner from external packages or actions.
       - name: Harden Runner
@@ -91,7 +93,7 @@ jobs:
   build-test:
     name: Build & Test
     needs: [ changes ]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.compile == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_compile.yaml
@@ -105,12 +107,134 @@ jobs:
           {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"},
         ]
 
+  # What the release is for this commit, decided from the tag rather than from the diff: a re-run of the same push
+  # and a merge that bumped nothing both land on a tag that already exists, and neither should build a second set of
+  # binaries for a version that is already published.
+  release-gate:
+    name: Release Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      version: ${{ steps.gate.outputs.version }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve release version
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash .github/scripts/release/resolve-version.sh
+
+  # Publish the released by building on master against the matrix, and using the version information.
+  release-build:
+    name: Release Build
+    needs: [ release-gate ]
+    if: needs.release-gate.outputs.release == 'true'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, compiler: gcc, version: "16", label: linux-x64 }
+          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", label: linux-arm64 }
+          - { os: macos-15, compiler: clang, version: "23", label: macos-arm64 }
+          - { os: windows-2025, compiler: msvc, version: "", label: windows-x64 }
+    uses: ./.github/workflows/_compile.yaml
+    with:
+      os: ${{ matrix.os }}
+      compiler: ${{ matrix.compiler }}
+      version: ${{ matrix.version }}
+      fail-fast: false
+      run-tests: false
+      binary-artifact: spp-${{ needs.release-gate.outputs.version }}-${{ matrix.label }}
+      variants: '[{"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"}]'
+
+  # The tag is created here, by the release itself, so a matrix that goes red leaves nothing behind, and the next
+  # push retries the same version cleanly. Needs every platform green: a release missing an architecture is worse
+  # than a release that arrives one push later.
+  publish-release:
+    name: Publish Release
+    needs: [ release-gate, release-build ]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write  # create the tag, the release and its assets
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            uploads.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            productionresultssa0.blob.core.windows.net:443
+            productionresultssa1.blob.core.windows.net:443
+            productionresultssa2.blob.core.windows.net:443
+            productionresultssa3.blob.core.windows.net:443
+            productionresultssa4.blob.core.windows.net:443
+            productionresultssa5.blob.core.windows.net:443
+            productionresultssa6.blob.core.windows.net:443
+            productionresultssa7.blob.core.windows.net:443
+            productionresultssa8.blob.core.windows.net:443
+            productionresultssa9.blob.core.windows.net:443
+
+      # The changelog entry for this version is the release body.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download platform binaries
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
+        with:
+          pattern: spp-${{ needs.release-gate.outputs.version }}-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.release-gate.outputs.version }}
+        run: bash .github/scripts/release/publish.sh
+
   # Ordered after `build-test` so it restores that run's exact-sha tree and only has to re-run the configure step,
   # rather than racing it and falling back to the previous commit's.
   sonar:
     name: Sonar
     needs: [ changes, build-test ]
-    if: needs.changes.outputs.code == 'true'
+    if: |
+      !cancelled()
+      && needs.changes.outputs.sonar == 'true'
+      && !contains(fromJSON('["failure", "cancelled"]'), needs['build-test'].result)
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml

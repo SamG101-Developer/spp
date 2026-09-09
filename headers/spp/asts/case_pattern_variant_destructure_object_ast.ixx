@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -20,6 +21,8 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureObjectAst);
+
   /**
    * The type of the object being destructured. This is used to determine the type of the destructured elements (by
    * attribute type inference)
@@ -65,7 +68,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
     Shared<TypeAst> const &type)
     -> Unique<CasePatternVariantDestructureObjectAst>;
 
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

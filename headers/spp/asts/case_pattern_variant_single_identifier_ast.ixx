@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_single_identifier_ast;
+import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -18,6 +19,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVariantAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(CasePatternVariantSingleIdentifierAst);
+
   /**
    * The optional convention attached to the single identifier pattern. This indicates how the variable being
    * introduced by the pattern should be treated, such as by reference or by mutable reference. Mutually exclusive
@@ -58,7 +62,7 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
 
   ~CasePatternVariantSingleIdentifierAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
+  SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -68,3 +72,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantSingleIdentifierAst)

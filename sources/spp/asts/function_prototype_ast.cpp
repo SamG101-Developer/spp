@@ -13,6 +13,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.builtins;
 import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.instantiation_queue;
 import spp.analyse.utils.linear_utils;
@@ -91,6 +92,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   TokArrow(std::move(tok_arrow)),
   ReturnType(std::move(return_type)),
   Impl(std::move(impl)),
+  _NonGenericImpl(nullptr),
   _LlvmFunc(nullptr),
   _OwnerCtx(nullptr),
   _AnnotationInfo(nullptr) {
@@ -395,8 +397,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
 
-  // Analyse the parameter and return types before sup
-  // scopes are attached.
+  // Analyse the signature before sup scopes are attached.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
@@ -420,7 +421,6 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     }
   }
 
-  // Carry the convention for error purposes.
   FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
   ReturnType->Stage7_AnalyseSemantics(sm, meta);
   ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType.get())->FqName()->WithConvention(
@@ -538,6 +538,7 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
+  using analyse::errors::SppEmptyBodyRequiredError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_compare::TypeEq;
 
@@ -565,6 +566,20 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
       bad("does not return 'Void'");
     }
   }
+
+  // An ffi function body is in C, so there is no body
+  // expressible in S++.
+  RaiseIf<SppEmptyBodyRequiredError>(
+    FfiAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    {sm->CurrentScope}, ERR_ARGS(
+      *FfiAnnotation, *Impl->Members.Front(), "an '!ffi' function", "the linker resolves the implementation from C"));
+
+  // An abstract function body is never ran (unreachable)
+  // so must be empty.
+  RaiseIf<SppEmptyBodyRequiredError>(
+    AbstractAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    {sm->CurrentScope}, ERR_ARGS(
+      *AbstractAnnotation, *Impl->Members.Front(), "an '!abstract_method' method", "abstract methods aren't callable"));
 
   // Repeated convention check for generic substitutions.
   RaiseIf<SppSecondClassBorrowViolationError>(

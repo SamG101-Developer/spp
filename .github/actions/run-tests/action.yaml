@@ -10,6 +10,14 @@ inputs:
     description: "Parallel workers; empty lets gtest-parallel pick (one per core)."
     required: false
     default: ""
+  shard-count:
+    description: "Total shards the sweep is split across, one job per shard."
+    required: false
+    default: ""
+  shard-index:
+    description: "Zero-indexed shard this job runs. Ignored unless shard-count is above 1."
+    required: false
+    default: "0"
 
 runs:
   using: composite
@@ -35,4 +43,6 @@ runs:
       env:
         OUTPUT_DIR: ${{ inputs.output-dir }}
         WORKERS: ${{ inputs.workers }}
+        SHARD_COUNT: ${{ inputs.shard-count }}
+        SHARD_INDEX: ${{ inputs.shard-index }}
       run: bash .github/scripts/run-tests/run-tests.sh

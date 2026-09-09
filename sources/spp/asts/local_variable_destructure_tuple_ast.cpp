@@ -34,7 +34,8 @@ spp::asts::LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
   decltype(TokR) &&tok_r) :
   TokL(std::move(tok_l)),
   Elems(std::move(elems)),
-  TokR(std::move(tok_r)) {
+  TokR(std::move(tok_r)),
+  _TmpName(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
@@ -72,6 +73,13 @@ auto spp::asts::LocalVariableDestructureTupleAst::ToString() const
   SPP_STRING_EXTEND(Elems, ", ");
   SPP_STRING_APPEND(TokR);
   SPP_STRING_END;
+}
+
+auto spp::asts::LocalVariableDestructureTupleAst::BindsByMove() const
+  -> bool {
+  // A destructure binds if any of its elements does. An empty one, or one made only of skips, is a shape test and
+  // takes nothing.
+  return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
@@ -206,13 +214,22 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage8_CheckMemory(
     DestructureTempStage8(*this, *_TmpName, *sm, meta);
   }
 
-  // Check the memory state of the elements.
+  // Check the memory state of the elements. Each expanded binding reads one field off the value, so each records a
+  // partial move of it, and the destructure marks the whole value moved once they are done.
   for (auto &&ast : _NewAsts) { ast->Stage8_CheckMemory(sm, meta); }
 
   // Taking every element off a value takes the value, so the
   // symbol holding it is left moved rather than partly moved.
-  if (_TmpName == nullptr) {
-    analyse::utils::destructure_utils::ConsumeDestructureSource(*this, _FromCasePattern, *sm, meta);
+  if (_TmpName != nullptr) {
+    analyse::utils::destructure_utils::ConsumeDestructureTemp(*_TmpName, *sm);
+  }
+  else {
+    // A pattern that takes something apart has to account for every owned part of what it took; one that only tests
+    // the shape, or that binds the rest into a name of its own, has nothing left over to answer for.
+    const auto accounts_for_parts = BindsByMove()
+      and not genex::any_of(Elems, [](auto const &elem) { return elem->TakesRest(); });
+    analyse::utils::destructure_utils::ConsumeDestructureSource(
+      *this, _FromCasePattern, accounts_for_parts, *sm, meta);
   }
 }
 

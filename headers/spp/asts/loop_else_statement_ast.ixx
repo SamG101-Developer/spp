@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.loop_else_statement_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.mixins.type_inferrable_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -18,6 +19,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : Ast, mixins::TypeInferrableAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(LoopElseStatementAst);
+
   /**
    * The @c else keyword that indicates this is an else statement for the loop.
    */
@@ -40,8 +44,6 @@ SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : Ast, mixins::TypeInfe
 
   ~LoopElseStatementAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -50,3 +52,5 @@ SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : Ast, mixins::TypeInfe
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopElseStatementAst)

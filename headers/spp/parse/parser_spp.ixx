@@ -288,6 +288,7 @@ public:
     -> Unique<asts::CasePatternVariantAst>;
   auto parse_case_expression_pattern_variant_destructure_attribute_binding() -> Unique<asts::CasePatternVariantAst>;
   auto parse_case_expression_pattern_variant_single_identifier() -> Unique<asts::CasePatternVariantAst>;
+  auto parse_case_expression_pattern_variant_single_identifier_aliasable() -> Unique<asts::CasePatternVariantAst>;
   auto parse_case_expression_pattern_variant_single_identifier_with_convention() -> Unique<asts::CasePatternVariantAst>;
   auto parse_case_expression_pattern_variant_single_identifier_without_convention()
     -> Unique<asts::CasePatternVariantAst>;
@@ -353,6 +354,7 @@ public:
   auto parse_local_variable_destructure_attribute_binding()
     -> Unique<asts::LocalVariableDestructureAttributeBindingAst>;
   auto parse_local_variable_single_identifier() -> Unique<asts::LocalVariableSingleIdentifierAst>;
+  auto parse_local_variable_single_identifier_aliasable() -> Unique<asts::LocalVariableSingleIdentifierAst>;
   auto parse_local_variable_single_identifier_alias() -> Unique<asts::LocalVariableSingleIdentifierAliasAst>;
   auto parse_local_variable_nested_for_destructure_array() -> Unique<asts::LocalVariableAst>;
   auto parse_local_variable_nested_for_destructure_object() -> Unique<asts::LocalVariableAst>;

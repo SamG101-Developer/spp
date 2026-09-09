@@ -12,7 +12,8 @@ import spp.lex.tokens;
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
   decltype(TokElse) &&tok_else) :
-  TokElse(std::move(tok_else)) {
+  TokElse(std::move(tok_else)),
+  _ForIterLoopExit(false) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokElse, lex::SppTokenType::KW_ELSE, "else");
 }
 

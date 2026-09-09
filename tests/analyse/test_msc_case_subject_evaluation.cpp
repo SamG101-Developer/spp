@@ -3,7 +3,12 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCaseSubjectEvaluation,
   test_valid_object_destructure, R"(
-    cls Point { !public x: S32, !public y: S32 }
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+
+    sup Point ext Copy { }
 
     fun f() -> Void {
         let p = Point(x=1, y=2)
@@ -42,7 +47,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCaseSubjectEvaluation,
   test_valid_subject_is_a_call_rather_than_a_name, R"(
-    cls Point { !public x: S32, !public y: S32 }
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
 
     fun make() -> Point {
         ret Point(x=1, y=2)
@@ -56,8 +64,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCaseSubjectEvaluation,
   test_valid_subject_reached_through_a_field, R"(
-    cls Inner { !public a: S32, !public b: S32 }
+    cls Inner {
+        !public a: S32
+        !public b: S32
+    }
     cls Outer { !public inner: Inner }
+
+    sup Inner ext Copy { }
+    sup Outer ext Copy { }
 
     fun f() -> Void {
         let o = Outer(inner=Inner(a=1, b=2))
@@ -68,7 +82,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCaseSubjectEvaluation,
   test_valid_skip_the_remaining_attributes, R"(
-    cls Point { !public x: S32, !public y: S32 }
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+
+    sup Point ext Copy { }
 
     fun f() -> Void {
         let p = Point(x=1, y=2)
@@ -79,7 +98,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCaseSubjectEvaluation,
   test_valid_borrowed_subject, R"(
-    cls Point { !public x: S32, !public y: S32 }
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
 
     fun g(p: &Point) -> Void {
         case p is Point(&x, ..) { }
@@ -93,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let o: std::option::Opt[S32] = std::option::Some(val=1)
         case o of {
             is std::option::Some[S32](val) { }
-            is std::option::None { }
+            is std::option::None() { }
             else { }
         }
     }

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_ast;
+import spp.asts.ast_kind;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -10,12 +11,16 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct GenericArgumentAst;
+  SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionAst);
+
   /**
    * The left-hand side expression of the postfix expression. This is the base expression on which the postfix operation
    * is applied.
@@ -42,8 +47,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
   ~PostfixExpressionAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -55,9 +58,11 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const
-    -> Vec<Ast*> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionAst)

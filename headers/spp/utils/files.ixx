@@ -51,6 +51,19 @@ namespace spp::utils::files {
   SPP_EXP_FUN auto GlobSpp(std::filesystem::path const &path) -> Vec<std::filesystem::path>;
 
   /**
+   * The extension a shared library carries on this host, without the leading dot: "so", "dylib" or "dll".
+   */
+  SPP_EXP_FUN auto SharedLibraryExtension() -> Str;
+
+  /**
+   * The one file name a package's shared library may have on this host, which is the name the loader will ask for
+   * once something links against it. On an ELF or Mach-O host that is the soname, and a soname carries the "lib"
+   * prefix; on Windows there is no soname and a dll is imported under the file name it was built as.
+   * @param[in] package The package's folder name under "ffi", which is also the library's own name.
+   */
+  SPP_EXP_FUN auto SharedLibraryName(StrView package) -> Str;
+
+  /**
    * An advisory lock over a whole file: flock(2) on POSIX, and the equivalent
    * whole-range LockFileEx on Windows. Both platforms hold the lock on the open
    * file rather than on the process, so it is released when the file closes.

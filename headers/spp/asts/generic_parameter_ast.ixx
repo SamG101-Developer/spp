@@ -108,6 +108,8 @@ namespace spp::asts::detail {
  * and GenericParameterTypeAst, which represent the two types of generic parameters in the language.
  */
 SPP_EXP_CLS struct spp::asts::GenericParameterAst : Ast, mixins::OrderableAst {
+  SPP_GCC_VTABLE_FIX
+
   /**
    * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
    * generic type.
@@ -120,3 +122,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst : Ast, mixins::OrderableAst {
 
   ~GenericParameterAst() override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterAst)

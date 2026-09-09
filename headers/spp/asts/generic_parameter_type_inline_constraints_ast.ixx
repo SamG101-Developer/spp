@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
@@ -13,6 +14,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : Ast {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(GenericParameterTypeInlineConstraintsAst);
+
   /**
    * The @code :@endcode token that introduces the inline constraints.
    */
@@ -37,7 +41,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : A
 
   ~GenericParameterTypeInlineConstraintsAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeInlineConstraintsAst)

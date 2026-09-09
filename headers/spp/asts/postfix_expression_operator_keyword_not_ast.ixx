@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_keyword_not_ast;
+import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -15,6 +16,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorKeywordNotAst);
+
   /**
    * The @c . token that indicates a member access operation.
    */
@@ -36,8 +40,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : Pos
 
   ~PostfixExpressionOperatorKeywordNotAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -46,3 +48,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : Pos
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorKeywordNotAst)

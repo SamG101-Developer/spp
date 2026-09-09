@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.type_ast;
@@ -69,16 +70,16 @@ auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
   // Handle the "Self" type.
   if (Val->IsSelfType() and
     sm->CurrentScope->AstNode != nullptr and
-    sm->CurrentScope->AstNode->To<InnerScopeExpressionAst>() == nullptr) { return; }
+    AstAs<InnerScopeExpressionAst>(sm->CurrentScope->AstNode) == nullptr) { return; }
   if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 
   // Analyse the name and value of the generic type argument.
-  const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val.get());
-  const auto tmp2 = tmp1->FqName();
-  auto tmp3 = AstClone(Val->GetConvention());
-  const auto tmp4 = tmp2->WithConvention(std::move(tmp3));
-  Val = tmp4;
+  const auto val_sym = sm->CurrentScope->GetTypeSymbol(Val.get());
+  const auto val_name = val_sym->FqName();
+  if (*Val->WithoutConvention() != *val_name) {
+    Val = val_name->WithConvention(AstClone(Val->GetConvention()));
+  }
 }
 
 SPP_MOD_END

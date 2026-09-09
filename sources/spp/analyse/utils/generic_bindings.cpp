@@ -207,6 +207,7 @@ namespace spp::analyse::utils::generic_bindings {
       Shared<asts::TypeAst> const &source_type,
       Shared<asts::TypeAst> const &target_type,
       Shared<asts::IdentifierAst> const &target_name,
+      Vec<Shared<asts::TypeIdentifierAst>> const &type_a_names,
       Vec<Shared<asts::TypeIdentifierAst>> const &type_p_names,
       Vec<Shared<asts::TypeIdentifierAst>> const &variadic_type_p_names,
       Vec<Shared<asts::TypeIdentifierAst>> const &comp_p_names,
@@ -228,6 +229,8 @@ namespace spp::analyse::utils::generic_bindings {
         and *target_name == *variadic_fn_param_name;
 
       for (auto const &[inferred_name, inferred_val] : temp_gs) {
+        if (genex::contains(type_a_names, *inferred_name, genex::meta::deref)) { continue; }
+
         auto *typed = inferred_val->To<asts::TypeAst>();
         const auto declared_type = genex::contains(type_p_names, *inferred_name, genex::meta::deref);
         const auto declared_comp = genex::contains(comp_p_names, *inferred_name, genex::meta::deref);
@@ -688,8 +691,8 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
   for (auto const &[target_name, target_type] : *infer_target) {
     if (not infer_source->contains(target_name)) { continue; }
     CollectDirectInferences(
-      infer_source->at(target_name), target_type, target_name, type_p_names, variadic_type_p_names, comp_p_names,
-      variadic_fn_param_name, owner_scope, sm, bindings);
+      infer_source->at(target_name), target_type, target_name, type_a_names, type_p_names, variadic_type_p_names,
+      comp_p_names, variadic_fn_param_name, owner_scope, sm, bindings);
   }
 
   // Next is constraint based inference, where for example
@@ -717,7 +720,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
         candidates.EmplaceBack(concrete_sym->FqName(), sm.CurrentScope);
         if (concrete_sym->LinkedScope != nullptr) {
           for (auto const *sup_scope : concrete_sym->LinkedScope->SupScopes()) {
-            if (sup_scope->AstNode->To<asts::ClassPrototypeAst>() == nullptr) { continue; }
+            if (AstAs<asts::ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
             candidates.EmplaceBack(sup_scope->TySym->FqName(), sup_scope);
           }
         }

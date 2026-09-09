@@ -88,6 +88,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
   -> void {
   // Already analysed => return early.
   using analyse::errors::SppInvalidPrimaryExpressionError;
+  using analyse::errors::SppMemberAccessNonIndexableError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_compare::TypeEq;
   if (_MappedFunc != nullptr) { return; }
@@ -96,7 +97,13 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
   const auto lhs_type = const_shared_cast(
     meta->PostfixExpressionLhs->InferType(sm, meta));
 
+  // Check the lhs is actually a typed variable, (issues
+  // with ambiguities for parsing generics vs indexing etc)
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
+  RaiseIf<SppMemberAccessNonIndexableError>(
+    type_sym == nullptr or type_sym->LinkedScope == nullptr,
+    {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *this));
+
   auto sup_types = Vec{lhs_type};
   sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
 

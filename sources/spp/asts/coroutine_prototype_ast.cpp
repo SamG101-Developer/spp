@@ -213,6 +213,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // from here.
   if (_GenOnceLowered != nullptr) {
     _GenOnceLowered->Stage11_CodeGen(sm, meta, ctx);
+    _DeclareBorrowedYieldStorage(*_GenOnceLowered);
     _CodeGenGenericSubstitutions(sm, meta, ctx);
     return nullptr;
   }
@@ -478,6 +479,39 @@ auto spp::asts::CoroutinePrototypeAst::_ForceInlineBorrowedYield(
   const auto llvm_func = lowered.GetLlvmFunc();
   if (llvm_func == nullptr or llvm_func->Target == nullptr) { return; }
   llvm_func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
+}
+
+auto spp::asts::CoroutinePrototypeAst::_DeclareBorrowedYieldStorage(
+  SubroutinePrototypeAst const &lowered) const
+  -> void {
+  // The other half of "_ForceInlineBorrowedYield", and it has to come after the body exists rather than beside the
+  // attribute, because there are no allocas to describe until the body is generated.
+  //
+  // Inlining moves the body's allocas into the caller's frame, which is the point, but the inliner brackets each one
+  // it moves with lifetime markers scoped to the inlined body - and that scope ends at exactly the return the yielded
+  // borrow has to outlive. The caller then reads storage llvm has been told is dead, and the loads fold to undef.
+  //
+  // So the storage is given a lifetime here instead: a start and no end, saying it lives for as long as whatever
+  // frame it ends up in. The inliner leaves an alloca alone once the alloca describes itself ("no need to add
+  // redundant, less accurate markers"), which is what stops it narrowing them again. The cost is that these slots
+  // cannot be reused for anything else in the caller: a few bytes of frame against a miscompile.
+  if (_YieldType == nullptr or _YieldType->GetConvention() == nullptr) { return; }
+  const auto llvm_func = lowered.GetLlvmFunc();
+  if (llvm_func == nullptr or llvm_func->Target == nullptr or llvm_func->Target->isDeclaration()) { return; }
+
+  auto &entry = llvm_func->Target->getEntryBlock();
+  auto allocas = Vec<llvm::AllocaInst*>();
+  for (auto &inst : entry) {
+    if (auto *const alloca = llvm::dyn_cast<llvm::AllocaInst>(&inst); alloca != nullptr) {
+      allocas.EmplaceBack(alloca);
+    }
+  }
+
+  auto builder = llvm::IRBuilder<>(&entry, entry.begin());
+  for (auto *const alloca : allocas) {
+    builder.SetInsertPoint(alloca->getNextNode());
+    builder.CreateLifetimeStart(alloca);
+  }
 }
 
 SPP_MOD_END

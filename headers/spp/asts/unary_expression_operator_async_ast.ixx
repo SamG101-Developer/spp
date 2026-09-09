@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.unary_expression_operator_async_ast;
+import spp.asts.ast_kind;
 import spp.asts.unary_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -16,6 +17,9 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
+  SPP_AST_KEY_FUNCTIONS(UnaryExpressionOperatorAsyncAst);
+
   /**
    * The @c async keyword that indicates an asynchronous operation. This is used to mark the following function call
    * as called asynchronously.
@@ -31,8 +35,6 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
 
   ~UnaryExpressionOperatorAsyncAst() override;
 
-  SPP_AST_KEY_FUNCTIONS;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -42,3 +44,5 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
 private:
   Unique<ExpressionAst> _TransformedFunc;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UnaryExpressionOperatorAsyncAst)

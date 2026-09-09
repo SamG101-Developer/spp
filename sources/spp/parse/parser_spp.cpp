@@ -20,7 +20,7 @@ import std;
 SPP_MOD_BEGIN
 constexpr auto kBinChars = spp::StrView("01");
 constexpr auto kOctChars = spp::StrView("01234567");
-constexpr auto kHexChars = spp::StrView("0123456789abcdefABCDEF");
+constexpr auto kHexChars = spp::StrView("0123456789abcdef");
 
 auto spp::parse::ParserSpp::parse()
   -> Unique<asts::ModulePrototypeAst> {
@@ -439,6 +439,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_type()
   PARSE_ALTERNATE(
     p1, asts::GenericArgumentTypeAst, parse_generic_argument_type_keyword, parse_generic_argument_type_positional);
   PARSE_NEGATE(lex::RawTokenType::TK_LEFT_PARENTHESIS)
+  PARSE_NEGATE(lex::RawTokenType::TK_COLON)
   return FORWARD_AST(p1);
 }
 
@@ -917,16 +918,22 @@ auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identif
   -> Unique<asts::CasePatternVariantAst> {
   PARSE_ONCE(p1, parse_convention);
   PARSE_ONCE(p2, parse_identifier);
-  PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
-  return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, p1, nullptr, p2, p3);
+  return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, p1, nullptr, p2, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier_without_convention()
   -> Unique<asts::CasePatternVariantAst> {
   PARSE_OPTIONAL(p1, parse_keyword_mut);
   PARSE_ONCE(p2, parse_identifier);
-  PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
-  return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, nullptr, p1, p2, p3);
+  return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, nullptr, p1, p2, nullptr);
+}
+
+auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier_aliasable()
+  -> Unique<asts::CasePatternVariantAst> {
+  PARSE_ONCE(p1, parse_case_expression_pattern_variant_single_identifier);
+  PARSE_OPTIONAL(p2, parse_local_variable_single_identifier_alias);
+  p1->To<asts::CasePatternVariantSingleIdentifierAst>()->Alias = std::move(p2);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_literal()
@@ -974,7 +981,7 @@ auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure
   PARSE_ALTERNATE(
     p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_attribute_binding,
     parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
-    parse_case_expression_pattern_variant_single_identifier);
+    parse_case_expression_pattern_variant_single_identifier_aliasable);
   return FORWARD_AST(p1);
 }
 
@@ -1339,8 +1346,15 @@ auto spp::parse::ParserSpp::parse_local_variable_single_identifier()
   -> Unique<asts::LocalVariableSingleIdentifierAst> {
   PARSE_OPTIONAL(p1, parse_keyword_mut);
   PARSE_ONCE(p2, parse_identifier);
-  PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
-  return CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, p3);
+  return CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, nullptr);
+}
+
+auto spp::parse::ParserSpp::parse_local_variable_single_identifier_aliasable()
+  -> Unique<asts::LocalVariableSingleIdentifierAst> {
+  PARSE_ONCE(p1, parse_local_variable_single_identifier);
+  PARSE_OPTIONAL(p2, parse_local_variable_single_identifier_alias);
+  p1->Alias = std::move(p2);
+  return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_local_variable_single_identifier_alias()
@@ -1364,7 +1378,7 @@ auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_object()
   -> Unique<asts::LocalVariableAst> {
   PARSE_ALTERNATE(
     p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_multiple_arguments,
-    parse_local_variable_destructure_attribute_binding, parse_local_variable_single_identifier);
+    parse_local_variable_destructure_attribute_binding, parse_local_variable_single_identifier_aliasable);
   return FORWARD_AST(p1);
 }
 
@@ -2804,7 +2818,15 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
       return nullptr;
     }
 
-    if (m_store_error(_Pos, "Expected £, got '"s + _Tokens[_Pos].data + "'")) {
+    // Naming the token only when it is one the author wrote. Past
+    // the end of their file sits the appended prelude, and reporting
+    // "got 'use'" against a "use" the compiler put there reads as a
+    // complaint about their code.
+    const auto got = _ErrorFormatter != nullptr and _ErrorFormatter->IsPastUserSource(_Pos)
+      ? "the end of the file"s
+      : "'"s + _Tokens[_Pos].data + "'";
+
+    if (m_store_error(_Pos, "Expected £, got "s + got)) {
       _ErrorBuilder->Tokens.insert(mapped_tok);
       return nullptr;
     }
