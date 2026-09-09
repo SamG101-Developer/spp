@@ -229,6 +229,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   const auto cond_sym = cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
     ? sm->CurrentScope->GetVarSymbolOutermost(*Cond).first
     : nullptr;
+
   const auto takes_subject = cond_sym != nullptr
     and cond_type->GetConvention() == nullptr
     and spp::get<0>(cond_sym->MemInfo->AstBorrowed) == nullptr;
@@ -237,7 +238,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->CaseCondition = Cond.get();
-    if (takes_subject) { meta->CaseConsumedSubject = cond_sym->Name; }
+    if (takes_subject) { meta->CaseConsumedSubjects.EmplaceBack(cond_sym->Name); }
     ValidateInconsistentMemory(
       this, Branches | genex::views::ptr | genex::to<Vec>(), takes_subject ? cond_sym : nullptr, sm, meta);
   }
