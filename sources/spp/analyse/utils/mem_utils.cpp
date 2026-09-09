@@ -7,7 +7,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_repeated_element_ast;
