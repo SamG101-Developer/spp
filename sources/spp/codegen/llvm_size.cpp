@@ -52,10 +52,10 @@ namespace spp::codegen {
     using analyse::utils::type_compare::TypeEq;
     using namespace asts::generate::common_types_precompiled;
 
-    if (const auto param_sym = sm.CurrentScope->GetTypeSymbol(&type);
-      param_sym != nullptr and param_sym->IsGeneric and param_sym->LinkedScope != nullptr
-      and param_sym->LinkedScope->TySym != nullptr and param_sym->LinkedScope->TySym.get() != param_sym) {
-      return LayoutOf(sm, *param_sym->LinkedScope->TySym->FqName());
+    if (const auto param_sym = sm.CurrentScope->GetTypeSymbol(&type); param_sym != nullptr) {
+      if (auto *const bound = param_sym->AsBoundSymbol(); bound != param_sym) {
+        return LayoutOf(sm, *bound->FqName());
+      }
     }
 
     // Borrows (mapped to pointers) are pointer-sized.

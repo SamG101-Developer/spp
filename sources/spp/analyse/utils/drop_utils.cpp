@@ -23,28 +23,6 @@ import genex;
 
 namespace spp::analyse::utils::drop_utils {
   namespace {
-    /**
-     * Number of types that need checking; for a tuple it is every type as they can all be different; for an array it is
-     * just the first type, as every array element is the same.
-     * @param type_sym The symbol of the tuple or array type.
-     * @param sm The scope manager, positioned anywhere the type resolves from.
-     * @return The number of elements to look at, which is zero for an empty tuple or a zero-length array.
-     */
-    auto ElementCountToCheck(
-      scopes::TypeSymbol const &type_sym,
-      scopes::ScopeManager const &sm)
-      -> std::size_t {
-      // Get the length of the array or tuple, determined
-      // by the compile-time generic information.
-      const auto elems = type_predicates::IsIndexWithinBound(
-        0uz, *type_sym.FqName(), *sm.CurrentScope).second;
-
-      // Maintain the total length for a tuple, and reduce
-      // to 1 for an array.
-      return type_predicates::IsTypeArr(*type_sym.FqName(), *sm.CurrentScope)
-        ? std::min(elems, 1uz)
-        : elems;
-    }
 
     /**
      * The whole overload record for a type's destructor, rather than just its prototype: instantiating it needs the
@@ -65,12 +43,10 @@ namespace spp::analyse::utils::drop_utils {
 
       const auto none = [] { return func_utils::FunctionOverload{nullptr, nullptr, nullptr, nullptr}; };
 
-      // A bound generic parameter stands for its argument: the
-      // symbol keeps the parameter's name ("T"), but the scope
-      // it links to is the argument's.
-      if (type_sym.IsGeneric and type_sym.LinkedScope != nullptr and type_sym.LinkedScope->TySym != nullptr
-        and type_sym.LinkedScope->TySym.get() != &type_sym) {
-        return FindDropOverloadInfo(*type_sym.LinkedScope->TySym, sm, meta);
+      // A bound generic parameter stands for its argument, and it
+      // is the argument that has the methods.
+      if (auto *const bound = type_sym.AsBoundSymbol(); bound != &type_sym) {
+        return FindDropOverloadInfo(*bound, sm, meta);
       }
 
       // A generic that was never bound, or a symbol with no
@@ -119,20 +95,6 @@ namespace spp::analyse::utils::drop_utils {
     }
 
     /**
-     * The symbol a name ultimately stands for: a bound generic parameter keeps the parameter's name but links to the
-     * argument's scope, and it is the argument that has the attributes and the methods.
-     */
-    auto ResolveBoundSym(
-      scopes::TypeSymbol const &type_sym)
-      -> scopes::TypeSymbol const& {
-      if (type_sym.IsGeneric and type_sym.LinkedScope != nullptr and type_sym.LinkedScope->TySym != nullptr
-        and type_sym.LinkedScope->TySym.get() != &type_sym) {
-        return ResolveBoundSym(*type_sym.LinkedScope->TySym);
-      }
-      return type_sym;
-    }
-
-    /**
      * The prototype a destructor call is actually made against, which for a destructor declared in a generic @c sup
      * block is the instantiation for that block's arguments rather than the template. The lookup and the minting are
      * driven from the same scope - the type's own - so that both normalise the arguments identically.
@@ -149,7 +111,7 @@ namespace spp::analyse::utils::drop_utils {
       asts::meta::CompilerMetaData *meta,
       const bool instantiate)
       -> asts::FunctionPrototypeAst* {
-      auto const &sym = ResolveBoundSym(type_sym);
+      auto const &sym = *type_sym.AsBoundSymbol();
       const auto overload = FindDropOverloadInfo(sym, sm, meta);
       if (overload.Proto == nullptr or sym.LinkedScope == nullptr) { return overload.Proto; }
 
@@ -177,9 +139,7 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   asts::meta::CompilerMetaData *meta)
   -> bool {
   //
-  using type_members::GetAllAttrs;
-  using type_predicates::GetNthTypeOfIndexableType;
-  using type_predicates::IsTypeCompTimeIndexable;
+  using type_members::GetAllParts;
   using type_predicates::IsTypeGen;
 
   // A borrow does not own what it points at, so nothing
@@ -188,13 +148,11 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   if (type_sym.Convention != nullptr) { return false; }
   if (type_sym.LinkedScope == nullptr) { return false; }
 
-  // A bound generic parameter stands for its argument: the symbol keeps the parameter's name ("T"), but the scope it
-  // links to is the argument's. Everything below - copyability, the sup chain, the attributes - is a property of the
-  // type actually being destroyed rather than of the name it arrived under, so resolve through first. An unbound
+  // Everything below - copyability, the sup chain, the attributes - is a property of the type actually being
+  // destroyed rather than of the name it arrived under, so resolve a bound parameter through first. An unbound
   // parameter has no linked scope and is handled by the check below.
-  if (type_sym.IsGeneric and type_sym.LinkedScope != nullptr and type_sym.LinkedScope->TySym != nullptr
-    and type_sym.LinkedScope->TySym.get() != &type_sym) {
-    return NeedsDrop(*type_sym.LinkedScope->TySym, sm, meta);
+  if (auto *const bound = type_sym.AsBoundSymbol(); bound != &type_sym) {
+    return NeedsDrop(*bound, sm, meta);
   }
   if (IsTypeGen(*type_sym.FqName(), *sm.CurrentScope)) { return true; }
 
@@ -206,29 +164,13 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   // look at the attributes at all
   if (FindDropOverloadInfo(type_sym, sm, meta).Proto != nullptr) { return true; }
 
-  // A tuple or an array holds its elements positionally
-  // rather than as attributes.
-  if (IsTypeCompTimeIndexable(*type_sym.FqName(), *sm.CurrentScope)) {
-    // Every element of an array is the same type, so
-    // one of them answers for all of them.
-    const auto elems = ElementCountToCheck(type_sym, sm);
-    for (auto i = 0uz; i < elems; ++i) {
-      const auto elem_type = GetNthTypeOfIndexableType(i, *type_sym.FqName(), *sm.CurrentScope);
-      const auto elem_type_sym = sm.CurrentScope->GetTypeSymbol(elem_type.get());
-      if (elem_type_sym == &type_sym) { continue; }
-      if (NeedsDrop(*elem_type_sym, sm, meta)) { return true; }
-    }
-    return false;
-  }
-
   // Otherwise the type is only worth dropping if something
   // it holds is. A type cannot contain itself by value, so
   // the recursion is bounded by the nesting depth of the
   // type.
   return genex::any_of(
-    GetAllAttrs(*type_sym.FqName(), *sm.CurrentScope), [&](auto const &attr) {
-      const auto attr_type_sym = std::get<1>(attr);
-      return attr_type_sym != &type_sym and NeedsDrop(*attr_type_sym, sm, meta);
+    GetAllParts(*type_sym.FqName(), *sm.CurrentScope, true), [&](auto const &part) {
+      return part.Sym != nullptr and part.Sym != &type_sym and NeedsDrop(*part.Sym, sm, meta);
     });
 }
 
@@ -238,9 +180,7 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
   asts::meta::CompilerMetaData *meta)
   -> void {
   //
-  using type_members::GetAllAttrs;
-  using type_predicates::GetNthTypeOfIndexableType;
-  using type_predicates::IsTypeCompTimeIndexable;
+  using type_members::GetAllParts;
   using type_predicates::IsTypeGen;
   auto seen = Set<scopes::TypeSymbol const*>();
 
@@ -268,26 +208,11 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     // attributes, because the destructor is what answers for them.
     if (DropProtoFor(sym, sm, meta, true) != nullptr) { return; }
 
-    // A tuple's and an array's elements are positional, and
-    // reached the same way as in "NeedsDrop". Array just needs
-    // to check 1 type, tuple every type ("elem_count").
-    if (IsTypeCompTimeIndexable(*sym.FqName(), *sm.CurrentScope)) {
-      const auto elem_count = ElementCountToCheck(sym, sm);
-      for (auto i = 0uz; i < elem_count; ++i) {
-        const auto elem_type = GetNthTypeOfIndexableType(i, *sym.FqName(), *sm.CurrentScope);
-        const auto elem_type_sym = sm.CurrentScope->GetTypeSymbol(elem_type.get());
-        if (elem_type_sym == &sym) { continue; }
-        self(self, *elem_type_sym);
-      }
-      return;
-    }
-
-    // Otherwise destruction is attribute by attribute, and it is
-    // their destructors that have to exist.
-    for (auto const &attr : GetAllAttrs(*sym.FqName(), *sm.CurrentScope)) {
-      const auto attr_type_sym = std::get<1>(attr);
-      if (attr_type_sym == &sym) { continue; }
-      self(self, *attr_type_sym);
+    // Otherwise destruction is part by part, and it is their
+    // destructors that have to exist.
+    for (auto const &part : GetAllParts(*sym.FqName(), *sm.CurrentScope, true)) {
+      if (part.Sym == nullptr or part.Sym == &sym) { continue; }
+      self(self, *part.Sym);
     }
   };
 

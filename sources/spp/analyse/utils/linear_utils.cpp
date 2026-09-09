@@ -59,23 +59,37 @@ namespace spp::analyse::utils::linear_utils {
       scopes::Scope const &scope,
       Str const &step)
       -> Pair<Shared<asts::TypeAst>, scopes::Scope const*> {
-      // For index field access like "tuple.0", use the type_predicate
-      // nth type helper.
-      if (type_predicates::IsTypeCompTimeIndexable(type, scope)) {
-        const auto index = std::stoul(step);
-        return {type_predicates::GetNthTypeOfIndexableType(index, type, scope), &scope};
-      }
-
-      // Otherwise, iterate the attributes and find the matching one,
-      // and get its type and scope.
-      for (auto const &attr : type_members::GetAllAttrs(type, scope)) {
-        if (spp::get<1>(attr) != nullptr and spp::get<0>(attr)->Val == step) {
-          return {spp::get<1>(attr)->FqName(), spp::get<2>(attr)};
-        }
+      // Find the part the step names, which is an attribute's own
+      // name for a struct and an element's index for a tuple or
+      // an array.
+      for (auto const &[part_step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(type, scope)) {
+        if (part_step == step) { return {part_type, part_scope}; }
       }
 
       // Failsafe, should never be reached.
       return {nullptr, nullptr};
+    }
+
+    /**
+     * The type of the place @p steps names after @p count of its steps, and the scope that type resolves in. Step
+     * zero is the symbol itself, so a @p count of zero is the symbol's own type and a count of @c {steps.Len() - 1}
+     * is the place the whole path names. Nothing when any step along the way has no such part.
+     */
+    auto DescendToPart(
+      Shared<asts::TypeAst> root_type,
+      scopes::Scope const &root_scope,
+      Vec<Str> const &steps,
+      const std::size_t count)
+      -> Pair<Shared<asts::TypeAst>, scopes::Scope const*> {
+      auto part_type = std::move(root_type);
+      auto const *part_scope = &root_scope;
+      for (auto i = std::size_t{1}; i <= count and i < steps.Len(); ++i) {
+        if (part_type == nullptr or part_scope == nullptr) { break; }
+        auto [next_type, next_scope] = IndividualPartType(*part_type, *part_scope, steps[i]);
+        part_type = std::move(next_type);
+        part_scope = next_scope;
+      }
+      return {std::move(part_type), part_scope};
     }
 
     /**
@@ -122,42 +136,17 @@ namespace spp::analyse::utils::linear_utils {
       auto part = region;
       part.EmplaceBack(Str()); // Extra spot for temp "final" part.
 
-      // Tuples and arrays hold their parts positionally rather
-      // than as attributes, and a destructure of one records
-      // each element under its index.
-      if (type_predicates::IsTypeCompTimeIndexable(type, scope)) {
-        const auto elem_count = type_predicates::IsIndexWithinBound(0uz, type, scope).second;
-        for (auto i = 0uz; i < elem_count; ++i) {
-          // Get the nth type in the tuple/array, and then the
-          // corresponding type symbol. If the type is copyable,
-          // ignore it and continue.
-          const auto elem_type = type_predicates::GetNthTypeOfIndexableType(i, type, scope);
-          const auto elem_type_sym = scope.GetTypeSymbol(elem_type.get());
-          if (elem_type_sym->IsCopyable()) { continue; }
-
-          // Otherwise, set the final part to the index (as a
-          // string), and check if it's been individually consumed,
-          // using this function recursively. If any part hasn't,
-          // then nor has the enclosing collection.
-          part.Back() = std::to_string(i);
-          if (not RegionConsumed(part, *elem_type, scope, moves, unaccounted)) { return false; }
-        }
-
-        // Nothing left behind, so at this point we know the
-        // collection is empty via all its partial moves.
-        return true;
+      // Each part is checked on its own, under the name a destructure would have recorded it by - an attribute's own
+      // name, or an element's index. A copyable part was never owed to anyone, so it never has to be accounted for.
+      // If any part is unaccounted for, then nor is the value holding it.
+      for (auto const &[step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(type, scope)) {
+        if (part_sym == nullptr or part_sym->IsCopyable()) { continue; }
+        part.Back() = step;
+        if (not RegionConsumed(part, *part_type, *part_scope, moves, unaccounted)) { return false; }
       }
 
-      // For structs, we can use the attributes directly, using
-      // the standard "keyword" rather than "positional" approach.
-      for (auto const &attr : type_members::GetAllAttrs(type, scope)) {
-        const auto attr_type_sym = spp::get<1>(attr);
-        if (attr_type_sym->IsCopyable()) { continue; }
-        part.Back() = spp::get<0>(attr)->Val;
-        if (not RegionConsumed(part, *attr_type_sym->FqName(), *spp::get<2>(attr), moves, unaccounted)) {
-          return false;
-        }
-      }
+      // Nothing left behind, so at this point we know the value
+      // is empty via all its partial moves.
       return true;
     }
 
@@ -261,16 +250,12 @@ namespace spp::analyse::utils::linear_utils {
         // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
         // it, and only taking something from inside a value strands the value's own. That is what stops the last
         // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
-        const auto path = mem_utils::RegionPath(*move);
-        auto part_type = sym.Type;
-        auto const *part_scope = static_cast<scopes::Scope const*>(sm.CurrentScope);
+        const auto path = mem_utils::RegionPath(*move)
+          | genex::views::transform([](const auto step) { return step->Val; })
+          | genex::to<Vec>();
 
         for (auto i = 0uz; i + 1 < path.Len(); ++i) {
-          if (i > 0) {
-            auto [next_type, next_scope] = IndividualPartType(*part_type, *part_scope, path[i]->Val);
-            part_type = std::move(next_type);
-            part_scope = next_scope;
-          }
+          const auto [part_type, part_scope] = DescendToPart(sym.Type, *sm.CurrentScope, path, i);
           if (part_type == nullptr or part_scope == nullptr) { break; }
 
           const auto type_sym = part_scope->GetTypeSymbol(part_type.get());
@@ -299,16 +284,10 @@ auto spp::analyse::utils::linear_utils::FirstUnaccountedPart(
   // guard.
   if (sym.Type == nullptr or region.IsEmpty()) { return Str(); }
 
-  // Make n moves through the types / scopes of the region, such
-  // that for "a.b.c", it goes attributes at a time, remapping to
-  // the overall type and then moving in again.
-  auto region_type = sym.Type;
-  auto region_scope = static_cast<scopes::Scope const*>(sm.CurrentScope);
-  for (auto i = std::size_t{1}; i < region.Len(); ++i) {
-    auto [part_type, part_scope] = IndividualPartType(*region_type, *region_scope, region[i]);
-    region_type = std::move(part_type);
-    region_scope = part_scope;
-  }
+  // Walk the whole region, so that "a.b.c" lands on the type of
+  // "c" and the scope that type resolves in.
+  const auto [region_type, region_scope] = DescendToPart(sym.Type, *sm.CurrentScope, region, region.Len() - 1);
+  if (region_type == nullptr or region_scope == nullptr) { return Str(); }
 
   // The caller has established that the pattern took this place
   // apart, so its parts are walked whether or not any of them
