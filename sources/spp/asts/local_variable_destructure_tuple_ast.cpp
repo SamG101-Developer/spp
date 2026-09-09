@@ -220,7 +220,10 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage8_CheckMemory(
 
   // Taking every element off a value takes the value, so the
   // symbol holding it is left moved rather than partly moved.
-  if (_TmpName == nullptr) {
+  if (_TmpName != nullptr) {
+    analyse::utils::destructure_utils::ConsumeDestructureTemp(*_TmpName, *sm);
+  }
+  else {
     // A pattern that takes something apart has to account for every owned part of what it took; one that only tests
     // the shape, or that binds the rest into a name of its own, has nothing left over to answer for.
     const auto accounts_for_parts = BindsByMove()

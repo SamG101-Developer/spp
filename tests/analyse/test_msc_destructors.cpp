@@ -300,7 +300,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     TestAstDestructors,
     test_valid_partial_move_out_of_a_value_with_a_destructor_then_repaired, R"(
     cls Holder { !public val: Str }
@@ -321,7 +321,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
     TestAstDestructors,
     test_invalid_partial_move_out_of_a_value_with_a_destructor_never_repaired,
     SppPartialMoveOfDestructibleValueError, R"(
@@ -341,7 +341,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
     TestAstDestructors,
     test_invalid_partial_move_repaired_but_value_never_consumed,
     SppLinearValueNotConsumedError, R"(
@@ -362,10 +362,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// Todo: Deliberately red. The partial move of "inner.val" is recorded against "outer", whose own type has no
-//  destructor, so the check in "CheckDestructorStillReachable" never asks about "Inner" - the type whose "drop" is
-//  the one that can no longer run. See the matching Todo at the check.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
     TestAstDestructors,
     test_invalid_partial_move_out_of_a_nested_value_with_a_destructor,
     SppPartialMoveOfDestructibleValueError, R"(
@@ -383,5 +380,64 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut o = Outer(inner=Inner(val=Str::new()))
         let v = o.inner.val
         drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+    TestAstDestructors,
+    test_valid_whole_nested_field_with_a_destructor_moved_out, R"(
+    cls Inner { !public val: Str }
+    cls Outer { !public inner: Inner }
+
+    sup Inner ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Inner(val) = self
+            drop(val)
+        }
+    }
+
+    fun main() -> Void {
+        let o = Outer(inner=Inner(val=Str::new()))
+        let i = o.inner
+        drop(i)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+    TestAstDestructors,
+    test_valid_nested_partial_move_then_repaired, R"(
+    cls Inner { !public val: Str }
+    cls Outer { !public inner: Inner }
+
+    fun main() -> Void {
+        let mut o = Outer(inner=Inner(val=Str::new()))
+        let v = o.inner.val
+        drop(v)
+        o.inner.val = Str::new()
+        let i = o.inner
+        drop(i)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+    TestAstDestructors,
+    test_valid_nested_partial_move_of_a_destructible_value_then_repaired, R"(
+    cls Inner { !public val: Str }
+    cls Outer { !public inner: Inner }
+
+    sup Inner ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Inner(val) = self
+            drop(val)
+        }
+    }
+
+    fun main() -> Void {
+        let mut o = Outer(inner=Inner(val=Str::new()))
+        let v = o.inner.val
+        drop(v)
+        o.inner.val = Str::new()
+        let i = o.inner
+        drop(i)
     }
 )");

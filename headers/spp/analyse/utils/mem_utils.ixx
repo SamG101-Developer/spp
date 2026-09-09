@@ -95,6 +95,9 @@ namespace spp::analyse::utils::mem_utils {
    * on everywhere the destination goes unweighed; turned off by a caller that follows this with
    * @c PreventBorrowLifetimeExtension , which compares the destination's lifetime against the borrows' own and is the
    * more precise answer.
+   * @param place_is_written Whether @p value_ast names a place being written rather than read. A write re-initializes
+   * the place it names, so a move of that exact place is the hole the write fills rather than one it reads; only a
+   * move of something the place sits inside of is still a hole. A read has no such exemption.
    */
   SPP_EXP_FUN auto ValidateSymbolMemory(
     asts::ExpressionAst &value_ast,
@@ -105,7 +108,8 @@ namespace spp::analyse::utils::mem_utils {
     bool check_move_from_borrowed_ctx,
     bool mark_moves,
     asts::meta::CompilerMetaData *meta,
-    bool check_escaping_borrow_move = true)
+    bool check_escaping_borrow_move = true,
+    bool place_is_written = false)
     -> void;
 
 

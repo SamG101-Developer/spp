@@ -308,3 +308,34 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         x[mut 0_uz to 2_uz]@ = 123
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+    AssignmentStatementAst,
+    test_valid_assign_back_a_nested_moved_out_part, R"(
+    cls Inner { !public val: Str }
+    cls Outer { !public inner: Inner }
+
+    fun main() -> Void {
+        let mut o = Outer(inner=Inner(val=Str::new()))
+        let v = o.inner.val
+        drop(v)
+        o.inner.val = Str::new()
+        let i = o.inner
+        drop(i)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
+    AssignmentStatementAst,
+    test_invalid_assign_into_a_moved_out_container,
+    SppUninitializedMemoryUseError, R"(
+    cls Inner { !public val: Str }
+    cls Outer { !public inner: Inner }
+
+    fun main() -> Void {
+        let mut o = Outer(inner=Inner(val=Str::new()))
+        let i = o.inner
+        drop(i)
+        o.inner.val = Str::new()
+    }
+)");

@@ -203,7 +203,8 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   const bool check_move_from_borrowed_ctx,
   const bool mark_moves,
   asts::meta::CompilerMetaData *meta,
-  const bool check_escaping_borrow_move) -> void {
+  const bool check_escaping_borrow_move,
+  const bool place_is_written) -> void {
   // For tuple and array literals, recursively analyse each element.
   if (auto const *arr_literal = value_ast.To<asts::ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
     const auto x = arr_literal->Elem.get();
@@ -307,9 +308,17 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // moves (directly moving a partial move).
   if (check_partial_move and not var_sym->MemInfo->AstPartialMoves.IsEmpty() and value_ast.To<asts::IdentifierAst>() ==
     nullptr) {
+    // "Contains" covers the move naming the place exactly
+    // as well as the move naming something the place sits
+    // inside of. Writing "o.inner.val" puts the first back
+    // but cannot put "o.inner" back, so a write keeps only
+    // the second.
+    const auto steps = RegionPath(value_ast);
     const auto overlaps = var_sym->MemInfo->AstPartialMoves
       | genex::views::filter([&](auto const &x) {
-        return RelateSteps(RegionPath(*x), RegionPath(value_ast)) == MemRegionRelation::Contains;
+        const auto path = RegionPath(*x);
+        return RelateSteps(path, steps) == MemRegionRelation::Contains
+          and (not place_is_written or path.Len() < steps.Len());
       })
       | genex::to<Vec>();
     if (not overlaps.IsEmpty()) {

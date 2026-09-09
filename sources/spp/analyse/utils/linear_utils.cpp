@@ -230,9 +230,11 @@ namespace spp::analyse::utils::linear_utils {
     }
 
     /**
-     * Raise if @p sym holds a value whose destructor can no longer be run, because a part of it has been moved out
-     * and nothing put one back. Only a type with a @c drop of its own has anything to lose here: everything else is
-     * destroyed field by field, which a partial move has already done for the parts it took.
+     * Raise if @p sym holds a value with a destructor that can no longer be run, because a part of it has been moved
+     * out and nothing put one back. Asked of every place a recorded move reached through, not only of @p sym itself:
+     * @c {o.inner.val} leaves @c {o.inner} unable to be destroyed even when @c {o} has no destructor of its own. Only
+     * a type with a @c drop of its own has anything to lose here: everything else is destroyed field by field, which
+     * a partial move has already done for the parts it took.
      * @param sym The symbol being checked.
      * @param exit_point The ast to report the error against.
      * @param sm The scope manager, positioned where the symbol's type resolves from.
@@ -253,22 +255,37 @@ namespace spp::analyse::utils::linear_utils {
       if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return; }
       if (sym.Type->GetConvention() != nullptr) { return; }
 
-      // Todo: Only the symbol's own type is asked. A part moved out from deeper - "outer.inner.a", where "Outer" has
-      //  no destructor but "inner"'s type does - records its move against "outer", so the destructor that can no
-      //  longer run belongs to a type this never looks at. Catching it means walking the prefixes of each recorded
-      //  path and asking the same question of every type along the way.
-      const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym.Type.get());
-      if (type_sym == nullptr) { return; }
+      for (auto const *move : sym.MemInfo->AstPartialMoves) {
+        // A move leaves a hole in every place it reached *through*, so each of those is asked in turn: the symbol's
+        // own type first, then one step further in for each name the path passes on its way. The place the move
+        // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
+        // it, and only taking something from inside a value strands the value's own. That is what stops the last
+        // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
+        const auto path = mem_utils::RegionPath(*move);
+        auto part_type = sym.Type;
+        auto const *part_scope = static_cast<scopes::Scope const*>(sm.CurrentScope);
 
-      const auto destructor = drop_utils::FindDropOverload(*type_sym, sm, meta);
-      if (destructor == nullptr) { return; }
+        for (auto i = 0uz; i + 1 < path.Len(); ++i) {
+          if (i > 0) {
+            auto [next_type, next_scope] = IndividualPartType(*part_type, *part_scope, path[i]->Val);
+            part_type = std::move(next_type);
+            part_scope = next_scope;
+          }
+          if (part_type == nullptr or part_scope == nullptr) { break; }
 
-      // Held in a local so the view handed to the error outlives
-      // it.
-      const auto owner_name = sym.Type->WithoutGenerics()->ToString();
-      Raise<errors::SppPartialMoveOfDestructibleValueError>(
-        {sm.CurrentScope}, ERR_ARGS(
-          exit_point, *sym.MemInfo->AstPartialMoves.Front(), *destructor->Name, StrView(owner_name)));
+          const auto type_sym = part_scope->GetTypeSymbol(part_type.get());
+          if (type_sym == nullptr) { continue; }
+
+          const auto destructor = drop_utils::FindDropOverload(*type_sym, sm, meta);
+          if (destructor == nullptr) { continue; }
+
+          // Held in a local so the view handed to the error
+          // outlives it.
+          const auto owner_name = part_type->WithoutGenerics()->ToString();
+          Raise<errors::SppPartialMoveOfDestructibleValueError>(
+            {sm.CurrentScope}, ERR_ARGS(exit_point, *move, *destructor->Name, StrView(owner_name)));
+        }
+      }
     }
   }
 }
@@ -430,7 +447,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
   asts::meta::CompilerMetaData *meta)
   -> void {
   //
-  auto loops_seen = std::size_t{0};
+  auto loops_seen = 0uz;
   const auto saved = SnapshotFrom(sm.CurrentScope, meta->EnclosingFunctionScope);
 
   for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
