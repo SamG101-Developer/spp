@@ -109,6 +109,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   // state or not.
   auto is_value_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_is_value"));
+  is_value_field->Source.OriginalExpr = this;
   auto is_value_target = MakeUnique<PostfixExpressionAst>(
     MakeUnique<IdentifierAst>(PosStart(), temp_name->Val), std::move(is_value_field));
   auto is_value_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
@@ -123,6 +124,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   // inner scope expression { } section.
   auto output_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_as_value"));
+  output_field->Source.OriginalExpr = this;
   auto output_target = MakeUnique<PostfixExpressionAst>(
     MakeUnique<IdentifierAst>(PosStart(), temp_name->Val), std::move(output_field));
   auto output_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
@@ -139,6 +141,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   // inner scope expression { } section.
   auto residual_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_as_residual"));
+  residual_field->Source.OriginalExpr = this;
   auto residual_target = MakeUnique<PostfixExpressionAst>(
     MakeUnique<IdentifierAst>(PosStart(), temp_name->Val), std::move(residual_field));
   auto residual_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(

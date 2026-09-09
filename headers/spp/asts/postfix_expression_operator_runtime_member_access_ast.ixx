@@ -31,6 +31,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
    */
   Shared<IdentifierAst> Name;
 
+  struct {
+    Ast *OriginalExpr; // Original asts mapped into member accesses - (try? op for example)
+  } Source;
+
   /**
    * Construct the PostfixExpressionOperatorMemberAccessAst with the arguments matching the members.
    * @param[in] tok_dot The @c . token that indicates a runtime member access operation in a postfix expression.
