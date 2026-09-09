@@ -521,13 +521,10 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     if (seen_syms.insert(sym).second) { vs.EmplaceBack(sym); }
   }
 
+  // The states before any branch has run. Each branch is restored to these before the next one is analysed, and they
+  // stand in as a final pseudo-branch for the consistency comparison below - the same snapshot serving both, since
+  // nothing between the two uses moves them apart.
   auto pre_analysis_mem_info = vs
-    | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
-    | genex::to<Vec>();
-
-  // Make a record of the symbols' memory status in the scope
-  // before the branch is analysed.
-  auto old_symbol_mem_info = vs
     | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
     | genex::to<Vec>();
 
@@ -566,7 +563,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     // inside the loop made recording one branch's states quadratic in the number of symbols in scope.
     auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
 
-    for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
+    for (auto &&[sym, old_mem_status] : pre_analysis_mem_info) {
       sym->MemInfo->FillFromSnapshot(old_mem_status);
 
       // Save this memory status for subsequent inter-branch
@@ -620,13 +617,14 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
     for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
       // Check for consistent initialization.
-      if ((first_branch_mem_info.AstInitialization == nullptr) != (branch_memory_info_list.AstInitialization ==
-        nullptr)) {
+      if ((spp::get<0>(first_branch_mem_info.AstInitialization) == nullptr)
+        != (spp::get<0>(branch_memory_info_list.AstInitialization) == nullptr)) {
         sym->MemInfo->IsInconsistentlyInitialized = {first_branch, branch};
       }
 
       // Check for consistent moved state.
-      if ((first_branch_mem_info.AstMoved == nullptr) != (branch_memory_info_list.AstMoved == nullptr)) {
+      if ((spp::get<0>(first_branch_mem_info.AstMoved) == nullptr)
+        != (spp::get<0>(branch_memory_info_list.AstMoved) == nullptr)) {
         sym->MemInfo->IsInconsistentlyMoved = {first_branch, branch};
       }
 

@@ -25,16 +25,26 @@ namespace spp::analyse::utils::mem_info_utils {
   SPP_EXP_CLS
   using InconsistentCondMemState = Pair<asts::Ast*, asts::Ast*>;
 
+  SPP_EXP_CLS struct MemoryState;
+  SPP_EXP_CLS struct MemoryConsistency;
   SPP_EXP_CLS struct MemoryInfo;
-  SPP_EXP_CLS struct MemoryInfoSnapshot;
+
+  /**
+   * A snapshot is exactly the part of a symbol's memory information that branch analysis saves and puts back, which
+   * is what @c MemoryState holds - so a snapshot is one, and taking or restoring one is a copy rather than a field by
+   * field transcription.
+   */
+  SPP_EXP_CLS
+  using MemoryInfoSnapshot = MemoryState;
 }
 
 /**
- * The MemoryInfo struct is used to track the memory state of a symbol in the scope. It contains information about the
- * initialization, movement, and borrowing of the symbol's value, as well as any partial moves and pins that may be
- * associated with it.
+ * The part of a symbol's memory information that branch analysis saves and restores: what initialized the value, what
+ * moved it, what has been moved out of it piecemeal, and the borrows it is tangled up in. Held apart from the rest of
+ * @c MemoryInfo so that saving and restoring is a copy of this struct, and so that a field added here is carried by
+ * both without anyone having to remember to list it in a third place.
  */
-SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
+SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryState {
   /**
    * The @c ast_initialization AST is the AST that initialized the symbol this memory information struct is attached
    * to. This attribute is only set when the symbol is in the initialization state, so when a value is moved out of
@@ -50,21 +60,6 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
    * attribute.
    */
   Tup<asts::Ast const*, scopes::Scope*> AstMoved = {nullptr, nullptr};
-
-  /**
-   * The @c ast_initialization_origin AST is the same as the @c ast_initialization, but it isn't set to nullptr when
-   * the symbol's value is moved out of it. This is used to track the origin of the initialization, so that when a
-   * value is moved out of the symbol, the initialization origin can still be tracked and used for further analysis
-   * and error formatting.
-   */
-  Tup<asts::Ast const*, scopes::Scope*> AstInitializationOrigin = {nullptr, nullptr};
-
-  /**
-   * The @c ast_borrowed AST is the AST that is set if the value symbol is declared with a borrow type. This will be
-   * set from a function parameter's convention. If this attribute is @c nullptr, then the convention is the "mov"
-   * convention.
-   */
-  Tup<asts::Ast const*, scopes::Scope*> AstBorrowed = {nullptr, nullptr};
 
   /**
    * The @c ast_partial_moves ASTs are the ASTs that represent partial moves of the value out of the symbol. For the
@@ -86,19 +81,19 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
   Vec<Tup<asts::Ast const*, asts::Ast const*>> AstContainersOfEscapingBorrows;
 
   /**
-   * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
-   * @c cmp statement or @c cmp generic parameter, wherever the symbol was declared with @c cmp.
-   * @note Must be a unique pointer due to generic arguments being dropped or converted (cheap to clone though).
-   */
-  Unique<asts::Ast> AstCompTime;
-
-  /**
    * The @c initialization_counter is the number of times the symbol has been initialized. This is used for @c let
    * statements that aren't initialized on declaration, because they can still be assigned once despite not being
    * mutable.
    */
   std::size_t InitializationCounter = 0;
+};
 
+/**
+ * How a symbol's memory state came out of the branches of a @c case : each field records the pair of branches that
+ * disagreed about one aspect of it, and is empty when they all agreed. Held together so that a symbol's verdict is
+ * carried as one value, rather than as four fields every copy has to remember to list.
+ */
+SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryConsistency {
   /**
    * A symbol is inconsistently initialised if a symbol is <i>changed</i> into the initialised state in one branch, but
    * not in another branch. This is used to track whether a symbol has been initialised in one branch, but not in
@@ -118,7 +113,40 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
    */
   std::optional<InconsistentCondMemState> IsInconsistentlyPartiallyMoved;
 
+  /**
+   * A symbol is inconsistently borrow-escaping if the borrows it carries, or the containers holding a borrow of it,
+   * differ between branches.
+   */
   std::optional<InconsistentCondMemState> IsInconsistentlyBorrowEscaping;
+};
+
+/**
+ * The MemoryInfo struct is used to track the memory state of a symbol in the scope. It contains information about the
+ * initialization, movement, and borrowing of the symbol's value, as well as any partial moves and pins that may be
+ * associated with it.
+ */
+SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo : MemoryState, MemoryConsistency {
+  /**
+   * The @c ast_initialization_origin AST is the same as the @c ast_initialization, but it isn't set to nullptr when
+   * the symbol's value is moved out of it. This is used to track the origin of the initialization, so that when a
+   * value is moved out of the symbol, the initialization origin can still be tracked and used for further analysis
+   * and error formatting.
+   */
+  Tup<asts::Ast const*, scopes::Scope*> AstInitializationOrigin = {nullptr, nullptr};
+
+  /**
+   * The @c ast_borrowed AST is the AST that is set if the value symbol is declared with a borrow type. This will be
+   * set from a function parameter's convention. If this attribute is @c nullptr, then the convention is the "mov"
+   * convention.
+   */
+  Tup<asts::Ast const*, scopes::Scope*> AstBorrowed = {nullptr, nullptr};
+
+  /**
+   * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
+   * @c cmp statement or @c cmp generic parameter, wherever the symbol was declared with @c cmp.
+   * @note Must be a unique pointer due to generic arguments being dropped or converted (cheap to clone though).
+   */
+  Unique<asts::Ast> AstCompTime;
 
   /**
    * Set the @c ast_initialization AST to the given AST, reset the @c ast_moved AST to @c nullptr, and remove all
@@ -166,46 +194,4 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
    * @param snapshot The snapshot to restore the memory information from.
    */
   auto FillFromSnapshot(MemoryInfoSnapshot const &snapshot) -> void;
-};
-
-SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
-  /**
-   * View of the initializing ast for the owning @c MemoryInfo
-   */
-  asts::Ast const *AstInitialization;
-
-  /**
-   * The scope in which the initializing ast for the owning @c MemoryInfo was present at the time of the snapshot.
-   */
-  scopes::Scope *ScopeInitialization = nullptr;
-
-  /**
-   * View of the moving ast for the owning @c MemoryInfo at the time of the snapshot.
-   */
-  asts::Ast const *AstMoved;
-
-  /**
-   * The scope for the moving ast for the owning @c MemoryInfo at the time of the snapshot.
-   */
-  scopes::Scope *ScopeMoved;
-
-  /**
-   * List of partial moves that were present in the owning @c MemoryInfo at the time of the snapshot.
-   */
-  Vec<asts::Ast const*> AstPartialMoves;
-
-  /**
-   * List of escaping borrows that were present in the owning @c MemoryInfo at the time of the snapshot.
-   */
-  Vec<Tup<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
-
-  /**
-   * List of containers holding an escaping borrow of the owning @c MemoryInfo's symbol at the time of the snapshot.
-   */
-  Vec<Tup<asts::Ast const*, asts::Ast const*>> AstContainersOfEscapingBorrows;
-
-  /**
-   * The @c initialization_counter that was present in the owning @c MemoryInfo at the time of the snapshot.
-   */
-  std::size_t InitializationCounter;
 };

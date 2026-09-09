@@ -43,40 +43,28 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::RemovePartialMoves(
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::Snapshot() const
   -> MemoryInfoSnapshot {
-  // Create and return the snapshot.
-  return MemoryInfoSnapshot(
-    spp::get<0>(AstInitialization), spp::get<1>(AstInitialization),
-    spp::get<0>(AstMoved), spp::get<1>(AstMoved),
-    AstPartialMoves, AstContainedEscapingBorrows, AstContainersOfEscapingBorrows, InitializationCounter);
+  // A snapshot is the saved part of this struct, so taking
+  // one is just a copy of that part.
+  return *this;
 }
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
   -> Unique<MemoryInfo> {
   auto out = MakeUnique<MemoryInfo>();
-  out->AstInitialization = AstInitialization;
-  out->AstMoved = AstMoved;
+  static_cast<MemoryState&>(*out) = *this;
+  static_cast<MemoryConsistency&>(*out) = *this;
   out->AstInitializationOrigin = AstInitializationOrigin;
   out->AstBorrowed = AstBorrowed;
-  out->AstPartialMoves = AstPartialMoves;
-  out->AstContainedEscapingBorrows = AstContainedEscapingBorrows;
-  out->AstContainersOfEscapingBorrows = AstContainersOfEscapingBorrows;
   out->AstCompTime = asts::AstClone(AstCompTime);
-  out->InitializationCounter = InitializationCounter;
-  out->IsInconsistentlyInitialized = IsInconsistentlyInitialized;
-  out->IsInconsistentlyMoved = IsInconsistentlyMoved;
-  out->IsInconsistentlyPartiallyMoved = IsInconsistentlyPartiallyMoved;
   return out;
 }
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::FillFromSnapshot(
   MemoryInfoSnapshot const &snapshot)
   -> void {
-  AstInitialization = {snapshot.AstInitialization, snapshot.ScopeInitialization};
-  AstMoved = {snapshot.AstMoved, snapshot.ScopeMoved};
-  AstPartialMoves = snapshot.AstPartialMoves;
-  AstContainedEscapingBorrows = snapshot.AstContainedEscapingBorrows;
-  AstContainersOfEscapingBorrows = snapshot.AstContainersOfEscapingBorrows;
-  InitializationCounter = snapshot.InitializationCounter;
+  // Everything a snapshot holds is the saved part of this
+  // struct, and nothing outside it is touched.
+  static_cast<MemoryState&>(*this) = snapshot;
 }
 
 SPP_MOD_END
