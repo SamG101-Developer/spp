@@ -481,7 +481,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver(
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const
-  -> Vec<Ast*> {
+  -> Vec<IdentifierAst*> {
   return {Name.get()};
 }
 

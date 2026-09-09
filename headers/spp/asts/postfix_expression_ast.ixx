@@ -11,6 +11,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct GenericArgumentAst;
+  SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorAst;
   SPP_EXP_CLS struct TypeAst;
@@ -57,7 +58,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const
-    -> Vec<Ast*> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const

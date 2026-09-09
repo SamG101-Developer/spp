@@ -60,7 +60,7 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
   SPP_ATTR_NODISCARD virtual auto Equals(ExpressionAst const &other) const -> Ordering;
   // Not "= 0" on purpose (postfix, unary etc)
 
-  SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<Ast*>;
+  SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<IdentifierAst*>;
 
   /**
    * Rewrite every generic name written inside this expression against a set of arguments, answering with a new tree

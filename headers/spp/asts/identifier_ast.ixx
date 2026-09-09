@@ -92,7 +92,7 @@ public:
     -> std::size_t override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const
-    -> Vec<Ast*> override;
+    -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const

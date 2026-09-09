@@ -313,7 +313,7 @@ auto spp::asts::IdentifierAst::AnkerlHash() const
 }
 
 auto spp::asts::IdentifierAst::ExprParts() const
-  -> Vec<Ast*> {
+  -> Vec<IdentifierAst*> {
   return {const_cast<IdentifierAst*>(this)};
 }
 

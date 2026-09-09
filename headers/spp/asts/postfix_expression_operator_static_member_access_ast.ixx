@@ -53,7 +53,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<Ast*> override;
+  SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
 private:
   analyse::scopes::TypeSymbol *_LhsTypeSym;

@@ -217,7 +217,7 @@ auto spp::asts::PostfixExpressionAst::InferType(
 }
 
 auto spp::asts::PostfixExpressionAst::ExprParts() const
-  -> Vec<Ast*> {
+  -> Vec<IdentifierAst*> {
   // Recursively search the lhs, and add the rhs if it
   // exists.
   auto lhs_parts = Lhs->ExprParts();

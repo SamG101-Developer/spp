@@ -99,7 +99,7 @@ auto spp::asts::ExpressionAst::Equals(
 }
 
 auto spp::asts::ExpressionAst::ExprParts() const
-  -> Vec<Ast*> {
+  -> Vec<IdentifierAst*> {
   return {};
 }
 

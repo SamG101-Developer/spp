@@ -294,7 +294,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const
-  -> Vec<Ast*> {
+  -> Vec<IdentifierAst*> {
   // Static member access does not have any expression parts.
   return {Name.get()};
 }
