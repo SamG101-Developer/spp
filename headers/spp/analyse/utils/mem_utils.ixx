@@ -11,6 +11,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct CaseExpressionBranchAst;
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct FunctionCallArgumentAst;
+  SPP_EXP_CLS struct IdentifierAst;
 }
 
 namespace spp::analyse::scopes {
@@ -25,6 +26,10 @@ namespace spp::analyse::utils::mem_utils {
     Contains, // The first place has a region containing the second: "a" vs "a.b"
     ContainedBy, // The first place's region is contained by the second: "a.b" vs "a"
   };
+
+  SPP_EXP_FUN auto RegionPath(
+    asts::Ast const &ast)
+    -> Vec<asts::IdentifierAst*>;
 
   SPP_EXP_FUN auto MemRegionRelate(
     asts::Ast const &region,

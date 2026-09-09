@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_repeated_element_ast;
@@ -70,32 +71,12 @@ namespace spp::analyse::utils::mem_utils {
       }
     }
 
-    /**
-     * The named steps of the access path @p ast spells, outermost first: the @c {a} , @c {b} , @c {c} of @c {a.b.c} .
-     * Empty for anything that is not a path into a local - a literal, or the result of a call - which owns a region
-     * of its own that nothing else can name. Indexing contributes nothing, so @c {a[i]} has the same path as @c {a} and
-     * as @c {a[j]} : the compiler cannot tell whether @c i and @c j are the same element, so it says they meet, which
-     * is the safe (worst-case) answer. A deref is the same.
-     * @param ast The expression to read as a path.
-     * @return Its named steps, outermost first.
-     */
-    auto RegionPath(
-      asts::Ast const &ast)
-      -> Vec<asts::Ast*> {
-      // Get the expression parts from the ast, provided it casts
-      // validly to the expression ast variant.
-      auto const *const expr = ast.To<asts::ExpressionAst>();
-      return expr != nullptr ? expr->ExprParts() : Vec<asts::Ast*>();
-    }
-
     auto SameRegionSection(
       asts::IdentifierAst const &step,
-      asts::Ast *const other)
+      asts::IdentifierAst const *other)
       -> bool {
-      // Compare identifier named ids, if the other ast is also
-      // an identifier.
-      auto const *const named = other->To<asts::IdentifierAst>();
-      return named != nullptr and step.NameId() == named->NameId();
+      // Compare identifier name ids.
+      return step.NameId() == other->NameId();
     }
 
     auto SameRegionSection(
@@ -116,7 +97,7 @@ namespace spp::analyse::utils::mem_utils {
      */
     template <typename Steps>
     auto RelateSteps(
-      Vec<asts::Ast*> const &path,
+      Vec<asts::IdentifierAst*> const &path,
       Steps const &steps)
       -> MemRegionRelation {
       // Failsafe - nothing to name is nothing to share: a
@@ -128,8 +109,7 @@ namespace spp::analyse::utils::mem_utils {
       // at an equal level, ie "a" vs "b", or "a.b" vs "a.c" on
       // the second part.
       for (auto i = 0uz; i < std::min(path.Len(), steps.Len()); ++i) {
-        const auto step = path[i]->ToUnchecked<asts::IdentifierAst>();
-        if (not SameRegionSection(*step, steps[i])) { return MemRegionRelation::Disjoint; }
+        if (not SameRegionSection(*path[i], steps[i])) { return MemRegionRelation::Disjoint; }
       }
 
       // If there were no equal-level mismatches, then by length
@@ -140,6 +120,15 @@ namespace spp::analyse::utils::mem_utils {
         : MemRegionRelation::ContainedBy;
     }
   }
+}
+
+auto spp::analyse::utils::mem_utils::RegionPath(
+  asts::Ast const &ast)
+  -> Vec<asts::IdentifierAst*> {
+  // Get the expression parts from the ast, provided it casts
+  // validly to the expression ast variant.
+  auto const *const expr = ast.To<asts::ExpressionAst>();
+  return expr != nullptr ? expr->ExprParts() : Vec<asts::IdentifierAst*>();
 }
 
 auto spp::analyse::utils::mem_utils::MemRegionRelate(

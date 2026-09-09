@@ -148,7 +148,10 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     // Get the region path of the value, and check if any parts
     // have not been considered by the destructure. These cannot
     // be left unbound, because they would silently drop.
-    const auto region = mem_utils::MemRegionPathNames(*val);
+    const auto region = mem_utils::RegionPath(*val)
+      | genex::views::transform([](const auto step) { return step->Val; })
+      | genex::to<Vec>();
+
     if (const auto skipped = linear_utils::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
       Raise<errors::SppDestructureSkipsOwnedPartError>(
         {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
