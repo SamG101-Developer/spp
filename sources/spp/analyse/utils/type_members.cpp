@@ -119,6 +119,36 @@ namespace spp::analyse::utils::type_members {
   }
 }
 
+auto spp::analyse::utils::type_members::GetAllParts(
+  asts::TypeAst const &type,
+  scopes::Scope const &scope,
+  const bool collapse_arrays)
+  -> Vec<TypePart> {
+  auto parts = Vec<TypePart>();
+
+  // A tuple and an array hold their parts positionally rather
+  // than as attributes, and a destructure of one records each
+  // element under its index.
+  if (type_predicates::IsTypeCompTimeIndexable(type, scope)) {
+    auto elems = type_predicates::IsIndexWithinBound(0uz, type, scope).second;
+    if (collapse_arrays and type_predicates::IsTypeArr(type, scope)) { elems = std::min(elems, 1uz); }
+
+    for (auto i = 0uz; i < elems; ++i) {
+      const auto elem_type = type_predicates::GetNthTypeOfIndexableType(i, type, scope);
+      parts.EmplaceBack(std::to_string(i), i, elem_type, scope.GetTypeSymbol(elem_type.get()), &scope);
+    }
+    return parts;
+  }
+
+  // Everything else is its attributes, which carry the scope
+  // each one's type resolves in with them.
+  auto index = 0uz;
+  for (auto const &[name, attr_sym, attr_scope] : GetAllAttrs(type, scope)) {
+    parts.EmplaceBack(name->Val, index++, attr_sym->FqName(), attr_sym, attr_scope);
+  }
+  return parts;
+}
+
 auto spp::analyse::utils::type_members::GetAllAttrs(
   asts::TypeAst const &type,
   scopes::Scope const &scope)

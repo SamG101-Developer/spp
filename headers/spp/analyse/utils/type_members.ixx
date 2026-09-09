@@ -23,6 +23,34 @@ namespace spp::analyse::scopes {
 
 namespace spp::analyse::utils::type_members {
   /**
+   * One part of a type: an attribute, or an element of a tuple or an array. The two are held differently - attributes
+   * by name, elements by position - and every caller that walks what a type is made of has to cope with both, so the
+   * difference is settled here once rather than at each of them.
+   */
+  SPP_EXP_CLS struct TypePart {
+    Str Step; // The attribute's name, or the element's index written out
+    std::size_t Index; // Position in the walk, which for a tuple or an array is the element's index.
+    Shared<asts::TypeAst> Type; // The part's own type.
+    scopes::TypeSymbol *Sym; // The symbol of the part's own type.
+    scopes::Scope const *Where; // The scope that the part's type resolves in.
+  };
+
+  /**
+   * The parts a type is made of, in declaration order: its elements when it is a tuple or an array, its attributes
+   * (and its super types') otherwise.
+   * @param type The type being taken apart.
+   * @param scope A scope to look @p type up from.
+   * @param collapse_arrays Answer with only the first element of an array. Every element of an array has the same
+   * type, so one of them answers for all of them wherever the question is about the type rather than the storage.
+   * @return Its parts, empty when it has none.
+   */
+  SPP_EXP_FUN auto GetAllParts(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope,
+    bool collapse_arrays = false)
+    -> Vec<TypePart>;
+
+  /**
    * The attributes of a type and all of its super types, each with the symbol of its own type and the scope that type
    * resolves in. All this needs is a scope to look @p type up from.
    */
