@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -22,6 +23,7 @@ import spp.asts.case_pattern_variant_destructure_tuple_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
+import spp.asts.case_pattern_variant_single_identifier_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
@@ -496,6 +498,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   asts::Ast *parent,
   Vec<asts::CaseExpressionBranchAst*> const &branches,
+  scopes::VariableSymbol *const subject,
   scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta)
   -> void {
@@ -532,6 +535,26 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     // Analyse the memory and then recheck the symbols' memory
     // status.
     branch->Stage8_CheckMemory(sm, meta);
+
+    // A branch binding parts off the subject takes the whole
+    // of it - the "case" marks the subject moved once every
+    // branch has run - so a part this branch left unbound is
+    // a part nothing holds. Check all movable fields have been
+    // bound, so dropping can take place.
+    const auto branch_binds = subject != nullptr and genex::any_of(
+      branch->Patterns, [](auto const &pattern) { return pattern->BindsByMove(); });
+    if (branch_binds) {
+      if (const auto skipped = linear_utils::FirstUnaccountedPart(
+        *subject, Vec{subject->Name->Val}, *sm); not skipped.empty()) {
+        auto const *const blamed = branch->Patterns.IsEmpty()
+          ? static_cast<asts::Ast const*>(branch)
+          : static_cast<asts::Ast const*>(branch->Patterns[0].get());
+
+        Raise<errors::SppDestructureSkipsOwnedPartError>(
+          {sm->CurrentScope}, ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
+      }
+    }
+
     auto new_symbol_mem_info = vs
       | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
       | genex::to<Vec>();
