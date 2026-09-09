@@ -169,11 +169,12 @@ auto spp::analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow(
   // The convention as written, or, where nothing is written,
   // the one the argument's type carries - which is where a
   // subscript keeps it.
-  auto const *const conv = [&]() -> asts::ConventionAst const* {
-    if (arg.Conv != nullptr) { return arg.Conv.get(); }
-    const auto arg_type = arg.Val->InferType(&sm, meta);
-    return arg_type != nullptr ? arg_type->GetConvention() : nullptr;
-  }();
+  auto arg_type = Shared<asts::TypeAst>(nullptr);
+  if (arg.Conv == nullptr) { arg_type = arg.Val->InferType(&sm, meta); }
+
+  const auto conv = arg.Conv != nullptr
+    ? arg.Conv.get()
+    : arg_type->GetConvention();
   if (conv == nullptr) { return; }
 
   // A mutable borrow meets every other borrow of the region;
