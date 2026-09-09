@@ -592,6 +592,31 @@ spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError::Spp
     "Remove the bound rest pattern from the destructure.");
 }
 
+spp::analyse::errors::SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwnedPartError(
+  asts::Ast const &destructure,
+  asts::Ast const &value,
+  const StrView part) {
+  AddHeaders(105, "Destructure Skips Owned Part Error");
+  AddCtxForErr(&value, "Value taken apart here");
+  AddErr(&destructure, "" + INLINE_INFO(part) + " is left with no owner");
+  AddFooter(
+    "A destructure takes a value apart, so a part it does not bind is left with nothing holding it.",
+    "Bind " + INLINE_HELP(part) + " and use it, or bind it and discard it explicitly.");
+}
+
+spp::analyse::errors::SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
+  asts::Ast const &move,
+  asts::Ast const &destructor,
+  const StrView type_name) {
+  AddHeaders(106, "Partial Move Of Destructible Value Error");
+  AddCtxForErr(&destructor, "" + INLINE_INFO(type_name) + " is destroyed here");
+  AddErr(&move, "Part taken out of it here");
+  AddFooter(
+    "A destructor is given the whole value, so a value that has had a part taken out of it can never be destroyed: "
+    "it cannot be dropped, and it cannot be destructured either.",
+    "Destructure the whole value instead, or take the part by borrow.");
+}
+
 spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
   asts::Ast const &expr,
   asts::Ast const &expr_type,

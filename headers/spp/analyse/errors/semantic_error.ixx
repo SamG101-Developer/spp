@@ -51,6 +51,8 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppVariableTupleDestructureTupleTypeMismatchError;
   SPP_EXP_CLS struct SppVariableTupleDestructureTupleSizeMismatchError;
   SPP_EXP_CLS struct SppVariableObjectDestructureWithBoundRestPatternError;
+  SPP_EXP_CLS struct SppDestructureSkipsOwnedPartError;
+  SPP_EXP_CLS struct SppPartialMoveOfDestructibleValueError;
   SPP_EXP_CLS struct SppExpressionNotBooleanError;
   SPP_EXP_CLS struct SppExpressionNotGeneratorError;
   SPP_EXP_CLS struct SppExpressionNotTryError;
@@ -344,6 +346,16 @@ SPP_EXP_CLS struct spp::analyse::errors::SppVariableTupleDestructureTupleSizeMis
 
 SPP_EXP_CLS struct spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError final : SemanticError {
   explicit SppVariableObjectDestructureWithBoundRestPatternError(asts::Ast const &var, asts::Ast const &rest_pattern);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDestructureSkipsOwnedPartError final : SemanticError {
+  explicit SppDestructureSkipsOwnedPartError(
+    asts::Ast const &destructure, asts::Ast const &value, StrView part);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppPartialMoveOfDestructibleValueError final : SemanticError {
+  explicit SppPartialMoveOfDestructibleValueError(
+    asts::Ast const &move, asts::Ast const &destructor, StrView type_name);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotBooleanError final : SemanticError {
