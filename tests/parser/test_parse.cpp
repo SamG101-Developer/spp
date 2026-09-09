@@ -1003,7 +1003,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_literal_integer_base_16, R"(
     fun my_function() -> Void {
-        let a = 0x1F
+        let a = 0x1f
     }
 )");
 
