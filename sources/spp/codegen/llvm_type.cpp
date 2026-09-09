@@ -43,9 +43,6 @@ const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
 const spp::Vec<spp::Str> kVarParts = {"std", "variant", "Var"};
 const spp::Vec<spp::Str> kNonNullParts = {"std", "mem", "pointer", "NonNull"};
 
-// Width of a variant's discriminant. Matches the "sizeof(std::size_t)" discriminator that "SizeOf" accounts for.
-constexpr auto kVariantTagBits = 64u;
-
 // Largest alignment a variant payload buffer will be built out of. Anything needing more than a 16 byte alignment is
 // vector/extended precision territory, which the layout code does not model either.
 constexpr std::uint64_t kMaxVariantPayloadAlign = 16;
