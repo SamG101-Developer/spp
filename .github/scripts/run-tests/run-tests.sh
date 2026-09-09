@@ -37,25 +37,39 @@ work_dir="${PWD}/tests/test_outputs"
 mkdir -p "$work_dir"
 cd "$work_dir"
 
-# -------------------- TEMP TEST --------------------
-echo "::group::CPU topology"
+# The sweep is one process per test at cpu_count() workers, so
+# its wall-clock tracks physical cores, and an SMT runner offers
+# twice as many logical ones as it can really run.
 cpus="$(python3 -c 'import multiprocessing; print(multiprocessing.cpu_count())')"
-echo "logical cpus: ${cpus}"
-echo "gtest-parallel workers: ${WORKERS:-${cpus} (cpu_count default)}"
+
+# A probe that cannot report is not worth failing the sweep for,
+# so each assignment carries its own fallback rather than letting
+# a missing lscpu take the step down.
+cores="?"
+model=""
 case "$RUNNER_OS" in
   Linux)
-    fields='^(Architecture|CPU\(s\)|Thread\(s\) per core|Core\(s\) per socket|Model name):'
-    lscpu 2> /dev/null | grep -E "$fields" || true
+    cores="$(lscpu -p=core 2> /dev/null | awk '!/^#/ && !seen[$0]++ { n++ } END { print n + 0 }')" || cores="?"
+    model="$(lscpu 2> /dev/null | sed -n 's/^Model name: *//p')" || model=""
     ;;
   macOS)
-    sysctl -n machdep.cpu.brand_string hw.ncpu hw.physicalcpu || true
-    ;;
-  Windows)
-    echo "logical processors: ${NUMBER_OF_PROCESSORS:-unknown}"
+    cores="$(sysctl -n hw.physicalcpu 2> /dev/null)" || cores="?"
+    model="$(sysctl -n machdep.cpu.brand_string 2> /dev/null)" || model=""
     ;;
 esac
-echo "::endgroup::"
-# -------------------- TEMP TEST --------------------
+echo "cpu: ${cpus} logical, ${cores} physical (${model:-unknown model}); workers ${WORKERS:-$cpus}"
+
+# gtest-parallel strides its enumeration rather than splitting it
+# by name, so the shards balance themselves and need no filter
+# kept in step with the suite. One shard means the whole sweep,
+# and the flags are left off entirely.
+shard_count="${SHARD_COUNT:-1}"
+shard_index="${SHARD_INDEX:-0}"
+shard_flags=""
+if [ "$shard_count" -gt 1 ]; then
+  shard_flags="--shard_count=${shard_count} --shard_index=${shard_index}"
+  echo "shard: ${shard_index} of ${shard_count}"
+fi
 
 # Seed the fixture serially before the parallel sweep, so the
 # [vcs] clone happens once in a phase where git is the only
@@ -67,9 +81,11 @@ echo "::endgroup::"
 # gtest-parallel script, setting the config options from
 # the env flags.
 status=0
+# shellcheck disable=SC2086
 python3 "$runner" \
   "$binary" \
   --output_dir="$log_dir" \
+  $shard_flags \
   ${WORKERS:+--workers="$WORKERS"} || status=$?
 
 # Guard here as well as in test boot: an empty vcs/ passes the
