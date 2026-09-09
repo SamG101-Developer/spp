@@ -171,6 +171,18 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   }
 }
 
+auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
+  asts::IdentifierAst const &tmp_name,
+  scopes::ScopeManager const &sm)
+  -> void {
+  // Every part the bindings read came off the temporary, so
+  // between them they took all of it.
+  const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
+  if (sym == nullptr) { return; }
+  sym->MemInfo->MovedBy(tmp_name, sm.CurrentScope);
+  sym->MemInfo->AstPartialMoves.Clear();
+}
+
 auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
   Shared<asts::IdentifierAst> const &tmp_name,
   scopes::ScopeManager const &sm,

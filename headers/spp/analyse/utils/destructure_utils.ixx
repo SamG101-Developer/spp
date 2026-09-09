@@ -104,6 +104,18 @@ namespace spp::analyse::utils::destructure_utils {
     -> void;
 
   /**
+   * Consume a destructure's hidden temporary, for the path where one was bound. The expanded @c let statements read
+   * the temporary a part at a time, so it is left covered in partial moves; the destructure took the whole of it, so
+   * say so. Without this the temporary looks like a value someone took a piece out of and then abandoned.
+   * @param[in] tmp_name The name returned by @ref BindDestructureTemporary.
+   * @param[in, out] sm The scope manager to get the temporary's symbol from.
+   */
+  SPP_EXP_FUN auto ConsumeDestructureTemp(
+    asts::IdentifierAst const &tmp_name,
+    scopes::ScopeManager const &sm)
+    -> void;
+
+  /**
    * Hand the comptime value of the destructured value to the destructure's hidden temporary, so that the expanded
    * @c let statements can index it. The owning @c let statement has already resolved the value into @c CmpResult (a
    * field @c CompilerMetaData::Save does not track), so the value is not resolved a second time here.
