@@ -74,6 +74,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A()
         let mut x = async a.method()
         x = Fut[Str]()
+        std::mem::ops::drop(x)
     }
 )");
 
