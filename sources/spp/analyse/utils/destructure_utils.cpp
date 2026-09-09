@@ -8,11 +8,18 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
+import spp.asts.local_variable_destructure_array_ast;
+import spp.asts.local_variable_destructure_attribute_binding_ast;
+import spp.asts.local_variable_destructure_object_ast;
+import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.local_variable_destructure_tuple_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.type_ast;
@@ -108,19 +115,23 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
 auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   asts::Ast const &owner,
   const bool from_case_pattern,
+  const bool any_binding_is_moving,
   scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *const meta)
+  asts::meta::CompilerMetaData const *meta)
   -> void {
-  // Todo: A case-pattern destructure consumes its subject only on the branch whose pattern matches. Every branch of
-  //  a "case ... of" destructures, so the subject is consumed on all of them and the states agree; a branch that
-  //  matches without destructuring (a bare "else") does not, and the inconsistent-memory machinery has to reconcile
-  //  that against the branches that do. A binary "is" test must never consume - a "loop x is Pat(a)" re-tests "x"
-  //  every iteration - so this needs a discriminator between the two before it can be turned on.
-  if (from_case_pattern) { return; }
+  // If the destructure is not from a case pattern, then
+  // nothing is consumed. The case ast must've also specified
+  // that the condition is meant to be consumed.
+  if (from_case_pattern and meta->CaseConsumedSubjects.IsEmpty()) { return; }
 
+  // If this is for a let statement + local variable destructure
+  // (not a case pattern), then there must be a value, and it
+  // must name existing storage.
   const auto val = meta->LetStatementValue;
   if (val == nullptr or not IsDestructurePlaceExpression(*val)) { return; }
 
+  // Get the outermost (root) symbol for the value being
+  // destructured.
   const auto sym = sm.CurrentScope->GetVarSymbolOutermost(*val).first;
   if (sym == nullptr) { return; }
 
@@ -129,10 +140,26 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   if (spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr) { return; }
   if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
 
+  // A destructure takes the value apart, so what it does
+  // not bind is left with nothing holding it. This creates
+  // leaks because there is then no way to drop those values,
+  // so make sure all movables are bound.
+  if (any_binding_is_moving) {
+    // Get the region path of the value, and check if any parts
+    // have not been considered by the destructure. These cannot
+    // be left unbound, because they would silently drop.
+    const auto region = mem_utils::MemRegionPathNames(*val);
+    if (const auto skipped = linear_utils::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
+      Raise<errors::SppDestructureSkipsOwnedPartError>(
+        {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
+    }
+  }
+
   // "let Self(x) = self" takes the symbol itself, so the
   // symbol is moved. "let Self(x) = self.inner" takes one
   // region of it, which is a partial move like any other.
   if (val->To<asts::IdentifierAst>() != nullptr) {
+    if (from_case_pattern) { return; }
     sym->MemInfo->MovedBy(owner, sm.CurrentScope);
     sym->MemInfo->AstPartialMoves.Clear();
   }
@@ -143,8 +170,8 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
   Shared<asts::IdentifierAst> const &tmp_name,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *const meta)
+  scopes::ScopeManager const &sm,
+  asts::meta::CompilerMetaData const *meta)
   -> void {
   // The owning "let" statement has already resolved the
   // value, so the temporary takes a copy of that result

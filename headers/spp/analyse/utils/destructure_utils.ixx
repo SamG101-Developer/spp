@@ -98,8 +98,9 @@ namespace spp::analyse::utils::destructure_utils {
   SPP_EXP_FUN auto ConsumeDestructureSource(
     asts::Ast const &owner,
     bool from_case_pattern,
+    bool any_binding_is_moving,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData const *meta)
     -> void;
 
   /**
@@ -112,8 +113,8 @@ namespace spp::analyse::utils::destructure_utils {
    */
   SPP_EXP_FUN auto DestructureTempStage9(
     Shared<asts::IdentifierAst> const &tmp_name,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    scopes::ScopeManager const &sm,
+    asts::meta::CompilerMetaData const *meta)
     -> void;
 
   /**
