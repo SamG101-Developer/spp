@@ -355,7 +355,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDestructureSkipsOwnedPartError final
 
 SPP_EXP_CLS struct spp::analyse::errors::SppPartialMoveOfDestructibleValueError final : SemanticError {
   explicit SppPartialMoveOfDestructibleValueError(
-    asts::Ast const &move, asts::Ast const &destructor, StrView type_name);
+    asts::Ast const &exit_point, asts::Ast const &move, asts::Ast const &destructor, StrView type_name);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotBooleanError final : SemanticError {

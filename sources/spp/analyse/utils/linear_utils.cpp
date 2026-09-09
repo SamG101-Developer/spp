@@ -7,12 +7,14 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.defer_statement_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.loop_conditional_expression_ast;
@@ -226,6 +228,48 @@ namespace spp::analyse::utils::linear_utils {
       return not RegionConsumed(
         Vec{sym.Name->Val}, *sym.Type, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
     }
+
+    /**
+     * Raise if @p sym holds a value whose destructor can no longer be run, because a part of it has been moved out
+     * and nothing put one back. Only a type with a @c drop of its own has anything to lose here: everything else is
+     * destroyed field by field, which a partial move has already done for the parts it took.
+     * @param sym The symbol being checked.
+     * @param exit_point The ast to report the error against.
+     * @param sm The scope manager, positioned where the symbol's type resolves from.
+     * @param meta Associated metadata, for resolving the destructor overload.
+     */
+    auto CheckDestructorStillReachable(
+      scopes::VariableSymbol const &sym,
+      asts::Ast const &exit_point,
+      scopes::ScopeManager &sm,
+      asts::meta::CompilerMetaData *const meta)
+      -> void {
+      // Nothing taken out of it is nothing to put back.
+      if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return; }
+      if (sym.Type == nullptr) { return; }
+
+      // A borrow does not own what it points at, so the value
+      // behind it is not this scope's to destroy.
+      if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return; }
+      if (sym.Type->GetConvention() != nullptr) { return; }
+
+      // Todo: Only the symbol's own type is asked. A part moved out from deeper - "outer.inner.a", where "Outer" has
+      //  no destructor but "inner"'s type does - records its move against "outer", so the destructor that can no
+      //  longer run belongs to a type this never looks at. Catching it means walking the prefixes of each recorded
+      //  path and asking the same question of every type along the way.
+      const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym.Type.get());
+      if (type_sym == nullptr) { return; }
+
+      const auto destructor = drop_utils::FindDropOverload(*type_sym, sm, meta);
+      if (destructor == nullptr) { return; }
+
+      // Held in a local so the view handed to the error outlives
+      // it.
+      const auto owner_name = sym.Type->WithoutGenerics()->ToString();
+      Raise<errors::SppPartialMoveOfDestructibleValueError>(
+        {sm.CurrentScope}, ERR_ARGS(
+          exit_point, *sym.MemInfo->AstPartialMoves.Front(), *destructor->Name, StrView(owner_name)));
+    }
   }
 }
 
@@ -313,14 +357,12 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
   asts::Ast const &exit_point,
   const StrView exit_what,
   scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData const *meta)
+  asts::meta::CompilerMetaData *meta)
   -> void {
   //
   using errors::SppLinearValueNotConsumedError;
 
   for (auto const *sym : scope.AllVarSymbols(true)) {
-    if (not IsLive(*sym, sm)) { continue; }
-
     // The subject of a surrounding "case ... of" that takes it has already been given up by the time a branch runs,
     // even though the mark itself is not made until the branches are done. Leaving a branch early is not what
     // abandoned it.
@@ -337,6 +379,15 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     // A closing brace sits after everything in its scope, so this never excludes anything from an ordinary scope end.
     if (sym->Name != nullptr and sym->Name->PosStart() > exit_point.PosStart()) { continue; }
 
+    // A destructor needs the whole value to form the "self"
+    // it is given, so one that has had a part taken out of
+    // it and never put back can no longer be destroyed. It
+    // is only here, where there is no longer anywhere to
+    // repair it, that the value is stranded.
+    CheckDestructorStillReachable(*sym, exit_point, sm, meta);
+
+    if (not IsLive(*sym, sm)) { continue; }
+
     // Marked against the symbol's own name rather than against
     // whatever initialized it. A parameter is initialized by the
     // whole "name: Type" ast, so pointing at that underlines the
@@ -346,18 +397,6 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     // Held in locals so the views handed to the error outlive it.
     const auto sym_name = sym->Name->ToString();
     const auto type_name = sym->Type->WithoutGenerics()->ToString();
-    // Todo: Migration aid, to be removed once the standard library is linear-clean. The compiler stops at the first
-    //  error, which makes a several-hundred-site migration a rebuild per site; "SPP_LINEAR_SURVEY" reports every
-    //  linear finding in one run instead. Analysis continues on state the error would normally have halted, so later
-    //  stages are not to be trusted under it - it is for reading the list, not for building.
-    if (std::getenv("SPP_LINEAR_SURVEY") != nullptr) {
-      try {
-        Raise<SppLinearValueNotConsumedError>(
-          {sm.CurrentScope}, ERR_ARGS(*def, exit_point, StrView(sym_name), StrView(type_name), exit_what));
-      }
-      catch (errors::SemanticError const &e) { std::cerr << "LINEAR|" << e.what() << "\n"; }
-      continue;
-    }
     Raise<SppLinearValueNotConsumedError>(
       {sm.CurrentScope}, ERR_ARGS(*def, exit_point, StrView(sym_name), StrView(type_name), exit_what));
   }
@@ -367,7 +406,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToFunction(
   asts::Ast const &exit_point,
   const StrView exit_what,
   scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData const *meta)
+  asts::meta::CompilerMetaData *meta)
   -> void {
   // Outside a function there is no linear obligation to discharge:
   // a module-level constant outlives every scope that reads it.
@@ -388,7 +427,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
   const std::size_t num_exits,
   const bool has_skip,
   scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData const *meta)
+  asts::meta::CompilerMetaData *meta)
   -> void {
   //
   auto loops_seen = std::size_t{0};

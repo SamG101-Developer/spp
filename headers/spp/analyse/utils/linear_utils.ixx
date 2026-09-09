@@ -53,7 +53,8 @@ namespace spp::analyse::utils::linear_utils {
     -> void;
 
   /**
-   * Raise @c SppLinearValueNotConsumedError for every symbol declared in this scope that is still live. Called at the
+   * Raise @c SppLinearValueNotConsumedError for every symbol declared in this scope that is still live, and
+   * @c SppPartialMoveOfDestructibleValueError for every one that has a destructor it can no longer run. Called at the
    * exit of a function body scope and of every inner scope inside one.
    * @param scope The scope being left.
    * @param exit_point The ast to report the error against - the closing brace, or the statement that leaves early.
@@ -66,7 +67,7 @@ namespace spp::analyse::utils::linear_utils {
     asts::Ast const &exit_point,
     StrView exit_what,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData const *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void;
 
   /**
@@ -83,7 +84,7 @@ namespace spp::analyse::utils::linear_utils {
     asts::Ast const &exit_point,
     StrView exit_what,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData const *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void;
 
   /**
@@ -103,6 +104,6 @@ namespace spp::analyse::utils::linear_utils {
     std::size_t num_exits,
     bool has_skip,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData const *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void;
 }

@@ -605,15 +605,18 @@ spp::analyse::errors::SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwne
 }
 
 spp::analyse::errors::SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
+  asts::Ast const &exit_point,
   asts::Ast const &move,
   asts::Ast const &destructor,
   const StrView type_name) {
   AddHeaders(106, "Partial Move Of Destructible Value Error");
   AddCtxForErr(&destructor, "" + INLINE_INFO(type_name) + " is destroyed here");
-  AddErr(&move, "Part taken out of it here");
+  AddCtxForErr(&move, "Part taken out of it here");
+  AddErr(&exit_point, "Still missing that part here");
   AddFooter(
-    "A type with a specified " + INLINE_NOTE("drop") + " method cannot be partially destructured.",
-    "Destructure the whole value instead, or take the part by borrow.");
+    "A type with a " + INLINE_NOTE("drop") + " method must be whole when it is destroyed, so a part moved out of one "
+    "has to be put back before the value goes out of scope.",
+    "Assign the part back, or destructure the whole value instead of taking it apart a piece at a time.");
 }
 
 spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
