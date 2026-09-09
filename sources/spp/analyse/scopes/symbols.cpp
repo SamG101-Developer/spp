@@ -390,6 +390,17 @@ auto spp::analyse::scopes::TypeSymbol::AsClassSymbol() const
   return LinkedScope->TySym.get();
 }
 
+auto spp::analyse::scopes::TypeSymbol::AsBoundSymbol() const
+  -> TypeSymbol* {
+  // Borrowed rather than owned, as with "AsClassSymbol": the
+  // symbol answered with is owned by the scope it links to.
+  const auto self = const_cast<TypeSymbol*>(this);
+  if (IsGeneric and LinkedScope != nullptr and LinkedScope->TySym != nullptr and LinkedScope->TySym.get() != self) {
+    return LinkedScope->TySym->AsBoundSymbol();
+  }
+  return self;
+}
+
 auto spp::analyse::scopes::TypeSymbol::FqName(
   const bool ignore_dollar) const
   -> Shared<asts::TypeAst> {

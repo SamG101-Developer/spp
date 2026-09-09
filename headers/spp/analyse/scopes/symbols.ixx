@@ -394,6 +394,16 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     -> TypeSymbol*;
 
   /**
+   * The symbol a bound generic parameter ultimately stands for. A bound parameter keeps the parameter's own name
+   * ("T") but links to the argument's scope, and it is the argument that has the attributes, the methods and the sup
+   * chain - so anything asking a property of the type rather than of the name it arrived under comes through here.
+   * Resolved all the way, since an argument can itself be a parameter bound one level out.
+   * @return The argument's symbol, or this symbol when it is not a bound parameter.
+   */
+  SPP_ATTR_NODISCARD auto AsBoundSymbol() const
+    -> TypeSymbol*;
+
+  /**
    * Discard this symbol's cached fully qualified name. Needed when @c LinkedScope is re-pointed after the symbol has
    * been built, which changes the chain the name is read off without moving any scope in the tree.
    */
