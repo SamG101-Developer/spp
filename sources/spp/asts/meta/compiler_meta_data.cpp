@@ -29,7 +29,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
-  DestructuringValue = false;
   LetStatementPrecomputedValue = nullptr;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
@@ -90,7 +89,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
-  s.DestructuringValue = DestructuringValue;
   s.LetStatementPrecomputedValue = LetStatementPrecomputedValue;
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
@@ -160,7 +158,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
-  DestructuringValue = state.DestructuringValue;
   LetStatementPrecomputedValue = state.LetStatementPrecomputedValue;
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;

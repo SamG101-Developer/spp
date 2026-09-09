@@ -119,15 +119,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   bool LetStatementFromUninitialized;
 
   /**
-   * Set while a destructure's expanded bindings are checked. Each binding reads one field off the value, so each one
-   * records a partial move of it, and the destructure marks the whole value moved once they are done. That makes the
-   * expansion look identical to taking the value apart a piece at a time, which is the one thing a value with a
-   * destructor may not have done to it - so the checks that refuse that have to know which of the two they are
-   * looking at.
-   */
-  bool DestructuringValue;
-
-  /**
    * When set, a local variable's initializer is this already-generated llvm value rather than the result of
    * code-generating @c LetStatementValue. Used to bind a function/closure parameter directly to its incoming
    * @c llvm::Argument, since there is no expression AST to codegen for it (see

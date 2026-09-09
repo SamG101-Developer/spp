@@ -216,15 +216,9 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage8_CheckMemory(
     DestructureTempStage8(*this, *_TmpName, *sm, meta);
   }
 
-  // Check the memory state of the elements.
-  // Each expanded binding reads one field off the value, so each records a partial move of it, and the destructure
-  // marks the whole value moved once they are done. Flagged so the checks that refuse a value being taken apart a
-  // piece at a time can tell that apart from a destructure, which is the sanctioned way to take one apart.
-  {
-    const auto _meta_guard = meta::MetaGuard(meta);
-    meta->DestructuringValue = true;
+  // Check the memory state of the elements. Each expanded binding reads one field off the value, so each records a
+  // partial move of it, and the destructure marks the whole value moved once they are done.
   for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
-  }
 
   // Taking every element off a value takes the value, so the
   // symbol holding it is left moved rather than partly moved.
