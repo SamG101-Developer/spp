@@ -202,7 +202,6 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
-  using analyse::utils::case_utils::PatternBindsByMove;
   using analyse::utils::case_utils::ValidateInconsistentMemory;
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
@@ -222,7 +221,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   // "moves_value", repeated here because marking the move directly is what skips it.
   const auto binds_by_move = TokOf != nullptr and not LoweredFromIsExpr and genex::any_of(
     Branches, [](auto const &branch) {
-      return genex::any_of(branch->Patterns, [](auto const &p) { return PatternBindsByMove(*p); });
+      return genex::any_of(branch->Patterns, [](auto const &p) { return p->BindsByMove(); });
     });
 
   const auto cond_type = binds_by_move ? Cond->InferType(sm, meta) : nullptr;
