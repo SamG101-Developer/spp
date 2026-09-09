@@ -17,9 +17,14 @@ jobs:
   # Skips the expensive jobs on changes that cannot move their result, and only those: a skipped job counts as a pass
   # for ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled.
   #
-  # One output per gated job rather than one shared boolean, because a CI-only change (a dependabot action-pin bump,
-  # say) moves only the jobs that actually read the file it touched - a bump confined to claude.yaml gates nothing,
-  # and one to _compile.yaml runs the builds without dragging cppcheck, security and sonar along with it.
+  # One output per gated job rather than one shared boolean, because a CI-only change moves only the jobs that
+  # actually read the file it touched - a change confined to claude.yaml gates nothing, and one to _compile.yaml runs
+  # the builds without dragging cppcheck, security and sonar along with it.
+  #
+  # A grouped dependabot action-pin bump defeats that on its own: harden-runner and checkout are pinned in every
+  # workflow, this one included, and pr.yaml is listed in every filter. So `ci_pins_only` classifies the diff by
+  # content rather than path, and a diff that is only pinned `uses:` bumps gates nothing at all. Security still runs -
+  # the pins are what it has to look at - but without CodeQL, whose sources did not move.
   changes:
     name: Detect Code Changes
     runs-on: ubuntu-24.04
@@ -28,6 +33,7 @@ jobs:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      ci_pins_only: ${{ steps.filter.outputs.ci_pins_only }}
       release_gate: ${{ steps.filter.outputs.release_gate }}
       cppcheck: ${{ steps.filter.outputs.cppcheck }}
       compile: ${{ steps.filter.outputs.compile }}
@@ -219,6 +225,8 @@ jobs:
       security-events: write
       actions: read
     uses: ./.github/workflows/_security.yaml
+    with:
+      code-scan: ${{ needs.changes.outputs.ci_pins_only != 'true' }}
 
   # Advisory: runs SonarQube Cloud analysis with PR decoration, but is deliberately omitted from ci-success, so a red
   # quality gate does not block a merge. Todo: Add it to the ci-success `needs` list to make it blocking.
@@ -235,12 +243,15 @@ jobs:
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # Advisory, like Sonar, and omitted from ci-success for the same reason.
+  # Advisory, like Sonar, and omitted from ci-success for the same reason. There is nothing to review in a pin bump,
+  # so it sits behind `changes` to skip those rather than spend a review on a pair of SHAs.
   claude-review:
     name: Claude Review
+    needs: [ changes ]
     if: |
       github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository
+      && needs.changes.outputs.ci_pins_only != 'true'
     permissions:
       contents: read
       pull-requests: write

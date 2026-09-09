@@ -11,12 +11,18 @@ on:
         required: false
         type: boolean
         default: false
+      code-scan:
+        description: "Run CodeQL. Off for a diff that changed no sources for it to analyse."
+        required: false
+        type: boolean
+        default: true
 
 permissions: { }
 
 jobs:
   codeql:
     name: CodeQL
+    if: inputs.code-scan
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
