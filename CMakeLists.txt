@@ -24,6 +24,7 @@ set(
 
 if (MSVC)
   add_compile_options($<IF:$<CONFIG:Debug>,/MDd,/MD> /Zc:preprocessor)
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 endif ()
 
 # The LTO-aware binutils wrappers only exist for GCC; clang
