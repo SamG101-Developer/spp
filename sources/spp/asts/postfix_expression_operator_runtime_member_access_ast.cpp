@@ -16,6 +16,7 @@ import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
+import spp.asts.ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_group_ast;
@@ -24,6 +25,7 @@ import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
@@ -75,6 +77,7 @@ spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOpe
   TokDot(std::move(tok_dot)),
   Name(std::move(name)),
   _MappedFwd(nullptr) {
+  Source.OriginalExpr = nullptr;
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokDot, lex::SppTokenType::TK_DOT, ".");
 }
 
@@ -102,6 +105,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const
     AstClone(TokDot),
     AstClone(Name));
   ast->_MappedFwd = _MappedFwd;
+  ast->Source.OriginalExpr = Source.OriginalExpr;
   return ast;
 }
 
@@ -118,6 +122,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
   CompilerMetaData *meta)
   -> void {
   //
+  using analyse::errors::SppExpressionNotTryError;
   using analyse::errors::SppMemberAccessNonIndexableError;
   using analyse::errors::SppMemberAccessOutOfBoundsError;
   using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
@@ -193,6 +198,14 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         _MappedFwd->Stage7_AnalyseSemantics(sm, meta);
         return;
       }
+
+      // An access the "?" lowering, generated to reach a "Try"
+      // member, so failing to find it means the operand is not
+      // a "Try" type - provide a more refined error.
+      const auto try_op = AstAs<PostfixExpressionOperatorEarlyReturnAst>(Source.OriginalExpr);
+      RaiseIf<SppExpressionNotTryError>(
+        try_op != nullptr, {sm->CurrentScope},
+        ERR_ARGS(*try_op, *lhs_type));
 
       // Type field was not found on this type, or the
       // forwarding type (includes nested forwarding checks).
