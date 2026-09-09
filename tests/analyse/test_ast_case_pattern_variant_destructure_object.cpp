@@ -153,13 +153,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(p: Point1) -> Void {
         case p of {
-            is Point1(x as x_value, ..) {
+            is Point1(x as x_value, y as y_unused) {
                 let xxx = x_value
                 std::mem::ops::drop(xxx)
+                std::mem::ops::drop(y_unused)
             }
-            is Point1(y as y_value, ..) {
+            is Point1(y as y_value, x as x_unused) {
                 let yyy = y_value
                 std::mem::ops::drop(yyy)
+                std::mem::ops::drop(x_unused)
             }
         }
     }

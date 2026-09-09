@@ -86,7 +86,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p of {
             is [x, y] { }
-            is [x, ..] { }
+            is [x, z] { }
         }
     }
 )");

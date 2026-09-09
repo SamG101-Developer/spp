@@ -346,7 +346,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let p = Pair(a=Str::from("a"), b=Str::from("b"))
-        let Pair(a, ..) = p
+        let Pair(a, b) = p
         let q = p
     }
 )");

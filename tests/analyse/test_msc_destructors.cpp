@@ -213,3 +213,89 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         drop(a)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstDestructors,
+    test_invalid_partial_move_out_of_a_value_with_a_destructor,
+    SppPartialMoveOfDestructibleValueError, R"(
+    cls Holder { !public val: Str }
+
+    sup Holder ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Holder(val) = self
+            drop(val)
+        }
+    }
+
+    sup Holder {
+        fun take(self) -> Str {
+            ret self.val
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_destructure_of_a_value_with_a_destructor, R"(
+    cls Holder { !public val: Str }
+
+    sup Holder ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Holder(val) = self
+            drop(val)
+        }
+    }
+
+    sup Holder {
+        fun take(self) -> Str {
+            let Holder(val) = self
+            ret val
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_partial_move_out_of_a_value_with_no_destructor, R"(
+    cls Plain { !public val: Str }
+
+    sup Plain {
+        fun take(self) -> Str {
+            ret self.val
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstDestructors,
+    test_valid_partial_move_leaving_only_copyable_parts, R"(
+    cls Big { !public sign: Bool
+              !public data: Str }
+
+    sup Big {
+        fun combine(self, that: Big) -> Str {
+            let d = self.data
+            let s = self.sign and that.sign
+            drop(that.data)
+            ret d
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+    TestAstDestructors,
+    test_valid_drop_of_a_value_with_a_destructor, R"(
+    cls Holder { !public val: Str }
+
+    sup Holder ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Holder(val) = self
+            drop(val)
+        }
+    }
+
+    fun main() -> Void {
+        let h = Holder(val=Str::new())
+        drop(h)
+    }
+)");
