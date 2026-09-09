@@ -7,6 +7,7 @@ import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
+  SPP_EXP_CLS struct TypeAst;
 }
 
 namespace spp::asts::meta {
@@ -20,6 +21,22 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::analyse::utils::linear_utils {
+  /**
+   * The first part of a value that a destructure of it has not accounted for: an owned member that nothing bound and
+   * so that nothing is left holding. Copyable parts never answer, having been copied rather than taken, and a value
+   * whose parts are all copyable has nothing to answer with.
+   * @param sym The symbol holding the value, whose recorded partial moves are what the parts are checked against.
+   * @param region The place being taken apart, as the names of its steps. A nested destructure takes one region of a
+   * value apart rather than the whole of it, and only that region has to be accounted for.
+   * @param sm The scope manager, positioned where the symbol's type resolves from.
+   * @return The place expression of the first unaccounted-for part, or an empty string if there is none.
+   */
+  SPP_EXP_FUN auto FirstUnaccountedPart(
+    scopes::VariableSymbol const &sym,
+    Vec<Str> const &region,
+    scopes::ScopeManager const &sm)
+    -> Str;
+
   /**
    * Record what this scope's deferred expressions take when they run. A @c defer does not consume anything where it is
    * written - the value has to stay usable for the rest of the scope - so leaving the scope is what consumes it, and

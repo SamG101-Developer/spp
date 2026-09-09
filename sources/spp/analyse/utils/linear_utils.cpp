@@ -49,6 +49,34 @@ namespace spp::analyse::utils::linear_utils {
     }
 
     /**
+     * The type of one part of a type, and the scope that type resolves in: an attribute by name, or an element of a
+     * tuple or an array by index. Nothing when the type has no such part.
+     */
+    auto IndividualPartType(
+      asts::TypeAst const &type,
+      scopes::Scope const &scope,
+      Str const &step)
+      -> Pair<Shared<asts::TypeAst>, scopes::Scope const*> {
+      // For index field access like "tuple.0", use the type_predicate
+      // nth type helper.
+      if (type_predicates::IsTypeCompTimeIndexable(type, scope)) {
+        const auto index = std::atoll(step.c_str());
+        return {type_predicates::GetNthTypeOfIndexableType(index, type, scope), &scope};
+      }
+
+      // Otherwise, iterate the attributes and find the matching one,
+      // and get its type and scope.
+      for (auto const &attr : type_members::GetAllAttrs(type, scope)) {
+        if (spp::get<1>(attr) != nullptr and spp::get<0>(attr)->Val == step) {
+          return {spp::get<1>(attr)->FqName(), spp::get<2>(attr)};
+        }
+      }
+
+      // Failsafe, should never be reached.
+      return {nullptr, nullptr};
+    }
+
+    /**
      * Whether everything a place owns has been consumed, given every partial move recorded against the symbol it
      * hangs off. A move accounts for a place directly when it names the place or something containing it. A place is
      * also accounted for piecemeal, by its parts: a case pattern never marks the value it destructures as moved, only
@@ -65,7 +93,9 @@ namespace spp::analyse::utils::linear_utils {
       Vec<Str> const &region,
       asts::TypeAst const &type,
       scopes::Scope const &scope,
-      Vec<asts::Ast const*> const &moves)
+      Vec<asts::Ast const*> const &moves,
+      Str *const unaccounted = nullptr,
+      const bool descend_regardless = false)
       -> bool {
       // If there is a registered move of the entire region, then
       // a full consume has been done, so return true. Otherwise,
@@ -80,7 +110,12 @@ namespace spp::analyse::utils::linear_utils {
       // If the region is not contained by any moves, then we can
       // skip individual checks, and return false here; an early
       // return optimization.
-      if (not touched) { return false; }
+      if (not touched and not descend_regardless) {
+        if (unaccounted != nullptr and unaccounted->empty()) {
+          for (auto const &step : region) { *unaccounted += unaccounted->empty() ? step : "." + step; }
+        }
+        return false;
+      }
 
       auto part = region;
       part.EmplaceBack(Str()); // Extra spot for temp "final" part.
@@ -103,7 +138,7 @@ namespace spp::analyse::utils::linear_utils {
           // using this function recursively. If any part hasn't,
           // then nor has the enclosing collection.
           part.Back() = std::to_string(i);
-          if (not RegionConsumed(part, *elem_type, scope, moves)) { return false; }
+          if (not RegionConsumed(part, *elem_type, scope, moves, unaccounted)) { return false; }
         }
 
         // Nothing left behind, so at this point we know the
@@ -117,7 +152,9 @@ namespace spp::analyse::utils::linear_utils {
         const auto attr_type_sym = spp::get<1>(attr);
         if (attr_type_sym->IsCopyable()) { continue; }
         part.Back() = spp::get<0>(attr)->Val;
-        if (not RegionConsumed(part, *attr_type_sym->FqName(), *spp::get<2>(attr), moves)) { return false; }
+        if (not RegionConsumed(part, *attr_type_sym->FqName(), *spp::get<2>(attr), moves, unaccounted)) {
+          return false;
+        }
       }
       return true;
     }
@@ -192,6 +229,35 @@ namespace spp::analyse::utils::linear_utils {
   }
 }
 
+auto spp::analyse::utils::linear_utils::FirstUnaccountedPart(
+  scopes::VariableSymbol const &sym,
+  Vec<Str> const &region,
+  scopes::ScopeManager const &sm)
+  -> Str {
+  // No region parts -> no unaccounted parts. Simple optimization
+  // guard.
+  if (sym.Type == nullptr or region.IsEmpty()) { return Str(); }
+
+  // Make n moves through the types / scopes of the region, such
+  // that for "a.b.c", it goes attributes at a time, remapping to
+  // the overall type and then moving in again.
+  auto region_type = sym.Type;
+  auto region_scope = static_cast<scopes::Scope const*>(sm.CurrentScope);
+  for (auto i = std::size_t{1}; i < region.Len(); ++i) {
+    auto [part_type, part_scope] = IndividualPartType(*region_type, *region_scope, region[i]);
+    region_type = std::move(part_type);
+    region_scope = part_scope;
+  }
+
+  // The caller has established that the pattern took this place
+  // apart, so its parts are walked whether or not any of them
+  // recorded a move.
+  auto unaccounted = Str();
+  auto _ = RegionConsumed(
+    region, *region_type, *region_scope, sym.MemInfo->AstPartialMoves, &unaccounted, true);
+  return unaccounted;
+}
+
 auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
   scopes::Scope const &scope,
   asts::Ast const &exit_point,
@@ -262,8 +328,8 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     // Matched by name rather than by symbol, because a pattern that narrows the subject adds a flow-typed symbol of
     // its own to the branch scope - same name, same storage, narrower type - and that one is what a check inside the
     // branch actually finds.
-    if (meta != nullptr and meta->CaseConsumedSubject != nullptr and sym->Name != nullptr
-      and *sym->Name == *meta->CaseConsumedSubject) { continue; }
+    if (meta != nullptr and sym->Name != nullptr and genex::any_of(
+      meta->CaseConsumedSubjects, [&sym](auto const &subject) { return *sym->Name == *subject; })) { continue; }
 
     // A symbol declared after the point control leaves from does not hold anything yet: a "ret" part-way through a
     // scope is reached before the "let"s below it ever run. Stage 7 fills the initialization ast in for every symbol
