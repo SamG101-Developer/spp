@@ -126,6 +126,16 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
 
+  // What a default may hold is limited, because it is
+  // copied into every object initializer that leaves
+  // the attribute out. Checked before the analysis below
+  // rewrites it.
+  if (DefaultVal != nullptr) {
+    RaiseIf<analyse::errors::SppInvalidDefaultValueError>(
+      not DefaultVal->IsAllowedInDefault(),
+      {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
+  }
+
   if (not IsTypeSelf(*Type)) {
     Type = SubstituteSelfType(*Type, *sm->CurrentScope, *meta);
   }
@@ -168,13 +178,6 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
 
   if (meta->CurrentStage != meta::CompilerStage::kAnalyseSemantics) { return; }
   if (DefaultVal != nullptr) {
-    // What a default may hold is limited, because it is
-    // copied into every object initializer that leaves
-    // the attribute out. Checked before the analysis below
-    // rewrites it.
-    RaiseIf<analyse::errors::SppInvalidDefaultValueError>(
-      not DefaultVal->IsAllowedInDefault(),
-      {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     const auto default_type = DefaultVal->InferType(sm, meta);
 
