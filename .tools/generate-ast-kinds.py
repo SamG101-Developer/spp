@@ -1,7 +1,12 @@
 import collections
+import difflib
 import glob
+import itertools
 import re
 import sys
+
+OUT = "headers/spp/asts/ast_kind.ixx"
+CHECK = "--check" in sys.argv
 
 # name -> {final, bases, file}
 H = {}
@@ -47,19 +52,22 @@ def dfs(n):
 
 dfs("Ast")
 
-detached = [r for r in roots if r != "Ast"]
-print(f"concrete kinds: {len(order)}", file=sys.stderr)
-print(f"classes with a range: {len(rng)}", file=sys.stderr)
-print(f"detached (never reachable from Ast): {detached}", file=sys.stderr)
-missing = [n for n in H if n not in rng and H[n]["final"]]
-print(f"concrete but unranked: {missing}", file=sys.stderr)
+if not CHECK:
+    detached = [r for r in roots if r != "Ast"]
+    missing = [n for n in H if n not in rng and H[n]["final"]]
+    print(f"concrete kinds: {len(order)}", file=sys.stderr)
+    print(f"classes with a range: {len(rng)}", file=sys.stderr)
+    print(f"detached (never reachable from Ast): {detached}", file=sys.stderr)
+    print(f"concrete but unranked: {missing}", file=sys.stderr)
 
 castable = {n for n in rng if not H[n]["tmpl"]}
+
 fwd = "\n".join(f"  SPP_EXP_CLS struct {n};" for n in sorted(castable))
 enum = "\n".join(f"  k{n}," for n in order)
-traits = "\n".join(
-    f"  template <> struct AstKindRange<{n}> {{\n"
-    f"    static constexpr bool Known = true;\n"
+traits = "\n\n".join(
+    f"  template <>\n"
+    f"  struct AstKindRange<{n}> {{\n"
+    f"    static constexpr auto Known = true;\n"
     f"    static constexpr auto First = AstKind::k{order[a]};\n"
     f"    static constexpr auto Last = AstKind::k{order[b]};\n"
     f"  }};"
@@ -67,7 +75,7 @@ traits = "\n".join(
     if n in castable
 )
 
-open("headers/spp/asts/ast_kind.ixx", "w").write(f"""module;
+text = f"""module;
 #include <spp/macros.hpp>
 
 export module spp.asts.ast_kind;
@@ -101,10 +109,21 @@ namespace spp::asts {{
    */
   SPP_EXP_CLS template <typename T>
   struct AstKindRange {{
-    static constexpr bool Known = false;
+    static constexpr auto Known = false;
   }};
 
 {traits}
 }}
-""")
-print("wrote headers/spp/asts/ast_kind.ixx", file=sys.stderr)
+"""
+
+if CHECK:
+    have = open(OUT).read()
+    if have != text:
+        diff = difflib.unified_diff(have.splitlines(True), text.splitlines(True), OUT, "generated", n=1)
+        sys.stderr.writelines(itertools.islice(diff, 40))
+        print(f"\n{OUT} is out of date - re-run: python3 .tools/generate-ast-kinds.py", file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)
+
+open(OUT, "w").write(text)
+print(f"wrote {OUT}", file=sys.stderr)
