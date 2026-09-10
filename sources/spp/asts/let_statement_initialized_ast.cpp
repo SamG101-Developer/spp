@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_utils;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
@@ -81,6 +82,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_compare::TypeEq;
+  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
 
   // An explicit type can only be applied if the left-hand-side is a single identifier.
   RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
@@ -90,7 +92,9 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   // Analyse the type if it has been given.
   if (Type != nullptr) {
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(
+      AstClone(Type->GetConvention()));
   }
 
   // Add the type into the return type overload resolver.

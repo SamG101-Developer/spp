@@ -5,6 +5,7 @@ module spp.asts.let_statement_uninitialized_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -68,9 +69,13 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
+  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+
   // Analyse the type.
   Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
+  Type = sm->CurrentScope->GetTypeSymbol(
+    Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
   // Create a mock value for analysis.
   const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);
