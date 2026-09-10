@@ -60,6 +60,14 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
+  // "async" lowers the call into a closure, and has to rebuild
+  // it from how it was written. Analysis rewrites a call's args
+  // in place, so the copy it needs can only be taken here,
+  // before that happens.
+  if (const auto async_op = Op->To<UnaryExpressionOperatorAsyncAst>(); async_op != nullptr) {
+    async_op->Source._OriginalRhs = AstClone(Expr);
+  }
+
   // Analyse the operator and right-hand-side expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -75,8 +83,11 @@ auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Check the memory of the right-hand-side.
-  Expr->Stage8_CheckMemory(sm, meta);
+  // Check the memory of the right-hand-side, and update the
+  // meta context to track the rhs part of this unary expression.
+  const auto _meta_guard = meta::MetaGuard(meta);
+  meta->UnaryExpressionRhs = Expr.get();
+  Op->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
