@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
@@ -218,16 +219,31 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
     const auto _meta_guard = meta::MetaGuard(meta);
     PcGroup->Stage8_CheckMemory(sm, meta);
 
+    // The parameters and captures are in the scope the group
+    // has just moved into, "closure-outer", and that is the
+    // closure's function scope. A "ret" in the body walks up
+    // to and including it, so the parameters in it have to be
+    // consumed by then. Set after moving into the body's scope
+    // instead, the walk stopped one short of them.
+    const auto outer_scope = sm->CurrentScope;
+    meta->EnclosingFunctionScope = outer_scope;
+
     // Prevent the body inheriting external assignments.
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
 
-    // Check the memory of the body of the closure. A "ret" inside it
-    // leaves the closure, not the function the closure is written in,
-    // so the linearity walk has to stop here.
+    // Check the memory of the body of the closure. A "ret" inside
+    // it leaves the closure, not the function the closure is written
+    // in, so the linearity walk stops at the closure's own scope.
     sm->MoveToNextScope();
-    meta->EnclosingFunctionScope = sm->CurrentScope;
     Body->Stage8_CheckMemory(sm, meta);
+
+    // A body that falls off its end discharges its parameters there,
+    // as a function's does.
+    if (not Body->Terminates()) {
+      analyse::utils::linear_utils::CheckScopeExit(
+        *outer_scope, *Body, "Closure end", *sm, meta);
+    }
 
     // Set the scope back.
   }
