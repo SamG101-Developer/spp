@@ -356,12 +356,12 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto CreateCallablePrototype(
-      asts::TypeAst const &expr_type)
+      asts::TypeAst const &expr_ty)
       -> Unique<asts::FunctionPrototypeAst> {
       // Extract the parameter and return types from the
       // expression type.
-      auto ret_ty = expr_type.LastTypePart()->GnArgGroup->TypeAt("Out")->Val;
-      auto param_tys = expr_type.LastTypePart()->GnArgGroup->TypeAt("Args")->Val->LastTypePart()->GnArgGroup->GetTypeArgs()
+      auto ret_ty = expr_ty.LastTypePart()->GnArgGroup->TypeAt("Out")->Val;
+      auto p_tys = expr_ty.LastTypePart()->GnArgGroup->TypeAt("Args")->Val->LastTypePart()->GnArgGroup->GetTypeArgs()
         | genex::views::transform([](auto *g) {
           return MakeUnique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, g->Val);
         })
@@ -372,7 +372,7 @@ namespace spp::analyse::utils::overload_utils {
       // Todo: When might it be a coroutine, not a subroutine?
       // Todo: Do we set "cmp" here for the subroutine ever?
       auto dummy_param_group = MakeUnique<asts::FunctionParameterGroupAst>(
-        nullptr, std::move(param_tys), nullptr);
+        nullptr, std::move(p_tys), nullptr);
       auto dummy_name = MakeUnique<asts::IdentifierAst>(
         0uz, "<anonymous>");
       auto dummy_overload = MakeUnique<asts::SubroutinePrototypeAst>(
@@ -459,7 +459,9 @@ namespace spp::analyse::utils::overload_utils {
       if (self_param != nullptr and self_param->Conv == nullptr) { return true; }
 
       return names_self(*fn_proto.ReturnType)
-        or genex::any_of(fn_proto.FnParamGroup->GetNonSelfParams(), [&](auto const *p) { return names_self(*p->Type); });
+        or genex::any_of(
+          fn_proto.FnParamGroup->GetNonSelfParams(),
+          [&](auto const *p) { return names_self(*p->Type); });
     }
 
     /**
@@ -791,7 +793,7 @@ namespace spp::analyse::utils::overload_utils {
       for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->GetAllParams())) {
         auto p_type = fn_scope->GetTypeSymbol(param->Type.get())->FqName()->WithConvention(
           asts::AstClone(param->Type->GetConvention()));
-        if (p_type->IsSelfType()) {
+        if (p_type->AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
           // "Self" is the type the function belongs to. Taking it from the call-site receiver is right when the
           // receiver is that type, and wrong when the method was reached by forwarding: "&Str" calling "StrView::eq"
           // bound "Self" in "that: &Self" to "Str", and since a bare "Self" is relaxed-matched against anything, the
@@ -804,8 +806,7 @@ namespace spp::analyse::utils::overload_utils {
           // used to crash here rather than failing the candidate.
           const auto receiver = ReceiverTypeAtCallSite(meta);
           const auto conv = p_type->GetConvention();
-          auto owner = type_utils::ResolveAndSubstituteSelfType(
-            *p_type->WithoutConvention(), *fn_scope, *sm, *meta);
+          const auto owner = fn_scope->GetEnclosingSelfType(*meta);
 
           const auto owner_known = owner != nullptr and not owner->IsSelfType();
           const auto reached_by_forwarding = owner_known and receiver != nullptr and conv != nullptr
@@ -816,10 +817,12 @@ namespace spp::analyse::utils::overload_utils {
               *sm->CurrentScope, *fn_scope);
 
           if (reached_by_forwarding or (owner_known and receiver == nullptr)) {
-            p_type = std::move(owner)->WithConvention(asts::AstClone(conv));
+            p_type = type_utils::ResolveAndSubstituteSelfType(*p_type->WithoutConvention(), *fn_scope, *sm, *meta)
+              ->WithConvention(asts::AstClone(conv));
           }
           else if (receiver != nullptr) {
-            p_type = asts::AstClone(receiver)->WithConvention(asts::AstClone(conv));
+            p_type = type_utils::SubstituteSelfTypeWith(*p_type->WithoutConvention(), *receiver)
+              ->WithConvention(asts::AstClone(conv));
           }
         }
 
@@ -1157,7 +1160,6 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   //  as function targets, due to scope lookup.
   auto temp = Shared<asts::ExpressionAst>(nullptr);
   if (const auto id = lhs->To<asts::IdentifierAst>()) {
-
     // A name declared inside the function (a function-type
     // variable) is a value being called, not a module function
     // spelled the same.

@@ -260,6 +260,16 @@ public:
   auto SelfProto() const -> asts::ClassPrototypeAst*;
 
   /**
+   * Register the "Self" type symbol into the current scope, linked to the scope of the type the enclosing class or
+   * superimposition block belongs to. Registering it is what makes "Self" resolvable as a name at all, so it is done
+   * as early as the linked scope is known - a type written in the block is looked up long before the block's own
+   * types are loaded.
+   * @param linked_scope The scope of the type "Self" names.
+   * @param pos The position to report the minted name at, which is the enclosing block's own name.
+   */
+  auto AddSelfTypeSymbol(Scope *linked_scope, std::size_t pos) const -> void;
+
+  /**
    * Reset the static state of the @c ScopeManager. This clears the static lists of sup blocks, so that a new
    * compilation can be started from a clean state. This should be called at the end of a full compilation. This is
    * required so that the unit tests can run different code as "main" in the same process.

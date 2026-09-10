@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -116,12 +117,18 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeSelf;
+  using analyse::utils::type_utils::SubstituteSelfType;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
   const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
+
+  if (not IsTypeSelf(*Type)) {
+    Type = SubstituteSelfType(*Type, *sm->CurrentScope, *meta);
+  }
 
   // Check the type is valid before scopes are attached.
   Type->Stage7_AnalyseSemantics(sm, meta);

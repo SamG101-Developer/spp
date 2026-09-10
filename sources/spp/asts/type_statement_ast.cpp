@@ -155,6 +155,8 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  OldType = analyse::utils::type_utils::SubstituteSelfType(
+    *OldType, *sm->CurrentScope, *meta);
 
   // An alias names a type, and a borrow is not one a type can be: it is second class, so it cannot be what a name
   // stands for any more than it can be an attribute or a variant member. The new type is checked at stage 2, where
@@ -279,7 +281,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     }
 
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(resolved.get());
-    if (cls_sym->Type) {
+    if (cls_sym != nullptr and cls_sym->Type) {
       EnforceGenericConstraintsAllArgs(
         *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
         *sm->CurrentScope, *sm, *meta);

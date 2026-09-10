@@ -124,7 +124,8 @@ auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
   GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
   Impl->Stage2_GenTopLvlScopes(sm, meta);
 
-  // Move out of the class scope, as the class scope is now complete.
+  // Move out of the class scope, as the class scope is now
+  // complete.
   sm->MoveOutOfCurrentScope();
 }
 
@@ -132,9 +133,14 @@ auto spp::asts::ClassPrototypeAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm,
   CompilerMetaData *)
   -> void {
-  // Skip the class scope.
+  // Register "Self" before any alias in the body is resolved,
+  // so that one naming it has something to resolve to. A class's
+  // "Self" is its own scope, which is the scope just moved into.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  if (not Name->IsCompilerGeneratedType()) {
+    sm->AddSelfTypeSymbol(sm->CurrentScope, Name->PosStart());
+  }
   sm->MoveOutOfCurrentScope();
 }
 
@@ -185,13 +191,13 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
     }
   }
 
-  // Add the "Self" symbol into the scope.
+  // Re-register "Self" now that the name resolves precisely.
+  // Stage 3 registered a provisional one so that the body's
+  // aliases could name it; this replaces it with the scope
+  // the fully-resolved name links to.
   if (not Name->IsCompilerGeneratedType()) {
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-      MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-      sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
+    sm->AddSelfTypeSymbol(
+      sm->CurrentScope->GetTypeSymbol(Name.get())->LinkedScope, Name->PosStart());
   }
 
   Impl->Stage5_LoadSupScopes(sm, meta);
@@ -236,8 +242,8 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
-  // A "!zero_type" class is guaranteed to occupy no storage - that is what lets it be "Copy", and what every use of
-  // one assumes - so it cannot declare state of its own.
+  // A "!zero_type" class is guaranteed to occupy no storage - every use of one assumes as much - so it cannot declare
+  // state of its own. Being zero-sized says nothing about copying: a marker is still linear unless it is "Copy".
   RaiseIf<analyse::errors::SppEmptyBodyRequiredError>(
     ZeroTypeAnnotation != nullptr and not Impl->Members.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(

@@ -134,9 +134,19 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
-  // Forward to the implementation.
+  // Register "Self" before any alias in the block is resolved,
+  // so that one naming it has something to resolve to. The name
+  // is not qualified yet, so the base symbol is what answers
+  // here; Stage 5 replaces this with the precise one.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  if (not Name->IsCompilerGeneratedType()) {
+    // The name need not resolve to anything here: a superimposition over a type that does not exist is reported by
+    // the stage that qualifies it, not this one, so this asks for the symbol rather than assuming it.
+    if (const auto base_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())) {
+      sm->AddSelfTypeSymbol(base_sym->LinkedScope, Name->PosStart());
+    }
+  }
   Impl->Stage3_GenTopLvlAliases(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
@@ -193,13 +203,11 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
     }
   }
 
-  // Add the "Self" symbol into the scope.
+  // Re-register "Self" against the fully-resolved name,
+  // replacing the provisional one from Stage 3.
   if (not Name->IsCompilerGeneratedType()) {
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-      MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-      sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
+    sm->AddSelfTypeSymbol(
+      sm->CurrentScope->GetTypeSymbol(Name.get())->LinkedScope, Name->PosStart());
   }
 
   // Load the implementation and move out of the scope.
