@@ -1036,6 +1036,18 @@ spp::analyse::errors::SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunct
     "Change the target to a function call operation, or remove " + INLINE_HELP("async") + ".");
 }
 
+spp::analyse::errors::SppAwaitTargetNotFutureError::SppAwaitTargetNotFutureError(
+  asts::Ast const &await_op,
+  asts::Ast const &lhs,
+  asts::Ast const &type) {
+  AddHeaders(107, "Await Target Not Future Error");
+  AddCtxForErr(&await_op, "Await operator defined here");
+  AddErr(&lhs, "Expression inferred as " + INLINE_INFO(type.ToString()) + " defined here");
+  AddFooter(
+    "Only a future can be awaited; a future is what an " + INLINE_NOTE("async") + " call produces.",
+    "Await the result of an " + INLINE_HELP("async") + " call, or remove " + INLINE_HELP("await") + ".");
+}
+
 spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
   asts::Ast const &tok_deref,
   asts::Ast const &expr,
