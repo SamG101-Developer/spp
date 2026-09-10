@@ -26,6 +26,10 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
    */
   Unique<TokenAst> TokAsync;
 
+  struct {
+    Unique<ExpressionAst> _OriginalRhs;
+  } Source;
+
   /**
    * Construct the UnaryExpressionOperatorAsyncAst with the arguments matching the members.
    * @param tok_async The @c async keyword that indicates an asynchronous operation.
@@ -36,6 +40,8 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
   ~UnaryExpressionOperatorAsyncAst() override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
