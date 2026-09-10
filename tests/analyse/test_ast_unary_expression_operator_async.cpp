@@ -146,3 +146,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         std::mem::ops::drop(future)
     }
 )");
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_gen_once_coroutine_target, R"(
+    cor c() -> GenOnce[S32] { gen 1 }
+    fun g() -> Void {
+        let f = async c()
+        let v = f.await
+    }
+)");

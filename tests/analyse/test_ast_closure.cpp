@@ -452,3 +452,65 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(b)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionAst,
+  test_invalid_closure_owning_a_moved_capture_not_consumed,
+  SppLinearValueNotConsumedError, R"(
+    fun f() -> Void {
+        let s = Str::from("a")
+        let x = (caps s) 1_u32
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionAst,
+  test_invalid_closure_parameter_not_consumed_expression_body,
+  SppLinearValueNotConsumedError, R"(
+    fun f() -> Void {
+        let x = (a: Str) 1_u32
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionAst,
+  test_invalid_closure_parameter_not_consumed_braced_body,
+  SppLinearValueNotConsumedError, R"(
+    fun f() -> Void {
+        let x = (a: Str) { 1_u32 }
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionAst,
+  test_invalid_closure_parameter_not_consumed_ret_body,
+  SppLinearValueNotConsumedError, R"(
+    fun f() -> Void {
+        let x = (a: Str) { ret 1_u32 }
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureExpressionAst,
+  test_valid_closure_parameter_consumed_before_ret, R"(
+    fun f() -> Void {
+        let x = (a: Str) {
+            std::mem::ops::drop(a)
+            ret 1_u32
+        }
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureExpressionAst,
+  test_valid_closure_moved_capture_not_consumed_by_body, R"(
+    fun f() -> Void {
+        let s = Str::from("a")
+        let x = (caps s) 1_u32
+        std::mem::ops::drop(x)
+    }
+)");
