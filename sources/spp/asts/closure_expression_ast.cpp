@@ -92,6 +92,18 @@ auto spp::asts::ClosureExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::ClosureExpressionAst::HasBorrowedCaptures() const
+  -> bool {
+  if (PcGroup == nullptr or PcGroup->CaptureGroup == nullptr) { return false; }
+
+  // True if one or most of the captures is a borrow, not
+  // a move convention.
+  for (auto const &cap : PcGroup->CaptureGroup->Captures) {
+    if (cap->Conv != nullptr) { return true; }
+  }
+  return false;
+}
+
 auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm,
   CompilerMetaData *meta)
