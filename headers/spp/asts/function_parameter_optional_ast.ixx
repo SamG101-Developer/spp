@@ -51,6 +51,9 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParam
   auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+private:
+  bool _DefaultAnalysed = false;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterOptionalAst)

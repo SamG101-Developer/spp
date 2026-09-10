@@ -11,6 +11,7 @@ import llvm;
 import std;
 
 namespace spp::asts {
+  SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct FunctionParameterAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct LocalVariableAst;
@@ -45,6 +46,7 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
 
   struct {
     Shared<TypeAst> OriginalType;
+    Unique<ExpressionAst> OriginalDefaultVal;
   } Source;
 
   /**
