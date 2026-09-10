@@ -25,4 +25,11 @@ auto spp::asts::TypeAst::SubstituteGenericsExpr(
   return SubstituteGenerics(args);
 }
 
+auto spp::asts::TypeAst::IsAllowedInDefault() const
+  -> bool {
+  // A type written as a value - "None", a zero-sized marker -
+  // is a value, so it may appear in a default.
+  return true;
+}
+
 SPP_MOD_END

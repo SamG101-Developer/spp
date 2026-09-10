@@ -108,6 +108,9 @@ public:
   SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT auto NameId() const noexcept
     -> utils::InternedId { return _NameId; }
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   std::size_t _Pos;
   std::size_t _ForTok;

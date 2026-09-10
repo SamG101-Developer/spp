@@ -10,6 +10,7 @@ import spp.analyse.utils.expr_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.unary_expression_operator_ast;
+import spp.asts.unary_expression_operator_async_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
@@ -109,6 +110,16 @@ auto spp::asts::UnaryExpressionAst::SubstituteGenericsExpr(
   // The only unary operator is the "async" function call
   // so there will be no specialization.
   return MakeShared<UnaryExpressionAst>(AstClone(Op), AstClone(Expr->SubstituteGenericsExpr(args)));
+}
+
+auto spp::asts::UnaryExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the op and the rhs expression. Nullptr guard in
+  // case of std::move(ast) being used (not 100% sure if
+  // needed or not).
+  return
+    (Op == nullptr or Op->IsAllowedInDefault()) and
+    (Expr == nullptr or Expr->IsAllowedInDefault());
 }
 
 SPP_MOD_END

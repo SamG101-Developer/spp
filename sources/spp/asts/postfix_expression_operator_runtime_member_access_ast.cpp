@@ -485,4 +485,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() con
   return {Name.get()};
 }
 
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::IsAllowedInDefault() const
+  -> bool {
+  // Reads what it is applied to, and holds nothing of its own.
+  return true;
+}
+
 SPP_MOD_END

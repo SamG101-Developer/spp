@@ -119,6 +119,9 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   /**
    * The AST that represents the functional version of this binary expression. For example, @code 1 + 2@endcode

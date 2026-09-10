@@ -55,6 +55,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   analyse::scopes::TypeSymbol *_LhsTypeSym;
 };

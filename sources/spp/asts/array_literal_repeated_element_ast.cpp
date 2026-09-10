@@ -305,4 +305,11 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::SubstituteGenericsExpr(
     AstClone(TokR));
 }
 
+auto spp::asts::ArrayLiteralRepeatedElementAst::IsAllowedInDefault() const
+  -> bool {
+  return
+    (Elem == nullptr or Elem->IsAllowedInDefault()) and
+    (Size == nullptr or Size->IsAllowedInDefault());
+}
+
 SPP_MOD_END

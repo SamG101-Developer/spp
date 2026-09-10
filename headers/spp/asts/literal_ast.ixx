@@ -22,4 +22,7 @@ SPP_EXP_CLS struct spp::asts::LiteralAst : PrimaryExpressionAst {
   LiteralAst();
 
   ~LiteralAst() override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };

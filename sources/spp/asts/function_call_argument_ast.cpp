@@ -96,4 +96,11 @@ auto spp::asts::FunctionCallArgumentAst::GetSelfType() const
   return _InjectedSelfType;
 }
 
+auto spp::asts::FunctionCallArgumentAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the internal value of the argument.
+  // Todo: Remove the nullptr guard?
+  return Val == nullptr or Val->IsAllowedInDefault();
+}
+
 SPP_MOD_END

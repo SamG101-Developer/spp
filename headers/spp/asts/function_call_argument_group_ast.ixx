@@ -69,6 +69,9 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
   auto At(const char *key) const -> FunctionCallArgumentAst const*;
 
   SPP_ATTR_NODISCARD auto ConvertToPositional() const -> Unique<FunctionCallArgumentGroupAst>;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentGroupAst)

@@ -563,4 +563,13 @@ auto spp::asts::ClosureExpressionAst::GetLlvmFunc() const
   return _LlvmFunc;
 }
 
+auto spp::asts::ClosureExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // A "ret" in a closure's body only leaves the closure, but
+  // a closure still creates scopes of its own, which a copy
+  // of the default would need in its use site's walk. For now,
+  // ban it.
+  return false;
+}
+
 SPP_MOD_END

@@ -192,4 +192,13 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::SubstituteGenericsExpr(
     AstClone(TokR));
 }
 
+auto spp::asts::PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const
+  -> bool {
+  // Check both the left and right bounds, which can be
+  // nullptr for the unbound slicing.
+  return
+    (ExprLBound == nullptr or ExprLBound->IsAllowedInDefault()) and
+    (ExprRBound == nullptr or ExprRBound->IsAllowedInDefault());
+}
+
 SPP_MOD_END

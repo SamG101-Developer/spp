@@ -61,6 +61,9 @@ SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressi
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ParenthesisedExpressionAst)

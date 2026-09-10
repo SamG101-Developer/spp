@@ -116,4 +116,10 @@ auto spp::asts::ParenthesisedExpressionAst::SubstituteGenericsExpr(
     AstClone(TokR));
 }
 
+auto spp::asts::ParenthesisedExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // Move into the internal expression.
+  return Expr->IsAllowedInDefault();
+}
+
 SPP_MOD_END

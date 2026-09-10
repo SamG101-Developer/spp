@@ -77,6 +77,14 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   SPP_ATTR_NODISCARD virtual auto AnkerlHash() const -> std::size_t;
 
   /**
+   * Whether this ast may appear in a default value - a parameter's, or an attribute's. A default is copied into every
+   * call or object initializer that leaves it out. Defaults to not being allowed, and then compatible ASTs opt in with
+   * their own checks - elements inside an array etc.
+   * @return Whether the ast may appear in a default value.
+   */
+  SPP_ATTR_NODISCARD virtual auto IsAllowedInDefault() const -> bool;
+
+  /**
    * Which concrete ast class this node is. Answered by @c SPP_AST_KEY_FUNCTIONS(Ast);/ @c SPP_AST_KIND , and pure here so
    * that a concrete class which does not name itself stays abstract rather than reporting the wrong kind.
    * @return This node's kind.

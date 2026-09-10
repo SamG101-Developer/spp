@@ -40,6 +40,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorDerefAst final : PostfixE
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorDerefAst)

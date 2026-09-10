@@ -94,6 +94,9 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
    */
   static auto ClearMockAsts() -> void;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   /**
    * The @c FunRef / @c FunMut / @c FunMov type the closure's parameters, return type and captures decide. This is what

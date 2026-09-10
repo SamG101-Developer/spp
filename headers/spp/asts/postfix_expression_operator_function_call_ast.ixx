@@ -101,6 +101,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
   SPP_ATTR_NODISCARD auto GetTransformedAst() const
     -> PostfixExpressionAst*;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   struct _OInfo {
     analyse::scopes::Scope const *OverloadScope;

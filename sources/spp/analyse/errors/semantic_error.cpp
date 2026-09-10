@@ -1048,6 +1048,20 @@ spp::analyse::errors::SppAwaitTargetNotFutureError::SppAwaitTargetNotFutureError
     "Await the result of an " + INLINE_HELP("async") + " call, or remove " + INLINE_HELP("await") + ".");
 }
 
+spp::analyse::errors::SppInvalidDefaultValueError::SppInvalidDefaultValueError(
+  asts::Ast const &default_val,
+  const StrView owner,
+  const StrView use_site) {
+  AddHeaders(108, "Invalid Default Value Error");
+  AddErr(&default_val, "Default value defined here");
+  AddFooter(
+    "A default " + Str(owner) + " value is copied into every " + Str(use_site) + " that leaves it out, so it can only "
+    "be an expression that creates no scope and cannot leave the code it is copied into: no " + INLINE_NOTE("{ }")
+    + " block, closure, " + INLINE_NOTE("case") + ", " + INLINE_NOTE("loop") + ", " + INLINE_NOTE("gen") + ", "
+    + INLINE_NOTE("ret") + " or " + INLINE_NOTE("?") + ".",
+    "Compute the value in a function, and call that from the default.");
+}
+
 spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
   asts::Ast const &tok_deref,
   asts::Ast const &expr,

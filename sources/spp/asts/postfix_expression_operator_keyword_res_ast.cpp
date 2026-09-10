@@ -280,4 +280,12 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::SubstituteGenericsExpr(
     AstClone(TokDot), AstClone(TokRes), std::move(fn_arg_group));
 }
 
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::IsAllowedInDefault() const
+  -> bool {
+  // Resumes a generator the way a call runs a function,
+  // so nothing leaves the code it is in. Should be safe
+  // although I can't see where this would even be used.
+  return true;
+}
+
 SPP_MOD_END

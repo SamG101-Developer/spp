@@ -365,4 +365,11 @@ auto spp::asts::ObjectInitializerAst::SubstituteGenericsExpr(
   return MakeShared<ObjectInitializerAst>(Type->SubstituteGenerics(args), std::move(arg_group));
 }
 
+auto spp::asts::ObjectInitializerAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the argument group for validity of being used
+  // in the default context.
+  return ArgGroup->IsAllowedInDefault();
+}
+
 SPP_MOD_END

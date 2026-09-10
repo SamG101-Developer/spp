@@ -341,4 +341,10 @@ auto spp::asts::IdentifierAst::ToView() const noexcept
   return Val;
 }
 
+auto spp::asts::IdentifierAst::IsAllowedInDefault() const
+  -> bool {
+  // A name reads a value.
+  return true;
+}
+
 SPP_MOD_END

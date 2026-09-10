@@ -132,8 +132,17 @@ auto spp::asts::IsExpressionAst::InferType(
   ScopeManager *,
   CompilerMetaData *)
   -> Shared<TypeAst> {
-  // Always return a boolean type (successful or failed match).
+  // Always return a boolean type (successful or failed
+  // match).
   return generate::common_types::BooleanType(_MappedFunc->PosStart());
+}
+
+auto spp::asts::IsExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // The pattern tests and binds, and holds no control
+  // flow of its own; only the tested value is an expression.
+  // Todo: Remove nullptr guard?
+  return Lhs == nullptr or Lhs->IsAllowedInDefault();
 }
 
 SPP_MOD_END

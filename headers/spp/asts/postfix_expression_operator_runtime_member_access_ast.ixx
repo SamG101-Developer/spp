@@ -67,6 +67,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
   SPP_ATTR_NODISCARD auto GetFwdReceiver() const
     -> PostfixExpressionAst*;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   /**
    * The access rewritten against the forwarded-to value (@code x.fwd_ref().field@endcode), built when the member is

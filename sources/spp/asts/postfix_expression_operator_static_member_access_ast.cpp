@@ -299,4 +299,10 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() cons
   return {Name.get()};
 }
 
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::IsAllowedInDefault() const
+  -> bool {
+  // Reads what it is applied to, and holds nothing of its own.
+  return true;
+}
+
 SPP_MOD_END

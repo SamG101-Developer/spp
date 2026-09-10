@@ -168,10 +168,18 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
 
   if (meta->CurrentStage != meta::CompilerStage::kAnalyseSemantics) { return; }
   if (DefaultVal != nullptr) {
+    // What a default may hold is limited, because it is
+    // copied into every object initializer that leaves
+    // the attribute out. Checked before the analysis below
+    // rewrites it.
+    RaiseIf<analyse::errors::SppInvalidDefaultValueError>(
+      not DefaultVal->IsAllowedInDefault(),
+      {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     const auto default_type = DefaultVal->InferType(sm, meta);
 
-    // Make sure the default's inferred type matches the attribute's type.
+    // Make sure the default's inferred type matches the
+    // attribute's type.
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));

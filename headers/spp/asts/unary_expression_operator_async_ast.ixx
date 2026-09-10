@@ -41,6 +41,9 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   Unique<ExpressionAst> _TransformedFunc;
 };

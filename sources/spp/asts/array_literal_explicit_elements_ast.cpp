@@ -329,4 +329,14 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
   return MakeShared<ArrayLiteralExplicitElementsAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
+auto spp::asts::ArrayLiteralExplicitElementsAst::IsAllowedInDefault() const
+  -> bool {
+  // Check every element - one bad one prevents the entire
+  // ast from being allowed in this specific context.
+  for (auto const &x : Elems) {
+    if (not x->IsAllowedInDefault()) { return false; }
+  }
+  return true;
+}
+
 SPP_MOD_END

@@ -56,4 +56,9 @@ auto spp::asts::Ast::SetAstScope(
   _Scope = scope;
 }
 
+auto spp::asts::Ast::IsAllowedInDefault() const
+  -> bool {
+  return false;
+}
+
 SPP_MOD_END

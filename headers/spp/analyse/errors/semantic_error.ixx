@@ -90,6 +90,7 @@ namespace spp::analyse::errors {
   SPP_EXP_CLS struct SppSuperimpositionExtensionCmpStatementInvalidError;
   SPP_EXP_CLS struct SppAsyncTargetNotFunctionCallError;
   SPP_EXP_CLS struct SppAwaitTargetNotFutureError;
+  SPP_EXP_CLS struct SppInvalidDefaultValueError;
   SPP_EXP_CLS struct SppDereferenceNonBorrowedTypeError;
   SPP_EXP_CLS struct SppNonCopyableTypeError;
   SPP_EXP_CLS struct SppGenericParameterConflictError;
@@ -512,6 +513,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppAsyncTargetNotFunctionCallError fina
 
 SPP_EXP_CLS struct spp::analyse::errors::SppAwaitTargetNotFutureError final : SemanticError {
   explicit SppAwaitTargetNotFutureError(asts::Ast const &await_op, asts::Ast const &lhs, asts::Ast const &type);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidDefaultValueError final : SemanticError {
+  explicit SppInvalidDefaultValueError(asts::Ast const &default_val, StrView owner, StrView use_site);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDereferenceNonBorrowedTypeError final : SemanticError {

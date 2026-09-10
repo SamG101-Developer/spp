@@ -78,6 +78,9 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
     _LookupGen = generation;
   }
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 protected:
   mutable Shared<TypeAst> _CachedWithoutGenerics;
   mutable analyse::scopes::Scope const *_LookupScope;

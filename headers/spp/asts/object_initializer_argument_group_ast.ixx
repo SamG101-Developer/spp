@@ -78,6 +78,9 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
 
   auto GetKeywordArgs()
     -> Vec<ObjectInitializerArgumentKeywordAst*>;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentGroupAst)

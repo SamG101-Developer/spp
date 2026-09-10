@@ -89,6 +89,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
     Vec<GenericArgumentAst*> const &args) const
     -> Unique<PostfixExpressionOperatorAst> override;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   Shared<PostfixExpressionAst> _MappedFunc;
 };

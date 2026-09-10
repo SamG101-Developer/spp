@@ -54,6 +54,9 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentAst)

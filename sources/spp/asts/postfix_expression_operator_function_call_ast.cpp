@@ -778,4 +778,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::SubstituteGenericsExpr
     std::move(gn_arg_group), std::move(fn_arg_group), AstClone(Fold));
 }
 
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::IsAllowedInDefault() const
+  -> bool {
+  // A call is allowed when its arguments are. Folding
+  // isn't allowed here (too complex right now).
+  return
+    FnArgGroup->IsAllowedInDefault() and Fold == nullptr;
+}
+
 SPP_MOD_END

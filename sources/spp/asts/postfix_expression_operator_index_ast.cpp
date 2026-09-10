@@ -165,4 +165,10 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::SubstituteGenericsExpr(
     AstClone(TokR));
 }
 
+auto spp::asts::PostfixExpressionOperatorIndexAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the inner expression.
+  return Expr->IsAllowedInDefault();
+}
+
 SPP_MOD_END

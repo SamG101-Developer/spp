@@ -71,6 +71,9 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::InnerScopeExpressionAst)

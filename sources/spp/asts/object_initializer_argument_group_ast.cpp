@@ -329,4 +329,14 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::GetKeywordArgs()
     | genex::to<Vec>();
 }
 
+auto spp::asts::ObjectInitializerArgumentGroupAst::IsAllowedInDefault() const
+  -> bool {
+  // Check every argument - one bad one prevents the entire
+  // group from being allowed in this specific context.
+  for (auto const &x : Args) {
+    if (not x->IsAllowedInDefault()) { return false; }
+  }
+  return true;
+}
+
 SPP_MOD_END

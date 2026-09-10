@@ -240,4 +240,14 @@ auto spp::asts::PostfixExpressionAst::SubstituteGenericsExpr(
     Op->SubstituteGenericsExpr(args));
 }
 
+auto spp::asts::PostfixExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // Check both the lhs and the postfix op on this ast.
+  // Leaving the nullptr guards in because there is some
+  // std::move(ast) for postfix iirc.
+  return
+    (Lhs == nullptr or Lhs->IsAllowedInDefault()) and
+    (Op == nullptr or Op->IsAllowedInDefault());
+}
+
 SPP_MOD_END

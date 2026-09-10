@@ -363,4 +363,12 @@ auto spp::asts::BinaryExpressionAst::SubstituteGenericsExpr(
     AstClone(Rhs->SubstituteGenericsExpr(args)));
 }
 
+auto spp::asts::BinaryExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the left-hand-side and right-hand-side elems.
+  return
+    (Lhs == nullptr or Lhs->IsAllowedInDefault()) and
+    (Rhs == nullptr or Rhs->IsAllowedInDefault());
+}
+
 SPP_MOD_END

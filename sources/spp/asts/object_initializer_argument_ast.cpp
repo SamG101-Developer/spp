@@ -65,4 +65,11 @@ auto spp::asts::ObjectInitializerArgumentAst::InferType(
   return Val->InferType(sm, meta);
 }
 
+auto spp::asts::ObjectInitializerArgumentAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the internal value of the argument.
+  // Todo: Remove the nullptr guard?
+  return Val == nullptr or Val->IsAllowedInDefault();
+}
+
 SPP_MOD_END

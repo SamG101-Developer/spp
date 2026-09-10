@@ -178,4 +178,11 @@ auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::SubstituteGenericsExpr
     AstClone(TokDot), AstClone(TokAwait));
 }
 
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::IsAllowedInDefault() const
+  -> bool {
+  // Waits on a future the way a call waits on its callee,
+  // so nothing leaves the code it is in.
+  return true;
+}
+
 SPP_MOD_END

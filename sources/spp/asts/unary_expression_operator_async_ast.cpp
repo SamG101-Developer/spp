@@ -141,4 +141,11 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::InferType(
   return future_type;
 }
 
+auto spp::asts::UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const
+  -> bool {
+  // Spawns a task, which is a call with a side
+  // effect, so nothing leaves the code it is in.
+  return true;
+}
+
 SPP_MOD_END
