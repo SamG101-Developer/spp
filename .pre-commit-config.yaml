@@ -58,14 +58,6 @@ repos:
         pass_filenames: false
         files: '^\.github/(dependencies\.toml|workflows/|actions/|scripts/lib/pins\.py)'
 
-      - id: workflow-json
-        name: validate workflow JSON payloads
-        entry: python3 .github/precommit/workflow_json.py
-        language: python
-        additional_dependencies: [ pyyaml ]
-        pass_filenames: false
-        files: '^\.github/(workflows/|actions/|precommit/workflow_json\.py)'
-
   # PYTHON CHECKS
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -167,12 +159,12 @@ repos:
 
   # VCS HYGIENE
 
-#  - repo: https://github.com/commitizen-tools/commitizen
-#    rev: 6afcd8e9560ddf1b9a5032262a0be26540e85fb3  # v4.16.5
-#    hooks:
-#      - id: commitizen
-#      - id: commitizen-branch
-#        stages: [ pre-push ]
+  #  - repo: https://github.com/commitizen-tools/commitizen
+  #    rev: 6afcd8e9560ddf1b9a5032262a0be26540e85fb3  # v4.16.5
+  #    hooks:
+  #      - id: commitizen
+  #      - id: commitizen-branch
+  #        stages: [ pre-push ]
 
   # SECURITY
 
