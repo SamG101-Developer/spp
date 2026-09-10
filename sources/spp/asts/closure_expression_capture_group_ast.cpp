@@ -89,6 +89,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
 
     // Apply the borrow to the symbol.
     const auto sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+    sym->IsCapture = true;
     const auto conv = cap->Conv.get();
     sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
     sym->Type = sym->Type->WithConvention(AstClone(cap->Conv));

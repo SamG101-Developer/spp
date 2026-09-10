@@ -117,6 +117,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   bool IsFlowNarrowing = false;
 
   /**
+   * Whether this symbol is a closure's capture. A capture is owned by the closure's environment rather than by the
+   * body that reads it - the environment is read again on every call - so the body is not obliged to consume it. The
+   * closure value carries that obligation instead.
+   */
+  bool IsCapture = false;
+
+  /**
    * For a flow-narrowing symbol, the symbol it narrows: same name, same storage, wider type. Consuming through the
    * narrowed name discharges the value itself, so a move recorded against this symbol is recorded against that one
    * too - otherwise the original reads as live and is reported as never discharged at whatever exit follows.

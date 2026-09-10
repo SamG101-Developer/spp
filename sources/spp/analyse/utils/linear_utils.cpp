@@ -172,6 +172,12 @@ namespace spp::analyse::utils::linear_utils {
       // rather than owning it, so the obligation stays with the symbol
       // it narrows.
       if (sym.IsFlowNarrowing) { return false; }
+
+      // A closure's capture belongs to its environment, not to the body
+      // that reads it: the environment owns the value and is read again
+      // on every call, and it is the closure value that is held to being
+      // consumed.
+      if (sym.IsCapture) { return false; }
       if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
       if (sym.MemInfo->AstCompTime != nullptr) { return false; }
 
