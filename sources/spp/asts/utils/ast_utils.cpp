@@ -17,7 +17,7 @@ import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_ast;
 import genex;
 
-auto spp::asts::AstName(
+auto spp::asts::AstNameOrNull(
   Ast *ast)
   -> Shared<TypeAst> {
   if (const auto cls = ast->To<ClassPrototypeAst>(); cls != nullptr) {
@@ -29,7 +29,15 @@ auto spp::asts::AstName(
   if (const auto ext = ast->To<SupPrototypeExtensionAst>(); ext != nullptr) {
     return ext->Name;
   }
+  return nullptr;
+}
 
+auto spp::asts::AstName(
+  Ast *ast)
+  -> Shared<TypeAst> {
+  if (auto name = AstNameOrNull(ast); name != nullptr) {
+    return name;
+  }
   throw std::runtime_error("ast_name: Unsupported AST type " + Str(typeid(*ast).name()));
 }
 

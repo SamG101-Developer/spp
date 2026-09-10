@@ -124,6 +124,8 @@ namespace spp::asts {
     return cloned_asts;
   }
 
+  SPP_EXP_FUN auto AstNameOrNull(Ast *ast) -> Shared<TypeAst>;
+
   SPP_EXP_FUN auto AstName(Ast *ast) -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto AstBody(Ast *ast) -> Vec<Ast*>;
