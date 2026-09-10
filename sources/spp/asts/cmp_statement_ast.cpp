@@ -316,9 +316,22 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
     ? var_sym->CompTimeValue.get()
     : nullptr;
 
-  const auto val = bound_val != nullptr
-    ? bound_val->Stage11_CodeGen(sm, meta, ctx)
-    : llvm::Constant::getNullValue(llvm_type);
+  // The true val derived for the cmp statement, for stage 11 LLVM
+  // IR, is based off a few different flags. Either the cmp generic
+  // needs resolving though another stage9 call, or we can just use
+  // the current "bound" value.
+  const auto val = [&]() -> llvm::Value* {
+    if (bound_val == nullptr) { return llvm::Constant::getNullValue(llvm_type); }
+    if (generic_arg != nullptr) {
+      auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, sm->CurrentScope);
+      tm.Reset(sm->CurrentScope);
+      bound_val->Stage9_CompTimeResolve(&tm, meta);
+      if (const auto folded = std::move(meta->CmpResult); folded != nullptr) {
+        return folded->Stage11_CodeGen(sm, meta, ctx);
+      }
+    }
+    return bound_val->Stage11_CodeGen(sm, meta, ctx);
+  }();
   ctx->InConstantContext = false;
 
   // Create the global variable for the constant.
