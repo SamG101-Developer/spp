@@ -314,6 +314,23 @@ auto spp::asts::GenericParameterGroupAst::Stage8_CheckMemory(
   for (auto const &p : Params) { p->Stage8_CheckMemory(sm, meta); }
 }
 
+auto spp::asts::GenericParameterGroupAst::Stage9_CompTimeResolve(
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Fold each comp default, to prove it is a constant even if
+  // nothing ever uses it. The result is thrown away - a use
+  // site folds its own copy.
+  for (auto const &p : Params) {
+    const auto comp = p->To<GenericParameterCompOptionalAst>();
+    if (comp == nullptr) { continue; }
+    auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, sm->CurrentScope);
+    tm.Reset(sm->CurrentScope);
+    comp->DefaultVal->Stage9_CompTimeResolve(&tm, meta);
+    meta->CmpResult = nullptr;
+  }
+}
+
 auto spp::asts::GenericParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm,
   CompilerMetaData *meta,

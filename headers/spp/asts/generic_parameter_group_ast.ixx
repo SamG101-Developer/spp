@@ -73,6 +73,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto MergeGenerics(decltype(Params) &&other_params) -> void;

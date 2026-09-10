@@ -273,6 +273,7 @@ auto spp::asts::ClassPrototypeAst::Stage9_CompTimeResolve(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
+  GnParamGroup->Stage9_CompTimeResolve(sm, meta);
   Impl->Stage9_CompTimeResolve(sm, meta);
   sm->MoveOutOfCurrentScope();
 }

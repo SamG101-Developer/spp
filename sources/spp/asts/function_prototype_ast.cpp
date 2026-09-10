@@ -651,6 +651,7 @@ auto spp::asts::FunctionPrototypeAst::Stage9_CompTimeResolve(
   // Manual scope skipping.
   sm->MoveToNextScope();
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
+  GnParamGroup->Stage9_CompTimeResolve(sm, meta);
   sm->ExhaustScope();
   sm->MoveOutOfCurrentScope();
 }
