@@ -189,12 +189,14 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Pre-analyse semantics stage.
+  asts::FunctionPrototypeAst::ClearPendingDefaults();
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Stage6_PreAnalyseSemantics(sm, &meta);
     sm->Reset();
     bar.Next();
   }
+  asts::FunctionPrototypeAst::AnalysePendingDefaults(sm);
   bar.Finish();
 }
 

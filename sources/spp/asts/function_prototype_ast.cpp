@@ -490,6 +490,13 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     }
   }
 
+  // The parameters' defaults are analysed once every prototype's
+  // stage 6 has run, rather than here. Only a prototype that has
+  // one is queued.
+  if (not FnParamGroup->GetOptionalParams().IsEmpty()) {
+    _PendingDefaults.EmplaceBack(this, meta->IsTestHarness);
+  }
+
   // If this is a !compiler_builtin function, swap in the lowered
   // implementation now (stage 6), so that the lowered (comptime)
   // body is available to any stage 9 call regardless of definition
@@ -1012,6 +1019,29 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
 
   const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted;
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
+}
+
+auto spp::asts::FunctionPrototypeAst::AnalysePendingDefaults(
+  ScopeManager *sm)
+  -> void {
+  // Parameter defaults are analysed here: after every module's
+  // stage 6, and before any body.
+  auto pending = std::move(_PendingDefaults);
+  _PendingDefaults.Clear();
+  for (auto const &[proto, is_test_harness] : pending) {
+    auto tm = ScopeManager(sm->GlobalScope, proto->GetAstScope());
+    auto meta = CompilerMetaData();
+    meta.CurrentStage = meta::CompilerStage::kAnalyseSemantics;
+    meta.IsTestHarness = is_test_harness;
+    for (auto const &p : proto->FnParamGroup->GetNonSelfParams()) {
+      p->Stage6_PreAnalyseSemantics(&tm, &meta);
+    }
+  }
+}
+
+auto spp::asts::FunctionPrototypeAst::ClearPendingDefaults()
+  -> void {
+  _PendingDefaults.Clear();
 }
 
 SPP_MOD_END

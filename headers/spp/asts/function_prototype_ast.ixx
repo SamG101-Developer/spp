@@ -295,6 +295,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     CompilerMetaData *meta)
     -> void;
 
+  static auto AnalysePendingDefaults(ScopeManager *sm) -> void;
+  static auto ClearPendingDefaults() -> void;
+
   auto SetNonGenericImpl(
     FunctionPrototypeAst *impl)
     -> void;
@@ -339,6 +342,8 @@ protected:
   codegen::LlvmCtx *_OwnerCtx;
 
   Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
+
+  inline static Vec<Pair<FunctionPrototypeAst*, bool>> _PendingDefaults = {};
 
   SPP_ATTR_NODISCARD auto _DeduceMockClassType() const
     -> Pair<Shared<TypeAst>, Str>;
