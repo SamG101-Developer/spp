@@ -193,3 +193,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_function_parameter_optional_tuple_default, R"(
     fun f(a: (S32, Bool) = (1_s32, true)) -> Void { }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    FunctionParameterOptionalAst,
+    test_invalid_function_parameter_optional_async_default,
+    SppInvalidDefaultValueError, R"(
+    fun g() -> S32 { ret 1_s32 }
+    fun f(a: Fut[S32] = async g()) -> Void { std::mem::ops::drop(a) }
+)");
