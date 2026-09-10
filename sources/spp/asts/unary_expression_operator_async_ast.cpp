@@ -318,9 +318,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::InferType(
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const
   -> bool {
-  // Spawns a task, which is a call with a side
-  // effect, so nothing leaves the code it is in.
-  return true;
+  // Lowers into a closure => not allowed as a default.
+  return false;
 }
 
 SPP_MOD_END
