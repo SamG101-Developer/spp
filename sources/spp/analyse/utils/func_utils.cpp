@@ -539,7 +539,8 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   asts::FunctionParameterGroupAst const &p_group,
   scopes::ScopeManager &sm,
   asts::meta::CompilerMetaData *const meta,
-  Vec<asts::GenericArgumentAst*> const &generic_args)
+  Vec<asts::GenericArgumentAst*> const &generic_args,
+  scopes::Scope *const callee_scope)
   -> void {
   //
   // Validate the named arguments against the parameters.
@@ -636,13 +637,19 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     // an expression, so it needs the expression-level walk for
     // the same reason - otherwise "alloc: A = A()" arrives here
     // as an "A()" the caller has no "A" for.
+    auto const &written = optional_param->Source.OriginalDefaultVal != nullptr
+      ? optional_param->Source.OriginalDefaultVal
+      : optional_param->DefaultVal;
     auto default_val = generic_args.IsEmpty()
       ? asts::AstClone(optional_param->DefaultVal)
-      : asts::AstClone(optional_param->DefaultVal->SubstituteGenericsExpr(generic_args));
+      : asts::AstClone(written->SubstituteGenericsExpr(generic_args));
 
-    // Analyse the substitution.
+    // Analyse the substitution where the default was written.
     if (not generic_args.IsEmpty() and meta != nullptr) {
+      const auto outer_scope = sm.CurrentScope;
+      if (callee_scope != nullptr) { sm.CurrentScope = callee_scope; }
       default_val->Stage7_AnalyseSemantics(&sm, meta);
+      sm.CurrentScope = outer_scope;
     }
 
     ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
