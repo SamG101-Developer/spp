@@ -128,6 +128,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorIndexAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorKeywordNotAst;
+  SPP_EXP_CLS struct PostfixExpressionOperatorKeywordAwaitAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorKeywordResAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorRuntimeMemberAccessAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorSliceAst;
@@ -257,6 +258,8 @@ public:
   auto parse_postfix_expression_op_static_member_access()
     -> Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst>;
   auto parse_postfix_expression_op_keyword_not() -> Unique<asts::PostfixExpressionOperatorKeywordNotAst>;
+  auto parse_postfix_expression_op_keyword_await() -> Unique<asts::PostfixExpressionOperatorKeywordAwaitAst>;
+
   auto parse_postfix_expression_op_keyword_res() -> Unique<asts::PostfixExpressionOperatorKeywordResAst>;
   auto parse_postfix_expression_op_index() -> Unique<asts::PostfixExpressionOperatorIndexAst>;
   auto parse_postfix_expression_op_slice() -> Unique<asts::PostfixExpressionOperatorSliceAst>;
@@ -559,6 +562,8 @@ public:
   auto parse_keyword_async() -> Unique<asts::TokenAst>;
   auto parse_keyword_true() -> Unique<asts::TokenAst>;
   auto parse_keyword_false() -> Unique<asts::TokenAst>;
+  auto parse_keyword_await() -> Unique<asts::TokenAst>;
+
   auto parse_keyword_res() -> Unique<asts::TokenAst>;
   auto parse_keyword_caps() -> Unique<asts::TokenAst>;
 

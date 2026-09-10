@@ -645,6 +645,7 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op()
     parse_postfix_expression_op_early_return, parse_postfix_expression_op_function_call,
     parse_postfix_expression_op_runtime_member_access, parse_postfix_expression_op_static_member_access,
     parse_postfix_expression_op_keyword_not, parse_postfix_expression_op_keyword_res,
+    parse_postfix_expression_op_keyword_await,
     parse_postfix_expression_op_slice, parse_postfix_expression_op_index);
   return FORWARD_AST(p1);
 }
@@ -690,6 +691,13 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_keyword_not()
   PARSE_ONCE(p1, parse_token_dot);
   PARSE_ONCE(p2, parse_keyword_not);
   return CREATE_AST(asts::PostfixExpressionOperatorKeywordNotAst, p1, p2);
+}
+
+auto spp::parse::ParserSpp::parse_postfix_expression_op_keyword_await()
+  -> Unique<asts::PostfixExpressionOperatorKeywordAwaitAst> {
+  PARSE_ONCE(p1, parse_token_dot);
+  PARSE_ONCE(p2, parse_keyword_await);
+  return CREATE_AST(asts::PostfixExpressionOperatorKeywordAwaitAst, p1, p2);
 }
 
 auto spp::parse::ParserSpp::parse_postfix_expression_op_keyword_res()
@@ -2768,6 +2776,12 @@ auto spp::parse::ParserSpp::parse_keyword_true()
 auto spp::parse::ParserSpp::parse_keyword_false()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_FALSE, lex::SppTokenType::KW_FALSE); });
+  return FORWARD_AST(p1);
+}
+
+auto spp::parse::ParserSpp::parse_keyword_await()
+  -> Unique<asts::TokenAst> {
+  PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_AWAIT, lex::SppTokenType::KW_AWAIT); });
   return FORWARD_AST(p1);
 }
 
