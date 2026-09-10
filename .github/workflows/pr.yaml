@@ -128,8 +128,7 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # Supported toolchain. Every variant builds in parallel and fail-fast, so one broken variant stops the others
-  # immediately.
+  # Supported toolchain. Every variant is one call of the compile workflow.
   #
   # The `if` opts out of the implicit success() over `needs` because `cppcheck` is now gated on its own filter output
   # and can legitimately be skipped while this job runs; a skipped need would otherwise skip this job too. The
@@ -146,23 +145,31 @@ jobs:
     if: |
       !cancelled()
       && needs.changes.outputs.compile == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: release-rel, build-type: Release, spp-mode: rel, shard-index: 0, shard-count: 2, stl-conformance: true }
+          - { variant: release-rel, build-type: Release, spp-mode: rel, shard-index: 1, shard-count: 2 }
+          - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 0, shard-count: 2, stl-conformance: true }
+          - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 1, shard-count: 2 }
+          - { variant: asan-dev, build-type: Debug, spp-mode: dev, sanitizer: address+undefined+leak }
     uses: ./.github/workflows/_compile.yaml
     with:
       os: ubuntu-24.04
       compiler: gcc
       version: "16"
-      fail-fast: false
-      variants: >-
-        [
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 0, "shard-count": 2},
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 1, "shard-count": 2},
-          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 0, "shard-count": 2},
-          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 1, "shard-count": 2},
-          {"name": "asan-dev", "build-type": "Debug", "sanitizer": "address+undefined+leak", "spp-mode": "dev"}
-        ]
+      variant: ${{ matrix.variant }}
+      build-type: ${{ matrix.build-type }}
+      sanitizer: ${{ matrix.sanitizer }}
+      spp-mode: ${{ matrix.spp-mode }}
+      shard-index: ${{ matrix.shard-index || 0 }}
+      shard-count: ${{ matrix.shard-count || 1 }}
+      stl-conformance: ${{ matrix.stl-conformance || false }}
 
   # Aspirational toolchains: they run and report red on failure, but are deliberately omitted from ci-success, so they
   # never block a merge.
@@ -172,7 +179,8 @@ jobs:
     if: |
       !cancelled()
       && needs.changes.outputs.compile == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
     permissions:
       contents: read
     strategy:
@@ -192,9 +200,10 @@ jobs:
       os: ${{ matrix.os }}
       compiler: ${{ matrix.compiler }}
       version: ${{ matrix.version }}
-      fail-fast: false
       cache-build-tree: ${{ matrix.cache-tree }}
-      variants: '[{"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""}]'
+      variant: release
+      build-type: RelWithDebInfo
+      stl-conformance: true
 
   # Emit for architectures unlike the host - 32-bit, big-endian, non-x86 - and check the object and the datalayout
   # that came out. Non-blocking to begin with. Todo: Add to ci-success once the matrix has been green for a while.
@@ -204,7 +213,8 @@ jobs:
     if: |
       !cancelled()
       && needs.changes.outputs.cross_codegen == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
     permissions:
       contents: read
     uses: ./.github/workflows/_cross_codegen.yaml

@@ -124,6 +124,7 @@ runs:
             - '.github/scripts/build-cache-key/**'
             - '.github/scripts/configure-cmake/**'
             - '.github/scripts/run-tests/**'
+            - '.github/scripts/stl-conformance/**'
           cross_codegen:
             - '.github/workflows/pr.yaml'
             - '.github/workflows/_cross_codegen.yaml'

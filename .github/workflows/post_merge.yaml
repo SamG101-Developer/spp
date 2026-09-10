@@ -90,31 +90,38 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346
 
-  # Doubles as the master health check and as the cache warmer. The variant list is a copy of the PR pipeline's and
-  # must stay one: the build-cache-key action folds `variant.name` in, so a variant missing here is a variant that
-  # compiles from cold on every PR. fail-fast is off for the same reason - one red variant must not cost the others
-  # their cache. Shards of a variant share its name and so its tree, and only shard 0 saves that tree, so splitting the
-  # sweep buys wall-clock without a second copy of anything.
+  # Doubles as the master health check and as the cache warmer. The matrix is a copy of the PR pipeline's and must
+  # stay one: the build-cache-key action folds `variant` in, so a variant missing here is a variant that compiles from
+  # cold on every PR. fail-fast is off for the same reason - one red variant must not cost the others their cache.
+  # Shards of a variant share its name and so its tree, and only shard 0 saves that tree, so splitting the sweep buys
+  # wall-clock without a second copy of anything.
   build-test:
     name: Build & Test
     needs: [ changes ]
     if: needs.changes.outputs.compile == 'true'
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: release-rel, build-type: Release, spp-mode: rel, shard-index: 0, shard-count: 2, stl-conformance: true }
+          - { variant: release-rel, build-type: Release, spp-mode: rel, shard-index: 1, shard-count: 2 }
+          - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 0, shard-count: 2, stl-conformance: true }
+          - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 1, shard-count: 2 }
+          - { variant: asan-dev, build-type: Debug, spp-mode: dev, sanitizer: address+undefined+leak }
     uses: ./.github/workflows/_compile.yaml
     with:
       os: ubuntu-24.04
       compiler: gcc
       version: "16"
-      fail-fast: false
-      variants: >-
-        [
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 0, "shard-count": 2},
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 1, "shard-count": 2},
-          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 0, "shard-count": 2},
-          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 1, "shard-count": 2},
-          {"name": "asan-dev", "build-type": "Debug", "sanitizer": "address+undefined+leak", "spp-mode": "dev"}
-        ]
+      variant: ${{ matrix.variant }}
+      build-type: ${{ matrix.build-type }}
+      sanitizer: ${{ matrix.sanitizer }}
+      spp-mode: ${{ matrix.spp-mode }}
+      shard-index: ${{ matrix.shard-index || 0 }}
+      shard-count: ${{ matrix.shard-count || 1 }}
+      stl-conformance: ${{ matrix.stl-conformance || false }}
 
   # What the release is for this commit, decided from the tag rather than from the diff: a re-run of the same push
   # and a merge that bumped nothing both land on a tag that already exists, and neither should build a second set of
@@ -174,10 +181,10 @@ jobs:
       os: ${{ matrix.os }}
       compiler: ${{ matrix.compiler }}
       version: ${{ matrix.version }}
-      fail-fast: false
       run-tests: false
       binary-artifact: spp-${{ needs.release-gate.outputs.version }}-${{ matrix.label }}
-      variants: '[{"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"}]'
+      variant: release-rel
+      build-type: Release
 
   # The tag is created here, by the release itself, so a matrix that goes red leaves nothing behind, and the next
   # push retries the same version cleanly. Needs every platform green: a release missing an architecture is worse
@@ -243,7 +250,8 @@ jobs:
     if: |
       !cancelled()
       && needs.changes.outputs.sonar == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs['build-test'].result)
+      && needs['build-test'].result != 'failure'
+      && needs['build-test'].result != 'cancelled'
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml
