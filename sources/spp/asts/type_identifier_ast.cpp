@@ -204,11 +204,12 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
       *type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
   }
 
+  const auto no_gn_params = GenericParameterGroupAst::NewEmpty();
   const auto gn_param_group = type_sym->Alias != nullptr
     ? type_sym->Alias->Params.get()
     : type_sym->Type != nullptr
     ? type_sym->Type->GnParamGroup.get()
-    : nullptr;
+    : no_gn_params.get();
 
   auto is_tuple = false;
   if (not type_sym->IsGeneric) {
