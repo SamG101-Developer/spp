@@ -51,12 +51,12 @@ repos:
         language: python
         files: \.(hpp|cpp|ixx)$
 
-#      - id: ast-kinds
-#        name: check generated ast kinds
-#        entry: python3 .tools/generate-ast-kinds.py --check
-#        language: python
-#        pass_filenames: false
-#        files: '^(headers/spp/asts/.*\.ixx|\.tools/generate-ast-kinds\.py)$'
+      - id: ast-kinds
+        name: check generated ast kinds
+        entry: python3 .tools/generate-ast-kinds.py --check
+        language: python
+        pass_filenames: false
+        files: '^(headers/spp/asts/.*\.ixx|\.tools/generate-ast-kinds\.py)$'
 
       - id: pins
         name: validate dependency manifest
