@@ -14,6 +14,9 @@ A hardening measure that is implemented is on by default, and is turned off, if 
 protect = false   # no stack canaries
 probe = false     # no page-by-page probing of a frame
 split = false     # one frame per function, not a safe and an unsafe one
+
+[binary.link]
+harden = false    # link with whatever the host's compiler driver defaults to
 ```
 
 Nothing in "Language-level guarantees" has a key, and nothing in it ever will: those are what the language means, not a
@@ -118,13 +121,29 @@ the full rules.
 
 ## Data integrity and immutability
 
-- [ ] Const propagation: write all `cmp` data to `.rodata`.
+- [x] Const propagation: write all `cmp` data to `.rodata`. A `cmp` is emitted as an llvm `constant` initialised from
+  what comp-time resolution already folded it to, so there is nothing to propagate at this end and nothing that lands in
+  `.data`.
 - [ ] Data flow integrity: only specific sites can write to a variable, enforced by the writer set the compiler already
   computes for ownership tracking.
-- [ ] Immutable-by-default globals: a global that is never mutably borrowed lands in read-only memory, and is proven so
-  rather than annotated so.
+- [x] Immutable-by-default globals: a global that is never mutably borrowed lands in read-only memory, and is proven so
+  rather than annotated so. Every global there is - `cmp` data and string literals - is one, because a global is the
+  only thing there is: a mutable one has no spelling.
 - [ ] Integrity check on any structure the runtime relies on but the program can reach (vtables, type descriptors,
   allocator metadata) - see "Control flow integrity" and "Allocator hardening."
+
+**Implementation notes**
+
+- Read-only placement is a codegen property and a link property, and both are needed. The first is free here - the
+  language has no mutable global - and it is the second that was missing: the linked program was partial RELRO with lazy
+  binding, so the `.got.plt` entry for every ffi call stayed writable for the life of the process. See "Linking and
+  loading."
+- A string literal is a `{ ptr, len }` view, and the pointer is a relocation, so a literal is split across two sections:
+  the bytes in `.rodata`, the view in `.data.rel.ro`. That is as read-only as a relocated constant gets, and only under
+  full RELRO. Both halves are `unnamed_addr` - a literal is read by value at every use and there is no way to take its
+  address or compare two - which is what lets identical ones fold together. Saying it of only the bytes, which is what
+  `CreateGlobalString` does on its own, shares the bytes and leaves every view pointing at them a separate relocated
+  slot: four copies of one `StrView` in `.data.rel.ro` and four relocations for the loader.
 
 ## Allocator hardening
 
@@ -178,10 +197,22 @@ the full rules.
   why the runtime has to be linked normally rather than `dlopen`ed.
 - The three measures compose rather than overlap: LLVM moves the canary's own slot onto the unsafe stack, where it goes
   on guarding the objects that are still adjacent to each other, and the probe walks whichever frame is being claimed.
-- Split stacks are not yet sound across the green-thread runtime: `gt_switch` swaps the safe stack but not the unsafe
-  stack pointer, so two tasks on one OS thread would interleave on one unsafe stack. Latent rather than live, because
-  `async` is not wired up to `sppc_async` yet - but `gt_ctx` needs to carry the unsafe pointer, and each task needs an
-  unsafe stack of its own, before it is.
+  They compose everywhere except at the entry point, where the ordering bites: a split frame is claimed in the prologue
+  out of a mapping the runtime start-up makes, and the canary is the first thing written into it, so the two functions
+  that run before that start-up returns - the C `main` and the shim it calls - claim a frame through a null pointer and
+  segfault on the entry point's third instruction. Both are therefore left whole, which was `rel` not running at all:
+  at `dev` `main` had no locals and so no frame to split, and the bug only appeared once the optimiser inlined something
+  into it. The s++ entry point is `noinline` for the same reason - it is the one frame that is not split, so nothing
+  that would have been split may be inlined into it, or the measure reports itself applied while the binary carries none
+  of it.
+- Split stacks hold across the green-thread runtime, which they did not before: the unsafe stack pointer is one
+  thread-local shared by every task on an OS thread, so without carrying it across a switch two tasks interleave on one
+  unsafe stack - and because switching is not LIFO, a task that resumes and returns unwinds that stack past frames
+  another task is still using. Each task therefore maps an unsafe stack of its own in `_gt_spawn`, and `_gt_switch_to`
+  saves and restores `__safestack_unsafe_stack_ptr` around the switch. It is done on the c side rather than in
+  `_gt_switch` because there the pointer is one named variable, where in the assembly it would be an open-coded TLS
+  access per architecture. A task only pays for the second mapping where the program was built with split stacks at all,
+  which `_unsafe_stack_wanted` reports.
 
 ## Control flow integrity
 
@@ -261,13 +292,28 @@ Each of these is a target capability, so each needs the fallback policy from "Bu
 ## Linking and loading
 
 - [ ] RELRO/NX/ASLR.
-- [ ] Read-only relocations: full RELRO with `BIND_NOW`, mandatory PIE,
-  `-z noexecstack -z separate-code -z defs -z nodlopen -z now`.
+- [x] Read-only relocations: full RELRO with `BIND_NOW`, mandatory PIE,
+  `-z noexecstack -z separate-code -z defs -z now`. This is what makes the section a constant was placed in mean
+  anything: a constant holding a pointer cannot be laid down finished, because the address is not known until the
+  program is mapped, so it lands in `.data.rel.ro` rather than `.rodata` and is writable until the loader has applied
+  the relocation - and writable for the rest of the process without this.
 - [ ] No text relocations ever.
 - [ ] Default hidden symbol visibility, with explicit export lists for libraries.
 - [ ] `mimmutable`/`mprotect` lockdown after startup - mark segments permanently non-writable where the OS supports it,
   which is what makes function layouts immutable in practice.
 - [ ] MDWE (`PR_SET_MDWE`) to deny runtime W->X transitions process-wide.
+
+**Implementation notes**
+
+- `-z nodlopen` is deliberately not passed. It sets a flag on a shared object saying it may not be opened by name, and a
+  linker asked for it while producing an executable drops it without recording anything, so it belongs on the library
+  link, once there is one. A flag that produces no bit in the artefact is worse than an absent one, because the point of
+  writing these down is that a built binary can be audited for what it actually got.
+- Nothing of the program's own is left writable after start-up. `.rodata` holds the `cmp` data and the literal bytes,
+  `.data.rel.ro` the relocated constants, and both are read-only once the loader is done; the only writable bytes in the
+  linked binary are libc's own `completed.0` and the `.bss` markers around it.
+- The link is `cc`, so mandatory PIE is `-pie` on an object that llvm already emits `PIC_`. A driver configured
+  `--disable-default-pie` therefore still produces a position-independent executable rather than failing to link.
 
 ## Process-level policy emission
 
@@ -314,7 +360,26 @@ Each of these is a target capability, so each needs the fallback policy from "Bu
 
 ## Concurrency
 
-- [x] Enforce the `thread_hazard`/`ThreadSafe` auto types. Not yet applied to `async`.
+- [x] Enforce the `thread_hazard`/`ThreadSafe` auto types. Deliberately not applied to `async`, which is a different
+  hazard from `std::threading::thread::spawn`: an `async` task is a green thread, so every task of one OS thread runs on
+  that thread and only ever at a point the runtime chose to suspend at. Nothing crosses a thread boundary, so the marker
+  that governs what may - and which makes `Rc` unusable on a spawned thread - would reject code that is perfectly safe
+  here. What `async` does still need is the escaping-borrow rules, because a task outlives the statement that started
+  it: a borrow lent to one is pinned to the future holding it, and the value behind it cannot move until that future is
+  consumed.
+- [x] Releasing that pin. A container of escaping borrows may not be moved, because where it ends up decides how long
+  those borrows live - and every way of consuming a future is a move of it, so the two rules together once made a
+  borrowed argument non-reclaimable: the value stayed pinned to the end of its scope and linearity then reported it at
+  the closing brace. What breaks the deadlock is that `await` **waits**: once it returns the task is finished, so the
+  borrow it held no longer exists and consuming the future ends it rather than passing it on. That is why `await` is a
+  keyword rather than a method, mapping to a private `Fut::await_` the way `res` maps to `send`. Only the operator's
+  lowering claims the licence, and only after checking the receiver is a `Fut`, so it rests on something the compiler
+  established rather than an annotation an author asserted - and getting it wrong is not expressible. The general rule
+  is untouched: handing a closure to a function joins nothing and stays refused, and so does `drop(future)` on a future
+  holding a pinned borrow. `drop(fut.await)` is the way to discard one, which puts the join where it is doing the work.
+- [ ] Re-entrancy across a suspension point. A task can be suspended mid-operation at a yield, an await or a routed i/o
+  call, so another task can observe state the first left half-updated. That is not a data race and the marker above
+  would not catch it; it wants its own analysis.
 - [ ] Static lock ordering analysis for deadlock detection.
 - [ ] No "relaxed-by-default" atomics: sequential consistency is the default.
 - [ ] Coroutine cancellation safety.
