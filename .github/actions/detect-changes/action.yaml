@@ -27,6 +27,10 @@ outputs:
       || (steps.pins.outputs.pins_only != 'true'
         && (steps.filter.outputs.code_any_changed != 'false'
           || steps.filter.outputs.release_gate_any_changed != 'false')) }}
+  version:
+    description: "'true' when VERSION changed, i.e. the diff bumped the release version."
+    value: ${{ steps.base.outputs.usable != 'true'
+      || steps.filter.outputs.version_any_changed != 'false' }}
   cppcheck:
     description: "'true' when `code` is true, or a CI path the static analysis job reads changed; never for a pin-only diff."
     value: ${{ steps.base.outputs.usable != 'true'
@@ -106,6 +110,8 @@ runs:
             - 'changelog/**'
             - '.github/workflows/pr.yaml'
             - '.github/scripts/version-check/**'
+          version:
+            - 'VERSION'
           cppcheck:
             - '.github/workflows/pr.yaml'
             - '.github/workflows/_cppcheck.yaml'

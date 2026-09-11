@@ -28,6 +28,7 @@ jobs:
       ci_pins_only: ${{ steps.filter.outputs.ci_pins_only }}
       compile: ${{ steps.filter.outputs.compile }}
       sonar: ${{ steps.filter.outputs.sonar }}
+      version: ${{ steps.filter.outputs.version }}
     steps:
       # Secure the runner from external packages or actions.
       - name: Harden Runner
@@ -123,11 +124,13 @@ jobs:
       shard-count: ${{ matrix.shard-count || 1 }}
       stl-conformance: ${{ matrix.stl-conformance || false }}
 
-  # What the release is for this commit, decided from the tag rather than from the diff: a re-run of the same push
-  # and a merge that bumped nothing both land on a tag that already exists, and neither should build a second set of
-  # binaries for a version that is already published.
+  # Only a push that bumped VERSION, or a manual dispatch, is a release candidate. Without this, an unpublished version
+  # is retried by every later push, so dependency bumps kick off the full cross-platform build. The tag check then stops
+  # a re-run of the same push from building a second set of binaries for a version that is already published.
   release-gate:
     name: Release Gate
+    needs: [ changes ]
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.version == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -186,9 +189,9 @@ jobs:
       variant: release-rel
       build-type: Release
 
-  # The tag is created here, by the release itself, so a matrix that goes red leaves nothing behind, and the next
-  # push retries the same version cleanly. Needs every platform green: a release missing an architecture is worse
-  # than a release that arrives one push later.
+  # The tag is created here, by the release itself, so a matrix that goes red leaves nothing behind, and a manual
+  # dispatch retries the same version cleanly. Needs every platform green: a release missing an architecture is worse
+  # than a release that arrives one dispatch later.
   publish-release:
     name: Publish Release
     needs: [ release-gate, release-build ]
