@@ -447,6 +447,14 @@ auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce()
   -> void {
   if (not _IsOnce or _GenOnceLowered != nullptr) { return; }
 
+  // Todo: A body that defers anything is miscompiled here. A deferred expression is meant to run after the yield -
+  //  a lock defers releasing its guard so the lock is still held while the caller holds the borrow - but once the
+  //  "gen" reads as the return, everything the scope deferred runs on the way out of it, so the release happens
+  //  before the caller ever sees the value. Declining to lower such a body is not the answer on its own: nothing at
+  //  a call site resumes an unlowered "GenOnce", reads its yield slot, or destroys its frame, so the caller is handed
+  //  a raw handle typed as the value. Fixing this means implementing that path, and binding the frame to the caller's
+  //  scope so the deferred release runs when it ends. "std::threading" avoids the shape entirely - see "MutexGuard".
+
   // The signature is this coroutine's with the generator return
   // type replaced by what it yields; the body is taken over
   // wholesale, because nothing about it changes - a "gen" inside
