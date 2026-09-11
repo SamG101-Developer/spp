@@ -9,9 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast; // TODO: GCC BUG REQUIRES THIS
-  SPP_EXP_CLS template <typename T> struct InnerScopeAst;
+SPP_AST_COMMON_FWD_DECL_TEMPLATED(InnerScopeAst) {
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -60,11 +58,21 @@ struct spp::asts::InnerScopeAst : Ast {
 
   ~InnerScopeAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 

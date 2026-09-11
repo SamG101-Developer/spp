@@ -1036,6 +1036,32 @@ spp::analyse::errors::SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunct
     "Change the target to a function call operation, or remove " + INLINE_HELP("async") + ".");
 }
 
+spp::analyse::errors::SppAwaitTargetNotFutureError::SppAwaitTargetNotFutureError(
+  asts::Ast const &await_op,
+  asts::Ast const &lhs,
+  asts::Ast const &type) {
+  AddHeaders(107, "Await Target Not Future Error");
+  AddCtxForErr(&await_op, "Await operator defined here");
+  AddErr(&lhs, "Expression inferred as " + INLINE_INFO(type.ToString()) + " defined here");
+  AddFooter(
+    "Only a future can be awaited; a future is what an " + INLINE_NOTE("async") + " call produces.",
+    "Await the result of an " + INLINE_HELP("async") + " call, or remove " + INLINE_HELP("await") + ".");
+}
+
+spp::analyse::errors::SppInvalidDefaultValueError::SppInvalidDefaultValueError(
+  asts::Ast const &default_val,
+  const StrView owner,
+  const StrView use_site) {
+  AddHeaders(108, "Invalid Default Value Error");
+  AddErr(&default_val, "Default value defined here");
+  AddFooter(
+    "A default " + Str(owner) + " value is copied into every " + Str(use_site) + " that leaves it out, so it can only "
+    "be an expression that creates no scope and cannot leave the code it is copied into: no " + INLINE_NOTE("{ }")
+    + " block, closure, " + INLINE_NOTE("async") + ", " + INLINE_NOTE("case") + ", " + INLINE_NOTE("loop") + ", "
+    + INLINE_NOTE("gen") + ", " + INLINE_NOTE("ret") + " or " + INLINE_NOTE("?") + ".",
+    "Compute the value in a function, and call that from the default.");
+}
+
 spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
   asts::Ast const &tok_deref,
   asts::Ast const &expr,

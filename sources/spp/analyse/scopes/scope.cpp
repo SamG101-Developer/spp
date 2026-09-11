@@ -790,11 +790,22 @@ auto spp::analyse::scopes::Scope::GetEnclosingSelfType(
     return self_sym->LinkedScope->TySym->FqName();
   }
 
+  // Use a "seen" walker to prevent scope searching cycles due
+  // to nested closures, whose inner/outer scopes don't follow
+  // normal scoping hierarchies.
+  auto seen = Set<Scope const*>();
   while (true) {
+    if (not seen.insert(current_scope).second) { return nullptr; }
+
     // Escape closure scopes for the Self type.
-    if (current_scope->NameAsString().starts_with("<closure-outer")) {
+    if (current_scope->NameAsString().starts_with("<closure-outer")
+      and meta.OverriddenScopeForClosure != nullptr) {
       current_scope = meta.OverriddenScopeForClosure;
+      continue;
     }
+
+    // Nothing above this scope, so nothing encloses it.
+    if (current_scope->Parent == nullptr) { return nullptr; }
 
     // Only get a scope right under the module scope.
     if (not std::holds_alternative<ScopeIdentifierName>(current_scope->Parent->Name)) {
@@ -802,7 +813,13 @@ auto spp::analyse::scopes::Scope::GetEnclosingSelfType(
       continue;
     }
 
-    return current_scope->AstNode != nullptr ? asts::AstName(current_scope->AstNode) : nullptr;
+    // The walk lands on whatever ast owns the scope under
+    // the module, which is not always one that declares a
+    // type - a module-level type statement or function owns
+    // one too, and neither encloses a "Self".
+    return current_scope->AstNode != nullptr
+      ? asts::AstNameOrNull(current_scope->AstNode)
+      : nullptr;
   }
   return nullptr;
 }

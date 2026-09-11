@@ -11,7 +11,6 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct ExpressionAst;
 }
 
 namespace spp::asts::meta {
@@ -20,7 +19,6 @@ namespace spp::asts::meta {
 
 namespace spp::asts::mixins {
   SPP_EXP_CLS struct CompilerStages;
-  SPP_EXP_CLS struct TypeInferrableAst;
 }
 
 namespace spp::codegen {
@@ -32,9 +30,6 @@ namespace spp::codegen {
  * AST. The exceptions are the first 3 functions, which are applies to top level ASTs exclusively.
  */
 SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
-  using ScopeManager = spp::analyse::scopes::ScopeManager;
-  using CompilerMetaData = spp::asts::meta::CompilerMetaData;
-
   CompilerStages();
 
   virtual ~CompilerStages();
@@ -44,7 +39,9 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * This is key for the function architecture (transforming methods into callable types) etc.
    * @param[in, out] ctx The context AST for this AST.
    */
-  virtual auto Stage1_PreProcess(Ast *ctx) -> void;
+  virtual auto Stage1_PreProcess(
+    Ast *ctx)
+    -> void;
 
   /**
    * Top level scopes must be generated first, and represent the scopes for modules, classes, functions and
@@ -52,7 +49,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * here, as there is no guarantee their corresponding "old types" have been generated yet.
    * @param[in, out] sm The scope manager to hold generated scopes.
    */
-  virtual auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void;
+  virtual auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> void;
 
   /**
    * Aliases at the module and superimposition level are generated here. At this stage, all the classes will have been
@@ -61,7 +61,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] sm The scope manager to hold generated aliases.
    * @param[in, out] meta Metadata to pass between ASTs.
    */
-  virtual auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage3_GenTopLvlAliases(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * Qualify types that have been written as non-fully-qualified in all ASTs that are not in the bodies of top level
@@ -69,7 +72,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] sm The scope manager to identify types in.
    * @param[in, out] meta Metadata to pass between ASTs.
    */
-  virtual auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * Attach superimposition scopes to the respective target types. This must be done in its own stage as it relies on
@@ -77,7 +83,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] sm The scope manager to find target type scopes in.
    * @param[in, out] meta Metadata to pass between ASTs.
    */
-  virtual auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage5_LoadSupScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * There are some checks that have to happen after the superscopes have all been attached but must happen before
@@ -86,7 +95,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] sm The scope manager to do pre-analysis in.
    * @param[in, out] meta Metadata to pass between ASTs.
    */
-  virtual auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage6_PreAnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * General analysis of all ASTs, except memory-oriented checks. All identifier checks, type checking, function
@@ -94,7 +106,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] sm The scope manager to do analysis in.
    * @param[in, out] meta Metadata to pass between ASTs.
    */
-  virtual auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * All memory oriented checks, such as ownership checking and law of exclusivity enforcement happen in this stage.
@@ -104,7 +119,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] sm The scope manager to get symbol's memory information from.
    * @param[in, out] meta Metadata to pass between ASTs.
    */
-  virtual auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * Resolve any comptime values that haven't got literals assigned to them. This allows for somptime functions to be
@@ -113,7 +131,10 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param sm The scope manager to use for resolution.
    * @param meta Associated metadata.
    */
-  virtual auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
 
   /**
    * Generate some LLVM IR code from the ASTs. This is IR that is needed for the rest of the program to be generated.
@@ -123,7 +144,11 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] ctx The LLVM context to generate code into.
    * @return The LLVM value generated from this AST.
    */
-  virtual auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value*;
+  virtual auto Stage10_PreCodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value*;
 
   /**
    * Finish the LLVM IR generation for the remaining (majority) of the ASTs. This will then all get linked together
@@ -133,5 +158,9 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
    * @param[in, out] ctx The LLVM context to generate code into.
    * @returns The LLVM value generated from this AST.
    */
-  virtual auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value*;
+  virtual auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value*;
 };

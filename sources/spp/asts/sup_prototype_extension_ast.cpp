@@ -115,8 +115,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage1_PreProcess(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSuperimpositionOptionalGenericParameterError;
@@ -153,19 +153,29 @@ auto spp::asts::SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
-  // Forward to the implementation.
+  // Register "Self" before any alias in the block is resolved,
+  // so that one naming it has something to resolve to. The name
+  // is not qualified yet, so the base symbol is what answers
+  // here; Stage 5 replaces this with the precise one.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  if (not Name->IsCompilerGeneratedType()) {
+    // The name need not resolve to anything here: a superimposition over a type that does not exist is reported by
+    // the stage that qualifies it, not this one, so this asks for the symbol rather than assuming it.
+    if (const auto base_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())) {
+      sm->AddSelfTypeSymbol(base_sym->LinkedScope, Name->PosStart());
+    }
+  }
   Impl->Stage3_GenTopLvlAliases(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the implementation.
   sm->MoveToNextScope();
@@ -176,8 +186,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
@@ -219,13 +229,11 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
     }
   }
 
-  // Add the "Self" symbol into the scope.
+  // Re-register "Self" against the fully-resolved name, replacing
+  // the provisional one from Stage 3.
   if (not Name->IsCompilerGeneratedType()) {
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-      MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-      sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
+    sm->AddSelfTypeSymbol(
+      sm->CurrentScope->GetTypeSymbol(Name.get())->LinkedScope, Name->PosStart());
   }
 
   // Analyse the supertype after Self has been added
@@ -248,8 +256,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::func_utils::CheckForConflictingOverride;
@@ -367,8 +375,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
@@ -416,8 +424,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -427,8 +435,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -438,8 +446,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.
@@ -451,8 +459,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.

@@ -83,8 +83,8 @@ auto spp::asts::IntegerLiteralAst::ToString() const
 }
 
 auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "s32" : Type;
@@ -109,7 +109,7 @@ auto spp::asts::IntegerLiteralAst::BigVal() const
 
 auto spp::asts::IntegerLiteralAst::ValidateBounds(
   Ast const &owner,
-  ScopeManager const &sm) const
+  analyse::scopes::ScopeManager const &sm) const
   -> void {
   //
   using analyse::errors::SppIntegerOutOfBoundsError;
@@ -158,8 +158,8 @@ auto spp::asts::IntegerLiteralAst::FromWrappedBigVal(
 }
 
 auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *meta)
   -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
@@ -167,8 +167,8 @@ auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   using spp::utils::strings::NormaliseIntegerString;
@@ -204,8 +204,8 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::IntegerLiteralAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   //
   using namespace generate::common_types_precompiled;

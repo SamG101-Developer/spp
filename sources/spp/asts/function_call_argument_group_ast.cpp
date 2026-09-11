@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.type_predicates;
+import spp.asts.closure_expression_ast;
 import spp.asts.convention_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.expression_ast;
@@ -116,8 +117,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::GetPositionalArgs() const
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppExpansionOfNonTupleError;
@@ -183,8 +184,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppMemoryOverlapUsageError;
@@ -227,8 +228,30 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // "self.buf[i] == byte" (which lowers to "eq(&self.buf[i], byte)" returning a Bool) consumes any borrows made
     // while evaluating its arguments, so an inner coroutine (e.g. "self.buf[i]" -> "index_ref") must not attribute
     // its escaping borrow to the outer handle ("found" here).
+    //
+    // A closure that captured a borrow is the exception to both of those, and
+    // the reasoning above is what misses it. Such a closure is passed by
+    // value, and the call taking it need not propagate anything - yet the
+    // borrow outlives the call regardless, because the closure carries it into
+    // whatever ends up holding the closure. So the handle is exactly what the
+    // borrow has to be bound to, and clearing it here records nothing at all:
+    // the borrowed value is then free to move while something still borrows
+    // it.
+    //
+    // Nothing about that is specific to any one caller. It is a property of
+    // handing a borrowed capture to a function, and holds for any function
+    // that gives a handle back. "async" is simply the shape that exposed it,
+    // because its lowering wraps the call in a closure and hands it to a
+    // future.
+    const auto closure_arg = arg->Val != nullptr
+      ? arg->Val->To<ClosureExpressionAst>()
+      : nullptr;
+    const auto arg_carries_borrows = closure_arg != nullptr and closure_arg->HasBorrowedCaptures();
+
     const auto saved_assignment_target = meta->AssignmentTarget;
-    if (arg->Conv == nullptr or not pins_required) { meta->AssignmentTarget = nullptr; }
+    if ((arg->Conv == nullptr or not pins_required) and not arg_carries_borrows) {
+      meta->AssignmentTarget = nullptr;
+    }
     arg->Stage8_CheckMemory(sm, meta);
     meta->AssignmentTarget = saved_assignment_target;
 
@@ -358,6 +381,16 @@ auto spp::asts::FunctionCallArgumentGroupAst::ConvertToPositional() const
   }
   return MakeUnique<FunctionCallArgumentGroupAst>(
     AstClone(TokL), std::move(positional_args), AstClone(TokR));
+}
+
+auto spp::asts::FunctionCallArgumentGroupAst::IsAllowedInDefault() const
+  -> bool {
+  // Check every argument - one bad one prevents the entire
+  // group from being allowed in this specific context.
+  for (auto const &x : Args) {
+    if (not x->IsAllowedInDefault()) { return false; }
+  }
+  return true;
 }
 
 SPP_MOD_END

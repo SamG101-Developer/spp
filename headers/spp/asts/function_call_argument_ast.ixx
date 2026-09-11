@@ -11,10 +11,9 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentAst) {
   SPP_EXP_CLS struct ConventionAst;
   SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct FunctionCallArgumentAst;
   SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
   SPP_EXP_CLS struct TypeAst;
 }
@@ -24,8 +23,6 @@ namespace spp::asts {
  * "positional" and "keyword" variants.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAst, mixins::TypeInferrableAst {
-  SPP_GCC_VTABLE_FIX
-
   /**
    * Use the base Ast's constructors.
    */
@@ -54,19 +51,38 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAs
     decltype(Val) &&val,
     utils::OrderableTag order_tag);
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   auto SetSelfType(Shared<TypeAst> self_type) -> void;
 
   SPP_ATTR_NODISCARD auto GetSelfType() const -> Shared<TypeAst>;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 
 private:
   /**
@@ -75,5 +91,3 @@ private:
    */
   Shared<TypeAst> _InjectedSelfType;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentAst)

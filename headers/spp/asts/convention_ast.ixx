@@ -4,9 +4,8 @@ module;
 export module spp.asts.convention_ast;
 import spp.asts.ast;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(ConventionAst) {
   SPP_EXP_CLS enum class ConventionTag { MOV, MUT, REF };
-  SPP_EXP_CLS struct ConventionAst;
 }
 
 /**
@@ -18,8 +17,6 @@ namespace spp::asts {
  * semantically, of being a "move" convention.
  */
 SPP_EXP_CLS struct spp::asts::ConventionAst : Ast {
-  SPP_GCC_VTABLE_FIX
-
 private:
   ConventionTag _Tag;
 
@@ -32,5 +29,3 @@ public:
 
   auto operator==(ConventionTag that_tag) const -> bool;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ConventionAst)

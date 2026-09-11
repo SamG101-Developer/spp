@@ -87,8 +87,8 @@ auto spp::asts::InnerScopeAst<T>::ToString() const
 
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::Stage7_AnalyseSemantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
@@ -103,8 +103,8 @@ auto spp::asts::InnerScopeAst<T>::Stage7_AnalyseSemantics(
 
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::Stage8_CheckMemory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -128,8 +128,8 @@ auto spp::asts::InnerScopeAst<T>::Stage8_CheckMemory(
 
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::Stage11_CodeGen(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.

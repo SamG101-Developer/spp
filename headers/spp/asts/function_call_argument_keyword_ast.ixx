@@ -7,8 +7,7 @@ import spp.asts.function_call_argument_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionCallArgumentKeywordAst;
+SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentKeywordAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TokenAst;
 }
@@ -18,7 +17,6 @@ namespace spp::asts {
  * to be matched by a keyword rather than an index.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentKeywordAst);
 
   /**
@@ -48,5 +46,3 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCal
 
   ~FunctionCallArgumentKeywordAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentKeywordAst)

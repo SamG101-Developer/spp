@@ -7,15 +7,14 @@ import spp.asts.type_unary_expression_operator_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionOperatorNamespaceAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
-  SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionOperatorNamespaceAst);
 
   /**

@@ -7,14 +7,12 @@ import spp.asts.local_variable_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct LocalVariableDestructureAttributeBindingAst;
+SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureAttributeBindingAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureAttributeBindingAst);
 
   /**
@@ -51,5 +49,3 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final 
   SPP_ATTR_NODISCARD auto ExtractName() const
     -> Shared<IdentifierAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureAttributeBindingAst)

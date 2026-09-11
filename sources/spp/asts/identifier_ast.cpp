@@ -20,6 +20,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
+import spp.utils.interner;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
@@ -153,8 +154,8 @@ auto spp::asts::IdentifierAst::operator+(
 }
 
 auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSelfIdentifierInvalidContextError;
@@ -177,8 +178,8 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppCompileTimeConstantError;
@@ -210,8 +211,8 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::IdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -286,8 +287,8 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
 }
 
 auto spp::asts::IdentifierAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // Extract the symbol from the current scope, as a variable
   // symbol.
@@ -339,6 +340,12 @@ auto spp::asts::IdentifierAst::SubstituteGenericsExpr(
 auto spp::asts::IdentifierAst::ToView() const noexcept
   -> StrView {
   return Val;
+}
+
+auto spp::asts::IdentifierAst::IsAllowedInDefault() const
+  -> bool {
+  // A name reads a value.
+  return true;
 }
 
 SPP_MOD_END

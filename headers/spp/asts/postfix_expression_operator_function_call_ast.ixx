@@ -13,7 +13,7 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
 }
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorFunctionCallAst) {
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct FunctionCallArgumentAst;
   SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
@@ -25,13 +25,11 @@ namespace spp::asts {
   SPP_EXP_CLS struct GenericArgumentGroupAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
-  SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
   SPP_EXP_CLS struct TypeAst;
   SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorFunctionCallAst);
 
   /**
@@ -69,15 +67,31 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   ~PostfixExpressionOperatorFunctionCallAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
@@ -101,6 +115,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
   SPP_ATTR_NODISCARD auto GetTransformedAst() const
     -> PostfixExpressionAst*;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+
 private:
   struct _OInfo {
     analyse::scopes::Scope const *OverloadScope;
@@ -117,9 +134,7 @@ private:
   bool _IsCoroAndAutoResume;
 
   auto _HandleFunctionFolding(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorFunctionCallAst)

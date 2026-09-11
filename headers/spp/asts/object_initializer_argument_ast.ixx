@@ -7,10 +7,9 @@ import spp.asts.mixins.type_inferrable_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentAst) {
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct ObjectInitializerArgumentAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
@@ -19,8 +18,6 @@ namespace spp::asts {
  * inherited into the "shorthand" and "keyword" variants.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeInferrableAst {
-  SPP_GCC_VTABLE_FIX
-
   /**
    * The name of the argument. This is the identifier that is used to refer to the argument in the function call. For
    * shorthand args, this is autofilled by cloning the value, and casting it to an IdentifierAst. Otherwise, it is
@@ -47,13 +44,26 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
 
   ~ObjectInitializerArgumentAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentAst)

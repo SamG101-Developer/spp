@@ -108,8 +108,8 @@ auto spp::asts::ClassPrototypeAst::Stage1_PreProcess(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Create the class scope, which is the scope for the class prototype.
   auto scope_name = analyse::scopes::ScopeTypeIdentifierName(Name);
@@ -124,23 +124,29 @@ auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
   GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
   Impl->Stage2_GenTopLvlScopes(sm, meta);
 
-  // Move out of the class scope, as the class scope is now complete.
+  // Move out of the class scope, as the class scope is now
+  // complete.
   sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::ClassPrototypeAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
-  // Skip the class scope.
+  // Register "Self" before any alias in the body is resolved,
+  // so that one naming it has something to resolve to. A class's
+  // "Self" is its own scope, which is the scope just moved into.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  if (not Name->IsCompilerGeneratedType()) {
+    sm->AddSelfTypeSymbol(sm->CurrentScope, Name->PosStart());
+  }
   sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::ClassPrototypeAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify the types in the class body.
   sm->MoveToNextScope();
@@ -152,8 +158,8 @@ auto spp::asts::ClassPrototypeAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Load the super scopes for the class body.
   using analyse::utils::type_compare::TypeEq;
@@ -185,13 +191,13 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
     }
   }
 
-  // Add the "Self" symbol into the scope.
+  // Re-register "Self" now that the name resolves precisely.
+  // Stage 3 registered a provisional one so that the body's
+  // aliases could name it; this replaces it with the scope
+  // the fully-resolved name links to.
   if (not Name->IsCompilerGeneratedType()) {
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-      MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-      sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
+    sm->AddSelfTypeSymbol(
+      sm->CurrentScope->GetTypeSymbol(Name.get())->LinkedScope, Name->PosStart());
   }
 
   Impl->Stage5_LoadSupScopes(sm, meta);
@@ -199,8 +205,8 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Pre-analyse semantics for the class body.
   sm->MoveToNextScope();
@@ -217,8 +223,8 @@ auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse semantics for the class body.
   using generate::common_types_precompiled::SELF_TYPE;
@@ -236,8 +242,8 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
-  // A "!zero_type" class is guaranteed to occupy no storage - that is what lets it be "Copy", and what every use of
-  // one assumes - so it cannot declare state of its own.
+  // A "!zero_type" class is guaranteed to occupy no storage - every use of one assumes as much - so it cannot declare
+  // state of its own. Being zero-sized says nothing about copying: a marker is still linear unless it is "Copy".
   RaiseIf<analyse::errors::SppEmptyBodyRequiredError>(
     ZeroTypeAnnotation != nullptr and not Impl->Members.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(
@@ -249,8 +255,8 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check memory for the class body.
   sm->MoveToNextScope();
@@ -260,20 +266,21 @@ auto spp::asts::ClassPrototypeAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Skip the class body.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
+  GnParamGroup->Stage9_CompTimeResolve(sm, meta);
   Impl->Stage9_CompTimeResolve(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for the class body.
@@ -301,8 +308,8 @@ auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Get the class symbol.
@@ -335,7 +342,7 @@ auto spp::asts::ClassPrototypeAst::GetClsSym() const
 }
 
 auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
-  ScopeManager *sm)
+  analyse::scopes::ScopeManager *sm)
   -> analyse::scopes::TypeSymbol* {
   auto is_dollar_type = Name->IsCompilerGeneratedType();
   auto sym_name = AstClone(Name->TypeParts()[0]);
@@ -432,7 +439,7 @@ static auto ApplyStructLayout(
 }
 
 auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
-  ScopeManager const *sm,
+  analyse::scopes::ScopeManager const *sm,
   analyse::scopes::TypeSymbol const *type_sym,
   codegen::LlvmCtx const *ctx) const
   -> void {
@@ -511,7 +518,9 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
 
   // Pass this layout to aliases too (the field re-ordering as well as
   // the type itself).
-  for (auto const &alias : type_sym->AliasedBySyms) {
+  for (auto const &weak_alias : type_sym->AliasedBySyms) {
+    const auto alias = weak_alias.lock();
+    if (alias == nullptr) { continue; }
     alias->LlvmInfo->LlvmType = lt;
     alias->LlvmInfo->FieldIndexMap = type_sym->LlvmInfo->FieldIndexMap;
   }

@@ -9,15 +9,14 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(TupleLiteralAst) {
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TupleLiteralAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(TupleLiteralAst);
 
   /**
@@ -52,19 +51,38 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TupleLiteralAst)

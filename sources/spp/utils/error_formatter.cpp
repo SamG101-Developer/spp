@@ -131,7 +131,7 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
 
   // file_path = "\033]8;;"s + file_path + "\033" + file_path + "\033]8;;\033"; // Make the file path clickable in supporting terminals.
 
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + " ', "s +
+  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + "', "s +
     location + ":\n";
   const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
   const auto line3 = (colex::fg_bright_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;

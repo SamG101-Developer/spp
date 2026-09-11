@@ -7,12 +7,10 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionParameterRequiredAst;
+SPP_AST_COMMON_FWD_DECL(FunctionParameterRequiredAst) {
 }
 
 SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionParameterRequiredAst);
 
   /**
@@ -31,5 +29,3 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParam
 
   ~FunctionParameterRequiredAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterRequiredAst)

@@ -44,8 +44,8 @@ spp::asts::LoopExpressionAst::LoopExpressionAst(
 spp::asts::LoopExpressionAst::~LoopExpressionAst() = default;
 
 auto spp::asts::LoopExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using analyse::errors::SppTypeMismatchError;

@@ -328,7 +328,7 @@ auto spp::analyse::utils::type_compare::TypeEq(
   // Only worth doing when the other side does name a class. Against a symbol that carries no prototype either (an
   // unbound generic parameter, most of all) the two match precisely by both being prototype-less, which is what lets
   // a method written in terms of "Self" register as overriding an abstract one; resolving would break that.
-  const auto resolve_self_sym = [](scopes::TypeSymbol *const sym, scopes::TypeSymbol *const other) {
+  const auto resolve_self_sym = [](scopes::TypeSymbol *sym, scopes::TypeSymbol const *other) {
     return other != nullptr and other->Type != nullptr and sym != nullptr ? sym->AsClassSymbol() : sym;
   };
   if (lhs_type.IsSelfType()) { stripped_lhs_sym = resolve_self_sym(stripped_lhs_sym, stripped_rhs_sym); }
@@ -630,6 +630,8 @@ auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
 
   // Determine the concrete symbol, and if non-generic, add its scope.
   const auto concrete_sym = concrete_scope.GetTypeSymbol(&concrete_type);
+  if (concrete_sym == nullptr) { return nullptr; } // Failsafe for some $ClosureTypes
+
   auto sup_info = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
   if (concrete_type.IsSelfType() and not concrete_sym->IsGeneric) {
     // Todo: might need to keep the self sym, mapped to fq

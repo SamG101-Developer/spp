@@ -180,11 +180,11 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
   asts::meta::CompilerMetaData *meta)
   -> void {
   //
-  using type_members::GetAllParts;
-  using type_predicates::IsTypeGen;
   auto seen = Set<scopes::TypeSymbol const*>();
 
   // Todo: can we use c++23/26 explicit "self" here?
+  // MSVC does not see block-scope using-declarations from inside
+  // this generic lambda, so the calls below are qualified.
   const auto walk = [&](auto const &self, scopes::TypeSymbol const &sym) -> void {
     if (sym.Convention != nullptr or sym.LinkedScope == nullptr) { return; }
     if (not seen.insert(&sym).second) { return; }
@@ -200,7 +200,7 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     // A generator is destroyed by "llvm.coro.destroy", which
     // calls nothing of ours, and anything that destroys to
     // nothing needs nothing minted for it.
-    if (IsTypeGen(*sym.FqName(), *sm.CurrentScope)) { return; }
+    if (type_predicates::IsTypeGen(*sym.FqName(), *sm.CurrentScope)) { return; }
     if (not NeedsDrop(sym, sm, meta)) { return; }
 
     // A destructor of its own is the whole of this type's
@@ -210,7 +210,7 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
 
     // Otherwise destruction is part by part, and it is their
     // destructors that have to exist.
-    for (auto const &part : GetAllParts(*sym.FqName(), *sm.CurrentScope, true)) {
+    for (auto const &part : type_members::GetAllParts(*sym.FqName(), *sm.CurrentScope, true)) {
       if (part.Sym == nullptr or part.Sym == &sym) { continue; }
       self(self, *part.Sym);
     }

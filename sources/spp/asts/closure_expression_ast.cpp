@@ -9,7 +9,9 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
@@ -91,12 +93,25 @@ auto spp::asts::ClosureExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
+auto spp::asts::ClosureExpressionAst::HasBorrowedCaptures() const
+  -> bool {
+  if (PcGroup == nullptr or PcGroup->CaptureGroup == nullptr) { return false; }
+
+  // True if one or most of the captures is a borrow, not
+  // a move convention.
+  for (auto const &cap : PcGroup->CaptureGroup->Captures) {
+    if (cap->Conv != nullptr) { return true; }
+  }
+  return false;
+}
+
 auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
   using analyse::errors::SppSecondClassBorrowViolationError;
 
   // Save the current scope for later resetting.
@@ -114,6 +129,14 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
       | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
       | genex::to<Vec>();
 
+    // "Self" is inherited for the same reason the generics are. The scope this
+    // closure gets is re-parented to the module below, which cuts it off from
+    // the method the closure was written in - so a body or a return type
+    // naming "Self" would find no symbol for it. Taken here, while the parent
+    // chain still reaches the method.
+    const auto self_type_name = MakeUnique<TypeIdentifierAst>(0uz, "Self", nullptr);
+    const auto inherited_self = sm->CurrentScope->GetTypeSymbol(self_type_name.get());
+
     // Update the meta args with the closure information for
     // body analysis. The closure-wide save/restore allows for
     // the "ret" to match the closure's inferred return type.
@@ -129,11 +152,27 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     meta->EnclosingFunctionRetType = {};
     meta->EnclosingFunctionSourceRetType = {};
 
+    // Everything the closure inherits goes in before anything
+    // is analysed against it. The scope is re-parented to the
+    // module above, so a name only reaches the closure if it
+    // is put here.
+    if (inherited_self != nullptr) {
+      sm->CurrentScope->AddTypeSymbol(inherited_self->SharedFromThis<analyse::scopes::TypeSymbol>());
+    }
+    for (auto const &type_generic_sym : inherited_type_generics) {
+      sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
+    }
+    for (auto const &comp_generic_sym : inherited_comp_generics) {
+      sm->CurrentScope->AddVarSymbol(comp_generic_sym->SharedFromThis<analyse::scopes::VariableSymbol>());
+    }
+
     // A declared return type is seeded here, so that a "ret"
     // in the body is checked against it and coerced into it -
     // the same path a subroutine's body takes.
     if (ReturnType != nullptr) {
       ReturnType->Stage7_AnalyseSemantics(sm, meta);
+      ReturnType = ResolveAndSubstituteSelfType(*ReturnType, *sm->CurrentScope, *sm, *meta);
+
       meta->EnclosingFunctionRetType.EmplaceBack(ReturnType);
       meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     }
@@ -144,13 +183,6 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     // the point that restriction applies to.
     meta->WithinDeferTok = nullptr;
 
-    // Add the inherited generics into the closure-inner scope.
-    for (auto const &type_generic_sym : inherited_type_generics) {
-      sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
-    }
-    for (auto const &comp_generic_sym : inherited_comp_generics) {
-      sm->CurrentScope->AddVarSymbol(comp_generic_sym->SharedFromThis<analyse::scopes::VariableSymbol>());
-    }
 
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
@@ -178,8 +210,8 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
@@ -187,16 +219,31 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
     const auto _meta_guard = meta::MetaGuard(meta);
     PcGroup->Stage8_CheckMemory(sm, meta);
 
+    // The parameters and captures are in the scope the group
+    // has just moved into, "closure-outer", and that is the
+    // closure's function scope. A "ret" in the body walks up
+    // to and including it, so the parameters in it have to be
+    // consumed by then. Set after moving into the body's scope
+    // instead, the walk stopped one short of them.
+    const auto outer_scope = sm->CurrentScope;
+    meta->EnclosingFunctionScope = outer_scope;
+
     // Prevent the body inheriting external assignments.
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
 
-    // Check the memory of the body of the closure. A "ret" inside it
-    // leaves the closure, not the function the closure is written in,
-    // so the linearity walk has to stop here.
+    // Check the memory of the body of the closure. A "ret" inside
+    // it leaves the closure, not the function the closure is written
+    // in, so the linearity walk stops at the closure's own scope.
     sm->MoveToNextScope();
-    meta->EnclosingFunctionScope = sm->CurrentScope;
     Body->Stage8_CheckMemory(sm, meta);
+
+    // A body that falls off its end discharges its parameters there,
+    // as a function's does.
+    if (not Body->Terminates()) {
+      analyse::utils::linear_utils::CheckScopeExit(
+        *outer_scope, *Body, "Closure end", *sm, meta);
+    }
 
     // Set the scope back.
   }
@@ -204,8 +251,8 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Strategy: build an "environment" struct for the closure,
@@ -372,8 +419,8 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ClosureExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // A closure is its own special type, which superimposes the
   // functional one. Before stage 7 has minted it there is nothing
@@ -383,8 +430,8 @@ auto spp::asts::ClosureExpressionAst::InferType(
 }
 
 auto spp::asts::ClosureExpressionAst::_FunctionalType(
-  ScopeManager *sm,
-  CompilerMetaData *meta) const
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta) const
   -> Shared<TypeAst> {
   // Create the type as a nullptr, so it can be analysed
   // later.
@@ -439,8 +486,8 @@ auto spp::asts::ClosureExpressionAst::_FunctionalType(
 }
 
 auto spp::asts::ClosureExpressionAst::_MakeMockType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   using analyse::scopes::BumpTypeStructureGeneration;
   using analyse::scopes::Scope;
@@ -514,6 +561,15 @@ auto spp::asts::ClosureExpressionAst::ClearMockAsts()
 auto spp::asts::ClosureExpressionAst::GetLlvmFunc() const
   -> Shared<codegen::LlvmFuncWrapper> {
   return _LlvmFunc;
+}
+
+auto spp::asts::ClosureExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // A "ret" in a closure's body only leaves the closure, but
+  // a closure still creates scopes of its own, which a copy
+  // of the default would need in its use site's walk. For now,
+  // ban it.
+  return false;
 }
 
 SPP_MOD_END

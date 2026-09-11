@@ -9,18 +9,12 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-}
-
-namespace spp::asts {
-  SPP_EXP_CLS struct CoroutinePrototypeAst;
+SPP_AST_COMMON_FWD_DECL(CoroutinePrototypeAst) {
   SPP_EXP_CLS struct SubroutinePrototypeAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KIND(CoroutinePrototypeAst)
 
   CoroutinePrototypeAst(
@@ -38,11 +32,22 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 
   SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   auto IsCoroutine() const -> bool override;
 
@@ -82,5 +87,3 @@ private:
    */
   auto _DeclareBorrowedYieldStorage(SubroutinePrototypeAst const &lowered) const -> void;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CoroutinePrototypeAst)

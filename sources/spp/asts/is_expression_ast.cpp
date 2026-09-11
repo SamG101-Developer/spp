@@ -74,8 +74,8 @@ auto spp::asts::IsExpressionAst::ToString() const
 }
 
 auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -100,16 +100,16 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward the memory checking to the mapped function.
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::IsExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // If the lhs was an identifier, the "is" causes it to get
@@ -129,11 +129,20 @@ auto spp::asts::IsExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::IsExpressionAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
-  // Always return a boolean type (successful or failed match).
+  // Always return a boolean type (successful or failed
+  // match).
   return generate::common_types::BooleanType(_MappedFunc->PosStart());
+}
+
+auto spp::asts::IsExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // The pattern tests and binds, and holds no control
+  // flow of its own; only the tested value is an expression.
+  // Todo: Remove nullptr guard?
+  return Lhs == nullptr or Lhs->IsAllowedInDefault();
 }
 
 SPP_MOD_END

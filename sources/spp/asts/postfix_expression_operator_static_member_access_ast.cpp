@@ -93,8 +93,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
@@ -205,13 +205,14 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Handle accessing a symbol on a type.
   if (_LhsTypeSym != nullptr) {
     const auto sym = StaticMemberOf(*_LhsTypeSym->LinkedScope, *Name);
-    auto tm = ScopeManager(sm->GlobalScope, _LhsTypeSym->LinkedScope);
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, _LhsTypeSym->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CmpResult = AstClone(meta->CmpResult);
     return;
@@ -226,8 +227,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeR
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   const auto uid = "." + spp::utils::Uid(this);
@@ -265,8 +266,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using analyse::utils::type_utils::GetFwdTypes;
@@ -297,6 +298,12 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() cons
   -> Vec<IdentifierAst*> {
   // Static member access does not have any expression parts.
   return {Name.get()};
+}
+
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::IsAllowedInDefault() const
+  -> bool {
+  // Reads what it is applied to, and holds nothing of its own.
+  return true;
 }
 
 SPP_MOD_END

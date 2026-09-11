@@ -10,6 +10,7 @@ import spp.analyse.utils.expr_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.unary_expression_operator_ast;
+import spp.asts.unary_expression_operator_async_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
@@ -52,12 +53,20 @@ auto spp::asts::UnaryExpressionAst::ToString() const
 }
 
 auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+
+  // "async" lowers the call into a closure, and has to rebuild
+  // it from how it was written. Analysis rewrites a call's args
+  // in place, so the copy it needs can only be taken here,
+  // before that happens.
+  if (const auto async_op = Op->To<UnaryExpressionOperatorAsyncAst>(); async_op != nullptr) {
+    async_op->Source._OriginalRhs = AstClone(Expr);
+  }
 
   // Analyse the operator and right-hand-side expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
@@ -71,16 +80,19 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
-  // Check the memory of the right-hand-side.
-  Expr->Stage8_CheckMemory(sm, meta);
+  // Check the memory of the right-hand-side, and update the
+  // meta context to track the rhs part of this unary expression.
+  const auto _meta_guard = meta::MetaGuard(meta);
+  meta->UnaryExpressionRhs = Expr.get();
+  Op->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the right-hand-side expression.
@@ -91,8 +103,8 @@ auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::UnaryExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the type of the right-hand-side expression,
   // adjusted by the operator.
@@ -109,6 +121,16 @@ auto spp::asts::UnaryExpressionAst::SubstituteGenericsExpr(
   // The only unary operator is the "async" function call
   // so there will be no specialization.
   return MakeShared<UnaryExpressionAst>(AstClone(Op), AstClone(Expr->SubstituteGenericsExpr(args)));
+}
+
+auto spp::asts::UnaryExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the op and the rhs expression. Nullptr guard in
+  // case of std::move(ast) being used (not 100% sure if
+  // needed or not).
+  return
+    (Op == nullptr or Op->IsAllowedInDefault()) and
+    (Expr == nullptr or Expr->IsAllowedInDefault());
 }
 
 SPP_MOD_END

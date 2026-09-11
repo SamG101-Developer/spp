@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionParameterGroupAst;
+SPP_AST_COMMON_FWD_DECL(FunctionParameterGroupAst) {
   SPP_EXP_CLS struct FunctionParameterAst;
   SPP_EXP_CLS struct FunctionParameterOptionalAst;
   SPP_EXP_CLS struct FunctionParameterRequiredAst;
@@ -23,7 +22,6 @@ namespace spp::asts {
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionParameterGroupAst);
 
   /**
@@ -56,11 +54,21 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
 
   ~FunctionParameterGroupAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto GetAllParams() const -> Vec<FunctionParameterAst*>;
 
@@ -74,5 +82,3 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetNonSelfParams() const -> Vec<FunctionParameterAst*>;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterGroupAst)

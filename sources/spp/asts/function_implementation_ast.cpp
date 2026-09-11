@@ -38,8 +38,8 @@ auto spp::asts::FunctionImplementationAst::DiscardsFinalMember() const
 }
 
 auto spp::asts::FunctionImplementationAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // A function has one scope, shared by every call to it, so the values this call writes into that scope's symbols
   // are the caller's values as far as an enclosing call is concerned. Take them out for the duration of the call and

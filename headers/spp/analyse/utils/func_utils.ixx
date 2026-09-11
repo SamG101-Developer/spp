@@ -91,7 +91,8 @@ namespace spp::analyse::utils::func_utils {
     asts::FunctionParameterGroupAst const &p_group,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta,
-    Vec<asts::GenericArgumentAst*> const &generic_args = {})
+    Vec<asts::GenericArgumentAst*> const &generic_args = {},
+    scopes::Scope *callee_scope = nullptr)
     -> void;
 
   SPP_EXP_FUN auto IsTargetCallable(

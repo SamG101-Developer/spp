@@ -93,8 +93,8 @@ auto spp::asts::TypePostfixExpressionAst::ToString() const
 }
 
 auto spp::asts::TypePostfixExpressionAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   (void)sm;
   (void)meta;
@@ -102,8 +102,8 @@ auto spp::asts::TypePostfixExpressionAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::ClosestScopes;
@@ -130,8 +130,8 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypePostfixExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // These are always "zero_type", so return init.
@@ -140,8 +140,8 @@ auto spp::asts::TypePostfixExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::TypePostfixExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the type of the left-hand-side.
   Lhs->Stage7_AnalyseSemantics(sm, meta);

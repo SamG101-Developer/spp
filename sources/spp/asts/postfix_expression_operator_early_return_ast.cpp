@@ -75,8 +75,8 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppDeferTerminatesError;
@@ -226,24 +226,24 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the lowered form.
   _TransformedExpr->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the lowered form.
   _TransformedExpr->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   const auto _meta_guard = meta::MetaGuard(meta);
@@ -253,8 +253,8 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using analyse::utils::type_utils::GetTryType;

@@ -7,8 +7,7 @@ import spp.asts.generic_parameter_comp_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterCompRequiredAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterCompRequiredAst) {
 }
 
 /**
@@ -16,7 +15,6 @@ namespace spp::asts {
  * superimpositions etc. They look like: @code cls MyClass[cmp n: USize] { ... }@endcode.
  */
 SPP_EXP_CLS struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericParameterCompRequiredAst);
 
   /**
@@ -37,5 +35,3 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompRequiredAst final : GenericPar
 
   ~GenericParameterCompRequiredAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompRequiredAst)

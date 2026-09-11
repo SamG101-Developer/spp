@@ -85,6 +85,7 @@ SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
   KW_TRUE,
   KW_FALSE,
   KW_RES,
+  KW_AWAIT,
   KW_CAPS,
 };
 
@@ -128,6 +129,7 @@ SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
   KW_TRUE,
   KW_FALSE,
   KW_RES,
+  KW_AWAIT,
   KW_CAPS,
 
   TK_EQ,
@@ -236,6 +238,7 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> S
     case SppTokenType::KW_TRUE: return "true";
     case SppTokenType::KW_FALSE: return "false";
     case SppTokenType::KW_RES: return "res";
+    case SppTokenType::KW_AWAIT: return "await";
     case SppTokenType::KW_CAPS: return "caps";
     case SppTokenType::TK_EQ: return "==";
     case SppTokenType::TK_NE: return "!=";

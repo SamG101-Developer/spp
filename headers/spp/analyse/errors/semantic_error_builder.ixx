@@ -1,4 +1,5 @@
 module;
+#include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
@@ -13,7 +14,8 @@ import genex;
 import std;
 
 namespace spp::analyse::errors {
-  SPP_EXP_CLS template <typename T> requires std::derived_from<T, SemanticError>
+  MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ
+  SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
   struct SemanticErrorBuilder;
 }
 

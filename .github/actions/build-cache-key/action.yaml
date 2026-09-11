@@ -50,5 +50,5 @@ runs:
         # digest of its own. Add to this list rather than bumping a generation by hand: anything named here
         # invalidates the tree automatically when it changes.
         FILES_HASH: ${{ hashFiles('**/CMakeLists.txt', '.github/scripts/configure-cmake/configure.sh',
-          '.github/actions/configure-cmake/action.yaml') }}
+          '.github/actions/configure-cmake/action.yaml', '.github/scripts/setup-toolchain/install-clang-macos.sh') }}
       run: bash .github/scripts/build-cache-key/compose-key.sh

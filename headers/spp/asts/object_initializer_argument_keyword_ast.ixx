@@ -7,8 +7,7 @@ import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ObjectInitializerArgumentKeywordAst;
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentKeywordAst) {
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -17,7 +16,6 @@ namespace spp::asts {
  * argument to be matched by a keyword rather than shorthand value.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerArgumentAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentKeywordAst);
 
   /**
@@ -39,5 +37,3 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : Object
 
   ~ObjectInitializerArgumentKeywordAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentKeywordAst)

@@ -8,76 +8,36 @@ import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericParameterAst;
-  SPP_EXP_CLS struct GenericParameterCompAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterAst) {
   SPP_EXP_CLS struct GenericParameterCompOptionalAst;
   SPP_EXP_CLS struct GenericParameterCompVariadicAst;
-  SPP_EXP_CLS struct GenericParameterTypeAst;
   SPP_EXP_CLS struct GenericParameterTypeOptionalAst;
   SPP_EXP_CLS struct GenericParameterTypeVariadicAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 namespace spp::asts::detail {
-  SPP_EXP_CLS
-
-  template <typename GenericParameterType>
+  SPP_EXP_CLS template <typename GenericParameterType>
   struct make_required_param {
     using type = GenericParameterType;
-  };
-
-  template <>
-  struct make_required_param<GenericParameterCompAst> {
-    using type = GenericParameterCompAst;
-  };
-
-  template <>
-  struct make_required_param<GenericParameterTypeAst> {
-    using type = GenericParameterTypeAst;
   };
 
   SPP_EXP_CLS
   template <typename GenericParameterType>
   using make_required_param_t = typename make_required_param<GenericParameterType>::type;
 
-  SPP_EXP_CLS
-
-  template <typename GenericParameterType>
+  SPP_EXP_CLS template <typename GenericParameterType>
   struct make_optional_param {
     using type = GenericParameterType;
-  };
-
-  template <>
-  struct make_optional_param<GenericParameterCompAst> {
-    using type = GenericParameterCompOptionalAst;
-  };
-
-  template <>
-  struct make_optional_param<GenericParameterTypeAst> {
-    using type = GenericParameterTypeOptionalAst;
   };
 
   SPP_EXP_CLS
   template <typename GenericParameterType>
   using make_optional_param_t = typename make_optional_param<GenericParameterType>::type;
 
-  SPP_EXP_CLS
-
-  template <typename GenericParameterType>
+  SPP_EXP_CLS template <typename GenericParameterType>
   struct make_variadic_param {
     using type = GenericParameterType;
-  };
-
-  template <>
-  struct make_variadic_param<GenericParameterCompAst> {
-    using type = GenericParameterCompVariadicAst;
-  };
-
-  template <>
-  struct make_variadic_param<GenericParameterTypeAst> {
-    using type = GenericParameterTypeVariadicAst;
   };
 
   SPP_EXP_CLS
@@ -87,16 +47,6 @@ namespace spp::asts::detail {
   SPP_EXP_CLS
   template <typename GenericParameterType>
   struct generic_param_value_type;
-
-  template <>
-  struct generic_param_value_type<GenericParameterCompAst> {
-    using type = ExpressionAst const*;
-  };
-
-  template <>
-  struct generic_param_value_type<GenericParameterTypeAst> {
-    using type = Shared<TypeAst>;
-  };
 
   SPP_EXP_CLS
   template <typename GenericParameterType>
@@ -108,8 +58,6 @@ namespace spp::asts::detail {
  * and GenericParameterTypeAst, which represent the two types of generic parameters in the language.
  */
 SPP_EXP_CLS struct spp::asts::GenericParameterAst : Ast, mixins::OrderableAst {
-  SPP_GCC_VTABLE_FIX
-
   /**
    * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
    * generic type.
@@ -122,5 +70,3 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst : Ast, mixins::OrderableAst {
 
   ~GenericParameterAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterAst)

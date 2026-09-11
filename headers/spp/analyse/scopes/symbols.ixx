@@ -37,7 +37,7 @@ namespace spp::analyse::scopes {
  * need for a base class.
  */
 SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
-  SPP_GCC_VTABLE_FIX_BASE
+  SPP_GCC_VTABLE_FIX_BASE;
 
   /**
    * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
@@ -74,7 +74,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symb
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
   Shared<asts::IdentifierAst> Name;
 
@@ -102,7 +102,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
   Shared<asts::IdentifierAst> Name;
 
@@ -115,6 +115,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   bool IsGeneric = false;
 
   bool IsFlowNarrowing = false;
+
+  /**
+   * Whether this symbol is a closure's capture. A capture is owned by the closure's environment rather than by the
+   * body that reads it - the environment is read again on every call - so the body is not obliged to consume it. The
+   * closure value carries that obligation instead.
+   */
+  bool IsCapture = false;
 
   /**
    * For a flow-narrowing symbol, the symbol it narrows: same name, same storage, wider type. Consuming through the
@@ -240,7 +247,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::AliasInfo {
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
   Shared<asts::TypeIdentifierAst> Name;
 
@@ -304,14 +311,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /** Set when this symbol names an alias rather than a class; see @c AliasInfo . */
   Shared<AliasInfo> Alias;
 
-  Vec<Shared<TypeSymbol>> AliasedBySyms;
+  Vec<Weak<TypeSymbol>> AliasedBySyms;
 
   bool IsDirectlyCopyable = false;
 
   bool IsDirectlyZeroType;
 
   bool IsDirectlyThreadHazard = false;
-
 
   /**
    * The result of the qualifying walk in @c FqName , and the scope-linkage generation it was computed under. The walk

@@ -6,17 +6,14 @@ import spp.asts.ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionOperatorAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
-  SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
   SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
   SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : Ast {
-  SPP_GCC_VTABLE_FIX
-
   using Ast::Ast;
 
   ~TypeUnaryExpressionOperatorAst() override;
@@ -65,5 +62,3 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : Ast {
   SPP_ATTR_NODISCARD virtual auto TypeParts()
     -> Vec<TypeIdentifierAst*> = 0;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorAst)

@@ -7,12 +7,10 @@ import spp.asts.function_call_argument_positional_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ClosureExpressionCaptureAst;
+SPP_AST_COMMON_FWD_DECL(ClosureExpressionCaptureAst) {
 }
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ClosureExpressionCaptureAst);
 
   ClosureExpressionCaptureAst(
@@ -21,5 +19,3 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallAr
 
   ~ClosureExpressionCaptureAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClosureExpressionCaptureAst)

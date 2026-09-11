@@ -28,8 +28,8 @@ spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
 spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;
 
 auto spp::asts::GenericArgumentTypeAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   Val->Stage4_QualifyTypes(sm, meta);
   const auto sym = sm->CurrentScope->GetTypeSymbol(Val.get(), true);

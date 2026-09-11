@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterGroupAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterGroupAst) {
   SPP_EXP_CLS struct GenericParameterAst;
   SPP_EXP_CLS struct GenericParameterCompAst;
   SPP_EXP_CLS struct GenericParameterTypeAst;
@@ -18,7 +17,6 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericParameterGroupAst);
 
   /**
@@ -65,15 +63,36 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
     GenericParameterGroupAst const &other)
     -> GenericParameterGroupAst&;
 
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
+
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   auto MergeGenerics(decltype(Params) &&other_params) -> void;
 
@@ -98,5 +117,3 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
   SPP_ATTR_NODISCARD auto OptToReq() const
     -> Unique<GenericParameterGroupAst>;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterGroupAst)

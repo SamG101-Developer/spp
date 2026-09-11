@@ -86,12 +86,12 @@ auto spp::asts::TypeUnaryExpressionAst::ToString() const
 }
 
 auto spp::asts::TypeUnaryExpressionAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify the RHS type.
   if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
-    const auto tm = ScopeManager(
+    const auto tm = analyse::scopes::ScopeManager(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, tm);
@@ -105,12 +105,12 @@ auto spp::asts::TypeUnaryExpressionAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the RHS type.
   if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
-    const auto tm = ScopeManager(
+    const auto tm = analyse::scopes::ScopeManager(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
@@ -124,8 +124,8 @@ auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypeUnaryExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // These are always "zero_type", so return init.
@@ -134,8 +134,8 @@ auto spp::asts::TypeUnaryExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::TypeUnaryExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the RHS type.
   const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;

@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantSingleIdentifierAst;
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantSingleIdentifierAst) {
   SPP_EXP_CLS struct ConventionAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
@@ -19,7 +18,6 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVariantAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantSingleIdentifierAst);
 
   /**
@@ -64,13 +62,21 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
 
   SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+  auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantSingleIdentifierAst)

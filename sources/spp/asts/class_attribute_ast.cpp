@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -86,8 +87,8 @@ auto spp::asts::ClassAttributeAst::Stage1_PreProcess(
 }
 
 auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Run the generation steps for the annotations.
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
@@ -99,8 +100,8 @@ auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::ClassAttributeAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
@@ -110,18 +111,34 @@ auto spp::asts::ClassAttributeAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
+  using analyse::utils::type_predicates::IsTypeSelf;
+  using analyse::utils::type_utils::SubstituteSelfType;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
   const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
+
+  // What a default may hold is limited, because it is
+  // copied into every object initializer that leaves
+  // the attribute out. Checked before the analysis below
+  // rewrites it.
+  if (DefaultVal != nullptr) {
+    RaiseIf<analyse::errors::SppInvalidDefaultValueError>(
+      not DefaultVal->IsAllowedInDefault(),
+      {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
+  }
+
+  if (not IsTypeSelf(*Type)) {
+    Type = SubstituteSelfType(*Type, *sm->CurrentScope, *meta);
+  }
 
   // Check the type is valid before scopes are attached.
   Type->Stage7_AnalyseSemantics(sm, meta);
@@ -135,8 +152,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // This can be reached via stage 4 generic substitution, so prevent that.
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -164,7 +181,8 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     const auto default_type = DefaultVal->InferType(sm, meta);
 
-    // Make sure the default's inferred type matches the attribute's type.
+    // Make sure the default's inferred type matches the
+    // attribute's type.
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
@@ -172,8 +190,8 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // If there is a default value, check it for memory errors.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -183,8 +201,8 @@ auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClassAttributeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }

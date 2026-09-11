@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
+SPP_AST_COMMON_FWD_DECL(ArrayLiteralRepeatedElementAst) {
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -26,7 +25,7 @@ namespace spp::asts {
  * information is required on declaration, the element type and size must be specified.
  */
 SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralRepeatedElementAst);
 
   /**
@@ -108,7 +107,10 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
    * @param[in] sm The scope manager to use for type checking.
    * @param[in,out] meta Associated metadata.
    */
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Check the memory of the elements inside the array literal. This is done by checking calling the same method on
@@ -116,7 +118,10 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
    * @param sm The scope manager to use for memory checking.
    * @param meta Associated metadata.
    */
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Resolve the array literal at compile time. This is only possible if both the element and the size are compile
@@ -125,7 +130,10 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
    * @param meta Associated metadata.
    * @return The compile time resolved array literal.
    */
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Create an array type based on the internal element type and the number of elements.
@@ -134,7 +142,11 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
    * @param ctx The LLVM context to use for code generation.
    * @return The LLVM value representing the array literal.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   /**
    * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of
@@ -143,11 +155,17 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
    * @param [in,out] meta Associated metadata.
    * @return The @code std::array::Arr[T, n]@endcode type of the array literal.
    */
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralRepeatedElementAst)

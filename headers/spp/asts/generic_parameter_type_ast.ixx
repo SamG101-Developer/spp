@@ -11,14 +11,24 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
 }
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterTypeAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterTypeAst) {
   SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
+  SPP_EXP_CLS struct TypeAst;
+}
+
+namespace spp::asts::detail {
+  template <>
+  struct make_required_param<GenericParameterTypeAst> {
+    using type = GenericParameterTypeAst;
+  };
+
+  template <>
+  struct generic_param_value_type<GenericParameterTypeAst> {
+    using type = Shared<TypeAst>;
+  };
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-  SPP_GCC_VTABLE_FIX
-
   /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
      * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the
@@ -39,11 +49,20 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
 
   ~GenericParameterTypeAst() override;
 
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   SPP_ATTR_NODISCARD auto GetDummyScopes() const
     -> std::span<analyse::scopes::Scope* const>;
@@ -54,5 +73,3 @@ private:
   inline static Vec<Unique<Ast>> _DummyScopeAsts = {};
   Vec<analyse::scopes::Scope*> _DummyScopes;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeAst)

@@ -1,5 +1,6 @@
 module;
 #include <spp/analyse/macros.hpp>
+
 module spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -340,9 +341,21 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
     return out;
   };
 
+  // Consistent lookup function used multiple times
+  // throughout this function, preventing crashing on
+  // bad identifiers throughout the alias chain.
+  const auto lookup = [&](asts::TypeAst const &ty) {
+    const auto sym = tracking_scope->GetTypeSymbol(ty.WithoutGenerics().get());
+    if (sym == nullptr) {
+      expr_utils::RaiseMissingTypeIdentifierAndClosestOptions(
+        *ty.LastTypePart(), tracking_scope->AllTypeSymbols(), *sm);
+    }
+    return sym;
+  };
+
   // Get the next type in the search, and its symbol.
   auto old_type = alias_stmt.OldType;
-  auto old_sym = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get());
+  auto old_sym = lookup(*old_type);
 
   // If this is a use statement to a class, then grab its generics and return immediately.
   // For example, use Vec::Vec => type Vec[T, A: ... = ...] = Vec::Vec[T=T, A=A]
@@ -391,15 +404,14 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
     old_type = carries_generics
       ? old_sym->Alias->Written->WithGenerics(asts::AstClone(carried))
       : old_sym->Alias->Written;
-    old_sym = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get());
+    old_sym = lookup(*old_type);
 
     // Arguments just handed on still have to be bound by whatever received them, so the walk goes round once more
     // even when that is a class rather than another alias.
     if (old_sym->Alias == nullptr and not carries_generics) { break; }
   }
 
-  old_type = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics().get())->FqName()->WithGenerics(
-    AstClone(old_type->LastTypePart()->GnArgGroup));
+  old_type = lookup(*old_type)->FqName()->WithGenerics(AstClone(old_type->LastTypePart()->GnArgGroup));
 
   auto &temp = *old_type->LastTypePart()->GnArgGroup;
   NameGnArgs(
@@ -408,11 +420,28 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   return {old_type, final_generic_params, tracking_scope};
 }
 
-auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+auto spp::analyse::utils::type_utils::SubstituteSelfTypeWith(
+  asts::TypeAst const &type,
+  asts::TypeAst const &replacement)
+  -> Shared<asts::TypeAst> {
+  using asts::generate::common_types::SelfType;
+
+  // If "Self" is not present, return a plain clone.
+  if (not type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
+    return AstClone(&type);
+  }
+
+  const auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+    SelfType(0), nullptr, AstClone(&replacement));
+  const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
+  return type.SubstituteGenerics(args);
+}
+
+auto spp::analyse::utils::type_utils::SubstituteSelfType(
   asts::TypeAst const &type,
   scopes::Scope const &scope,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData &meta)
+  asts::meta::CompilerMetaData const &meta,
+  bool *const substituted)
   -> Shared<asts::TypeAst> {
   // Todo: always clone here? performance hit i think.
   using asts::generate::common_types::SelfType;
@@ -427,8 +456,24 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
   // Substitute "Self" with the concrete enclosing type.
   const auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(SelfType(0), nullptr, true_self_type);
   const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
+  if (substituted != nullptr) { *substituted = true; }
+  return type.SubstituteGenerics(args);
+}
 
-  auto t = type.SubstituteGenerics(args);
+auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+  asts::TypeAst const &type,
+  scopes::Scope const &scope,
+  scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData &meta)
+  -> Shared<asts::TypeAst> {
+  auto substituted = false;
+  auto t = SubstituteSelfType(type, scope, meta, &substituted);
+
+  // Only a type that actually had a "Self" replaced is analysed here. One that did not is handed back as the plain
+  // clone it is, so that this does not analyse a written type at a point its owner has not chosen to - and so that a
+  // "Self" left standing for want of an enclosing type is reported by whoever does analyse it.
+  if (not substituted) { return t; }
+
   const auto _meta_guard = asts::meta::MetaGuard(&meta);
   meta.AllowAbstractType = true;
   t->Stage7_AnalyseSemantics(&sm, &meta);

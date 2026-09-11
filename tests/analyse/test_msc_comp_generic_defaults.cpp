@@ -110,3 +110,32 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = Holder[Bool]::pick()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestCompGenericDefaults,
+  test_valid_default_calling_a_cmp_function, R"(
+    cmp fun three() -> USize { ret 3_uz }
+
+    fun pick[cmp n: USize = three()]() -> USize {
+        ret n
+    }
+
+    fun f() -> Void {
+        let a = pick()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompGenericDefaults,
+  test_invalid_default_calling_a_runtime_function,
+  SppCompileTimeConstantError, R"(
+    fun three() -> USize { ret 3_uz }
+
+    fun pick[cmp n: USize = three()]() -> USize {
+        ret n
+    }
+
+    fun f() -> Void {
+        let a = pick()
+    }
+)");

@@ -9,23 +9,17 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-}
-
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(LoopIterableExpressionAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct LetStatementInitializedAst;
   SPP_EXP_CLS struct LocalVariableAst;
   SPP_EXP_CLS struct LoopConditionalExpressionAst;
-  SPP_EXP_CLS struct LoopIterableExpressionAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::LoopIterableExpressionAst final : LoopExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LoopIterableExpressionAst);
 
   /**
@@ -64,11 +58,21 @@ SPP_EXP_CLS struct spp::asts::LoopIterableExpressionAst final : LoopExpressionAs
 
   ~LoopIterableExpressionAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   /**
    * The type of an iterable loop is the type of the boolean loop it is desugared into. The base implementation
@@ -78,7 +82,10 @@ SPP_EXP_CLS struct spp::asts::LoopIterableExpressionAst final : LoopExpressionAs
    * @param[in] meta Metadata to pass to the transformed loop.
    * @return The type yielded by the transformed loop.
    */
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
 private:
   Unique<LetStatementInitializedAst> _TransformedLet;
@@ -98,5 +105,3 @@ private:
    */
   Shared<IdentifierAst> _IterableName;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopIterableExpressionAst)

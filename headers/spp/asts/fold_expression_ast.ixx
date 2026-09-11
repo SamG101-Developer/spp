@@ -7,14 +7,12 @@ import spp.asts.primary_expression_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FoldExpressionAst;
+SPP_AST_COMMON_FWD_DECL(FoldExpressionAst) {
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FoldExpressionAst);
 
   /**
@@ -31,7 +29,8 @@ SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
 
   ~FoldExpressionAst() override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FoldExpressionAst)

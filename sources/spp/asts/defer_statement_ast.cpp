@@ -60,8 +60,8 @@ auto spp::asts::DeferStatementAst::ToString() const
 }
 
 auto spp::asts::DeferStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppDeferTerminatesError;
@@ -91,8 +91,8 @@ auto spp::asts::DeferStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   auto saved = Vec<Pair<
@@ -139,8 +139,8 @@ auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::DeferStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   //
   using analyse::errors::SppDeferInCompileTimeFunctionError;
@@ -151,12 +151,13 @@ auto spp::asts::DeferStatementAst::Stage9_CompTimeResolve(
   // notion of a scope exit to run the expression at, so
   // rather than silently skipping it, say so.
   // Todo: Use the generic comptime error?
-  Raise<SppDeferInCompileTimeFunctionError>({sm->CurrentScope}, ERR_ARGS(*TokDefer));
+  Raise<SppDeferInCompileTimeFunctionError>(
+    {sm->CurrentScope}, ERR_ARGS(*TokDefer));
 }
 
 auto spp::asts::DeferStatementAst::Stage11_CodeGen(
-  ScopeManager *const sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager * sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *)
   -> llvm::Value* {
   // Nothing is emitted here: the expression is generated at

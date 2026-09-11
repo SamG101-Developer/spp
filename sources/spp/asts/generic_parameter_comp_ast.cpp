@@ -44,8 +44,8 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
 spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
 
 auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Create a variable symbol for this constant in the current scope (class / function).
   auto sym = MakeUnique<analyse::scopes::VariableSymbol>(
@@ -59,8 +59,8 @@ auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -86,24 +86,24 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::GenericParameterCompAst::Stage7_AnalyseSemantics(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> void {
   // Analyse the type.
   // type->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::GenericParameterCompAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *meta)
   -> void {
   // Return the identifier.
   meta->CmpResult = IdentifierAst::FromType(*Name);
 }
 
 auto spp::asts::GenericParameterCompAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The compile time constants' symbols need to be allocated into

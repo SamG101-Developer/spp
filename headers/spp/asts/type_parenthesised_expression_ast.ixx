@@ -8,14 +8,12 @@ import spp.asts.mixins.temp_type_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct TypeParenthesisedExpressionAst;
+SPP_AST_COMMON_FWD_DECL(TypeParenthesisedExpressionAst) {
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins::TempTypeAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeParenthesisedExpressionAst);
 
   /**
@@ -48,5 +46,3 @@ SPP_EXP_CLS struct spp::asts::TypeParenthesisedExpressionAst final : Ast, mixins
 
   auto Convert() -> Unique<TypeAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeParenthesisedExpressionAst)

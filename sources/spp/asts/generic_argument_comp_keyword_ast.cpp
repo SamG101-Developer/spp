@@ -99,8 +99,8 @@ auto spp::asts::GenericArgumentCompKeywordAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentCompKeywordAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -114,8 +114,8 @@ auto spp::asts::GenericArgumentCompKeywordAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenericArgumentCompKeywordAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;

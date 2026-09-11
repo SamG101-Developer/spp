@@ -2,20 +2,19 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
+import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantDestructureSkipMultipleArgumentsAst;
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureSkipMultipleArgumentsAst) {
   SPP_EXP_CLS struct CasePatternVariantSingleIdentifierAst;
   SPP_EXP_CLS struct LocalVariableAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : CasePatternVariantAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureSkipMultipleArgumentsAst);
 
   /**
@@ -43,7 +42,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArguments
 
   ~CasePatternVariantDestructureSkipMultipleArgumentsAst() override;
 
-  auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+  auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst)

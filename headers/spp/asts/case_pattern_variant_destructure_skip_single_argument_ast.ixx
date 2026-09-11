@@ -7,14 +7,12 @@ import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantDestructureSkipSingleArgumentAst;
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureSkipSingleArgumentAst) {
   SPP_EXP_CLS struct LocalVariableAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureSkipSingleArgumentAst);
 
   /**
@@ -33,7 +31,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst
 
   ~CasePatternVariantDestructureSkipSingleArgumentAst() override;
 
-  auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+  auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst)

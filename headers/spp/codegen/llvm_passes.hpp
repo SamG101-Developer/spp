@@ -70,6 +70,15 @@ namespace spp::codegen {
   auto ApplySafeStack(void *llvm_module) -> unsigned long;
 
   /**
+   * Give every function in @p llvm_module asynchronous unwind tables, so a stack can be walked from any instruction in
+   * it. Nothing here throws, so without them every function is @c nounwind with no @c .eh_frame entry, and the crash
+   * handler in the runtime cannot see past the first s++ frame. The cost is binary size only.
+   * @param[in,out] llvm_module The @c llvm::Module to stamp, as an opaque pointer.
+   * @return How many functions were given one.
+   */
+  auto ApplyUnwindTables(void *llvm_module) -> unsigned long;
+
+  /**
    * Emit @p llvm_module as a native object file at @p path .
    * @param[in] llvm_module The @c llvm::Module to emit, as an opaque pointer.
    * @param[in] path Where to write the object file.

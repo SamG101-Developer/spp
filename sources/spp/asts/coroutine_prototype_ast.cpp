@@ -120,8 +120,8 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_utils::GetGenAndYieldTypes;
@@ -156,8 +156,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // For "GenOnce" coroutines, we can desugar them into
@@ -191,7 +191,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
       if (sub_coro->_GenOnceLowered != nullptr) { sub_target = sub_coro->_GenOnceLowered.get(); }
     }
 
-    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, sub.WalkScope());
     sub_target->GenerateLlvmDeclaration(&tm, meta, ctx);
     if (const auto sub_coro = sub.Proto->To<CoroutinePrototypeAst>();
       sub_coro != nullptr and sub_coro->_GenOnceLowered != nullptr) {
@@ -203,8 +204,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The lowering emits this prototype's body, but it is this
@@ -421,7 +422,6 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
         ctx->Builder.CreateInsertValue(empty_ret_val, coro_handle, {handle_idx}, "coro.handle.wrap" + uid));
     }
     VALIDATE_LLVM;
-
   }
   sm->MoveOutOfCurrentScope();
   _CodeGenGenericSubstitutions(sm, meta, ctx);
@@ -446,6 +446,14 @@ auto spp::asts::CoroutinePrototypeAst::GenOnceLowered() const
 auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce()
   -> void {
   if (not _IsOnce or _GenOnceLowered != nullptr) { return; }
+
+  // Todo: A body that defers anything is miscompiled here. A deferred expression is meant to run after the yield -
+  //  a lock defers releasing its guard so the lock is still held while the caller holds the borrow - but once the
+  //  "gen" reads as the return, everything the scope deferred runs on the way out of it, so the release happens
+  //  before the caller ever sees the value. Declining to lower such a body is not the answer on its own: nothing at
+  //  a call site resumes an unlowered "GenOnce", reads its yield slot, or destroys its frame, so the caller is handed
+  //  a raw handle typed as the value. Fixing this means implementing that path, and binding the frame to the caller's
+  //  scope so the deferred release runs when it ends. "std::threading" avoids the shape entirely - see "MutexGuard".
 
   // The signature is this coroutine's with the generator return
   // type replaced by what it yields; the body is taken over

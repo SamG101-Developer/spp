@@ -162,8 +162,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::BindsByMove() const
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
   using analyse::utils::type_predicates::IsTypeVariant;
@@ -227,8 +227,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   if (_FlowSym != nullptr and _CondSym != nullptr) {
     _FlowSym->MemInfo->FillFromSnapshot(_CondSym->MemInfo->Snapshot());
@@ -239,8 +239,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
@@ -265,8 +265,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Stupidly complex method but I think all parts are
@@ -458,7 +458,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::ConvToVar(
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Unique<LocalVariableAst> {
   // Recursively map the elements to their local variable
   // counterparts.

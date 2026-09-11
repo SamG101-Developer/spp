@@ -53,7 +53,7 @@ auto spp::asts::FunctionImplementationLoweredAst::SetProtoPtr(
 
 auto spp::asts::FunctionImplementationLoweredAst::_ValidateZeroDivision(
   Vec<Unique<ExpressionAst>> const &args,
-  ScopeManager const *sm) const
+  analyse::scopes::ScopeManager const *sm) const
   -> void {
   //
   using analyse::errors::SppDivisionByZeroError;
@@ -85,7 +85,7 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateZeroDivision(
 
 auto spp::asts::FunctionImplementationLoweredAst::_ValidateShiftAmount(
   Vec<Unique<ExpressionAst>> const &args,
-  ScopeManager const *sm) const
+  analyse::scopes::ScopeManager const *sm) const
   -> void {
   //
   using analyse::errors::SppShiftAmountOutOfBoundsError;
@@ -116,8 +116,8 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateShiftAmount(
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   if (analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
     return;
@@ -145,8 +145,8 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Use the builtin to build the llvm custom lowered code. The

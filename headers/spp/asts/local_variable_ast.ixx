@@ -6,14 +6,11 @@ import spp.asts.ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(LocalVariableAst) {
   SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct LocalVariableAst;
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableAst : Ast {
-  SPP_GCC_VTABLE_FIX
-
   LocalVariableAst();
 
   ~LocalVariableAst() override;
@@ -43,5 +40,3 @@ SPP_EXP_CLS struct spp::asts::LocalVariableAst : Ast {
 protected:
   bool _FromCasePattern;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableAst)

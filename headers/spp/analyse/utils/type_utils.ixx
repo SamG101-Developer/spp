@@ -99,4 +99,34 @@ namespace spp::analyse::utils::type_utils {
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData &meta)
     -> Shared<asts::TypeAst>;
+
+  /**
+   * Replace every "Self" part of a written type with the type the enclosing block belongs to, without analysing the
+   * result. This is what @c ResolveAndSubstituteSelfType does before it analyses, split out for the callers that run
+   * before the stage a type can be analysed in - resolving an alias's target, for one, happens in stage 3.
+   * @param type The written type to substitute into.
+   * @param scope The scope the type was written in, which decides what "Self" names.
+   * @param meta The compiler metadata, for escaping a closure scope to the scope it stands in for.
+   * @param substituted Set to @c true when a "Self" was actually replaced, and left alone otherwise.
+   * @return The substituted type, or a plain clone when there is no "Self" to replace or nothing to replace it with.
+   */
+  SPP_EXP_FUN auto SubstituteSelfType(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope,
+    asts::meta::CompilerMetaData const &meta,
+    bool *substituted = nullptr)
+    -> Shared<asts::TypeAst>;
+
+  /**
+   * Replace every "Self" part of a written type with a type given outright, for the callers that decide what "Self"
+   * stands for themselves rather than reading it off the scope - overload resolution picks between the type owning
+   * the function and the type at the call site's receiver.
+   * @param type The written type to substitute into.
+   * @param replacement The type every "Self" part stands for.
+   * @return The substituted type, or a plain clone when there is no "Self" to replace.
+   */
+  SPP_EXP_FUN auto SubstituteSelfTypeWith(
+    asts::TypeAst const &type,
+    asts::TypeAst const &replacement)
+    -> Shared<asts::TypeAst>;
 }

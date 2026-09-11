@@ -102,8 +102,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::BindsByMove() const
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppArgumentMissingError;
@@ -253,8 +253,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // The hidden temporary holds the only analysis of the
   // value, so the value is checked (and its scopes walked)
@@ -287,8 +287,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Hand the already-resolved value to the hidden temporary,
   // so anything indexing it can resolve.
@@ -306,8 +306,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the value into the hidden temporary once, before

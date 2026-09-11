@@ -7,14 +7,12 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
+SPP_AST_COMMON_FWD_DECL(LocalVariableSingleIdentifierAliasAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LocalVariableSingleIdentifierAliasAst);
 
   /**
@@ -39,5 +37,3 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast 
 
   ~LocalVariableSingleIdentifierAliasAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableSingleIdentifierAliasAst)

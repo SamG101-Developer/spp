@@ -83,6 +83,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   IsMutable(that.IsMutable),
   IsGeneric(that.IsGeneric),
   IsFlowNarrowing(that.IsFlowNarrowing),
+  IsCapture(that.IsCapture),
   NarrowsSym(that.NarrowsSym),
   CallableAsType(that.CallableAsType),
   Visibility(that.Visibility),

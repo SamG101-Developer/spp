@@ -9,15 +9,13 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(UnaryExpressionOperatorAsyncAst) {
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
 }
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(UnaryExpressionOperatorAsyncAst);
 
   /**
@@ -25,6 +23,10 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
    * as called asynchronously.
    */
   Unique<TokenAst> TokAsync;
+
+  struct {
+    Unique<ExpressionAst> _OriginalRhs;
+  } Source;
 
   /**
    * Construct the UnaryExpressionOperatorAsyncAst with the arguments matching the members.
@@ -35,14 +37,30 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
 
   ~UnaryExpressionOperatorAsyncAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
+
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
 
 private:
   Unique<ExpressionAst> _TransformedFunc;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UnaryExpressionOperatorAsyncAst)

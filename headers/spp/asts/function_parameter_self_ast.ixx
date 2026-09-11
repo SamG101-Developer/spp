@@ -7,13 +7,11 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(FunctionParameterSelfAst) {
   SPP_EXP_CLS struct ConventionAst;
-  SPP_EXP_CLS struct FunctionParameterSelfAst;
 }
 
 SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionParameterSelfAst);
 
   /**
@@ -33,7 +31,8 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameter
 
   ~FunctionParameterSelfAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterSelfAst)

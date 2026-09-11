@@ -8,14 +8,13 @@ import spp.asts.type_postfix_expression_operator_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(TypePostfixExpressionOperatorNestedTypeAst) {
   SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypePostfixExpressionOperatorNestedTypeAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfixExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionOperatorNestedTypeAst);
 
   /**

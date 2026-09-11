@@ -2,35 +2,27 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.ast;
-export import spp.asts.ast_kind;
+import spp.asts.ast_kind;
+import spp.asts.ast_kind_range;
 import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
 }
 
-namespace spp::asts {
-  SPP_EXP_CLS struct AnnotationAst;
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct ClassAttributeAst;
-  SPP_EXP_CLS struct ClassPrototypeAst;
-  SPP_EXP_CLS struct CmpStatementAst;
-  SPP_EXP_CLS struct CoroutinePrototypeAst;
-  SPP_EXP_CLS struct SubroutinePrototypeAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeStatementAst;
+SPP_AST_COMMON_FWD_DECL(Ast) {
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TokenAst;
 }
 
 /**
  * The AST base class is inherited by all other AST classes, provided base functionality, including formatted printing
  * and end position identification.
  */
+GCC_BUGZILLA_127341_VTABLE_TYPEINFO_MISSING
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
-  SPP_GCC_VTABLE_FIX_BASE
-
+  SPP_GCC_VTABLE_FIX_BASE;
   ~Ast() override;
 
   /**
@@ -38,21 +30,24 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
    * the start position of the first field, until a TokenAst is reached.
    * @return The first position this AST encompasses.
    */
-  SPP_ATTR_NODISCARD virtual auto PosStart() const -> std::size_t = 0;
+  SPP_ATTR_NODISCARD virtual auto PosStart() const
+    -> std::size_t = 0;
 
   /**
    * The end position is the final position in the source code that contains this AST. An AST will recursively get the
    * end position of the final field, until a TokenAst is reached.
    * @return The final position this AST encompasses.
    */
-  SPP_ATTR_NODISCARD virtual auto PosEnd() const -> std::size_t = 0;
+  SPP_ATTR_NODISCARD virtual auto PosEnd() const
+    -> std::size_t = 0;
 
   /**
    * The size of an AST is the number of tokens it encompasses. This is used to determine the size of the AST in the
    * source code, and is used for error reporting. Calculated by subtracting the start position from the end position.
    * @return The size of the AST in tokens.
    */
-  SPP_ATTR_NODISCARD auto Size() const -> std::size_t;
+  SPP_ATTR_NODISCARD auto Size() const
+    -> std::size_t;
 
   /**
    * The clone operator that deep-copies the AST and all its children ASTs. This is used to create a new AST that is a
@@ -61,27 +56,40 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
    * @code Unique<T>@endcode to the base @c Ast class.
    * @return The cloned AST as a unique pointer to the base Ast class.
    */
-  SPP_ATTR_NODISCARD virtual auto Clone() const -> Unique<Ast> = 0;
+  SPP_ATTR_NODISCARD virtual auto Clone() const
+    -> Unique<Ast> = 0;
 
   /**
    * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.
    * Recursively prints child nodes using their respective "to_string()" methods.
    */
-  SPP_ATTR_NODISCARD virtual auto ToString() const -> Str = 0;
+  SPP_ATTR_NODISCARD virtual auto ToString() const
+    -> Str = 0;
 
   /**
    * Overridable hash function for AST nodes, used for hashing ASTs in data structures (particularly in Ankerl's hash
    * map). Implemented in the @c IdentifierAst and @c TypeIdentifierAst nodes.
    * @return The hash value of the AST.
    */
-  SPP_ATTR_NODISCARD virtual auto AnkerlHash() const -> std::size_t;
+  SPP_ATTR_NODISCARD virtual auto AnkerlHash() const
+    -> std::size_t;
+
+  /**
+   * Whether this ast may appear in a default value - a parameter's, or an attribute's. A default is copied into every
+   * call or object initializer that leaves it out. Defaults to not being allowed, and then compatible ASTs opt in with
+   * their own checks - elements inside an array etc.
+   * @return Whether the ast may appear in a default value.
+   */
+  SPP_ATTR_NODISCARD virtual auto IsAllowedInDefault() const
+    -> bool;
 
   /**
    * Which concrete ast class this node is. Answered by @c SPP_AST_KEY_FUNCTIONS(Ast);/ @c SPP_AST_KIND , and pure here so
    * that a concrete class which does not name itself stays abstract rather than reporting the wrong kind.
    * @return This node's kind.
    */
-  SPP_ATTR_NODISCARD virtual auto Kind() const noexcept -> AstKind = 0;
+  SPP_ATTR_NODISCARD virtual auto Kind() const noexcept
+    -> AstKind = 0;
 
   /**
    * Non-constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
@@ -156,22 +164,32 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
    * Default behaviour: bind the context to this AST, for future analysis stages.
    * @param ctx The context AST.
    */
-  auto Stage1_PreProcess(Ast *ctx) -> void override;
+  auto Stage1_PreProcess(
+    Ast *ctx)
+    -> void override;
 
   /**
    * Default behaviour: bind the scope to this AST, for future analysis stages.
    * @param sm The scope manager to use for setting the scope of this AST (current scope).
    * @param meta Associated metadata (unused in default implementation).
    */
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  SPP_ATTR_NODISCARD auto GetAstCtx() const -> Ast*;
+  SPP_ATTR_NODISCARD auto GetAstCtx() const
+    -> Ast*;
 
-  SPP_ATTR_NODISCARD auto GetAstScope() const -> analyse::scopes::Scope*;
+  SPP_ATTR_NODISCARD auto GetAstScope() const
+    -> analyse::scopes::Scope*;
 
-  auto SetAstCtx(Ast *ctx) -> void;
+  auto SetAstCtx(
+    Ast *ctx) -> void;
 
-  auto SetAstScope(analyse::scopes::Scope *scope) -> void;
+  auto SetAstScope(
+    analyse::scopes::Scope *scope)
+    -> void;
 
 protected:
   /**
@@ -192,8 +210,6 @@ protected:
   explicit Ast();
 };
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::Ast)
-
 namespace spp::asts {
   /**
    * Ask a node that might not be there what it is. A scope's @c AstNode is null for the global and namespace scopes,
@@ -209,3 +225,5 @@ namespace spp::asts {
     return ast != nullptr ? ast->template To<T>() : nullptr;
   }
 }
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::Ast)

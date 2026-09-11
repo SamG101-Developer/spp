@@ -141,8 +141,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidComptimeOperationError;
@@ -254,8 +254,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // If a fold is taking place, analyse the folded
   // transformations.
@@ -285,8 +285,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppCompileTimeConstantError;
@@ -336,7 +336,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     meta->CmpArgs = std::move(fn_arg_map);
     meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
     meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
-    auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope());
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, fn_proto->GetAstScope());
     tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
   }
@@ -360,8 +361,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   using analyse::utils::type_predicates::IsTypeVoid;
@@ -471,7 +472,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // For generically converted function prototypes, generate
   // their llvm declaration in-walk if it is still missing.
   if (Target()->GetLlvmFunc() == nullptr) {
-    auto tm = ScopeManager(sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
     tm.Reset(tm.CurrentScope);
     const auto owner_ctx = Target()->OwnerCtx();
     Target()->GenerateLlvmDeclaration(
@@ -601,8 +603,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using generate::common_types::SelfType;
@@ -776,6 +778,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::SubstituteGenericsExpr
   // cast postfix operator AST.
   return MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     std::move(gn_arg_group), std::move(fn_arg_group), AstClone(Fold));
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::IsAllowedInDefault() const
+  -> bool {
+  // A call is allowed when its arguments are. Folding
+  // isn't allowed here (too complex right now).
+  return
+    FnArgGroup->IsAllowedInDefault() and Fold == nullptr;
 }
 
 SPP_MOD_END

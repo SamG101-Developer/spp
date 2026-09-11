@@ -9,8 +9,7 @@ import spp.lex.tokens;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct TokenAst;
+SPP_AST_COMMON_FWD_DECL(TokenAst) {
   SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
@@ -21,7 +20,7 @@ namespace spp::asts {
  * to is the start position.
  */
 SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(TokenAst);
 
   /**

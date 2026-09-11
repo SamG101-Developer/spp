@@ -410,6 +410,17 @@ auto spp::analyse::scopes::ScopeManager::SelfProto() const
   return _SelfProto.get();
 }
 
+auto spp::analyse::scopes::ScopeManager::AddSelfTypeSymbol(
+  Scope *const linked_scope,
+  const std::size_t pos) const
+  -> void {
+  if (linked_scope == nullptr) { return; }
+  const auto self_sym = MakeShared<TypeSymbol>(
+    MakeUnique<asts::TypeIdentifierAst>(pos, "Self", nullptr),
+    SelfProto(), linked_scope, CurrentScope);
+  CurrentScope->AddTypeSymbol(self_sym);
+}
+
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
   normal_sup_blocks.clear();
   utils::type_members::ClearUnimplementedAbstractMethodsCache();

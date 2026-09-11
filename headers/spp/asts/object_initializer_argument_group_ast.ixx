@@ -7,11 +7,10 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentGroupAst) {
   SPP_EXP_CLS struct ObjectInitializerArgumentAst;
   SPP_EXP_CLS struct ObjectInitializerArgumentKeywordAst;
   SPP_EXP_CLS struct ObjectInitializerArgumentShorthandAst;
-  SPP_EXP_CLS struct ObjectInitializerArgumentGroupAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -20,7 +19,6 @@ namespace spp::asts {
  * multiple shorthand or keyword arguments together in a object initializer.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentGroupAst);
 
   /**
@@ -58,11 +56,20 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
 
   ~ObjectInitializerArgumentGroupAst() override;
 
-  auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage6_PreAnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   auto GetAllArgs()
     -> Vec<ObjectInitializerArgumentAst*>;
@@ -78,6 +85,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
 
   auto GetKeywordArgs()
     -> Vec<ObjectInitializerArgumentKeywordAst*>;
-};
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentGroupAst)
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
+    -> bool override;
+};

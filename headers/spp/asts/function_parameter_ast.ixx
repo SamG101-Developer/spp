@@ -10,8 +10,8 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionParameterAst;
+SPP_AST_COMMON_FWD_DECL(FunctionParameterAst) {
+  SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct LocalVariableAst;
   SPP_EXP_CLS struct TokenAst;
@@ -23,8 +23,6 @@ namespace spp::asts {
  * the required, optional, variadic and self parameters, and provides the common functionality for all of them.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
-  SPP_GCC_VTABLE_FIX
-
   /**
    * The local variable declaration for this parameter. This is used to create a local variable for the parameter,
    * using the same syntax as variables, such as destructuring.
@@ -45,6 +43,7 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
 
   struct {
     Shared<TypeAst> OriginalType;
+    Unique<ExpressionAst> OriginalDefaultVal;
   } Source;
 
   /**
@@ -62,15 +61,23 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
 
   ~FunctionParameterAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>>;
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst>;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterAst)

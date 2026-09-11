@@ -8,10 +8,7 @@ import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct GenericArgumentCompAst;
-  SPP_EXP_CLS struct GenericArgumentTypeAst;
+SPP_AST_COMMON_FWD_DECL(GenericArgumentAst) {
   SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
   SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
   SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
@@ -19,42 +16,18 @@ namespace spp::asts {
 }
 
 namespace spp::asts::detail {
-  SPP_EXP_CLS
-
-  template <typename GenericArgType>
+  SPP_EXP_CLS template <typename GenericArgType>
   struct make_keyword_arg {
     using type = GenericArgType;
-  };
-
-  template <>
-  struct make_keyword_arg<GenericArgumentCompAst> {
-    using type = GenericArgumentCompKeywordAst;
-  };
-
-  template <>
-  struct make_keyword_arg<GenericArgumentTypeAst> {
-    using type = GenericArgumentTypeKeywordAst;
   };
 
   SPP_EXP_CLS
   template <typename T>
   using make_keyword_arg_t = typename make_keyword_arg<T>::type;
 
-  SPP_EXP_CLS
-
-  template <typename GenericArgType>
+  SPP_EXP_CLS template <typename GenericArgType>
   struct make_positional_arg {
     using type = GenericArgType;
-  };
-
-  template <>
-  struct make_positional_arg<GenericArgumentCompAst> {
-    using type = GenericArgumentCompPositionalAst;
-  };
-
-  template <>
-  struct make_positional_arg<GenericArgumentTypeAst> {
-    using type = GenericArgumentTypePositionalAst;
   };
 
   SPP_EXP_CLS
@@ -68,8 +41,6 @@ namespace spp::asts::detail {
  * inherited for the positional and keyword variants.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
-  SPP_GCC_VTABLE_FIX
-
   explicit GenericArgumentAst(utils::OrderableTag order_tag);
   ~GenericArgumentAst() override;
   auto operator<=>(GenericArgumentAst const &other) const -> Ordering;
@@ -87,5 +58,3 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
 
   SPP_ATTR_NODISCARD virtual auto ViewName() const -> StrView;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentAst)

@@ -86,8 +86,8 @@ auto spp::asts::GenExpressionAst::ToString() const
 }
 
 auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -178,8 +178,8 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -216,8 +216,8 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::GenExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Consider if we are in a subroutine by desugar (ie for a
@@ -278,8 +278,8 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::GenExpressionAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // Get the "Send" generic type parameter from the generator type.
   // As there is no "Send" on "GenOnce", use "Void" in this case.

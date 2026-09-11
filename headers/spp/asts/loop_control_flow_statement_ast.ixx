@@ -9,15 +9,13 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(LoopControlFlowStatementAst) {
   SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct LoopControlFlowStatementAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LoopControlFlowStatementAst);
 
   /**
@@ -53,9 +51,15 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
   ~LoopControlFlowStatementAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Whether control leaves this scope here, which an @c exit or a @c skip always does. Without this the branch it sits
@@ -65,9 +69,14 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
    */
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopControlFlowStatementAst)

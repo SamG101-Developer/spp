@@ -7,9 +7,8 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(FunctionParameterOptionalAst) {
   SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct FunctionParameterOptionalAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -18,7 +17,6 @@ namespace spp::asts {
  * parameters that are not required, and can be omitted when calling the function.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionParameterOptionalAst);
 
   /**
@@ -48,9 +46,16 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParam
 
   ~FunctionParameterOptionalAst() override;
 
-  auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage6_PreAnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
+
+private:
+  bool _DefaultAnalysed = false;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterOptionalAst)

@@ -74,8 +74,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::ToString() const
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Add the capture variables after analysis, otherwise their symbol checks refer to the new captures, not the
   // original asts from the argument group analysis.
@@ -89,6 +89,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
 
     // Apply the borrow to the symbol.
     const auto sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+    sym->IsCapture = true;
     const auto conv = cap->Conv.get();
     sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
     sym->Type = sym->Type->WithConvention(AstClone(cap->Conv));
@@ -96,8 +97,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Any borrowed captures need pinning and marking as extended borrows.
   auto ass_sym = static_cast<analyse::scopes::VariableSymbol*>(nullptr);
@@ -137,8 +138,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Build the variable bindings from the environment object. This allows the body to remain unchanged as the

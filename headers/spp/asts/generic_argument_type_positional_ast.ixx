@@ -8,8 +8,14 @@ import spp.asts.generic_argument_type_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
+SPP_AST_COMMON_FWD_DECL(GenericArgumentTypePositionalAst) {
+}
+
+namespace spp::asts::detail {
+  template <>
+  struct make_positional_arg<GenericArgumentTypeAst> {
+    using type = GenericArgumentTypePositionalAst;
+  };
 }
 
 /**
@@ -17,7 +23,7 @@ namespace spp::asts {
  * argument to be matched by an index rather than a keyword.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericArgumentTypePositionalAst);
 
   /**
@@ -34,7 +40,10 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
   SPP_ATTR_NODISCARD auto Equals(
     GenericArgumentAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentTypePositionalAst)

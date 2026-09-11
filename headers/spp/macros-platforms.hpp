@@ -54,3 +54,11 @@
   #undef  SPP_DEBUG
   #define SPP_DEBUG 1
 #endif
+
+#define GCC_BUGZILLA_127193_ALIGNMENT_AND_MODULES
+#define GCC_BUGZILLA_127228_STRING_M_CREATE_CHANGE
+#define GCC_BUGZILLA_127341_VTABLE_TYPEINFO_MISSING
+#define GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
+
+#define MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ \
+  /* https://developercommunity.visualstudio.com/t/Out-of-class-method-definition-does-not/11096133 */

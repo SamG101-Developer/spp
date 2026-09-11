@@ -5,6 +5,7 @@ module spp.asts.let_statement_uninitialized_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -65,12 +66,16 @@ auto spp::asts::LetStatementUninitializedAst::ToString() const
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
+  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+
   // Analyse the type.
   Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
+  Type = sm->CurrentScope->GetTypeSymbol(
+    Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
   // Create a mock value for analysis.
   const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);
@@ -84,8 +89,8 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the variable for memory issues.
   const auto _meta_guard = meta::MetaGuard(meta);
@@ -99,8 +104,8 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Setup a lot of meta information for the local variable to

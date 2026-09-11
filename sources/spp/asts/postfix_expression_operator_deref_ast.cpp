@@ -53,8 +53,8 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppDereferenceNonBorrowedTypeError;
@@ -63,15 +63,16 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   using generate::common_types_precompiled::STR_VIEW;
   using generate::common_types_precompiled::VIEW;
 
-  // Todo: some sort of inner mutability check?
-  // Get the right-hand-side expression's type for constraint checks.
+  // Get the right-hand-side expression's type for constraint
+  // checks.
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
   const auto is_view =
     TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
     TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
 
-  // Check the right-hand-side expression is a borrowable type.
+  // Check the right-hand-side expression is a borrowable
+  // type.
   RaiseIf<SppDereferenceNonBorrowedTypeError>(
     lhs_type->GetConvention() == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
@@ -84,16 +85,16 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // As this is cmp context, just return the "lhs" generation.
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Get the value underlying the borrow.
@@ -101,8 +102,10 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(borrow_val != nullptr);
 
-  // Load through the pointee's own type, never the borrow value's type: under opaque pointers the latter is just
-  // "ptr", so the pointee is unrecoverable from it and has to come from the symbol table instead.
+  // Load through the pointee's own type, never the borrow
+  // value's type: under opaque pointers the latter is just
+  // "ptr", so the pointee is unrecoverable from it and has
+  // to come from the symbol table instead.
   const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
   const auto llvm_type = sm->CurrentScope->GetTypeSymbol(lhs_type.get())->LlvmInfo->LlvmType;
   SPP_ASSERT(llvm_type != nullptr);
@@ -114,8 +117,8 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Get the right-hand-side expression's type.
   const auto lhs = meta->PostfixExpressionLhs;
@@ -123,6 +126,13 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::InferType(
 
   // Return the dereferenced type.
   return AstClone(lhs_type->WithoutConvention());
+}
+
+auto spp::asts::PostfixExpressionOperatorDerefAst::IsAllowedInDefault() const
+  -> bool {
+  // Reads what it is applied to, and holds nothing of its
+  // own.
+  return true;
 }
 
 SPP_MOD_END
