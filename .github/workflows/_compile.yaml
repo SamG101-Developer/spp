@@ -158,6 +158,7 @@ jobs:
       # Build the cmake project with the parallel flag set. CI.
       # The output is teed so a failed build can be uploaded whole.
       - name: Build
+        id: build
         shell: bash
         run: |
           mkdir -p build-logs
@@ -212,15 +213,18 @@ jobs:
 
       # Takes a project from nothing - `spp init`, `spp build`,
       # `spp test --all-libs` - and so covers the STL, which
-      # the gtest suite never links or executes.
+      # the gtest suite never links or executes. This step and
+      # the gtest one gate on the build, not on each other, so
+      # a red STL cannot hide the compiler's own results.
       - name: s++ STL conformance
-        if: inputs.run-tests && inputs.stl-conformance
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && inputs.run-tests && inputs.stl-conformance }}
         shell: bash
         run: bash .github/scripts/stl-conformance/run.sh
 
       # Launch the specialised parallel googletest script.
       - name: Run tests
-        if: inputs.run-tests
+        id: tests
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && inputs.run-tests }}
         uses: ./.github/actions/run-tests
         with:
           shard-count: ${{ inputs.shard-count }}
@@ -229,7 +233,7 @@ jobs:
       # If any tests failed, then upload the log as an artefact
       # so it can be downloaded for analysis.
       - name: Upload test logs on failure
-        if: failure() && inputs.run-tests
+        if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ inputs.variant }}${{ env.SPP_SHARD_SUFFIX }}
