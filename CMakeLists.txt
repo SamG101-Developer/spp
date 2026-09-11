@@ -86,8 +86,10 @@ if (NOT MSVC)
   add_compile_options(-fvisibility-inlines-hidden)
 endif ()
 
-# Only allow mimalloc for release, non-sanitizer builds.
-set(SPP_NO_MIMALLOC_GENEX $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>>)
+# Only allow mimalloc for release, non-sanitizer, non-macOS builds.
+set(
+  SPP_NO_MIMALLOC_GENEX
+  $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>,$<PLATFORM_ID:Darwin>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
 if (NOT APPLE)

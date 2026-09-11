@@ -75,6 +75,7 @@ fi
 # and says nothing; on macOS, have lldb print where.
 if [ "$RUNNER_OS" = "macOS" ] && ! "$binary" --gtest_list_tests > /dev/null; then
   echo "::error::$binary crashed while listing its tests"
+  otool -L "$binary" || true
   xcrun lldb --batch -o run -k bt -k quit -- "$binary" --gtest_list_tests || true
   exit 1
 fi
