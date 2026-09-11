@@ -56,8 +56,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppExpressionNotBooleanError;
@@ -71,8 +71,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // The "lhs" will be boolean based on previous analysis.
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
@@ -84,8 +84,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the left-hand-side expression, which analysis has
@@ -104,8 +104,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // The type of a "not" expression is always boolean.
   using generate::common_types::BooleanType;

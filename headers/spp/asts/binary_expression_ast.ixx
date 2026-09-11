@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct BinaryExpressionAst;
+SPP_AST_COMMON_FWD_DECL(BinaryExpressionAst) {
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct TokenAst;
@@ -24,7 +23,6 @@ namespace spp::asts {
  * @code 1.add(2)@endcode.
  */
 SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(BinaryExpressionAst);
 
   /**
@@ -58,7 +56,8 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * which is what @c not avoids by being built in, and what these now avoid the same way. Both operands are required
    * to be @c Bool for the same reason.
    */
-  SPP_ATTR_NODISCARD auto IsLogicalOperator() const -> bool;
+  SPP_ATTR_NODISCARD auto IsLogicalOperator() const
+    -> bool;
 
   /**
    * Construct the BinaryExpressionAst with the arguments matching the members.
@@ -79,7 +78,10 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @param[in] sm The scope manager to use for type checking.
    * @param[in,out] meta Associated metadata.
    */
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Forward the memory checking to the mapped function. This checks the created argument group for the mapped
@@ -87,7 +89,10 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @param[in] sm The scope manager to use for memory checking.
    * @param[in,out] meta Associated metadata.
    */
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Resolve the binary expression at compile time. This maps to the comptime resolution of the mapped function.
@@ -95,7 +100,10 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @param meta Associated metadata.
    * @return The result of the compile time resolution.
    */
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Forward the code generation to the mapped function. This just generates a standard function call. Some functions
@@ -105,7 +113,11 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @param ctx The LLVM context to use for code generation.
    * @return The LLVM value generated from this AST.
    */
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   /**
    * Forward the type checking to the mapped function. This just applies standard type inference from a function call.
@@ -113,7 +125,10 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
    * @param[in,out] meta Associated metadata.
    * @return The inferred type of the binary expression, which is the return type of the mapped function.
    */
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
@@ -146,5 +161,3 @@ private:
    */
   bool _IsLogical;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BinaryExpressionAst)

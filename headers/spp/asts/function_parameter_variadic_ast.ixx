@@ -7,8 +7,7 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionParameterVariadicAst;
+SPP_AST_COMMON_FWD_DECL(FunctionParameterVariadicAst) {
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -17,7 +16,6 @@ namespace spp::asts {
  * parameters that can accept an arbitrary number of arguments, such as @c *args in Python.
  */
 SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParameterAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionParameterVariadicAst);
 
   /**
@@ -41,5 +39,3 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParam
 
   ~FunctionParameterVariadicAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionParameterVariadicAst)

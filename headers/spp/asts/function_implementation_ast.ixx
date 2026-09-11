@@ -6,9 +6,8 @@ import spp.asts.inner_scope_expression_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(FunctionImplementationAst) {
   SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct FunctionImplementationAst;
 }
 
 /**
@@ -17,8 +16,6 @@ namespace spp::asts {
  * InnerScopeAst.
  */
 SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAst {
-  SPP_GCC_VTABLE_FIX
-
   static auto NewEmpty() -> Unique<FunctionImplementationAst>;
 
   using InnerScopeExpressionAst::InnerScopeExpressionAst;
@@ -29,7 +26,8 @@ SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAs
 
   SPP_ATTR_NODISCARD auto DiscardsFinalMember() const -> bool override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionImplementationAst)

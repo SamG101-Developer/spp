@@ -83,8 +83,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppArgumentNameInvalidError;
@@ -156,8 +156,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_compare::TypeEq;
@@ -276,8 +276,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the memory of the arguments.
   for (auto const &arg : Args) { arg->Stage8_CheckMemory(sm, meta); }

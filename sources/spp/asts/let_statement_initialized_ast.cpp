@@ -74,8 +74,8 @@ auto spp::asts::LetStatementInitializedAst::ToString() const
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -125,8 +125,8 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the variable's memory (which in turn checks the
   // values memory - must be done this way for destructuring).
@@ -138,8 +138,8 @@ auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Fix variable shadowing, where a newer version of the symbol is
   // gotten because stage7 added it, when we are trying to use the
@@ -162,8 +162,8 @@ auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Setup a lot of meta information for the local variable to

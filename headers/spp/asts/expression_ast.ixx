@@ -2,16 +2,16 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.expression_ast;
+import spp.asts.ast;
 import spp.asts.statement_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(ExpressionAst) {
   SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
   SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
   SPP_EXP_CLS struct BooleanLiteralAst;
   SPP_EXP_CLS struct CharLiteralAst;
-  SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct FloatLiteralAst;
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct IdentifierAst;
@@ -21,6 +21,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct TypeIdentifierAst;
   SPP_EXP_CLS struct TypeUnaryExpressionAst;
   SPP_EXP_CLS struct TypePostfixExpressionAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypeAst;
 }
 
 /**

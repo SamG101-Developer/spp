@@ -3,18 +3,25 @@ module;
 
 export module spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.ast_kind;
+import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_comp_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(GenericParameterCompOptionalAst) {
   SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericParameterCompOptionalAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
+namespace spp::asts::detail {
+  template <>
+  struct make_optional_param<GenericParameterCompAst> {
+    using type = GenericParameterCompOptionalAst;
+  };
+}
+
 SPP_EXP_CLS struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericParameterCompOptionalAst);
 
   /**
@@ -46,9 +53,15 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompOptionalAst final : GenericPar
 
   ~GenericParameterCompOptionalAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 };
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompOptionalAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompOptionalAst);

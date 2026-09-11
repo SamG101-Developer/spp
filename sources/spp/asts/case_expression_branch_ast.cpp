@@ -83,8 +83,8 @@ auto spp::asts::CaseExpressionBranchAst::ToString() const
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Create a scope for the branch - this is where destructures of patterns will reside.
   auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
@@ -134,8 +134,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Move into the branch's scope.
   sm->MoveToNextScope();
@@ -150,8 +150,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Combine the case expression with the pattern to determine
   // if this branch should be taken, at compile-time.
@@ -198,8 +198,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the branch architecture. Start by defining blocks
@@ -297,16 +297,16 @@ auto spp::asts::CaseExpressionBranchAst::MarkForIterLoopYield()
 }
 
 auto spp::asts::CaseExpressionBranchAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Forward type inference to the body.
   return Body->InferType(sm, meta);
 }
 
 auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) const
   -> llvm::Value* {
   // The "case c { ... }" form desugars to a branch with no

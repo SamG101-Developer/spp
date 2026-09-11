@@ -100,8 +100,8 @@ auto spp::asts::BinaryExpressionAst::IsLogicalOperator() const
 }
 
 auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::bin_utils::CombineComparisonChain;
@@ -243,8 +243,8 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -265,8 +265,8 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Do the short-circuiting at compile time by evaluating
   // the left-hand-side, and if it is true, and we are not
@@ -284,8 +284,8 @@ auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward the code generation to the mapped function. The common
@@ -342,8 +342,8 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::BinaryExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // A logical operator is boolean by construction - both operands
   // are required to be, and the result is one of them.

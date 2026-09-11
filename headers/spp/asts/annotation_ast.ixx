@@ -7,13 +7,7 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-}
-
-namespace spp::asts {
-  SPP_EXP_CLS struct AnnotationAst;
+SPP_AST_COMMON_FWD_DECL(AnnotationAst) {
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct GenericArgumentGroupAst;
   SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
@@ -27,7 +21,7 @@ namespace spp::asts {
  * additional behaviour in the compiler.
  */
 SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(AnnotationAst);
 
   /**
@@ -80,7 +74,9 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
    * This is used for further analysis in later stages.
    * @param ctx The AST context of this annotation, which is the annotated AST.
    */
-  auto Stage1_PreProcess(Ast *ctx) -> void override;
+  auto Stage1_PreProcess(
+    Ast *ctx)
+    -> void override;
 
   /**
   * Standard scope setting for the annotation. Attaches the annotated AST's scope into the scope attribute on this
@@ -88,7 +84,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   * @param sm The scope manager to use for setting the scope of this annotation.
   * @param meta Associated metadata.
   */
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
   * Ensure the target annotation definition (as a function), is in fact a function, and is a "cmp" function. Also, it
@@ -96,7 +95,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   * @param sm The scope manager to use for searching the annotation name.
   * @param meta Associated metadata.
   */
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * For builtin annotations, set fields on context ASTs (given the annotated AST is of the correct type). For invalid
@@ -105,7 +107,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
    * @param sm The scope manager to use for searching the annotation name.
    * @param meta Associated metadata.
    */
-  auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage5_LoadSupScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Analyse the function argument and generic arguments if they exist, and then do overload resolution for the
@@ -114,7 +119,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
    * @param sm The scope manager to use for analysing ASTs and performing overload resolution.
    * @param meta Associated metadata.
    */
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Resolve the annotation at compile time. This involves evaluating the function and generic arguments at compile
@@ -123,7 +131,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
    * @param sm The scope manager to use for analysing ASTs and performing compile time resolution.
    * @param meta Associated metadata.
    */
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
 private:
   FunctionPrototypeAst *_Target;

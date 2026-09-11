@@ -108,8 +108,8 @@ auto spp::asts::ClassPrototypeAst::Stage1_PreProcess(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Create the class scope, which is the scope for the class prototype.
   auto scope_name = analyse::scopes::ScopeTypeIdentifierName(Name);
@@ -130,8 +130,8 @@ auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Register "Self" before any alias in the body is resolved,
   // so that one naming it has something to resolve to. A class's
@@ -145,8 +145,8 @@ auto spp::asts::ClassPrototypeAst::Stage3_GenTopLvlAliases(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify the types in the class body.
   sm->MoveToNextScope();
@@ -158,8 +158,8 @@ auto spp::asts::ClassPrototypeAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Load the super scopes for the class body.
   using analyse::utils::type_compare::TypeEq;
@@ -205,8 +205,8 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Pre-analyse semantics for the class body.
   sm->MoveToNextScope();
@@ -223,8 +223,8 @@ auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse semantics for the class body.
   using generate::common_types_precompiled::SELF_TYPE;
@@ -255,8 +255,8 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check memory for the class body.
   sm->MoveToNextScope();
@@ -266,8 +266,8 @@ auto spp::asts::ClassPrototypeAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Skip the class body.
   sm->MoveToNextScope();
@@ -279,8 +279,8 @@ auto spp::asts::ClassPrototypeAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for the class body.
@@ -308,8 +308,8 @@ auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::ClassPrototypeAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Get the class symbol.
@@ -342,7 +342,7 @@ auto spp::asts::ClassPrototypeAst::GetClsSym() const
 }
 
 auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
-  ScopeManager *sm)
+  analyse::scopes::ScopeManager *sm)
   -> analyse::scopes::TypeSymbol* {
   auto is_dollar_type = Name->IsCompilerGeneratedType();
   auto sym_name = AstClone(Name->TypeParts()[0]);
@@ -439,7 +439,7 @@ static auto ApplyStructLayout(
 }
 
 auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
-  ScopeManager const *sm,
+  analyse::scopes::ScopeManager const *sm,
   analyse::scopes::TypeSymbol const *type_sym,
   codegen::LlvmCtx const *ctx) const
   -> void {

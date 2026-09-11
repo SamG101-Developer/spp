@@ -117,8 +117,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::GetPositionalArgs() const
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppExpansionOfNonTupleError;
@@ -184,8 +184,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppMemoryOverlapUsageError;

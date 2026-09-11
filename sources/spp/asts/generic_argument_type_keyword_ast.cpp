@@ -106,8 +106,8 @@ auto spp::asts::GenericArgumentTypeKeywordAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and AstAs<InnerScopeExpressionAst>(sm->CurrentScope->AstNode) == nullptr) { return; }

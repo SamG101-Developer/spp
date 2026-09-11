@@ -9,9 +9,8 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(GenericArgumentGroupAst) {
   SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericArgumentGroupAst;
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct GenericArgumentCompAst;
   SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
@@ -19,12 +18,9 @@ namespace spp::asts {
   SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
   SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericArgumentGroupAst);
 
   /**
@@ -74,11 +70,20 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
   auto operator+(const GenericArgumentGroupAst &other) const -> Unique<GenericArgumentGroupAst>;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   auto TypeAt(const char *key) const -> GenericArgumentTypeAst const*;
 
@@ -100,5 +105,3 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetAllArgs() const -> Vec<GenericArgumentAst*>;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentGroupAst)

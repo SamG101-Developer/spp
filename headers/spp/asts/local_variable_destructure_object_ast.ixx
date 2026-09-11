@@ -13,17 +13,15 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS struct VariableSymbol;
 }
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureObjectAst) {
   SPP_EXP_CLS struct CasePatternVariantDestructureObjectAst;
   SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct LocalVariableDestructureObjectAst;
   SPP_EXP_CLS struct LetStatementInitializedAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVariableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureObjectAst);
 
   /**
@@ -69,13 +67,26 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
 
   SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto ExtractNames() const
     -> Vec<Shared<IdentifierAst>> override;
@@ -90,5 +101,3 @@ private:
   Unique<LetStatementInitializedAst> _CondLet;
   Shared<IdentifierAst> _TmpName;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureObjectAst)

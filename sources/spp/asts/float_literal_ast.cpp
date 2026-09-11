@@ -94,8 +94,8 @@ auto spp::asts::FloatLiteralAst::ToString() const
 }
 
 auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "f32" : Type;
@@ -118,7 +118,7 @@ auto spp::asts::FloatLiteralAst::BigVal() const
 
 auto spp::asts::FloatLiteralAst::ValidateBounds(
   Ast const &owner,
-  ScopeManager const &sm) const
+  analyse::scopes::ScopeManager const &sm) const
   -> void {
   //
   using analyse::errors::SppFloatOutOfBoundsError;
@@ -156,8 +156,8 @@ auto spp::asts::FloatLiteralAst::FromBigVal(
 }
 
 auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *meta)
   -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
@@ -165,8 +165,8 @@ auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   using spp::utils::strings::NormalizeFloatString;
@@ -200,8 +200,8 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::FloatLiteralAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   //
   using analyse::errors::SppInternalCompilerError;

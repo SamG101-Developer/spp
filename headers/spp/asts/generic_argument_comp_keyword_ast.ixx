@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.ast_kind;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.token_ast;
 import spp.utils.types;
@@ -12,9 +13,15 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS struct VariableSymbol;
 }
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+SPP_AST_COMMON_FWD_DECL(GenericArgumentCompKeywordAst) {
   SPP_EXP_CLS struct TypeAst;
+}
+
+namespace spp::asts::detail {
+  template <>
+  struct make_keyword_arg<GenericArgumentCompAst> {
+    using type = GenericArgumentCompKeywordAst;
+  };
 }
 
 /**
@@ -22,7 +29,7 @@ namespace spp::asts {
  * to be matched by a keyword rather than an index.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericArgumentCompKeywordAst);
 
   /**
@@ -57,9 +64,15 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
   SPP_ATTR_NODISCARD auto Equals(
     GenericArgumentAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   SPP_ATTR_NODISCARD auto ViewName() const -> StrView override;
 };

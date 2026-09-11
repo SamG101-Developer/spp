@@ -10,9 +10,8 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(CaseExpressionBranchAst) {
   SPP_EXP_CLS struct BinaryExpressionAst;
-  SPP_EXP_CLS struct CaseExpressionBranchAst;
   SPP_EXP_CLS struct CasePatternVariantAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
   SPP_EXP_CLS struct PatternGuardAst;
@@ -26,7 +25,6 @@ namespace spp::asts {
  * expression against, can be "guarded", and contains the body of the block.
  */
 SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeInferrableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CaseExpressionBranchAst);
 
   /**
@@ -68,15 +66,31 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
   ~CaseExpressionBranchAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   auto MarkForIterLoopYield() -> void;
 
@@ -98,7 +112,6 @@ private:
    * @param ctx The llvm code generation context.
    * @return The llvm value representing the combined pattern matches.
    */
-  auto _CodegenCombinePatterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
+  auto _CodegenCombinePatterns(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx) const -> llvm::Value*;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CaseExpressionBranchAst)

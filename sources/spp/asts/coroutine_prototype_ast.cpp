@@ -120,8 +120,8 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_utils::GetGenAndYieldTypes;
@@ -156,8 +156,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // For "GenOnce" coroutines, we can desugar them into
@@ -191,7 +191,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
       if (sub_coro->_GenOnceLowered != nullptr) { sub_target = sub_coro->_GenOnceLowered.get(); }
     }
 
-    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, sub.WalkScope());
     sub_target->GenerateLlvmDeclaration(&tm, meta, ctx);
     if (const auto sub_coro = sub.Proto->To<CoroutinePrototypeAst>();
       sub_coro != nullptr and sub_coro->_GenOnceLowered != nullptr) {
@@ -203,8 +204,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The lowering emits this prototype's body, but it is this
@@ -421,7 +422,6 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
         ctx->Builder.CreateInsertValue(empty_ret_val, coro_handle, {handle_idx}, "coro.handle.wrap" + uid));
     }
     VALIDATE_LLVM;
-
   }
   sm->MoveOutOfCurrentScope();
   _CodeGenGenericSubstitutions(sm, meta, ctx);

@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct PostfixExpressionOperatorKeywordAwaitAst;
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorKeywordAwaitAst) {
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct TokenAst;
@@ -18,7 +17,6 @@ namespace spp::asts {
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordAwaitAst final : PostfixExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorKeywordAwaitAst);
 
   /**
@@ -42,13 +40,26 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordAwaitAst final : P
 
   ~PostfixExpressionOperatorKeywordAwaitAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
@@ -60,5 +71,3 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordAwaitAst final : P
 private:
   Shared<PostfixExpressionAst> _MappedFunc;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorKeywordAwaitAst)

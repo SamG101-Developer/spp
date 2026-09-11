@@ -7,8 +7,7 @@ import spp.asts.convention_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ConventionRefAst;
+SPP_AST_COMMON_FWD_DECL(ConventionRefAst) {
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -17,7 +16,6 @@ namespace spp::asts {
  * mutable values.
  */
 SPP_EXP_CLS struct spp::asts::ConventionRefAst final : ConventionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ConventionRefAst);
 
   /**
@@ -35,5 +33,3 @@ SPP_EXP_CLS struct spp::asts::ConventionRefAst final : ConventionAst {
 
   ~ConventionRefAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ConventionRefAst)

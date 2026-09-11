@@ -118,16 +118,16 @@ auto spp::asts::AnnotationAst::Stage1_PreProcess(
 }
 
 auto spp::asts::AnnotationAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Default AST processing (sets scope).
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 }
 
 auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Special annotation handling.
   const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).first;
@@ -161,8 +161,8 @@ auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Handle builtin annotations.
   using A = analyse::utils::annotation_utils::BuiltinAnnotations;
@@ -282,8 +282,8 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::AnnotationAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Todo: Validate "Void" return type on annotation + test.
 
@@ -309,8 +309,8 @@ auto spp::asts::AnnotationAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Load up different construct casts that an annotation may apply to.
   using analyse::utils::annotation_utils::AnnotationInfo;
@@ -326,7 +326,8 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
   const auto annotation_scope_name = INJECT_CODE("std::annotations", parse_expression);
   const auto annotation_scope = const_cast<analyse::scopes::Scope*>(
     sm->CurrentScope->ConvertPostfixToNestedScope(annotation_scope_name.get()));
-  auto tm = ScopeManager(sm->GlobalScope, annotation_scope);
+  auto tm = analyse::scopes::ScopeManager(
+    sm->GlobalScope, annotation_scope);
   const auto allowed_ctx = [&] {
     const auto _meta_guard = meta::MetaGuard(meta);
     annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);

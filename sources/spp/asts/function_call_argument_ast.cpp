@@ -31,8 +31,8 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -46,24 +46,24 @@ auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the memory status of the value expression.
   Val->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Delegate comptime resolution to the value expression.
   Val->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
@@ -72,8 +72,8 @@ auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
 }
 
 auto spp::asts::FunctionCallArgumentAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the type from the value expression, unless an explicit "self" type has been given.
   if (_InjectedSelfType != nullptr) { return _InjectedSelfType; }

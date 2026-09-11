@@ -14,11 +14,14 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+namespace spp::analyse::scopes {
+  SPP_EXP_CLS class Scope;
+}
+
+SPP_AST_COMMON_FWD_DECL(FunctionPrototypeAst) {
   SPP_EXP_CLS struct AnnotationAst;
   SPP_EXP_CLS struct FunctionImplementationAst;
   SPP_EXP_CLS struct FunctionParameterGroupAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
   SPP_EXP_CLS struct GenExpressionAst;
   SPP_EXP_CLS struct GenericArgumentGroupAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
@@ -27,10 +30,6 @@ namespace spp::asts {
   SPP_EXP_CLS struct SupPrototypeExtensionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
 }
 
 /**
@@ -42,7 +41,6 @@ namespace spp::analyse::scopes {
  * analysis checks.
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionPrototypeAst);
 
   /**
@@ -181,25 +179,55 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   ~FunctionPrototypeAst() override;
 
-  auto Stage1_PreProcess(Ast *ctx) -> void override;
+  auto Stage1_PreProcess(
+    Ast *ctx)
+    -> void override;
 
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage3_GenTopLvlAliases(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage5_LoadSupScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage6_PreAnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   /**
    * The linkage name an @c \@ffi function is declared under: the @c symbol argument of its annotation, which is the
@@ -291,11 +319,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
    * @param[in] meta The compiler meta data.
    */
   auto AnalysePendingGenericSubstitutions(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void;
 
-  static auto AnalysePendingDefaults(ScopeManager *sm) -> void;
+  static auto AnalysePendingDefaults(analyse::scopes::ScopeManager *sm) -> void;
   static auto ClearPendingDefaults() -> void;
 
   auto SetNonGenericImpl(
@@ -312,8 +340,8 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     -> analyse::utils::annotation_utils::AnnotationInfo*;
 
   virtual auto GenerateLlvmDeclaration(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LlvmCtx *ctx)
     -> Shared<codegen::LlvmFuncWrapper>;
 
@@ -354,7 +382,7 @@ protected:
    * @param[in] sm The scope manager, positioned on this prototype's own scope.
    */
   auto _InstallLoweredImpl(
-    ScopeManager *sm)
+    analyse::scopes::ScopeManager *sm)
     -> void;
 
   /**
@@ -367,13 +395,13 @@ protected:
    */
   static auto _EnsureDropsForBuiltin(
     FunctionPrototypeAst const &sub_proto,
-    ScopeManager &tm,
-    CompilerMetaData *meta)
+    analyse::scopes::ScopeManager &tm,
+    meta::CompilerMetaData *meta)
     -> void;
 
   SPP_ATTR_NODISCARD auto _IsPureGeneric(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LlvmCtx const *ctx) const
     -> Tup<bool, llvm::Type*, Vec<llvm::Type*>>;
 
@@ -383,10 +411,8 @@ protected:
    * template emits nothing of its own but is exactly where the instantiations that do are registered.
    */
   auto _CodeGenGenericSubstitutions(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
     codegen::LlvmCtx *ctx)
     -> void;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)

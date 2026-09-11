@@ -4,8 +4,7 @@ module;
 export module spp.asts.module_member_ast;
 import spp.asts.ast;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ModuleMemberAst;
+SPP_AST_COMMON_FWD_DECL(ModuleMemberAst) {
 }
 
 /**

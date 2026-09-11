@@ -93,8 +93,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::ToString() const
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::errors::SppCompileTimeConstantError;
@@ -133,7 +133,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 
   // Ensure the size is a constant expression
   // (if symbolic).
-  auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+  auto tm = analyse::scopes::ScopeManager(
+    sm->GlobalScope, sm->CurrentScope);
   Size->Stage9_CompTimeResolve(&tm, meta);
 
   RaiseIf<SppCompileTimeConstantError>(
@@ -147,8 +148,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -160,8 +161,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Convert the inner element to a compile-time
   // value.
@@ -174,8 +175,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -277,8 +278,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Alias the common utils functions and types.
   using generate::common_types::ArrayType;

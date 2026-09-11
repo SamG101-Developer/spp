@@ -9,17 +9,15 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorIndexAst) {
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct PostfixExpressionOperatorIndexAst;
   SPP_EXP_CLS struct PostfixExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorIndexAst);
 
   /**
@@ -67,13 +65,26 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
    * @param[in,out] sm The scope manager to use for analysis.
    * @param[in,out] meta Associated metadata.
    */
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   /**
    * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For
@@ -83,7 +94,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
    * @param[in,out] meta Associated metadata.
    * @return
    */
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
@@ -95,5 +109,3 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
 private:
   Shared<PostfixExpressionAst> _MappedFunc;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorIndexAst)

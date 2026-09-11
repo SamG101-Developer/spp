@@ -75,8 +75,8 @@ auto spp::asts::RetStatementAst::ToString() const
 }
 
 auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -147,8 +147,8 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::RetStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -168,8 +168,8 @@ auto spp::asts::RetStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Mark the frame as returned either way, so the statements after the "case" this "ret" may sit inside are not
   // resolved on top of it.
@@ -181,8 +181,8 @@ auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::RetStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // A "GenOnce" is lowered into an ordinary subroutine, where

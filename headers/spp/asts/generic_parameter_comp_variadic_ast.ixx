@@ -3,17 +3,24 @@ module;
 
 export module spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.ast_kind;
+import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_comp_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterCompVariadicAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterCompVariadicAst) {
   SPP_EXP_CLS struct TokenAst;
 }
 
+namespace spp::asts::detail {
+  template <>
+  struct make_variadic_param<GenericParameterCompAst> {
+    using type = GenericParameterCompVariadicAst;
+  };
+}
+
 SPP_EXP_CLS struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericParameterCompVariadicAst);
 
   /**

@@ -7,9 +7,8 @@ import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentShorthandAst) {
   SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct ObjectInitializerArgumentShorthandAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -18,7 +17,6 @@ namespace spp::asts {
  * argument to be matched by shorthand value rather than a keyword.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitializerArgumentAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentShorthandAst);
 
   /**
@@ -51,7 +49,8 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
 
   ~ObjectInitializerArgumentShorthandAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentShorthandAst)

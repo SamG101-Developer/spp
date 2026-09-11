@@ -53,6 +53,18 @@
     (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmptyShared(__VA_ARGS__); \
   }
 
+#define SPP_AST_COMMON_FWD_DECL(_Ast)                                \
+  namespace spp::analyse::scopes { SPP_EXP_CLS class ScopeManager; } \
+  namespace spp::asts::meta { SPP_EXP_CLS class CompilerMetaData; }  \
+  namespace spp::asts { SPP_EXP_CLS struct _Ast; }                   \
+  namespace spp::asts
+
+#define SPP_AST_COMMON_FWD_DECL_TEMPLATED(_Ast)                          \
+  namespace spp::analyse::scopes { SPP_EXP_CLS class ScopeManager; }     \
+  namespace spp::asts::meta { SPP_EXP_CLS class CompilerMetaData; }      \
+  namespace spp::asts { SPP_EXP_CLS template <typename T> struct _Ast; } \
+  namespace spp::asts
+
 #define SPP_STRING_START auto raw_string = Str()
 
 #define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? x->ToString() : "")
@@ -98,10 +110,10 @@
 #if SPP_COMPILER_GCC
 
 #define SPP_GCC_VTABLE_FIX_BASE \
-  virtual auto _spp_key_function() const -> void;
+  virtual auto _spp_key_function() const -> void
 
 #define SPP_GCC_VTABLE_FIX \
-  auto _spp_key_function() const -> void override;
+  auto _spp_key_function() const -> void override
 
 #define SPP_GCC_VTABLE_FIX_IMPL(Type)             \
   SPP_MOD_BEGIN                                   \

@@ -6,16 +6,13 @@ import spp.asts.ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(TypePostfixExpressionOperatorAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
-  SPP_EXP_CLS struct TypePostfixExpressionOperatorAst;
   SPP_EXP_CLS struct TypePostfixExpressionOperatorNestedTypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
-  SPP_GCC_VTABLE_FIX
-
   TypePostfixExpressionOperatorAst();
 
   ~TypePostfixExpressionOperatorAst() override;
@@ -66,5 +63,3 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
   SPP_ATTR_NODISCARD virtual auto LastTypePart()
     -> TypeIdentifierAst* { return nullptr; }
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypePostfixExpressionOperatorAst)

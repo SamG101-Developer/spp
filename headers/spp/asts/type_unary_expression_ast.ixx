@@ -9,20 +9,19 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionAst) {
   SPP_EXP_CLS struct ConventionAst;
   SPP_EXP_CLS struct GenericArgumentAst;
   SPP_EXP_CLS struct GenericArgumentGroupAst;
   SPP_EXP_CLS struct GenericParameterAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeUnaryExpressionAst;
   SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionAst);
 
   /**
@@ -57,16 +56,29 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     ExpressionAst const &other) const
     -> Ordering override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto AnyPart(
-    std::function<bool(TypeIdentifierAst const&)> const &pred) const -> bool override;
+    std::function<bool(TypeIdentifierAst const &)> const &pred) const -> bool override;
 
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept
     -> bool override;

@@ -12,16 +12,14 @@ import llvm;
 import std;
 
 namespace spp::analyse::scopes {
-  SPP_EXP_CLS class ScopeManager;
   SPP_EXP_CLS class Scope;
   SPP_EXP_CLS struct TypeSymbol;
 }
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(SupPrototypeExtensionAst) {
   SPP_EXP_CLS struct FunctionPrototypeAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
   SPP_EXP_CLS struct SupImplementationAst;
-  SPP_EXP_CLS struct SupPrototypeExtensionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
@@ -36,7 +34,6 @@ namespace spp::asts {
  * @endcode
  */
 SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMemberAst, SupMemberAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(SupPrototypeExtensionAst);
 
   /**
@@ -99,27 +96,61 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
 
   ~SupPrototypeExtensionAst() override;
 
-  auto Stage1_PreProcess(Ast *ctx) -> void override;
+  auto Stage1_PreProcess(
+    Ast *ctx)
+    -> void override;
 
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> void override;
 
-  auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage3_GenTopLvlAliases(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage5_LoadSupScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage6_PreAnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   auto CheckCyclicExtension(
     analyse::scopes::TypeSymbol const &sup_sym,
@@ -135,5 +166,3 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
     analyse::scopes::Scope &check_scope) const
     -> void;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::SupPrototypeExtensionAst)

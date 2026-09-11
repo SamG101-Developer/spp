@@ -71,8 +71,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::BindsByMove() const
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Get the value and its type from the "meta" information.
   const auto val = meta->LetStatementFromUninitialized
@@ -119,8 +119,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // No value => nothing to check.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -164,8 +164,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Assign the generated value into the variable symbol.
   const auto _meta_guard = meta::MetaGuard(meta);
@@ -187,8 +187,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Create the alloca for the variable.

@@ -106,8 +106,8 @@ auto spp::asts::ClosureExpressionAst::HasBorrowedCaptures() const
 }
 
 auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
@@ -210,8 +210,8 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
@@ -251,8 +251,8 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Strategy: build an "environment" struct for the closure,
@@ -419,8 +419,8 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ClosureExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // A closure is its own special type, which superimposes the
   // functional one. Before stage 7 has minted it there is nothing
@@ -430,8 +430,8 @@ auto spp::asts::ClosureExpressionAst::InferType(
 }
 
 auto spp::asts::ClosureExpressionAst::_FunctionalType(
-  ScopeManager *sm,
-  CompilerMetaData *meta) const
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta) const
   -> Shared<TypeAst> {
   // Create the type as a nullptr, so it can be analysed
   // later.
@@ -486,8 +486,8 @@ auto spp::asts::ClosureExpressionAst::_FunctionalType(
 }
 
 auto spp::asts::ClosureExpressionAst::_MakeMockType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   using analyse::scopes::BumpTypeStructureGeneration;
   using analyse::scopes::Scope;

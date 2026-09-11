@@ -55,8 +55,8 @@ auto spp::asts::ParenthesisedExpressionAst::ToString() const
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -70,8 +70,8 @@ auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -82,16 +82,16 @@ auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward comptime resolution into the expression.
   Expr->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the inner expression.
@@ -99,8 +99,8 @@ auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ParenthesisedExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Get the inner expression's type.
   return Expr->InferType(sm, meta);

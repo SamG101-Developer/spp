@@ -66,8 +66,8 @@ auto spp::asts::LetStatementUninitializedAst::ToString() const
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
 
@@ -89,8 +89,8 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the variable for memory issues.
   const auto _meta_guard = meta::MetaGuard(meta);
@@ -104,8 +104,8 @@ auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Setup a lot of meta information for the local variable to

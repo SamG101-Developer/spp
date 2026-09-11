@@ -42,8 +42,8 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
 spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;
 
 auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the type.
   Type->Stage7_AnalyseSemantics(sm, meta);
@@ -64,8 +64,8 @@ auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Check the memory of each name.
   for (auto const &name : ExtractNames()) {
@@ -75,8 +75,8 @@ auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::FunctionParameterAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the local variable so that the symbol table receives the alloca.

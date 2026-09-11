@@ -9,14 +9,12 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-    SPP_EXP_CLS struct ExpressionAst;
-    SPP_EXP_CLS struct PatternGuardAst;
-    SPP_EXP_CLS struct TokenAst;
+SPP_AST_COMMON_FWD_DECL(PatternGuardAst) {
+  SPP_EXP_CLS struct ExpressionAst;
+  SPP_EXP_CLS struct TokenAst;
 }
 
 SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PatternGuardAst);
 
   /**
@@ -42,13 +40,24 @@ SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
 
   ~PatternGuardAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PatternGuardAst)

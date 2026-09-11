@@ -201,7 +201,7 @@ auto spp::asts::meta::CompilerMetaData::Depth() const
 }
 
 spp::asts::meta::MetaGuard::MetaGuard(
-  CompilerMetaData *const meta,
+  meta::CompilerMetaData *const meta,
   const bool heavy) :
   _Meta(meta),
   _Heavy(heavy) {

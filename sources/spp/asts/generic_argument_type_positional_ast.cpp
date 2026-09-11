@@ -64,8 +64,8 @@ auto spp::asts::GenericArgumentTypePositionalAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Handle the "Self" type.
   if (Val->IsSelfType() and

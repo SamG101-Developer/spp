@@ -74,8 +74,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppAwaitTargetNotFutureError;
@@ -121,8 +121,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantic
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Release what the future was keeping pinned, freeing up
   // any escaping borrows. Todo: Maybe move into mem_utils?
@@ -151,8 +151,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Nothing of its own to emit: the wait is whatever "await_"
@@ -161,8 +161,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // The type wrapped inside the "Fut[T]" object being awaited
   // on: "T".

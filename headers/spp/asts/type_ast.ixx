@@ -12,32 +12,39 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS struct TypeSymbol;
 }
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ConventionAst;
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct GenericArgumentGroupAst;
-  SPP_EXP_CLS struct GenericParameterAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-  SPP_EXP_CLS struct TypePostfixExpressionAst;
-  SPP_EXP_CLS struct TypeUnaryExpressionAst;
+SPP_AST_COMMON_FWD_DECL(TypeAst) {
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct ConventionAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct GenericArgumentAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct GenericArgumentGroupAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct GenericParameterAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct IdentifierAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypeIdentifierAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypePostfixExpressionAst;
+  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypeUnaryExpressionAst;
 }
 
 /**
  * The TypeAst is a base class for all type-related AST nodes in the SPP language.
  */
 SPP_EXP_CLS struct spp::asts::TypeAst :
-  PrimaryExpressionAst, mixins::AbstractTypeAst, EnableLocalSharedFromThis<TypeAst> {
-  SPP_GCC_VTABLE_FIX
+  PrimaryExpressionAst,
+  mixins::AbstractTypeAst,
+  EnableLocalSharedFromThis<TypeAst> {
+  SPP_GCC_VTABLE_FIX;
 
   TypeAst();
 
   ~TypeAst() override;
 
-  SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept -> bool { return false; }
+  SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept
+    -> bool {
+    return false;
+  }
 
-  SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept -> bool { return false; }
+  SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept
+    -> bool {
+    return false;
+  }
 
   /**
    * A type sitting in expression position - the @c A of @c {A::new()} , or a comp argument naming one - is substituted

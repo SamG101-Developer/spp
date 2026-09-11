@@ -59,7 +59,7 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::BindsByMove() 
 }
 
 auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ConvToVar(
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Unique<LocalVariableAst> {
   // Create the local variable destructure attribute binding
   // AST.

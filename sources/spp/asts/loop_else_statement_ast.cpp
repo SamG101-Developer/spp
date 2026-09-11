@@ -51,8 +51,8 @@ auto spp::asts::LoopElseStatementAst::ToString() const
 }
 
 auto spp::asts::LoopElseStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Create a scope and analyse the body.
   auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
@@ -63,8 +63,8 @@ auto spp::asts::LoopElseStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LoopElseStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the body for memory issues.
   sm->MoveToNextScope();
@@ -73,8 +73,8 @@ auto spp::asts::LoopElseStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopElseStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for the body.
@@ -85,8 +85,8 @@ auto spp::asts::LoopElseStatementAst::Stage11_CodeGen(
 }
 
 auto spp::asts::LoopElseStatementAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // The type of an else statement is the type of its body.
   return Body->InferType(sm, meta);

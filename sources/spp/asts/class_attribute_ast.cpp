@@ -87,8 +87,8 @@ auto spp::asts::ClassAttributeAst::Stage1_PreProcess(
 }
 
 auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Run the generation steps for the annotations.
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
@@ -100,8 +100,8 @@ auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::ClassAttributeAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
@@ -111,8 +111,8 @@ auto spp::asts::ClassAttributeAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -152,8 +152,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // This can be reached via stage 4 generic substitution, so prevent that.
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -190,8 +190,8 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // If there is a default value, check it for memory errors.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -201,8 +201,8 @@ auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClassAttributeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }

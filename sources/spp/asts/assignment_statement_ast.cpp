@@ -76,8 +76,8 @@ auto spp::asts::AssignmentStatementAst::ToString() const
 }
 
 auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::errors::SppInvalidMutationError;
@@ -168,8 +168,8 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::assignment_utils::IsAttr;
@@ -223,8 +223,8 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::assignment_utils::IsAttr;
@@ -257,8 +257,8 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Alias the common utils functions and types.

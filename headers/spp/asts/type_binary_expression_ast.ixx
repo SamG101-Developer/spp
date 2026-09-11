@@ -8,14 +8,12 @@ import spp.asts.mixins.temp_type_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct TypeBinaryExpressionAst;
+SPP_AST_COMMON_FWD_DECL(TypeBinaryExpressionAst) {
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : Ast, mixins::TempTypeAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeBinaryExpressionAst);
 
   /**
@@ -49,5 +47,3 @@ SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : Ast, mixins::TempT
 
   auto Convert() -> Unique<TypeAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeBinaryExpressionAst)

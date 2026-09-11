@@ -7,9 +7,8 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentGroupAst) {
   SPP_EXP_CLS struct FunctionCallArgumentAst;
-  SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
   SPP_EXP_CLS struct FunctionCallArgumentKeywordAst;
   SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
   SPP_EXP_CLS struct TokenAst;
@@ -20,7 +19,6 @@ namespace spp::asts {
  * positional or keyword arguments together in a function call.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentGroupAst);
 
   /**
@@ -62,9 +60,15 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetPositionalArgs() const -> Vec<FunctionCallArgumentPositionalAst*>;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   auto At(const char *key) const -> FunctionCallArgumentAst const*;
 
@@ -73,5 +77,3 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
     -> bool override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentGroupAst)

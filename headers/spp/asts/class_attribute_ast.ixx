@@ -9,8 +9,8 @@ import spp.asts.mixins.visibility_enabled_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ClassAttributeAst;
+SPP_AST_COMMON_FWD_DECL(ClassAttributeAst) {
+  SPP_EXP_CLS struct AnnotationAst;
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct TokenAst;
@@ -22,7 +22,6 @@ namespace spp::asts {
  * add "state" to a type.
  */
 SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mixins::VisibilityAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ClassAttributeAst);
 
   /**
@@ -74,19 +73,37 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
 
   ~ClassAttributeAst() override;
 
-  auto Stage1_PreProcess(Ast *ctx) -> void override;
+  auto Stage1_PreProcess(
+    Ast *ctx)
+    -> void override;
 
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage5_LoadSupScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassAttributeAst)

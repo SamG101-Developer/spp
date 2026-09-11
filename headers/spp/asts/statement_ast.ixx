@@ -7,8 +7,7 @@ import spp.asts.mixins.type_inferrable_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct StatementAst;
+SPP_AST_COMMON_FWD_DECL(StatementAst) {
   SPP_EXP_CLS struct TypeAst;
 }
 
@@ -17,8 +16,6 @@ namespace spp::asts {
  * statements that do not return a value, such as variable declarations and control flow statements.
  */
 SPP_EXP_CLS struct spp::asts::StatementAst : Ast, mixins::TypeInferrableAst {
-  SPP_GCC_VTABLE_FIX
-
   StatementAst();
 
   ~StatementAst() override;
@@ -30,7 +27,10 @@ SPP_EXP_CLS struct spp::asts::StatementAst : Ast, mixins::TypeInferrableAst {
    * @param meta Associated metadata.
    * @return The Void type, as all statements are void.
    */
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   /**
    * Test if the statement always terminates control flow with the "ret" instruction. For blocks, the final member is
@@ -39,5 +39,3 @@ SPP_EXP_CLS struct spp::asts::StatementAst : Ast, mixins::TypeInferrableAst {
    */
   SPP_ATTR_NODISCARD virtual auto Terminates() const -> bool;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::StatementAst)

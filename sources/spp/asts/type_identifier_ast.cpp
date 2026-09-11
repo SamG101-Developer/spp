@@ -134,8 +134,8 @@ auto spp::asts::TypeIdentifierAst::ToString() const
 }
 
 auto spp::asts::TypeIdentifierAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify the generic argument types.
   for (auto const &g : GnArgGroup->GetTypeArgs()) {
@@ -144,8 +144,8 @@ auto spp::asts::TypeIdentifierAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Todo: Add higher order generic checks into the unit tests (self and generic type).
   using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
@@ -333,8 +333,8 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypeIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // These are always "zero_type", so return init.
@@ -547,8 +547,8 @@ auto spp::asts::TypeIdentifierAst::IsTypeIdentifier() const noexcept
 }
 
 auto spp::asts::TypeIdentifierAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Fully qualify this type name from the scope.
   // Have to AstClone because PostfixExpressionAst lhs (will change with removal of all shared pointers)

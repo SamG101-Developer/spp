@@ -53,8 +53,8 @@ auto spp::asts::UnaryExpressionAst::ToString() const
 }
 
 auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -80,8 +80,8 @@ auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the memory of the right-hand-side, and update the
   // meta context to track the rhs part of this unary expression.
@@ -91,8 +91,8 @@ auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the right-hand-side expression.
@@ -103,8 +103,8 @@ auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::UnaryExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the type of the right-hand-side expression,
   // adjusted by the operator.

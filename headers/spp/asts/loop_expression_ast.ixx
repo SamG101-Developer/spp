@@ -10,9 +10,8 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS class Scope;
 }
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(LoopExpressionAst) {
   SPP_EXP_CLS struct LoopElseStatementAst;
-  SPP_EXP_CLS struct LoopExpressionAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
@@ -52,5 +51,8 @@ public:
 
   ~LoopExpressionAst() override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 };

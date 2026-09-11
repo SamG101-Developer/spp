@@ -9,18 +9,19 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
+SPP_AST_COMMON_FWD_DECL(ClosureExpressionParameterAndCaptureGroupAst) {
   SPP_EXP_CLS struct FunctionParameterAst;
   SPP_EXP_CLS struct FunctionParameterGroupAst;
-  SPP_EXP_CLS
-  using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst;
   SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
+namespace spp::asts {
+  SPP_EXP_CLS
+  using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst;
+}
+
 SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ClosureExpressionParameterAndCaptureGroupAst);
 
   /**
@@ -59,11 +60,19 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final
 
   ~ClosureExpressionParameterAndCaptureGroupAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClosureExpressionParameterAndCaptureGroupAst)

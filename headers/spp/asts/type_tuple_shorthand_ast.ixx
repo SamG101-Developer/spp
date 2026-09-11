@@ -8,14 +8,12 @@ import spp.asts.mixins.temp_type_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct TypeTupleShorthandAst;
+SPP_AST_COMMON_FWD_DECL(TypeTupleShorthandAst) {
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTypeAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeTupleShorthandAst);
 
   /**
@@ -49,5 +47,3 @@ SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTyp
   auto Convert()
     -> Unique<TypeAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeTupleShorthandAst)

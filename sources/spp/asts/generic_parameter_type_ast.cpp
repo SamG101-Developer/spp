@@ -35,8 +35,8 @@ spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
 spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
 
 auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   //
   using utils::Visibility;
@@ -61,20 +61,21 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
   dummy_scope->TySym = sym;
 
   _DummyScopes.EmplaceBack(dummy_scope.get());
-  ScopeManager::temp_scopes.EmplaceBack(std::move(dummy_scope));
+  analyse::scopes::ScopeManager::temp_scopes.EmplaceBack(
+    std::move(dummy_scope));
 }
 
 auto spp::asts::GenericParameterTypeAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify the name.
   Name->Stage4_QualifyTypes(sm, meta);
 }
 
 auto spp::asts::GenericParameterTypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the name.
   Name->Stage7_AnalyseSemantics(sm, meta);

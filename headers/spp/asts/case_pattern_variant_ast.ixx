@@ -6,8 +6,7 @@ import spp.asts.ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantAst;
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantAst) {
   SPP_EXP_CLS struct LetStatementInitializedAst;
   SPP_EXP_CLS struct LocalVariableAst;
 }
@@ -17,8 +16,6 @@ namespace spp::asts {
  * provide the conversion binding for creating variables defined in patterns.
  */
 SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
-  SPP_GCC_VTABLE_FIX
-
   CasePatternVariantAst();
 
   /**
@@ -27,7 +24,10 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
    * @param sm The scope manager to use for comptime generation.
    * @param meta Associated metadata.
    */
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
   /**
    * Case patterns can introduce variables via the bindings. To neatly introduce all required bindings into scope,
@@ -36,7 +36,9 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
    * @param meta Associated metadata.
    * @return The converted variable AST.
    */
-  virtual auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst>;
+  virtual auto ConvToVar(
+    meta::CompilerMetaData *meta)
+    -> Unique<LocalVariableAst>;
 
   /**
    * Whether this pattern takes a value out of what it is matched against, rather than only testing it. A name binds
@@ -45,7 +47,8 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
    * of skips is a shape test and takes nothing.
    * @return Whether it takes anything.
    */
-  SPP_ATTR_NODISCARD virtual auto BindsByMove() const -> bool;
+  SPP_ATTR_NODISCARD virtual auto BindsByMove() const
+    -> bool;
 
 protected:
   /**
@@ -53,5 +56,3 @@ protected:
    */
   Unique<LetStatementInitializedAst> _MappedLet;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantAst)

@@ -7,8 +7,7 @@ import spp.asts.function_call_argument_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
+SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentPositionalAst) {
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -17,7 +16,6 @@ namespace spp::asts {
  * to be matched by an index rather than a keyword. It also support for unpacking a tuple into arguments.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentPositionalAst);
 
   /**
@@ -39,5 +37,3 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallAr
 
   ~FunctionCallArgumentPositionalAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentPositionalAst)

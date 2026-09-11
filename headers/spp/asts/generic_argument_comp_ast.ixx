@@ -7,10 +7,9 @@ import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(GenericArgumentCompAst) {
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct GenericArgumentCompAst;
   SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
   SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
 }
@@ -20,8 +19,6 @@ namespace spp::asts {
  * allowed, as any type can be represented at compile time.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
-  SPP_GCC_VTABLE_FIX
-
   /**
    * The value of the generic comp argument. This is passed into the generic like @code func[123]()@endcode or
    * @code std::Arr[Str, 100_uz]@endcode.
@@ -39,5 +36,3 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
 
   ~GenericArgumentCompAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentCompAst)

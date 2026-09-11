@@ -98,8 +98,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::ToString() const
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -156,8 +156,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -170,8 +170,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
@@ -187,8 +187,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Alias the common utils functions and types.
@@ -295,8 +295,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Alias the common utils functions and types.
   using analyse::utils::type_predicates::IsTypeArr;

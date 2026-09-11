@@ -66,8 +66,8 @@ auto spp::asts::GenericParameterTypeOptionalAst::ToString() const
 }
 
 auto spp::asts::GenericParameterTypeOptionalAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Default behaviour (inline constraints).
   GenericParameterTypeAst::Stage4_QualifyTypes(sm, meta);
@@ -87,8 +87,8 @@ auto spp::asts::GenericParameterTypeOptionalAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::GenericParameterTypeOptionalAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the name and default value of the generic type parameter.
   GenericParameterTypeAst::Stage7_AnalyseSemantics(sm, meta);

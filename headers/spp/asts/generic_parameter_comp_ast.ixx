@@ -9,15 +9,25 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterCompAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterCompAst) {
+  SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
-SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
-  SPP_GCC_VTABLE_FIX
+namespace spp::asts::detail {
+  template <>
+  struct make_required_param<GenericParameterCompAst> {
+    using type = GenericParameterCompAst;
+  };
 
+  template <>
+  struct generic_param_value_type<GenericParameterCompAst> {
+    using type = ExpressionAst const*;
+  };
+}
+
+SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
   /**
    * The @c cmp token that represents the generic comp parameter. This is used to indicate that the parameter is a
    * comp generic and not a type generic.
@@ -57,15 +67,29 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
   ~GenericParameterCompAst() override;
 
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
+  auto Stage2_GenTopLvlScopes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *)
+    -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompAst)

@@ -16,8 +16,7 @@ import std;
 import sys;
 import numex.big_int;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct IntegerLiteralAst;
+SPP_AST_COMMON_FWD_DECL(IntegerLiteralAst) {
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
@@ -40,7 +39,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
     {Str("uz"), LIMIT_U(sizeof(std::size_t) * 8)},
   };
 
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(IntegerLiteralAst);
 
   /**
@@ -80,13 +79,26 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
     ExpressionAst const &other) const
     -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   template <typename T> requires spp::utils::traits::integral<T>
   auto CppVal() const -> T;
@@ -124,7 +136,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
    * @param owner The ast to report the error against.
    * @param sm The scope manager, for error reporting.
    */
-  auto ValidateBounds(Ast const &owner, ScopeManager const &sm) const -> void;
+  auto ValidateBounds(Ast const &owner, analyse::scopes::ScopeManager const &sm) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IntegerLiteralAst)

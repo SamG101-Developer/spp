@@ -108,8 +108,8 @@ auto spp::asts::TypeStatementAst::Stage1_PreProcess(
 }
 
 auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Run top level scope generation for the annotations.
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -149,8 +149,8 @@ auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
@@ -195,8 +195,8 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
 }
 
 auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
@@ -216,7 +216,8 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
   // Get the resolved type's symbol, without generics.
   const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(alias.Resolved->WithoutGenerics().get(), false);
   if (not stripped_old_sym->IsGeneric) {
-    auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, alias.TrackingScope);
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, alias.TrackingScope);
     GnParamGroup->Stage4_QualifyTypes(alias.ParamsFromTarget ? &tm : sm, meta);
     alias.Resolved->Stage4_QualifyTypes(&tm, meta); // Qualify from scope of lowest level alias
     alias.Resolved->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
@@ -232,8 +233,8 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -250,8 +251,8 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::TypeStatementAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -259,8 +260,8 @@ auto spp::asts::TypeStatementAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
@@ -316,8 +317,8 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypeStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -325,8 +326,8 @@ auto spp::asts::TypeStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::TypeStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -335,8 +336,8 @@ auto spp::asts::TypeStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *)
   -> llvm::Value* {
   sm->MoveToNextScope();
@@ -346,8 +347,8 @@ auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::TypeStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *)
   -> llvm::Value* {
   sm->MoveToNextScope();

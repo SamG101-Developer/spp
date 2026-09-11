@@ -2,20 +2,19 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
+import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantDestructureAttributeBindingAst;
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureAttributeBindingAst) {
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct LocalVariableAst;
   SPP_EXP_CLS struct TokenAst;
 }
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureAttributeBindingAst);
 
   /**
@@ -49,7 +48,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst f
 
   SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
-  auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+  auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureAttributeBindingAst)

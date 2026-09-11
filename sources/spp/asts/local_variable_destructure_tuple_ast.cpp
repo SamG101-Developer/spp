@@ -83,8 +83,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::BindsByMove() const
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppMultipleRestPatternsError;
@@ -204,8 +204,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // The hidden temporary holds the only analysis of the value,
   // so the value is checked (and its scopes walked) here.
@@ -234,8 +234,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Hand the already-resolved value to the hidden temporary, so
   // the elements can index it.
@@ -249,8 +249,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the value into the hidden temporary once, before

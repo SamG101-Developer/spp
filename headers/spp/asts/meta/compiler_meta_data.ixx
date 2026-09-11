@@ -252,6 +252,6 @@ SPP_EXP_CLS struct spp::asts::meta::MetaGuard {
   auto operator=(MetaGuard const &) -> MetaGuard& = delete;
 
 private:
-  CompilerMetaData *_Meta;
+  meta::CompilerMetaData *_Meta;
   bool _Heavy;
 };

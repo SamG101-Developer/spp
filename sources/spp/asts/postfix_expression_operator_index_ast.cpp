@@ -83,8 +83,8 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Already analysed => return early.
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -124,21 +124,21 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the mapped function.
   _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward to the mapped function.
@@ -147,7 +147,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::InferType(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
   return _MappedFunc->InferType(sm, meta);

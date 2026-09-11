@@ -10,16 +10,14 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
+SPP_AST_COMMON_FWD_DECL(ClosureExpressionAst) {
   SPP_EXP_CLS struct ClassPrototypeAst;
-  SPP_EXP_CLS struct ClosureExpressionAst;
   SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ClosureExpressionAst);
 
   /**
@@ -78,13 +76,26 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   SPP_ATTR_NODISCARD auto HasBorrowedCaptures() const -> bool;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
 
@@ -102,7 +113,7 @@ private:
    * The @c FunRef / @c FunMut / @c FunMov type the closure's parameters, return type and captures decide. This is what
    * the closure's own type superimposes, rather than what it is.
    */
-  SPP_ATTR_NODISCARD auto _FunctionalType(ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
+  SPP_ATTR_NODISCARD auto _FunctionalType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) const -> Shared<TypeAst>;
 
   /**
    * Mint the closure's own nominal type - a @c "$closure..." class superimposing @c _FunctionalType - and register it
@@ -110,7 +121,7 @@ private:
    * signature capture different things, so there is nowhere on the shared @c "FunMov[Args, Out]" instantiation to
    * record it; a plain function has had a @c "$" mock of its own since stage 1 for the same reason.
    */
-  auto _MakeMockType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
+  auto _MakeMockType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst>;
 
   /**
    * The class prototypes behind the minted closure types, owned for the length of the compile.
@@ -135,5 +146,3 @@ private:
    */
   Shared<codegen::LlvmFuncWrapper> _LlvmFunc;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClosureExpressionAst)

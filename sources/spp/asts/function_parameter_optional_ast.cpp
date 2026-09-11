@@ -69,8 +69,8 @@ auto spp::asts::FunctionParameterOptionalAst::ToString() const
 }
 
 auto spp::asts::FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Perform default analysis steps.
   using analyse::errors::SppTypeMismatchError;
@@ -110,8 +110,8 @@ auto spp::asts::FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::FunctionParameterOptionalAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Perform default memory checking steps.
   using analyse::utils::mem_utils::ValidateSymbolMemory;

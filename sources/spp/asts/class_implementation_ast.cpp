@@ -38,40 +38,40 @@ auto spp::asts::ClassImplementationAst::Stage1_PreProcess(
 }
 
 auto spp::asts::ClassImplementationAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Generate scopes for each member.
   for (auto const &m : Members) { m->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
 auto spp::asts::ClassImplementationAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Generate aliases for each member.
   for (auto const &m : Members) { m->Stage3_GenTopLvlAliases(sm, meta); }
 }
 
 auto spp::asts::ClassImplementationAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify types for each member.
   for (auto const &m : Members) { m->Stage4_QualifyTypes(sm, meta); }
 }
 
 auto spp::asts::ClassImplementationAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Load super scopes for each member.
   for (auto const &m : Members) { m->Stage5_LoadSupScopes(sm, meta); }
 }
 
 auto spp::asts::ClassImplementationAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Pre-analyse semantics for each member.
   using analyse::errors::SppIdentifierDuplicateError;
@@ -91,32 +91,32 @@ auto spp::asts::ClassImplementationAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::ClassImplementationAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse semantics for each member.
   for (auto const &m : Members) { m->Stage7_AnalyseSemantics(sm, meta); }
 }
 
 auto spp::asts::ClassImplementationAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check memory for each member.
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
 }
 
 auto spp::asts::ClassImplementationAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Compile-time resolution for each member.
   for (auto const &m : Members) { m->Stage9_CompTimeResolve(sm, meta); }
 }
 
 auto spp::asts::ClassImplementationAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate code for each member.

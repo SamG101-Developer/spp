@@ -83,8 +83,8 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
 }
 
 auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_compare::TypeEq;
@@ -105,7 +105,8 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   Impl->Stage7_AnalyseSemantics(sm, meta);
 
   // Handle the "!" never type.
-  auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope->Children[0].get());
+  auto tm = analyse::scopes::ScopeManager(
+    sm->GlobalScope, sm->CurrentScope->Children[0].get());
   const auto is_never = [&] {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
@@ -144,7 +145,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 
 auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Build the function body.

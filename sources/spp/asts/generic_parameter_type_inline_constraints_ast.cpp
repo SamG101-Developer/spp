@@ -66,8 +66,8 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::ToString() const
 }
 
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Prepare the fully qualified constraints vector.
   using analyse::errors::SppSecondClassBorrowViolationError;

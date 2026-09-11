@@ -7,14 +7,12 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterTypeInlineConstraintsAst) {
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericParameterTypeInlineConstraintsAst);
 
   /**
@@ -41,7 +39,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : A
 
   ~GenericParameterTypeInlineConstraintsAst() override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_QualifyTypes(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeInlineConstraintsAst)

@@ -37,7 +37,7 @@ namespace spp::analyse::scopes {
  * need for a base class.
  */
 SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
-  SPP_GCC_VTABLE_FIX_BASE
+  SPP_GCC_VTABLE_FIX_BASE;
 
   /**
    * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
@@ -74,7 +74,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symb
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
   Shared<asts::IdentifierAst> Name;
 
@@ -102,7 +102,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
   Shared<asts::IdentifierAst> Name;
 
@@ -247,7 +247,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::AliasInfo {
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
   Shared<asts::TypeIdentifierAst> Name;
 

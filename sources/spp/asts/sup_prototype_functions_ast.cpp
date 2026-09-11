@@ -97,8 +97,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage1_PreProcess(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSuperimpositionOptionalGenericParameterError;
@@ -131,8 +131,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Register "Self" before any alias in the block is resolved,
   // so that one naming it has something to resolve to. The name
@@ -152,8 +152,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the implementation.
   sm->MoveToNextScope();
@@ -164,8 +164,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -196,10 +196,10 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
   if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
     if (not base_cls_sym->IsGeneric) {
-      ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
+      analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
     }
     else {
-      ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
+      analyse::scopes::ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
     }
   }
 
@@ -216,8 +216,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_members::CheckShadowedCmpAgreesInType;
@@ -241,8 +241,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
@@ -278,8 +278,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -289,8 +289,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -300,8 +300,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.
@@ -313,8 +313,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.

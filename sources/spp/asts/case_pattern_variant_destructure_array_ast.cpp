@@ -84,8 +84,8 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::BindsByMove() const
 }
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
@@ -105,16 +105,16 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward memory checking to the mapped let statement.
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Transform the pattern into comptime values; all need
   // to be true.
@@ -140,8 +140,8 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -171,7 +171,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::ConvToVar(
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Unique<LocalVariableAst> {
   // Recursively map the elements to their local variable
   // counterparts.

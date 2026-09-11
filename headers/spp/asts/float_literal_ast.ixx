@@ -13,8 +13,7 @@ import std;
 import numex.big_dec;
 import numex.big_int;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FloatLiteralAst;
+SPP_AST_COMMON_FWD_DECL(FloatLiteralAst) {
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TypeAst;
 }
@@ -33,11 +32,11 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
     {Str("f128"), LIMIT_F(113, 16384)}
   };
 
-   /**
-   * How many fractional digits it takes to write any value of each type exactly, which is the exponent of its
-   * smallest subnormal: every representable value is a multiple of that, so its decimal expansion terminates by
-   * then. A comp-time division can still produce a recurring value, and this is where that one gets cut short.
-   */
+  /**
+  * How many fractional digits it takes to write any value of each type exactly, which is the exponent of its
+  * smallest subnormal: every representable value is a multiple of that, so its decimal expansion terminates by
+  * then. A comp-time division can still produce a recurring value, and this is where that one gets cut short.
+  */
   inline static const auto kDecimalPlaces = Map<Str, std::uint64_t>{
     {Str("f8"), 16},
     {Str("f16"), 32},
@@ -46,7 +45,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
     {Str("f128"), 16500}
   };
 
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 
   /**
@@ -99,13 +98,26 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   /**
    * The exact value of this literal. Comp-time arithmetic works in this rather than in a fixed-width C++ float, so
@@ -130,7 +142,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
    * @param owner The ast to report the error against.
    * @param sm The scope manager, for error reporting.
    */
-  auto ValidateBounds(Ast const &owner, ScopeManager const &sm) const -> void;
+  auto ValidateBounds(Ast const &owner, analyse::scopes::ScopeManager const &sm) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

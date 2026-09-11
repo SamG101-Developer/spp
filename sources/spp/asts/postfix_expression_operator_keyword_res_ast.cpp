@@ -81,8 +81,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Already analysed => return early.
   using analyse::utils::type_utils::GetGenAndYieldTypes;
@@ -107,16 +107,16 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward the memory check to the mapped function, which will check the arguments, and the function call.
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The three-step operation for the "res" operation is to
@@ -256,8 +256,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // The mapped ".send()" call is what says how much a resumption tells the caller: "Gen" declares it as
   // "Generated[Yield or None]", because a "Gen" may be exhausted, and "GenOnce" as "Generated[Yield]", because it

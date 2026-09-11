@@ -2,13 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.convention_mut_ast;
+import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.convention_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ConventionMutAst;
+SPP_AST_COMMON_FWD_DECL(ConventionMutAst) {
   SPP_EXP_CLS struct TokenAst;
 }
 
@@ -17,7 +17,6 @@ namespace spp::asts {
  * be mutably defined.
  */
 SPP_EXP_CLS struct spp::asts::ConventionMutAst final : ConventionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ConventionMutAst);
 
   /**
@@ -43,5 +42,3 @@ SPP_EXP_CLS struct spp::asts::ConventionMutAst final : ConventionAst {
 
   ~ConventionMutAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ConventionMutAst)

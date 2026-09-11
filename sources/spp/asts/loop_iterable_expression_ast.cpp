@@ -103,8 +103,8 @@ auto spp::asts::LoopIterableExpressionAst::ToString() const
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // TODO: Move the translation into "Stage1_PreProcess()" and just call that from here.
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -120,11 +120,12 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
 
   // Grab the generator's inner type.
   auto [_, yield_type, _] = [&] {
-    auto clone_expr = AstClone(Iterable);
-    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+    const auto clone_expr = AstClone(Iterable);
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope, sm->CurrentIterator());
     clone_expr->Stage7_AnalyseSemantics(&tm, meta);
-    auto iterable_type = clone_expr->InferType(&tm, meta);
+    const auto iterable_type = clone_expr->InferType(&tm, meta);
     return GetGenAndYieldTypes(
       *iterable_type, *tm.CurrentScope, *Iterable, "loop iterable");
   }();
@@ -233,8 +234,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Call the memory check on the transformed loop.
   _TransformedLet->Stage8_CheckMemory(sm, meta);
@@ -256,8 +257,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the code for the transformed loop.
@@ -267,8 +268,8 @@ auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::LoopIterableExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Before the desugaring in stage 7 there is no transformed loop to ask, so fall back to the base implementation.
   return _TransformedLoop == nullptr

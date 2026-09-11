@@ -12,12 +12,15 @@ import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
 import spp.asts.closure_expression_parameter_and_capture_group_ast;
+import spp.asts.convention_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
@@ -89,8 +92,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::ToString() const
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppAsyncTargetNotFunctionCallError;
@@ -275,8 +278,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Failsafe - Todo: is this ever hittable? Not sure if it is
   // needed
@@ -291,8 +294,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the mapped object initialization, which handles the
@@ -302,8 +305,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using generate::common_types::FutureType;

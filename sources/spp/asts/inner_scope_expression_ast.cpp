@@ -87,8 +87,8 @@ auto spp::asts::InnerScopeExpressionAst::DiscardsFinalMember() const
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::ValidateNoUnreachableCode;
@@ -122,8 +122,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -184,8 +184,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Comptime resolve each member of the inner scope.
   sm->MoveToNextScope();
@@ -199,8 +199,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Add all the expressions/statements into the current scope.
@@ -237,13 +237,14 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::InnerScopeExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // If there are any members, return the last member's
   // inferred type.
   if (not this->Members.IsEmpty()) {
-    auto tm = ScopeManager(sm->GlobalScope, GetAstScope());
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, GetAstScope());
     return this->Members.Back()->InferType(&tm, meta);
   }
 

@@ -61,8 +61,8 @@ auto spp::asts::FunctionParameterSelfAst::ToString() const
 }
 
 auto spp::asts::FunctionParameterSelfAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Perform default analysis steps.
   FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);

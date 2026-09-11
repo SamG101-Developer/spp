@@ -74,8 +74,8 @@ auto spp::asts::ObjectInitializerAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -158,16 +158,16 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the memory of the object argument group.
   ArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::ObjectInitializerAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
@@ -183,8 +183,8 @@ auto spp::asts::ObjectInitializerAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -336,8 +336,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ObjectInitializerAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // The type of the object initializer is the type being
   // initialized. The conventions are added for dummy types
@@ -348,8 +348,8 @@ auto spp::asts::ObjectInitializerAst::InferType(
 }
 
 auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // Use the source original type.
   return Source.OriginalType;

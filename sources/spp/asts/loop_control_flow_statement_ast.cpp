@@ -67,8 +67,8 @@ auto spp::asts::LoopControlFlowStatementAst::ToString() const
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -123,8 +123,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -150,8 +150,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -214,8 +214,8 @@ auto spp::asts::LoopControlFlowStatementAst::Terminates() const
 }
 
 auto spp::asts::LoopControlFlowStatementAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // If there is an attached expression, return its type, otherwise Void.
   using generate::common_types::VoidType;

@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CaseExpressionAst;
+SPP_AST_COMMON_FWD_DECL(CaseExpressionAst) {
   SPP_EXP_CLS struct CaseExpressionBranchAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
   SPP_EXP_CLS struct TokenAst;
@@ -23,7 +22,6 @@ namespace spp::asts {
  * fragments that are the branches.
  */
 SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CaseExpressionAst);
 
   /**
@@ -66,13 +64,6 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
    */
   bool LoweredFromTryOperator = false;
 
-  /**
-   * Construct the CaseExpressionAst with the arguments matching the members.
-   * @param[in] tok_case The token that represents the @c case keyword in the case expression.
-   * @param[in] cond The condition of the case expression.
-   * @param[in] tok_of The optional @c of keyword.
-   * @param[in] branches The inner scope of the case branches.
-   */
   CaseExpressionAst(
     decltype(TokCase) &&tok_case,
     decltype(Cond) &&cond,
@@ -87,40 +78,37 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
     Unique<InnerScopeExpressionAst> &&first,
     decltype(Branches) &&branches) -> Unique<CaseExpressionAst>;
 
-  /**
-   * Analyse the components of the "case" block, including the branches (nested analysis). Also checks that the "else"
-   * is the final branch, and that "is" destructures only match 1 pattern.
-   * @param sm The scope manager to use for analysis.
-   * @param meta Associated metadata.
-   */
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  /**
-   * Validate the condition's memory status, and then validate the consistency of the memory state within the
-   * branches. This only triggers if an inconsistently initialized/pinned symbol is used later in the function.
-   * @param sm The scope manager to use for memory checking.
-   * @param meta Associated metadata.
-   */
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  /**
-   * Compute the branches at compile-time, by evaluating the condition and then evaluating the branches in order until
-   * a match is found. Will inspect the matched branch for the final comptime value.
-   * @param sm
-   * @param meta
-   */
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage9_CompTimeResolve(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    analyse::scopes::ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<TypeAst> override;
 
   /**
    * A @c case block only terminates (is terminatable) if one or more of its branches can terminate. This is because
    * it has to be assumed that the terminating branch will execute, in order to cover all bases.
    * @return If one of the branches can terminate.
    */
-  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+  SPP_ATTR_NODISCARD auto Terminates() const
+    -> bool override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CaseExpressionAst)

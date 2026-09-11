@@ -70,8 +70,8 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ToString() const
 }
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the arguments against the outer scope's symbols (temp move asts).
   auto caps = CaptureGroup->Captures
@@ -98,8 +98,8 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
 }
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the arguments against the outer scope's symbols (temp move asts).
   meta->CurrentLambdaOuterScope = sm->CurrentScope;
@@ -121,8 +121,8 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory
 }
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the parameters into the current scope.
