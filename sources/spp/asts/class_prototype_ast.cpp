@@ -518,7 +518,9 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
 
   // Pass this layout to aliases too (the field re-ordering as well as
   // the type itself).
-  for (auto const &alias : type_sym->AliasedBySyms) {
+  for (auto const &weak_alias : type_sym->AliasedBySyms) {
+    const auto alias = weak_alias.lock();
+    if (alias == nullptr) { continue; }
     alias->LlvmInfo->LlvmType = lt;
     alias->LlvmInfo->FieldIndexMap = type_sym->LlvmInfo->FieldIndexMap;
   }

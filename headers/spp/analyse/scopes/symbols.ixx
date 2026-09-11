@@ -311,14 +311,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /** Set when this symbol names an alias rather than a class; see @c AliasInfo . */
   Shared<AliasInfo> Alias;
 
-  Vec<Shared<TypeSymbol>> AliasedBySyms;
+  Vec<Weak<TypeSymbol>> AliasedBySyms;
 
   bool IsDirectlyCopyable = false;
 
   bool IsDirectlyZeroType;
 
   bool IsDirectlyThreadHazard = false;
-
 
   /**
    * The result of the qualifying walk in @c FqName , and the scope-linkage generation it was computed under. The walk
