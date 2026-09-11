@@ -22,8 +22,10 @@ set(
   CMAKE_MSVC_RUNTIME_LIBRARY
   "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
+# /EHsc is explicit because CI's -DCMAKE_CXX_FLAGS replaces
+# CMake's MSVC default flags, which is where it came from.
 if (MSVC)
-  add_compile_options($<IF:$<CONFIG:Debug>,/MDd,/MD> /Zc:preprocessor)
+  add_compile_options($<IF:$<CONFIG:Debug>,/MDd,/MD> /Zc:preprocessor /EHsc)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 endif ()
 
@@ -213,6 +215,7 @@ target_compile_definitions(
   PRIVATE
   # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127193
   ANKERL_UNORDERED_DENSE_HAS_SSE2=0
+  TOML_EXCEPTIONS=1
   $<$<BOOL:${SPP_ALL_TARGETS}>:SPP_ALL_TARGETS>
   SPP_HOST_TRIPLE="${LLVM_HOST_TRIPLE}")
 
