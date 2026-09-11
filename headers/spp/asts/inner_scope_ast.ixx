@@ -10,7 +10,6 @@ import llvm;
 import std;
 
 namespace spp::asts {
-  SPP_EXP_CLS struct Ast; // TODO: GCC BUG REQUIRES THIS
   SPP_EXP_CLS template <typename T> struct InnerScopeAst;
   SPP_EXP_CLS struct TokenAst;
 }
