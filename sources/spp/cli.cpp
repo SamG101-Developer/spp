@@ -325,7 +325,7 @@ auto spp::cli::handle_vcs()
   // section. A project with no dependencies has nothing to
   // fetch, which is a successful outcome rather than a failure.
   const auto toml = toml::parse_file(CONFIG_FILE);
-  if (not toml.contains("vcs")) { return true; }
+  if (not toml["vcs"]) { return true; }
 
   // Move into the VCS folder.
   const auto cwd = std::filesystem::current_path();
