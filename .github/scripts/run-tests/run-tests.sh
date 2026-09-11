@@ -71,6 +71,14 @@ if [ "$shard_count" -gt 1 ]; then
   echo "shard: ${shard_index} of ${shard_count}"
 fi
 
+# A binary that dies before main fails every test identically
+# and says nothing; on macOS, have lldb print where.
+if [ "$RUNNER_OS" = "macOS" ] && ! "$binary" --gtest_list_tests > /dev/null; then
+  echo "::error::$binary crashed while listing its tests"
+  xcrun lldb --batch -o run -k bt -k quit -- "$binary" --gtest_list_tests || true
+  exit 1
+fi
+
 # Seed the fixture serially before the parallel sweep, so the
 # [vcs] clone happens once in a phase where git is the only
 # thing that can fail, rather than inside whichever worker

@@ -16,4 +16,6 @@ target_link_libraries(
 # Include test frameworks for discovering tests.
 include(CTest)
 include(GoogleTest)
-gtest_discover_tests(${PROJECT_NAME}_tests)
+
+# DEBUG APPLE FAILURE
+gtest_discover_tests(${PROJECT_NAME}_tests DISCOVERY_MODE PRE_TEST)
