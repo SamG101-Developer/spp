@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.async_utils;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -19,23 +20,19 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
-import spp.asts.function_parameter_self_ast;
-import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
-import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -48,7 +45,6 @@ import spp.codegen.llvm_type;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
-import spp.utils.uid;
 
 SPP_MOD_BEGIN
 spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
@@ -97,6 +93,9 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::errors::SppAsyncTargetNotFunctionCallError;
+  using analyse::utils::async_utils::CaptureBorrow;
+  using analyse::utils::async_utils::CaptureOnce;
+  using analyse::utils::async_utils::CaptureReceiver;
 
   // Check that the right-hand-side to the "async" keyword is
   // a function call ast. This blocks things like "async 123"
@@ -131,30 +130,13 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
     return TokenAst::NewEmpty(type, lex::tok_to_string(type), pos);
   };
 
-  // The prelude and captures are an equal length pair of lists,
-  // containing the inner "let" bindings, and values being bound.
+  // The prelude holds the "let" bindings made before the closure,
+  // and the captures are what the closure takes from this frame.
+  // A variable is captured once however many parts of the call
+  // use it.
   auto prelude = Vec<Unique<StatementAst>>();
   auto captures = Vec<Unique<ClosureExpressionCaptureAst>>();
-
-  // Convert the func call's args into into bindings for the
-  // closure's capture list.
-  const auto bind_local = [&](Unique<ExpressionAst> &slot) {
-    if (slot == nullptr) { return; }
-    const auto uid = spp::utils::Uid();
-
-    // Build the prelude-level binding, with something that looks
-    // like "let $temp_name = arg_name" + store.
-    auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
-      nullptr, MakeShared<IdentifierAst>(pos, Str(uid)), nullptr);
-    prelude.EmplaceBack(MakeUnique<LetStatementInitializedAst>(
-      nullptr, std::move(var), nullptr, nullptr, std::move(slot)));
-
-    // Also store the actual slot of the capture, so we can do
-    // "caps arg_name", which then allows the binding to use it.
-    slot = MakeUnique<IdentifierAst>(pos, Str(uid));
-    captures.EmplaceBack(MakeUnique<ClosureExpressionCaptureAst>(
-      nullptr, MakeUnique<IdentifierAst>(pos, Str(uid))));
-  };
+  auto const &scope = *sm->CurrentScope;
 
   // If the call target is an identifier, ie "async hello()",
   // then add the "hello" symbol into the captures, by move -
@@ -164,58 +146,52 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // would consume a global.
   // Todo: Can we borrow here so no extra check needed? Simpler.
   if (const auto target = pristine->Lhs->To<IdentifierAst>(); target != nullptr) {
-    const auto sym = sm->CurrentScope->GetVarSymbol(target);
-    if (sym != nullptr and sym->ScopeDefinedIn != sm->CurrentScope->ParentModule()) {
-      captures.EmplaceBack(MakeUnique<ClosureExpressionCaptureAst>(
-        nullptr, AstClone(target)));
+    const auto sym = scope.GetVarSymbol(target);
+    if (sym != nullptr and sym->ScopeDefinedIn != scope.ParentModule()) {
+      CaptureOnce(captures, AstClone(target), nullptr);
     }
   }
 
-  // Otherwise the target is a path. A runtime member access -
-  // "async a.b.c()", a method on an object - has a receiver
-  // that is a value in this frame, and that receiver is bound
-  // like an argument.
-  else if (const auto path = pristine->Lhs->To<PostfixExpressionAst>(); path != nullptr) {
-    if (path->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr) {
-      bind_local(path->Lhs);
-    }
+  // A runtime member access, "async a.b.c()" - a method on an
+  // object - has a receiver, used the way the method's "self"
+  // says - see "CaptureReceiver".
+  else if (IsRuntimeMemberAccess(pristine->Lhs.get())) {
+    CaptureReceiver(
+      *pristine->Lhs->ToUnchecked<PostfixExpressionAst>(),
+      rhs_fn_call->Target(), scope, prelude, captures, pos);
   }
 
-  // Anything else is an expression that produces the callable -
-  // "async (chooser())()" - so it is evaluated here into a
-  // local of its own and that local is captured, exactly as a
-  // compound argument is.
-  else {
-    bind_local(pristine->Lhs);
+  // Any other postfix target - a static path, "Type::f" - is left
+  // for the body. Anything else is an expression that produces the
+  // callable - "async (chooser())()" - so it is evaluated here into
+  // a local of its own, and that local is captured.
+  else if (pristine->Lhs->To<PostfixExpressionAst>() == nullptr) {
+    CaptureOnce(
+      captures,
+      BindLocal(pristine->Lhs, prelude, pos), nullptr);
   }
 
   for (auto const &arg : pristine_call->FnArgGroup->Args) {
-    if (arg->Conv == nullptr) {
-      // Pass literals in directly, no extra mapping needed
-      // for these - they are temporary.
-      if (arg->Val->To<LiteralAst>() != nullptr) { continue; }
-
-      // A bare name is captured rather than bound, so that the
-      // body reads the caller's own symbol - which is what makes
-      // a moved argument report against the right variable.
-      if (const auto ident = arg->Val->To<IdentifierAst>(); ident != nullptr) {
-        captures.EmplaceBack(MakeUnique<ClosureExpressionCaptureAst>(
-          nullptr, AstClone(ident)));
-        continue;
-      }
-
-      bind_local(arg->Val);
+    // A borrow - see "CaptureBorrow".
+    if (arg->Conv != nullptr) {
+      CaptureBorrow(arg->Val, *arg->Conv, scope, prelude, captures, pos);
       continue;
     }
 
-    // Todo: A borrow of anything but a plain name - "async f(&g(x))" - is
-    //  neither bound nor captured, so the body cannot resolve what it
-    //  names. It wants the borrowed value bound to a local and the borrow
-    //  taken of that local inside the body.
+    // Pass literals in directly, no extra mapping needed
+    // for these - they are temporary.
+    if (arg->Val->To<LiteralAst>() != nullptr) { continue; }
+
+    // A bare name is captured rather than bound, so that the
+    // body reads the caller's own symbol - which is what makes
+    // a moved argument report against the right variable.
     if (const auto ident = arg->Val->To<IdentifierAst>(); ident != nullptr) {
-      captures.EmplaceBack(MakeUnique<ClosureExpressionCaptureAst>(
-        AstClone(arg->Conv), AstClone(ident)));
+      CaptureOnce(captures, AstClone(ident), nullptr);
+      continue;
     }
+
+    // Anything else is bound to a local the closure owns.
+    CaptureOnce(captures, BindLocal(arg->Val, prelude, pos), nullptr);
   }
 
   // Copy the async flag into the original function for
