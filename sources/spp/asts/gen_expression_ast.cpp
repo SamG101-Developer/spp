@@ -242,11 +242,15 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   // store it in the generator state object. The slot layout is taken from the promise's own allocation rather than
   // rebuilt here, so the store cannot be wider than the storage the frame reserved for it.
   const auto llvm_gen_state_ty = meta->LlvmGeneratorState->getAllocatedType();
-  const auto llvm_yield_val = Expr->Stage11_CodeGen(sm, meta, ctx);
-  const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
-    meta->LlvmGeneratorState, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT,
-    "gen.yield.slot", ctx);
-  ctx->Builder.CreateStore(llvm_yield_val, llvm_yield_slot);
+  const auto llvm_yield_val = Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+
+  // A bare "gen" yields Void, so there is nothing to store.
+  if (llvm_yield_val != nullptr) {
+    const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
+      meta->LlvmGeneratorState, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT,
+      "gen.yield.slot", ctx);
+    ctx->Builder.CreateStore(llvm_yield_val, llvm_yield_slot);
+  }
 
   // Step 2: Invoke the coroutine suspension intrinsic, allowing
   // the caller to use the yielded value. Control comes back into the block this leaves the builder in.
