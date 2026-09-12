@@ -1,7 +1,6 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
-#include <utility>
 
 module spp.asts.sup_prototype_functions_ast;
 import spp.analyse.errors.semantic_error;
