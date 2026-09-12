@@ -38,6 +38,13 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
   /** The fully qualified name of each test the harness runs, in the order it runs them. */
   Vec<Str> TestNames;
 
+  /**
+   * For the c++ unit tests: code generation stops once every module has been verified and the modules link together
+   * into one. Nothing is optimised, written or linked, and an invalid module throws rather than aborting the process,
+   * so a "should pass" test fails on the code it generates as well as on its analysis.
+   */
+  bool VerifyOnly = false;
+
   auto Lex(
     utils::ProgressBar &bar,
     ModuleTree &tree)

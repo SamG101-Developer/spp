@@ -304,10 +304,14 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   }
   bar.Finish();
 
-  // Write the llvm modules to file.
+  // Write the llvm modules to file. The unit tests only verify:
+  // their parallel processes share one project directory, and
+  // nothing reads the files back.
   const auto &out = tree.Out();
-  std::filesystem::create_directories(out.LlvmRoot());
-  std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
+  if (not VerifyOnly) {
+    std::filesystem::create_directories(out.LlvmRoot());
+    std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
+  }
 
   // Paired with the modules, because the file each context belongs
   // to comes from the module's own path. Every module is verified
@@ -335,6 +339,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     // Written last, so the file on disk is the module as it will
     // actually be built.
+    if (VerifyOnly) { continue; }
     const auto file = tree.LlvmOutPathFor(mod->FilePath);
     std::filesystem::create_directories(file.parent_path());
 
@@ -351,6 +356,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   if (not invalid_modules.IsEmpty()) {
     llvm::errs() << invalid_modules.Len() << " invalid module(s):\n";
     for (auto const &name : invalid_modules) { llvm::errs() << "  " << name << "\n"; }
+    if (VerifyOnly) {
+      throw std::runtime_error(std::to_string(invalid_modules.Len()) + " invalid module(s), see the verifier above");
+    }
     std::abort();
   }
 
@@ -382,6 +390,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   for (auto const &ctx : _LlvmCtxs | genex::views::ptr) {
     if (codegen::LinkIntoLtoModule(lto_module.get(), ctx->Module.get())) { continue; }
     llvm::errs() << "Failed to link module into the lto module: " << ctx->Module->getName() << "\n";
+    if (VerifyOnly) { throw std::runtime_error("Failed to link module into the lto module"); }
     return;
   }
 
@@ -389,8 +398,13 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // checks for errors in the combined module.
   if (llvm::verifyModule(*lto_module, &llvm::errs())) {
     llvm::errs() << "Invalid lto module\n";
+    if (VerifyOnly) { throw std::runtime_error("Invalid lto module, see the verifier above"); }
     return;
   }
+
+  // The unit tests stop here: the combined module is valid, and
+  // optimising, emitting and linking it would add nothing more.
+  if (VerifyOnly) { return; }
 
   // Internalize all the definitions in the lto module before
   // optimizing. The C entry point is added before internalizing,
