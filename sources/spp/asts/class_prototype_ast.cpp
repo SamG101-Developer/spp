@@ -191,6 +191,14 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
     }
   }
 
+  // A named function's mock carries nothing at runtime - the
+  // type alone says which function it is - so it is free to
+  // copy, and a call through a value of it does not consume
+  // the value.
+  if (_ClsSym != nullptr and Name->IsCompilerGeneratedType()) {
+    _ClsSym->IsDirectlyCopyable = true;
+  }
+
   // Re-register "Self" now that the name resolves precisely.
   // Stage 3 registered a provisional one so that the body's
   // aliases could name it; this replaces it with the scope
