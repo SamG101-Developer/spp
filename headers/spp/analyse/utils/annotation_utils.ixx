@@ -13,6 +13,9 @@ namespace spp::analyse::utils::annotation_utils {
   SPP_EXP_CLS struct BuiltinAnnotations;
 }
 
+/// The AnnotationInfo holds a small set of metadata about an
+/// annotation, used to enforce the validity of an annotation
+/// application like !virtual_method
 SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
   constexpr static auto kFunctionCtx = 1;
   constexpr static auto kMethodCtx = 2;
@@ -21,7 +24,11 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
   constexpr static auto kTypeStmtCtx = 16;
   constexpr static auto kCmpStmtCtx = 32;
 
-  std::uint32_t Ctx = 0;
+  std::uint32_t Ctx = 0; // Dead code?
+
+  /// For functions that themselves are annotations, like "fun
+  /// public" is, bind the !annotation annotation onto it. This
+  /// is the function's annotation-info's "definition".
   asts::AnnotationAst *Definition = nullptr;
 
   AnnotationInfo() = default;
@@ -29,6 +36,9 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
   ~AnnotationInfo() = default;
 };
 
+/// A list of the fully qualified builtin annotation names,
+/// used for binding specific behaviour to functions or types
+/// etc. Checked against as a lexical comparison.
 SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::BuiltinAnnotations {
   constexpr static auto kIntrinsic = "std::annotations::intrinsic";
   constexpr static auto kPublic = "std::annotations::public";
