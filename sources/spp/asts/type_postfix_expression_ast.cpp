@@ -271,8 +271,9 @@ auto spp::asts::TypePostfixExpressionAst::WithGenerics(
 
 auto spp::asts::TypePostfixExpressionAst::IsCompilerGeneratedType() const
   -> bool {
-  // Won't ever be true.
-  return false;
+  // A method's "$" mock is named through its owner
+  // ("main::A::$Method"), so check the nested part.
+  return LastTypePart()->IsCompilerGeneratedType();
 }
 
 auto spp::asts::TypePostfixExpressionAst::ResetCache()
