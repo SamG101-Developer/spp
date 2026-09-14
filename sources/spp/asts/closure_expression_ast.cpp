@@ -113,6 +113,14 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::errors::SppSecondClassBorrowViolationError;
+  using analyse::errors::SppFeatureNotYetSupportedError;
+
+  // Todo: coroutine closures need the generator state that
+  //  "CoroutinePrototypeAst" sets up; until then they are refused.
+  RaiseIf<SppFeatureNotYetSupportedError>(
+    Tok != nullptr and Tok->TokenType == lex::SppTokenType::KW_COR,
+    {sm->CurrentScope},
+    ERR_ARGS(analyse::errors::NotYetSupportedFeature::CoroutineClosure, *this, *Tok));
 
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
