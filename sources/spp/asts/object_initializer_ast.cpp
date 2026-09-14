@@ -24,6 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
@@ -125,7 +126,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     })
     | genex::to<Vec>();
 
-  auto generic_infer_target = not base_cls_sym->IsGeneric
+  auto generic_infer_target = not base_cls_sym->IsTypeGeneric()
     ? base_cls_sym->Type->Impl->Members
     | genex::views::ptr
     | genex::views::cast_dynamic<ClassAttributeAst*>()
@@ -264,6 +265,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
       // argument gets at a function call.
       const auto attr_index = spp_attr_index_of(*arg->Name);
       if (const auto attr_type_sym = spp::get<1>(attrs[attr_index]); attr_type_sym != nullptr) {
+        val = codegen::CoerceToFunctionValue(
+          val, *attr_type_sym->FqName(), *arg->Val->InferType(sm, meta), *sm, ctx);
         val = codegen::CoerceToVariant(
           val, *attr_type_sym->FqName(), *arg->Val->InferType(sm, meta),
           *sm->CurrentScope, "obj_init.variant" + uid, ctx);

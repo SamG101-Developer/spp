@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
@@ -27,6 +28,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_defer;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
@@ -143,6 +145,12 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     RaiseIf<SppTypeMismatchError>(
       not direct_match, {meta->EnclosingFunctionScope, sm->CurrentScope},
       ERR_ARGS(*Source._OriginalRetType, *_RetType, *expr_for_err, *expr_type));
+
+    // A function named as the value stands for the overload the
+    // return type asks for.
+    if (Expr != nullptr) {
+      analyse::utils::func_utils::InstantiateFunctionValue(*expr_type, *_RetType, sm, meta);
+    }
   }
 }
 
@@ -238,8 +246,11 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
 
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
+    const auto expr_type = Expr->InferType(sm, meta);
+    llvm_ret_val = codegen::CoerceToFunctionValue(
+      llvm_ret_val, *ret_type, *expr_type, *sm, ctx);
     return codegen::CoerceToVariant(
-      llvm_ret_val, *ret_type, *Expr->InferType(sm, meta), *sm->CurrentScope, "ret.variant" + uid, ctx);
+      llvm_ret_val, *ret_type, *expr_type, *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
   const auto _meta_guard = meta::MetaGuard(meta);

@@ -209,6 +209,11 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*attr_type, *arg_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*attr, *attr_type, *arg, *arg_type));
+
+    // A function named as the value stands for the overload the
+    // attribute's type asks for.
+    analyse::utils::func_utils::InstantiateFunctionValue(
+      *arg_type, *attr_type, sm, meta);
   }
 
   // Type check the default argument (if it exists).
