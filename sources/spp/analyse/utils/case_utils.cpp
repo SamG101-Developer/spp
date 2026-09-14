@@ -408,7 +408,6 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   -> Tup<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>> {
   //
   using errors::SppTypeMismatchError;
-  using asts::generate::common_types_precompiled::NEVER;
 
   // Collect type information for each branch, pairing the
   // branch with its inferred type.
@@ -431,12 +430,21 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
     | genex::views::filter([&sm](auto &&x) { return type_predicates::IsTypeVariant(*x.second, *sm.CurrentScope); })
     | genex::to<Vec>();
 
-  // Set the master branch type to the first branch's type, if
-  // it exists. This is the default and may be subsequently
+  // Set the master branch type to the first branch that has a
+  // value: a branch that diverges ("!") has none for the others
+  // to agree with, and only a case whose every branch diverges
+  // is "!" itself. This is the default and may be subsequently
   // changed. Override it if an assignment type is given.
-  auto master_branch_type_info = not valued_branches_type_info.IsEmpty()
-    ? MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second)
-    : MakePair<asts::CaseExpressionBranchAst*, Shared<asts::TypeAst>>(nullptr, nullptr);
+  auto master_branch_type_info = MakePair<asts::CaseExpressionBranchAst*, Shared<asts::TypeAst>>(nullptr, nullptr);
+  for (auto const &[branch, type] : valued_branches_type_info) {
+    if (not type_predicates::IsTypeNever(*type, *sm.CurrentScope)) {
+      master_branch_type_info = MakePair(branch, type);
+      break;
+    }
+  }
+  if (master_branch_type_info.first == nullptr and not valued_branches_type_info.IsEmpty()) {
+    master_branch_type_info = MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second);
+  }
   if (meta->AssignmentTargetType != nullptr) {
     master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType);
   }
@@ -455,12 +463,9 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   }
 
   // Remove the master branch pointer from the list of remaining
-  // branch types and check all types match.
-  // Todo: Shouldn't need to auto-remove "!" type, because TypeEq handles it?
+  // branch types and check all types match. A "!" branch fits
+  // the master type like any value would, so "TypeEq" drops it.
   auto mismatch_branches_type_info = valued_branches_type_info
-    | genex::views::remove_if([&](auto const &x) {
-      return type_compare::TypeEq(*NEVER, *x.second, *sm.CurrentScope, *sm.CurrentScope);
-    })
     | genex::views::remove_if([&](auto const &x) {
       return x.first == master_branch_type_info.first;
     })
@@ -542,7 +547,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       branch->Patterns, [](auto const &pattern) { return pattern->BindsByMove(); });
     if (branch_binds) {
       if (const auto skipped = linear_utils::FirstUnaccountedPart(
-        *subject, Vec{subject->Name->Val}, *sm); not skipped.empty()) {
+        *subject, Vec<asts::IdentifierAst*>{subject->Name.get()}, *sm); not skipped.empty()) {
         auto const *const blamed = branch->Patterns.IsEmpty()
           ? static_cast<asts::Ast const*>(branch)
           : static_cast<asts::Ast const*>(branch->Patterns[0].get());
