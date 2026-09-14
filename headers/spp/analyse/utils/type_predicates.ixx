@@ -20,10 +20,6 @@ namespace spp::analyse::utils::type_predicates {
   /// types (Arr, Tup), not superimpositions.
   SPP_EXP_FUN auto IsTypeCompTimeIndexable(TypeAst const &type, Scope const &scope) -> bool;
 
-  /// Check fi the type is "Self". Todo: check on the
-  /// difference between this and the TypeAst IsSelf method.
-  SPP_EXP_FUN auto IsTypeSelf(TypeAst const &type) -> bool;
-
   /// Check if a type is the array type. Strip generics and
   /// TypeEq against the non-generic Arr type.
   SPP_EXP_FUN auto IsTypeArr(TypeAst const &type, Scope const &scope) -> bool;
