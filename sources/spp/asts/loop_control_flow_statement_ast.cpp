@@ -109,11 +109,18 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     const auto depth = nested_loop_depth - num_controls;
     if (meta->LoopReturnTypes->contains(depth)) {
       // If the type is already set, check it matches the current
-      // expression's type.
+      // expression's type. An exit that diverges ("!") has no value
+      // to agree with: it neither checks against the loop's type
+      // nor sets it, and a valued exit replaces a stored "!" one.
       auto [that_expr, that_expr_type, that_scope] = meta->LoopReturnTypes->at(depth);
-      RaiseIf<SppTypeMismatchError>(
-        not TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
-        {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
+      if (that_expr_type->IsNeverType() and not expr_type->IsNeverType()) {
+        (*meta->LoopReturnTypes)[depth] = {Expr ? Expr.get() : nullptr, expr_type, sm->CurrentScope};
+      }
+      else if (not expr_type->IsNeverType()) {
+        RaiseIf<SppTypeMismatchError>(
+          not TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
+          {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
+      }
     }
     else {
       auto stored_expr = Expr ? Expr.get() : nullptr;
@@ -192,7 +199,11 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
     *sm->CurrentScope, target.ScopeContainingLoop, false, sm, meta, ctx);
 
   if (target.Phi != nullptr) {
-    const auto incoming_val = llvm_val;
+    // A "!" value never reaches the phi, but the edge still needs
+    // an operand of the phi's type.
+    const auto incoming_val = llvm_val != nullptr and Expr != nullptr and Expr->InferType(sm, meta)->IsNeverType()
+      ? llvm::PoisonValue::get(target.Phi->getType())
+      : llvm_val;
     const auto incoming_bb = ctx->Builder.GetInsertBlock();
     target.Phi->addIncoming(
       incoming_val != nullptr ? incoming_val : llvm::UndefValue::get(target.Phi->getType()),
