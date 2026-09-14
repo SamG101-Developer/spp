@@ -450,9 +450,32 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
     return Name;
   }
 
-  if (Name->IsCompilerGeneratedType()
+  if (IsMock()
     and (ignore_dollar or LinkedScope->Parent != LinkedScope->ParentModule())) {
-    return Name;
+    // A method's mock is declared in its "sup" block, so it is named
+    // through the type that block is over: "main::A::$Method". A
+    // closure's mock, and a declaration site, keep the bare name.
+    const auto sup_node = LinkedScope->Parent->AstNode;
+    const auto in_sup_block = asts::AstAs<asts::SupPrototypeFunctionsAst>(sup_node) != nullptr
+      or asts::AstAs<asts::SupPrototypeExtensionAst>(sup_node) != nullptr;
+    if (ignore_dollar or not in_sup_block or Kind == TypeKind::ClosureMock) { return Name; }
+
+    // Todo: a generic owner ("sup [T] A[T]", or "sup Str" over a
+    //  defaulted "Str[A]") would need its arguments carried through
+    //  each instantiation, so it keeps the bare name.
+    const auto owner_name = asts::AstName(sup_node);
+    const auto owner_gn = owner_name->LastTypePart()->GnArgGroup.get();
+    if (owner_gn != nullptr and not owner_gn->Args.IsEmpty()) { return Name; }
+    const auto owner_sym = LinkedScope->Parent->GetTypeSymbol(owner_name->WithoutGenerics().get());
+    if (owner_sym == nullptr or owner_sym == this or owner_sym->IsTypeGeneric()
+      or owner_sym->IsMock()
+      or (owner_sym->Type != nullptr and not owner_sym->Type->GnParamGroup->Params.IsEmpty())) { return Name; }
+    // Built from copies: the owner's name is its shared cached one,
+    // and analysing this type would mark that as analysed for every
+    // other use of it (skipping, say, its abstract-type check).
+    return MakeShared<asts::TypePostfixExpressionAst>(
+      asts::AstCloneShared(owner_sym->FqName()),
+      MakeShared<asts::TypePostfixExpressionOperatorNestedTypeAst>(nullptr, asts::AstCloneShared(Name)));
   }
 
   // Everything above returns a name that already exists. What
