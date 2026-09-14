@@ -184,6 +184,18 @@ namespace spp::analyse::utils::generic_bindings {
           // for "func[..Ts]" to "func[Ts = (U32, U32)]". Uses the
           // tuple type + analysis for generic implementation.
           else {
+            // A lone argument naming a pack ("A[Ts]" inside
+            // "g[..Ts]") is already the tuple, so is forwarded.
+            if (i + 1 == a_group.Args.Len()) {
+              const auto &val = positional_arg->To<GenericArgType>()->Val;
+              const auto sym = sm.CurrentScope->GetTypeSymbol(val->WithoutGenerics().get(), false);
+              if (sym != nullptr and sym->IsTypeGeneric() and sym->IsVariadic) {
+                kw_arg->Val = asts::AstClone(val);
+                if (meta.CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) { kw_arg->Val->Stage7_AnalyseSemantics(&sm, &meta); }
+                a_group.Args[i] = std::move(kw_arg);
+                break;
+              }
+            }
             auto elems = MAKE_VARIADIC_TYPE_ARGS(a_group.Args);
             auto tuple = TupleType(positional_arg->PosStart(), std::move(elems));
             if (meta.CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) { tuple->Stage7_AnalyseSemantics(&sm, &meta); }
