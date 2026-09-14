@@ -152,7 +152,9 @@ auto spp::asts::TypeUnaryExpressionAst::AnyPart(
 
 auto spp::asts::TypeUnaryExpressionAst::IsNeverType() const noexcept
   -> bool {
-  return false;
+  // A namespace only qualifies the name, so "std::never::Never"
+  // is "!" when its name is; a borrow of "!" is a real value.
+  return Op->To<TypeUnaryExpressionOperatorNamespaceAst>() and Rhs->IsNeverType();
 }
 
 auto spp::asts::TypeUnaryExpressionAst::IsSelfType() const noexcept
