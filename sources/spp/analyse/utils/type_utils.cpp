@@ -57,9 +57,6 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
-import spp.lex.lexer;
-import spp.parse.parser_spp;
-import spp.parse.errors.parser_error;
 import spp.utils.algorithms;
 import spp.utils.interner;
 import spp.utils.ptr;
@@ -169,7 +166,7 @@ auto spp::analyse::utils::type_utils::GetTryType(
   // Todo: Like Copy, can we rely on constraints here? Add
   //  unit tests.
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
-  if (type_sym->IsTypeGeneric()) { return nullptr; }
+  if (type_sym == nullptr or type_sym->IsTypeGeneric()) { return nullptr; }
 
   // Discover the supertypes and add the current type to it.
   auto sup_types = Vec{type.shared_from_this()};
@@ -212,7 +209,7 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
 
   // Generic types do not have forward types, so return nullptr.
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
-  if (type_sym->IsTypeGeneric()) { return {nullptr, nullptr}; }
+  if (type_sym == nullptr or type_sym->IsTypeGeneric()) { return {nullptr, nullptr}; }
 
   // Find the first FwdRef and first FwdMut super type in a single pass.
   auto fwd_ref_type = Shared<asts::TypeAst>(nullptr);
