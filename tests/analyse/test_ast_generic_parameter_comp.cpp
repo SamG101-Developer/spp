@@ -70,8 +70,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f[cmp n: USize = false]() -> Void { }
 )");
 
-// Todo: red - a method's comp parameter typed by its generic class keeps the sup's "T", which is unknown at the
-// call (E26, reported in std).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericParameterCompGenericClass,
   test_valid_comp_parameter_typed_by_the_class_generic, R"(

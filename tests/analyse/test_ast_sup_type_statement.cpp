@@ -166,3 +166,38 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(x)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  SupTypeStatementAstGenericSelfClass,
+  test_valid_alias_of_the_sups_own_generic_class, R"(
+    !public cls Box[T] { !public v: T }
+    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+    sup [T: std::copy::Copy] Box[T] {
+        type Mine = Box[T]
+        !public fun m(self) -> Mine { ret self }
+    }
+    fun f() -> Void {
+        let b: Box[S32] = Box(v=1).m()
+    }
+)");
+
+// Todo: red - "Vec[Box[T]]" aliased inside Box's own generic sup nests without end: minting "Vec[T=Box[T]]" substitutes
+// its member types, and "Box[T]" is re-read at each level through the binding it is part of, so it grows a level each
+// time. It now stops with E109 (generic instantiation depth) instead of overflowing the stack. The alias itself is
+// finite ("Vec[Box[S32]]" in "Box[S32]"'s sup); an open instance minted in a template should not have its members
+// substituted eagerly. The "Self" form in TestSelfTypePositionsGeneric is the same bug.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  SupTypeStatementAstGenericSelfClass,
+  test_valid_alias_of_a_type_holding_the_sups_own_generic_class, R"(
+    !public cls Box[T] { !public v: T }
+    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+    sup [T: std::copy::Copy] Box[T] {
+        type Many = Vec[Box[T]]
+        !public fun m(&self) -> Many { ret Many::new() }
+    }
+    fun f() -> Void {
+        let b = Box(v=1)
+        let v: Vec[Box[S32]] = b.m()
+        std::mem::ops::drop(v)
+    }
+)");

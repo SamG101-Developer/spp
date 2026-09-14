@@ -382,3 +382,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(apply(Counter::make))
     }
 )");
+
+// Todo: red - calling a "Self"-returning method through a method value segfaults the compiler.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  MethodAsValueSelfReturn,
+  test_valid_method_value_returning_self, R"(
+    cls A { }
+    sup A ext std::copy::Copy { }
+    sup A {
+        !public fun make() -> Self { ret A() }
+    }
+    fun f() -> Void {
+        let g = A::make
+        let a: A = g()
+    }
+)");

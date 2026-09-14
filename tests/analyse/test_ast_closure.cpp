@@ -518,8 +518,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - in a generic sup, a closure reading a "T" field of its "Box[T]" parameter finds a "T" that is not
-// the sup's "T" (E1 "Expected type T, Found type T").
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureInGenericSup,
   test_valid_closure_reading_a_generic_field, R"(
