@@ -24,7 +24,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   CurrentLambdaOuterScope = nullptr;
   TargetCallFunctionPrototype = nullptr;
   TargetCallWasFunctionAsync = false;
-  PreventAutoGeneratorResume = false;
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
@@ -83,7 +82,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
   s.TargetCallFunctionPrototype = TargetCallFunctionPrototype;
   s.TargetCallWasFunctionAsync = TargetCallWasFunctionAsync;
-  s.PreventAutoGeneratorResume = PreventAutoGeneratorResume;
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
@@ -151,7 +149,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   CurrentLambdaOuterScope = state.CurrentLambdaOuterScope;
   TargetCallFunctionPrototype = state.TargetCallFunctionPrototype;
   TargetCallWasFunctionAsync = state.TargetCallWasFunctionAsync;
-  PreventAutoGeneratorResume = state.PreventAutoGeneratorResume;
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;

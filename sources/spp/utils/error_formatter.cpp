@@ -23,7 +23,67 @@ auto spp::utils::errors::ErrorFormatter::IsPastUserSource(
   return token_pos >= _PreludeTokenIndex;
 }
 
-auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
+auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
+  const std::size_t ast_start_pos,
+  const std::size_t ast_size,
+  Str &&message,
+  Str &&tag_message)
+  -> Str {
+  //
+  using namespace std::string_literals;
+
+  auto [file_path, location, line_number, error_line, left_padding, carets] = _InternalParseErrorRawPos(
+    ast_start_pos, ast_size, std::move(tag_message));
+
+  // file_path = "\033]8;;"s + file_path + "\033" + file_path + "\033]8;;\033"; // Make the file path clickable in supporting terminals.
+
+  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + "', "s +
+    location + ":\n";
+  const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
+  const auto line3 = (colex::fg_bright_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
+  const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
+  const auto line5 = (colex::reset & colex::fg_bright_red) + carets + "\n"s;
+  const auto line6 = (colex::reset & colex::fg_bright_red) + message + "\n"s;
+  return line1 + line2 + line3 + line4 + line5 + line6;
+}
+
+auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
+  const std::size_t ast_start_pos,
+  const std::size_t ast_size,
+  Str &&tag_message)
+  -> Str {
+  //
+  using namespace std::string_literals;
+
+  auto [file_path, location, line_number, error_line, left_padding, carets] = _InternalParseErrorRawPos(
+    ast_start_pos, ast_size, std::move(tag_message));
+  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Context from file '"s + file_path + "', "s +
+    location + ":\n";
+  const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
+  const auto line3 = (colex::fg_bright_green & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
+  const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
+  const auto line5 = (colex::reset & colex::fg_bright_green) + carets + "\n"s;
+  return line1 + line2 + line3 + line4 + line5;
+}
+
+auto spp::utils::errors::ErrorFormatter::ErrorAst(
+  asts::Ast const *ast,
+  Str &&message,
+  Str &&tag_message)
+  -> Str {
+  return ErrorRawPos(
+    ast->PosStart(), ast->PosEnd() - ast->PosStart(), std::move(message), std::move(tag_message));
+}
+
+auto spp::utils::errors::ErrorFormatter::ErrorAstMinimal(
+  asts::Ast const *ast,
+  Str &&tag_message)
+  -> Str {
+  return ErrorRawPosMinimal(
+    ast->PosStart(), ast->PosEnd() - ast->PosStart(), std::move(tag_message));
+}
+
+auto spp::utils::errors::ErrorFormatter::_InternalParseErrorRawPos(
   std::size_t ast_start_pos,
   std::size_t ast_size,
   Str &&tag_message)
@@ -115,66 +175,6 @@ auto spp::utils::errors::ErrorFormatter::InternalParseErrorRawPos(
   carets += (colex::fg_bright_white & colex::st_bold) + " <- "s + tag_message;
   const auto left_padding = Str(error_line_number.length(), ' ');
   return {_FilePath, "on line "s + error_line_number, error_line_number, error_line_as_string, left_padding, carets};
-}
-
-auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
-  const std::size_t ast_start_pos,
-  const std::size_t ast_size,
-  Str &&message,
-  Str &&tag_message)
-  -> Str {
-  //
-  using namespace std::string_literals;
-
-  auto [file_path, location, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(
-    ast_start_pos, ast_size, std::move(tag_message));
-
-  // file_path = "\033]8;;"s + file_path + "\033" + file_path + "\033]8;;\033"; // Make the file path clickable in supporting terminals.
-
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + "', "s +
-    location + ":\n";
-  const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
-  const auto line3 = (colex::fg_bright_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
-  const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
-  const auto line5 = (colex::reset & colex::fg_bright_red) + carets + "\n"s;
-  const auto line6 = (colex::reset & colex::fg_bright_red) + message + "\n"s;
-  return line1 + line2 + line3 + line4 + line5 + line6;
-}
-
-auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
-  const std::size_t ast_start_pos,
-  const std::size_t ast_size,
-  Str &&tag_message)
-  -> Str {
-  //
-  using namespace std::string_literals;
-
-  auto [file_path, location, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(
-    ast_start_pos, ast_size, std::move(tag_message));
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Context from file '"s + file_path + "', "s +
-    location + ":\n";
-  const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
-  const auto line3 = (colex::fg_bright_green & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
-  const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
-  const auto line5 = (colex::reset & colex::fg_bright_green) + carets + "\n"s;
-  return line1 + line2 + line3 + line4 + line5;
-}
-
-auto spp::utils::errors::ErrorFormatter::ErrorAst(
-  asts::Ast const *ast,
-  Str &&message,
-  Str &&tag_message)
-  -> Str {
-  return ErrorRawPos(
-    ast->PosStart(), ast->PosEnd() - ast->PosStart(), std::move(message), std::move(tag_message));
-}
-
-auto spp::utils::errors::ErrorFormatter::ErrorAstMinimal(
-  asts::Ast const *ast,
-  Str &&tag_message)
-  -> Str {
-  return ErrorRawPosMinimal(
-    ast->PosStart(), ast->PosEnd() - ast->PosStart(), std::move(tag_message));
 }
 
 SPP_MOD_END

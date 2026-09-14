@@ -9,36 +9,23 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::compiler {
-  SPP_EXP_CLS struct CompilerBoot;
-}
+SPP_AST_COMMON_FWD_DECL(ModulePrototypeAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct FunctionPrototypeAst);
+use(spp::asts, struct ModuleImplementationAst);
+use(spp::compiler, struct CompilerBoot);
 
-SPP_AST_COMMON_FWD_DECL(ModulePrototypeAst) {
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-  SPP_EXP_CLS struct ModuleImplementationAst;
-}
-
-/**
- * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of
- * the module.
- */
+/// A prototype for a module, containing the implementation of
+/// the module.
 SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
-  /**
-   * The file path of the module prototype. This is interacted with by the compiler to resolve module imports. Not got
-   * from parsing children AST nodes.
-   */
+  /// The file path of the module prototype, used by the
+  /// compiler to resolve module imports. Not got from parsing
+  /// children asts.
   std::filesystem::path FilePath = "";
 
-  /**
-   * The module implementation AST that this prototype represents.
-   */
+  /// The module implementation ast this prototype represents.
   Unique<ModuleImplementationAst> Impl;
 
-  /**
-   * Construct the ModulePrototypeAst with the given implementation.
-   * @param[in] impl The module implementation AST that this prototype represents.
-   */
   explicit ModulePrototypeAst(
     decltype(Impl) &&impl);
 
@@ -46,61 +33,27 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   SPP_AST_KEY_FUNCTIONS(ModulePrototypeAst);
 
-  auto Stage1_PreProcess(
-    Ast *ctx)
-    -> void override;
+  auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-  auto Stage2_GenTopLvlScopes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *)
-    -> void override;
+  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-  auto Stage3_GenTopLvlAliases(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage5_LoadSupScopes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage6_PreAnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage10_PreCodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto Name() const -> Unique<IdentifierAst>;
 };
