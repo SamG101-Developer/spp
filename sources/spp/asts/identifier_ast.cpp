@@ -190,11 +190,18 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
   auto tm = analyse::scopes::ScopeManager(
     sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
 
-  // If there is no comptime value on this symbol, then
-  // it's an error (not sure this ever triggers? - a non
-  // cmp function call triggers an error i think).
+  // An unbound comp generic has no value yet, and stands for
+  // itself - as it does in a template's signature.
+  if (var_sym != nullptr and var_sym->Kind == analyse::scopes::VariableKind::GenericCompParam) {
+    meta->CmpResult = AstClone(this);
+    return;
+  }
+
+  // Anything else resolves through its value, and having none
+  // is an error.
+  auto *const value = var_sym != nullptr ? var_sym->CompTimeValue.get() : nullptr;
   RaiseIf<SppCompileTimeConstantError>(
-    var_sym != nullptr and var_sym->CompTimeValue == nullptr,
+    var_sym != nullptr and value == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*this));
 
   // A constant whose value reaches its own symbol again has
@@ -207,7 +214,7 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.
   const auto guard = ResolvingCompTimeSymGuard(var_sym);
-  var_sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
+  value->Stage9_CompTimeResolve(&tm, meta);
 }
 
 auto spp::asts::IdentifierAst::Stage11_CodeGen(
