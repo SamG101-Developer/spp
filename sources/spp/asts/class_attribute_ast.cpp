@@ -117,7 +117,6 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_predicates::IsTypeSelf;
   using analyse::utils::type_utils::ResolveWrittenType;
   using analyse::utils::type_utils::SelfPolicy;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
@@ -138,7 +137,7 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   }
 
   // Check the type is valid before scopes are attached.
-  Type = ResolveWrittenType(*Type, *sm, *meta, IsTypeSelf(*Type) ? SelfPolicy::kKeep : SelfPolicy::kSubstitute);
+  Type = ResolveWrittenType(*Type, *sm, *meta, Type->IsSelfType() ? SelfPolicy::kKeep : SelfPolicy::kSubstitute);
   sm->CurrentScope->GetVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
@@ -156,7 +155,6 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppTypeMismatchError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_predicates::IsTypeSelf;
 
   if (meta->CurrentStage == meta::CompilerStage::kAnalyseSemantics) {
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
@@ -164,7 +162,7 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
 
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
-  if (not IsTypeSelf(*Type)) {
+  if (not Type->IsSelfType()) {
     Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()))->WithSourceSpanOf(*Type);
     RaiseIf<SppSecondClassBorrowViolationError>(
       IsTypeBorrowed(*Type, *sm),
