@@ -803,7 +803,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
     auto def_type_raw = def_type->WithoutGenerics();
     if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_sym != nullptr and meta.CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
       auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
-      if (not type_predicates::IsTypeSelf(*def_type)) {
+      if (not def_type->IsSelfType()) {
         temp = temp->WithGenerics(asts::AstClone(def_type->LastTypePart()->GnArgGroup));
       }
       def_type = std::move(temp);
