@@ -5,14 +5,15 @@ export module spp.lex.tokens;
 import spp.utils.types;
 import std;
 
-// TODO: Rename all constants to kConstant format.
+use(spp::lex, enum class RawTokenType : std::uint8_t);
+use(spp::lex, enum class SppTokenType : std::uint8_t);
+use(spp::lex, class RawToken);
 
 namespace spp::lex {
-  SPP_EXP_CLS enum class RawTokenType : std::uint8_t;
-  SPP_EXP_CLS enum class SppTokenType : std::uint8_t;
-  SPP_EXP_CLS class RawToken;
   SPP_EXP_FUN auto tok_to_string(SppTokenType token) noexcept -> Str;
 }
+
+// TODO: Rename all constants to kConstant format.
 
 SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
   LX_CHARACTER,

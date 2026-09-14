@@ -9,12 +9,11 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClosureExpressionParameterAndCaptureGroupAst) {
-  SPP_EXP_CLS struct FunctionParameterAst;
-  SPP_EXP_CLS struct FunctionParameterGroupAst;
-  SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(ClosureExpressionParameterAndCaptureGroupAst);
+use(spp::asts, struct FunctionParameterAst);
+use(spp::asts, struct FunctionParameterGroupAst);
+use(spp::asts, struct ClosureExpressionCaptureGroupAst);
+use(spp::asts, struct TokenAst);
 
 namespace spp::asts {
   SPP_EXP_CLS
@@ -24,34 +23,19 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : Ast {
   SPP_AST_KEY_FUNCTIONS(ClosureExpressionParameterAndCaptureGroupAst);
 
-  /**
-   * The @c | token that indicates the start of the closure parameter and capture group.
-   */
+  /// The "|" token that starts the parameter and capture group.
   Unique<TokenAst> TokL;
 
-  /**
-   * The parameters of the closure. This is a list of parameters that will be passed to the closure when it is called.
-   */
+  /// The parameters passed to the closure when it is called.
   Unique<ClosureExpressionParameterGroupAst> ParamGroup;
 
-  /**
-   * The captured variables from the outer scope. These are variables that are captured by the closure and can be used
-   * within its body.
-   */
+  /// The variables captured from the outer scope, which can be
+  /// used within the closure's body.
   Unique<ClosureExpressionCaptureGroupAst> CaptureGroup;
 
-  /**
-   * The @c | token that indicates the end of the closure parameter and capture group.
-   */
+  /// The "|" token that ends the parameter and capture group.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the ClosureExpressionParameterAndCaptureGroupAst with the arguments matching the members.
-   * @param tok_l The @c | token that indicates the start of the closure parameter and capture group.
-   * @param param_group The parameters of the closure.
-   * @param capture_group The captured variables from the outer scope.
-   * @param tok_r The @c | token that indicates the end of the closure parameter and capture group.
-   */
   ClosureExpressionParameterAndCaptureGroupAst(
     decltype(TokL) &&tok_l,
     decltype(ParamGroup) &&param_group,
@@ -60,19 +44,9 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final
 
   ~ClosureExpressionParameterAndCaptureGroupAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

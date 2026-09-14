@@ -8,14 +8,10 @@ import spp.asts.generic_argument_type_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS struct TypeSymbol;
-}
-
-SPP_AST_COMMON_FWD_DECL(GenericArgumentTypeKeywordAst) {
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(GenericArgumentTypeKeywordAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeSymbol);
 
 namespace spp::asts::detail {
   template <>
@@ -24,33 +20,22 @@ namespace spp::asts::detail {
   };
 }
 
-/**
- * The GenericArgumentTypeKeywordAst represents a keyword argument in a generic argument context. It is forces the
- * argument to be matched by a keyword rather than an index.
- */
+/// A keyword type argument in a generic argument context. It
+/// forces the argument to be matched by a keyword rather than
+/// an index.
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericArgumentTypeKeywordAst);
 
-  /**
-   * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
-   */
+  /// The name of the keyword argument, used to refer to the
+  /// argument in the generic call.
   Shared<TypeAst> Name;
 
-  /**
-   * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
-   * argument from the expression that is being passed as the argument's value.
-   */
+  /// The "=" token separating the argument name from its value.
   Unique<TokenAst> TokAssign;
 
-  static auto FromSym(analyse::scopes::TypeSymbol const &sym) -> Unique<GenericArgumentTypeKeywordAst>;
+  static auto FromSym(TypeSymbol const &sym) -> Unique<GenericArgumentTypeKeywordAst>;
 
-  /**
-   * Construct the GenericArgumentTypeKeywordAst with the arguments matching the members.
-   * @param name The name of the keyword argument.
-   * @param tok_assign The token that represents the assignment operator @c = in the keyword argument.
-   * @param val The value of the generic type argument.
-   */
   GenericArgumentTypeKeywordAst(
     decltype(Name) name,
     decltype(TokAssign) &&tok_assign,
@@ -59,17 +44,13 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
   ~GenericArgumentTypeKeywordAst() override;
 
   SPP_ATTR_NODISCARD auto EqualsGenericArgumentTypeKeyword(
-    GenericArgumentTypeKeywordAst const &other) const -> Ordering override;
-  SPP_ATTR_NODISCARD auto Equals(
-    GenericArgumentAst const &other) const -> Ordering override;
+    GenericArgumentTypeKeywordAst const &other) const
+    -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(GenericArgumentAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  SPP_ATTR_NODISCARD auto ViewName() const
-    -> StrView override;
+  SPP_ATTR_NODISCARD auto ViewName() const -> StrView override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentTypeKeywordAst)

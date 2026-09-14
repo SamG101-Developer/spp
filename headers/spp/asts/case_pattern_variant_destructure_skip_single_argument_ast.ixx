@@ -7,29 +7,23 @@ import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureSkipSingleArgumentAst) {
-  SPP_EXP_CLS struct LocalVariableAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureSkipSingleArgumentAst);
+use(spp::asts, struct LocalVariableAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureSkipSingleArgumentAst);
 
-  /**
-   * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
-   * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object
-   * destructuring as it is purely keyword based, and not positional.
-   */
+  /// The "_" token, skipping the next element sequentially,
+  /// as seen in array and tuple destructuring. Invalid in
+  /// object destructuring, which is purely keyword based, not
+  /// positional.
   Unique<TokenAst> TokUnderscore;
 
-  /**
-   * Construct the CasePatternVariantDestructureSkipSingleArgumentAst with the arguments matching the members.
-   * @param tok_underscore The @c _ token that indicates the skip single argument pattern.
-   */
   explicit CasePatternVariantDestructureSkipSingleArgumentAst(
     decltype(TokUnderscore) &&tok_underscore);
 
   ~CasePatternVariantDestructureSkipSingleArgumentAst() override;
 
-  auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+  auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

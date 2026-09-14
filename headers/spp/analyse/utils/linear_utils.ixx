@@ -5,105 +5,72 @@ export module spp.analyse.utils.linear_utils;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::asts::meta {
-  SPP_EXP_CLS struct CompilerMetaData;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-  SPP_EXP_CLS struct VariableSymbol;
-}
+use(spp::asts, struct Ast);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct VariableSymbol);
 
 namespace spp::analyse::utils::linear_utils {
-  /**
-   * The first part of a value that a destructure of it has not accounted for: an owned member that nothing bound and
-   * so that nothing is left holding. Copyable parts never answer, having been copied rather than taken, and a value
-   * whose parts are all copyable has nothing to answer with.
-   * @param sym The symbol holding the value, whose recorded partial moves are what the parts are checked against.
-   * @param region The place being taken apart, as the names of its steps. A nested destructure takes one region of a
-   * value apart rather than the whole of it, and only that region has to be accounted for.
-   * @param sm The scope manager, positioned where the symbol's type resolves from.
-   * @return The place expression of the first unaccounted-for part, or an empty string if there is none.
-   */
+  /// The first part of a value that a destructure has not
+  /// accounted for, and would otherwise silently drop. Copyable
+  /// parts are ignored, following usual memory rules, and a
+  /// value who has all fields copyable will never provide a
+  /// response here.
   SPP_EXP_FUN auto FirstUnaccountedPart(
-    scopes::VariableSymbol const &sym,
-    Vec<Str> const &region,
-    scopes::ScopeManager const &sm)
+    VariableSymbol const &sym,
+    Vec<IdentifierAst*> const &region,
+    ScopeManager const &sm)
     -> Str;
 
-  /**
-   * Record what this scope's deferred expressions take when they run. A @c defer does not consume anything where it is
-   * written - the value has to stay usable for the rest of the scope - so leaving the scope is what consumes it, and
-   * this is where that is written down, immediately before the scope is held to the linear rule.
-   * @param scope The scope being left.
-   * @param exit_point The ast blamed for the move, which is the @c defer itself.
-   * @param sm The scope manager, used to resolve the recorded names against @p scope .
-   */
+  /// Record what the deferred statements for this scope take
+  /// when they run. A defer doesn't consume anything when
+  /// written, because by definition it is being deferred to
+  /// the end of the scope. So only when the scope leaves do
+  /// the deferred statements run, followed by linear memory
+  /// system checks.
   SPP_EXP_FUN auto CheckDeferredForScope(
-    scopes::Scope const &scope,
-    asts::Ast const &exit_point,
+    Scope const &scope,
+    Ast const &exit_point,
     StrView exit_what,
-    scopes::ScopeManager &sm)
+    ScopeManager &sm)
     -> void;
 
-  /**
-   * Raise @c SppLinearValueNotConsumedError for every symbol declared in this scope that is still live, and
-   * @c SppPartialMoveOfDestructibleValueError for every one that has a destructor it can no longer run. Called at the
-   * exit of a function body scope and of every inner scope inside one.
-   * @param scope The scope being left.
-   * @param exit_point The ast to report the error against - the closing brace, or the statement that leaves early.
-   * @param exit_what How to describe the exit point in the message, for example "Scope ends here".
-   * @param sm The scope manager, positioned in @p scope .
-   * @param meta Associated metadata.
-   */
+  /// Check all the symbols created in the scope, and ensure
+  /// that they adhere to the linear type system rules - they
+  /// must all have been consumed at the scope boundary, unless
+  /// they are of a copyable type. Also checks for partially
+  /// moved values who now can't destruct properly.
   SPP_EXP_FUN auto CheckScopeExit(
-    scopes::Scope const &scope,
-    asts::Ast const &exit_point,
+    Scope const &scope,
+    Ast const &exit_point,
     StrView exit_what,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    ScopeManager &sm,
+    CompilerMetaData *meta)
     -> void;
 
-  /**
-   * Raise @c SppLinearValueNotConsumedError for every live symbol between the current scope and the enclosing
-   * function scope inclusive. A @c ret or a loop @c exit leaves all of those scopes at once, so a value held in any of
-   * them is abandoned rather than used, which the per-scope check would never see: control never reaches the closing
-   * brace those scopes would have been checked at.
-   * @param exit_point The statement leaving the scopes.
-   * @param exit_what How to describe the exit point in the message.
-   * @param sm The scope manager, positioned at the statement.
-   * @param meta Associated metadata, read for @c EnclosingFunctionScope .
-   */
+  /// A more expansive check that "CheckScopeExit" - this does
+  /// the same thing but checks between this scope and the
+  /// enclosing function's scope, allowing nested-ast "ret" or
+  /// loop's "exit" to adhere to the memory system properly.
   SPP_EXP_FUN auto CheckLiveUpToFunction(
-    asts::Ast const &exit_point,
+    Ast const &exit_point,
     StrView exit_what,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    ScopeManager &sm,
+    CompilerMetaData *meta)
     -> void;
 
-  /**
-   * The @c exit and @c skip counterpart of @c CheckLiveUpToFunction . An @c exit leaves @p num_exits loops, so every
-   * scope up to and including the @p num_exits th enclosing loop scope is abandoned; a trailing @c skip then leaves
-   * the body of the loop after those, but not that loop's own scope, which the next iteration re-enters.
-   * @param exit_point The statement leaving the scopes.
-   * @param exit_what How to describe the exit point in the message.
-   * @param num_exits How many loops the statement exits, which is zero for a bare @c skip .
-   * @param has_skip Whether the statement ends in a @c skip .
-   * @param sm The scope manager, positioned at the statement.
-   * @param meta Associated metadata.
-   */
+  /// The loop control flow includes "skip" and "exit". The
+  /// "exit" breaks out of n loops, so for all these scopes,
+  /// we need to do the linear test on the symbols.
   SPP_EXP_FUN auto CheckLiveUpToLoop(
-    asts::Ast const &exit_point,
+    Ast const &exit_point,
     StrView exit_what,
     std::size_t num_exits,
     bool has_skip,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    ScopeManager &sm,
+    CompilerMetaData *meta)
     -> void;
 }

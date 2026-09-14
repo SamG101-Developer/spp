@@ -8,10 +8,9 @@ import spp.asts.generic_parameter_type_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericParameterTypeOptionalAst) {
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(GenericParameterTypeOptionalAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 namespace spp::asts::detail {
   template <>
@@ -24,23 +23,14 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericPar
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericParameterTypeOptionalAst);
 
-  /**
-   * The token that separates the parameter name from the default value.
-   */
+  /// The token that separates the parameter name from the
+  /// default value.
   Unique<TokenAst> TokAssign;
 
-  /**
-   * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
-   */
+  /// The default value for the parameter, used if the
+  /// parameter is not provided.
   Shared<TypeAst> DefaultVal;
 
-  /**
-   * Construct the GenericParameterTypeOptionalAst with the arguments matching the members.
-   * @param name The name of the generic type parameter.
-   * @param constraints The optional inline constraints for the generic type parameter.
-   * @param tok_assign The token that separates the parameter name from the default value.
-   * @param default_val The default value for the parameter.
-   */
   GenericParameterTypeOptionalAst(
     decltype(Name) &&name,
     decltype(Constraints) &&constraints,
@@ -49,15 +39,9 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericPar
 
   ~GenericParameterTypeOptionalAst() override;
 
-  auto Stage4_QualifyTypes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeOptionalAst);

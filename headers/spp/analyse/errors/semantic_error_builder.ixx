@@ -13,26 +13,28 @@ import colex;
 import genex;
 import std;
 
+use(spp::asts, struct Ast);
+use(spp::analyse::scopes, class Scope);
+
 namespace spp::analyse::errors {
   MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ
   SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
   struct SemanticErrorBuilder;
 }
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-}
-
 namespace spp {
+  /// Build the arguments tuple from the parameter pack, which
+  /// will be passed into the semantic error builder.
   SPP_EXP_FUN template <typename... Args>
   auto MakeErrArgs(Args &&... args) -> Tup<Args...> {
     return {std::forward<Args>(args)...};
   }
 
-  SPP_EXP_FUN template <typename E, typename A>
-    requires std::derived_from<E, analyse::errors::SemanticError>
-  SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise(Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder,
-    Vec<Str> sub_errors = {}) -> void {
+  /// Raise an error with a list of scopes, a deferred argument
+  /// binder, and any sub-errors.
+  SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
+  SPP_ATTR_COLD SPP_ATTR_NORETURN
+  auto Raise(Vec<Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
     std::apply(
       [&]<typename... Args2>(Args2 &&... unpacked_args) {
         analyse::errors::SemanticErrorBuilder<E>()
@@ -43,46 +45,62 @@ namespace spp {
     std::unreachable();
   }
 
-  SPP_EXP_FUN template <typename E, typename A>
-    requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseIf(const bool condition, Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
+  /// Raise an error if a condition is met. This is just a tidier
+  /// version of "if (...) { Raise ... }", but it does eagerly
+  /// evaluate the scopes which is sometimes an issue for nullptr
+  /// usage, if the condition checks for a non-nullptr pointer
+  /// that the scope belongs to.
+  SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
+  auto RaiseIf(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
     if (condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
   }
 
-  SPP_EXP_FUN template <typename E, typename A>
-    requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseUnless(const bool condition, Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
+  /// The opposite to the "RaiseIf" - this only raises an error
+  /// if the condition is false.
+  SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
+  auto RaiseUnless(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
     if (not condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
   }
 }
 
 SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
-struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
+struct spp::analyse::errors::SemanticErrorBuilder final :
+  utils::errors::AbstractErrorBuilder<T> {
   SPP_ATTR_COLD SemanticErrorBuilder() = default;
 
   ~SemanticErrorBuilder() override = default;
 
+  /// Store the sub errors into an internal vector and return
+  /// this object, allowing for easy chaining.
   auto WithSubErrors(Vec<Str> &&sub_errors) -> SemanticErrorBuilder& {
     _SubErrors = std::move(sub_errors);
     return *this;
   }
 
+  /// The internal master "Raise" method for errors. This cycles
+  /// formatters to meet the number of asts present, and trims
+  /// the formatter list. Then, it runs the error information
+  /// through the standard stringification process, before using
+  /// the abstract raise function.
   SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
     const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
 
-    // Cycle the formatters to match the number of strings being formatted.
+    // Cycle the formatters to match the number of strings being
+    // formatted.
     auto formatters = this->_ErrFormatters
       | genex::views::cycle
       | genex::views::take(cast_error->ErrorInfo.Len())
       | genex::to<Vec>();
 
-    // Format all the error strings by the correct formatter (file agnostic).
+    // Format all the error strings by the correct formatter
+    // (file agnostic).
     cast_error->messages = genex::views::zip(cast_error->ErrorInfo, std::move(formatters))
       | genex::to<Vec>()
       | genex::views::transform([](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
       | genex::to<Vec>();
 
-    // Format and append each per-overload sub-error consecutively beneath the main error.
+    // Format and append each per-overload sub-error consecutively
+    // beneath the main error.
     auto i = 1;
     for (auto const &msg : _SubErrors) {
       auto header = std::string(50, '-') + colex::st_underline + std::string("\n\nCandidate ") + std::to_string(i)
@@ -92,10 +110,11 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
     }
 
     // Throw the error object.
-    spp::utils::errors::AbstractErrorBuilder<T>::Raise();
+    utils::errors::AbstractErrorBuilder<T>::Raise();
   }
 
 private:
+  /// List of sub-errors. Todo: are these even used anymore?
   Vec<Str> _SubErrors;
 
   static auto _StringifyErrorInformation(
@@ -124,5 +143,6 @@ private:
       default:
         std::unreachable();
     }
+    return "";
   }
 };

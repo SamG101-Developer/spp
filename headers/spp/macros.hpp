@@ -53,11 +53,10 @@
     (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmptyShared(__VA_ARGS__); \
   }
 
-#define SPP_AST_COMMON_FWD_DECL(_Ast)                                \
-  namespace spp::analyse::scopes { SPP_EXP_CLS class ScopeManager; } \
-  namespace spp::asts::meta { SPP_EXP_CLS class CompilerMetaData; }  \
-  namespace spp::asts { SPP_EXP_CLS struct _Ast; }                   \
-  namespace spp::asts
+#define SPP_AST_COMMON_FWD_DECL(_Ast)            \
+  use(spp::analyse::scopes, class ScopeManager); \
+  use(spp::asts::meta, class CompilerMetaData);  \
+  use(spp::asts, struct _Ast);
 
 #define SPP_AST_COMMON_FWD_DECL_TEMPLATED(_Ast)                          \
   namespace spp::analyse::scopes { SPP_EXP_CLS class ScopeManager; }     \
@@ -147,3 +146,7 @@
 #define SPP_NO_ANNOTATIONS Vec<Unique<asts::AnnotationAst>>()
 
 #define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager *sm, asts::FunctionPrototypeAst const *proto, asts::meta::CompilerMetaData *meta
+
+#define use(ns, _Type, ...) \
+  namespace ns { SPP_EXP_CLS _Type __VA_OPT__(, __VA_ARGS__); } \
+  using namespace ns

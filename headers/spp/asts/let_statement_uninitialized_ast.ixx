@@ -9,49 +9,33 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LetStatementUninitializedAst) {
-  SPP_EXP_CLS struct LocalVariableAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(LetStatementUninitializedAst);
+use(spp::asts, struct LocalVariableAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LetStatementUninitializedAst final : LetStatementAst {
   SPP_AST_KEY_FUNCTIONS(LetStatementUninitializedAst);
 
-  /**
-   * The @c let token that starts this statement. It is used to indicate the beginning of a let statement.
-   */
+  /// The "let" token that starts this statement.
   Unique<TokenAst> TokLet;
 
-  /**
-   * The variable that is being declared in the let statement. This names the symbols that will be created in the
-   * scope that the @c let statement is defined in.
-   */
+  /// The variable being declared, naming the symbols that
+  /// will be created in the scope the "let" is defined in.
   Unique<LocalVariableAst> Var;
 
-  /**
-   * The @c : token that indicates the type of the variable. This separates the variable name from its type in the
-   * @c let statement.
-   */
+  /// The ":" token that separates the variable name from its
+  /// type.
   Unique<TokenAst> TokColon;
 
-  /**
-   * The type of the uninitialized variable. This is used to check that values being assigned to the variable in the
-   * future are of the correct type.
-   */
+  /// The type of the uninitialized variable, used to check
+  /// that values later assigned to it are the correct type.
   Shared<TypeAst> Type;
 
   struct {
     Shared<TypeAst> OriginalType;
   } Source;
 
-  /**
-   * Construct the LetStatementUninitializedAst with the arguments matching the members.
-   * @param[in] tok_let The @c let token that starts this statement.
-   * @param[in] var The variable that is being declared in the let statement.
-   * @param[in] tok_colon The @c : token that indicates the type of the variable.
-   * @param[in] type The type of the uninitialized variable.
-   */
   LetStatementUninitializedAst(
     decltype(TokLet) &&tok_let,
     decltype(Var) &&var,
@@ -60,19 +44,9 @@ SPP_EXP_CLS struct spp::asts::LetStatementUninitializedAst final : LetStatementA
 
   ~LetStatementUninitializedAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

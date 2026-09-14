@@ -7,11 +7,12 @@ import spp.asts.mixins.type_inferrable_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorAst) {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct IdentifierAst);
+
+GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
   PostfixExpressionOperatorAst();

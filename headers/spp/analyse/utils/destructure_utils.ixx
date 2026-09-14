@@ -6,143 +6,98 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct LocalVariableAst;
-  SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::asts::meta {
-  SPP_EXP_CLS struct CompilerMetaData;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class ScopeManager;
-}
-
-namespace spp::codegen {
-  SPP_EXP_CLS struct LlvmCtx;
-}
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::asts, struct Ast);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LocalVariableAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
+use(spp::codegen, struct LlvmCtx);
 
 namespace spp::analyse::utils::destructure_utils {
   constexpr auto kUnmatchableTag = "_UNMATCHABLE";
 
+  /// Extract the names of the bindings at any depth, using
+  /// a transform mapping to the "ExtractNames" function.
   SPP_EXP_FUN auto GetNestedBindingIdentifiers(
-    Vec<Unique<asts::LocalVariableAst>> const &elems)
-    -> Vec<Shared<asts::IdentifierAst>>;
+    Vec<Unique<LocalVariableAst>> const &elems)
+    -> Vec<Shared<IdentifierAst>>;
 
+  /// Create an unmatchable identifier at the given position.
+  /// This just wraps the "kUnmatchableTag" into a shared
+  /// pointer.
   SPP_EXP_FUN auto UnmatchableSingleIdentifier(
     std::size_t pos)
-    -> Shared<asts::IdentifierAst>;
+    -> Shared<IdentifierAst>;
 
-  /**
-   * Whether an expression names storage: an identifier, or a chain of runtime member accesses rooted at one, such as
-   * @c t, @c t.1 or @c self.pos.0. A destructure indexes such a value directly from every element, because cloning it
-   * creates no scopes and no evaluation, and because it keeps partial moves attributed to the root's own symbol.
-   * Anything else is a temporary, and gets bound by @ref BindDestructureTemporary instead.
-   * @param[in] expr The value being destructured.
-   * @return Whether @p expr names storage.
-   */
+  /// Whether the expression holds "destructure-able" storage
+  /// or not. Typically, if not, then a materialization occurs.
   SPP_EXP_FUN auto IsDestructurePlaceExpression(
-    asts::ExpressionAst const &expr)
+    ExpressionAst const &expr)
     -> bool;
 
-  /**
-   * Bind the value being destructured to a hidden temporary in the current scope, so that the expanded @c let
-   * statements can index the temporary rather than a clone of the value. A destructure expands into one @c let per
-   * element, and giving each of them its own clone of the value means the value is analysed once per element: any scope
-   * the value creates (a @c case expression, a closure etc) is then duplicated, and the duplicates are orphans that
-   * desynchronise the scope iterator in stages 8 and 11. It also evaluates the value once per element at runtime. The
-   * caller skips this for values that name storage (see @ref IsDestructurePlaceExpression).
-   * @param[in] owner The destructure pattern the temporary belongs to, used to give the temporary a unique name.
-   * @param[in] val The value being destructured, already analysed by the owning @c let statement.
-   * @param[in] val_type The inferred type of @p val, which becomes the type of the temporary.
-   * @param[in, out] sm The scope manager whose current scope the temporary's symbol is added to.
-   * @return The name of the temporary, to be indexed by the expanded @c let statements.
-   */
+  /// When the value being destructured doesn't name any storage,
+  /// then materialize it and take parts of the materialization,
+  /// otherwise we end up cloning the temporary and breaking
+  /// lots of analysis.
   SPP_EXP_FUN auto BindDestructureTemporary(
-    asts::Ast const &owner,
-    asts::ExpressionAst *val,
-    Shared<asts::TypeAst> const &val_type,
-    scopes::ScopeManager &sm)
-    -> Shared<asts::IdentifierAst>;
+    Ast const &owner,
+    ExpressionAst *val,
+    Shared<TypeAst> const &val_type,
+    ScopeManager &sm)
+    -> Shared<IdentifierAst>;
 
-  /**
-   * Check the memory of the value bound to a destructure's hidden temporary. The temporary holds the only analysis of
-   * the value, so this is what traverses the value's scopes in stage 8, and what consumes the value.
-   * @param[in] owner The destructure pattern the temporary belongs to, blamed for the move of the value.
-   * @param[in] tmp_name The name returned by @ref BindDestructureTemporary.
-   * @param[in, out] sm The scope manager to get symbol's memory information from.
-   * @param[in, out] meta Metadata to pass between ASTs, holding the value in @c LetStatementValue.
-   */
-  SPP_EXP_FUN auto DestructureTempStage8(
-    asts::Ast const &owner,
-    asts::IdentifierAst const &tmp_name,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
-
-  /**
-   * Consume the value a destructure took apart, for the direct-lowering path where no hidden temporary was bound. A
-   * destructure names every element of a value, so it takes the whole thing, not a part of it: @c "let Self(fd) = self"
-   * leaves @c self moved rather than partially moved. That is what lets a value whose attributes are all @c Copy be
-   * consumed at all - such a value has no attribute that could be moved off it, so partial moves alone could never
-   * account for it.
-   * @param[in] owner The destructure pattern, blamed for the move of the value.
-   * @param[in] from_case_pattern Whether the destructure came from a case pattern rather than a @c let .
-   * @param[in, out] sm The scope manager to get the symbol's memory information from.
-   * @param[in, out] meta Metadata to pass between ASTs, holding the value in @c LetStatementValue.
-   */
+  /// When we have a pattern like "let Self(fd) = self", we
+  /// mark "self" as moved, because all non-copyable fields
+  /// have to be moved (for linear system drop rules), and
+  /// this is how in the "drop" methods, we finish consuming
+  /// "self".
   SPP_EXP_FUN auto ConsumeDestructureSource(
-    asts::Ast const &owner,
+    Ast const &owner,
     bool from_case_pattern,
     bool any_binding_is_moving,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData const *meta)
+    ScopeManager &sm,
+    CompilerMetaData const *meta)
     -> void;
 
-  /**
-   * Consume a destructure's hidden temporary, for the path where one was bound. The expanded @c let statements read
-   * the temporary a part at a time, so it is left covered in partial moves; the destructure took the whole of it, so
-   * say so. Without this the temporary looks like a value someone took a piece out of and then abandoned.
-   * @param[in] tmp_name The name returned by @ref BindDestructureTemporary.
-   * @param[in, out] sm The scope manager to get the temporary's symbol from.
-   */
+  /// When we have a temporary materialization, mark it as
+  /// consumed by getting the symbol and setting the memory
+  /// fields on it to mark as "moved".
   SPP_EXP_FUN auto ConsumeDestructureTemp(
-    asts::IdentifierAst const &tmp_name,
-    scopes::ScopeManager const &sm)
+    IdentifierAst const &tmp_name,
+    ScopeManager const &sm)
     -> void;
 
-  /**
-   * Hand the comptime value of the destructured value to the destructure's hidden temporary, so that the expanded
-   * @c let statements can index it. The owning @c let statement has already resolved the value into @c CmpResult (a
-   * field @c CompilerMetaData::Save does not track), so the value is not resolved a second time here.
-   * @param[in] tmp_name The name returned by @ref BindDestructureTemporary.
-   * @param[in, out] sm The scope manager to get the temporary's symbol from.
-   * @param[in, out] meta Metadata to pass between ASTs, holding the resolved value in @c CmpResult.
-   */
+  /// Run uniform stage 8 memory analysis on the destructure
+  /// temporary materialization, should it exist (this won't
+  /// be called if not).
+  SPP_EXP_FUN auto DestructureTempStage8(
+    Ast const &owner,
+    IdentifierAst const &tmp_name,
+    ScopeManager &sm,
+    CompilerMetaData *meta)
+    -> void;
+
+  /// Run uniform stage 9 comptime resolution on the
+  /// destructure temporary materialization, should it exist
+  /// (this won't be called if not).
   SPP_EXP_FUN auto DestructureTempStage9(
-    Shared<asts::IdentifierAst> const &tmp_name,
-    scopes::ScopeManager const &sm,
-    asts::meta::CompilerMetaData const *meta)
+    Shared<IdentifierAst> const &tmp_name,
+    ScopeManager const &sm,
+    CompilerMetaData const *meta)
     -> void;
 
-  /**
-   * Generate the value bound to a destructure's hidden temporary into a stack slot, once, before the expanded @c let
-   * statements index it. This is what stops a destructure evaluating its value once per element.
-   * @param[in] tmp_name The name returned by @ref BindDestructureTemporary.
-   * @param[in] llvm_subject The already-generated value, or @c nullptr to generate @c LetStatementValue here.
-   * @param[in, out] sm The scope manager to get the temporary's symbol from.
-   * @param[in, out] meta Metadata to pass between ASTs, holding the value in @c LetStatementValue.
-   * @param[in, out] ctx The LLVM context to generate code into.
-   */
+  /// Run uniform stage 11 code generation on the destructure
+  /// temporary materialization, should it exist (this won't
+  /// be called if not). The value bound to the destructure's
+  /// hidden temporary is generated into the stack before the
+  /// expanded "let" statements use it.
   SPP_EXP_FUN auto DestructureTempStage11(
-    Shared<asts::IdentifierAst> const &tmp_name,
+    Shared<IdentifierAst> const &tmp_name,
     llvm::Value *llvm_subject,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
+    ScopeManager &sm,
+    CompilerMetaData *meta,
+    LlvmCtx *ctx)
     -> void;
 }

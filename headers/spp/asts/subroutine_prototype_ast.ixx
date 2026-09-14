@@ -9,8 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(SubroutinePrototypeAst) {
-}
+SPP_AST_COMMON_FWD_DECL(SubroutinePrototypeAst);
 
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
   SPP_AST_KIND(SubroutinePrototypeAst)
@@ -30,16 +29,9 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
 
   SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto IsCoroutine() const -> bool override;
 };

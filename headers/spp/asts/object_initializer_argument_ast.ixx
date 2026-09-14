@@ -7,63 +7,41 @@ import spp.asts.mixins.type_inferrable_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentAst) {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeAst);
 
-/**
- * The ObjectInitializerArgumentAst is the base class representing an argument in a object initialization. It is
- * inherited into the "shorthand" and "keyword" variants.
- */
+/// The base class for an argument in an object
+/// initialization, inherited into the "shorthand" and
+/// "keyword" variants.
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeInferrableAst {
-  /**
-   * The name of the argument. This is the identifier that is used to refer to the argument in the function call. For
-   * shorthand args, this is autofilled by cloning the value, and casting it to an IdentifierAst. Otherwise, it is
-   * passed explicitly from the keyword arg parser.
-   */
+  /// The name of the argument. For shorthand args, this is
+  /// autofilled by cloning the value and casting it to an
+  /// IdentifierAst. Otherwise, it is passed explicitly from
+  /// the keyword arg parser.
   Shared<IdentifierAst> Name;
 
-  /**
-   * The expression that is being passed as the argument to the object initialization. Both positional and keyword
-   * arguments have a value.
-   */
+  /// The expression passed as the argument to the object
+  /// initialization. Both shorthand and keyword arguments have
+  /// a value.
   Unique<ExpressionAst> Val;
 
   bool IsCompilerGenerated = false;
 
-  /**
-   * Construct the ObjectInitializerArgumentAst with the arguments matching the members.
-   * @param[in] name The name of the argument.
-   * @param[in] val The expression that is being passed as the argument to the object initialization.
-   */
   explicit ObjectInitializerArgumentAst(
     decltype(Name) name,
     decltype(Val) &&val);
 
   ~ObjectInitializerArgumentAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
-    -> bool override;
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 };

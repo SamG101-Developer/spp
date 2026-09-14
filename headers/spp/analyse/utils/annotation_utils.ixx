@@ -4,14 +4,9 @@ module;
 export module spp.analyse.utils.annotation_utils;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct AnnotationAst;
-}
-
-namespace spp::analyse::utils::annotation_utils {
-  SPP_EXP_CLS struct AnnotationInfo;
-  SPP_EXP_CLS struct BuiltinAnnotations;
-}
+use(spp::asts, struct AnnotationAst);
+use(spp::analyse::utils::annotation_utils, struct AnnotationInfo);
+use(spp::analyse::utils::annotation_utils, struct BuiltinAnnotations);
 
 /// The AnnotationInfo holds a small set of metadata about an
 /// annotation, used to enforce the validity of an annotation
@@ -29,7 +24,7 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
   /// For functions that themselves are annotations, like "fun
   /// public" is, bind the !annotation annotation onto it. This
   /// is the function's annotation-info's "definition".
-  asts::AnnotationAst *Definition = nullptr;
+  AnnotationAst *Definition = nullptr;
 
   AnnotationInfo() = default;
   AnnotationInfo(AnnotationInfo const &) = default;

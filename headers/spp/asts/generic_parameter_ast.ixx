@@ -8,13 +8,12 @@ import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericParameterAst) {
-  SPP_EXP_CLS struct GenericParameterCompOptionalAst;
-  SPP_EXP_CLS struct GenericParameterCompVariadicAst;
-  SPP_EXP_CLS struct GenericParameterTypeOptionalAst;
-  SPP_EXP_CLS struct GenericParameterTypeVariadicAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(GenericParameterAst);
+use(spp::asts, struct GenericParameterCompOptionalAst);
+use(spp::asts, struct GenericParameterCompVariadicAst);
+use(spp::asts, struct GenericParameterTypeOptionalAst);
+use(spp::asts, struct GenericParameterTypeVariadicAst);
+use(spp::asts, struct TypeAst);
 
 namespace spp::asts::detail {
   SPP_EXP_CLS template <typename GenericParameterType>
@@ -53,15 +52,12 @@ namespace spp::asts::detail {
   using value_type_t = typename generic_param_value_type<GenericParameterType>::type;
 }
 
-/**
- * The GenericParameterAst is the base class for all generic parameters. It is inherited by the GenericParameterCompAst
- * and GenericParameterTypeAst, which represent the two types of generic parameters in the language.
- */
+/// The base class for all generic parameters. It is inherited
+/// by "GenericParameterCompAst" and "GenericParameterTypeAst",
+/// the two kinds of generic parameter in the language.
 SPP_EXP_CLS struct spp::asts::GenericParameterAst : Ast, mixins::OrderableAst {
-  /**
-   * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
-   * generic type.
-   */
+  /// The name of the generic parameter, used to refer to it
+  /// inside the generic type.
   Shared<TypeAst> Name;
 
   explicit GenericParameterAst(

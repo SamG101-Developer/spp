@@ -8,10 +8,9 @@ import spp.asts.generic_parameter_comp_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericParameterCompOptionalAst) {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(GenericParameterCompOptionalAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
 
 namespace spp::asts::detail {
   template <>
@@ -24,25 +23,12 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompOptionalAst final : GenericPar
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericParameterCompOptionalAst);
 
-  /**
-   * The token that separates the parameter name from the default value.
-   */
+  /// The "=" token separating the parameter from its default.
   Unique<TokenAst> TokAssign;
 
-  /**
-   * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
-   */
+  /// The default value, used if the argument is not provided.
   Unique<ExpressionAst> DefaultVal;
 
-  /**
-   * Construct the GenericParameterCompOptionalAst with the arguments matching the members.
-   * @param tok_cmp The @c cmp token that represents the generic comp parameter.
-   * @param name The value of the generic comp parameter.
-   * @param tok_colon The token that represents the @c : colon in the generic parameter.
-   * @param type The type of the parameter.
-   * @param tok_assign The token that separates the parameter name from the default value.
-   * @param default_val The default value for the parameter.
-   */
   GenericParameterCompOptionalAst(
     decltype(TokCmp) &&tok_cmp,
     decltype(Name) &&name,
@@ -53,15 +39,9 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompOptionalAst final : GenericPar
 
   ~GenericParameterCompOptionalAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompOptionalAst);

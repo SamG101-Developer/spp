@@ -5,22 +5,13 @@ export module spp.codegen.llvm_size;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class ScopeManager;
-}
-
-namespace spp::asts {
-  SPP_EXP_CLS struct TypeAst;
-}
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::asts, struct TypeAst);
 
 namespace spp::codegen {
-  SPP_EXP_FUN auto SizeOf(
-    analyse::scopes::ScopeManager const &sm,
-    asts::TypeAst const &type)
-    -> std::size_t;
+  /// Determine the size of a type based on byte size.
+  SPP_EXP_FUN auto SizeOf(ScopeManager const &sm, TypeAst const &type) -> std::size_t;
 
-  SPP_EXP_FUN auto AlignOf(
-    analyse::scopes::ScopeManager const &sm,
-    asts::TypeAst const &type)
-    -> std::size_t;
+  /// Determine the alignment of a type based on bytes.
+  SPP_EXP_FUN auto AlignOf(ScopeManager const &sm, TypeAst const &type) -> std::size_t;
 }

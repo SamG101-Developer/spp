@@ -9,49 +9,30 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CasePatternVariantLiteralAst) {
-  SPP_EXP_CLS struct LiteralAst;
-  SPP_EXP_CLS struct LocalVariableAst;
-}
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantLiteralAst);
+use(spp::asts, struct LiteralAst);
+use(spp::asts, struct LocalVariableAst);
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantLiteralAst);
 
-  /**
-   * The literal value of the case pattern variant. This can be a string, integer, float, boolean, but not a tuple or
-   * array; special destructure syntax exists for those literals.
-   */
+  /// The literal value of the pattern: a string, integer,
+  /// float or boolean, but not a tuple or array; special
+  /// destructure syntax exists for those literals.
   Unique<LiteralAst> Literal;
 
-  /**
-   * Construct the CasePatternVariantLiteralAst with the arguments matching the members.
-   * @param literal The literal value of the case pattern variant.
-   */
   explicit CasePatternVariantLiteralAst(
     decltype(Literal) &&literal);
 
   ~CasePatternVariantLiteralAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto ConvToVar(meta::CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
+  auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

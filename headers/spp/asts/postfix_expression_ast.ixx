@@ -9,75 +9,47 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionAst) {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct PostfixExpressionOperatorAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct PostfixExpressionOperatorAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionAst);
 
-  /**
-   * The left-hand side expression of the postfix expression. This is the base expression on which the postfix operation
-   * is applied.
-   */
+  /// The base expression the postfix operation is applied to.
   Unique<ExpressionAst> Lhs;
 
-  /**
-   * The operator token that represents the postfix operation. This indicates the type of operation being performed.
-   */
+  /// The postfix operator, indicating the type of operation
+  /// being performed.
   Unique<PostfixExpressionOperatorAst> Op;
 
   struct {
     mutable Shared<TypeAst> CachedInference;
   } Source;
 
-  /**
-   * Construct the PostfixExpressionAst with the arguments matching the members.
-   * @param[in] lhs The left-hand side expression of the postfix expression.
-   * @param[in] op The operator token that represents the postfix operation.
-   */
   PostfixExpressionAst(
     decltype(Lhs) &&lhs,
     decltype(Op) &&op);
 
   ~PostfixExpressionAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto ExprParts() const
-    -> Vec<IdentifierAst*> override;
+  SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 
-  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
-    -> bool override;
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 };

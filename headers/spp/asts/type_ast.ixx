@@ -7,25 +7,21 @@ import spp.asts.mixins.abstract_type_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct TypeSymbol;
-}
+SPP_AST_COMMON_FWD_DECL(TypeAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeSymbol);
 
-SPP_AST_COMMON_FWD_DECL(TypeAst) {
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct ConventionAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct GenericArgumentAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct GenericArgumentGroupAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct GenericParameterAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct IdentifierAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypeIdentifierAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypePostfixExpressionAst;
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TypeUnaryExpressionAst;
-}
+GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
+use(spp::asts, struct ConventionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct GenericArgumentGroupAst);
+use(spp::asts, struct GenericParameterAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts, struct TypePostfixExpressionAst);
+use(spp::asts, struct TypeUnaryExpressionAst);
 
-/**
- * The TypeAst is a base class for all type-related AST nodes in the SPP language.
- */
+/// The base class for all type asts.
 SPP_EXP_CLS struct spp::asts::TypeAst :
   PrimaryExpressionAst,
   mixins::AbstractTypeAst,
@@ -36,62 +32,56 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
 
   ~TypeAst() override;
 
-  SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept
-    -> bool {
+  SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept -> bool {
     return false;
   }
 
-  SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept
-    -> bool {
+  SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept -> bool {
     return false;
   }
 
-  /**
-   * A type sitting in expression position - the @c A of @c {A::new()} , or a comp argument naming one - is substituted
-   * as the type it is. This is the one node where the expression walk and the type walk meet.
-   */
+  /// A type in expression position (the "A" of "A::new()", or
+  /// a comp argument naming a type) is substituted as the type
+  /// it is. This is the one node where the expression walk and
+  /// the type walk meet.
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 
-  /**
-   * Answer with the symbol this type resolved to last time it was asked for in @p scope (if that answer still stands).
-   * @param scope The scope the lookup is being made in.
-   * @param generation The current @c TypeLookupGeneration ; a remembered answer from any earlier one is discarded.
-   * @param out Set to the remembered symbol when there is one. Untouched otherwise.
-   * @return Whether @p out was set.
-   */
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT
-  auto TryCachedLookup(
-    analyse::scopes::Scope const *const scope,
+  /// Get the symbol this type resolved to the last time it was
+  /// looked up in "scope", if that answer still stands. An
+  /// answer remembered under an earlier "TypeLookupGeneration"
+  /// is discarded. "out" is only set when there is an answer.
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto TryCachedLookup(
+    Scope const *const scope,
     const std::uint64_t generation,
-    analyse::scopes::TypeSymbol *&out) const -> bool {
+    TypeSymbol *&out) const
+    -> bool {
     if (_LookupScope != scope or _LookupGen != generation) { return false; }
     out = _LookupSym;
     return true;
   }
 
-  /**
-   * Remember what this type resolved to in @p scope , so the next identical lookup is a pointer comparison. A null
-   * symbol is cached too: "not found" is as expensive to re-derive as a found symbol.
-   */
-  SPP_ATTR_HOT
-  auto RememberLookup(
-    analyse::scopes::Scope const *const scope,
+  /// Remember what this type resolved to in "scope", so the
+  /// next identical lookup is a pointer comparison. A null
+  /// symbol is cached too: "not found" is as expensive to
+  /// re-derive as a found symbol.
+  SPP_ATTR_HOT auto RememberLookup(
+    Scope const *const scope,
     const std::uint64_t generation,
-    analyse::scopes::TypeSymbol *const sym) const -> void {
+    TypeSymbol *const sym) const
+    -> void {
     _LookupScope = scope;
     _LookupSym = sym;
     _LookupGen = generation;
   }
 
-  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
-    -> bool override;
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 protected:
   mutable Shared<TypeAst> _CachedWithoutGenerics;
-  mutable analyse::scopes::Scope const *_LookupScope;
-  mutable analyse::scopes::TypeSymbol *_LookupSym;
+  mutable Scope const *_LookupScope;
+  mutable TypeSymbol *_LookupSym;
   mutable std::uint64_t _LookupGen;
   mutable Str _CachedStringification;
 };

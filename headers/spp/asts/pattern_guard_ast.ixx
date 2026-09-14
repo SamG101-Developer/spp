@@ -9,55 +9,32 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PatternGuardAst) {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(PatternGuardAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
   SPP_AST_KEY_FUNCTIONS(PatternGuardAst);
 
-  /**
-     * The @c and keyword token. This is used to indicate that the pattern guard is being introduced, following a
-     * pattern.
-     */
+  /// The "and" keyword token, introducing the pattern guard
+  /// after a pattern.
   Unique<TokenAst> TokAnd;
 
-  /**
-     * The expression that is used as the guard for the pattern. This expression is evaluated to determine if the
-     * pattern matches, and must be a boolean expression.
-     */
+  /// The guard expression, evaluated to determine if the
+  /// pattern matches. Must be a boolean expression.
   Unique<ExpressionAst> Expr;
 
-  /**
-     * Constructor for the @c PatternGuardAst.
-     * @param tok_and The @c and keyword token.
-     * @param expression The expression that is used as the guard for the pattern.
-     */
   PatternGuardAst(
     decltype(TokAnd) &&tok_and,
     decltype(Expr) &&expression);
 
   ~PatternGuardAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

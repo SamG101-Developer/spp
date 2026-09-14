@@ -7,14 +7,10 @@ import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-}
-
-SPP_AST_COMMON_FWD_DECL(GenericParameterTypeAst) {
-  SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(GenericParameterTypeAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::asts, struct GenericParameterTypeInlineConstraintsAst);
+use(spp::asts, struct TypeAst);
 
 namespace spp::asts::detail {
   template <>
@@ -29,19 +25,11 @@ namespace spp::asts::detail {
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-  /**
-     * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
-     * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the
-     * generic type parameter and @c Copy is the constraint.
-     */
+  /// The optional inline constraints for the generic type
+  /// parameter. In "fun func[T: Copy]()", "T" is the generic
+  /// type parameter and "Copy" is the constraint.
   Unique<GenericParameterTypeInlineConstraintsAst> Constraints;
 
-  /**
-     * Construct the GenericParameterTypeAst with the arguments matching the members.
-     * @param name The name of the generic type parameter.
-     * @param constraints The optional inline constraints for the generic type parameter.
-     * @param order_tag The order tag for the generic parameter.
-     */
   GenericParameterTypeAst(
     decltype(Name) name,
     decltype(Constraints) &&constraints,
@@ -49,27 +37,17 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
 
   ~GenericParameterTypeAst() override;
 
-  auto Stage2_GenTopLvlScopes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *)
-    -> void override;
+  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-  auto Stage4_QualifyTypes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *)
-    -> void override;
+  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  SPP_ATTR_NODISCARD auto GetDummyScopes() const
-    -> std::span<analyse::scopes::Scope* const>;
+  SPP_ATTR_NODISCARD auto GetDummyScopes() const -> std::span<Scope* const>;
 
   static auto ClearDummyScopes() -> void;
 
 private:
   inline static Vec<Unique<Ast>> _DummyScopeAsts = {};
-  Vec<analyse::scopes::Scope*> _DummyScopes;
+  Vec<Scope*> _DummyScopes;
 };

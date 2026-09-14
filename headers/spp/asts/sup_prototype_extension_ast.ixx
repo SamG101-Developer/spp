@@ -11,65 +11,47 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct TypeSymbol;
-}
+SPP_AST_COMMON_FWD_DECL(SupPrototypeExtensionAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts, struct FunctionPrototypeAst);
+use(spp::asts, struct GenericParameterGroupAst);
+use(spp::asts, struct SupImplementationAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
-SPP_AST_COMMON_FWD_DECL(SupPrototypeExtensionAst) {
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-  SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct SupImplementationAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
-
-/**
- * The SupPrototypeExtensionAst represents a superimposition of a type over a type. This is used to "inherit" a type.
- * For example, to extend the @c A type with @c B, the following code can be used:
- * @code
- * sup A ext B {
- *     # Override any abstract or virtual methods from B here.
- * }
- * @endcode
- */
+/// A superimposition of a type over a type, used to "inherit"
+/// a type. For example, to extend the "A" type with "B":
+///
+///   sup A ext B {
+///       # Override any abstract or virtual methods from B here.
+///   }
 SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMemberAst, SupMemberAst {
   SPP_AST_KEY_FUNCTIONS(SupPrototypeExtensionAst);
 
-  /**
-   * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
-   * being extended with additional methods.
-   */
+  /// The "sup" keyword that starts the superimposition.
   Unique<TokenAst> TokSup;
 
-  /**
-   * The generics available for this superimposition. This is used to superimpose over generic types (all generics
-   * must be used by the type being extended).
-   */
+  /// The generics available for this superimposition, used to
+  /// superimpose over generic types (all generics must be used
+  /// by the type being extended).
   Unique<GenericParameterGroupAst> GnParamGroup;
 
-  /**
-   * The name of the type that is being extended. This is the type that will gain the additional methods defined in
-   * the body of this superimposition.
-   */
+  /// The name of the type being extended. This type gains the
+  /// superclass defined by this superimposition.
   Shared<TypeAst> Name;
 
-  /**
-   * The @c ext keyword that represents the type that is being extended. This is used to indicate that an extension,
-   * and a method block, is being defined.
-   */
+  /// The "ext" keyword, indicating that an extension and a
+  /// method block are being defined.
   Unique<TokenAst> TokExt;
 
-  /**
-   * The name of the super class that is this type is being extended from. The attributes and methods of this type
-   * will now be available on the superimposed type.
-   */
+  /// The superclass this type is being extended from. Its
+  /// attributes and methods become available on the
+  /// superimposed type.
   Shared<TypeAst> SuperClass;
 
-  /**
-   * The body of the superimposition. This is a list of methods that are being added to the type. Each method is
-   * defined as a FunctionPrototypeAst, which includes the method's name, parameters, and return type.
-   */
+  /// The body of the superimposition: the methods (each a
+  /// FunctionPrototypeAst) being added to the type.
   Unique<SupImplementationAst> Impl;
 
   struct {
@@ -77,15 +59,6 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
     Shared<TypeAst> OriginalSuperClass;
   } Source;
 
-  /**
-   * Construct the SupPrototypeFunctionsAst with the arguments matching the members.
-   * @param tok_sup The @c sup keyword that represents the start of the superimposition.
-   * @param generic_param_group The generics available for this superimposition.
-   * @param name The name of the type that is being extended.
-   * @param tok_ext The @c ext keyword that represents the type that is being extended.
-   * @param super_class The name of the super class that is this type is being extended from.
-   * @param impl The body of the superimposition.
-   */
   SupPrototypeExtensionAst(
     decltype(TokSup) &&tok_sup,
     decltype(GnParamGroup) &&generic_param_group,
@@ -96,73 +69,31 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
 
   ~SupPrototypeExtensionAst() override;
 
-  auto Stage1_PreProcess(
-    Ast *ctx)
-    -> void override;
+  auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-  auto Stage2_GenTopLvlScopes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *)
-    -> void override;
+  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
-  auto Stage3_GenTopLvlAliases(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage5_LoadSupScopes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage6_PreAnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage10_PreCodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto CheckCyclicExtension(
-    analyse::scopes::TypeSymbol const &sup_sym,
-    analyse::scopes::Scope &check_scope) const
-    -> void;
+  auto CheckCyclicExtension(TypeSymbol const &sup_sym, Scope &check_scope) const -> void;
 
-  auto CheckDoubleExtension(
-    analyse::scopes::TypeSymbol const &cls_sym,
-    analyse::scopes::Scope &check_scope) const
-    -> void;
+  auto CheckDoubleExtension(TypeSymbol const &cls_sym, Scope &check_scope) const -> void;
 
-  auto CheckSelfExtension(
-    analyse::scopes::Scope &check_scope) const
-    -> void;
+  auto CheckSelfExtension(Scope &check_scope) const -> void;
 };

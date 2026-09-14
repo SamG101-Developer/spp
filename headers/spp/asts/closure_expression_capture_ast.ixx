@@ -7,8 +7,7 @@ import spp.asts.function_call_argument_positional_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClosureExpressionCaptureAst) {
-}
+SPP_AST_COMMON_FWD_DECL(ClosureExpressionCaptureAst);
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {
   SPP_AST_KEY_FUNCTIONS(ClosureExpressionCaptureAst);

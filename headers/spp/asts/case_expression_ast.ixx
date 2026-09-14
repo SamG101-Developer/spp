@@ -9,59 +9,54 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CaseExpressionAst) {
-  SPP_EXP_CLS struct CaseExpressionBranchAst;
-  SPP_EXP_CLS struct InnerScopeExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(CaseExpressionAst);
+use(spp::asts, struct CaseExpressionBranchAst);
+use(spp::asts, struct InnerScopeExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
-/**
- * The CaseExpressionAst represents conditional branching, of either an if-like or switch-like nature. If the @c of
- * keyword is included in after the condition, then pattern matching is used, by combining the condition with partial
- * fragments that are the branches.
- */
+/// Represents conditional branching, either if-like or
+/// switch-like. If the "of" keyword follows the condition,
+/// pattern matching is used, by combining the condition with
+/// the partial fragments that are the branches.
 SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
   SPP_AST_KEY_FUNCTIONS(CaseExpressionAst);
 
-  /**
-   * The token that represents the @c case keyword in the case expression.
-   */
+  /// The "case" keyword token.
   Unique<TokenAst> TokCase;
 
-  /**
-   * The condition of the case expression, which is the expression that is being matched against the cases. For
-   * pattern matching, the condition may not evaluate to boolean (but combining it with the partial fragments will
-   * evaluate to boolean). Otherwise, the expression itself must be boolean.
-   */
+  /// The expression being matched against the branches. For
+  /// pattern matching it may not be boolean (but combined
+  /// with the partial fragments it will be). Otherwise, the
+  /// expression itself must be boolean.
   Unique<ExpressionAst> Cond;
 
-  /**
-   * The optional @c of keyword, that indicates the case expression is doing pattern matching against partial
-   * fragments.
-   */
+  /// The optional "of" keyword, indicating pattern matching
+  /// against partial fragments.
   Unique<TokenAst> TokOf;
 
-  /**
-   * The inner scope of the case branches. This is where the branches of the case expression are defined, and allows
-   * symbols to be created inside the @c case expression scope, but available to all branches, if need be.
-   */
+  /// The branches of the case expression. Symbols can be
+  /// created inside the "case" expression scope, available to
+  /// all branches, if need be.
   Vec<Unique<CaseExpressionBranchAst>> Branches;
 
-  /**
-   * Set when this @c case was produced by desugaring an @c is expression ("x is T(..)"), whose two branches yield
-   * @c true and @c false. This case always evaluates to a boolean, but typical usage omits the returning value when we
-   * need to actually catch it (e.g. a loop condition), so enforce that by this flag. Needed for the phi nodes.
-   * Todo: is this a more general problem? Does "loop case ... { }" fail to generate?,=
-   */
+  /// Set when this "case" was desugared from an "is" expression
+  /// ("x is T(..)"), whose two branches yield "true" and
+  /// "false". It always evaluates to a boolean, but typical
+  /// usage omits the returning value when it must be caught
+  /// (e.g. a loop condition), so this flag enforces it. Needed
+  /// for the phi nodes.
+  /// Todo: is this a more general problem? Does
+  /// "loop case ... { }" fail to generate?,=
   bool LoweredFromIsExpr = false;
 
-  /**
-   * Set when this @c case is the lowering of the @c "?" operator, whose value branch yields the operand's value and
-   * whose @c else branch returns. The operator is an expression wherever it is written, so the @c case standing in for
-   * it always yields a value - which is not something the surrounding code generation can be asked about, because the
-   * lowering deliberately detaches itself from the assignment the operator sits inside.
-   */
+  /// Set when this "case" is the lowering of the "?" operator,
+  /// whose value branch yields the operand's value and whose
+  /// "else" branch returns. The operator is an expression
+  /// wherever it is written, so the "case" always yields a
+  /// value - the surrounding codegen can't be asked, because
+  /// the lowering deliberately detaches itself from the
+  /// assignment the operator sits inside.
   bool LoweredFromTryOperator = false;
 
   CaseExpressionAst(
@@ -76,39 +71,21 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
     decltype(TokCase) &&tok_case,
     decltype(Cond) &&cond,
     Unique<InnerScopeExpressionAst> &&first,
-    decltype(Branches) &&branches) -> Unique<CaseExpressionAst>;
+    decltype(Branches) &&branches)
+    -> Unique<CaseExpressionAst>;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  /**
-   * A @c case block only terminates (is terminatable) if one or more of its branches can terminate. This is because
-   * it has to be assumed that the terminating branch will execute, in order to cover all bases.
-   * @return If one of the branches can terminate.
-   */
-  SPP_ATTR_NODISCARD auto Terminates() const
-    -> bool override;
+  /// A "case" block only terminates if one or more of its
+  /// branches can terminate, as it has to be assumed that the
+  /// terminating branch will execute, to cover all bases.
+  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 };

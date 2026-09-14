@@ -9,49 +9,27 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ArrayLiteralExplicitElementsAst) {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(ArrayLiteralExplicitElementsAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
-/**
- * The ArrayLiteralExplicitElementsAst represents an array literal with a variable number of elements. This is used to create
- * an @code std::Arr[T, n]@endcode type, with @c T being the inferred type of each element (must all be the same type,
- * and @c n being the number of elements provided.
- *
- * @n
- * The elements are stored as @c Ast* pointers, but are restricted to expression-like ASTs by the parser. Their
- * respective analysis functions will be called by inheritance/vtable logic.
- */
+/// The explicit array ast represents an array literal with
+/// a variable number of elements. This maps to the Arr[T, n]
+/// type.
 SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralExplicitElementsAst);
 
-  /**
-   * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
-   * literal.
-   */
+  /// The opening "[" token.
   Unique<TokenAst> TokL;
 
-  /**
-   * The list of expressions that are the elements of the array. Each element is an AST that represents an expression.
-   * They will all infer to the same type.
-   */
+  /// The list of all the elements in the array.
   Vec<Unique<ExpressionAst>> Elems;
 
-  /**
-   * The token that represents the right square bracket @code ]@endcode in the array literal. This closes the array
-   * literal.
-   */
+  /// The closing "]" token.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the ArrayLiteralNElements with the arguments matching the members.
-   * @param[in] tok_l The token that represents the left square bracket @c [ in the array literal.
-   * @param[in] elements The list of expressions that are the elements of the array.
-   * @param[in] tok_r The token that represents the right square bracket @c ] in the array literal.
-   */
   ArrayLiteralExplicitElementsAst(
     decltype(TokL) &&tok_l,
     decltype(Elems) &&elements,
@@ -59,97 +37,56 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
 
   ~ArrayLiteralExplicitElementsAst() override;
 
-  /**
-   * Check each element for equality with the corresponding element in the other array literal. The array literals are
-   * only equal if all the elements are equal. Given this is only used in compile-time contexts, each element will be
-   * evaluatable to the AST.
-   * @param other The other array literal to compare with.
-   * @return @code Ordering::equal@endcode if the array literals are equal, and
-   * @code Ordering::less@endcode otherwise.
-   */
+  /// Check each element is equal with the corresponding
+  /// element of the other array, after a length check.
   SPP_ATTR_NODISCARD auto EqualsArrayLiteralExplicitElements(
     ArrayLiteralExplicitElementsAst const &other) const
     -> Ordering override;
 
-  /**
-   * Reverse hook to equate against the other arguments. This will call the @c equals_array_literal_explicit_elements
-   * method on the other expression, if it is an array literal with explicit elements, to check for equality.
-   * @param other The other expression to compare with.
-   * @return @code Ordering::equal@endcode if the expressions are equal, and
-   * @code Ordering::less@endcode otherwise.
-   */
+  /// Reverse hook to activate the array equality check
+  /// from the other ast.
   SPP_ATTR_NODISCARD auto Equals(
     ExpressionAst const &other) const
     -> Ordering override;
 
-  /**
-   * Semantic analysis for an array with explicit elements ensures that all elements are of the same type, and that
-   * none of the elements are borrowed (ie the type of all the elements is not a borrow type). This is because it
-   * would otherwise be a violation of the second class borrow memory safety model.
-   * @param [in] sm The scope manager to find the symbols of the elements in.
-   * @param [in,out] meta Associated metadata.
-   * @throw spp::analyse::errors::SppTypeMismatchError if the elements are not of the same type.
-   * @throw spp::analyse::errors::SppSecondClassBorrowViolationError if any of the elements are borrowed.
-   */
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  /// Analyse each element, check they are valid expression
+  /// asts, check they are all the same type, not borrowed,
+  /// and activate an analysis on the inferred type of this
+  /// array, to instantiate the generic.
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /**
-   * Check the memory state of the element being repeated (mostly to ensure that it is initialised and not just a
-   * valid type).
-   * @param sm The scope manager to use for memory checking.
-   * @param meta Associated metadata.
-   */
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  /// Check the memory status of every symbol going into
+  /// the array, to check that they're initialised etc,
+  /// and able to me "moved" or copied.
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /**
-   * Resolve the array literal at compile time. This is only possible if all the elements are compile time resolvable
-   * themselves.
-   * @param sm The scope manager to use for resolution.
-   * @param meta Associated metadata.
-   * @return The result of the compile time resolution.
-   */
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  /// Resolve the array literal at compile-time. This can
+  /// only be done if each of the elements within the array
+  /// is compile-time evaluatable themselves.
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /**
-   * Create an array type based on the internal element type and the number of elements.
-   * @param sm The scope manager to use for code generation.
-   * @param meta Associated metadata.
-   * @param ctx The LLVM context to use for code generation.
-   * @return The LLVM value representing the array literal.
-   */
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  /// Use the internal LLVM array type, which is what the
+  /// standard library's "Arr" type lowers to anyway, and
+  /// create the array of values. Comptime and runtime
+  /// paths (create with values vs GEP).
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  /**
-   * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of
-   * the elements in the array literal, and @c n is the number of elements in the array literal.
-   * @param [in] sm The scope manager to use for type inference.
-   * @param [in,out] meta Associated metadata.
-   * @return The @code std::array::Arr[T, n]@endcode type of the array literal.
-   */
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  /// Create the "Arr[T, n]" type based off the elements'
+  /// consistent types, the number of elements, and then
+  /// analyse the type to trigger a generic instantiation.
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  /// Move through the elements to substitute generics in
+  /// as they might contain postfix ops that need to be
+  /// checked.
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 
-  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
-    -> bool override;
+  /// Arrays can be used ina runtime default context, only
+  /// if all of the elements are allowed to be used in a
+  /// runtime default context.
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralExplicitElementsAst)

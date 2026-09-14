@@ -5,25 +5,17 @@ export module spp.analyse.utils.expr_utils;
 import spp.utils.types;
 import sys;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct ScopeManager;
-  SPP_EXP_CLS struct NamespaceSymbol;
-  SPP_EXP_CLS struct VariableSymbol;
-  SPP_EXP_CLS struct TypeSymbol;
-}
-
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct StatementAst;
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-}
-
-namespace spp::asts::meta {
-  SPP_EXP_CLS struct CompilerMetaData;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct ScopeManager);
+use(spp::analyse::scopes, struct NamespaceSymbol);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts, struct Ast);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct StatementAst);
+use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::expr_utils {
   SPP_EXP_CLS struct PrimaryExpressionOptions {
@@ -31,50 +23,47 @@ namespace spp::analyse::utils::expr_utils {
     bool AllowTokenAst = false;
   };
 
+  /// Validate whether the use of a certain "primary expression"
+  /// ast is genuinely valid in context. For example, ".." is
+  /// valid in binary expressions ie ".. + tup", but not say as
+  /// "f(..)".
   SPP_EXP_FUN auto IsPrimaryExprTypeValid(
-    asts::ExpressionAst const &expr,
-    scopes::ScopeManager const &sm,
+    ExpressionAst const &expr,
+    ScopeManager const &sm,
     PrimaryExpressionOptions &&options = {})
     -> bool;
 
+  /// Check that there is no unreachable code by member ast
+  /// checking. Ie if there are expressions after a top level
+  /// terminating expression, then that is an error. Prevents
+  /// any dead code at all.
   SPP_EXP_FUN auto ValidateNoUnreachableCode(
-    Vec<asts::StatementAst*> const &members,
-    scopes::ScopeManager const &sm)
+    Vec<StatementAst*> const &members,
+    ScopeManager const &sm)
     -> void;
 
-  /**
-   * Reject a statement whose value nothing consumes. Ownership is linear, so a produced value has to go somewhere:
-   * only @c Void and @c Never - which produce nothing and never arrive respectively - may be written as a statement.
-   * @param member The statement in discard position.
-   * @param scope The scope @p member was written in, which its type is inferred against.
-   * @param sm The scope manager, used for its global scope and for error formatting.
-   * @param meta Associated metadata.
-   */
+  /// Prevent statements/expressions from being used whose
+  /// value is unbound and falls away. For example, just
+  /// writing "1" in a function body is wrong. It is never
+  /// required and often the source of bugs; prevent at
+  /// compile time.
   SPP_EXP_FUN auto ValidateDiscardedValue(
-    asts::Ast &member,
-    scopes::Scope *scope,
-    scopes::ScopeManager const &sm,
-    asts::meta::CompilerMetaData *meta)
+    Ast &member,
+    Scope *scope,
+    ScopeManager const &sm,
+    CompilerMetaData *meta)
     -> void;
 
-  /**
-   * One scope that declares a name, and how far it sits from the type the lookup began at. This allows for
-   * disambiguation between which field to use from layers inheritance if there are duplicate field names etc.
-   */
   SPP_EXP_CLS struct DeclaringVarScope {
     sys::ssize_t Depth;
-    scopes::Scope *Where;
-    scopes::VariableSymbol *Symbol;
+    Scope *Where;
+    VariableSymbol *Symbol;
   };
 
-  /**
-   * One scope that declares a type, and how far it sits from the type the lookup began at. This allows for
-   * disambiguation between which field to use from layers inheritance if there are duplicate field names etc.
-   */
   SPP_EXP_CLS struct DeclaringTypeScope {
     sys::ssize_t Depth;
-    scopes::Scope *Where;
-    scopes::TypeSymbol *Symbol;
+    Scope *Where;
+    TypeSymbol *Symbol;
   };
 
   SPP_EXP_CLS enum class MemberAccessForm {
@@ -82,124 +71,104 @@ namespace spp::analyse::utils::expr_utils {
     Static, // Accessed with "::"
   };
 
-  /**
-   * Whether a member can be reached by a given access form. This is needed in determining if a field can be accessed as
-   * a runtime field or static field; sometimes as both if a class is defined in such a way.
-   * @param sym The member's symbol.
-   * @param form How the member was named.
-   * @return Whether that form reaches it.
-   */
+  /// Whether a member can be reached using a given form. This
+  /// is used to determine if the type "A" can reach "a" using
+  /// "." (field) or "::" (static constant). A class can define
+  /// both with the same name as they have different access.
   SPP_EXP_FUN auto MemberReachableBy(
-    scopes::VariableSymbol const &sym,
+    VariableSymbol const &sym,
     MemberAccessForm form)
     -> bool;
 
-  /**
-   * The candidates a given access form can reach, keeping the rest out of the depth comparison entirely: a level
-   * declaring the name in the other form must neither answer the access nor hide one further out that declares it in
-   * this form.
-   * @param candidates The declaring scopes to filter.
-   * @param form How the member was named.
-   * @return Those of @p candidates that @p form reaches.
-   */
+  /// Given a vector of scopes that are known to contains a
+  /// symbol, filter them to only the ones that contain the
+  /// symbol in a way that can be reached correctly.
   SPP_EXP_FUN auto MembersReachableBy(
     Vec<DeclaringVarScope> const &candidates,
     MemberAccessForm form)
     -> Vec<DeclaringVarScope>;
 
-  /**
-   * Lookup the field of a type, restricted to the members the given access form can reach. A type may declare an
-   * attribute and a constant of one name, and one level may declare either where another declares the other, so the
-   * symbol table's own answer cannot say which member an access meant.
-   * @param type_scope The scope of the type the access was written against.
-   * @param name The member being accessed.
-   * @param form How the member was named.
-   * @return The nearest member that form reaches, or @c nullptr if it reaches none.
-   */
+  /// Lookup a member in a scope, using a specific accessing
+  /// method. Given there is the possibility that multiple scopes
+  /// contain this (like a constant being overridden), we just
+  /// use the closest scope, as it will have been guaranteed to
+  /// be unique by prior analysis.
   SPP_EXP_FUN auto LookupMemberForAccess(
-    scopes::Scope &type_scope,
-    asts::IdentifierAst const &name,
+    Scope &type_scope,
+    IdentifierAst const &name,
     MemberAccessForm form)
-    -> scopes::VariableSymbol*;
+    -> VariableSymbol*;
 
-  /**
-   * Every scope that contains the variable requested. These are then inter-compared for depths, to determine if there
-   * are ambiguous lookups or not.
-   * @param type_scope The scope of the type the access was written against.
-   * @param name The member being accessed.
-   * @param sup_scope_search Whether each scope may answer with what its own super-scopes declare.
-   * @return The scopes holding it, unordered; pass to @c ClosestScopes to keep only the nearest.
-   */
+  /// Starting from a given scope, search the scope, and its
+  /// sup-scopes, for a given symbol, and measure how far away
+  /// the containing scope is from the starting one. This
+  /// allows us to check if s super-scope contains a constant
+  /// that we are overriding etc.
   SPP_EXP_FUN auto ScopesDeclaringVar(
-    scopes::Scope &type_scope,
-    asts::IdentifierAst const &name,
+    Scope &type_scope,
+    IdentifierAst const &name,
     bool sup_scope_search)
     -> Vec<DeclaringVarScope>;
 
-  /**
-   * Every scope that contains the type requested. These are then inter-compared for depths, to determine if there are
-   * ambiguous lookups or not.
-   * @param type_scope The scope of the type the access was written against.
-   * @param name The member being accessed.
-   * @param sup_scope_search Whether each scope may answer with what its own super-scopes declare.
-   * @return The scopes holding it, unordered; pass to @c ClosestScopes to keep only the nearest.
-   */
+  /// Starting from a given scope, search the scope, and its
+  /// sup-scopes, for a given symbol, and measure how far away
+  /// the containing scope is from the starting one. This
+  /// allows us to check if s super-scope contains a type
+  /// that we are overriding etc.
   SPP_EXP_FUN auto ScopesDeclaringType(
-    scopes::Scope &type_scope,
-    asts::TypeIdentifierAst const &name,
+    Scope &type_scope,
+    TypeIdentifierAst const &name,
     bool sup_scope_search)
     -> Vec<DeclaringTypeScope>;
 
-  /**
-   * The candidates sitting nearest to the type the lookup began at. More than one means two superimpositions at the
-   * same level declare the name, and the access cannot choose between them.
-   */
+  /// Given a search producing a vector of scope information,
+  /// get the closest ones. If there is only 1, then that's
+  /// fine, otherwise there is an ambiguity. For variables.
   SPP_EXP_FUN auto ClosestScopes(
     Vec<DeclaringVarScope> const &candidates)
     -> Vec<DeclaringVarScope>;
 
-  /**
-   * The candidates sitting nearest to the type the lookup began at. More than one means two superimpositions at the
-   * same level declare the name, and the access cannot choose between them.
-   */
+  /// Given a search producing a vector of scope information,
+  /// get the closest ones. If there is only 1, then that's
+  /// fine, otherwise there is an ambiguity. For types.
   SPP_EXP_FUN auto ClosestScopes(
     Vec<DeclaringTypeScope> const &candidates)
     -> Vec<DeclaringTypeScope>;
 
-  /**
-   * Report if there is an ambiguity for variable lookup.
-   * @param closest The nearest candidates, (less than 2 is fine, otherwise ambiguous).
-   * @param access The member access being reported.
-   * @param sm The scope manager, for error formatting.
-   */
+  /// Report if there is an ambiguity for variable lookup,
+  /// based on the number of scopes providing a value.
   SPP_EXP_FUN auto RaiseIfAmbiguous(
     Vec<DeclaringVarScope> const &closest,
-    asts::Ast const &access,
-    scopes::ScopeManager const &sm)
+    Ast const &access,
+    ScopeManager const &sm)
     -> void;
 
-  /**
-   * Report if there is an ambiguity for type lookup.
-   * @param closest The nearest candidates, (less than 2 is fine, otherwise ambiguous).
-   * @param access The member access being reported.
-   * @param sm The scope manager, for error formatting.
-   */
+  /// Report if there is an ambiguity for type lookup, based
+  /// on the number of scopes providing a value.
   SPP_EXP_FUN auto RaiseIfAmbiguous(
     Vec<DeclaringTypeScope> const &closest,
-    asts::Ast const &access,
-    scopes::ScopeManager const &sm)
+    Ast const &access,
+    ScopeManager const &sm)
     -> void;
 
-  SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingIdentifierAndClosestOptions(
-    asts::IdentifierAst const &identifier,
-    Vec<scopes::VariableSymbol*> const &var_symbols,
-    Vec<scopes::NamespaceSymbol*> const &ns_symbols,
-    scopes::ScopeManager const &sm)
+  /// Raise an error for a missing identifier, and provide the
+  /// closest options; a singular place to uniformly handle
+  /// these errors.
+  SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN
+  auto RaiseMissingIdentifierAndClosestOptions(
+    IdentifierAst const &identifier,
+    Vec<VariableSymbol*> const &var_symbols,
+    Vec<NamespaceSymbol*> const &ns_symbols,
+    ScopeManager const &sm)
     -> void;
 
-  SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingTypeIdentifierAndClosestOptions(
-    asts::TypeIdentifierAst const &identifier,
-    Vec<scopes::TypeSymbol*> const &symbols,
-    scopes::ScopeManager const &sm)
+  /// Raise an error for a missing type identifier, and provide
+  /// the closest options; a singular place to uniformly handle
+  /// these errors.
+  SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN
+  auto RaiseMissingTypeIdentifierAndClosestOptions(
+    TypeIdentifierAst const &identifier,
+    Vec<TypeSymbol*> const &symbols,
+    ScopeManager const &sm)
     -> void;
 }

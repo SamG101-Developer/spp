@@ -10,61 +10,47 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClosureExpressionAst) {
-  SPP_EXP_CLS struct ClassPrototypeAst;
-  SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(ClosureExpressionAst);
+use(spp::asts, struct ClassPrototypeAst);
+use(spp::asts, struct ClosureExpressionParameterAndCaptureGroupAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
   SPP_AST_KEY_FUNCTIONS(ClosureExpressionAst);
 
-  /**
-   * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure. Otherwise, it will
-   * default to @code fun@endcode.
-   */
+  /// The optional "cor" keyword, which turns the closure into a
+  /// coroutine closure. Otherwise, it defaults to "fun".
   Unique<TokenAst> Tok;
 
-  /**
-   * The parameter and capture group of the closure. This will contain the parameters for the closure, as well as any
-   * captured variables from the outer scopes.
-   */
+  /// The parameter and capture group of the closure: its
+  /// parameters, and any variables captured from outer scopes.
   Unique<ClosureExpressionParameterAndCaptureGroupAst> PcGroup;
 
-  /**
-   * The optional @c -> token, present exactly when a return type is declared.
-   */
+  /// The optional "->" token, present exactly when a return
+  /// type is declared.
   Unique<TokenAst> TokArrow;
 
-  /**
-   * The declared return type, or @c nullptr when it is left to be inferred from the body. Declaring one is what lets a
-   * closure hand back a variant, that the closure's body only produces a member of, the same way
-   * @code let x: Opt[S32] = Some(val=1)@endcode does: inferring from the body gives @c Some[S32] , and a caller
-   * holding it as @c Opt[S32] then reads the payload where the discriminant should be. A declared type is what the
-   * body is checked against and coerced into.
-   */
+  /// The declared return type, or nullptr to infer it from the
+  /// body. Declaring one lets a closure hand back a variant
+  /// that its body only produces a member of, the same way
+  /// "let x: Opt[S32] = Some(val=1)" does: inferring from the
+  /// body gives "Some[S32]", and a caller holding it as
+  /// "Opt[S32]" then reads the payload where the discriminant
+  /// should be. The body is checked against and coerced into a
+  /// declared type.
   Shared<TypeAst> ReturnType;
 
-  /**
-   * The body of the closure. This can be a single expression, like @code || 1 + 2@endcode, or an inner scope (type of
-   * expression), for more complex closures. A declared return type requires the braced form, because that is the only
-   * one a @c ret can be written in.
-   */
+  /// The body of the closure: a single expression like
+  /// "|| 1 + 2", or an inner scope for more complex closures. A
+  /// declared return type requires the braced form, because
+  /// that is the only one a "ret" can be written in.
   Unique<ExpressionAst> Body;
 
   struct {
     Shared<TypeAst> _OriginalRetType;
   } Source;
 
-  /**
-   * Construct the ClosureExpressionAst with the arguments matching the members.
-   * @param[in] tok The optional @c cor keyword.
-   * @param[in] pc_group The parameter and capture group of the closure.
-   * @param[in] tok_arrow The optional @c -> token.
-   * @param[in] return_type The declared return type, or @c nullptr to infer it from the body.
-   * @param[in] body The body of the closure.
-   */
   ClosureExpressionAst(
     decltype(Tok) &&tok,
     decltype(PcGroup) &&pc_group,
@@ -76,73 +62,57 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   SPP_ATTR_NODISCARD auto HasBorrowedCaptures() const -> bool;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
 
-  /**
-   * Release the class prototypes minted for closure types. They are held for the run because the scopes and symbols
-   * built against them outlive the expression that produced them, so a compile has to let go of them itself.
-   */
+  /// Release the class prototypes minted for closure types. They
+  /// are held for the run because the scopes and symbols built
+  /// against them outlive the expression that produced them, so
+  /// a compile has to let go of them itself.
   static auto ClearMockAsts() -> void;
 
-  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
-    -> bool override;
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
-  /**
-   * The @c FunRef / @c FunMut / @c FunMov type the closure's parameters, return type and captures decide. This is what
-   * the closure's own type superimposes, rather than what it is.
-   */
-  SPP_ATTR_NODISCARD auto _FunctionalType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) const -> Shared<TypeAst>;
+  /// The "FunRef"/"FunMut"/"FunMov" type that the closure's
+  /// parameters, return type and captures decide. This is what
+  /// the closure's own type superimposes, rather than what it
+  /// is.
+  SPP_ATTR_NODISCARD auto _FunctionalType(ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
 
-  /**
-   * Mint the closure's own nominal type - a @c "$closure..." class superimposing @c _FunctionalType - and register it
-   * where the closure was written. Thread safety is decided by what a closure captured, and two closures of the same
-   * signature capture different things, so there is nowhere on the shared @c "FunMov[Args, Out]" instantiation to
-   * record it; a plain function has had a @c "$" mock of its own since stage 1 for the same reason.
-   */
-  auto _MakeMockType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst>;
+  /// Mint the closure's own nominal type - a "$closure..." class
+  /// superimposing "_FunctionalType" - and register it where the
+  /// closure was written. Thread safety is decided by what a
+  /// closure captured, and two closures of the same signature
+  /// capture different things, so there is nowhere on the
+  /// shared "FunMov[Args, Out]" instantiation to record it; a
+  /// plain function has had a "$" mock of its own since stage 1
+  /// for the same reason.
+  auto _MakeMockType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 
-  /**
-   * The class prototypes behind the minted closure types, owned for the length of the compile.
-   */
+  /// The class prototypes behind the minted closure types, owned
+  /// for the length of the compile.
   inline static Vec<Unique<Ast>> _MockAsts = {};
 
-  /**
-   * The closure's own type, minted in stage 7. Null until then, and null on a clone that is never re-analysed, which
-   * is why @c InferType falls back to the functional type rather than assuming it is there.
-   */
+  /// The closure's own type, minted in stage 7. Null until then,
+  /// and null on a clone that is never re-analysed, which is why
+  /// "InferType" falls back to the functional type rather than
+  /// assuming it is there.
   Shared<TypeAst> _MockType;
 
-  /**
-   * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
-   * consistent with each returning value of the closure body.
-   */
+  /// The inferred return type of the closure, determined during
+  /// semantic analysis and type inference. Must be consistent
+  /// with each returning value of the closure body.
   Shared<TypeAst> _TrueRetType;
 
-  /**
-   * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to
-   * call the closure when it is invoked.
-   */
+  /// The LLVM function representing the closure. Generated in
+  /// stage 11, and used to call the closure when it is invoked.
   Shared<codegen::LlvmFuncWrapper> _LlvmFunc;
 };

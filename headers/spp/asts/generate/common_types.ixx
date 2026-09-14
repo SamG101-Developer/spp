@@ -5,10 +5,8 @@ export module spp.asts.generate.common_types;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TypeAst);
 
 namespace spp::asts::generate::common_types {
   SPP_EXP_FUN auto F8(

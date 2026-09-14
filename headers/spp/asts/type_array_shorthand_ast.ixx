@@ -8,48 +8,30 @@ import spp.asts.mixins.temp_type_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeArrayShorthandAst) {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(TypeArrayShorthandAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::TypeArrayShorthandAst final : Ast, mixins::TempTypeAst {
   SPP_AST_KEY_FUNCTIONS(TypeArrayShorthandAst);
 
-  /**
-   * The left square bracket token that represents the start of the array type.
-   */
+  /// The "[" token that starts the array type.
   Unique<TokenAst> TokL;
 
-  /**
-   * The type of the elements in the array.
-   */
+  /// The type of the elements in the array.
   Shared<TypeAst> ElemType;
 
-  /**
-   * The @code ;@endcode token that separates the element type from the size in the array type declaration.
-   */
+  /// The ";" token that separates the element type from the
+  /// size.
   Unique<TokenAst> TokSemiColon;
 
-  /**
-   * The size of the array, which can be a literal or an expression.
-   */
+  /// The size of the array, either a literal or an expression.
   Unique<ExpressionAst> Size;
 
-  /**
-   * The right square bracket token that represents the end of the array type.
-   */
+  /// The "]" token that ends the array type.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the TypeArrayAst with the arguments matching the members.
-   * @param tok_l The left square bracket token.
-   * @param element_type The type of the elements in the array.
-   * @param tok_semicolon The @code ;@endcode token that separates the element type from the size.
-   * @param size The size of the array.
-   * @param tok_r The right square bracket token.
-   */
   TypeArrayShorthandAst(
     decltype(TokL) &&tok_l,
     decltype(ElemType) &&element_type,

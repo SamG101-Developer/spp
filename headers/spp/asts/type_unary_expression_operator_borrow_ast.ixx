@@ -7,50 +7,35 @@ import spp.asts.type_unary_expression_operator_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionOperatorBorrowAst) {
-  SPP_EXP_CLS struct ConventionAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-}
+SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionOperatorBorrowAst);
+use(spp::asts, struct ConventionAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeIdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressionOperatorAst {
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionOperatorBorrowAst);
 
-  /**
-   * The convention token representing the borrowing convention. This indicates how the type is borrowed, immutably or
-   * mutably.
-   */
+  /// The borrow convention: whether the type is borrowed
+  /// immutably or mutably.
   Unique<ConventionAst> Conv;
 
-  /**
-   * Construct the TypeUnaryOperatorBorrowAst with the arguments matching the members.
-   * @param conv The convention token representing the borrowing convention.
-   */
   explicit TypeUnaryExpressionOperatorBorrowAst(
     decltype(Conv) &&conv);
 
   ~TypeUnaryExpressionOperatorBorrowAst() override;
 
-  SPP_ATTR_NODISCARD auto EqualsOpBorrow(
-    TypeUnaryExpressionOperatorBorrowAst const &) const
-    -> Ordering override;
+  SPP_ATTR_NODISCARD auto EqualsOpBorrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> Ordering override;
 
-  SPP_ATTR_NODISCARD auto Equals(
-    TypeUnaryExpressionOperatorAst const &) const
-    -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(TypeUnaryExpressionOperatorAst const &) const -> Ordering override;
 
-  SPP_ATTR_NODISCARD auto NsParts() const
-    -> Vec<IdentifierAst const*> override;
+  SPP_ATTR_NODISCARD auto NsParts() const -> Vec<IdentifierAst const*> override;
 
-  SPP_ATTR_NODISCARD auto NsParts()
-    -> Vec<IdentifierAst*> override;
+  SPP_ATTR_NODISCARD auto NsParts() -> Vec<IdentifierAst*> override;
 
-  SPP_ATTR_NODISCARD auto TypeParts() const
-    -> Vec<TypeIdentifierAst const*> override;
+  SPP_ATTR_NODISCARD auto TypeParts() const -> Vec<TypeIdentifierAst const*> override;
 
-  SPP_ATTR_NODISCARD auto TypeParts()
-    -> Vec<TypeIdentifierAst*> override;
+  SPP_ATTR_NODISCARD auto TypeParts() -> Vec<TypeIdentifierAst*> override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorBorrowAst)

@@ -10,27 +10,35 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class ScopeManager;
-}
+use(std::analyse::scopes, class ScopeManager);
+use(std::asts, struct FunctionPrototypeAst);
+use(spp::analyse::utils::builtins, struct LoweredFuncImpl);
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-}
+/// A lowered function implementation is an implementation
+/// written with LLVM IR directly. Typically this is to use
+/// intrinsic functions, or non s++ expressible logic.
+SPP_EXP_CLS struct spp::analyse::utils::builtins::LoweredFuncImpl {
+  Function<void(
+    scopes::ScopeManager *,
+    asts::FunctionPrototypeAst const *,
+    asts::meta::CompilerMetaData *,
+    codegen::LlvmCtx *,
+    llvm::Type *)> llvm_fn;
+  Unique<cmp_utils::CmpFn> cmp_fn;
+  Str name;
+};
 
 namespace spp::analyse::utils::builtins {
-  SPP_EXP_CLS struct LoweredFuncImpl {
-    Function<void(
-      scopes::ScopeManager *,
-      asts::FunctionPrototypeAst const *,
-      asts::meta::CompilerMetaData *,
-      codegen::LlvmCtx *,
-      llvm::Type *)> llvm_fn;
-    Unique<cmp_utils::CmpFn> cmp_fn;
-    Str name;
-  };
-
+  /// Generate the mapping of all S++ functions tagged with
+  /// "!intrinsic(name="some.ns.name")" to the llvm function
+  /// generator, and optionally the c++ comptime function
+  /// generator. This allows, given the intrinsic name, to
+  /// lookup the function that produces the IR, and the
+  /// function that computes the operation in the C++
+  /// compile-time context.
   auto MakeBuiltinFuncMap() -> Map<Str, LoweredFuncImpl>;
 
-  export const auto kBuiltinFuncs = MakeBuiltinFuncMap();
+  /// Create the static const map that will be used so that
+  /// the lookup map only has to be generated once.
+  SPP_EXP_CMP const auto kBuiltinFuncs = MakeBuiltinFuncMap();
 }

@@ -4,40 +4,28 @@ module;
 export module spp.analyse.scopes.scope_range;
 import spp.analyse.scopes.scope_iterator;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeRange;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeRange);
 
-/**
- * A @c ScopeRange is a range type that can be used in range-based for loops to iterate the scopes in a @c ScopeManager.
- * It contains a @c begin and @c end function, separating them from the actual @c ScopeManager type.
- */
+/// The scope range is a type that exposes "begin" and "end"
+/// method to expose the scope iterator type. Allows the C++
+/// range-based "for" loops to work.
 SPP_EXP_CLS class spp::analyse::scopes::ScopeRange {
-  /**
-   * The root scope to begin iterating from. This is typically the current scope of the manager when the iteration is
-   * created.
-   */
+  /// The root scope to begin iterating from. This is typically
+  /// the current scope of the manager when the iteration is
+  /// created.
   Scope *_Root;
 
 public:
-  /**
-   * Construct the ScopeRange from the root scope to iterate from.
-   * @param root The root to iterate from. This is set to the @c root attribute.
-   */
+  /// Construct the scope range from the root scope to iterate
+  /// from (sets the root field).
   explicit ScopeRange(Scope *root);
 
-  /**
-   * The @c begin iterator for the range. This creates a new iterator starting from the root scope, and can be
-   * incremented using the @c ++ operator.
-   * @return The @c begin iterator for the @c ScopeManager.
-   */
+  /// Create the scope iterator using the root scope,
+  /// incrementable using the "++" operator.
   SPP_ATTR_NODISCARD auto begin() const -> ScopeIterator;
 
-  /**
-   * The @c end iterator for the range. This creates a new iterator with no root scope, which represents the end of
-   * the iteration.
-   * @return The @c end iterator for the @c ScopeManager.
-   */
+  /// Create the scope iterator sentinel value by providing a
+  /// nullptr scope.
   SPP_ATTR_NODISCARD auto end() const -> ScopeIterator;
 };

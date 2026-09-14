@@ -9,25 +9,15 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LoopConditionalExpressionAst) {
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(LoopConditionalExpressionAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressionAst {
   SPP_AST_KEY_FUNCTIONS(LoopConditionalExpressionAst);
 
-  /**
-   * The condition of the loop. This will be an expression that evaluates to a boolean.
-   */
+  /// The loop condition, an expression evaluating to a boolean.
   Unique<ExpressionAst> Cond;
 
-  /**
-   * Construct the LoopExpressionAst with the arguments matching the members.
-   * @param[in] tok_loop The @c loop token that indicates the start of a loop expression.
-   * @param[in] cond The condition of the loop.
-   * @param[in] body The body of the loop.
-   * @param[in] else_block The optional @c else block of the loop.
-   */
   LoopConditionalExpressionAst(
     decltype(TokLoop) &&tok_loop,
     decltype(Cond) &&cond,
@@ -36,40 +26,28 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
 
   ~LoopConditionalExpressionAst() override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
-  /**
-   * Mark this loop as the product of desugaring an iterable loop. Such a loop runs its body once more than it yields
-   * values (the final iteration is the one that discovers the generator is exhausted), so it must not record itself
-   * as "entered" at the top of its body; the yield branch of its @c case block does that instead. Without this, the
-   * @c else block would never run, because an empty generator still enters the body once.
-   */
+  /// Mark this loop as the product of desugaring an iterable
+  /// loop. Such a loop runs its body once more than it yields
+  /// values (the final iteration discovers the generator is
+  /// exhausted), so it must not record itself as "entered" at
+  /// the top of its body; the yield branch of its "case" block
+  /// does that instead. Without this, the "else" block would
+  /// never run, because an empty generator still enters the
+  /// body once.
   auto MarkAsIterDesugar() -> void;
 
 private:
-  /**
-   * Whether this loop was desugared from an iterable loop. See @c MarkAsIterDesugar.
-   */
+  /// Whether this loop was desugared from an iterable loop.
+  /// See "MarkAsIterDesugar".
   bool _IterDesugar;
 };

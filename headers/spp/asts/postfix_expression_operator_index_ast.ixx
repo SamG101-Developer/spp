@@ -9,102 +9,59 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorIndexAst) {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct PostfixExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorIndexAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct PostfixExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixExpressionOperatorAst {
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorIndexAst);
 
-  /**
-   * The @code [@endcode token that indicates the start of the index expression.
-   */
+  /// The "[" token that starts the index expression.
   Unique<TokenAst> TokL;
 
-  /**
-   * The optional @c mut token that indicates that the index operation is mutable.
-   */
+  /// The optional "mut" token, making the index mutable.
   Unique<TokenAst> TokMut;
 
-  /**
-   * The expression used to index into the lhs expression.
-   */
+  /// The expression used to index into the lhs expression.
   Unique<ExpressionAst> Expr;
 
-  /**
-   * The @code ]@endcode token that indicates the end of the index expression.
-   */
+  /// The "]" token that ends the index expression.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the PostfixExpressionOperatorIndexAst with the arguments matching the members.
-   * @param[in] tok_l The @code [@endcode token that indicates the start of the index expression.
-   * @param[in] tok_mut The optional @c mut token that indicates that the index operation is mutable.
-   * @param[in] expr The expression used to index into the lhs expression.
-   * @param[in] tok_r The @code ]@endcode token that indicates the end of the index expression.
-   */
   PostfixExpressionOperatorIndexAst(
     decltype(TokL) &&tok_l,
     decltype(TokMut) &&tok_mut,
     decltype(Expr) &&expr,
     decltype(TokR) &&tok_r);
 
-  /**
-   * Default destructor.
-   */
   ~PostfixExpressionOperatorIndexAst() override;
 
-  /**
-   * The analysis stage requires that the left-hand-side is "indexable", in the same way that an iterator-based loop
-   * expression's condition must be "iterable". Either @c IterRef or @c IterMut must be superimposed over the
-   * left-hand-side, depending on the presence of the @c mut keyword.
-   * @param[in,out] sm The scope manager to use for analysis.
-   * @param[in,out] meta Associated metadata.
-   */
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  /// The left-hand-side must be "indexable", in the same way
+  /// that an iterator-based loop's condition must be
+  /// "iterable". Either "IterRef" or "IterMut" must be
+  /// superimposed over the left-hand-side, depending on the
+  /// presence of the "mut" keyword.
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  /**
-   * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For
-   * example, @code "hello"[5]@endcode will become @code "hello".index_ref(5)@endcode, and this method's return type
-   * will be used.
-   * @param[in,out] sm The scope manager to use for type inference.
-   * @param[in,out] meta Associated metadata.
-   * @return
-   */
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  /// Infer the type from the mapped "index" function on the
+  /// left-hand-side type. For example, "hello"[5] becomes
+  /// "hello".index_ref(5), and its return type is used.
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Unique<PostfixExpressionOperatorAst> override;
 
-  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const
-    -> bool override;
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
   Shared<PostfixExpressionAst> _MappedFunc;

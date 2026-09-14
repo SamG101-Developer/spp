@@ -9,64 +9,38 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CharLiteralAst) {
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(CharLiteralAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(CharLiteralAst);
 
-  /**
-   * The optional "b" prefix, converting the char into a U8 byte type.
-   */
+  /// The optional "b" prefix, converting the char into a U8
+  /// byte type.
   Unique<TokenAst> BytePrefix;
 
-  /**
-   * The char value of the char literal. This is the actual char that is represented by the literal.
-   */
+  /// The actual char represented by the literal.
   Unique<TokenAst> Val;
 
-  /**
-   * Construct the CharLiteralAst with the arguments matching the members.
-   * @param[in] byte_prefix The optional byte prefix of the char literal (e.g., 'b' for byte literals).
-   * @param[in] val The char value of the char literal.
-   */
   explicit CharLiteralAst(
     decltype(BytePrefix) &&byte_prefix,
     decltype(Val) &&val);
 
   ~CharLiteralAst() override;
 
-  SPP_ATTR_NODISCARD auto EqualsCharLiteral(
-    CharLiteralAst const &) const
-    -> Ordering override;
+  SPP_ATTR_NODISCARD auto EqualsCharLiteral(CharLiteralAst const &) const -> Ordering override;
 
-  SPP_ATTR_NODISCARD auto Equals(
-    ExpressionAst const &other) const
-    -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<TypeAst> override;
+  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CharLiteralAst);

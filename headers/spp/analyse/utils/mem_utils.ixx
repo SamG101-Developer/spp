@@ -6,119 +6,82 @@ import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct CaseExpressionBranchAst;
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct FunctionCallArgumentAst;
-  SPP_EXP_CLS struct IdentifierAst;
-}
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::utils::mem_utils, enum class MemRegionRelation);
+use(spp::asts, struct Ast);
+use(spp::asts, struct CaseExpressionBranchAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct FunctionCallArgumentAst);
+use(spp::asts, struct IdentifierAst);
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-  SPP_EXP_CLS class VariableSymbol;
-}
+SPP_EXP_CLS enum class spp::analyse::utils::mem_utils::MemRegionRelation {
+  Disjoint, // Non overlapping regions of memory: "a" vs "b" or "a.b" vs "a.c"
+  Contains, // The first place has a region containing the second: "a" vs "a.b"
+  ContainedBy, // The first place's region is contained by the second: "a.b" vs "a"
+};
 
 namespace spp::analyse::utils::mem_utils {
-  SPP_EXP_CLS enum class MemRegionRelation {
-    Disjoint, // Non overlapping regions of memory: "a" vs "b" or "a.b" vs "a.c"
-    Contains, // The first place has a region containing the second: "a" vs "a.b"
-    ContainedBy, // The first place's region is contained by the second: "a.b" vs "a"
-  };
+  /// Get the parts of a value that form the "memory region"
+  /// that it represents. For example, the region "a.b.c" is
+  /// represented by ["a", "b", "c"].
+  SPP_EXP_FUN auto RegionPath(Ast const &ast) -> Vec<IdentifierAst*>;
 
-  SPP_EXP_FUN auto RegionPath(
-    asts::Ast const &ast)
-    -> Vec<asts::IdentifierAst*>;
+  /// How 2 regions relate to one another. Compare each region
+  /// for inequality implying disjointedness. If they are equal,
+  /// the shorter path "contains" the longer one.
+  SPP_EXP_FUN auto MemRegionRelate(Vec<IdentifierAst*> const &r1, Vec<IdentifierAst*> const &r2) -> MemRegionRelation;
 
-  SPP_EXP_FUN auto MemRegionRelate(
-    asts::Ast const &region,
-    Vec<Str> const &steps)
-    -> MemRegionRelation;
+  /// Two regions overlap if their relation is not "disjoint",
+  /// so just wrap the memory region relation function, with
+  /// "ast->region" conversion too.
+  SPP_EXP_FUN auto MemRegionOverlap(Ast const &ast_1, Ast const &ast_2) -> bool;
 
-  /**
-   * Two memory regions overlap, if one of the symbols is a strict subset of the other. Sharing a common owner does
-   * not guarantee an overlap. For example, @c a overlaps with @c a. This is the most basic overlap example.
-   * The symbol @c a.b also overlaps with @c a, as @c a.b is a subset of @c a. However, @c a.b and @c a.c do not
-   * overlap, as they are different parts of a common owning symbol, without any shared regions.
-   *
-   * This function checks that both ASTs don't overlap each other, so both @c {a.b OVERLAP? a} and @c {a OVERLAP? a.b}
-   * will result in a positive match.
-   * @param ast_1 The lhs AST to check for overlap.
-   * @param ast_2 The rhs AST to check for overlap.
-   * @return Whether the two memory regions overlap.
-   */
-  SPP_EXP_FUN auto MemRegionOverlap(
-    asts::Ast const &ast_1,
-    asts::Ast const &ast_2)
-    -> bool;
-
-  /**
-   * Account for the borrow @p arg takes when the borrow has no name, and raise if it meets one already held.
-   * @param arg The argument to account for.
-   * @param sym The argument's outermost symbol, or null when it has none. A non-null one returns immediately: that
-   * borrow is named, and so is either taken by the caller's own branches or is a borrow being passed along rather
-   * than a second one taken here - the @c self of a @c {&mut self} method is the latter.
-   * @param[in,out] borrows_ref The immutable borrows the argument list holds so far.
-   * @param[in,out] borrows_mut The mutable borrows the argument list holds so far.
-   * @param sm The scope manager, for the argument's type and for the scope an error is reported against.
-   * @param meta Associated metadata, for the argument's type.
-   */
+  /// Detect if an unnamed argument borrow conflicts with the
+  /// normal borrows from a function call. This basically means
+  /// a non-symbolic borrow being validated. This is seen where
+  /// we might have something like "f(&a, a[mut 5])", so a[mut 5]
+  /// does mutably borrow into "a" ie "&mut a". The symbol is
+  /// the outermost for the arg, so "a".
   SPP_EXP_FUN auto ValidateUnnamedArgumentBorrow(
-    asts::FunctionCallArgumentAst const &arg,
-    scopes::VariableSymbol const *sym,
-    Vec<asts::Ast const*> &borrows_ref,
-    Vec<asts::Ast const*> &borrows_mut,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    FunctionCallArgumentAst const &arg,
+    VariableSymbol const *sym,
+    Vec<Ast const*> &borrows_ref,
+    Vec<Ast const*> &borrows_mut,
+    ScopeManager &sm,
+    meta::CompilerMetaData *meta)
     -> void;
 
-  /**
-   * Many memory checks are performed here by analysing the ASTs present in the value's symbol, to ensure that memory
-   * errors can be detected and prevented at compile time. There are flags for almost all the checks, as there are
-   * scenarios where some of these checks need to be ignored.
-   * @param value_ast The AST whose memory is being checked.
-   * @param move_ast The AST performing the move operation.
-   * @param sm The scope manager to get symbol's memory information from.
-   * @param check_move If a full move is being checked for validity.
-   * @param check_partial_move If a partial move is being checked for validity.
-   * @param check_move_from_borrowed_ctx If moving from a borrowed context is being checked.
-   * @param mark_moves Whether to mark the symbol as moved following the checks (given they pass).
-   * @param meta Associated metadata.
-   * @throw spp::analyse::errors::SppUninitializedMemoryUseError If the value is used before it is initialized.
-   * @throw spp::analyse::errors::SppPartiallyInitializedMemoryUseError If the value is used whilst partially
-   * initialized.
-   * @throw spp::analyse::errors::SppMoveFromBorrowedMemoryError If the value is moved from a borrowed context.
-   * @throw spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError If an inconsistently initialized symbol
-   * is used.
-   * @param check_escaping_borrow_move Whether moving a value that carries escaping borrows is refused outright. Left
-   * on everywhere the destination goes unweighed; turned off by a caller that follows this with
-   * @c PreventBorrowLifetimeExtension , which compares the destination's lifetime against the borrows' own and is the
-   * more precise answer.
-   * @param place_is_written Whether @p value_ast names a place being written rather than read. A write re-initializes
-   * the place it names, so a move of that exact place is the hole the write fills rather than one it reads; only a
-   * move of something the place sits inside of is still a hole. A read has no such exemption.
-   */
+  /// Gigantic analysis set on the memory status of a value,
+  /// based on how we are using it (bool flags), and the current
+  /// state of the symbol's memory information too. A range of
+  /// memory-related errors can be raised.
   SPP_EXP_FUN auto ValidateSymbolMemory(
-    asts::ExpressionAst &value_ast,
-    asts::Ast const &move_ast,
-    scopes::ScopeManager &sm,
+    ExpressionAst &value_ast,
+    Ast const &move_ast,
+    ScopeManager &sm,
     bool check_move,
     bool check_partial_move,
     bool check_move_from_borrowed_ctx,
     bool mark_moves,
-    asts::meta::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     bool check_escaping_borrow_move = true,
     bool place_is_written = false)
     -> void;
 
-
+  /// In an assignment operation, if we have "a" and "b" being
+  /// borrows, we can only assign "b" into "a", if the lifetime
+  /// of "b" is >= that of "a" (determined by the scope where
+  /// the borrow was created). This prevents a borrow from a
+  /// destructure escaping its scope when being assigned into a
+  /// borrow from the function param for example.
   SPP_EXP_FUN auto PreventBorrowLifetimeExtension(
-    asts::Ast const &rhs_expr,
-    scopes::VariableSymbol const *lhs_outermost,
-    scopes::VariableSymbol const *rhs_outermost,
-    asts::Ast *owner,
-    scopes::ScopeManager const &sm,
+    Ast const &rhs_expr,
+    VariableSymbol const *lhs_outermost,
+    VariableSymbol const *rhs_outermost,
+    Ast *owner,
+    ScopeManager const &sm,
     bool override_borrow = false)
     -> void;
 }

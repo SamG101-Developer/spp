@@ -8,95 +8,69 @@ import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-}
+SPP_AST_COMMON_FWD_DECL(Ast);
+use(spp::analyse::scopes, class Scope);
 
-SPP_AST_COMMON_FWD_DECL(Ast) {
-  GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT SPP_EXP_CLS struct TokenAst;
-}
+GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
+use(spp::asts, struct TokenAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
-/**
- * The AST base class is inherited by all other AST classes, provided base functionality, including formatted printing
- * and end position identification.
- */
+/// The base ast for all ast nodes in the tree, using the
+/// compiler stages as the method stage basis. Provides the
+/// token position, clone, casting, stringification, etc.
 GCC_BUGZILLA_127341_VTABLE_TYPEINFO_MISSING
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   SPP_GCC_VTABLE_FIX_BASE;
   ~Ast() override;
 
-  /**
-   * The start position is the first position in the source code that contains this AST. An AST will recursively get
-   * the start position of the first field, until a TokenAst is reached.
-   * @return The first position this AST encompasses.
-   */
-  SPP_ATTR_NODISCARD virtual auto PosStart() const
-    -> std::size_t = 0;
+  /// The starting position in the source code that this ast
+  /// covers. Typically recurses to the first field's start
+  /// position, until we get to a token, identifier or type
+  /// identifier ast, that store a raw position.
+  SPP_ATTR_NODISCARD virtual auto PosStart() const -> std::size_t = 0;
 
-  /**
-   * The end position is the final position in the source code that contains this AST. An AST will recursively get the
-   * end position of the final field, until a TokenAst is reached.
-   * @return The final position this AST encompasses.
-   */
-  SPP_ATTR_NODISCARD virtual auto PosEnd() const
-    -> std::size_t = 0;
+  /// The ending position in the source code that this ast
+  /// covers. Typically recurses to the last field's end
+  /// position, until we get to a token, identifier or type
+  /// identifier ast, that store a raw position and size.
+  SPP_ATTR_NODISCARD virtual auto PosEnd() const -> std::size_t = 0;
 
-  /**
-   * The size of an AST is the number of tokens it encompasses. This is used to determine the size of the AST in the
-   * source code, and is used for error reporting. Calculated by subtracting the start position from the end position.
-   * @return The size of the AST in tokens.
-   */
-  SPP_ATTR_NODISCARD auto Size() const
-    -> std::size_t;
+  /// The size of an ast - usually the difference between the
+  /// pos end and start - how many tokens the error
+  /// formatter will span.
+  SPP_ATTR_NODISCARD auto Size() const -> std::size_t;
 
-  /**
-   * The clone operator that deep-copies the AST and all its children ASTs. This is used to create a new AST that is a
-   * copy of the original AST, preserving its structure and contents. This is useful for creating a new AST that can
-   * be modified without affecting the original AST. Can be cast down as needed, as the return type is a
-   * @code Unique<T>@endcode to the base @c Ast class.
-   * @return The cloned AST as a unique pointer to the base Ast class.
-   */
+  /// The customisable clone method that clones all the fields
+  /// from an ast into the new ast. Usually internal flags are
+  /// copied over too.
   SPP_ATTR_NODISCARD virtual auto Clone() const
     -> Unique<Ast> = 0;
 
-  /**
-   * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.
-   * Recursively prints child nodes using their respective "to_string()" methods.
-   */
-  SPP_ATTR_NODISCARD virtual auto ToString() const
-    -> Str = 0;
+  /// Convert an ast into a string, for debugging purposes or
+  /// writing translated asts out to a file. Not critically
+  /// needed, and a macro suite is available to help.
+  SPP_ATTR_NODISCARD virtual auto ToString() const -> Str = 0;
 
-  /**
-   * Overridable hash function for AST nodes, used for hashing ASTs in data structures (particularly in Ankerl's hash
-   * map). Implemented in the @c IdentifierAst and @c TypeIdentifierAst nodes.
-   * @return The hash value of the AST.
-   */
-  SPP_ATTR_NODISCARD virtual auto AnkerlHash() const
-    -> std::size_t;
+  /// An overridable hashing mechanism, implemented over the
+  /// identifier and type identifier asts.
+  SPP_ATTR_NODISCARD virtual auto AnkerlHash() const -> std::size_t;
 
-  /**
-   * Whether this ast may appear in a default value - a parameter's, or an attribute's. A default is copied into every
-   * call or object initializer that leaves it out. Defaults to not being allowed, and then compatible ASTs opt in with
-   * their own checks - elements inside an array etc.
-   * @return Whether the ast may appear in a default value.
-   */
-  SPP_ATTR_NODISCARD virtual auto IsAllowedInDefault() const
-    -> bool;
+  /// Whether the ast can appear in a runtime default context
+  /// for a function parameter or a class attribute. A default
+  /// is computed and copied into every call or object
+  /// initializer that omits a value for it. Defaults to being
+  /// not allowed, and compatible asts opt in, potentially
+  /// conditionally (elements inside an array for example).
+  SPP_ATTR_NODISCARD virtual auto IsAllowedInDefault() const -> bool;
 
-  /**
-   * Which concrete ast class this node is. Answered by @c SPP_AST_KEY_FUNCTIONS(Ast);/ @c SPP_AST_KIND , and pure here so
-   * that a concrete class which does not name itself stays abstract rather than reporting the wrong kind.
-   * @return This node's kind.
-   */
-  SPP_ATTR_NODISCARD virtual auto Kind() const noexcept
-    -> AstKind = 0;
+  /// Which concrete ast class this node is. This is used to
+  /// bypass RTTI dynamic casting checks; see "To", and "AstAs".
+  SPP_ATTR_NODISCARD virtual auto Kind() const noexcept -> AstKind = 0;
 
-  /**
-   * Non-constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
-   * desired type, returning @c nullptr if the cast is impossible. Supports cross casting to AST mixin types too.
-   * @tparam T The target AST type to cast to.
-   * @return The cast AST node, or @c nullptr if the cast is not possible.
-   */
+  /// The RTTI-bypassed casting check, to convert a node into
+  /// a derived type if possible, and otherwise nullptr. Uses
+  /// the "Kind" and a static cast, with a rare dynamic cast
+  /// fallback for cross casting with mixins.
   template <typename T>
   auto To() -> T* {
     if constexpr (AstKindRange<T>::Known) {
@@ -114,12 +88,9 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     }
   }
 
-  /**
-   * Constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
-   * desired type, returning @c nullptr if the cast is impossible. Supports cross casting to AST mixin types too.
-   * @tparam T The target AST type to cast to.
-   * @return The cast AST node, or @c nullptr if the cast is not possible.
-   */
+  /// A const pointer version of the normal "To" cast conversion,
+  /// just adding the "const" tag to each pointer being cast
+  /// through.
   template <typename T>
   auto To() const -> T const* {
     if constexpr (AstKindRange<T>::Known) {
@@ -137,89 +108,60 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     }
   }
 
-  /**
-   * Unchecked node cast to a target @T type using @c static_cast. Only used where the dynamic type is already known.
-   * Prefer @c To() unless on a measured hot path. Unlike @c To(), this only supports up/down casts along the class
-   * hierarchy, not cross-casts to sibling mixin base types.
-   * @tparam T The target AST type to cast to.
-   * @return The node cast to @c T*.
-   */
+  /// The unchecked cast when we know 100% that a cast will be
+  /// valid, bypassing the "Kind" and RTTI casting. Barely
+  /// cheaper than the "Kind" cast but still more optimal.
   template <typename T>
   auto ToUnchecked() -> T* {
     return static_cast<T*>(this);
   }
 
-  /**
-   * Constant node casting to a target @T type. This uses @c static_cast to perform a cast where the target type is
-   * guaranteed value, either from previous analysis, or upcasting.
-   * @tparam T The target AST type to cast to.
-   * @return The node cast to @c T const*.
-   */
+  /// The const version of the unchecked cast, just adding the
+  /// "const" tag to the pointers.
   template <typename T>
   auto ToUnchecked() const -> T const* {
     return static_cast<T const*>(this);
   }
 
-  /**
-   * Default behaviour: bind the context to this AST, for future analysis stages.
-   * @param ctx The context AST.
-   */
-  auto Stage1_PreProcess(
-    Ast *ctx)
-    -> void override;
+  /// The default behaviour is to bind the context into this
+  /// ast's "_Ctx" field. This is then used in future compiler
+  /// stage steps.
+  auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-  /**
-   * Default behaviour: bind the scope to this AST, for future analysis stages.
-   * @param sm The scope manager to use for setting the scope of this AST (current scope).
-   * @param meta Associated metadata (unused in default implementation).
-   */
-  auto Stage2_GenTopLvlScopes(
-    analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void override;
+  /// The default behaviour is to bind the scope into this
+  /// ast's "_Scope" field. This is then used in future compiler
+  /// stage steps.
+  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  SPP_ATTR_NODISCARD auto GetAstCtx() const
-    -> Ast*;
+  /// Getter over the internal context from the stage 1 pass.
+  SPP_ATTR_NODISCARD auto GetAstCtx() const -> Ast*;
 
-  SPP_ATTR_NODISCARD auto GetAstScope() const
-    -> analyse::scopes::Scope*;
+  /// Getter over the internal scope from the stage 2 pass.
+  SPP_ATTR_NODISCARD auto GetAstScope() const -> Scope*;
 
-  auto SetAstCtx(
-    Ast *ctx) -> void;
+  /// Setter for the internal context from the stage 1 pass.
+  auto SetAstCtx(Ast *ctx) -> void;
 
-  auto SetAstScope(
-    analyse::scopes::Scope *scope)
-    -> void;
+  /// Setter for the internal scope from the stage 2 pass.
+  auto SetAstScope(Scope *scope) -> void;
 
 protected:
-  /**
-   * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
-   * FunctionPrototypeAst etc.
-   */
+  /// The internal context from stage 1.
   Ast *_Ctx = nullptr;
 
-  /**
-   * The scope of an AST is used when generating top level scopes, to create a simple link between scope and AST.
-   */
-  analyse::scopes::Scope *_Scope = nullptr;
+  /// The internal context from stage 2.
+  Scope *_Scope = nullptr;
 
-  /**
-   * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
-   * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
-   */
+  /// Creating a raw Ast isn't allowed, but to be created from
+  /// its base classes, the constructor is marked as "protected".
   explicit Ast();
 };
 
 namespace spp::asts {
-  /**
-   * Ask a node that might not be there what it is. A scope's @c AstNode is null for the global and namespace scopes,
-   * and a handful of callers lean on that: they reach through it and expect null back rather than checking first.
-   * That worked while @c Ast::To used @c dynamic_cast , which tolerates a null operand, and stops working now that it
-   * begins by reading the node's kind - a virtual call, which a null node has no vtable to answer.
-   * @tparam T The target ast type.
-   * @param ast The node to cast, which may be null.
-   * @return The node as a @p T , or null if it is not one, or is not there at all.
-   */
+  /// A null-safe version of "To", checking if the inputted
+  /// pointer is nullptr before before trying to use the "To"
+  /// cast. Only needed when we are potentially considering
+  /// a nullptr ast.
   SPP_EXP_FUN template <typename T, typename U>
   auto AstAs(U *const ast) -> decltype(ast->template To<T>()) {
     return ast != nullptr ? ast->template To<T>() : nullptr;

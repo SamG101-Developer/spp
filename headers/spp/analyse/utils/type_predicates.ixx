@@ -7,146 +7,106 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct ClassPrototypeAst;
-  SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-  SPP_EXP_CLS struct TypeSymbol;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts, struct ClassPrototypeAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::type_predicates {
-  SPP_EXP_FUN auto IsTypeCompTimeIndexable(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// The only two compile-time indexable types are the
+  /// array and tuple types. For now, directly these two
+  /// types (Arr, Tup), not superimpositions.
+  SPP_EXP_FUN auto IsTypeCompTimeIndexable(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeSelf(
-    asts::TypeAst const &type)
-    -> bool;
+  /// Check fi the type is "Self". Todo: check on the
+  /// difference between this and the TypeAst IsSelf method.
+  SPP_EXP_FUN auto IsTypeSelf(TypeAst const &type) -> bool;
 
-  SPP_EXP_FUN auto IsTypeArr(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is the array type. Strip generics and
+  /// TypeEq against the non-generic Arr type.
+  SPP_EXP_FUN auto IsTypeArr(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeTup(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is the tuple type. Strip generics and
+  /// TypeEq against the non-generic Tup type.
+  SPP_EXP_FUN auto IsTypeTup(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTupSymbol(
-    scopes::TypeSymbol const &sym)
-    -> bool;
+  /// Check if a type symbol is the tuple type symbol. Used
+  /// to optimize tuple-[early return guards].
+  SPP_EXP_FUN auto IsTupSymbol(TypeSymbol const &sym) -> bool;
 
-  SPP_EXP_FUN auto IsTypeVariant(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is the variant type. Strip generics
+  /// *and conventions* and TypeEq against the non-generic
+  /// Var type.
+  SPP_EXP_FUN auto IsTypeVariant(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeBool(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is the bool type. TypeEq against the
+  /// Bool type.
+  SPP_EXP_FUN auto IsTypeBool(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeVoid(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is the void type. TypeEq against the
+  /// Void type.
+  SPP_EXP_FUN auto IsTypeVoid(TypeAst const &type, Scope const &scope) -> bool;
 
-  /**
-   * Whether @p type is @c std::generator::Gen or @c std::generator::GenOnce - a handle to a coroutine frame. Only the
-   * type itself is considered, not anything it superimposes.
-   */
-  /**
-   * Check if a type is a "Try" type, ie "std::try::Try[Ok, Err]" or anything superimposing it. Used by "GetTryType" to
-   * pick the try type out of a type's super types.
-   * @param type The type to check.
-   * @param scope The scope to check the type in.
-   * @return If the type is a try type.
-   */
-  SPP_EXP_FUN auto IsTypeTry(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is the try type. Strip generics and
+  /// TypeEq against the non-generic try type.
+  SPP_EXP_FUN auto IsTypeTry(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeGen(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is one of the generator types. Strip
+  /// generics and TypeEq against the non-generic Gen and
+  /// GenOnce types.
+  SPP_EXP_FUN auto IsTypeGen(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeNever(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is the never type. TypeEq against the
+  /// Never type.
+  SPP_EXP_FUN auto IsTypeNever(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeFunc(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is one of the functional types. Strip
+  /// generics and TypeEq against the non-generic FunMov,
+  /// FunMut and FunRef types.
+  SPP_EXP_FUN auto IsTypeFunc(TypeAst const &type, Scope const &scope) -> bool;
 
-  /**
-   * The number of synthetic fat-pointer fields ("resume_fn"/"env_ptr", or "fn_ptr"/"env_ptr") prepended ahead of
-   * @p type's own declared attributes, because @p type superimposes one of the "IsTypeFatPointerFamily" types.
-   * Zero if it doesn't superimpose one. See "IsTypeFatPointerFamily".
-   * @param type The type to test.
-   * @param scope The scope to resolve @p type against.
-   * @return The fat pointer prefix's field count (0 or 2).
-   */
-  SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> std::size_t;
+  /// Get the number of synthetic fat-pointer fields on this
+  /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
+  /// fields prepended ahead of a type's own declared fields.
+  /// The fat pointer fields are always at the start of the
+  /// types for simplicity.
+  SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(TypeAst const &type, Scope const &scope) -> std::size_t;
 
-  SPP_EXP_FUN auto IsTypeRecursive(
-    asts::ClassPrototypeAst const &type,
-    scopes::ScopeManager const &sm)
-    -> Shared<asts::TypeAst>;
+  /// Detect if a type is recursive by checking all the fields
+  /// of the type recursively, and making sure a look in the
+  /// type graph is never reached.
+  SPP_EXP_FUN auto IsTypeRecursive(ClassPrototypeAst const &type, ScopeManager const &sm) -> Shared<TypeAst>;
 
-  /**
-   * Whether a type names real types the whole way down: itself, and every generic argument inside it, however deeply
-   * nested. This is what separates a genuine instantiation from a template wearing one's clothes - @c "NonNull[T=T]"
-   * or @c "SizedInteger[w=w]" - which is registered while a generic body is analysed and must never be laid out or
-   * emitted.
-   *
-   * Asking whether the type @e lowers is not the same question and does not answer this one: a borrowed type lowers to
-   * a pointer whatever it points at, and @c NonNull lowers to a bare pointer whatever it holds, so both report success
-   * for an argument that is still a parameter.
-   *
-   * @param[in] type The type to inspect.
-   * @param[in] scope The scope to resolve @p type and its arguments against - the instantiation's own, never the
-   * caller's, since a caller may have a same-named parameter bound to something real.
-   * @return Whether every name in @p type resolves to a class rather than to an unbound parameter.
-   */
-  SPP_EXP_FUN auto IsTypeFullyConcrete(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Check if a type is fully generically-substituted, checking
+  /// all the fields recursively for any generic types still in
+  /// use / unbound.
+  SPP_EXP_FUN auto IsTypeFullyConcrete(TypeAst const &type, Scope const &scope) -> bool;
 
-  SPP_EXP_FUN auto IsTypeBorrowed(
-    asts::TypeAst const &type,
-    scopes::ScopeManager const &sm,
-    bool deep = true)
-    -> bool;
+  /// A type is borrowed if it has a convention, or its a by-move
+  /// variant that itself can contain a borrow, like "Str or &S32".
+  SPP_EXP_FUN auto IsTypeBorrowed(TypeAst const &type, ScopeManager const &sm, bool deep = true) -> bool;
 
+  /// Check if an index is within the bounds of an array or tuple,
+  /// ie at compile-time check if the element requested is
+  /// genuinely reachable.
   SPP_EXP_FUN auto IsIndexWithinBound(
     std::size_t index,
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
+    TypeAst const &type,
+    Scope const &scope)
     -> Pair<bool, std::size_t>;
 
+  /// Get the nth type of a tuple, or for an array, all the types
+  /// are the same.
   SPP_EXP_FUN auto GetNthTypeOfIndexableType(
     std::size_t index,
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> Shared<asts::TypeAst>;
+    TypeAst const &type,
+    Scope const &scope)
+    -> Shared<TypeAst>;
 
-  SPP_EXP_FUN auto AreGenericArgsConcrete(
-    Vec<Unique<asts::GenericArgumentAst>> const &args,
-    scopes::Scope const &scope)
-    -> bool;
+  /// Reuse the concrete checker to check if all the generic
+  /// arguments are concrete, and aren't self bound or bound
+  /// to other generics.
+  SPP_EXP_FUN auto AreGenericArgsConcrete(Vec<Unique<GenericArgumentAst>> const &args, Scope const &scope) -> bool;
 }

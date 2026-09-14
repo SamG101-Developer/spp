@@ -4,15 +4,13 @@ module;
 export module spp.asts.sup_member_ast;
 import spp.asts.ast;
 
-SPP_AST_COMMON_FWD_DECL(SupMemberAst) {
-}
+SPP_AST_COMMON_FWD_DECL(SupMemberAst);
 
-/**
- * The SupMemberAst class is the base class for all members of a class in the abstract syntax tree. This is
- * applicable to the CmpStatementAst, FunctionPrototypeAst, TypeStatementAst publicly, but internally (for preprocessed
- * asts, it also includes the ClassPrototypeAst and SupPrototypeExtensionAst).
- * @note: This is a tag-based base class.
- */
+/// The tag-based base class for all members of a class. This
+/// is applicable to the CmpStatementAst, FunctionPrototypeAst
+/// and TypeStatementAst publicly, and internally (for
+/// preprocessed asts) also the ClassPrototypeAst and
+/// SupPrototypeExtensionAst.
 SPP_EXP_CLS struct spp::asts::SupMemberAst {
   SupMemberAst();
 

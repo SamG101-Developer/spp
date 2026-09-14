@@ -7,98 +7,163 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct FunctionCallArgumentAst;
-  SPP_EXP_CLS struct FunctionCallArgumentKeywordAst;
-  SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
-  SPP_EXP_CLS struct FunctionParameterAst;
-  SPP_EXP_CLS struct FunctionParameterGroupAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct GenericArgumentCompAst;
-  SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
-  SPP_EXP_CLS struct GenericArgumentTypeAst;
-  SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
-  SPP_EXP_CLS struct GenericArgumentGroupAst;
-  SPP_EXP_CLS struct GenericParameterAst;
-  SPP_EXP_CLS struct GenericParameterCompAst;
-  SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct GenericParameterTypeAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct PostfixExpressionAst;
-  SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-}
+use(spp::asts, struct Ast);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct FunctionCallArgumentAst);
+use(spp::asts, struct FunctionCallArgumentKeywordAst);
+use(spp::asts, struct FunctionCallArgumentGroupAst);
+use(spp::asts, struct FunctionParameterAst);
+use(spp::asts, struct FunctionParameterGroupAst);
+use(spp::asts, struct FunctionPrototypeAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct GenericArgumentCompAst);
+use(spp::asts, struct GenericArgumentCompKeywordAst);
+use(spp::asts, struct GenericArgumentTypeAst);
+use(spp::asts, struct GenericArgumentTypeKeywordAst);
+use(spp::asts, struct GenericArgumentGroupAst);
+use(spp::asts, struct GenericParameterAst);
+use(spp::asts, struct GenericParameterCompAst);
+use(spp::asts, struct GenericParameterGroupAst);
+use(spp::asts, struct GenericParameterTypeAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct PostfixExpressionAst);
+use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeIdentifierAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
 
 namespace spp::analyse::utils::func_utils {
-
+  /// A function overload struct contains information about
+  /// the scope/proto of the function, generics being inherited
+  /// into it, and a potential type-forwarding  type too.
   SPP_EXP_CLS struct FunctionOverload {
-    scopes::Scope const *FnScope;
-    asts::FunctionPrototypeAst *Proto;
-    Unique<asts::GenericArgumentGroupAst> SupGenerics;
-    Shared<asts::TypeAst> FwdType;
+    Scope const *FnScope;
+    FunctionPrototypeAst *Proto;
+    Unique<GenericArgumentGroupAst> SupGenerics;
+    Shared<TypeAst> FwdType;
   };
 
+  /// A function value match struct contains information about
+  /// the function prototype, the scope it is in, and the
+  /// generic arguments being used.
+  SPP_EXP_CLS struct FunctionValueMatch {
+    FunctionPrototypeAst *Proto;
+    Scope const *FnScope;
+    Unique<GenericArgumentGroupAst> GenericArgs;
+  };
 
-
+  /// Given a function name and a scope, find all the function
+  /// overloads that can be reached. This includes searching
+  /// through scopes, handling generics, etc. All overloads
+  /// are then processed for eligibility when calling.
   SPP_EXP_FUN auto GetAllFunctionScopes(
-    asts::IdentifierAst const &target_fn_name,
-    scopes::Scope const *target_scope,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
+    IdentifierAst const &target_fn_name,
+    Scope const *target_scope,
+    ScopeManager &sm,
+    meta::CompilerMetaData *meta)
     -> Vec<FunctionOverload>;
 
-  SPP_EXP_FUN auto CheckForConflictingOverload(
-    scopes::Scope const &this_scope,
-    scopes::Scope const *target_scope,
-    asts::FunctionPrototypeAst const &new_fn,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
-    -> asts::FunctionPrototypeAst*;
+  /// Get the actual name of a function hidden by a $Type. For
+  /// regular functions and methods, this is simply converting
+  /// "$Type" back to "type". For closures, there is no name,
+  /// as a closure is an unnamed function by definition, so
+  /// "nullptr". The scope returned is the parent of the overload.
+  SPP_EXP_FUN auto GetFunctionValueName(
+    TypeAst const &type,
+    Scope const &scope)
+    -> Pair<Shared<IdentifierAst>, Scope const*>;
 
-  SPP_EXP_FUN auto SameSignature(
-    asts::FunctionPrototypeAst const &fn_a,
-    scopes::Scope const &scope_a,
-    asts::FunctionPrototypeAst const &fn_b,
-    scopes::Scope const &scope_b)
-    -> bool;
+  /// Given a mock function type like $Type, and a genuine
+  /// functional type like FunMov[(), Void], extract the match
+  /// information based on what $Type superimposes. Prefer
+  /// non-generic overloads, and handle generic functions by
+  /// inferring of the "func_type".
+  SPP_EXP_FUN auto MatchFunctionValue(
+    TypeAst const &mock_type,
+    TypeAst const &func_type,
+    Scope const &mock_scope,
+    Scope const &func_scope)
+    -> std::optional<FunctionValueMatch>;
 
-  SPP_EXP_FUN auto CheckForConflictingOverride(
-    scopes::Scope const &this_scope,
-    scopes::Scope const *target_scope,
-    asts::FunctionPrototypeAst const &new_fn,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta,
-    scopes::Scope const *exclude_scope = nullptr)
-    -> asts::FunctionPrototypeAst*;
-
-  /**
-   * @param generic_args The generic bindings known for this call, used to translate the default value of any optional
-   * parameter the call left out. Such a default is the callee's own expression and is materialised into the caller's
-   * argument list, so a default like @c "alloc: A = A()" arrives at the call site still naming @c "A" - a name only
-   * the callee has - unless it is rewritten as it is materialised.
-   */
-  SPP_EXP_FUN auto NameFnArgs(
-    asts::FunctionCallArgumentGroupAst &a_group,
-    asts::FunctionParameterGroupAst const &p_group,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta,
-    Vec<asts::GenericArgumentAst*> const &generic_args = {},
-    scopes::Scope *callee_scope = nullptr)
+  /// When we pass a function value into a functional type,
+  /// ie "$Type" into "FunMov[(), Void]" (arg->param, "let",
+  /// "ret", assignment) - "codegen::CoerceToFunctionValue"
+  /// handles this at the codegen level. But if the overload
+  /// it stands for is generic, it must be instantiated in
+  /// the analysis engine earlier, so the overload is ready
+  /// by codegen-time.
+  SPP_EXP_FUN auto InstantiateFunctionValue(
+    TypeAst const &value_type,
+    TypeAst const &target_type,
+    ScopeManager *sm,
+    meta::CompilerMetaData *meta)
     -> void;
 
-  SPP_EXP_FUN auto IsTargetCallable(
-    asts::ExpressionAst &expr,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Shared<const asts::TypeAst>;
+  /// Lookup for a generic instantiation of a function based
+  /// on the function's "$Type" and the function "FunMov"
+  /// type.
+  SPP_EXP_FUN auto FindFunctionValue(
+    TypeAst const &value_type,
+    TypeAst const &target_type,
+    ScopeManager const &sm)
+    -> FunctionPrototypeAst*;
 
+  /// Check whether the new function prototype conflicts with
+  /// functions of the same name but different signatures with
+  /// the same owner. Two "fun f(&self) -> Void" is ambiguous.
+  /// Several semantic checks in place to detect ambiguities.
+  SPP_EXP_FUN auto CheckForConflictingOverload(
+    Scope const &this_scope,
+    Scope const *target_scope,
+    FunctionPrototypeAst const &new_fn,
+    ScopeManager &sm,
+    meta::CompilerMetaData *meta)
+    -> FunctionPrototypeAst*;
+
+  /// The core of the override checker, checking whether two
+  /// functions semantically share a signature. Publicly
+  /// exposed because the type_members module needs it for
+  /// checking for any unimplemented abstract methods.
+  SPP_EXP_FUN auto SameSignature(
+    FunctionPrototypeAst const &fn_a,
+    Scope const &scope_a,
+    FunctionPrototypeAst const &fn_b,
+    Scope const &scope_b)
+    -> bool;
+
+  /// Check whether the new function prototype is a genuine
+  /// override of a method on a super type. This is used to
+  /// ensure function overriding is a genuine match. It is
+  /// also used to remove overridden functions from overload
+  /// selection, so we get subclass's prototype override.
+  SPP_EXP_FUN auto CheckForConflictingOverride(
+    Scope const &this_scope,
+    Scope const *target_scope,
+    FunctionPrototypeAst const &new_fn,
+    ScopeManager &sm,
+    meta::CompilerMetaData *meta,
+    Scope const *exclude_scope = nullptr)
+    -> FunctionPrototypeAst*;
+
+  /// Take a function argument group, and name the arguments
+  /// based on the parameters available. Custom logic for
+  /// optional and variadic parameters.
+  SPP_EXP_FUN auto NameFnArgs(
+    FunctionCallArgumentGroupAst &a_group,
+    FunctionParameterGroupAst const &p_group,
+    ScopeManager &sm,
+    meta::CompilerMetaData *meta,
+    Vec<GenericArgumentAst*> const &generic_args = {},
+    Scope *callee_scope = nullptr)
+    -> void;
+
+  /// Check whether an expression is callable or not, by
+  /// checking if the type is functional, or a symbol flag
+  /// has been set via generic constraints.
+  SPP_EXP_FUN auto IsTargetCallable(
+    ExpressionAst &expr,
+    ScopeManager &sm,
+    meta::CompilerMetaData *meta)
+    -> Shared<const TypeAst>;
 }

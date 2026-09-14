@@ -6,9 +6,8 @@ import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(UnaryExpressionOperatorAst) {
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(UnaryExpressionOperatorAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
   UnaryExpressionOperatorAst();

@@ -8,36 +8,23 @@ import spp.asts.mixins.temp_type_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeBinaryExpressionAst) {
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(TypeBinaryExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : Ast, mixins::TempTypeAst {
   SPP_AST_KEY_FUNCTIONS(TypeBinaryExpressionAst);
 
-  /**
-   * The left-hand side expression of the type binary expression. This is the first operand.
-   */
+  /// The left-hand-side type (first operand).
   Shared<TypeAst> Lhs;
 
-  /**
-   * The operator token that represents the type binary operation. This indicates the type of operation being
-   * performed. Either an "or" (union) or "and" (intersection) operation.
-   */
+  /// The type binary operator token: either "or" (union) or
+  /// "and" (intersection).
   Unique<TokenAst> TokOp;
 
-  /**
-   * The right-hand side expression of the type binary expression. This is the second operand.
-   */
+  /// The right-hand-side type (second operand).
   Shared<TypeAst> Rhs;
 
-  /**
-   * Construct the TypeBinaryExpressionAst with the arguments matching the members.
-   * @param lhs The left-hand side expression of the type binary expression.
-   * @param tok_op The operator token that represents the type binary operation.
-   * @param rhs The right-hand side expression of the type binary expression.
-   */
   TypeBinaryExpressionAst(
     decltype(Lhs) &&lhs,
     decltype(TokOp) &&tok_op,

@@ -34,6 +34,9 @@ namespace spp::views {
   inline constexpr tuple_nth_fn<N> tuple_nth{};
 }
 
+/// A custom accumulation function for moving unique pointers
+/// whilst accumulating. The GenEx equivalent has a forwarding
+/// issue I think. Todo: Check.
 SPP_EXP_FUN template <typename InputIt, typename T, typename BinOp>
 auto spp::utils::algorithms::MoveAccumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init) {
   for (; first != last; ++first) {
@@ -42,10 +45,12 @@ auto spp::utils::algorithms::MoveAccumulate(InputIt first, InputIt last, T &&ini
   return init;
 }
 
+/// The unique pointer casting view. Defined as a custom view
+/// because we might define our own unique pointer type that
+/// would need to be compatible.
 SPP_EXP_CLS template <typename To>
 struct spp::views::cast_unique_fn {
-  template <typename I, typename S>
-    requires std::input_iterator<I> and std::sentinel_for<S, I>
+  template <typename I, typename S> requires std::input_iterator<I> and std::sentinel_for<S, I>
   GENEX_INLINE auto operator()(I first, S last) const -> Vec<Unique<To>> {
     auto out = Vec<Unique<To>>(last);
     for (; first != last; ++first) {
@@ -57,8 +62,7 @@ struct spp::views::cast_unique_fn {
     return out;
   }
 
-  template <typename Rng>
-    requires genex::input_range<Rng>
+  template <typename Rng> requires genex::input_range<Rng>
   GENEX_INLINE constexpr auto operator()(Rng &&rng) const {
     auto out = Vec<Unique<To>>();
     for (auto &&v : rng) {
@@ -76,10 +80,12 @@ struct spp::views::cast_unique_fn {
   }
 };
 
+/// The shared pointer casting view. Defined as a custom view
+/// because we might define our own shared pointer type that
+/// would need to be compatible.
 SPP_EXP_CLS template <typename To>
 struct spp::views::cast_shared_fn {
-  template <typename I, typename S>
-    requires std::input_iterator<I> and std::sentinel_for<S, I>
+  template <typename I, typename S> requires std::input_iterator<I> and std::sentinel_for<S, I>
   GENEX_INLINE constexpr auto operator()(I first, S last) const {
     return genex::views::filter(
       genex::views::transform(std::move(first), std::move(last), [](auto &&v) -> Shared<To> {
@@ -87,8 +93,7 @@ struct spp::views::cast_shared_fn {
       }), [](Shared<To> const &v) { return v != nullptr; });
   }
 
-  template <typename Rng>
-    requires genex::input_range<Rng>
+  template <typename Rng> requires genex::input_range<Rng>
   GENEX_INLINE constexpr auto operator()(Rng &&rng) const {
     return genex::views::filter(
       genex::views::transform(std::forward<Rng>(rng), [](auto &&v) -> Shared<To> {
@@ -102,10 +107,13 @@ struct spp::views::cast_shared_fn {
   }
 };
 
+/// A tuple nth view (same as the genex view), but for any tuple
+/// type - have experimented with tuplet::tuple. Todo: either
+/// define a fixed tuple type in Genex or make it more
+/// customizable.
 SPP_EXP_CLS template <std::size_t N>
 struct spp::views::tuple_nth_fn {
-  template <typename I, typename S>
-    requires std::input_iterator<I> and std::sentinel_for<S, I>
+  template <typename I, typename S> requires std::input_iterator<I> and std::sentinel_for<S, I>
   GENEX_INLINE constexpr auto operator()(I first, S last) const noexcept(
     SAFE_CALL(decltype(genex::views::transform), I, S, genex::meta::identity) and
     SAFE_MOVE(I) and SAFE_MOVE(S)) {
@@ -113,10 +121,10 @@ struct spp::views::tuple_nth_fn {
     return genex::views::transform(std::move(first), std::move(last), std::move(func));
   }
 
-  template <typename Rng>
-    requires genex::input_range<Rng>
+  template <typename Rng> requires genex::input_range<Rng>
   GENEX_INLINE constexpr auto operator()(Rng &&rng) const noexcept(
-    SAFE_CALL(decltype(genex::views::transform), genex::iterator_t<Rng>, genex::sentinel_t<Rng>, genex::meta::identity) and
+    SAFE_CALL(
+      decltype(genex::views::transform), genex::iterator_t<Rng>, genex::sentinel_t<Rng>, genex::meta::identity) and
     SAFE_MOVE(Rng)) {
     auto [first, last] = genex::iterators::iter_pair(rng);
     auto func = [](auto &&x) { return spp::get<N>(x); };
