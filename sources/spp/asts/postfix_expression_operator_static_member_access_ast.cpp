@@ -295,6 +295,16 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
     // todo: const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
     const auto sym = StaticMemberOf(*lhs_type_sym->LinkedScope, *Name);
+
+    // A method's "$" mock is declared in its "sup" block, so it is
+    // named as a nested type of the owner: "main::A::$Method". There
+    // is one mock per "sup" block the overloads are written in, each
+    // given all of them ("ScopeManager::CoalesceMethodMock").
+    if (sym != nullptr and sym->Kind == analyse::scopes::VariableKind::Function and sym->Type->IsTypeIdentifier()) {
+      return MakeShared<TypePostfixExpressionAst>(
+        AstCloneShared(lhs_type_sym->FqName()), MakeShared<TypePostfixExpressionOperatorNestedTypeAst>(
+          nullptr, dynamic_shared_cast<TypeIdentifierAst>(AstCloneShared(sym->Type))));
+    }
     if (sym != nullptr) { return sym->Type; }
 
     // This is where we need to handle the FwdRef/FwdMut logic.
