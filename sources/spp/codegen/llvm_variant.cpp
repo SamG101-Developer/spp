@@ -8,9 +8,13 @@ import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.class_prototype_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.utils.types;
@@ -218,6 +222,45 @@ auto spp::codegen::CoerceToVariant(
   using analyse::utils::type_compare::DedupVariableInnerTypes;
   using analyse::utils::type_predicates::IsTypeVariant;
   using analyse::utils::type_compare::TypeEq;
+
+  // A "!" value never exists, so whatever consumes it is dead
+  // code - but it still has to be valid IR, so it stands in as
+  // poison of the type the consumer expects.
+  if (llvm_val != nullptr and source_type.IsNeverType() and not target_type.IsNeverType()) {
+    if (const auto target_llvm_type = GetLlvmTypeOf(target_type, scope, ctx);
+      target_llvm_type != nullptr and not target_llvm_type->isVoidTy()) {
+      return llvm::PoisonValue::get(target_llvm_type);
+    }
+  }
+
+  // A tuple takes a narrower value element by element - "(Some[T], U64)" into "(Opt[T], U64)" differs only in the
+  // variant inside it. A tuple has no attributes for "CoerceStructurally" to walk, and its layout may reorder the
+  // elements, so each side maps a declared index through its own field index map.
+  // Todo: CLEAN
+  using analyse::utils::type_predicates::IsTypeTup;
+  // Told apart by the lowered types, not "TypeEq": its comparison of
+  // the generic arguments lets a variant take one of its members.
+  if (llvm_val != nullptr and IsTypeTup(target_type, scope) and IsTypeTup(source_type, scope)) {
+    const auto target_sym = scope.GetTypeSymbol(&target_type);
+    const auto source_sym = scope.GetTypeSymbol(&source_type);
+    const auto target_args = target_type.LastTypePart()->GnArgGroup->GetTypeArgs();
+    const auto source_args = source_type.LastTypePart()->GnArgGroup->GetTypeArgs();
+    const auto target_llvm_type = target_sym != nullptr ? target_sym->LlvmInfo->LlvmType : nullptr;
+    const auto source_llvm_type = source_sym != nullptr ? source_sym->LlvmInfo->LlvmType : nullptr;
+    if (target_llvm_type != nullptr and source_llvm_type != nullptr and target_llvm_type != source_llvm_type
+      and target_args.Len() == source_args.Len()) {
+      auto out = static_cast<llvm::Value*>(llvm::PoisonValue::get(target_llvm_type));
+      for (auto i = 0uz; i < target_args.Len(); ++i) {
+        const auto elem_name = name + ".tup." + std::to_string(i);
+        auto elem = ctx->Builder.CreateExtractValue(
+          llvm_val, {GetPhysicalFieldIndex(*source_sym->LlvmInfo, i)}, elem_name + ".from");
+        elem = CoerceToVariant(elem, *target_args[i]->Val, *source_args[i]->Val, scope, elem_name, ctx);
+        out = ctx->Builder.CreateInsertValue(
+          out, elem, {GetPhysicalFieldIndex(*target_sym->LlvmInfo, i)}, elem_name + ".to");
+      }
+      return out;
+    }
+  }
 
   // Only a variant target ever needs a coercion, and a value
   // already of the target type is one.
