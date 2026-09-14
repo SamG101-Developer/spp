@@ -337,11 +337,19 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 
     PcGroup->Stage11_CodeGen(sm, meta, ctx);
     sm->MoveToNextScope();
-    const auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
+    auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
 
     // Terminate the closure function with a return of the body's
-    // value (closures return their body implicitly).
+    // value (closures return their body implicitly). A borrow
+    // returned as the value it points at - a copyable capture
+    // like "(caps &a) -> S32 { a }" - is read through first,
+    // the way a borrowed argument is for a by-value parameter.
+    // Todo: Not convinced this is right. Temp workaround.
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+      if (body_val != nullptr and body_val->getType()->isPointerTy() and not llvm_ret_ty->isPointerTy()
+        and not llvm_ret_ty->isVoidTy()) {
+        body_val = ctx->Builder.CreateLoad(llvm_ret_ty, body_val, "closure.ret.copy" + uid);
+      }
       if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
       else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
       else { ctx->Builder.CreateUnreachable(); }
