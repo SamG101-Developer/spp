@@ -295,6 +295,18 @@ namespace spp::analyse::utils::overload_utils {
         fn_owner_scope = nullptr;
       }
 
+      // A value of a named function's own type is that function, so
+      // calling it is calling the function - resolved like the name,
+      // overloads and generics included, not through a pointer.
+      if (fn_owner_type == nullptr and fn_owner_scope == nullptr) {
+        const auto lhs_type = const_cast<asts::ExpressionAst&>(lhs).InferType(&sm, meta);
+        if (auto [value_fn_name, value_fn_scope] = func_utils::GetFunctionValueName(*lhs_type, *sm.CurrentScope);
+          value_fn_name != nullptr) {
+          fn_name = std::move(value_fn_name);
+          fn_owner_scope = value_fn_scope;
+        }
+      }
+
       return {fn_owner_type, fn_owner_scope, fn_name};
     }
 
