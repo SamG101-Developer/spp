@@ -768,6 +768,18 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
     tm.Reset(sub.WalkScope());
     tm.MoveToNextScope();
     meta->EnclosingFunctionScope = tm.CurrentScope;
+
+    // A parameter stripped for being "Void" is still named by the
+    // body, and still holds the template's own analysis, so every
+    // template parameter's symbol starts initialized.
+    for (auto const &param : FnParamGroup->Params) {
+      for (auto const &name : param->ExtractNames()) {
+        if (const auto sym = tm.CurrentScope->GetVarSymbol(name.get()); sym != nullptr) {
+          sym->MemInfo->InitializedBy(*param, tm.CurrentScope);
+        }
+      }
+    }
+
     sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
     sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
     if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
