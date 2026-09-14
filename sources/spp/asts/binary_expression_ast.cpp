@@ -16,6 +16,7 @@ import spp.asts.fold_expression_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
@@ -75,6 +76,7 @@ auto spp::asts::BinaryExpressionAst::Clone() const
     AstClone(TokOp),
     AstClone(Rhs));
   ast->_MappedFunc = _MappedFunc;
+  ast->_ChainTemps = AstCloneVec(_ChainTemps);
   ast->Source = Source;
   return ast;
 }
@@ -200,7 +202,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     // its pairs first, so that the "and" it produces is
     // analysed as one - conditional right operand and all -
     // rather than being turned straight into a call.
-    const auto combined = CombineComparisonChain(*this, sm, meta);
+    const auto combined = CombineComparisonChain(*this, sm, meta, _ChainTemps);
     Lhs = std::move(combined->Lhs);
     TokOp = std::move(combined->TokOp);
     Rhs = std::move(combined->Rhs);
@@ -248,6 +250,7 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
+  for (auto const &temp : _ChainTemps) { temp->Stage8_CheckMemory(sm, meta); }
 
   // A logical operator has no mapped function to forward to.
   // Both operands are checked as at worst, they both evaluate,
@@ -268,6 +271,8 @@ auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
   analyse::scopes::ScopeManager *sm,
   meta::CompilerMetaData *meta)
   -> void {
+  for (auto const &temp : _ChainTemps) { temp->Stage9_CompTimeResolve(sm, meta); }
+
   // Do the short-circuiting at compile time by evaluating
   // the left-hand-side, and if it is true, and we are not
   // doing an "and", then we can return true already.
@@ -298,6 +303,7 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   //    |- add #1 #2
   // This allows the optimal instruction to be used, whilst maintaining
   // the uniform function processing for all operations in s++.
+  for (auto const &temp : _ChainTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
   if (not IsLogicalOperator()) { return _MappedFunc->Stage11_CodeGen(sm, meta, ctx); }
 
   // The "and" and "or" operations cannot map from the function
