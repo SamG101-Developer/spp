@@ -349,12 +349,35 @@ auto spp::asts::ClassPrototypeAst::GetClsSym() const
   return _ClsSym;
 }
 
+static auto IsStdNeverModule(
+  spp::analyse::scopes::Scope const &scope)
+  -> bool {
+  // Todo: Maybe remove this and require "!" be used.
+  // The namespace names from this scope up to the root, the
+  // same parts "FqName" qualifies with, innermost first.
+  auto names = spp::Vec<spp::Str>();
+  for (auto const *s = &scope; s != nullptr and s->Parent != nullptr; s = s->Parent) {
+    if (const auto id = std::get_if<spp::analyse::scopes::ScopeIdentifierName>(&s->Name); id != nullptr) {
+      names.EmplaceBack(id->Name->Val);
+    }
+  }
+  return names.Len() == 2 and names[0] == "never" and names[1] == "std";
+}
+
 auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
   analyse::scopes::ScopeManager *sm)
   -> analyse::scopes::TypeSymbol* {
   auto is_dollar_type = Name->IsCompilerGeneratedType();
   auto sym_name = AstClone(Name->TypeParts()[0]);
   sym_name->GnArgGroup = GenericArgumentGroupAst::FromParams(*GnParamGroup);
+
+  // "!" names the std "Never" class. Every qualified reference
+  // to it is built from this name by "FqName", so flagging it
+  // makes each one "!" to "TypeEq" - written "!", by name, or
+  // through an alias.
+  if (sym_name->Name == "Never" and IsStdNeverModule(*sm->CurrentScope->Parent)) {
+    sym_name->MarkNeverType();
+  }
 
   // Create the symbols as TypeSymbol pointers, so AliasSymbols can also be used.
   Shared<analyse::scopes::TypeSymbol> symbol_1 = nullptr;
