@@ -223,8 +223,22 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   if (_IsSourceWritten and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
     and type_sym->ScopeDefinedIn != nullptr
     and type_sym->Name->Name == Name) {
-    CheckModuleTypeVisibility(
-      *type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
+    // A type declared in a "sup" block is a member of the type that block is over, so it follows the type-level rule
+    // like the block's attributes and methods do. Anything else is a module member.
+    // Todo: TIDY
+    const auto def_node = type_sym->ScopeDefinedIn->AstNode;
+    const auto in_sup_block = def_node != nullptr and (
+      AstAs<SupPrototypeFunctionsAst>(def_node) != nullptr or AstAs<SupPrototypeExtensionAst>(def_node) != nullptr);
+    const auto owner_sym = in_sup_block
+      ? type_sym->ScopeDefinedIn->GetTypeSymbol(AstName(def_node)->WithoutGenerics().get())
+      : nullptr;
+
+    if (owner_sym != nullptr and owner_sym->LinkedScope != nullptr) {
+      CheckTypeTypeVisibility(*type_sym, *this, *owner_sym->LinkedScope->NonGenericScope, *sm, *meta);
+    }
+    else {
+      CheckModuleTypeVisibility(*type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
+    }
   }
 
   const auto no_gn_params = GenericParameterGroupAst::NewEmpty();
