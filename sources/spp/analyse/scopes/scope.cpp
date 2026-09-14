@@ -192,7 +192,7 @@ auto spp::analyse::scopes::Scope::ShiftForNamespacedType(
   // Iterate through the type parts (except the final one) next.
   for (auto const *type_part : type_parts | genex::views::drop_last(1)) {
     const auto sym = shifted_scope->GetTypeSymbol(type_part);
-    if (sym == nullptr or sym->IsGeneric) { break; }
+    if (sym == nullptr or sym->IsTypeGeneric()) { break; }
     shifted_scope = sym->LinkedScope;
   }
 
@@ -220,7 +220,7 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
   // Check each ancestor scope, accumulating generic symbols.
   for (auto const *scope : scopes) {
     auto all_type_syms = scope->AllTypeSymbols(true)
-      | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+      | genex::views::filter([](auto const &sym) { return sym->IsTypeGeneric(); })
       | genex::to<Vec>();
 
     for (auto const &t : all_type_syms) {
@@ -237,12 +237,12 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
     }
 
     auto all_var_syms = scope->AllVarSymbols(true)
-      | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+      | genex::views::filter([](auto const &sym) { return sym->IsCompGeneric(); })
       | genex::to<Vec>();
 
     for (auto const &v : all_var_syms) {
       if (genex::contains(comp_names, *v->Name, genex::meta::deref)) { continue; }
-      if (v->MemInfo->AstCompTime->To<asts::GenericParameterCompAst>() != nullptr) { continue; }
+      if (v->Kind == VariableKind::GenericCompParam) { continue; }
       syms.EmplaceBack(asts::GenericArgumentCompKeywordAst::FromSym(*v));
       comp_names.EmplaceBack(v->Name);
     }
@@ -254,20 +254,18 @@ auto spp::analyse::scopes::Scope::GetGenerics() const
 
 auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
   Vec<asts::GenericArgumentAst*> const &generics,
-  Shared<asts::TypeAst> const &ignore) const
+  asts::IdentifierAst const *ignore) const
   -> Vec<Shared<Symbol>> {
   // "ignore" names the comp parameter whose own type is being qualified right now. Its symbol exists but has no
-  // type yet, so it must not be carried into anything. It arrives as a TypeAst while the symbols it has to be
-  // matched against are named by an IdentifierAst, and those two never compare equal - so both filters below used
-  // to be constants, one keeping everything and the other keeping nothing. Matching on the name is what was meant.
-  const auto ignore_name = ignore != nullptr ? ignore->LastTypePart()->Name : Str();
+  // type yet, so it must not be carried into anything.
+  const auto ignore_name = ignore != nullptr ? ignore->Val : Str();
 
   // Convert the provided generic arguments into symbols.
   // Todo: filter to "is_generic"?
   const auto type_syms = generics
     | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
     | genex::views::transform([this](auto const &gen_arg) { return GetTypeSymbol(gen_arg->Val.get()); })
-    | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsGeneric; })
+    | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsTypeGeneric(); })
     | genex::views::transform([](auto const &sym) { return sym->template SharedFromThis<Symbol>(); })
     | genex::to<Vec>();
 
@@ -281,7 +279,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     | genex::views::transform([this](auto const &gen_arg) {
       return GetVarSymbol(gen_arg->Val->template To<asts::IdentifierAst>());
     })
-    | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsGeneric; })
+    | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->IsCompGeneric(); })
     | genex::views::transform([](auto const &sym) { return sym->template SharedFromThis<Symbol>(); })
     | genex::to<Vec>();
 
@@ -311,7 +309,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     return genex::any_of(parts, [this](auto const *part) {
       return part->AnyPart([this](asts::TypeIdentifierAst const &nested) {
         const auto sym = GetTypeSymbol(&nested);
-        return sym != nullptr and sym->IsGeneric;
+        return sym != nullptr and sym->IsTypeGeneric();
       });
     });
   });
@@ -322,10 +320,10 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     // here causes shadowing issues or mistypes.
     if (names_an_open_generic) {
       for (auto const &sym : scope->AllTypeSymbols(true)
-           | genex::views::filter([](auto const &s) { return s->IsGeneric and s->Name->Name != "Self"; })) {
+           | genex::views::filter([](auto const &s) { return s->IsTypeGeneric() and s->Name->Name != "Self"; })) {
         auto clone = std::make_shared<TypeSymbol>(
           sym->Name, nullptr, sym->Type == nullptr ? sym->LinkedScope : nullptr,
-          nullptr, nullptr, true);
+          nullptr, nullptr, sym->Kind);
         clone->IsDirectlyCopyable = sym->IsDirectlyCopyable;
         clone->IsDirectlyZeroType = sym->IsDirectlyZeroType;
         clone->GenericConstraints = sym->GenericConstraints;
@@ -334,7 +332,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
     }
 
     for (auto const &sym : scope->AllVarSymbols(true)
-         | genex::views::filter([](auto const &s) { return s->IsGeneric; })
+         | genex::views::filter([](auto const &s) { return s->IsCompGeneric(); })
          | genex::views::filter([&](auto const &s) { return ignore == nullptr or s->Name->Val != ignore_name; })) {
       syms.EmplaceBack(sym->SharedFromThis());
     }
@@ -347,7 +345,7 @@ auto spp::analyse::scopes::Scope::GetExtendedGenericSymbols(
 auto spp::analyse::scopes::Scope::AddVarSymbol(
   Shared<VariableSymbol> const &sym)
   -> void {
-  // Add a type symbol to the corresponding symbol table.
+  // Add a variable symbol to the corresponding symbol table.
   InternalTable.VarTbl.Add(sym->Name.get(), sym);
 }
 
@@ -357,9 +355,7 @@ auto spp::analyse::scopes::Scope::AddVarSymbolCheckConflict(
   // Cannot allow for duplicate comptime definitions.
   const auto existing_sym = GetVarSymbol(sym->Name.get(), false);
   if (existing_sym != nullptr) {
-    // const auto is_generic = sym->IsGeneric;
-    // const auto is_comptime = sym->MemInfo->AstCompTime != nullptr;
-    const auto is_functional = existing_sym->Type and existing_sym->Type->IsCompilerGeneratedType();
+    const auto is_functional = existing_sym->Kind == VariableKind::Function;
 
     // A name brought in by a "use" is being shadowed by a declaration written here, which is not a redefinition -
     // "use std::mem::ops::drop" alongside a "fun drop" of this type's own is the ordinary case. The lookup above is
@@ -368,20 +364,15 @@ auto spp::analyse::scopes::Scope::AddVarSymbolCheckConflict(
     // Both halves matter: importing a name twice ("use std::abort::abort" written twice, or once against a name the
     // prelude already brings in) is a redefinition and stays an error, so the incoming symbol has to be a declaration
     // rather than another import.
-    const auto from_use_statement = [](VariableSymbol const &s) {
-      auto const *const ast = s.MemInfo != nullptr ? s.MemInfo->AstCompTime.get() : nullptr;
-      auto const *const cmp = ast != nullptr ? ast->To<asts::CmpStatementAst>() : nullptr;
-      return cmp != nullptr and cmp->IsFromUseStatement();
-    };
-    const auto is_shadowed_import = from_use_statement(*existing_sym) and not from_use_statement(*sym);
+    const auto is_shadowed_import = existing_sym->IsImport() and not sym->IsImport();
 
     RaiseIf<errors::SppIdentifierDuplicateError>(
       not is_functional and not is_shadowed_import,
-      {this, this},
+      {existing_sym->ScopeDefinedIn ? existing_sym->ScopeDefinedIn : this, sym->ScopeDefinedIn ? sym->ScopeDefinedIn : this},
       ERR_ARGS(*existing_sym->Name, *sym->Name, "comptime variable identifier"));
   }
 
-  // Add a type symbol to the corresponding symbol table.
+  // Add a variable symbol to the corresponding symbol table.
   InternalTable.VarTbl.Add(sym->Name.get(), sym);
 }
 
@@ -399,7 +390,7 @@ auto spp::analyse::scopes::Scope::AddTypeSymbolCheckConflict(
   // Cannot allow for duplicate definitions.
   const auto existing_sym = GetTypeSymbol(sym->Name.get(), false);
   if (existing_sym != nullptr) {
-    const auto is_functional = sym->Name->IsCompilerGeneratedType();
+    const auto is_functional = sym->IsMock();
     RaiseIf<errors::SppIdentifierDuplicateError>(
       not is_functional,
       {existing_sym->ScopeDefinedIn, sym->ScopeDefinedIn},
@@ -757,11 +748,11 @@ auto spp::analyse::scopes::Scope::GetEnclosingTypeScope(
   // Walk up the scope chain. Return the first non-compiler-generated type scope, or the LinkedScope of a "Self" type
   // symbol found in a sup-block scope (for module-level sup blocks that have no type scope in their chain).
   for (auto *scope = this; scope != nullptr; scope = scope->Parent) {
-    if (scope->TySym != nullptr and not scope->TySym->Name->Name.starts_with("$")) {
+    if (scope->TySym != nullptr and not scope->TySym->IsMock()) {
       return const_cast<Scope*>(scope);
     }
     for (auto const &ty_sym : scope->InternalTable.TypeTbl.All()) {
-      if (ty_sym->Name->Name == "Self" and ty_sym->LinkedScope != nullptr) {
+      if (ty_sym->IsSelf() and ty_sym->LinkedScope != nullptr) {
         return ty_sym->LinkedScope;
       }
     }

@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -146,7 +147,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
         // Use the type off the single matching attribute.
         const auto attr_type_sym = spp::get<1>(attrs[0]);
-        const auto attr_type = attr_type_sym->IsGeneric ? nullptr : attr_type_sym->FqName();
+        const auto attr_type = attr_type_sym->IsTypeGeneric() ? nullptr : attr_type_sym->FqName();
         meta->ReturnTypeOverloadResolverType = std::move(attr_type);
       }
     }

@@ -208,7 +208,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     // narrowed name discharges the value itself.
     _FlowSym->NarrowsSym = _CondSym;
     _FlowSym->Type = Type;
-    _FlowSym->IsFlowNarrowing = true;
+    _FlowSym->Kind = analyse::scopes::VariableKind::FlowNarrowing;
 
     if (Type->GetConvention() != nullptr) {
       const auto borrow_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed) ? : _CondSym->ScopeDefinedIn;

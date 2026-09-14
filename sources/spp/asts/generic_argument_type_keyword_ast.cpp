@@ -114,9 +114,12 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
   if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 
-  // Todo: Document.
+  // Rewrite the argument as the qualified name of what it names. In a template a generic
+  // stays its own name ("FqName"), keeping the body written in terms of its parameters. An
+  // instantiation's own body (a private clone, so rewriting in place is safe) takes what the
+  // parameter is bound to instead ("BoundName"): "Vec[T]" in "f[T=S32]" becomes "Vec[S32]".
   const auto val_sym = sm->CurrentScope->GetTypeSymbol(Val.get());
-  auto val_name = meta->ResolveBoundCompGenerics
+  auto val_name = meta->ResolveBoundGenerics
     ? val_sym->BoundName()
     : val_sym->FqName();
 

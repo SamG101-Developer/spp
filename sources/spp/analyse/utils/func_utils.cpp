@@ -104,10 +104,10 @@ namespace spp::analyse::utils::func_utils {
         scopes::BumpScopeLinkageGeneration();
       }
 
-      ScopeParentSwap(ScopeParentSwap const&) = delete;
-      ScopeParentSwap(ScopeParentSwap&&) = delete;
-      auto operator=(ScopeParentSwap const&) -> ScopeParentSwap& = delete;
-      auto operator=(ScopeParentSwap&&) -> ScopeParentSwap& = delete;
+      ScopeParentSwap(ScopeParentSwap const &) = delete;
+      ScopeParentSwap(ScopeParentSwap &&) = delete;
+      auto operator=(ScopeParentSwap const &) -> ScopeParentSwap& = delete;
+      auto operator=(ScopeParentSwap &&) -> ScopeParentSwap& = delete;
     };
 
     /**

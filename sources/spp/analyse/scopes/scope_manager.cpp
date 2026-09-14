@@ -276,8 +276,11 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
       }
     }
 
-    // Prevent double inheritance, cyclic inheritance and self extension.
-    if (const auto ext_ast = AstAs<asts::SupPrototypeExtensionAst>(sup_scope->AstNode); ext_ast != nullptr) {
+    // Prevent double inheritance, cyclic inheritance and self extension. A "$" mock's blocks are generated (one per
+    // overload, over a function type), and a method's mock is named bare, so elsewhere it resolves to another type's
+    // mock of the same name - the checks have nothing to find and would only be misled.
+    if (const auto ext_ast = AstAs<asts::SupPrototypeExtensionAst>(sup_scope->AstNode);
+      ext_ast != nullptr and not ext_ast->Name->IsCompilerGeneratedType()) {
       ext_ast->CheckCyclicExtension(*sup_sym, *sup_scope);
       ext_ast->CheckDoubleExtension(*cls_sym, *sup_scope);
       ext_ast->CheckSelfExtension(*sup_scope);

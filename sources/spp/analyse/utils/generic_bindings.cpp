@@ -716,7 +716,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
       // the calling scope.
       const auto concrete_sym = sm.CurrentScope->GetTypeSymbol(inferred_type.get());
       auto candidates = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
-      if (concrete_sym != nullptr and not concrete_sym->IsGeneric) {
+      if (concrete_sym != nullptr and not concrete_sym->IsTypeGeneric()) {
         candidates.EmplaceBack(concrete_sym->FqName(), sm.CurrentScope);
         if (concrete_sym->LinkedScope != nullptr) {
           for (auto const *sup_scope : concrete_sym->LinkedScope->SupScopes()) {

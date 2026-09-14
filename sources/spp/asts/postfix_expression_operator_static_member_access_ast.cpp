@@ -18,10 +18,13 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_postfix_expression_ast;
+import spp.asts.type_postfix_expression_operator_nested_type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func;
 import spp.lex.tokens;
+import spp.utils.ptr;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
@@ -127,7 +130,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
         // Todo: Add fwd-ref type member candidates
 
         auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
-          | genex::views::filter([](auto const &sym) { return sym->Type->IsCompilerGeneratedType(); })
+          | genex::views::filter([](auto const &sym) { return sym->Kind == analyse::scopes::VariableKind::Function; })
           | genex::to<Vec>();
         RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
       }
@@ -135,7 +138,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     }
 
     // Check there is only 1 target field on the type at the highest level.
-    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Type->IsCompilerGeneratedType()) {
+    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Kind == analyse::scopes::VariableKind::Function) {
       return;
     }
 
@@ -246,8 +249,22 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
   if (_LhsTypeSym != nullptr) {
     const auto var_sym = StaticMemberOf(*_LhsTypeSym->LinkedScope, *Name);
-    if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
-    SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
+
+    // A method named as a value is its "$" mock's constant, the
+    // "{fn, env}" pair; without one there is nothing to load.
+    if (var_sym->Kind == analyse::scopes::VariableKind::Function and var_sym->LlvmInfo->Alloca == nullptr) {
+      return nullptr;
+    }
+
+    // A constant typed by a "sup" block's generic ("cmp n: T")
+    // has no global (only the template is generated), so its
+    // folded value is emitted in place.
+    if (var_sym->LlvmInfo->Alloca == nullptr) {
+      Stage9_CompTimeResolve(sm, meta);
+      const auto folded = std::move(meta->CmpResult);
+      SPP_ASSERT(folded != nullptr);
+      return folded->Stage11_CodeGen(sm, meta, ctx);
+    }
     const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
       *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
       *codegen::GetEmissionModule(*ctx));
@@ -257,7 +274,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
   const auto lhs_ns_scope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
   const auto var_sym = lhs_ns_scope->GetVarSymbol(Name.get(), true);
-  if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
+  if (var_sym->Kind == analyse::scopes::VariableKind::Function) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
   const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
     *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),

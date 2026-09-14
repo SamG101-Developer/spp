@@ -124,7 +124,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // to the same { fn_ptr, env_ptr } pair as the function
   // type it superimposes. Walking its (empty) definition
   // instead would measure it as a zero-sized struct.
-  if (cls_sym != nullptr and cls_sym->Name != nullptr and cls_sym->Name->IsCompilerGeneratedType()) {
+  if (cls_sym != nullptr and cls_sym->IsMock()) {
     const auto mock_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {mock_ptr_ty, mock_ptr_ty});
     return;
@@ -297,6 +297,20 @@ auto spp::codegen::GetLlvmType(
   return type_sym.LlvmInfo->LlvmType;
 }
 
+auto spp::codegen::GetLlvmTypeOf(
+  asts::TypeAst const &type,
+  analyse::scopes::Scope const &scope,
+  LlvmCtx const *ctx)
+  -> llvm::Type* {
+  // A borrow is a pointer to the borrowee regardless of what
+  // the borrowee is, and "GetTypeSymbol" resolves through to
+  // the borrowee's symbol, losing the convention that made it
+  // a pointer, so the type is asked directly first.
+  if (type.GetConvention() != nullptr) { return llvm::PointerType::get(*ctx->Context, 0); }
+  const auto type_sym = scope.GetTypeSymbol(&type);
+  return type_sym != nullptr ? GetLlvmType(*type_sym, ctx) : nullptr;
+}
+
 auto spp::codegen::EnsureLlvmTypeComplete(
   analyse::scopes::TypeSymbol const &type_sym,
   analyse::scopes::ScopeManager const &sm,
@@ -369,18 +383,4 @@ auto spp::codegen::IsValuelessType(
   llvm::Type const *type)
   -> bool {
   return type == nullptr or type->isVoidTy();
-}
-
-auto spp::codegen::GetLlvmTypeOf(
-  asts::TypeAst const &type,
-  analyse::scopes::Scope const &scope,
-  LlvmCtx const *ctx)
-  -> llvm::Type* {
-  // A borrow is a pointer to the borrowee regardless of what
-  // the borrowee is, and "GetTypeSymbol" resolves through to
-  // the borrowee's symbol, losing the convention that made it
-  // a pointer, so the type is asked directly first.
-  if (type.GetConvention() != nullptr) { return llvm::PointerType::get(*ctx->Context, 0); }
-  const auto type_sym = scope.GetTypeSymbol(&type);
-  return type_sym != nullptr ? GetLlvmType(*type_sym, ctx) : nullptr;
 }

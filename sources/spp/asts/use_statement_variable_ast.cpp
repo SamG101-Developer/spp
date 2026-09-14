@@ -109,6 +109,10 @@ auto spp::asts::UseStatementVariableAst::Stage3_GenTopLvlAliases(
 
     _Conversion->_AliasSym->AliasSym = old_var_sym->SharedFromThis<analyse::scopes::VariableSymbol>();
     _Conversion->_AliasSym->Type = _Conversion->Type;
+
+    // The import's type is only known now, so it takes the kind of
+    // what it names (a function's mock, or a constant) here too.
+    _Conversion->_AliasSym->Kind = old_var_sym->Kind;
     _Conversion->Stage3_GenTopLvlAliases(sm, meta);
     return;
   }

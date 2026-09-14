@@ -15,7 +15,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
   CaseConsumedSubjects.Clear();
-  ClsSym = nullptr;
   EnclosingFunctionScope = nullptr;
   EnclosingFunctionFlavour = nullptr;
   EnclosingFunctionRetType = {};
@@ -54,7 +53,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
-  ResolveBoundCompGenerics = false;
+  ResolveBoundGenerics = false;
   LlvmGenerator = nullptr;
   LlvmGeneratorState = nullptr;
 }
@@ -75,7 +74,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.CaseCondition = CaseCondition;
   s.CaseConsumedSubjects = CaseConsumedSubjects;
   s.WithinDeferTok = WithinDeferTok;
-  s.ClsSym = ClsSym;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   s.EnclosingFunctionScope = EnclosingFunctionScope;
   s.EnclosingFunctionFlavour = EnclosingFunctionFlavour;
@@ -123,7 +121,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
-  s.ResolveBoundCompGenerics = ResolveBoundCompGenerics;
+  s.ResolveBoundGenerics = ResolveBoundGenerics;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
@@ -142,7 +140,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   CaseCondition = state.CaseCondition;
   CaseConsumedSubjects = state.CaseConsumedSubjects;
   WithinDeferTok = state.WithinDeferTok;
-  ClsSym = state.ClsSym;
   if (heavy) {
     EnclosingFunctionScope = state.EnclosingFunctionScope;
     EnclosingFunctionFlavour = state.EnclosingFunctionFlavour;
@@ -189,7 +186,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
-  ResolveBoundCompGenerics = state.ResolveBoundCompGenerics;
+  ResolveBoundGenerics = state.ResolveBoundGenerics;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
 }

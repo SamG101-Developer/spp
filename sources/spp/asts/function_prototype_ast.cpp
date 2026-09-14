@@ -408,7 +408,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
   if (Name and not Name->Val.starts_with("$")) {
     if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
       if (const auto mock_sym = outer_scope->GetVarSymbol(Name.get(), true)) {
-        if (mock_sym->Type and mock_sym->Type->IsCompilerGeneratedType()) {
+        if (mock_sym->Kind == analyse::scopes::VariableKind::Function) {
           // Enforce that all overloads have the same
           // visibility.
           RaiseIf<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
@@ -750,7 +750,7 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
     sub.Proto->_InstallLoweredImpl(&tm);
 
     const auto _meta_guard = meta::MetaGuard(meta);
-    meta->ResolveBoundCompGenerics = true;
+    meta->ResolveBoundGenerics = true;
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
 

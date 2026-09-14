@@ -221,7 +221,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     // attribute handling below, so without this the
     // visibility check never runs for method accesses.
     auto fn_scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return x.Symbol->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return x.Symbol->Kind == analyse::scopes::VariableKind::Function; })
       | genex::to<Vec>();
 
     if (not fn_scopes_and_syms.IsEmpty()) {
@@ -235,7 +235,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     }
 
     const auto members = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return not x.Symbol->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return x.Symbol->Kind != analyse::scopes::VariableKind::Function; })
       | genex::to<Vec>();
 
     const auto runtime_members = MembersReachableBy(

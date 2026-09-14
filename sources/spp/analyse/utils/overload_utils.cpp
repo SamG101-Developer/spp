@@ -415,7 +415,7 @@ namespace spp::analyse::utils::overload_utils {
       -> bool {
       const auto stripped = param_type.WithoutGenerics()->WithoutConvention();
       const auto sym = caller_scope.GetTypeSymbol(stripped.get());
-      return sym != nullptr and sym->IsGeneric;
+      return sym != nullptr and sym->IsTypeGeneric();
     }
 
     /**
@@ -434,11 +434,11 @@ namespace spp::analyse::utils::overload_utils {
       scopes::Scope const &caller_scope)
       -> bool {
       if (const auto type_sym = caller_scope.GetTypeSymbol(&bound_name); type_sym != nullptr) {
-        return type_sym->IsGeneric;
+        return type_sym->IsTypeGeneric();
       }
       const auto as_id = asts::IdentifierAst::FromType(bound_name);
       const auto comp_sym = caller_scope.GetVarSymbol(as_id.get());
-      return comp_sym != nullptr and comp_sym->IsGeneric;
+      return comp_sym != nullptr and comp_sym->IsCompGeneric();
     }
 
     /**
@@ -1016,13 +1016,12 @@ namespace spp::analyse::utils::overload_utils {
            | genex::views::ptr
            | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()) {
         const auto val_sym = sm->CurrentScope->GetTypeSymbol(arg->Val.get());
-        if (val_sym == nullptr or not val_sym->IsGeneric or val_sym->Type == nullptr) { continue; }
+        if (val_sym == nullptr or not val_sym->IsTypeGeneric() or val_sym->Type == nullptr) { continue; }
         if (val_sym->LinkedScope == nullptr or val_sym->LinkedScope->TySym == nullptr) { continue; }
         arg->Val = val_sym->LinkedScope->TySym->FqName();
       }
 
-      // The same for a comp-time argument naming a bound comp generic. A binding is a variable symbol carrying the
-      // argument it was bound from, so what the name resolves to is read back off that.
+      // The same for a comp-time argument naming a bound comp generic, whose value is on its symbol.
       for (auto *arg : combined_generics.Args
            | genex::views::ptr
            | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()) {
@@ -1030,11 +1029,9 @@ namespace spp::analyse::utils::overload_utils {
         if (val_ident == nullptr) { continue; }
 
         const auto val_sym = sm->CurrentScope->GetVarSymbol(val_ident);
-        if (val_sym == nullptr or val_sym->MemInfo->AstCompTime == nullptr) { continue; }
-
-        const auto bound_arg = val_sym->MemInfo->AstCompTime->To<asts::GenericArgumentCompKeywordAst>();
-        if (bound_arg == nullptr or bound_arg->Val == nullptr) { continue; }
-        arg->Val = asts::AstClone(bound_arg->Val);
+        const auto bound = val_sym != nullptr ? val_sym->BoundCompValue() : nullptr;
+        if (bound == nullptr) { continue; }
+        arg->Val = asts::AstClone(bound);
       }
 
       // Drop the arguments that only restate their parameter. What is left is what this instantiation actually pins,
@@ -1166,10 +1163,10 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     // variable) is a value being called, not a module function
     // spelled the same.
     const auto local = sm->CurrentScope->GetVarSymbol(id);
-    if (local == nullptr or local->MemInfo->AstCompTime != nullptr) {
+    if (local == nullptr or local->IsCompTime()) {
       const auto mod_scope = sm->CurrentScope->ParentModule();
       const auto x = mod_scope != nullptr ? mod_scope->GetVarSymbol(id) : local;
-      if (x and x->MemInfo->AstCompTime) {
+      if (x and x->IsCompTime()) {
         temp = x->FqName();
         lhs = temp.get();
       }

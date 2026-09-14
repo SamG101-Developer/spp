@@ -95,7 +95,7 @@ auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
 
   // Create a variable symbol for this attribute in the current scope (class scope).
   auto sym = MakeShared<analyse::scopes::VariableSymbol>(
-    Name, Type, sm->CurrentScope, false, false, Visibility.first);
+    Name, Type, sm->CurrentScope, analyse::scopes::VariableKind::Attribute, false, Visibility.first);
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 

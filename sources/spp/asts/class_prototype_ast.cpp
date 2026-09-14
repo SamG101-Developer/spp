@@ -120,7 +120,7 @@ auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
   // Generate the symbols for the class prototype, and handle generic parameters.
-  meta->ClsSym = _GenerateSymbols(sm);
+  _GenerateSymbols(sm);
   GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
   Impl->Stage2_GenTopLvlScopes(sm, meta);
 
@@ -244,7 +244,7 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
     self_sym->Type = cls_sym->Type;
-    cls_sym->AliasedBySyms.EmplaceBack(self_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
+    self_sym->LlvmInfo = cls_sym->LlvmInfo;
   }
 
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
@@ -303,7 +303,7 @@ auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
   }
 
   // If this is a raw generic class like Vec[T], then generate the generic implementations.
-  if (genex::any_of(sm->CurrentScope->AllTypeSymbols(), [](auto const &sym) { return sym->IsGeneric; })) {
+  if (genex::any_of(sm->CurrentScope->AllTypeSymbols(), [](auto const &sym) { return sym->IsTypeGeneric(); })) {
     for (auto const &[generic_scope, generic_ast] : _GenericSubstitutions) {
       generic_ast->FillLlvmLayout(sm, generic_scope->TySym.get(), ctx);
     }
@@ -362,8 +362,8 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
 
   // Create the symbol for the type, include generics if applicable, like Vec[T].
   symbol_1 = MakeShared<analyse::scopes::TypeSymbol>(
-    std::move(sym_name), this, sm->CurrentScope, sm->CurrentScope, sm->CurrentScope->ParentModule(), false,
-    is_dollar_type);
+    std::move(sym_name), this, sm->CurrentScope, sm->CurrentScope, sm->CurrentScope->ParentModule(),
+    is_dollar_type ? analyse::scopes::TypeKind::FunctionMock : analyse::scopes::TypeKind::Class, is_dollar_type);
   sm->CurrentScope->TySym = symbol_1;
   sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_1);
   _ClsSym = sm->CurrentScope->TySym;
@@ -378,8 +378,7 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
   if (not GnParamGroup->Params.IsEmpty()) {
     symbol_2 = MakeShared<analyse::scopes::TypeSymbol>(
       AstClone(Name->TypeParts()[0]), this, sm->CurrentScope, sm->CurrentScope,
-      sm->CurrentScope->ParentModule(), false, is_dollar_type);
-    symbol_2->GenericImpl = symbol_1.get();
+      sm->CurrentScope->ParentModule(), symbol_1->Kind, is_dollar_type);
     const auto ret_sym = symbol_2.get();
     sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_2);
     return ret_sym;
@@ -522,15 +521,6 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
     const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
     const auto layout = is_tuple ? codegen::StructLayout::C : codegen::StructLayout::Spp;
     ApplyStructLayout(struct_type, types, layout, type_sym->LlvmInfo.get(), ctx);
-  }
-
-  // Pass this layout to aliases too (the field re-ordering as well as
-  // the type itself).
-  for (auto const &weak_alias : type_sym->AliasedBySyms) {
-    const auto alias = weak_alias.lock();
-    if (alias == nullptr) { continue; }
-    alias->LlvmInfo->LlvmType = lt;
-    alias->LlvmInfo->FieldIndexMap = type_sym->LlvmInfo->FieldIndexMap;
   }
 }
 

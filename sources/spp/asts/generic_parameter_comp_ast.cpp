@@ -50,11 +50,9 @@ auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
   // Create a variable symbol for this constant in the current scope (class / function).
   auto sym = MakeUnique<analyse::scopes::VariableSymbol>(
     IdentifierAst::FromType(*Name), Type, sm->CurrentScope,
-    false, true, utils::Visibility::kPublic);
+    analyse::scopes::VariableKind::GenericCompParam, false, utils::Visibility::kPublic);
   // sym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
-  sym->MemInfo->AstCompTime = AstClone(this);
   sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
-  sym->CompTimeValue = AstClone(this); // TODO: this or name?
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
@@ -68,7 +66,7 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
 
   // Qualify the type on the generic parameter.
   const auto _meta_guard = meta::MetaGuard(meta);
-  meta->IgnoreCmpGeneric = Name;
+  meta->IgnoreCmpGeneric = IdentifierAst::FromType(*Name);
 
   // Check the type exists and qualify.
   Type->Stage7_AnalyseSemantics(sm, meta);

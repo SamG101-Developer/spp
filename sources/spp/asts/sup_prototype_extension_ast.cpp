@@ -218,10 +218,12 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // identifier in terms of namespacing.
   Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true);
 
-  // Register the superimposition against the base symbol.
+  // Register the superimposition against the base symbol. A
+  // method's "$" mock block sits inside its "sup" block rather
+  // than the module, and still has to reach its mock class.
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
-  if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
-    if (not base_cls_sym->IsGeneric) {
+  if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule() or Name->IsCompilerGeneratedType()) {
+    if (not base_cls_sym->IsTypeGeneric()) {
       analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
     }
     else {
@@ -247,7 +249,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // Check the supertype is not generic.
   const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
   RaiseIf<SppGenericTypeInvalidUsageError>(
-    sup_sym->IsGeneric, {sm->CurrentScope},
+    sup_sym->IsTypeGeneric(), {sm->CurrentScope},
     ERR_ARGS(*SuperClass, *Source.OriginalSuperClass, "superimposition supertype"));
 
   // Load the implementation and move out of the scope.
@@ -391,7 +393,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
     self_sym->Type = cls_sym->Type;
-    cls_sym->AliasedBySyms.EmplaceBack(self_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
+    self_sym->LlvmInfo = cls_sym->LlvmInfo;
   }
 
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
@@ -411,7 +413,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
 
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
-    if (cls_sym->Type and not cls_sym->Type->Name->IsCompilerGeneratedType()) {
+    if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
       EnforceGenericConstraintsAllArgs(
         *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
@@ -518,7 +520,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
   using analyse::utils::type_compare::RelaxedTypeEq;
   using analyse::utils::type_compare::TypeEq;
   using analyse::errors::SppSuperimpositionDoubleExtensionError;
-  if (cls_sym.Name->IsCompilerGeneratedType()) { return; }
+  if (cls_sym.IsMock()) { return; }
 
   auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
     const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);

@@ -79,7 +79,7 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
   // Mirror the symbol an initialized single-identifier "let"
   // would create.
   const auto sym = MakeShared<scopes::VariableSymbol>(
-    name, val_type, sm.CurrentScope, true);
+    name, val_type, sm.CurrentScope, scopes::VariableKind::Temporary, true);
   sym->MemInfo->AstInitialization = {name.get(), sm.CurrentScope};
   sym->MemInfo->AstInitializationOrigin = {name.get(), sm.CurrentScope};
   sym->MemInfo->InitializationCounter = 1;

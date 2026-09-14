@@ -123,7 +123,7 @@ auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
 
   // Create the type symbol for this type, that will point to the old type.
   _AliasSym = MakeShared<analyse::scopes::TypeSymbol>(
-    NewType, nullptr, nullptr, sm->CurrentScope, sm->CurrentScope->ParentModule());
+    NewType, nullptr, nullptr, sm->CurrentScope, sm->CurrentScope->ParentModule(), analyse::scopes::TypeKind::Alias);
   _AliasSym->Alias = MakeShared<analyse::scopes::AliasInfo>();
   _AliasSym->Alias->Written = OldType;
   // Seeded with the written type, and refined in stage 3 once the chain behind it has been followed. It is never
@@ -210,12 +210,12 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
   // Add the "Self" symbol into the scope, mirroring class/sup prototype logic.
   const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
     MakeUnique<TypeIdentifierAst>(NewType->PosStart(), "Self", nullptr),
-    sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope);
+    sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope, nullptr, analyse::scopes::TypeKind::Self);
   sm->CurrentScope->AddTypeSymbol(self_sym);
 
   // Get the resolved type's symbol, without generics.
   const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(alias.Resolved->WithoutGenerics().get(), false);
-  if (not stripped_old_sym->IsGeneric) {
+  if (not stripped_old_sym->IsTypeGeneric()) {
     auto tm = analyse::scopes::ScopeManager(
       sm->GlobalScope, alias.TrackingScope);
     GnParamGroup->Stage4_QualifyTypes(alias.ParamsFromTarget ? &tm : sm, meta);
@@ -227,7 +227,7 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     _AliasSym->LinkedScope = old_sym->LinkedScope;
     _AliasSym->InvalidateFqNameCache();
     _AliasSym->DerivesFromSym = old_sym->SharedFromThis<analyse::scopes::TypeSymbol>();
-    old_sym->AliasedBySyms.EmplaceBack(_AliasSym);
+    _AliasSym->LlvmInfo = old_sym->LlvmInfo;
   }
   sm->MoveOutOfCurrentScope();
 }

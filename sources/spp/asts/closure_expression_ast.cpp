@@ -122,11 +122,11 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     PcGroup->Stage7_AnalyseSemantics(sm, meta);
 
     const auto inherited_type_generics = sm->CurrentScope->AllTypeSymbols()
-      | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+      | genex::views::filter([](auto const &sym) { return sym->IsTypeGeneric(); })
       | genex::to<Vec>();
 
     const auto inherited_comp_generics = sm->CurrentScope->AllVarSymbols()
-      | genex::views::filter([](auto const &sym) { return sym->IsGeneric; })
+      | genex::views::filter([](auto const &sym) { return sym->IsCompGeneric(); })
       | genex::to<Vec>();
 
     // "Self" is inherited for the same reason the generics are. The scope this
@@ -516,7 +516,7 @@ auto spp::asts::ClosureExpressionAst::_MakeMockType(
   // the symbol table.
   const auto mock_sym = MakeShared<TypeSymbol>(
     mock_name, mock_ast.get(), mock_scope.get(),
-    mod_scope, mod_scope, false, false, utils::Visibility::kPublic);
+    mod_scope, mod_scope, analyse::scopes::TypeKind::ClosureMock, false, utils::Visibility::kPublic);
 
   // Hook the genuine function type into the closure mock type's
   // sup scope list, as happens with normal overload resolution

@@ -193,16 +193,12 @@ auto spp::analyse::utils::expr_utils::MemberReachableBy(
   scopes::VariableSymbol const &sym,
   const MemberAccessForm form)
   -> bool {
-  // Function identifiers are always lookup-able, but its how
-  // they're called (static or runtime) which determines if
-  // they error or not.
-  if (sym.Type->IsCompilerGeneratedType()) { return true; }
-
-  // Constant members require static lookup, so this is the
-  // flag used to determine if a symbol is statically available
-  // or not.
-  const auto is_constant = sym.MemInfo->AstCompTime != nullptr;
-  return is_constant == (form == MemberAccessForm::Static);
+  // A method is reached either way: how it is called (static
+  // or runtime) is what decides whether it errors. Anything
+  // with no runtime storage of its own is reached statically,
+  // and the rest - attributes - at runtime.
+  if (sym.Kind == scopes::VariableKind::Function) { return true; }
+  return sym.IsCompTime() == (form == MemberAccessForm::Static);
 }
 
 auto spp::analyse::utils::expr_utils::LookupMemberForAccess(
@@ -329,7 +325,7 @@ auto spp::analyse::utils::expr_utils::RaiseMissingTypeIdentifierAndClosestOption
 
   //
   const auto alternatives = symbols
-    | genex::views::filter([](auto const &x) { return not x->Name->IsCompilerGeneratedType(); })
+    | genex::views::filter([](auto const &x) { return not x->IsMock(); })
     | genex::views::transform([](auto const &x) { return x->Name->Name; })
     | genex::to<Vec>();
 

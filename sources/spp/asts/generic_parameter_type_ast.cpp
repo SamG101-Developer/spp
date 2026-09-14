@@ -54,7 +54,7 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
   // Create the type symbol for the generic parameter.
   const auto sym = MakeShared<analyse::scopes::TypeSymbol>(
     AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(),
-    sm->CurrentScope, nullptr, true, false, Visibility::kPublic,
+    sm->CurrentScope, nullptr, analyse::scopes::TypeKind::GenericParam, false, Visibility::kPublic,
     nullptr, Constraints->Constraints);
   sym->IsVariadic = To<GenericParameterTypeVariadicAst>() != nullptr;
   sm->CurrentScope->AddTypeSymbol(sym);

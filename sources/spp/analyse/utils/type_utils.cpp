@@ -111,7 +111,7 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
   // "GetTryType" and "GetFwdTypes" bail out on generics instead, which is the inconsistency their shared Todo is
   // about - so only the lookup itself is guarded.
   // Todo: Like Copy, can we rely on constraints here? Add
-  //  unit tests. Reconcile with the "IsGeneric" early-outs in "GetTryType"/"GetFwdTypes" at the same time.
+  //  unit tests. Reconcile with the "IsTypeGeneric()" early-outs in "GetTryType"/"GetFwdTypes" at the same time.
   const auto type_sym = scope.GetTypeSymbol(&type);
   if (type_sym == nullptr) {
     RaiseIf<SppExpressionNotGeneratorError>(raise, {&scope}, ERR_ARGS(expr, type, what));
@@ -169,7 +169,7 @@ auto spp::analyse::utils::type_utils::GetTryType(
   // Todo: Like Copy, can we rely on constraints here? Add
   //  unit tests.
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
-  if (type_sym->IsGeneric) { return nullptr; }
+  if (type_sym->IsTypeGeneric()) { return nullptr; }
 
   // Discover the supertypes and add the current type to it.
   auto sup_types = Vec{type.shared_from_this()};
@@ -212,7 +212,7 @@ auto spp::analyse::utils::type_utils::GetFwdTypes(
 
   // Generic types do not have forward types, so return nullptr.
   const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
-  if (type_sym->IsGeneric) { return {nullptr, nullptr}; }
+  if (type_sym->IsTypeGeneric()) { return {nullptr, nullptr}; }
 
   // Find the first FwdRef and first FwdMut super type in a single pass.
   auto fwd_ref_type = Shared<asts::TypeAst>(nullptr);

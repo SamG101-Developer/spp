@@ -119,9 +119,15 @@ auto spp::asts::CmpStatementAst::Stage2_GenTopLvlScopes(
   // prevent moving. Add the symbol to the current scope,
   // not the new one for the cmp statement; needs to be
   // accessible from the module/sup block.
+  // A "use" import is a placeholder until stage 3 finds what it
+  // names, and then takes that symbol's kind.
+  const auto kind = _FromUseStatement
+    ? analyse::scopes::VariableKind::Import
+    : Type != nullptr and Type->IsCompilerGeneratedType()
+    ? analyse::scopes::VariableKind::Function
+    : analyse::scopes::VariableKind::Constant;
   _AliasSym = MakeShared<analyse::scopes::VariableSymbol>(
-    Name, Type, sm->CurrentScope, false, false, Visibility.first);
-  _AliasSym->MemInfo->AstCompTime = AstClone(this);
+    Name, Type, sm->CurrentScope, kind, false, Visibility.first);
   _AliasSym->MemInfo->InitializedBy(*this, sm->CurrentScope);
   _AliasSym->CompTimeValue = AstClone(Value);
   sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSym);
@@ -304,15 +310,13 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   // off the symbol the instantiation's own scope registered.
   ctx->InConstantContext = true;
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
-  const auto generic_arg = Value == nullptr and var_sym->MemInfo->AstCompTime != nullptr
-    ? var_sym->MemInfo->AstCompTime->To<GenericArgumentCompKeywordAst>()
-    : nullptr;
+  const auto generic_val = Value == nullptr ? var_sym->BoundCompValue() : nullptr;
 
   // A binding that is still a name stands for another parameter
   // rather than for a value, so there is nothing to emit for it.
   // The same test that decides an instantiation is not concrete.
-  const auto bound_val = generic_arg != nullptr and generic_arg->Val->To<IdentifierAst>() == nullptr
-    ? static_cast<Ast*>(generic_arg->Val.get())
+  const auto bound_val = generic_val != nullptr and generic_val->To<IdentifierAst>() == nullptr
+    ? static_cast<Ast*>(generic_val)
     : Value != nullptr
     ? var_sym->CompTimeValue.get()
     : nullptr;
@@ -323,14 +327,22 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   // the current "bound" value.
   const auto val = [&]() -> llvm::Value* {
     if (bound_val == nullptr) { return llvm::Constant::getNullValue(llvm_type); }
-    if (generic_arg != nullptr) {
+
+    // A value that is only a name ("cmp n: T = m" in a "sup" over a
+    // "cmp m") names another constant, which may be a comp generic
+    // with no storage at all - so it is folded, not generated.
+    if (generic_val != nullptr or bound_val->To<IdentifierAst>() != nullptr) {
       auto tm = analyse::scopes::ScopeManager(
         sm->GlobalScope, sm->CurrentScope);
       tm.Reset(sm->CurrentScope);
       bound_val->Stage9_CompTimeResolve(&tm, meta);
-      if (const auto folded = std::move(meta->CmpResult); folded != nullptr) {
+      if (const auto folded = std::move(meta->CmpResult); folded != nullptr and folded->To<IdentifierAst>() == nullptr) {
         return folded->Stage11_CodeGen(sm, meta, ctx);
       }
+
+      // A name that does not fold here is a parameter not yet bound
+      // (the "sup" block's own template), so there is nothing to emit.
+      if (bound_val->To<IdentifierAst>() != nullptr) { return llvm::Constant::getNullValue(llvm_type); }
     }
     return bound_val->Stage11_CodeGen(sm, meta, ctx);
   }();

@@ -84,10 +84,13 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
     : nullptr;
 
   // Create a variable symbol for this identifier and value.
+  const auto sym_name = Alias != nullptr ? Alias->Name : Name;
   auto sym = MakeShared<analyse::scopes::VariableSymbol>(
-    Alias != nullptr ? Alias->Name : Name,
+    sym_name,
     meta->LetStatementExplicitType != nullptr ? meta->LetStatementExplicitType : val_type,
-    sm->CurrentScope, TokMut != nullptr or (Conv and *Conv == ConventionTag::MUT));
+    sm->CurrentScope,
+    sym_name->Val.starts_with("$") ? analyse::scopes::VariableKind::Temporary : analyse::scopes::VariableKind::Local,
+    TokMut != nullptr or (Conv and *Conv == ConventionTag::MUT));
 
   // Update the type if there is a convention present.
   if (Conv != nullptr) {

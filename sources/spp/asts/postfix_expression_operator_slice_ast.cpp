@@ -108,10 +108,11 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     meta->PostfixExpressionLhs->InferType(sm, meta));
 
   // Check the lhs is actually a typed variable, (issues
-  // with ambiguities for parsing generics vs indexing etc)
+  // with ambiguities for parsing generics vs indexing etc).
+  // A function value (a "$" mock) is never sliceable.
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
   RaiseIf<SppMemberAccessNonIndexableError>(
-    type_sym == nullptr or type_sym->LinkedScope == nullptr,
+    type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
     {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *this));
 
   auto sup_types = Vec{lhs_type};

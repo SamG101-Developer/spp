@@ -192,7 +192,7 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     // A bound generic parameter stands for its argument, so
     // everything below is a property of the type actually being
     // destroyed rather than of the name it arrived under.
-    if (sym.IsGeneric and sym.LinkedScope->TySym != nullptr and sym.LinkedScope->TySym.get() != &sym) {
+    if (sym.IsTypeGeneric() and sym.LinkedScope->TySym != nullptr and sym.LinkedScope->TySym.get() != &sym) {
       self(self, *sym.LinkedScope->TySym);
       return;
     }

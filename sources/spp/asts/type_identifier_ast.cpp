@@ -241,7 +241,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // template's scope could restore it - it fails identically, because nothing guarantees that restoring analysis
     // happens before another caller reads the resolved value. The fix is to stop sharing the ast, or to resolve on
     // read rather than by rewriting; until then this stays scoped to an instantiation's own private body.
-    if (meta->ResolveBoundCompGenerics) {
+    if (meta->ResolveBoundGenerics) {
       for (auto *comp_arg : GnArgGroup->Args
            | genex::views::ptr
            | genex::views::cast_dynamic<GenericArgumentCompAst*>()) {
@@ -287,7 +287,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
   if (not scope->HasTypeSymbol(this)) {
     const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(
-      GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
+      GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric.get());
     CreateGenericClsScope(
       *this, type_sym->SharedFromThis<analyse::scopes::TypeSymbol>(), external_generics, is_tuple, sm, meta);
   }
@@ -382,6 +382,11 @@ auto spp::asts::TypeIdentifierAst::AnyPart(
 auto spp::asts::TypeIdentifierAst::IsNeverType() const noexcept
   -> bool {
   return _IsNeverType;
+}
+
+auto spp::asts::TypeIdentifierAst::MarkNeverType()
+  -> void {
+  _IsNeverType = true;
 }
 
 auto spp::asts::TypeIdentifierAst::IsSelfType() const noexcept

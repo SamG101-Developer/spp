@@ -30,9 +30,8 @@ auto spp::asts::GenericArgumentCompKeywordAst::FromSym(
   if (const auto *bound = sym.BoundCompValue(); bound != nullptr) {
     value = AstClone(bound);
   }
-  else if (const auto comptime_param = sym.MemInfo->AstCompTime->To<GenericParameterCompAst>();
-    comptime_param != nullptr) {
-    value = AstClone(comptime_param->Name->To<ExpressionAst>());
+  else if (sym.Kind == analyse::scopes::VariableKind::GenericCompParam) {
+    value = AstClone(sym.Name);
   }
   if (const auto value_as_type = value->To<TypeIdentifierAst>(); value_as_type != nullptr) {
     value = IdentifierAst::FromType(*AstCloneShared(value_as_type));

@@ -78,7 +78,7 @@ namespace spp::analyse::utils::type_predicates {
            | genex::views::cast_dynamic<asts::ClassAttributeAst*>) {
         auto type_sym = cls_scope->GetTypeSymbol(member->Type.get());
         if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.first; })) { continue; }
-        if (type_sym->IsGeneric) { continue; }
+        if (type_sym->IsTypeGeneric()) { continue; }
 
         attr_symbols.EmplaceBack(type_sym, member);
         GetAttrTypes(type_sym->Type, type_sym->LinkedScope, attr_symbols);
