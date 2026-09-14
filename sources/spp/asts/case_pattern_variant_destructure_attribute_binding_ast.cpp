@@ -64,7 +64,7 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ConvToVar(
   // Create the local variable destructure attribute binding
   // AST.
   auto var = MakeUnique<LocalVariableDestructureAttributeBindingAst>(
-    AstCloneShared(Name), nullptr, Val->ConvToVar(meta));
+    AstCloneShared(Name), AstClone(TokAssign), Val->ConvToVar(meta));
   var->MarkFromCasePattern();
   return var;
 }

@@ -107,7 +107,6 @@ spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructure
   _FlowSym(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::CasePatternVariantDestructureObjectAst::~CasePatternVariantDestructureObjectAst() = default;
@@ -122,7 +121,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::FromType(
 auto spp::asts::CasePatternVariantDestructureObjectAst::PosStart() const
   -> std::size_t {
   // Use the "[" token.
-  return Source.OriginalType->PosStart();
+  return Type->PosStart();
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::PosEnd() const
@@ -168,19 +167,14 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
   using analyse::utils::type_predicates::IsTypeVariant;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
+  using analyse::utils::type_utils::ResolveWrittenType;
   using analyse::errors::SppTypeMismatchError;
-
-  auto conv = AstClone(Type->GetConvention());
-  Type->Stage7_AnalyseSemantics(sm, meta);
 
   // A pattern may name "Self" inside its generic arguments - "is Some[Self](val)" in a method of a generic type - and
   // the symbol lookup below takes the name as written. Left alone, "Self" reaches code generation unsubstituted and
   // the destructure indexes into "Some[T=Self]", a type with no size. Resolve it against the enclosing type first,
   // the way a parameter or return type written as "Self" already is.
-  Type = SubstituteSelfTypeAndAnalyse(*Type, *sm->CurrentScope, *sm, *meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
-  Type = Type->WithConvention(std::move(conv));
+  Type = ResolveWrittenType(*Type, *sm, *meta);
 
   // Handle "@" in the condition and move into it. Todo
   // is this still needed? It helps with the variant
@@ -200,7 +194,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   if (_CondSym != nullptr and IsTypeVariant(*_CondSym->Type, *sm->CurrentScope)) {
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*_CondSym->Type, *Type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*meta->CaseCondition, *_CondSym->Type, *Source.OriginalType, *Type));
+      {sm->CurrentScope}, ERR_ARGS(*meta->CaseCondition, *_CondSym->Type, *Type, *Type));
     _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
     _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
 
@@ -469,7 +463,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::ConvToVar(
   // Create the final local variable wrapping, tag it and
   // return it.
   auto var = MakeUnique<LocalVariableDestructureObjectAst>(
-    AstCloneShared(Type), nullptr, std::move(mapped_elems), nullptr);
+    AstCloneShared(Type), AstClone(TokL), std::move(mapped_elems), AstClone(TokR));
   var->MarkFromCasePattern();
   return var;
 }
