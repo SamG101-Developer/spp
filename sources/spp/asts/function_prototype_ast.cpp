@@ -949,29 +949,47 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
   using generate::common_types::FunRefType;
   using generate::common_types::TupleType;
 
-  // Extract the parameter types.
+  // A method's mock is named from outside its "sup" block, where
+  // "Self" is not its owner, so the owner is written in its place.
+  auto owner = Shared<TypeAst>(nullptr);
+  if (const auto sup_ctx = _Ctx->To<SupPrototypeFunctionsAst>(); sup_ctx != nullptr) { owner = sup_ctx->Name; }
+  if (const auto ext_ctx = _Ctx->To<SupPrototypeExtensionAst>(); ext_ctx != nullptr) { owner = ext_ctx->Name; }
+  const auto with_owner = [&owner](Shared<TypeAst> const &type) -> Shared<TypeAst> {
+    if (owner == nullptr or not type->AnyPart([](TypeIdentifierAst const &p) { return p.Name == "Self"; })) {
+      return type;
+    }
+    return analyse::utils::type_utils::SubstituteSelfTypeWith(*type->WithoutConvention(), *owner)
+      ->WithConvention(AstClone(type->GetConvention()));
+  };
+
+  // Extract the parameter types. A "self" parameter's type is a
+  // bare "Self", its convention held apart, so it is put back.
   auto param_types = FnParamGroup->Params
-    | genex::views::transform([](auto &&x) { return x->Type; })
+    | genex::views::transform([&with_owner](auto &&x) {
+      const auto self_param = x->template To<FunctionParameterSelfAst>();
+      return with_owner(self_param != nullptr ? x->Type->WithConvention(AstClone(self_param->Conv)) : x->Type);
+    })
     | genex::to<Vec>();
+  const auto return_type = with_owner(ReturnType);
 
   // Module level functions, and static methods, are always FunRef.
-  if (_Ctx->To<ModulePrototypeAst>() == nullptr or FnParamGroup->GetSelfParam() == nullptr) {
-    return {FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref")};
+  if (_Ctx->To<ModulePrototypeAst>() != nullptr or FnParamGroup->GetSelfParam() == nullptr) {
+    return {FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), return_type), Str("call_ref")};
   }
 
   // Class methods with "self" are the FunMov type.
   if (FnParamGroup->GetSelfParam()->Conv == nullptr) {
-    return {FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mov")};
+    return {FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), return_type), Str("call_mov")};
   }
 
   // Class methods with "&mut self" are the FunMut type.
   if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::MUT) {
-    return {FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_mut")};
+    return {FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), return_type), Str("call_mut")};
   }
 
   // Class methods with "&self" are the FunRef type.
   if (*FnParamGroup->GetSelfParam()->Conv == ConventionTag::REF) {
-    return {FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), ReturnType), Str("call_ref")};
+    return {FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), return_type), Str("call_ref")};
   }
 
   std::unreachable();
