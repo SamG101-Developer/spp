@@ -576,6 +576,74 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     /**
+     * Bind the two kinds of "sup" generic that attaching the block to the receiver leaves unbound: a trailing pack
+     * ("sup [First, ..Rest] Tup[First, Rest]", matched but never bound) and a blanket block's own type ("sup [T] T",
+     * attached unsubstituted). Both are read straight off the receiver, and offered last, so a binding the call or the
+     * attachment made still wins. Left unbound, the method reaches code generation still generic, and has no
+     * declaration to call.
+     * @param fn_scope The scope the candidate was declared in; the "sup" block it was written in is found above it.
+     * @param fn_owner_type The type the call was made on, or @c nullptr for a free function.
+     * @param gn_args The generic arguments for this candidate, merged into in place.
+     * @todo: See if this can be removed - works but bloaty
+     */
+    auto BindSupGenericsFromReceiver(
+      scopes::Scope const *fn_scope,
+      asts::TypeAst const *fn_owner_type,
+      asts::GenericArgumentGroupAst &gn_args)
+      -> void {
+      if (fn_owner_type == nullptr or fn_scope == nullptr) { return; }
+
+      // A method is lowered into its own "sup $F ext FunXxx" block,
+      // inside the one it was written in; the generics are on that.
+      const auto sup_pattern_of = [](scopes::Scope const *scope) -> Shared<asts::TypeAst> {
+        if (scope == nullptr or scope->AstNode == nullptr) { return nullptr; }
+        const auto is_sup = scope->AstNode->To<asts::SupPrototypeFunctionsAst>() != nullptr
+          or scope->AstNode->To<asts::SupPrototypeExtensionAst>() != nullptr;
+        return is_sup ? asts::AstName(scope->AstNode) : nullptr;
+      };
+      auto const *sup_scope = fn_scope;
+      auto pattern = sup_pattern_of(sup_scope);
+      while (pattern != nullptr and pattern->IsCompilerGeneratedType()) {
+        sup_scope = sup_scope->Parent;
+        pattern = sup_pattern_of(sup_scope);
+      }
+      if (pattern == nullptr) { return; }
+      const auto receiver = fn_owner_type->WithConvention(nullptr);
+      auto bound = Vec<Unique<asts::GenericArgumentAst>>();
+
+      // A blanket block's type is its own generic, standing for
+      // the whole receiver.
+      const auto pattern_sym = sup_scope->GetTypeSymbol(pattern->WithoutGenerics().get());
+      if (pattern_sym != nullptr and pattern_sym->IsTypeGeneric()) {
+        if (auto name = dynamic_shared_cast<asts::TypeIdentifierAst>(pattern->WithoutGenerics()); name != nullptr) {
+          bound.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(std::move(name), nullptr, receiver));
+        }
+      }
+
+      // A trailing pack stands for the receiver's arguments from
+      // its position on, as the tuple a variadic generic is bound
+      // to everywhere else.
+      else {
+        auto const &pattern_args = pattern->LastTypePart()->GnArgGroup->Args;
+        const auto receiver_args = receiver->LastTypePart()->GnArgGroup->GetTypeArgs();
+        const auto last = not pattern_args.IsEmpty()
+          ? pattern_args.Back()->To<asts::GenericArgumentTypeAst>()
+          : nullptr;
+        const auto last_sym = last != nullptr ? sup_scope->GetTypeSymbol(last->Val->WithoutGenerics().get()) : nullptr;
+        if (last_sym != nullptr and last_sym->IsTypeGeneric() and last_sym->IsVariadic
+          and receiver_args.Len() + 1 >= pattern_args.Len()) {
+          auto elems = Vec<Shared<asts::TypeAst>>();
+          for (auto i = pattern_args.Len() - 1; i < receiver_args.Len(); ++i) { elems.EmplaceBack(receiver_args[i]->Val); }
+          if (auto name = dynamic_shared_cast<asts::TypeIdentifierAst>(last->Val); name != nullptr) {
+            bound.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+              std::move(name), nullptr, asts::generate::common_types::TupleType(0, std::move(elems))));
+          }
+        }
+      }
+      gn_args.MergeGenerics(std::move(bound));
+    }
+
+    /**
      * Pin "Self" to the receiver for this candidate, if the receiver is what "Self" stands for here. A method declared
      * on a class and called on an implementer of it needs "Self" bound to the implementer, not left as the declaring
      * class - that is what lets "Writer::write_all" call "self.write()" and reach the implementer's "write" rather
@@ -772,9 +840,15 @@ namespace spp::analyse::utils::overload_utils {
       const auto func_param_names = fn_proto.FnParamGroup->Params
         | genex::views::transform([](auto &&x) { return x->ExtractName(); })
         | genex::to<Vec>();
-      const auto func_param_names_req = fn_proto.FnParamGroup->GetRequiredParams()
+      auto func_param_names_req = fn_proto.FnParamGroup->GetRequiredParams()
         | genex::views::transform([](auto &&x) { return x->ExtractName(); })
         | genex::to<Vec>();
+
+      // "self" is required too: a runtime call injects it, but
+      // "Type::method()" has to pass it, or there is no receiver.
+      if (const auto self_param = fn_proto.FnParamGroup->GetSelfParam(); self_param != nullptr) {
+        func_param_names_req.Insert(func_param_names_req.begin(), self_param->ExtractName());
+      }
       auto func_arg_names = Vec<asts::IdentifierAst*>();
       for (auto const &x : func_args.GetKeywordArgs()) {
         if (not arg_is_void(x)) { func_arg_names.EmplaceBack(x->Name.get()); }
@@ -822,7 +896,7 @@ namespace spp::analyse::utils::overload_utils {
               *sm->CurrentScope, *fn_scope);
 
           if (reached_by_forwarding or (owner_known and receiver == nullptr)) {
-            p_type = type_utils::ResolveAndSubstituteSelfType(*p_type->WithoutConvention(), *fn_scope, *sm, *meta)
+            p_type = type_utils::SubstituteSelfTypeAndAnalyse(*p_type->WithoutConvention(), *fn_scope, *sm, *meta)
               ->WithConvention(asts::AstClone(conv));
           }
           else if (receiver != nullptr) {
@@ -1234,6 +1308,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       // block declares - the first binding offered for a name wins.
       generic_bindings::NameGnArgs(*gn_args, *gn_params, *fn_proto->Name, *sm, *meta);
       gn_args->MergeGenerics(RetrieveOwnerGenericArgs(candidate.FwdType, meta));
+      BindSupGenericsFromReceiver(fn_scope, fn_owner_type.get(), *gn_args);
       gn_args->MergeGenerics(std::move(candidate.SupGenerics->Args));
 
       const auto self_pin = PinSelfToReceiver(
