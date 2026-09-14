@@ -117,11 +117,16 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type.get());
   const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
-  // Check there is only 1 target field on the lhs at the highest level.
+  // Check there is only 1 target field on the lhs at the
+  // highest level. A method's "$" mock is declared once
+  // per "sup" block its overloads are written in, and each
+  // is given all the overloads, so any one of them will do.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  RaiseIfAmbiguous(
-    ClosestScopes(ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
-    *op_nested->Name, *sm);
+  if (not op_nested->Name->IsCompilerGeneratedType()) {
+    RaiseIfAmbiguous(
+      ClosestScopes(ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
+      *op_nested->Name, *sm);
+  }
 
   // Ensure the type exists on the "lhs" part.
   const auto _meta_guard = meta::MetaGuard(meta);
