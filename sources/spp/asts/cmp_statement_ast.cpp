@@ -161,7 +161,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -171,7 +171,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   Type->Stage7_AnalyseSemantics(sm, meta);
 
   if (not _FromUseStatement) {
-    Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
+    Type = SubstituteSelfTypeAndAnalyse(*Type, *sm->CurrentScope, *sm, *meta);
     if (not Type->IsSelfType()) { // Todo: is this "if" needed?
       Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
       _AliasSym->Type = Type;

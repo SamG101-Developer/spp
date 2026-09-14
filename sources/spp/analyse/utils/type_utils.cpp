@@ -420,23 +420,6 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   return {old_type, final_generic_params, tracking_scope};
 }
 
-auto spp::analyse::utils::type_utils::SubstituteSelfTypeWith(
-  asts::TypeAst const &type,
-  asts::TypeAst const &replacement)
-  -> Shared<asts::TypeAst> {
-  using asts::generate::common_types::SelfType;
-
-  // If "Self" is not present, return a plain clone.
-  if (not type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
-    return AstClone(&type);
-  }
-
-  const auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
-    SelfType(0), nullptr, AstClone(&replacement));
-  const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
-  return type.SubstituteGenerics(args);
-}
-
 auto spp::analyse::utils::type_utils::SubstituteSelfType(
   asts::TypeAst const &type,
   scopes::Scope const &scope,
@@ -460,7 +443,7 @@ auto spp::analyse::utils::type_utils::SubstituteSelfType(
   return type.SubstituteGenerics(args);
 }
 
-auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+auto spp::analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse(
   asts::TypeAst const &type,
   scopes::Scope const &scope,
   scopes::ScopeManager &sm,
@@ -478,4 +461,21 @@ auto spp::analyse::utils::type_utils::ResolveAndSubstituteSelfType(
   meta.AllowAbstractType = true;
   t->Stage7_AnalyseSemantics(&sm, &meta);
   return t;
+}
+
+auto spp::analyse::utils::type_utils::SubstituteSelfTypeWith(
+  asts::TypeAst const &type,
+  asts::TypeAst const &replacement)
+  -> Shared<asts::TypeAst> {
+  using asts::generate::common_types::SelfType;
+
+  // If "Self" is not present, return a plain clone.
+  if (not type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
+    return AstClone(&type);
+  }
+
+  const auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
+    SelfType(0), nullptr, AstClone(&replacement));
+  const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
+  return type.SubstituteGenerics(args);
 }

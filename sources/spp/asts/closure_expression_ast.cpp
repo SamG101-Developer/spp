@@ -111,7 +111,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::errors::SppSecondClassBorrowViolationError;
 
   // Save the current scope for later resetting.
@@ -171,7 +171,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     // the same path a subroutine's body takes.
     if (ReturnType != nullptr) {
       ReturnType->Stage7_AnalyseSemantics(sm, meta);
-      ReturnType = ResolveAndSubstituteSelfType(*ReturnType, *sm->CurrentScope, *sm, *meta);
+      ReturnType = SubstituteSelfTypeAndAnalyse(*ReturnType, *sm->CurrentScope, *sm, *meta);
 
       meta->EnclosingFunctionRetType.EmplaceBack(ReturnType);
       meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);

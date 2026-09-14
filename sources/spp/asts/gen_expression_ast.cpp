@@ -92,7 +92,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::utils::type_compare::TypeEq;
   using generate::common_types::GenType;
   using generate::common_types::VoidType;
@@ -117,7 +117,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
         *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
 
       meta->AssignmentTargetType = yield_type;
-      meta->AssignmentTargetType = ResolveAndSubstituteSelfType(
+      meta->AssignmentTargetType = SubstituteSelfTypeAndAnalyse(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
       meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
       SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }

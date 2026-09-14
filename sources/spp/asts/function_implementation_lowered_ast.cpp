@@ -152,7 +152,7 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
   // Use the builtin to build the llvm custom lowered code. The
   // lowering reads the prototype's own scope, so it runs before
   // the scope walk below moves the cursor off it.
-  const auto ret_type = analyse::utils::type_utils::ResolveAndSubstituteSelfType(
+  const auto ret_type = analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse(
     *_ProtoPtr->ReturnType, *sm->CurrentScope, *sm, *meta);
   analyse::utils::builtins::kBuiltinFuncs
     .at(_ScopePtr)

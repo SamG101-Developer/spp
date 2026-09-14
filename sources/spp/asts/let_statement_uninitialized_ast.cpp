@@ -69,11 +69,11 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm,
   meta::CompilerMetaData *meta)
   -> void {
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
 
   // Analyse the type.
   Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
+  Type = SubstituteSelfTypeAndAnalyse(*Type, *sm->CurrentScope, *sm, *meta);
   Type = sm->CurrentScope->GetTypeSymbol(
     Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 

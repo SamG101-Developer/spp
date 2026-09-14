@@ -441,7 +441,7 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   -> void {
   //
   using analyse::utils::func_utils::CheckForConflictingOverload;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::errors::SppFunctionPrototypeConflictError;
   using generate::common_types_precompiled::SELF_VAR;
 
@@ -480,13 +480,13 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
     const auto self_conv = self_param->Conv.get();
 
-    self_sym->Type = ResolveAndSubstituteSelfType(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(
+    self_sym->Type = SubstituteSelfTypeAndAnalyse(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(
       AstClone(self_conv));
 
     for (auto const &param : FnParamGroup->GetAllParams()) {
       const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName().get());
       if (var_sym == nullptr) { continue; } // Destructuring parameters.
-      var_sym->Type = ResolveAndSubstituteSelfType(*var_sym->Type, *sm->CurrentScope, *sm, *meta);
+      var_sym->Type = SubstituteSelfTypeAndAnalyse(*var_sym->Type, *sm->CurrentScope, *sm, *meta);
     }
   }
 
@@ -971,10 +971,10 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
   codegen::LlvmCtx const *ctx) const
   -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
   //
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
 
   // Convert the return and parameter types to LLVM types.
-  const auto ret_type = ResolveAndSubstituteSelfType(
+  const auto ret_type = SubstituteSelfTypeAndAnalyse(
     *ReturnType, *sm->CurrentScope, *sm, *meta);
   const auto llvm_ret_type = codegen::GetLlvmTypeOf(
     *ret_type, *sm->CurrentScope, ctx);
@@ -991,7 +991,7 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
           variadic_param))
         ? VariadicPackType
         : x->Type;
-      const auto param_type = ResolveAndSubstituteSelfType(
+      const auto param_type = SubstituteSelfTypeAndAnalyse(
         *source_type, *sm->CurrentScope, *sm, *meta);
       return codegen::GetLlvmTypeOf(
         *param_type, *sm->CurrentScope, ctx);
@@ -1008,7 +1008,7 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(
       llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
     }
     else {
-      const auto self_type = ResolveAndSubstituteSelfType(
+      const auto self_type = SubstituteSelfTypeAndAnalyse(
         *self_param->Type, *sm->CurrentScope, *sm, *meta);
       const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(self_type.get());
       const auto self_val_type = codegen::GetLlvmType(*self_ty_sym, ctx);
