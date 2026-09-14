@@ -157,13 +157,36 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_predicates::IsTupSymbol;
   using analyse::utils::type_compare::TypeEq;
   using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
+  using analyse::utils::visibility_utils::CheckTypeTypeVisibility;
   using analyse::errors::SemanticError;
   using analyse::errors::SppAbstractTypeUseError;
   using analyse::errors::SppHigherOrderGenericsNotSupportedError;
   using generate::common_types::SelfType;
   using generate::common_types_precompiled::TUP;
 
-  if (_HasAnalysed) { return; }
+  // Reject abstract types everywhere except the few positions that name a type without ever producing a value of it.
+  // Only allow an abstract self if we are in the abstract class itself. For example, `Clone::clone_from` must be allowed
+  // to use `Clone::clone` as the default, which returns "Self", but will never be used from `Clone`, but rather the
+  // implementation type.
+  const auto check_abstract = [&](analyse::scopes::Scope const &scope) {
+    if (meta->AllowAbstractType or meta->CurrentStage < meta::CompilerStage::kPreAnalyseSemantics) { return; }
+    const auto resolved_sym = scope.GetTypeSymbol(this);
+    if (resolved_sym == nullptr or resolved_sym->IsTypeGeneric() or resolved_sym->LinkedScope == nullptr) { return; }
+    const auto unimplemented = GetUnimplementedAbstractMethods(*resolved_sym->LinkedScope);
+    if (unimplemented.IsEmpty()) { return; }
+    const auto self_sym = sm->CurrentScope->GetTypeSymbol(SelfType(0).get());
+    if (self_sym == nullptr or self_sym->LinkedScope != resolved_sym->LinkedScope) {
+      Raise<SppAbstractTypeUseError>(
+        {sm->CurrentScope, unimplemented[0]->GetAstScope()}, ERR_ARGS(*this, *unimplemented[0]));
+    }
+  };
+
+  // An analysed node is still checked: a symbol's cached qualified name is shared, and can first be analysed where an
+  // abstract type is allowed (a function type's arguments), then reached where it is not (an attribute's type).
+  if (_HasAnalysed) {
+    check_abstract(meta->TypeAnalysisTypeScope ? *meta->TypeAnalysisTypeScope : *sm->CurrentScope);
+    return;
+  }
   RaiseIf<SppHigherOrderGenericsNotSupportedError>(
     Name == "Self" and GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
@@ -301,29 +324,9 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
   }
 
-  // Reject abstract types everywhere except the few positions that name a type without ever producing a value of it.
   // The generic substitution above may have created the scope this resolves to, so the symbol is re-fetched rather
   // than reusing the base "type_sym" from before it existed.
-  if (not meta->AllowAbstractType
-    and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
-    and not type_sym->IsGeneric) {
-    const auto resolved_sym = scope->GetTypeSymbol(this);
-    if (resolved_sym != nullptr and resolved_sym->LinkedScope != nullptr) {
-      const auto unimplemented = GetUnimplementedAbstractMethods(*resolved_sym->LinkedScope);
-
-      // Stack "if" first, not "RaiseIf", because we need scope access from it.
-      if (not unimplemented.IsEmpty()) {
-        // Only allow an abstract self if we are in the abstract class itself. For example, `Clone::clone_from` must be
-        // allowed to use `Clone::clone` as the default, which returns "Self", but will never be used from `Clone`, but
-        // rather the implementation type.
-        const auto self_sym = sm->CurrentScope->GetTypeSymbol(SelfType(0).get());
-        if (self_sym == nullptr or self_sym->LinkedScope != resolved_sym->LinkedScope) {
-          Raise<SppAbstractTypeUseError>(
-            {sm->CurrentScope, unimplemented[0]->GetAstScope()}, ERR_ARGS(*this, *unimplemented[0]));
-        }
-      }
-    }
-  }
+  if (not type_sym->IsTypeGeneric()) { check_abstract(*scope); }
 
   // The stringification is dropped rather than kept, because this pass is what settles the value it was built from;
   // the next reader rebuilds it once and every reader after that shares it, for as long as the value stands.
