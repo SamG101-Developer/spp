@@ -206,6 +206,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   }
   FnArgGroup->Args = std::move(overload.FnArgs->Args);
 
+  // An argument naming a function, passed as a function type, is
+  // the overload that type picks; a generic one is minted here.
+  auto const &params = _OverloadInfo->Proto->FnParamGroup->Params;
+  for (auto i = 0uz; i < FnArgGroup->Args.Len() and i < params.Len(); ++i) {
+    analyse::utils::func_utils::InstantiateFunctionValue(
+      *FnArgGroup->Args[i]->InferType(sm, meta), *params[i]->Type, sm, meta);
+  }
+
   // A unit test belongs to the harness, not to the program.
   // Calling one would run it as part of whatever called it,
   // and there is no sensible meaning for that, so the call
@@ -529,6 +537,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
     if (param_type != nullptr and not param_is_borrow
       and sm->CurrentScope->GetTypeSymbol(param_type.get()) != nullptr) {
+      llvm_arg = codegen::CoerceToFunctionValue(
+        llvm_arg, *param_type, *arg->InferType(sm, meta), *sm, ctx);
       llvm_arg = codegen::CoerceToVariant(
         llvm_arg, *param_type, *arg->InferType(sm, meta),
         *sm->CurrentScope, "arg.variant" + uid, ctx);
