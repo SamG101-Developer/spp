@@ -225,9 +225,19 @@ auto spp::asts::TupleLiteralAst::InferType(
   //
   using generate::common_types::TupleType;
 
-  // Create a "..Ts" type, for the tuple type.
+  // Create a "..Ts" type, for the tuple type. A bound generic keeps
+  // its parameter's name ("T"), so each element is taken as what it
+  // is bound to - or an instantiation's "(T(), U())" is the generic
+  // tuple "(T, U)", which has no layout to generate. Todo: TIDY
   auto types_gen = Elems
-    | genex::views::transform([sm, meta](auto const &elem) { return elem->InferType(sm, meta); })
+    | genex::views::transform([sm, meta](auto const &elem) {
+      auto type = elem->InferType(sm, meta);
+      const auto sym = sm->CurrentScope->GetTypeSymbol(type->WithoutConvention().get());
+      if (sym != nullptr and sym->IsTypeGeneric() and sym->AsBoundSymbol() != sym) {
+        type = sym->AsBoundSymbol()->FqName()->WithConvention(AstClone(type->GetConvention()));
+      }
+      return type;
+    })
     | genex::to<Vec>();
 
   // Create a tuple type with the inferred element types.
