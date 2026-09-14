@@ -81,7 +81,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::errors::SppCoroutineContainsReturnStatementError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppTypeMismatchError;
@@ -111,7 +111,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
       ? nullptr
       : meta->EnclosingFunctionRetType.Back();
     if (meta->AssignmentTargetType != nullptr) {
-      meta->AssignmentTargetType = ResolveAndSubstituteSelfType(
+      meta->AssignmentTargetType = SubstituteSelfTypeAndAnalyse(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
     }
     meta->AssignmentTarget = meta->AssignmentTargetType
