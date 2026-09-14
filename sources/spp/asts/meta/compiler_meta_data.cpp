@@ -41,10 +41,8 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreCmpGeneric = nullptr;
   AllowMoveDeref = false;
   LlvmEndBB = nullptr;
-  LlvmCtx = nullptr;
   LlvmWantAddress = false;
   LlvmAssignmentTarget = nullptr;
-  LlvmAssignmentTargetType = nullptr;
   LlvmCaseCondition = nullptr;
   LlvmPhi = nullptr;
   LlvmLoopStack = {};
@@ -52,7 +50,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
-  ResolveBoundGenerics = false;
   LlvmGenerator = nullptr;
   LlvmGeneratorState = nullptr;
 }
@@ -99,10 +96,8 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.IgnoreCmpGeneric = IgnoreCmpGeneric;
   s.AllowMoveDeref = AllowMoveDeref;
   s.LlvmEndBB = LlvmEndBB;
-  s.LlvmCtx = LlvmCtx;
   s.LlvmWantAddress = LlvmWantAddress;
   s.LlvmAssignmentTarget = LlvmAssignmentTarget;
-  s.LlvmAssignmentTargetType = LlvmAssignmentTargetType;
   s.LlvmCaseCondition = LlvmCaseCondition;
   s.LlvmPhi = LlvmPhi;
   s.LlvmLoopStack = LlvmLoopStack;
@@ -121,7 +116,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.AllowAbstractType = AllowAbstractType;
   s.CmpCallSite = CmpCallSite;
   s.CmpCallSiteScope = CmpCallSiteScope;
-  s.ResolveBoundGenerics = ResolveBoundGenerics;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
@@ -138,7 +132,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AssignmentTargetType = std::move(state.AssignmentTargetType);
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
-  CaseConsumedSubjects = state.CaseConsumedSubjects;
+  CaseConsumedSubjects = std::move(state.CaseConsumedSubjects);
   WithinDeferTok = state.WithinDeferTok;
   if (heavy) {
     EnclosingFunctionScope = state.EnclosingFunctionScope;
@@ -168,10 +162,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreCmpGeneric = std::move(state.IgnoreCmpGeneric);
   AllowMoveDeref = state.AllowMoveDeref;
   LlvmEndBB = state.LlvmEndBB;
-  LlvmCtx = state.LlvmCtx;
   LlvmWantAddress = state.LlvmWantAddress;
   LlvmAssignmentTarget = state.LlvmAssignmentTarget;
-  LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
   LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
@@ -187,7 +179,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AllowAbstractType = state.AllowAbstractType;
   CmpCallSite = state.CmpCallSite;
   CmpCallSiteScope = state.CmpCallSiteScope;
-  ResolveBoundGenerics = state.ResolveBoundGenerics;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
 }

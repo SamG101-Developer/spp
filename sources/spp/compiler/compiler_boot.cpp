@@ -297,7 +297,6 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
-    meta.LlvmCtx = ctx;
     mod->Stage11_CodeGen(sm, &meta, ctx);
     sm->Reset();
     bar.Next();

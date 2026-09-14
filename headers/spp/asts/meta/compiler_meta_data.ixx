@@ -254,7 +254,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   /// The LLVM meta context containing the LLVM context, module,
   /// builder, etc. Overarching, persistent, LLVM context fields.
-  codegen::LlvmCtx *LlvmCtx;
 
   /// Set when a consumer ast of an expression needs the address
   /// of the storage it is naming, like an assignment target or
@@ -265,7 +264,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// Stage 11 versions of the assignment target fields, needed
   /// for detecting handles etc.
   llvm::Value *LlvmAssignmentTarget;
-  llvm::Value *LlvmAssignmentTargetType;
 
   /// Stage 11 equivalent of the case condition above, needed
   /// for the case branches and patterns to interact with the
@@ -317,12 +315,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// such as for generic constraints. Abstract types are very
   /// limited in where they can be used.
   bool AllowAbstractType;
-
-  /// When re-analysing a generic function instantiation's own
-  /// body (a private clone of the base version), we need to
-  /// resolve the generics to the bound symbols. Codegen needs
-  /// the concrete types.
-  bool ResolveBoundGenerics;
 
   /// The coroutine being generated into, for "gen" and ".res()"
   /// to interact with in stage 11.
