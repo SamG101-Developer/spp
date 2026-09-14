@@ -108,3 +108,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = MyType[S32, 123]::n
     }
 )");
+
+// Todo: red - a generic sup "cmp" of a class type gets a global typed with the unbound "Unit[T=T]", which LLVM
+// rejects as unsized.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  SupCmpStatementGeneric,
+  test_valid_class_typed_cmp_in_a_generic_sup, R"(
+    cls Unit[T] { }
+    sup [T] Unit[T] ext std::copy::Copy { }
+    sup [T] Unit[T] {
+        !public cmp empty: Unit[T] = Unit[T]()
+    }
+    fun f() -> Void {
+        let u: Unit[S32] = Unit[S32]::empty
+    }
+)");

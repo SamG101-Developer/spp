@@ -29,7 +29,7 @@ auto spp::asts::GenericParameterCompRequiredAst::PosStart() const
 auto spp::asts::GenericParameterCompRequiredAst::PosEnd() const
   -> std::size_t {
   // Use the type.
-  return Source.OriginalType->PosEnd();
+  return Type->PosEnd();
 }
 
 auto spp::asts::GenericParameterCompRequiredAst::Clone() const

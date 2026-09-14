@@ -224,3 +224,15 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x: A::Inner = true
     }
 )");
+
+// Todo: red - a private generic class as a std generic argument is reported as accessed from std (E83, at
+// vector.spp "use std::cast::From"); a private non-generic class is fine.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestVisibilityGenericArgument,
+  test_valid_private_generic_class_as_a_std_generic_argument, R"(
+    cls Box[T] { !public v: T }
+    fun f() -> Void {
+        let v = Vec[Box[S32]]::new()
+        std::mem::ops::drop(v)
+    }
+)");

@@ -82,7 +82,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::Stage4_QualifyTypes(
     temp = temp->LastTypePart()->GnArgGroup->Args.IsEmpty()
       ? temp->WithGenerics(AstClone(DefaultVal->LastTypePart()->GnArgGroup))
       : temp->SubstituteGenerics(DefaultVal->LastTypePart()->GnArgGroup->GetAllArgs());
-    DefaultVal = std::move(temp);
+    DefaultVal = temp->WithSourceSpanOf(*DefaultVal);
   }
 }
 

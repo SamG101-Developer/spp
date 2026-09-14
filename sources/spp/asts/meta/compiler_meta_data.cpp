@@ -119,6 +119,8 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
+  s.CmpCallSite = CmpCallSite;
+  s.CmpCallSiteScope = CmpCallSiteScope;
   s.ResolveBoundGenerics = ResolveBoundGenerics;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
@@ -183,6 +185,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
+  CmpCallSite = state.CmpCallSite;
+  CmpCallSiteScope = state.CmpCallSiteScope;
   ResolveBoundGenerics = state.ResolveBoundGenerics;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;

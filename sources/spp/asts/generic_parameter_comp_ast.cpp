@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
@@ -38,7 +39,6 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
   // Default the "cmp" and ":" tokens if they are null.
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
@@ -69,8 +69,9 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
   meta->IgnoreCmpGeneric = IdentifierAst::FromType(*Name);
 
   // Check the type exists and qualify.
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  // Todo: a method's "cmp p: Box[T]" (or "Self") in a generic sup keeps the sup's "T", unknown at the call (E26,
+  //  located in std) - GenericParameterCompGenericClass.test_valid_comp_parameter_typed_by_the_class_generic.
+  Type = analyse::utils::type_utils::ResolveWrittenType(*Type, *sm, *meta);
   const auto sym = sm->CurrentScope->GetVarSymbol(
     IdentifierAst::FromType(*Name).get());
   sym->Type = Type;

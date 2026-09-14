@@ -14,6 +14,7 @@ import numex.big_dec;
 import numex.big_int;
 
 SPP_AST_COMMON_FWD_DECL(FloatLiteralAst);
+use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 
@@ -104,7 +105,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// written literal is checked when it is analysed; one that
   /// comp-time arithmetic produced is checked where that
   /// arithmetic is invoked from.
-  auto ValidateBounds(Ast const &owner, ScopeManager const &sm) const -> void;
+  auto ValidateBounds(Ast const &owner, Scope const &scope) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

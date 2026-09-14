@@ -735,9 +735,11 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   const auto is_variadic = p_group.GetVariadicParams() != nullptr;
 
   for (auto [i, positional_arg] : a_group.GetPositionalArgs() | genex::views::enumerate) {
-    // Create the keyword argument from the positional argument.
+    // Create the keyword argument from the positional argument. It
+    // is named after the parameter, but placed where the argument
+    // was written, as the parameter's own name is in the callee.
     auto kw_arg = MakeUnique<asts::FunctionCallArgumentKeywordAst>(
-      p_names.Front(), nullptr, nullptr, nullptr);
+      MakeShared<asts::IdentifierAst>(positional_arg->PosStart(), Str(p_names.Front()->Val)), nullptr, nullptr, nullptr);
     p_names |= genex::actions::pop_front();
 
     // The variadic parameter requires a tuple of the remaining arguments.

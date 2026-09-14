@@ -132,8 +132,11 @@ auto spp::asts::IdentifierAst::PosEnd() const
 auto spp::asts::IdentifierAst::Clone() const
   -> Unique<Ast> {
   // The copy spells the same name, so it carries the
-  // id over rather than interning the string again.
-  return Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
+  // id over rather than interning the string again. A
+  // name mapped from a token keeps that token's length.
+  auto id = Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
+  id->_ForTok = _ForTok;
+  return id;
 }
 
 auto spp::asts::IdentifierAst::ToString() const

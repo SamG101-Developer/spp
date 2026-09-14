@@ -130,4 +130,20 @@ namespace spp::analyse::utils::type_utils {
     TypeAst const &type,
     TypeAst const &replacement)
     -> Shared<TypeAst>;
+
+  /// Whether "ResolveWrittenType" replaces "Self" from the scope, or
+  /// leaves it for a caller that decides per use what it stands for
+  /// (function parameter and return types).
+  SPP_EXP_CLS enum class SelfPolicy { kSubstitute, kKeep };
+
+  /// Resolve a type as written in source: substitute "Self", analyse,
+  /// qualify through its symbol, then restore the written convention
+  /// and source span. A type that had "Self" replaced is analysed with
+  /// abstract types allowed, as "Self" may name an abstract class.
+  SPP_EXP_FUN auto ResolveWrittenType(
+    TypeAst const &written,
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta,
+    SelfPolicy self = SelfPolicy::kSubstitute)
+    -> Shared<TypeAst>;
 }

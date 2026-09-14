@@ -100,7 +100,6 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   // SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnParamGroup);
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
   Source.OriginalImpl = AstClone(this->Impl);
-  Source.OriginalReturnType = AstClone(this->ReturnType);
   _NonGenericImpl = this;
   _LlvmFunc = MakeShared<Shared<codegen::LlvmFuncWrapper>>(nullptr);
 }
@@ -116,7 +115,7 @@ auto spp::asts::FunctionPrototypeAst::PosStart() const
 auto spp::asts::FunctionPrototypeAst::PosEnd() const
   -> std::size_t {
   // Use the return type.
-  return Source.OriginalReturnType->PosEnd();
+  return ReturnType->PosEnd();
 }
 
 auto spp::asts::FunctionPrototypeAst::Clone() const
@@ -422,9 +421,8 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
   }
 
   FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
-  ReturnType->Stage7_AnalyseSemantics(sm, meta);
-  ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType.get())->FqName()->WithConvention(
-    AstClone(ReturnType->GetConvention()));
+  ReturnType = analyse::utils::type_utils::ResolveWrittenType(
+    *ReturnType, *sm, *meta, analyse::utils::type_utils::SelfPolicy::kKeep);
 
   // Ensure the function's return type does not have
   // a convention.

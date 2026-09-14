@@ -88,7 +88,7 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
   -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "s32" : Type;
-  ValidateBounds(*this, *sm);
+  ValidateBounds(*this, *sm->CurrentScope);
 }
 
 auto spp::asts::IntegerLiteralAst::BigVal() const
@@ -109,7 +109,7 @@ auto spp::asts::IntegerLiteralAst::BigVal() const
 
 auto spp::asts::IntegerLiteralAst::ValidateBounds(
   Ast const &owner,
-  analyse::scopes::ScopeManager const &sm) const
+  analyse::scopes::Scope const &scope) const
   -> void {
   //
   using analyse::errors::SppIntegerOutOfBoundsError;
@@ -120,7 +120,7 @@ auto spp::asts::IntegerLiteralAst::ValidateBounds(
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
     value < lower or value > upper,
-    {sm.CurrentScope}, ERR_ARGS(owner, value, lower, upper, Type));
+    {&scope}, ERR_ARGS(owner, value, lower, upper, Type));
 }
 
 auto spp::asts::IntegerLiteralAst::FromBigVal(

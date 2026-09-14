@@ -128,8 +128,13 @@ auto spp::asts::GenericArgumentGroupAst::ToString() const
   -> Str {
   SPP_STRING_START;
   if (not Args.IsEmpty()) {
+    // Separators go between the arguments only, so there is no
+    // trailing ", " before the "]".
     SPP_STRING_APPEND_RAW("[");
-    SPP_STRING_EXTEND(Args, ", ");
+    for (auto i = 0uz; i < Args.Len(); ++i) {
+      if (i != 0) { SPP_STRING_APPEND_RAW(", "); }
+      SPP_STRING_APPEND(Args[i]);
+    }
     SPP_STRING_APPEND_RAW("]");
   }
   SPP_STRING_END;

@@ -85,19 +85,20 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
   SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
     const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
 
-    // Cycle the formatters to match the number of strings being
-    // formatted.
-    auto formatters = this->_ErrFormatters
-      | genex::views::cycle
-      | genex::views::take(cast_error->ErrorInfo.Len())
-      | genex::to<Vec>();
-
-    // Format all the error strings by the correct formatter
-    // (file agnostic).
-    cast_error->messages = genex::views::zip(cast_error->ErrorInfo, std::move(formatters))
-      | genex::to<Vec>()
-      | genex::views::transform([](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
-      | genex::to<Vec>();
+    // Pair the scopes' formatters, in order, with the blocks that
+    // quote source (an error and its context), cycling when there
+    // are fewer scopes than blocks. The header and footer quote
+    // nothing, so they take no formatter; counting them used to
+    // swap the two scopes of every two-scope error.
+    auto messages = Vec<Str>();
+    auto next = 0uz;
+    for (auto const &info : cast_error->ErrorInfo) {
+      if (this->_ErrFormatters.IsEmpty()) { break; }
+      auto *const formatter = this->_ErrFormatters[next % this->_ErrFormatters.Len()];
+      if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) { ++next; }
+      messages.EmplaceBack(_StringifyErrorInformation(formatter, info));
+    }
+    cast_error->messages = std::move(messages);
 
     // Format and append each per-overload sub-error consecutively
     // beneath the main error.

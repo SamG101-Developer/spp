@@ -86,7 +86,12 @@ public:
 
 private:
   std::size_t _Pos;
-  std::size_t _ForTok;
+
+  /// The written length of the token a mapped name came from
+  /// ("MappedFromTok"), which "PosEnd" spans instead of the
+  /// name's own length; 0 for a name spelt as written.
+  std::size_t _ForTok = 0;
+
   utils::InternedId _NameId;
 };
 

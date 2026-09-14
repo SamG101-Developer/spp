@@ -511,6 +511,8 @@ auto spp::analyse::utils::generic_bindings::GenericBindingSet::EnforceNoConflict
 
     // Use the TypeEq equality checker for types, to
     // ensure they are consistent.
+    // Todo: a type inferred off a literal ("v=1") is generated, so its block reads "<generated code>"; point at the
+    //  argument it came from (TestSelfTypePositionsGeneric.test_invalid_self_class_attribute_generic_argument_...).
     for (auto i = 1uz; i < types.Len(); ++i) {
       RaiseIf<SppGenericParameterConflictError>(
         not TypeEq(*types[i], *types[0], *sm.CurrentScope, *sm.CurrentScope),
@@ -575,12 +577,14 @@ auto spp::analyse::utils::generic_bindings::GenericBindingSet::ToArgs(
 
 SPP_MOD_END
 
+
 auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
   asts::GenericParameterGroupAst const &p_group,
   asts::GenericArgumentGroupAst const &a_group,
   scopes::Scope const &owner_scope,
   scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData &meta)
+  asts::meta::CompilerMetaData &meta,
+  scopes::Scope const *const decl_scope)
   -> void {
   using errors::SppGenericConstraintError;
 
@@ -612,6 +616,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
     // parameter's constraints.
     auto p_cons = Vec<Shared<asts::TypeAst>>();
     for (auto p_con : p_con_groups[i]) {
+      const auto written = p_con;
       auto def_type_raw = p_con->WithoutGenerics();
       if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_val_type_sym != nullptr and meta.
         CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
@@ -626,7 +631,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
         meta.AllowAbstractType = true;
         sub->Stage7_AnalyseSemantics(&con_sm, &meta);
       }
-      p_cons.push_back(std::move(sub));
+      p_cons.push_back(sub->WithSourceSpanOf(*written));
     }
 
     // Handle variadic constraint checks. Todo: Expand docs
@@ -646,7 +651,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
       const auto unsatisfied = type_compare::EnforceGenericConstraintsOneArg(
         p_cons, *target, owner_scope, *sm.CurrentScope);
       RaiseIf<SppGenericConstraintError>(
-        unsatisfied != nullptr, {&owner_scope, sm.CurrentScope},
+        unsatisfied != nullptr, {decl_scope != nullptr ? decl_scope : &owner_scope, sm.CurrentScope},
         ERR_ARGS(*unsatisfied, *target));
     }
   }
@@ -768,7 +773,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
             type_params, [&](auto const *other) { return constraint->ContainsGenerics(*other); });
           RaiseIf<SppGenericConstraintError>(
             constraint_drives_inference,
-            {sm.CurrentScope, &owner_scope}, ERR_ARGS(*constraint, *inferred_type));
+            {&owner_scope, sm.CurrentScope}, ERR_ARGS(*constraint, *inferred_type));
         }
 
         for (auto const &[inferred_name, inferred_val] : temp_gs) {

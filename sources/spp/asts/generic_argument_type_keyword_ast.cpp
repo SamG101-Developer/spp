@@ -86,7 +86,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::PosStart() const
 auto spp::asts::GenericArgumentTypeKeywordAst::PosEnd() const
   -> std::size_t {
   // Use the value.
-  return Source.OriginalValPosEnd;
+  return Val->PosEnd();
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Clone() const
@@ -111,7 +111,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
   -> void {
   //
   if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and AstAs<InnerScopeExpressionAst>(sm->CurrentScope->AstNode) == nullptr) { return; }
-  if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
+  if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta)->WithSourceSpanOf(*Val); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 
   // Rewrite the argument as the qualified name of what it names. In a template a generic
@@ -128,7 +128,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
   }
 
   if (*Val->WithoutConvention() != *val_name) {
-    Val = val_name->WithConvention(AstClone(Val->GetConvention()));
+    Val = val_name->WithConvention(AstClone(Val->GetConvention()))->WithSourceSpanOf(*Val);
   }
 }
 

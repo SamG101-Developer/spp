@@ -40,13 +40,13 @@ auto spp::asts::GenericArgumentTypePositionalAst::Equals(
 auto spp::asts::GenericArgumentTypePositionalAst::PosStart() const
   -> std::size_t {
   // Use the val.
-  return Source.OriginalValPosStart;
+  return Val->PosStart();
 }
 
 auto spp::asts::GenericArgumentTypePositionalAst::PosEnd() const
   -> std::size_t {
   // Use the val.
-  return Source.OriginalValPosEnd;
+  return Val->PosEnd();
 }
 
 auto spp::asts::GenericArgumentTypePositionalAst::Clone() const
@@ -71,14 +71,14 @@ auto spp::asts::GenericArgumentTypePositionalAst::Stage7_AnalyseSemantics(
   if (Val->IsSelfType() and
     sm->CurrentScope->AstNode != nullptr and
     AstAs<InnerScopeExpressionAst>(sm->CurrentScope->AstNode) == nullptr) { return; }
-  if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
+  if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta)->WithSourceSpanOf(*Val); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 
   // Analyse the name and value of the generic type argument.
   const auto val_sym = sm->CurrentScope->GetTypeSymbol(Val.get());
   const auto val_name = val_sym->FqName();
   if (*Val->WithoutConvention() != *val_name) {
-    Val = val_name->WithConvention(AstClone(Val->GetConvention()));
+    Val = val_name->WithConvention(AstClone(Val->GetConvention()))->WithSourceSpanOf(*Val);
   }
 }
 

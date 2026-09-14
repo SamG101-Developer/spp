@@ -78,12 +78,47 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
+  /// A copy of this type that reports "written"'s source span as
+  /// its own position. For a type rebuilt from its symbol (a
+  /// qualified name, an alias's target, a bound generic) that
+  /// replaces one written in source, so errors point at what was
+  /// written rather than at the declaration. A copy, because the
+  /// rebuilt type may be shared by every use of the symbol. A
+  /// written type with no real span leaves the copy unstamped.
+  SPP_ATTR_NODISCARD auto WithSourceSpanOf(TypeAst const &written) const -> Shared<TypeAst>;
+
+  /// The text of the type written in source that this one was
+  /// rebuilt from (see "WithSourceSpanOf"), for error messages
+  /// to show beside the rebuilt, qualified form. Empty when this
+  /// type replaced nothing written.
+  SPP_ATTR_NODISCARD auto WrittenText() const -> Str const& {
+    return _WrittenText;
+  }
+
 protected:
   mutable Shared<TypeAst> _CachedWithoutGenerics;
   mutable Scope const *_LookupScope;
   mutable TypeSymbol *_LookupSym;
   mutable std::uint64_t _LookupGen;
   mutable Str _CachedStringification;
+
+  /// Whether this type reports "_SpanStart" to "_SpanEnd" as its
+  /// position, in place of its parts'; see "WithSourceSpanOf".
+  bool _HasSourceSpan = false;
+  std::size_t _SpanStart = 0;
+  std::size_t _SpanEnd = 0;
+
+  /// The text this type replaced in source; see "WrittenText".
+  Str _WrittenText;
+
+  /// Carry the span override, and the written text, onto a
+  /// clone of this type.
+  auto CopySourceSpanTo(TypeAst &clone) const -> void {
+    clone._HasSourceSpan = _HasSourceSpan;
+    clone._SpanStart = _SpanStart;
+    clone._SpanEnd = _SpanEnd;
+    clone._WrittenText = _WrittenText;
+  }
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeAst)

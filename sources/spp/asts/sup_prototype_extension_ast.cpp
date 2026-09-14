@@ -56,8 +56,6 @@ spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokExt, lex::SppTokenType::KW_EXT, "ext");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
-  Source.OriginalName = AstClone(Name);
-  Source.OriginalSuperClass = AstClone(SuperClass);
 }
 
 spp::asts::SupPrototypeExtensionAst::~SupPrototypeExtensionAst() = default;
@@ -71,7 +69,7 @@ auto spp::asts::SupPrototypeExtensionAst::PosStart() const
 auto spp::asts::SupPrototypeExtensionAst::PosEnd() const
   -> std::size_t {
   // Use the superclass.
-  return Source.OriginalSuperClass->PosEnd();
+  return SuperClass->PosEnd();
 }
 
 auto spp::asts::SupPrototypeExtensionAst::Clone() const
@@ -216,7 +214,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // declaration site, always in the same module as the
   // mock class it names. Keep it as the original
   // identifier in terms of namespacing.
-  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true);
+  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true)->WithSourceSpanOf(*Name);
 
   // Register the superimposition against the base symbol. A
   // method's "$" mock block sits inside its "sup" block rather
@@ -244,13 +242,13 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*SuperClass, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *SuperClass, "superimposition supertype"));
-  SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->FqName();
+  SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->FqName()->WithSourceSpanOf(*SuperClass);
 
   // Check the supertype is not generic.
   const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
   RaiseIf<SppGenericTypeInvalidUsageError>(
     sup_sym->IsTypeGeneric(), {sm->CurrentScope},
-    ERR_ARGS(*SuperClass, *Source.OriginalSuperClass, "superimposition supertype"));
+    ERR_ARGS(*SuperClass, *SuperClass, "superimposition supertype"));
 
   // Load the implementation and move out of the scope.
   Impl->Stage5_LoadSupScopes(sm, meta);
@@ -324,12 +322,12 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
       // Check the base method exists.
       RaiseIf<SppSuperimpositionExtensionMethodInvalidError>(
         base_method == nullptr, {sm->CurrentScope},
-        ERR_ARGS(*this_method->Name, *Source.OriginalSuperClass));
+        ERR_ARGS(*this_method->Name, *SuperClass));
 
       // Check the base method is virtual or abstract.
       RaiseIf<SppSuperimpositionExtensionNonVirtualMethodOverriddenError>(
         not(base_method->AbstractAnnotation or base_method->VirtualAnnotation), {sm->CurrentScope},
-        ERR_ARGS(*this_method->Name, *base_method->Name, *Source.OriginalSuperClass));
+        ERR_ARGS(*this_method->Name, *base_method->Name, *SuperClass));
 
       // Sync up the annotations from the base function.
       // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
@@ -347,8 +345,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
 
       // Check to see if the base type exists.
       RaiseIf<SppSuperimpositionExtensionTypeStatementInvalidError>(
-        base_type == nullptr, {member->GetAstScope(), sm->CurrentScope},
-        ERR_ARGS(*type_member, *Source.OriginalSuperClass));
+        base_type == nullptr, {sm->CurrentScope, member->GetAstScope()},
+        ERR_ARGS(*type_member, *SuperClass));
     }
 
     else if (const auto cmp_member = member->To<CmpStatementAst>()) {
@@ -362,7 +360,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
       // declaration.
       RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
         base_const == nullptr, {sm->CurrentScope},
-        ERR_ARGS(*cmp_member, *Source.OriginalSuperClass));
+        ERR_ARGS(*cmp_member, *SuperClass));
 
       // Check the constant agrees in type with every declaration
       // of that name on the type and its super types.
@@ -409,7 +407,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     if (cls_sym->Type)
       EnforceGenericConstraintsAllArgs(
         *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
-        *sm->CurrentScope, *sm, *meta);
+        *sm->CurrentScope, *sm, *meta, cls_sym->LinkedScope);
 
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
@@ -417,7 +415,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
       const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
       EnforceGenericConstraintsAllArgs(
         *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
-        *sm->CurrentScope, *sm, *meta);
+        *sm->CurrentScope, *sm, *meta, sup_sym->LinkedScope);
     }
   }
 
@@ -508,7 +506,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
 
   RaiseIf<SppSuperimpositionCyclicExtensionError>(
     not existing_sup_scopes.IsEmpty(), {&check_scope},
-    ERR_ARGS(*existing_sup_scopes[0].second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+    ERR_ARGS(*existing_sup_scopes[0].second->SuperClass, *SuperClass));
 }
 
 auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
@@ -551,8 +549,8 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
 
   if (not existing_sup_scopes.IsEmpty()) {
     Raise<SppSuperimpositionDoubleExtensionError>(
-      {&check_scope, existing_sup_scopes[0].first},
-      ERR_ARGS(*existing_sup_scopes[0].second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+      {existing_sup_scopes[0].first, &check_scope},
+      ERR_ARGS(*existing_sup_scopes[0].second->SuperClass, *SuperClass));
   }
 }
 
@@ -571,7 +569,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckSelfExtension(
   // Check if the superimposition is extending itself.
   RaiseIf<SppSuperimpositionSelfExtensionError>(
     TypeEq(*Name, *SuperClass, check_scope, check_scope), {&check_scope},
-    ERR_ARGS(*Source.OriginalName, *Source.OriginalSuperClass));
+    ERR_ARGS(*Name, *SuperClass));
 }
 
 SPP_MOD_END

@@ -35,7 +35,6 @@ spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
   //
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::LetStatementInitializedAst::~LetStatementInitializedAst() = default;
@@ -83,7 +82,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
+  using analyse::utils::type_utils::ResolveWrittenType;
 
   // An explicit type can only be applied if the left-hand-side is a single identifier.
   RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
@@ -92,10 +91,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
 
   // Analyse the type if it has been given.
   if (Type != nullptr) {
-    Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = SubstituteSelfTypeAndAnalyse(*Type, *sm->CurrentScope, *sm, *meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(
-      AstClone(Type->GetConvention()));
+    Type = ResolveWrittenType(*Type, *sm, *meta);
   }
 
   // Add the type into the return type overload resolver.
@@ -117,7 +113,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     const auto val_type = Val->InferType(sm, meta);
     RaiseIf<analyse::errors::SppTypeMismatchError>(
       not TypeEq(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Val, *val_type));
+      {sm->CurrentScope}, ERR_ARGS(*Type, *Type, *Val, *val_type));
 
     // A function named as the value stands for the overload
     // the declared type asks for.

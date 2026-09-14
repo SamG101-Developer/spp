@@ -157,6 +157,10 @@ public:
   /// formatter, which will use the same token set (same module).
   SPP_ATTR_NODISCARD auto GetErrorFormatter() const -> ErrorFormatter*;
 
+  /// Whether a node sits in the prelude appended behind this
+  /// scope's file, rather than in what the author wrote.
+  SPP_ATTR_NODISCARD auto IsFromPrelude(Ast const &ast) const -> bool;
+
   /// Get the generics associated with this scope, by searching all
   /// type and variable symbols, filtering them on their generic
   /// flag, and converting them into generic argument ast nodes.

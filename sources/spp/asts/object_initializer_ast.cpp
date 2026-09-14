@@ -142,8 +142,9 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
       generic_infer_source.begin(), generic_infer_source.end());
     meta->InferTarget = MakeShared<meta::GenericInferenceBindings>(
       generic_infer_target.begin(), generic_infer_target.end());
+    Type = analyse::utils::type_utils::SubstituteSelfType(*Type, *sm->CurrentScope, *meta)->WithSourceSpanOf(*Type);
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithSourceSpanOf(*Type);
   }
 
   // A generator cannot be initialized either.

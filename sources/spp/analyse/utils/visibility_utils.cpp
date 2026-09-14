@@ -87,7 +87,7 @@ namespace spp::analyse::utils::visibility_utils {
       using errors::SppAccessViolationError;
       RaiseIf<SppAccessViolationError>(
         not IsModuleMemberVisibleImpl(sym, definition_scope, sm, meta),
-        {sm.CurrentScope, definition_scope.ParentModule()},
+        {definition_scope.ParentModule(), sm.CurrentScope},
         ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), what));
     }
 
@@ -152,7 +152,7 @@ namespace spp::analyse::utils::visibility_utils {
       using errors::SppAccessViolationError;
       RaiseIf<SppAccessViolationError>(
         not IsTypeMemberVisibleImpl(sym, type_scope, sm, meta),
-        {sm.CurrentScope, type_scope.ParentModule()},
+        {type_scope.ParentModule(), sm.CurrentScope},
         ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), what));
     }
   }

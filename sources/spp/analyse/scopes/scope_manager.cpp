@@ -406,35 +406,37 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
     })
     | genex::to<Vec>();
 
-  // Check for conflicting "type" statements.
-  Vec<Shared<asts::TypeIdentifierAst>> new_types;
+  // Check for conflicting "type" statements. Each name keeps the
+  // scope it was written in, so the first one is reported from
+  // its own file.
+  Vec<Pair<Shared<asts::TypeIdentifierAst>, Scope const*>> new_types;
   for (auto const *scope : existing_scopes) {
     const auto body = asts::AstBody(scope->AstNode);
     for (auto const *member : body) {
       if (auto const *type_stmt = member->To<asts::TypeStatementAst>(); type_stmt != nullptr) {
-        for (auto const &new_type : new_types) {
+        for (auto const &[new_type, new_type_scope] : new_types) {
           RaiseIf<errors::SppIdentifierDuplicateError>(
-            *new_type == *type_stmt->NewType, {scope, &sup_scope},
+            *new_type == *type_stmt->NewType, {new_type_scope, scope},
             ERR_ARGS(*new_type, *type_stmt->NewType, "associated type"));
         }
-        new_types.EmplaceBack(type_stmt->NewType);
+        new_types.EmplaceBack(type_stmt->NewType, scope);
       }
     }
   }
 
   // Check for conflicting "cmp" statements.
-  Vec<Shared<asts::IdentifierAst>> new_cmps;
+  Vec<Pair<Shared<asts::IdentifierAst>, Scope const*>> new_cmps;
   for (const auto *scope : existing_scopes) {
     const auto body = asts::AstBody(scope->AstNode);
     for (auto const *member : body) {
       if (auto const *cmp_stmt = member->To<asts::CmpStatementAst>(); cmp_stmt != nullptr and not cmp_stmt->Type->
         IsCompilerGeneratedType()) {
-        for (auto const &new_cmp : new_cmps) {
+        for (auto const &[new_cmp, new_cmp_scope] : new_cmps) {
           RaiseIf<errors::SppIdentifierDuplicateError>(
-            *new_cmp == *cmp_stmt->Name, {scope, &sup_scope},
+            *new_cmp == *cmp_stmt->Name, {new_cmp_scope, scope},
             ERR_ARGS(*new_cmp, *cmp_stmt->Name, "comptime constant"));
         }
-        new_cmps.EmplaceBack(cmp_stmt->Name);
+        new_cmps.EmplaceBack(cmp_stmt->Name, scope);
       }
     }
   }

@@ -35,10 +35,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
   /// The ")" token ending the object destructuring pattern.
   Unique<TokenAst> TokR;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
   CasePatternVariantDestructureObjectAst(
     decltype(Type) type,
     decltype(TokL) &&tok_l,

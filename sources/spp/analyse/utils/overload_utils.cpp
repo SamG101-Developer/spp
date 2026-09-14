@@ -19,6 +19,8 @@ import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.convention_mut_ast;
+import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
@@ -926,7 +928,17 @@ namespace spp::analyse::utils::overload_utils {
         // so there is nothing left to compare it against. It only
         // needs the convention the prototype declares.
         if (const auto self_param = param->To<asts::FunctionParameterSelfAst>(); self_param != nullptr) {
+          // The prototype's convention is cloned, so its tokens
+          // sit in the prototype's file; they are placed on the
+          // receiver the call was made through instead.
           arg->Conv = asts::AstClone(self_param->Conv);
+          if (auto *const m = arg->Conv != nullptr ? arg->Conv->To<asts::ConventionMutAst>() : nullptr) {
+            m->TokBorrow->PatchPos(arg->Val->PosStart());
+            m->TokMut->PatchPos(arg->Val->PosStart());
+          }
+          else if (auto *const r = arg->Conv != nullptr ? arg->Conv->To<asts::ConventionRefAst>() : nullptr) {
+            r->TokBorrow->PatchPos(arg->Val->PosStart());
+          }
           continue;
         }
 

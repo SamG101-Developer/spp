@@ -180,7 +180,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::ConvToVar(
     | genex::to<Vec>();
 
   // Create the final local variable wrapping, tag it and return it.
-  auto var = MakeUnique<LocalVariableDestructureTupleAst>(nullptr, std::move(mapped_elems), nullptr);
+  auto var = MakeUnique<LocalVariableDestructureTupleAst>(AstClone(TokL), std::move(mapped_elems), AstClone(TokR));
   var->MarkFromCasePattern();
   return var;
 }

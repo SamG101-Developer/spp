@@ -37,10 +37,6 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
   /// variable.
   Unique<ExpressionAst> Val;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
   LetStatementInitializedAst(
     decltype(TokLet) &&tok_let,
     decltype(Var) &&var,

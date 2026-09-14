@@ -28,7 +28,6 @@ spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
   Type(std::move(type)) {
   //
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::LetStatementUninitializedAst::~LetStatementUninitializedAst() = default;
@@ -69,13 +68,10 @@ auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm,
   meta::CompilerMetaData *meta)
   -> void {
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
+  using analyse::utils::type_utils::ResolveWrittenType;
 
   // Analyse the type.
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = SubstituteSelfTypeAndAnalyse(*Type, *sm->CurrentScope, *sm, *meta);
-  Type = sm->CurrentScope->GetTypeSymbol(
-    Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  Type = ResolveWrittenType(*Type, *sm, *meta);
 
   // Create a mock value for analysis.
   const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);

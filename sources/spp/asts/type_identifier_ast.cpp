@@ -106,13 +106,15 @@ auto spp::asts::TypeIdentifierAst::Equals(
 
 auto spp::asts::TypeIdentifierAst::PosStart() const
   -> std::size_t {
-  // Use the static pos field.
+  // Use the static pos field, unless this replaces a written type.
+  if (_HasSourceSpan) { return _SpanStart; }
   return _Pos;
 }
 
 auto spp::asts::TypeIdentifierAst::PosEnd() const
   -> std::size_t {
   // Use the final generic argument or name.
+  if (_HasSourceSpan) { return _SpanEnd; }
   return _Pos + Name.length();
 }
 
@@ -126,6 +128,7 @@ auto spp::asts::TypeIdentifierAst::Clone() const
   t->_CachedWithoutGenerics = _CachedWithoutGenerics;
   t->_IsNeverType = _IsNeverType;
   t->_IsSourceWritten = _IsSourceWritten;
+  CopySourceSpanTo(*t);
   return t;
 }
 
@@ -180,7 +183,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     const auto self_sym = sm->CurrentScope->GetTypeSymbol(SelfType(0).get());
     if (self_sym == nullptr or self_sym->LinkedScope != resolved_sym->LinkedScope) {
       Raise<SppAbstractTypeUseError>(
-        {sm->CurrentScope, unimplemented[0]->GetAstScope()}, ERR_ARGS(*this, *unimplemented[0]));
+        {unimplemented[0]->GetAstScope(), sm->CurrentScope}, ERR_ARGS(*this, *unimplemented[0]));
     }
   };
 
@@ -338,7 +341,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   if (not GnArgGroup->Args.IsEmpty()
     and meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
     and not meta->SkipSubstitutedConstraintChecks) {
-    EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta);
+    EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta, type_sym->LinkedScope);
   }
 
   // The generic substitution above may have created the scope this resolves to, so the symbol is re-fetched rather
@@ -476,6 +479,10 @@ auto spp::asts::TypeIdentifierAst::WithConvention(
 
   auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
   auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
+
+  // A type rebuilt in place of a written one keeps pointing at
+  // what was written once it is borrowed.
+  if (_HasSourceSpan) { CopySourceSpanTo(*wrapped); }
   return wrapped;
 }
 

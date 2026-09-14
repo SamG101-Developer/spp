@@ -202,7 +202,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     .Proto = overload.Proto
   };
   if (const auto self_param = _OverloadInfo->Proto->FnParamGroup->GetSelfParam()) {
-    FnArgGroup->Args[0]->Conv = AstClone(self_param->Conv);
+    // Cloned from the prototype, so placed on the receiver.
+    auto &self_arg = *FnArgGroup->Args[0];
+    self_arg.Conv = AstClone(self_param->Conv);
+    if (auto *const m = self_arg.Conv != nullptr ? self_arg.Conv->To<ConventionMutAst>() : nullptr) {
+      m->TokBorrow->PatchPos(self_arg.Val->PosStart());
+      m->TokMut->PatchPos(self_arg.Val->PosStart());
+    }
+    else if (auto *const r = self_arg.Conv != nullptr ? self_arg.Conv->To<ConventionRefAst>() : nullptr) {
+      r->TokBorrow->PatchPos(self_arg.Val->PosStart());
+    }
   }
   FnArgGroup->Args = std::move(overload.FnArgs->Args);
 
@@ -337,9 +346,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) { gn_arg_type_map.EmplaceBack(gn_arg->Val.get()); }
   for (auto &&gn_arg : GnArgGroup->GetCompArgs()) { gn_arg_comp_map.EmplaceBack(gn_arg->Val.get()); }
 
-  // Resolve the function with the arguments.
+  // Resolve the function with the arguments. The first call to
+  // be folded is the one the user wrote, and the calls it makes
+  // report their errors there rather than inside std.
+  const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
+  const auto *const outer_site = meta->CmpCallSite;
+  auto *const outer_scope = meta->CmpCallSiteScope;
   {
     const auto _meta_guard = meta::MetaGuard(meta);
+    if (outer_site == nullptr) {
+      meta->CmpCallSite = owner;
+      meta->CmpCallSiteScope = sm->CurrentScope;
+    }
     meta->CmpArgs = std::move(fn_arg_map);
     meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
     meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
@@ -354,12 +372,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   // its type can hold. Comp-time arithmetic is exact, so a
   // result that does not fit arrives intact rather than having
   // wrapped on the way out. Checked per call to catch overflow.
-  const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
+  auto const &site = outer_site != nullptr ? *outer_site : *owner;
+  auto const &site_scope = outer_site != nullptr ? *outer_scope : *sm->CurrentScope;
   if (const auto int_result = meta->CmpResult != nullptr ? meta->CmpResult->To<IntegerLiteralAst>() : nullptr) {
-    int_result->ValidateBounds(*owner, *sm);
+    int_result->ValidateBounds(site, site_scope);
   }
   else if (const auto flt_result = meta->CmpResult != nullptr ? meta->CmpResult->To<FloatLiteralAst>() : nullptr) {
-    flt_result->ValidateBounds(*owner, *sm);
+    flt_result->ValidateBounds(site, site_scope);
   }
 
   if (revoke) {
@@ -530,11 +549,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // The parameter's type is named where the overload lives,
     // so it is qualified there and then re-resolved here. The
     // coercion compares the two types from this scope, and a
-    // parameter that does not resolve from it (a "Self" or a
-    // generic still standing in for one) is not a variant this
-    // call has to widen into anyway.
-    const auto param_type_sym = p < fn_params.Len()
-      ? _OverloadInfo->OverloadScope->GetTypeSymbol(fn_params[p]->Type.get())
+    // parameter that does not resolve from it (a generic still
+    // standing in for one) is not a variant this call has to
+    // widen into anyway. "Self" is the owner, as it is in the
+    // declaration's own signature, else "Self or S32" widens
+    // into "Var[Self, S32]" and the call mismatches it.
+    const auto param_written = p < fn_params.Len()
+      ? analyse::utils::type_utils::SubstituteSelfType(*fn_params[p]->Type, *_OverloadInfo->OverloadScope, *meta)
+      : nullptr;
+    const auto param_type_sym = param_written != nullptr
+      ? _OverloadInfo->OverloadScope->GetTypeSymbol(param_written.get())
       : nullptr;
     const auto param_type = param_type_sym != nullptr ? param_type_sym->FqName() : nullptr;
 

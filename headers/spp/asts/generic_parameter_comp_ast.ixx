@@ -38,10 +38,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
   /// required, as the type must be known at compile time.
   Shared<TypeAst> Type;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
   GenericParameterCompAst(
     decltype(TokCmp) &&tok_cmp,
     decltype(Name) name,

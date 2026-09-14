@@ -350,3 +350,21 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
     }
 )");
+
+// Todo: red - in a generic sup, destructuring the class raises E105 ("self.v is left with no owner") though "v"
+// is bound; the non-generic form passes.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_destructure_of_a_generic_class_in_its_sup, R"(
+    !public cls Box[T] { !public v: T }
+    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+    sup [T: std::copy::Copy] Box[T] {
+        !public fun get(self) -> T {
+            let Box[T](v) = self
+            ret v
+        }
+    }
+    fun f() -> Void {
+        let a: S32 = Box(v=1).get()
+    }
+)");

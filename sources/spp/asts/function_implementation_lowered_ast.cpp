@@ -53,7 +53,8 @@ auto spp::asts::FunctionImplementationLoweredAst::SetProtoPtr(
 
 auto spp::asts::FunctionImplementationLoweredAst::_ValidateZeroDivision(
   Vec<Unique<ExpressionAst>> const &args,
-  analyse::scopes::ScopeManager const *sm) const
+  analyse::scopes::ScopeManager const *sm,
+  meta::CompilerMetaData const *meta) const
   -> void {
   //
   using analyse::errors::SppDivisionByZeroError;
@@ -79,13 +80,20 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateZeroDivision(
     (int_divisor != nullptr and int_divisor->BigVal() == 0) or
     (flt_divisor != nullptr and flt_divisor->BigVal() == 0);
 
+  // Folded from a call, the division is the call the user wrote;
+  // neither this builtin nor its folded divisor is written there.
+  if (meta->CmpCallSite != nullptr) {
+    RaiseIf<SppDivisionByZeroError>(
+      is_zero, {meta->CmpCallSiteScope}, ERR_ARGS(*meta->CmpCallSite, *meta->CmpCallSite));
+  }
   RaiseIf<SppDivisionByZeroError>(
     is_zero, {sm->CurrentScope}, ERR_ARGS(*this, divisor));
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::_ValidateShiftAmount(
   Vec<Unique<ExpressionAst>> const &args,
-  analyse::scopes::ScopeManager const *sm) const
+  analyse::scopes::ScopeManager const *sm,
+  meta::CompilerMetaData const *meta) const
   -> void {
   //
   using analyse::errors::SppShiftAmountOutOfBoundsError;
@@ -110,9 +118,13 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateShiftAmount(
     | genex::to<Str>();
   const auto width = digits.empty() ? static_cast<std::int64_t>(sizeof(void*)) * 8 : std::stol(digits);
 
+  const auto too_wide = amount->BigVal() >= numex::BigInt(width);
+  if (meta->CmpCallSite != nullptr) {
+    RaiseIf<SppShiftAmountOutOfBoundsError>(
+      too_wide, {meta->CmpCallSiteScope}, ERR_ARGS(*meta->CmpCallSite, *meta->CmpCallSite, value->Type, width));
+  }
   RaiseIf<SppShiftAmountOutOfBoundsError>(
-    amount->BigVal() >= numex::BigInt(width),
-    {sm->CurrentScope}, ERR_ARGS(*this, *args[1], value->Type, width));
+    too_wide, {sm->CurrentScope}, ERR_ARGS(*this, *args[1], value->Type, width));
 }
 
 auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
@@ -133,8 +145,8 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   // runs. As this is the one place every comp-time builtin
   // is invoked from, all operand analysis must be fired
   // off from here.
-  _ValidateZeroDivision(extracted_args, sm);
-  _ValidateShiftAmount(extracted_args, sm);
+  _ValidateZeroDivision(extracted_args, sm, meta);
+  _ValidateShiftAmount(extracted_args, sm, meta);
   meta->CmpResult = lowered_cmp_code
     .preload_generics(sm, meta->CmpGnTypeArgs, meta->CmpGnCompArgs)
     .invoke(std::move(extracted_args));

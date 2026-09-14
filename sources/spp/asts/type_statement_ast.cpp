@@ -155,8 +155,10 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  // Todo: in a generic sup, "type Mine = Self" raises E72 (T not inferred) and "type Many = Vec[Self]" substitutes
+  //  twice ("Vec[Box[Box[S32]]]") - TestSelfTypePositionsGeneric.test_valid_self_{as_a_type_alias_target,in_a_type_alias_generic_argument}.
   OldType = analyse::utils::type_utils::SubstituteSelfType(
-    *OldType, *sm->CurrentScope, *meta);
+    *OldType, *sm->CurrentScope, *meta)->WithSourceSpanOf(*OldType);
 
   // An alias names a type, and a borrow is not one a type can be: it is second class, so it cannot be what a name
   // stands for any more than it can be an attribute or a variant member. The new type is checked at stage 2, where
@@ -289,7 +291,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     if (cls_sym != nullptr and cls_sym->Type) {
       EnforceGenericConstraintsAllArgs(
         *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
-        *sm->CurrentScope, *sm, *meta);
+        *sm->CurrentScope, *sm, *meta, cls_sym->LinkedScope);
     }
 
     // Check visibility here specifically (almost always done in TypeIdentifierAst) because of the source type

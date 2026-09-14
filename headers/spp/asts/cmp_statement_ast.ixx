@@ -61,10 +61,6 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final :
   /// that only uses compile time values.
   Unique<ExpressionAst> Value;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
   CmpStatementAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,

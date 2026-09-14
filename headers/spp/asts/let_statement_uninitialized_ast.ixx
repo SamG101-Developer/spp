@@ -32,10 +32,6 @@ SPP_EXP_CLS struct spp::asts::LetStatementUninitializedAst final : LetStatementA
   /// that values later assigned to it are the correct type.
   Shared<TypeAst> Type;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
   LetStatementUninitializedAst(
     decltype(TokLet) &&tok_let,
     decltype(Var) &&var,

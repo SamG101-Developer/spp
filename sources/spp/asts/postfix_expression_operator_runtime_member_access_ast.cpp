@@ -78,7 +78,11 @@ spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOpe
   Name(std::move(name)),
   _MappedFwd(nullptr) {
   Source.OriginalExpr = nullptr;
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokDot, lex::SppTokenType::TK_DOT, ".");
+
+  // A generated access ("tmp.x" from a destructure) has no "."
+  // written, so it is placed on the name it accesses.
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokDot, lex::SppTokenType::TK_DOT, ".", this->Name != nullptr ? this->Name->PosStart() : 0);
 }
 
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::~PostfixExpressionOperatorRuntimeMemberAccessAst() = default

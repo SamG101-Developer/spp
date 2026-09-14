@@ -42,10 +42,6 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMember
   /// FunctionPrototypeAst) being added to the type.
   Unique<SupImplementationAst> Impl;
 
-  struct {
-    Shared<TypeAst> OriginalName;
-  } Source;
-
   SupPrototypeFunctionsAst(
     decltype(TokSup) &&tok_sup,
     decltype(GnParamGroup) &&generic_param_group,

@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_uninitialized_ast;
@@ -45,9 +46,10 @@ auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm,
   meta::CompilerMetaData *meta)
   -> void {
-  // Analyse the type.
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  // Analyse the type. "Self" is kept, and substituted per call.
+  using analyse::utils::type_utils::ResolveWrittenType;
+  using analyse::utils::type_utils::SelfPolicy;
+  Type = ResolveWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
 
   // Create the variable for the parameter (use temp copies and put them back).
   const auto ast = MakeUnique<LetStatementUninitializedAst>(nullptr, std::move(Var), nullptr, Type);

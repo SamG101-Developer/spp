@@ -99,7 +99,7 @@ auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
   -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "f32" : Type;
-  ValidateBounds(*this, *sm);
+  ValidateBounds(*this, *sm->CurrentScope);
 }
 
 auto spp::asts::FloatLiteralAst::BigVal() const
@@ -118,7 +118,7 @@ auto spp::asts::FloatLiteralAst::BigVal() const
 
 auto spp::asts::FloatLiteralAst::ValidateBounds(
   Ast const &owner,
-  analyse::scopes::ScopeManager const &sm) const
+  analyse::scopes::Scope const &scope) const
   -> void {
   //
   using analyse::errors::SppFloatOutOfBoundsError;
@@ -129,7 +129,7 @@ auto spp::asts::FloatLiteralAst::ValidateBounds(
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
     value < lower or value > upper,
-    {sm.CurrentScope}, ERR_ARGS(owner, value, lower, upper, Type));
+    {&scope}, ERR_ARGS(owner, value, lower, upper, Type));
 }
 
 auto spp::asts::FloatLiteralAst::FromBigVal(

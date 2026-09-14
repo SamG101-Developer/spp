@@ -242,3 +242,48 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(a)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestSelfTypePositions,
+  test_valid_self_in_a_static_function_variant_parameter, R"(
+    cls A { }
+    sup A ext std::copy::Copy { }
+    sup A {
+        !public fun check(x: Self or S32) -> Bool { ret true }
+    }
+    fun f() -> Void {
+        let a = A::check(A())
+        let b = A::check(1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestSelfTypePositions,
+  test_valid_self_in_a_method_variant_parameter, R"(
+    cls A { }
+    sup A ext std::copy::Copy { }
+    sup A {
+        !public fun check(&self, x: Self or S32) -> Bool { ret true }
+    }
+    fun f() -> Void {
+        let a = A()
+        let b = a.check(A())
+        let c = a.check(1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestSelfTypePositions,
+  test_valid_self_in_a_variant_parameter_narrowed_by_case, R"(
+    cls A { }
+    sup A ext std::copy::Copy { }
+    sup A {
+        !public fun check(x: Self or S32) -> Bool {
+            case x is A() { ret true }
+            ret false
+        }
+    }
+    fun f() -> Void {
+        let a = A::check(A())
+    }
+)");

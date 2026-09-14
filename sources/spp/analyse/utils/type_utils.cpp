@@ -479,3 +479,28 @@ auto spp::analyse::utils::type_utils::SubstituteSelfTypeWith(
   const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
   return type.SubstituteGenerics(args);
 }
+
+auto spp::analyse::utils::type_utils::ResolveWrittenType(
+  asts::TypeAst const &written,
+  scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData &meta,
+  const SelfPolicy self)
+  -> Shared<asts::TypeAst> {
+  auto substituted = false;
+  auto t = self == SelfPolicy::kSubstitute
+    ? SubstituteSelfType(written, *sm.CurrentScope, meta, &substituted)
+    : AstClone(&written);
+
+  if (substituted) {
+    const auto _meta_guard = asts::meta::MetaGuard(&meta);
+    meta.AllowAbstractType = true;
+    t->Stage7_AnalyseSemantics(&sm, &meta);
+  }
+  else {
+    t->Stage7_AnalyseSemantics(&sm, &meta);
+  }
+
+  return sm.CurrentScope->GetTypeSymbol(t.get())->FqName()
+    ->WithConvention(AstClone(written.GetConvention()))
+    ->WithSourceSpanOf(written);
+}

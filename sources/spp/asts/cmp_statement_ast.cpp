@@ -50,7 +50,6 @@ spp::asts::CmpStatementAst::CmpStatementAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::CmpStatementAst::~CmpStatementAst() = default;
@@ -161,21 +160,21 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
+  using analyse::utils::type_utils::ResolveWrittenType;
   for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Qualify the type.
   Type->Stage4_QualifyTypes(sm, meta);
-  Type->Stage7_AnalyseSemantics(sm, meta);
-
-  if (not _FromUseStatement) {
-    Type = SubstituteSelfTypeAndAnalyse(*Type, *sm->CurrentScope, *sm, *meta);
-    if (not Type->IsSelfType()) { // Todo: is this "if" needed?
-      Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
-      _AliasSym->Type = Type;
-    }
+  if (_FromUseStatement) {
+    Type->Stage7_AnalyseSemantics(sm, meta);
+  }
+  else {
+    // Todo: a class-typed "cmp" in a generic sup gets a global of the unbound "Unit[T=T]", which LLVM rejects as
+    //  unsized - SupCmpStatementGeneric.test_valid_class_typed_cmp_in_a_generic_sup.
+    Type = ResolveWrittenType(*Type, *sm, *meta);
+    _AliasSym->Type = Type;
   }
   sm->MoveOutOfCurrentScope();
 }
@@ -233,7 +232,7 @@ auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(
   RaiseIf<SppTypeMismatchError>(
     not IsFromUseStatement()
     and not TypeEq(*Type, *inferred_type, *sm->CurrentScope, *sm->CurrentScope),
-    {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Value, *inferred_type));
+    {sm->CurrentScope}, ERR_ARGS(*Type, *Type, *Value, *inferred_type));
   sm->MoveOutOfCurrentScope();
 }
 

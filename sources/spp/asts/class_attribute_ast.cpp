@@ -118,7 +118,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_predicates::IsTypeSelf;
-  using analyse::utils::type_utils::SubstituteSelfType;
+  using analyse::utils::type_utils::ResolveWrittenType;
+  using analyse::utils::type_utils::SelfPolicy;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
@@ -136,13 +137,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
       {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
   }
 
-  if (not IsTypeSelf(*Type)) {
-    Type = SubstituteSelfType(*Type, *sm->CurrentScope, *meta);
-  }
-
   // Check the type is valid before scopes are attached.
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  Type = ResolveWrittenType(*Type, *sm, *meta, IsTypeSelf(*Type) ? SelfPolicy::kKeep : SelfPolicy::kSubstitute);
   sm->CurrentScope->GetVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
@@ -169,7 +165,7 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
   if (not IsTypeSelf(*Type)) {
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()))->WithSourceSpanOf(*Type);
     RaiseIf<SppSecondClassBorrowViolationError>(
       IsTypeBorrowed(*Type, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));

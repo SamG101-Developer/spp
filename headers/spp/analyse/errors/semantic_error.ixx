@@ -268,6 +268,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCaseBranchMissingElseError final : S
 SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierDuplicateError final : SemanticError {
   explicit SppIdentifierDuplicateError(Ast const &first_identifier, Ast const &duplicate_identifier,
     StrView what);
+
+  /// A name the prelude already imports: only the author's own
+  /// identifier is shown, as the prelude's is not one they wrote.
+  explicit SppIdentifierDuplicateError(Ast const &duplicate_identifier, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticError {

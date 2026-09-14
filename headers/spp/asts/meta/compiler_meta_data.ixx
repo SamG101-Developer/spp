@@ -10,6 +10,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LoopExpressionAst);
@@ -289,6 +290,13 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;
   bool CmpReturned = false;
+
+  /// The outermost call a comp-time evaluation started from, and
+  /// the scope it was written in. An error raised while a nested
+  /// call is evaluated (std's arithmetic, an intrinsic) reports
+  /// here, where the user wrote the expression.
+  Ast const *CmpCallSite = nullptr;
+  Scope *CmpCallSiteScope = nullptr;
 
   /// Ignore access modifier violations during analysis. This is
   /// for when certain asts map to functions private on STD types,

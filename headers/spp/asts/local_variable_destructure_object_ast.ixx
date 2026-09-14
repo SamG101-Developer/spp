@@ -36,10 +36,6 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
   /// The ")" token that ends the object destructure.
   Unique<TokenAst> TokR;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
   LocalVariableDestructureObjectAst(
     decltype(Type) &&type,
     decltype(TokL) &&tok_l,

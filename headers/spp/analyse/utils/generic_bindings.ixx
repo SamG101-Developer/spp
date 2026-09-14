@@ -158,12 +158,16 @@ namespace spp::analyse::utils::generic_bindings {
   /// constraints. Also handles the cross-application of
   /// generics into the constraints that themselves rely on
   /// these generics.
+  /// "decl_scope" is where the parameters were declared, which
+  /// an unsatisfied constraint is reported from; it defaults to
+  /// "owner_scope", which is where the constraints are looked up.
   SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
     GenericParameterGroupAst const &p_group,
     GenericArgumentGroupAst const &a_group,
     Scope const &owner_scope,
     ScopeManager &sm,
-    meta::CompilerMetaData &meta)
+    meta::CompilerMetaData &meta,
+    Scope const *decl_scope = nullptr)
     -> void;
 
   /// Massive method to infer generics from a source into a

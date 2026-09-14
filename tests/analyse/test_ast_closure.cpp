@@ -517,3 +517,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(x)
     }
 )");
+
+// Todo: red - in a generic sup, a closure reading a "T" field of its "Box[T]" parameter finds a "T" that is not
+// the sup's "T" (E1 "Expected type T, Found type T").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureInGenericSup,
+  test_valid_closure_reading_a_generic_field, R"(
+    cls Box[T] { !public v: T }
+    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+    sup [T: std::copy::Copy] Box[T] {
+        !public fun get(self) -> T {
+            let c = (x: Box[T]) -> T { ret x.v }
+            ret c(self)
+        }
+    }
+    fun f() -> Void {
+        let a: S32 = Box(v=1).get()
+    }
+)");

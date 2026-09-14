@@ -116,7 +116,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   Shared<TypeAst> VariadicPackType;
 
   struct {
-    Shared<TypeAst> OriginalReturnType;
     Unique<FunctionImplementationAst> OriginalImpl;
   } Source;
 

@@ -66,22 +66,26 @@ auto spp::asts::TypePostfixExpressionAst::Equals(
 
 auto spp::asts::TypePostfixExpressionAst::PosStart() const
   -> std::size_t {
-  // Use the lhs.
+  // Use the lhs, unless this replaces a written type.
+  if (_HasSourceSpan) { return _SpanStart; }
   return Lhs->PosStart();
 }
 
 auto spp::asts::TypePostfixExpressionAst::PosEnd() const
   -> std::size_t {
-  // Use the operator.
+  // Use the operator, unless this replaces a written type.
+  if (_HasSourceSpan) { return _SpanEnd; }
   return TokOp->PosEnd();
 }
 
 auto spp::asts::TypePostfixExpressionAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<TypePostfixExpressionAst>(
+  auto t = MakeUnique<TypePostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(TokOp));
+  CopySourceSpanTo(*t);
+  return t;
 }
 
 auto spp::asts::TypePostfixExpressionAst::ToString() const
@@ -236,6 +240,10 @@ auto spp::asts::TypePostfixExpressionAst::WithConvention(
   if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
   auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
   auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
+
+  // A type rebuilt in place of a written one keeps pointing at
+  // what was written once it is borrowed.
+  if (_HasSourceSpan) { CopySourceSpanTo(*wrapped); }
   return wrapped;
 }
 

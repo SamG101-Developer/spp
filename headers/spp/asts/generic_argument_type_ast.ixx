@@ -18,11 +18,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
   /// "func[T]()" or "std::Vec[Str]".
   Shared<TypeAst> Val;
 
-  struct {
-    std::size_t OriginalValPosStart;
-    std::size_t OriginalValPosEnd;
-  } Source;
-
   explicit GenericArgumentTypeAst(
     decltype(Val) val,
     utils::OrderableTag order_tag);

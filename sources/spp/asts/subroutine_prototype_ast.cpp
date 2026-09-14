@@ -65,7 +65,6 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
     ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
     : nullptr;
   ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
-  ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->AbstractAnnotation = AbstractAnnotation;
@@ -125,7 +124,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   const auto final_member_check = (not Impl->Members.IsEmpty() and Impl->Members.Back()->To<RetStatementAst>());
   RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
     is_void or is_never or annotation_blocks_ret or final_member_check,
-    {sm->CurrentScope}, ERR_ARGS(*final_member, *Source.OriginalReturnType, *ReturnType));
+    {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType, *ReturnType));
 
   // Ffi functions cannot be generic, otherwise we get
   // multiple prototypes for the singular C function,

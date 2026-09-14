@@ -46,7 +46,6 @@ spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokSup, lex::SppTokenType::KW_SUP, "sup");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
-  Source.OriginalName = AstClone(Name);
 }
 
 spp::asts::SupPrototypeFunctionsAst::~SupPrototypeFunctionsAst() = default;
@@ -60,7 +59,7 @@ auto spp::asts::SupPrototypeFunctionsAst::PosStart() const
 auto spp::asts::SupPrototypeFunctionsAst::PosEnd() const
   -> std::size_t {
   // Use the name.
-  return Source.OriginalName->PosEnd();
+  return Name->PosEnd();
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Clone() const
@@ -185,11 +184,11 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Name, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalName, "superimposition type"));
+    {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
 
   // A "$Func" mock keeps its bare name here - see the
   // matching note in "SupPrototypeExtensionAst".
-  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true);
+  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true)->WithSourceSpanOf(*Name);
 
   // Register the superimposition against the base symbol.
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
@@ -271,7 +270,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
   if (cls_sym->Type)
     EnforceGenericConstraintsAllArgs(
-      *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+      *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta,
+      cls_sym->LinkedScope);
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }

@@ -49,7 +49,8 @@ spp::asts::ClosureExpressionAst::ClosureExpressionAst(
   TokArrow(std::move(tok_arrow)),
   ReturnType(std::move(return_type)),
   Body(std::move(body)) {
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Tok, lex::SppTokenType::KW_FUN, "fun");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->Tok, lex::SppTokenType::KW_FUN, "fun", this->PcGroup != nullptr ? this->PcGroup->PosStart() : 0);
   Source._OriginalRetType = nullptr;
   _TrueRetType = nullptr;
 }
@@ -111,7 +112,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
+  using analyse::utils::type_utils::ResolveWrittenType;
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppFeatureNotYetSupportedError;
 
@@ -178,8 +179,10 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     // in the body is checked against it and coerced into it -
     // the same path a subroutine's body takes.
     if (ReturnType != nullptr) {
-      ReturnType->Stage7_AnalyseSemantics(sm, meta);
-      ReturnType = SubstituteSelfTypeAndAnalyse(*ReturnType, *sm->CurrentScope, *sm, *meta);
+      // Todo: in a generic sup, a type naming the sup's "T" here is not "TypeEq" to the same type from the body
+      //  ("Box[T=T]" vs "Box[T=T]") - ClosureInGenericSup.test_valid_closure_reading_a_generic_field,
+      //  TestSelfTypePositionsGeneric.test_valid_self_as_a_closure_{return,parameter}_type.
+      ReturnType = ResolveWrittenType(*ReturnType, *sm, *meta);
 
       meta->EnclosingFunctionRetType.EmplaceBack(ReturnType);
       meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);

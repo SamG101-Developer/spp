@@ -102,7 +102,6 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
     ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
     : nullptr;
   ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
-  ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->AbstractAnnotation = AbstractAnnotation;
@@ -134,7 +133,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = meta::MetaGuard(meta, true);
     meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
     meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     meta->EnclosingFunctionScope = sm->CurrentScope;
     Impl->Stage7_AnalyseSemantics(sm, meta);
@@ -142,7 +141,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     // Check the return type superimposes the generator type.
     auto [generator_type, yield_type, is_once] = GetGenAndYieldTypes(
       *ret_type_sym->FqName(), *sm->CurrentScope,
-      *Source.OriginalReturnType, "coroutine return type");
+      *ReturnType, "coroutine return type");
     _YieldType = yield_type;
     _SendType = is_once
       ? generate::common_types_precompiled::VOID
@@ -327,7 +326,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     meta->LlvmGenerator->FinalBlock = final_bb;
     meta->LlvmGeneratorState = llvm_gen_state;
     meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
     meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     meta->EnclosingFunctionScope = sm->CurrentScope;
 
