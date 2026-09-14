@@ -609,7 +609,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
   //
   using generate::common_types::SelfType;
   using generate::common_types::TupleType;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
 
   // For function folding, collect a tuple of all return types.
   if (not _FoldedAsts.IsEmpty()) {
@@ -629,7 +628,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
   }
 
   // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
-  if (_IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume) {
+  if (_IsCoroAndAutoResume) {
     auto [_, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
       *ret_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "function call");
     ret_type = yield_type;
