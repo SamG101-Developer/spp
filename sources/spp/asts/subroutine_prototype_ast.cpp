@@ -111,8 +111,8 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
     return not Impl->Members.IsEmpty() and TypeEq(
-      *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta), *NEVER,
-      *tm.CurrentScope, *sm->CurrentScope);
+      *NEVER, *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta),
+      *sm->CurrentScope, *tm.CurrentScope);
   }();
 
   // Check for a void return type.
