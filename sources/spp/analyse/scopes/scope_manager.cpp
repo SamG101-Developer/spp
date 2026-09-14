@@ -197,12 +197,49 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
   // There are usually none at all, and then the stored list is handed over as it stands.
   if (generic_sup_blocks.IsEmpty()) {
     if (normal != nullptr) { AttachSpecificSuperScopesImpl(scope, *normal, meta, deferred); }
-    return;
   }
+  else {
+    auto scopes = normal != nullptr ? *normal : Vec<Scope*>();
+    scopes.AppendRange(generic_sup_blocks);
+    AttachSpecificSuperScopesImpl(scope, scopes, meta, deferred);
+  }
+  CoalesceMethodMock(scope);
+}
 
-  auto scopes = normal != nullptr ? *normal : Vec<Scope*>();
-  scopes.AppendRange(generic_sup_blocks);
-  AttachSpecificSuperScopesImpl(scope, scopes, meta, deferred);
+auto spp::analyse::scopes::ScopeManager::CoalesceMethodMock(
+  Scope &scope) const
+  -> void {
+  // A method's overloads written in several "sup" blocks of one owner get a "$" mock each, and naming the mock
+  // through the owner ("A::$M") reaches only one of them. So each is given the overloads of all the others: their
+  // "sup $M ext FunXxx { fun m }" blocks, and the function types those blocks superimpose.
+  if (scope.TySym == nullptr or scope.TySym->Kind != TypeKind::FunctionMock or scope.Parent == nullptr) { return; }
+  const auto sup_node = scope.Parent->AstNode;
+  if (AstAs<asts::SupPrototypeFunctionsAst>(sup_node) == nullptr
+    and AstAs<asts::SupPrototypeExtensionAst>(sup_node) == nullptr) { return; }
+  const auto owner_sym = scope.Parent->GetTypeSymbol(asts::AstName(sup_node)->WithoutGenerics().get());
+  const auto owner_blocks = owner_sym != nullptr ? normal_sup_blocks.find(owner_sym) : normal_sup_blocks.end();
+  if (owner_blocks == normal_sup_blocks.end()) { return; }
+
+  const auto mock_name = scope.TySym->Name->WithoutGenerics();
+  for (auto const *block : owner_blocks->second) {
+    if (block == scope.Parent) { continue; }
+    const auto sibling = block->GetTypeSymbol(mock_name.get(), true, false);
+    if (sibling == nullptr or sibling == scope.TySym.get()) { continue; }
+    const auto sibling_blocks = normal_sup_blocks.find(sibling);
+    if (sibling_blocks == normal_sup_blocks.end()) { continue; }
+
+    for (auto *ext_scope : sibling_blocks->second) {
+      const auto ext = AstAs<asts::SupPrototypeExtensionAst>(ext_scope->AstNode);
+      if (ext == nullptr or genex::contains(scope.DirectSupScopes, ext_scope)) { continue; }
+      BumpTypeStructureGeneration();
+      scope.DirectSupScopes.EmplaceBack(ext_scope);
+      if (const auto fn_sym = scope.GetTypeSymbol(ext->SuperClass.get());
+        fn_sym != nullptr and fn_sym->LinkedScope != nullptr
+        and not genex::contains(scope.DirectSupScopes, fn_sym->LinkedScope)) {
+        scope.DirectSupScopes.EmplaceBack(fn_sym->LinkedScope);
+      }
+    }
+  }
 }
 
 auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
@@ -420,7 +457,7 @@ auto spp::analyse::scopes::ScopeManager::AddSelfTypeSymbol(
   if (linked_scope == nullptr) { return; }
   const auto self_sym = MakeShared<TypeSymbol>(
     MakeUnique<asts::TypeIdentifierAst>(pos, "Self", nullptr),
-    SelfProto(), linked_scope, CurrentScope);
+    SelfProto(), linked_scope, CurrentScope, nullptr, TypeKind::Self);
   CurrentScope->AddTypeSymbol(self_sym);
 }
 
