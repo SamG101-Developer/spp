@@ -793,7 +793,7 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call_overflow(
   // rather than returned as whatever anonymous pair they were computed as - llvm compares struct types by identity,
   // not by layout, so an alike-looking "{T, i1}" is still a different type.
   const auto [value, overflowed] = EmitOverflowPair(ctx, op, lhs, rhs);
-  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   packed = ctx->Builder.CreateInsertValue(packed, value, {0}, "intrinsic.packed" + uid);
   packed = ctx->Builder.CreateInsertValue(packed, overflowed, {1}, "intrinsic.packed" + uid);
   ctx->Builder.CreateRet(packed);
@@ -2489,7 +2489,7 @@ auto spp::codegen::func_impls::std_cffi_c_closure_from(
   const auto pair = ctx->Builder.CreateLoad(pair_ty, value_sym->LlvmInfo->Alloca, "c_closure.from.pair" + uid);
 
   const auto ret_ty = ctx->Builder.GetInsertBlock()->getParent()->getReturnType();
-  auto out = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto out = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   out = ctx->Builder.CreateInsertValue(
     out, ctx->Builder.CreateExtractValue(pair, {0}, "c_closure.from.fn" + uid), {0});
   out = ctx->Builder.CreateInsertValue(
@@ -2584,8 +2584,8 @@ auto spp::codegen::func_impls::std_non_null_raw(
 
   const auto ptr_struct_ty = llvm::cast<llvm::StructType>(ty);
   const auto addr_val = ctx->Builder.CreatePtrToInt(data_ptr, ptr_struct_ty->getElementType(0), "non_null.raw.addr");
-  const auto undef = llvm::UndefValue::get(ptr_struct_ty);
-  const auto result = ctx->Builder.CreateInsertValue(undef, addr_val, {0}, "non_null.raw.result");
+  const auto poison = llvm::PoisonValue::get(ptr_struct_ty);
+  const auto result = ctx->Builder.CreateInsertValue(poison, addr_val, {0}, "non_null.raw.result");
   ctx->Builder.CreateRet(result);
 }
 
@@ -3017,7 +3017,13 @@ auto spp::codegen::func_impls::std_mem_ops_drop(
   // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot
   // is what the destruction works through. This is the owning counterpart of "drop_in_place": the value is consumed by
   // being passed in, so nothing is left behind in the caller for the destroyed storage to be read back out of.
-  const auto val_param = proto->FnParamGroup->GetAllParams()[0];
+  // A Void generic arg removes the parameter from the signature, and a Void has nothing to destroy.
+  const auto params = proto->FnParamGroup->GetAllParams();
+  if (params.IsEmpty()) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+  const auto val_param = params[0];
   const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
 
   const auto t_ast = asts::TypeIdentifierAst::FromString("T");
@@ -3127,7 +3133,7 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_inner(
 
   // Repack
   const auto uid = "." + utils::Uid();
-  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   packed = ctx->Builder.CreateInsertValue(
     packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {0}, "compex.value" + uid), {0}, "compex.packed" + uid);
   packed = ctx->Builder.CreateInsertValue(
@@ -3157,7 +3163,7 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_weak_inner(
 
   // Repack
   const auto uid = "." + utils::Uid();
-  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   packed = ctx->Builder.CreateInsertValue(
     packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {0}, "compex.value" + uid), {0}, "compex.packed" + uid);
   packed = ctx->Builder.CreateInsertValue(
