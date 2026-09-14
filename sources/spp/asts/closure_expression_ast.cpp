@@ -336,7 +336,6 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
     meta->LlvmAssignmentTarget = nullptr;
-    meta->LlvmAssignmentTargetType = nullptr;
 
     PcGroup->Stage11_CodeGen(sm, meta, ctx);
     sm->MoveToNextScope();
