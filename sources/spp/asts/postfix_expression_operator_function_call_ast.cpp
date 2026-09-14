@@ -376,16 +376,28 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
   // For folding, generate the code for the folded
   // transformations and combine into single block.
+  // Each is generated in place, from a clone so the fold can be
+  // generated again, and their results make up the tuple the fold
+  // is typed as. An inner scope built here to hold them would step
+  // the scope walk into a scope that was never created.
   if (Fold != nullptr) {
-    const auto merge = InnerScopeExpressionAst::NewEmpty();
-    merge->Members = _FoldedAsts
-      | genex::views::transform([&meta](auto &&ast) {
-        auto clone_lhs = AstClone(meta->PostfixExpressionLhs);
-        auto pf = MakeUnique<PostfixExpressionAst>(std::move(clone_lhs), std::move(ast));
-        return Unique<StatementAst>(pf.release());
-      })
-      | genex::to<Vec>();
-    return merge->Stage11_CodeGen(sm, meta, ctx);
+    const auto tuple_type = InferType(sm, meta);
+    auto results = Vec<llvm::Value*>();
+    for (auto const &ast : _FoldedAsts) {
+      auto pf = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), AstClone(ast));
+      results.EmplaceBack(pf->Stage11_CodeGen(sm, meta, ctx));
+    }
+
+    const auto tuple_sym = sm->CurrentScope->GetTypeSymbol(tuple_type.get());
+    const auto tuple_llvm_type = tuple_sym != nullptr ? codegen::GetLlvmType(*tuple_sym, ctx) : nullptr;
+    if (tuple_llvm_type == nullptr or not tuple_llvm_type->isStructTy()) { return nullptr; }
+    auto tuple_val = static_cast<llvm::Value*>(llvm::PoisonValue::get(tuple_llvm_type));
+    for (auto i = 0uz; i < results.Len(); ++i) {
+      if (results[i] == nullptr or results[i]->getType()->isVoidTy()) { continue; }
+      tuple_val = ctx->Builder.CreateInsertValue(
+        tuple_val, results[i], {codegen::GetPhysicalFieldIndex(*tuple_sym->LlvmInfo, i)});
+    }
+    return tuple_val;
   }
 
   // Closure calls: the left-hand side is a closure value, a
