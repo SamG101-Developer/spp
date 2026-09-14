@@ -185,6 +185,10 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   _AliasSym->Alias->Resolved = mapped_old_type;
   _AliasSym->Alias->TrackingScope = tracking_scope;
 
+  // An alias of "!" is "!" too, so its own name carries the
+  // never flag, as the class's does.
+  if (mapped_old_type->IsNeverType()) { NewType->MarkNeverType(); }
+
   if (attach_generics != nullptr and not attach_generics->Params.IsEmpty()) {
     GnParamGroup = attach_generics;
     GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
