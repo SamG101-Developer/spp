@@ -57,13 +57,13 @@ namespace spp::analyse::utils::linear_utils {
     auto IndividualPartType(
       asts::TypeAst const &type,
       scopes::Scope const &scope,
-      Str const &step)
+      asts::IdentifierAst const &step)
       -> Pair<Shared<asts::TypeAst>, scopes::Scope const*> {
       // Find the part the step names, which is an attribute's own
       // name for a struct and an element's index for a tuple or
       // an array.
       for (auto const &[part_step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(type, scope)) {
-        if (part_step == step) { return {part_type, part_scope}; }
+        if (part_step->NameId() == step.NameId()) { return {part_type, part_scope}; }
       }
 
       // Failsafe, should never be reached.
@@ -78,14 +78,14 @@ namespace spp::analyse::utils::linear_utils {
     auto DescendToPart(
       Shared<asts::TypeAst> root_type,
       scopes::Scope const &root_scope,
-      Vec<Str> const &steps,
+      Vec<asts::IdentifierAst*> const &steps,
       const std::size_t count)
       -> Pair<Shared<asts::TypeAst>, scopes::Scope const*> {
       auto part_type = std::move(root_type);
       auto const *part_scope = &root_scope;
       for (auto i = std::size_t{1}; i <= count and i < steps.Len(); ++i) {
         if (part_type == nullptr or part_scope == nullptr) { break; }
-        auto [next_type, next_scope] = IndividualPartType(*part_type, *part_scope, steps[i]);
+        auto [next_type, next_scope] = IndividualPartType(*part_type, *part_scope, *steps[i]);
         part_type = std::move(next_type);
         part_scope = next_scope;
       }
@@ -106,7 +106,7 @@ namespace spp::analyse::utils::linear_utils {
      * @return Whether the place has nothing left to consume.
      */
     auto RegionConsumed(
-      Vec<Str> const &region,
+      Vec<asts::IdentifierAst*> const &region,
       asts::TypeAst const &type,
       scopes::Scope const &scope,
       Vec<asts::Ast const*> const &moves,
@@ -118,7 +118,7 @@ namespace spp::analyse::utils::linear_utils {
       // detect if a different move contains the region.
       auto touched = false;
       for (auto const *move : moves) {
-        const auto relation = mem_utils::MemRegionRelate(*move, region);
+        const auto relation = mem_utils::MemRegionRelate(mem_utils::RegionPath(*move), region);
         if (relation == mem_utils::MemRegionRelation::Contains) { return true; }
         if (relation == mem_utils::MemRegionRelation::ContainedBy) { touched = true; }
       }
@@ -128,20 +128,20 @@ namespace spp::analyse::utils::linear_utils {
       // return optimization.
       if (not touched and not descend_regardless) {
         if (unaccounted != nullptr and unaccounted->empty()) {
-          for (auto const &step : region) { *unaccounted += unaccounted->empty() ? step : "." + step; }
+          for (auto const *step : region) { *unaccounted += unaccounted->empty() ? step->Val : "." + step->Val; }
         }
         return false;
       }
 
       auto part = region;
-      part.EmplaceBack(Str()); // Extra spot for temp "final" part.
+      part.EmplaceBack(nullptr); // Extra spot for temp "final" part.
 
       // Each part is checked on its own, under the name a destructure would have recorded it by - an attribute's own
       // name, or an element's index. A copyable part was never owed to anyone, so it never has to be accounted for.
       // If any part is unaccounted for, then nor is the value holding it.
       for (auto const &[step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(type, scope)) {
         if (part_sym == nullptr or part_sym->IsCopyable()) { continue; }
-        part.Back() = step;
+        part.Back() = step.get();
         if (not RegionConsumed(part, *part_type, *part_scope, moves, unaccounted)) { return false; }
       }
 
@@ -162,30 +162,17 @@ namespace spp::analyse::utils::linear_utils {
       scopes::VariableSymbol const &sym,
       scopes::ScopeManager const &sm)
       -> bool {
-      // A symbol that never owned a value has nothing to answer for:
-      // an unbound generic, a compile-time constant (which has no
-      // runtime existence), or a symbol with no type to reason about.
-      if (sym.IsGeneric) { return false; }
-
-      // A flow-narrowing symbol is a view of another symbol's value,
-      // typed as whatever a pattern matched. It shares the storage
-      // rather than owning it, so the obligation stays with the symbol
-      // it narrows.
-      if (sym.IsFlowNarrowing) { return false; }
-
-      // A closure's capture belongs to its environment, not to the body
-      // that reads it: the environment owns the value and is read again
-      // on every call, and it is the closure value that is held to being
-      // consumed.
-      if (sym.IsCapture) { return false; }
+      // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, a
+      // flow-narrowing symbol is a view of another symbol's value (which keeps the obligation), and a capture belongs
+      // to the closure's environment, which is read again on every call - it is the closure value that is held to
+      // being consumed.
+      //
+      // Todo: A "$" temporary is exempted too - the iterator behind a "loop ... in", the subject a destructure was
+      //  bound to, the slot an early return writes through - since reporting it blames code nobody can fix. That is a
+      //  real gap rather than a nicety: "$_iter" holds an iterator that genuinely goes unconsumed. The desugarings
+      //  have to be made linear-correct, and then "Temporary" is checked here too.
+      if (sym.Kind != scopes::VariableKind::Local) { return false; }
       if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
-      if (sym.MemInfo->AstCompTime != nullptr) { return false; }
-
-      // Todo: A "$" name is a desugaring temporary - the iterator behind a "loop ... in", the subject a destructure was
-      //  bound to, the slot an early return writes through - and none of it is written by the programmer, so reporting it
-      //  blames code nobody can fix. Exempting it is a real gap rather than a nicety: "$_iter" holds an iterator that
-      //  genuinely goes unconsumed. The desugarings have to be made linear-correct, and then this goes away.
-      if (sym.Name != nullptr and sym.Name->Val.starts_with("$")) { return false; }
 
       // A borrow points at a value that belongs to someone else, so
       // consuming it is not this scope's job.
@@ -221,7 +208,7 @@ namespace spp::analyse::utils::linear_utils {
       // is to go on.
       if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return true; }
       return not RegionConsumed(
-        Vec{sym.Name->Val}, *sym.Type, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
+        Vec<asts::IdentifierAst*>{sym.Name.get()}, *sym.Type, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
     }
 
     /**
@@ -256,9 +243,7 @@ namespace spp::analyse::utils::linear_utils {
         // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
         // it, and only taking something from inside a value strands the value's own. That is what stops the last
         // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
-        const auto path = mem_utils::RegionPath(*move)
-          | genex::views::transform([](const auto step) { return step->Val; })
-          | genex::to<Vec>();
+        const auto path = mem_utils::RegionPath(*move);
 
         for (auto i = 0uz; i + 1 < path.Len(); ++i) {
           const auto [part_type, part_scope] = DescendToPart(sym.Type, *sm.CurrentScope, path, i);
@@ -283,7 +268,7 @@ namespace spp::analyse::utils::linear_utils {
 
 auto spp::analyse::utils::linear_utils::FirstUnaccountedPart(
   scopes::VariableSymbol const &sym,
-  Vec<Str> const &region,
+  Vec<asts::IdentifierAst*> const &region,
   scopes::ScopeManager const &sm)
   -> Str {
   // No region parts -> no unaccounted parts. Simple optimization
