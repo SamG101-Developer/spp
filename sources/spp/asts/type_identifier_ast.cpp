@@ -212,7 +212,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     : no_gn_params.get();
 
   auto is_tuple = false;
-  if (not type_sym->IsGeneric) {
+  if (not type_sym->IsTypeGeneric()) {
     is_tuple = IsTupSymbol(*type_sym);
 
     // Name all the generic arguments.
@@ -463,7 +463,9 @@ auto spp::asts::TypeIdentifierAst::WithoutGenerics() const
   -> Shared<TypeAst> {
   // Use cache if available.
   if (not _CachedWithoutGenerics) {
-    _CachedWithoutGenerics = MakeShared<TypeIdentifierAst>(_Pos, Str(Name), nullptr);
+    const auto stripped = MakeShared<TypeIdentifierAst>(_Pos, Str(Name), nullptr);
+    stripped->_IsNeverType = _IsNeverType;
+    _CachedWithoutGenerics = stripped;
   }
   return _CachedWithoutGenerics;
 }
@@ -531,7 +533,9 @@ auto spp::asts::TypeIdentifierAst::WithGenerics(
   -> Shared<TypeAst> {
   // Attach the new generic argument group to a clone of this type identifier.
   arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
-  return MakeShared<TypeIdentifierAst>(_Pos, Str(Name), std::move(arg_group));
+  const auto with_generics = MakeShared<TypeIdentifierAst>(_Pos, Str(Name), std::move(arg_group));
+  with_generics->_IsNeverType = _IsNeverType;
+  return with_generics;
 }
 
 auto spp::asts::TypeIdentifierAst::IsCompilerGeneratedType() const

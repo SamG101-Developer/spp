@@ -188,9 +188,10 @@ auto spp::analyse::utils::type_predicates::IsTypeNever(
   scopes::Scope const &scope)
   -> bool {
   // Check the type against "std::never::Never". This only
-  // considers the type directly, not any supertypes.
+  // considers the type directly, not any supertypes. "!" goes
+  // on the left: on the right, "TypeEq" lets it fit anything.
   using asts::generate::common_types_precompiled::NEVER;
-  return type_compare::TypeEq(type, *NEVER, scope, scope);
+  return type_compare::TypeEq(*NEVER, type, scope, scope);
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeSelf(
