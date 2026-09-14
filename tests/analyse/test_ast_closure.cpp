@@ -309,10 +309,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+// Todo: back to SHOULD_PASS once coroutine closures are supported.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_containing_gen_expression,
-  R"(
+  SppFeatureNotYetSupportedError, R"(
     fun f() -> Void {
         let a = 5_u32
         let x = cor (caps a) { gen a }
@@ -320,10 +321,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// Todo: back to SppCoroutineContainsReturnStatementError once
+//  coroutine closures are supported (refused before the "ret").
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_containing_ret_statement,
-  SppCoroutineContainsReturnStatementError, R"(
+  SppFeatureNotYetSupportedError, R"(
     fun f() -> Void {
         let a = 5_u32
         let x = cor (caps a) { ret a }

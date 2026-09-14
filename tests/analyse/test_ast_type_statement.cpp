@@ -1,37 +1,44 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestTypeStatementAst,
-    test_invalid_type_statement_old_type_convention_mut,
-    SppSecondClassBorrowViolationError, R"(
+  TestTypeStatementAst,
+  test_invalid_type_statement_old_type_convention_mut,
+  SppSecondClassBorrowViolationError, R"(
     type MyType = &mut Bool
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestTypeStatementAst,
-    test_invalid_type_statement_old_type_convention_ref,
-    SppSecondClassBorrowViolationError, R"(
+  TestTypeStatementAst,
+  test_invalid_type_statement_old_type_convention_ref,
+  SppSecondClassBorrowViolationError, R"(
     type MyType = &Bool
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestTypeStatementAst,
-    test_invalid_type_statement_unknown_old_type,
-    SppIdentifierUnknownError, R"(
+  TestTypeStatementAst,
+  test_invalid_type_statement_unknown_old_type,
+  SppIdentifierUnknownError, R"(
     type MyType = Unknown
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestTypeStatementAst,
-    test_invalid_type_statement_duplicate,
-    SppIdentifierDuplicateError, R"(
+  TestTypeStatementAst,
+  test_invalid_type_statement_misspelt_namespace_in_old_type,
+  SppIdentifierUnknownError, R"(
+    type MyVec = std::vectr::Vec[S32]
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestTypeStatementAst,
+  test_invalid_type_statement_duplicate,
+  SppIdentifierDuplicateError, R"(
     type MyType = Bool
     type MyType = StrView
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_simple_alias, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_simple_alias, R"(
     type MyString = Str
     type MyBool = Bool
 
@@ -42,8 +49,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_local_simple_alias, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_local_simple_alias, R"(
     fun f() -> Void {
         type MyString = Str
         type MyBool = Bool
@@ -55,8 +62,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_variant, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_variant, R"(
     type SomeType = Str or Bool
     fun f(a: SomeType) -> Void {
         std::mem::ops::drop(a)
@@ -78,8 +85,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 // )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_generics_alias, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_generics_alias, R"(
     type MyVec[T] = Vec[T]
 
     fun f[T](mut a: MyVec[T], replacement: T) -> Void {
@@ -96,8 +103,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_local_generics_alias, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_local_generics_alias, R"(
     fun f() -> Void {
         type MyVec[T] = Vec[T]
         let x = MyVec[Str]()
@@ -106,8 +113,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_nested_generic_alias, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_nested_generic_alias, R"(
     fun f[T](a: Opt[T]) -> Void { }
     fun g() -> Void {
         let x = Some(val=123)
@@ -116,8 +123,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_reduction_type_generic, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_reduction_type_generic, R"(
     type MyVec[T] = Vec[T]
 
     fun f[T](a: MyVec[T]) -> Void {
@@ -126,8 +133,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_comp_param_alias_to_foreign_module, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_comp_param_alias_to_foreign_module, R"(
     type HeapArr[T, cmp n: USize] = Single[Arr[T, n]]
 
     fun f(a: HeapArr[Bool, 4_uz]) -> Void {
@@ -136,8 +143,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeStatementAst,
-    test_valid_type_statement_constrained_param_alias_to_foreign_module, R"(
+  TestTypeStatementAst,
+  test_valid_type_statement_constrained_param_alias_to_foreign_module, R"(
     type CopyBox[T: Copy] = Single[T]
 
     fun f(a: CopyBox[Bool]) -> Void {

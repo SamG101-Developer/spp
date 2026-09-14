@@ -473,3 +473,144 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let v = f.await
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_gen_once_coroutine_is_a_future_of_the_yield_type, R"(
+    cor c() -> GenOnce[S32] { gen 1 }
+    fun g() -> Void {
+        let f: Fut[S32] = async c()
+        let v: S32 = f.await
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_async_gen_once_coroutine_is_not_a_future_of_the_generator,
+  SppTypeMismatchError, R"(
+    cor c() -> GenOnce[S32] { gen 1 }
+    fun g() -> Void {
+        let f: Fut[GenOnce[S32]] = async c()
+        let v = f.await
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_gen_coroutine_is_a_future_of_the_generator, R"(
+    cor c() -> Gen[S32] { gen 1 }
+    fun g() -> Void {
+        let f: Fut[Gen[S32]] = async c()
+        let coro: Gen[S32] = f.await
+        std::mem::ops::drop(coro)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_gen_once_coroutine_with_arguments, R"(
+    cor c(a: S32, b: Str) -> GenOnce[Str] { gen b }
+    fun g() -> Void {
+        let s = Str::from("hello")
+        let f = async c(1, s)
+        let r: Str = f.await
+        std::mem::ops::drop(r)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_async_coroutine_argument_used_after_move,
+  SppUninitializedMemoryUseError, R"(
+    cor c(s: Str) -> GenOnce[Str] { gen s }
+    fun g() -> Void {
+        let s = Str::from("hello")
+        let f = async c(s)
+        let t = s
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_async_coroutine_moving_pinned_borrow,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cor c(s: &Str) -> GenOnce[Bool] { gen true }
+    fun g() -> Void {
+        let x = Str::from("hello")
+        let f = async c(&x)
+        let y = x
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_coroutine_borrow_released_after_await, R"(
+    cor c(s: &Str) -> GenOnce[Bool] { gen true }
+    fun g() -> Void {
+        let x = Str::from("hello")
+        let f = async c(&x)
+        let b = f.await
+        let y = x
+        std::mem::ops::drop(y)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_coroutine_method_borrowing_its_receiver, R"(
+    cls A { }
+    sup A {
+        !public
+        cor items(&self) -> GenOnce[S32] { gen 1 }
+    }
+    fun g() -> Void {
+        let a = A()
+        let f = async a.items()
+        let v: S32 = f.await
+        std::mem::ops::drop(a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_async_coroutine_method_moving_its_pending_receiver,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cls A { }
+    sup A {
+        !public
+        cor items(&self) -> GenOnce[S32] { gen 1 }
+    }
+    fun g() -> Void {
+        let a = A()
+        let f = async a.items()
+        let b = a
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_async_gen_once_coroutine_yielding_a_borrow,
+  SppSecondClassBorrowViolationError, R"(
+    cor c() -> GenOnce[&S32] { gen &1 }
+    fun g() -> Void {
+        let f = async c()
+        let v = f.await
+    }
+)");
+
+// Todo: the awaited "Gen" still borrows "x", so the pin must outlive the await and cover the generator.
+//  Expected red until the borrow is carried through the future's value.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_async_gen_coroutine_borrow_outlives_the_await,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    cor c(s: &Str) -> Gen[S32] { gen 1 }
+    fun g() -> Void {
+        let x = Str::from("hello")
+        let f = async c(&x)
+        let coro = f.await
+        let y = x
+        std::mem::ops::drop(coro)
+        std::mem::ops::drop(y)
+    }
+)");

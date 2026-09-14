@@ -75,3 +75,42 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         consume((caps a) -> Void { })
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureCaptures,
+  test_valid_named_function_value_called_twice, R"(
+    fun add_one(x: S32) -> S32 { ret x + 1 }
+
+    fun f() -> Void {
+        let g = add_one
+        let a = g(1)
+        let b = g(2)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureCaptures,
+  test_invalid_fun_mov_generic_called_twice_even_for_a_named_function,
+  SppUninitializedMemoryUseError, R"(
+    fun add_one(x: S32) -> S32 { ret x + 1 }
+
+    fun call_twice[F: std::function::FunMov[(S32,), S32]](f: F, x: S32) -> S32 { ret f(f(x)) }
+
+    fun f() -> Void {
+        let r = call_twice(add_one, 40)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureCaptures,
+  test_valid_named_function_value_passed_on_twice, R"(
+    fun add_one(x: S32) -> S32 { ret x + 1 }
+
+    fun call_once[F: std::function::FunMov[(S32,), S32]](f: F, x: S32) -> S32 { ret f(x) }
+
+    fun f() -> Void {
+        let g = add_one
+        let a = call_once(g, 1)
+        let b = call_once(g, 2)
+    }
+)");
