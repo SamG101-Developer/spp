@@ -57,13 +57,10 @@ namespace spp::analyse::utils::bin_utils {
   /// "(a < b) and (b < c)". Non-comparison chains are not
   /// changed.
   SPP_EXP_FUN auto CombineComparisonChain(
-    asts::BinaryExpressionAst &bin_expr,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Unique<asts::BinaryExpressionAst>;
     BinaryExpressionAst &bin_expr,
     ScopeManager *sm,
     CompilerMetaData *meta,
+    Vec<Unique<LetStatementInitializedAst>> &temps)
     -> Unique<BinaryExpressionAst>;
 
   /// Convert the binary expression to the equivalent

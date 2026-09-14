@@ -37,7 +37,8 @@ namespace spp::analyse::utils::bin_utils {
     auto CombineCompOpsImpl(
       asts::BinaryExpressionAst &bin_expr,
       scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
+      asts::meta::CompilerMetaData *meta,
+      Vec<Unique<asts::LetStatementInitializedAst>> *temps)
       -> Unique<asts::BinaryExpressionAst> {
       // Check the left-hand-side is a binary expression with a
       // comparison operator. If there isn't a chaining combination
@@ -62,7 +63,7 @@ namespace spp::analyse::utils::bin_utils {
             bin_lhs->Rhs->PosStart(), uid);
         }();
 
-        const auto temp_let = [&] {
+        auto temp_let = [&] {
           auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(
             nullptr, temp_var_name, nullptr);
           return MakeUnique<asts::LetStatementInitializedAst>(
@@ -71,6 +72,9 @@ namespace spp::analyse::utils::bin_utils {
 
         temp_let->Stage7_AnalyseSemantics(sm, meta);
         bin_lhs->Rhs = asts::AstClone(temp_var_name);
+
+        // Kept by the caller: nothing else would give it storage.
+        if (temps != nullptr) { temps->EmplaceBack(std::move(temp_let)); }
       }
 
       // Otherwise, re-arrange the ASTs, with an "and" combinator
@@ -83,7 +87,7 @@ namespace spp::analyse::utils::bin_utils {
       bin_expr.TokOp = MakeUnique<asts::TokenAst>(
         op_pos, lex::SppTokenType::KW_AND, "and");
 
-      return CombineCompOpsImpl(bin_expr, sm, meta);
+      return CombineCompOpsImpl(bin_expr, sm, meta, temps);
     }
   }
 }
@@ -91,9 +95,10 @@ namespace spp::analyse::utils::bin_utils {
 auto spp::analyse::utils::bin_utils::CombineComparisonChain(
   asts::BinaryExpressionAst &bin_expr,
   scopes::ScopeManager *const sm,
-  asts::meta::CompilerMetaData *const meta)
+  asts::meta::CompilerMetaData *const meta,
+  Vec<Unique<asts::LetStatementInitializedAst>> &temps)
   -> Unique<asts::BinaryExpressionAst> {
-  return CombineCompOpsImpl(bin_expr, sm, meta);
+  return CombineCompOpsImpl(bin_expr, sm, meta, &temps);
 }
 
 auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
@@ -103,7 +108,7 @@ auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
   -> Unique<asts::PostfixExpressionAst> {
   // Before converting into a function check if we can chain
   // comparison operators.
-  const auto new_bin_expr = CombineCompOpsImpl(bin_expr, sm, meta);
+  const auto new_bin_expr = CombineCompOpsImpl(bin_expr, sm, meta, nullptr);
 
   // Get the method names based on the operator token. For
   // example, `1 + 2` is the same as `1.add(2)` (which after
