@@ -577,6 +577,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         }
       }
     }
+
+    // A "!" argument never exists, so the call is dead code, but
+    // its operand still has to be the parameter's type. Taken from
+    // the llvm function itself, which holds however the parameter
+    // is written (a generic "sup" method's may not resolve here).
+    if (arg->InferType(sm, meta)->IsNeverType()) {
+      const auto fn_ty = llvm_func->getFunctionType();
+      if (llvm_func_args.Len() < fn_ty->getNumParams()) {
+        llvm_arg = llvm::PoisonValue::get(fn_ty->getParamType(static_cast<unsigned>(llvm_func_args.Len())));
+      }
+    }
+
     llvm_func_args.EmplaceBack(llvm_arg);
     ++p;
   }
