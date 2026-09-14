@@ -304,6 +304,16 @@ auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   const auto llvm_type = codegen::GetLlvmTypeOf(
     *Type, *sm->CurrentScope, ctx);
 
+  // A type with no layout ("T" in an uninstantiated "sup"
+  // template) has no constant to emit.
+  if (llvm_type == nullptr) {
+    if (owns_scope) {
+      sm->ExhaustScope();
+      sm->MoveOutOfCurrentScope();
+    }
+    return nullptr;
+  }
+
   // Generate the value in a constant context. A "cmp" generic
   // parameter reaches here through a placeholder with no "Value"
   // of its own, so what it was bound to has to be read back
