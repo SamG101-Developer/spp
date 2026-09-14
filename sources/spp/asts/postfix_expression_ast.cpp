@@ -72,7 +72,7 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::expr_utils::PrimaryExpressionOptions;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::errors::SppInvalidPrimaryExpressionError;
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
@@ -89,11 +89,10 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
-    meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
       temp_lhs->Stage7_AnalyseSemantics(sm, meta);
-      temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
+      temp_lhs = SubstituteSelfTypeAndAnalyse(*temp_lhs, *sm->CurrentScope, *sm, *meta);
       temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs.get())->FqName();
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
