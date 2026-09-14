@@ -267,7 +267,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
     return analyse::utils::type_compare::TypeEq(
-      *Body->InferType(sm, meta), *generate::common_types_precompiled::NEVER,
+      *generate::common_types_precompiled::NEVER, *Body->InferType(sm, meta),
       *sm->CurrentScope, *sm->CurrentScope);
   }();
 
