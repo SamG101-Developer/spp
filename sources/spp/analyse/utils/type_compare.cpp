@@ -251,7 +251,12 @@ namespace spp::analyse::utils::type_compare {
           return true;
         }
       }
-      return false;
+
+      // A generic function's superimposed type still names its own
+      // generics, so it only matches once they are inferred off the
+      // target. A closure has no named function behind its type.
+      return func_utils::MatchFunctionValue(
+          mock_type, func_type, mock_scope, func_scope).has_value();
     }
   }
 }
