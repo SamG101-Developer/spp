@@ -748,7 +748,6 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
     sub.Proto->_InstallLoweredImpl(&tm);
 
     const auto _meta_guard = meta::MetaGuard(meta);
-    meta->ResolveBoundGenerics = true;
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
 
