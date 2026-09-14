@@ -50,6 +50,8 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.subroutine_prototype_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -58,18 +60,13 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.algorithms;
 import spp.utils.ptr;
+import spp.utils.ptr;
 import spp.utils.types;
 import genex;
 import sys;
 
 namespace spp::analyse::utils::overload_utils {
   namespace {
-    struct FailedOverload {
-      asts::FunctionPrototypeAst *Proto;
-      Str Error;
-      Str Reason;
-    };
-
     struct OverloadCandidates {
       bool IsClosure;
       Unique<asts::FunctionPrototypeAst> ClosureProto;
@@ -198,7 +195,7 @@ namespace spp::analyse::utils::overload_utils {
       asts::meta::CompilerMetaData *meta)
       -> bool {
       const auto type_is_concrete = [&](asts::TypeAst const &type) {
-        const auto resolved = type_utils::ResolveAndSubstituteSelfType(type, *new_fn_scope, tm, *meta);
+        const auto resolved = type_utils::SubstituteSelfTypeAndAnalyse(type, *new_fn_scope, tm, *meta);
         return type_predicates::IsTypeFullyConcrete(*resolved, *new_fn_scope);
       };
 
@@ -341,14 +338,8 @@ namespace spp::analyse::utils::overload_utils {
       new_fn_call->FnArgGroup->Args = std::move(fn_args);
 
       // The forwarding receiver is a "GenOnce" call that resumes
-      // itself, so its type is the borrow it yields. Infer it
-      // with resumption allowed, whatever the surrounding
-      // expression asked for (an "async" call suppresses it).
-      {
-        const auto _meta_guard = asts::meta::MetaGuard(meta);
-        meta->PreventAutoGeneratorResume = false;
-        new_fn_call->FnArgGroup->Args[0]->SetSelfType(self_expr->InferType(&sm, meta));
-      }
+      // itself, so its type is the borrow it yields.
+      new_fn_call->FnArgGroup->Args[0]->SetSelfType(self_expr->InferType(&sm, meta));
       new_fn_call->Source.OriginalExpr = fn_call.Source.OriginalExpr;
 
       // Return the new ASTs.
@@ -618,7 +609,7 @@ namespace spp::analyse::utils::overload_utils {
           });
 
         if (receiver_implements_declarer and not TypeEq(*declared_self, *receiver, *fn_scope, *sm->CurrentScope)) {
-          if (not receiver->IsSelfType() and not receiver_sym->IsGeneric) {
+          if (not receiver->IsSelfType() and not receiver_sym->IsTypeGeneric()) {
             self_pin = receiver;
           }
           auto self_arg = Vec<Unique<asts::GenericArgumentAst>>();
@@ -923,7 +914,7 @@ namespace spp::analyse::utils::overload_utils {
       asts::meta::CompilerMetaData *meta)
       -> void {
       using type_compare::TypeEq;
-      using type_utils::ResolveAndSubstituteSelfType;
+      using type_utils::SubstituteSelfTypeAndAnalyse;
 
       if (meta->ReturnTypeOverloadResolverType == nullptr) { return; }
 
@@ -931,7 +922,7 @@ namespace spp::analyse::utils::overload_utils {
       for (auto &&matched : pass_overloads) {
         auto ret = asts::AstCloneShared(matched.Proto->ReturnType);
         auto tm = scopes::ScopeManager(sm->GlobalScope, const_cast<scopes::Scope*>(matched.FnScope));
-        ret = ResolveAndSubstituteSelfType(*ret, *matched.FnScope, tm, *meta);
+        ret = SubstituteSelfTypeAndAnalyse(*ret, *matched.FnScope, tm, *meta);
 
         if (TypeEq(*ret, *meta->ReturnTypeOverloadResolverType, *matched.FnScope, *sm->CurrentScope)) {
           return_matches.EmplaceBack(std::move(matched));
@@ -1151,7 +1142,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   using scopes::ScopeManager;
   using errors::SppFunctionCallTooManyArgumentsError;
   using type_compare::TypeEq;
-  using type_utils::ResolveAndSubstituteSelfType;
+  using type_utils::SubstituteSelfTypeAndAnalyse;
 
   auto lhs = meta->PostfixExpressionLhs;
 
