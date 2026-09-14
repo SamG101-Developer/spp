@@ -9,9 +9,7 @@ spp::parse::errors::SyntacticError::SyntacticError(Str &&header) :
 }
 
 spp::parse::errors::SppSyntaxError::SppSyntaxError(Str &&header) :
-  SyntacticError(std::move(header)),
-  pos(0),
-  tokens({}) {
+  SyntacticError(std::move(header)) {
 }
 
 SPP_MOD_END
