@@ -9,38 +9,23 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct ParenthesisedExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(ParenthesisedExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ParenthesisedExpressionAst);
 
-  /**
-   * The @c ( token that indicates the start of a parenthesised expression.
-   */
+  /// The "(" token starting the parenthesised expression.
   Unique<TokenAst> TokL;
 
-  /**
-   * The expression that is enclosed in parentheses.
-   */
+  /// The expression enclosed in parentheses.
   Unique<ExpressionAst> Expr;
 
-  /**
-   * The @c ) token that indicates the end of a parenthesised expression.
-   */
+  /// The ")" token ending the parenthesised expression.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the ParenthesisedExpressionAst with the arguments matching the members.
-   * @param[in] tok_open_paren The @c ( token that indicates the start of a parenthesised expression.
-   * @param[in] expr The expression that is enclosed in parentheses.
-   * @param[in] tok_close_paren The @c ) token that indicates the end of a parenthesised expression.
-   */
   explicit ParenthesisedExpressionAst(
     decltype(TokL) &&tok_open_paren,
     decltype(Expr) &&expr,
@@ -61,6 +46,6 @@ SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressi
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
-};
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ParenthesisedExpressionAst)
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+};

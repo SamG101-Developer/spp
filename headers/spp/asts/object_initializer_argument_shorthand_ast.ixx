@@ -7,44 +7,26 @@ import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct ObjectInitializerArgumentShorthandAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentShorthandAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
 
-/**
- * The ObjectInitializerArgumentShorthandAst represents a shorthand argument in an object initializer. It is forces the
- * argument to be matched by shorthand value rather than a keyword.
- */
+/// A shorthand argument in an object initializer. It forces
+/// the argument to be matched by shorthand value rather than
+/// a keyword.
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitializerArgumentAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentShorthandAst);
 
-  /**
-   * The optional @c .. token that indicates an "else" argument. This fills all the missing attributes in the object
-   * with the corresponding attributes from this argument.
-   */
+  /// The optional ".." token indicating an "else" argument.
+  /// This fills all the missing attributes in the object with
+  /// the corresponding attributes from this argument.
   Unique<TokenAst> TokEllipsis;
 
-  /**
-   * Factory function to create a shorthand argument, with the provided expression, that is used for "autofill", ie
-   * the "..arg" argument => fill all missing field from this object into the new initializer.
-   * @param val The expression to move fields off of.
-   * @return The "..arg" form.
-   */
-  static auto CreateAutoFillArg(
-    Unique<ExpressionAst> &&val)
-    -> Unique<ObjectInitializerArgumentShorthandAst>;
+  /// Create a shorthand argument with the provided expression,
+  /// used for "autofill", ie the "..arg" argument: fill all
+  /// missing fields from this object into the new initializer.
+  static auto CreateAutoFillArg(Unique<ExpressionAst> &&val) -> Unique<ObjectInitializerArgumentShorthandAst>;
 
-  /**
-   * Construct the ObjectInitializerArgumentShorthandAst with the arguments matching the members.
-   * @param tok_ellipsis The optional @c .. token that indicates an "else" argument.
-   * @param val The expression that is being passed as the argument to the object initializer.
-   *
-   * @note This constructor just calls the ObjectInitializerArgumentAst constructor with the same arguments, but is
-   * defined for uniformity with the other argument variants.
-   */
   explicit ObjectInitializerArgumentShorthandAst(
     decltype(TokEllipsis) &&tok_ellipsis,
     decltype(Val) &&val);
@@ -53,5 +35,3 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentShorthandAst)

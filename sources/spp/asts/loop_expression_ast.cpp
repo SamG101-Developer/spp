@@ -44,8 +44,8 @@ spp::asts::LoopExpressionAst::LoopExpressionAst(
 spp::asts::LoopExpressionAst::~LoopExpressionAst() = default;
 
 auto spp::asts::LoopExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using analyse::errors::SppTypeMismatchError;
@@ -59,11 +59,14 @@ auto spp::asts::LoopExpressionAst::InferType(
     : Tup(static_cast<ExpressionAst*>(nullptr), VoidType(PosStart()), static_cast<analyse::scopes::Scope*>(nullptr));
   exit_expr = exit_expr ? exit_expr : this;
 
-  // Check the else block's type is the same as the loop
-  // exit type.
+  // Check the else block's type is the same as the loop exit
+  // type. An exit that diverges ("!") has no value for the else
+  // block to agree with, so the loop takes the else block's type
+  // instead; it is only "!" when that diverges too.
   if (ElseBlock != nullptr and not meta->IgnoreMissingElseBranchForInference) {
     const auto else_type = ElseBlock->InferType(sm, meta);
     const auto final_member = ElseBlock->Body->FinalMember();
+    if (loop_type->IsNeverType()) { loop_type = else_type; }
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*loop_type, *else_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));

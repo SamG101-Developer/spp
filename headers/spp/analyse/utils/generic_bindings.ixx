@@ -8,260 +8,209 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct GenericArgumentGroupAst;
-  SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-}
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::utils::generic_bindings, struct GenericBinding);
+use(spp::analyse::utils::generic_bindings, class GenericBindingSet);
+use(spp::asts, struct Ast);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct GenericArgumentGroupAst);
+use(spp::asts, struct GenericParameterGroupAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeIdentifierAst);
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class ScopeManager;
-}
+/// What one generic parameter is bound to. The "Type" and
+/// "Comp" are mutually exclusive; only one is ever set.
+SPP_EXP_CLS struct spp::analyse::utils::generic_bindings::GenericBinding {
+  Shared<TypeAst> Type;
+  ExpressionAst *Comp;
+
+  SPP_ATTR_NODISCARD auto IsType() const -> bool;
+  SPP_ATTR_NODISCARD auto IsBound() const -> bool;
+};
+
+/// The bindings for a group of generic parameters. A parameter
+/// may be offered more than one candidate argument, so they
+/// are accumulated and reconciled by the conflict enforcement,
+/// allowing disagreements error, otherwise coalesce.
+SPP_EXP_CLS class spp::analyse::utils::generic_bindings::GenericBindingSet {
+public:
+  GenericBindingSet();
+
+  /// The set owns the arguments it was built from, so it moves
+  /// rather than copies. All copy constructors are deleted.
+  GenericBindingSet(GenericBindingSet const &that) = delete;
+  GenericBindingSet(GenericBindingSet &&that) noexcept = default;
+  ~GenericBindingSet();
+  auto operator=(GenericBindingSet const &that) -> GenericBindingSet& = delete;
+  auto operator=(GenericBindingSet &&that) noexcept -> GenericBindingSet& = default;
+
+  /// Take the bindings a written argument group states, moving
+  /// the arguments into the set. The group is already named
+  /// from a prior NameGnArgs.
+  static auto FromNamedArgs(
+    GenericArgumentGroupAst &a_group,
+    ScopeManager &sm) -> GenericBindingSet;
+
+  /// Provide a view over the raw pointers of the generic argument
+  /// unique pointers.
+  SPP_ATTR_NODISCARD auto Args() const
+    -> Vec<GenericArgumentAst*>;
+
+  /// Add a new type generic into the internal set, providing a
+  /// new candidate "TypeAst" to a "TypeIdentifierAst" key.
+  auto Add(
+    Shared<TypeIdentifierAst> const &name,
+    Shared<TypeAst> value)
+    -> void;
+
+  /// Add a new comp generic into the internal set, providing a
+  /// new candidate "ExpressionAst" to a "TypeIdentifierAst" key.
+  auto Add(
+    Shared<TypeIdentifierAst> const &name,
+    ExpressionAst *value)
+    -> void;
+
+  /// Replace all the candidates of a "TypeIdentifierAst" key.
+  /// This is used once the "winning" candidate has been
+  /// determined.
+  auto Replace(
+    TypeIdentifierAst const *name,
+    Shared<TypeAst> value)
+    -> void;
+
+  /// Check whether is candidate type generic name is present
+  /// and has candidates.
+  SPP_ATTR_NODISCARD auto ContainsType(
+    TypeIdentifierAst const *name) const
+    -> bool;
+
+  /// Check whether is candidate comp generic name is present
+  /// and has candidates.
+  SPP_ATTR_NODISCARD auto ContainsComp(
+    TypeIdentifierAst const *name) const
+    -> bool;
+
+  /// What a parameter resolved to - its first candidate, which
+  /// "EnforceNoConflicts" has established the others agree with.
+  SPP_ATTR_NODISCARD auto Resolved(
+    TypeIdentifierAst const *name) const
+    -> GenericBinding;
+
+  /// View of the generic type argument names as raw pointers.
+  SPP_ATTR_NODISCARD auto TypeNames() const
+    -> Vec<Shared<TypeIdentifierAst>>;
+
+  /// View of the generic comp argument names as raw pointers.
+  SPP_ATTR_NODISCARD auto CompNames() const
+    -> Vec<Shared<TypeIdentifierAst>>;
+
+  /// Check every parameter's candidates agree with each other,
+  /// and raise on the first that does not.
+  auto EnforceNoConflicts(
+    ScopeManager &sm) const
+    -> void;
+
+  /// The resolved bindings in the form the type substitution
+  /// machinery takes.
+  SPP_ATTR_NODISCARD auto ToInferenceMap() const
+    -> type_compare::GenericInferenceMap;
+
+  /// The resolved bindings as generic arguments, ordered to match
+  /// the parameter declarations. Order matters because the argument
+  /// list ends up in a type's name, and two spellings of one
+  /// instantiation have to mangle alike.
+  SPP_ATTR_NODISCARD auto ToArgs(
+    GenericParameterGroupAst const &p_group) const
+    -> Vec<Unique<GenericArgumentAst>>;
+
+private:
+  struct _Candidates {
+    Vec<Shared<TypeAst>> Types;
+    Vec<ExpressionAst*> Comps;
+  };
+
+  Vec<Unique<GenericArgumentAst>> _OwnedArgs;
+
+  Map<
+    Shared<TypeIdentifierAst>, _Candidates,
+    spp::utils::ptr::ptr_hash<Shared<TypeIdentifierAst>>,
+    spp::utils::ptr::ptr_eq<Shared<TypeIdentifierAst>>> _Table;
+};
 
 namespace spp::analyse::utils::generic_bindings {
   SPP_EXP_CLS
   using InferenceSourceMap = Map<
-    Shared<asts::IdentifierAst>,
-    Shared<asts::TypeAst>,
-    spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
+    Shared<IdentifierAst>,
+    Shared<TypeAst>,
+    spp::utils::ptr::ptr_hash<Shared<IdentifierAst>>,
+    spp::utils::ptr::ptr_eq<Shared<IdentifierAst>>>;
 
   SPP_EXP_CLS
   using InferenceTargetMap = Map<
-    Shared<asts::IdentifierAst>,
-    Shared<asts::TypeAst>,
-    spp::utils::ptr::ptr_hash<Shared<asts::IdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::IdentifierAst>>>;
+    Shared<IdentifierAst>,
+    Shared<TypeAst>,
+    spp::utils::ptr::ptr_hash<Shared<IdentifierAst>>,
+    spp::utils::ptr::ptr_eq<Shared<IdentifierAst>>>;
 
+  /// Given the constraints on the generic parameters, ensure
+  /// that the corresponding generic arguments satisfy the
+  /// constraints. Also handles the cross-application of
+  /// generics into the constraints that themselves rely on
+  /// these generics.
+  /// "decl_scope" is where the parameters were declared, which
+  /// an unsatisfied constraint is reported from; it defaults to
+  /// "owner_scope", which is where the constraints are looked up.
   SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
-    asts::GenericParameterGroupAst const &p_group,
-    asts::GenericArgumentGroupAst const &a_group,
-    scopes::Scope const &owner_scope,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta)
+    GenericParameterGroupAst const &p_group,
+    GenericArgumentGroupAst const &a_group,
+    Scope const &owner_scope,
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta,
+    Scope const *decl_scope = nullptr)
     -> void;
 
-
-  /**
-   * @param infer_source The types generic arguments are inferred from, and @p infer_target the parameters they are
-   * inferred onto. Both are taken as owning pointers, by value, and must stay that way: the first thing this function
-   * does is clear @c meta.InferSource and @c meta.InferTarget , which are normally the very maps these name. Holding a
-   * reference to them instead - or a reference to the caller's @c Shared - leaves the reads further down pointing at a
-   * map that the clear has already destroyed.
-   */
+  /// Massive method to infer generics from a source into a
+  /// target, based on generic arguments and parameters. Handles
+  /// type vs comp generics, constraints, defaults, variadics,
+  /// cross-application, and specific tuple handling too.
   SPP_EXP_FUN auto InferGnArgs(
-    asts::GenericParameterGroupAst const &p_group,
-    asts::GenericArgumentGroupAst &a_group,
+    GenericParameterGroupAst const &p_group,
+    GenericArgumentGroupAst &a_group,
     Shared<InferenceSourceMap> infer_source,
     Shared<InferenceTargetMap> infer_target,
-    Shared<asts::Ast> const &owner,
-    scopes::Scope const &owner_scope,
-    Shared<asts::IdentifierAst> const &variadic_fn_param_name,
+    Shared<Ast> const &owner,
+    Scope const &owner_scope,
+    Shared<IdentifierAst> const &variadic_fn_param_name,
     bool is_tuple_owner,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta)
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta)
     -> void;
 
-
-  /**
-   * Rewrite a generic argument group into its canonical form: every generic argument as a "keyword" generic argument,
-   * bound against the parameter it 's for, ordered as the parameters are declared. Mutates in place.
-   * @param a_group The argument group to rewrite in place.
-   * @param p_group The parameters the arguments were written against.
-   * @param owner The ast the parameters belong to (for errors).
-   * @param sm The scope manager.
-   * @param meta The compiler meta data.
-   * @param is_tuple_owner Whether the owner is a tuple, whose arguments are left alone to stop an infinite recursion.
-   */
+  /// Take a generic argument group, and name the arguments
+  /// based on the parameters available. Custom logic for
+  /// optional and variadic parameters.
   SPP_EXP_FUN auto NameGnArgs(
-    asts::GenericArgumentGroupAst &a_group,
-    asts::GenericParameterGroupAst const &p_group,
-    asts::Ast const &owner,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta,
+    GenericArgumentGroupAst &a_group,
+    GenericParameterGroupAst const &p_group,
+    Ast const &owner,
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta,
     bool is_tuple_owner = false)
     -> void;
 
-  /**
-   * Whether a generic argument restates its parameter rather than binding it to anything. Inference produces these
-   * whenever a generic body calls something that shares one of its generics: "BigUInt::from(that)" written inside
-   * "sup [cmp w: U32] BigInt ext From[SizedIntegerUnsigned[w]]" pins "w" to "w", because "that" is declared in terms
-   * of the very parameter being inferred. Such an argument has to count as inferred - the parameter is accounted for -
-   * but it must not count as a substitution, because an instantiation built from it would be the template with an
-   * empty parameter list, and an empty parameter list is exactly what marks a prototype as no longer a template.
-   * @param arg The generic argument to inspect.
-   * @return Whether the argument binds its parameter to the parameter itself.
-   */
+  /// Simple helper method to detect whether a generic is
+  /// binding to itself, ie a "T=T" or "n=n" part. Required
+  /// for filtering some generics out of analysis that will
+  /// be substituted later.
   SPP_EXP_FUN auto BindsToItself(
-    asts::GenericArgumentAst const &arg)
+    GenericArgumentAst const &arg)
     -> bool;
 
-  /**
-   * A type stripped of generic arguments that only restate their own parameters. Such a spelling is the template's
-   * own name - every generic class gets one, built by `GenericArgumentGroupAst::FromParams` - and it is not a type a
-   * value can have. It reaches concrete positions through the one type that is legitimately written bare: the empty
-   * tuple `()` has nothing to instantiate `Tup[..Items]` with, so it resolves to the template itself and anything
-   * adopting that symbol's name spells it `Tup[Items=Items]`. That names a parameter nothing binds, and fails to
-   * resolve wherever the type is later re-analysed - instantiating a destructor for a class holding one, say.
-   * @param type The type to normalise.
-   * @return The type without its arguments if they only bind to themselves, otherwise the type unchanged.
-   */
+  /// Strip the type down to a non-generic version if any
+  /// of the generics don't bind to itself. Needed for
+  /// qualification steps. Todo: preferable this goes.
   SPP_EXP_FUN auto WithoutSelfBindingGenerics(
-    Shared<asts::TypeAst> const &type)
-    -> Shared<asts::TypeAst>;
-
-  /**
-   * What one generic parameter is bound to. The `Type` and `Comp` are mutually exclusive; only one is ever set.
-   */
-  SPP_EXP_CLS struct GenericBinding {
-    Shared<asts::TypeAst> Type;
-    asts::ExpressionAst *Comp;
-
-    SPP_ATTR_NODISCARD auto IsType() const -> bool;
-    SPP_ATTR_NODISCARD auto IsBound() const -> bool;
-  };
-
-  /**
-   * The bindings for a group of generic parameters. A parameter may be offered more than one candidate - the same
-   * generic can be reached through several arguments, or through an argument and a constraint - so candidates are
-   * accumulated and only reconciled by @c EnforceNoConflicts , which is what makes "two arguments disagree about T" an
-   * error rather than a silent last-write-wins.
-   */
-  SPP_EXP_CLS class GenericBindingSet {
-  public:
-    GenericBindingSet();
-
-    /**
-     * The set owns the arguments it was built from, so it moves rather than copies.
-     */
-    GenericBindingSet(GenericBindingSet const &that) = delete;
-    GenericBindingSet(GenericBindingSet &&that) noexcept = default;
-    ~GenericBindingSet();
-    auto operator=(GenericBindingSet const &that) -> GenericBindingSet& = delete;
-    auto operator=(GenericBindingSet &&that) noexcept -> GenericBindingSet& = default;
-
-    /**
-     * Take the bindings a written argument group states, moving the arguments into the set. The group must already be
-     * named (see @c NameGnArgs ): each binding is attached to a parameter name, and an argument that is still
-     * positional does not name anything.
-     * @param a_group The argument group to take the bindings from, left empty.
-     * @param sm The scope manager, for the error if an argument is not named.
-     * @return The bindings the group stated.
-     */
-    static auto FromNamedArgs(
-      asts::GenericArgumentGroupAst &a_group,
-      scopes::ScopeManager &sm) -> GenericBindingSet;
-
-    /**
-     * The arguments this set was built from and now owns. Same behaviour as @c GenericArgumentGroup::GetAllArgs() and
-     * @c GenericArgumentGroup::GetKeywordArgs() as all the arguments are keyword based.
-     */
-    SPP_ATTR_NODISCARD auto Args() const
-      -> Vec<asts::GenericArgumentAst*>;
-
-    /**
-     * Offer a type as a candidate for a parameter.
-     * @param name The generic parameter's name.
-     * @param value The type it is being bound to.
-     */
-    auto Add(
-      Shared<asts::TypeIdentifierAst> const &name,
-      Shared<asts::TypeAst> value)
-      -> void;
-
-    /**
-     * Offer a comp-time value as a candidate for a parameter.
-     * @param name The generic parameter's name.
-     * @param value The expression it is being bound to.
-     */
-    auto Add(
-      Shared<asts::TypeIdentifierAst> const &name,
-      asts::ExpressionAst *value)
-      -> void;
-
-    /**
-     * Replace what a parameter resolved to, discarding its other candidates. Used once the winning candidates are
-     * known and are being rewritten in terms of each other.
-     * @param name The generic parameter's name.
-     * @param value The type it now resolves to.
-     */
-    auto Replace(
-      asts::TypeIdentifierAst const *name,
-      Shared<asts::TypeAst> value)
-      -> void;
-
-    /**
-     * Whether a parameter has been offered a type candidate.
-     * @param name The generic parameter's name.
-     */
-    SPP_ATTR_NODISCARD auto ContainsType(
-      asts::TypeIdentifierAst const *name) const
-      -> bool;
-
-    /**
-     * Whether a parameter has been offered a comp-time candidate.
-     * @param name The generic parameter's name.
-     */
-    SPP_ATTR_NODISCARD auto ContainsComp(
-      asts::TypeIdentifierAst const *name) const
-      -> bool;
-
-    /**
-     * What a parameter resolved to - its first candidate, which @c EnforceNoConflicts has established the others agree
-     * with.
-     * @param name The generic parameter's name.
-     */
-    SPP_ATTR_NODISCARD auto Resolved(
-      asts::TypeIdentifierAst const *name) const
-      -> GenericBinding;
-
-    SPP_ATTR_NODISCARD auto TypeNames() const
-      -> Vec<Shared<asts::TypeIdentifierAst>>;
-
-    SPP_ATTR_NODISCARD auto CompNames() const
-      -> Vec<Shared<asts::TypeIdentifierAst>>;
-
-    /**
-     * Check every parameter's candidates agree with each other, and raise on the first that does not.
-     * @param sm The scope manager, for the type comparison and the error.
-     */
-    auto EnforceNoConflicts(
-      scopes::ScopeManager &sm) const
-      -> void;
-
-    /**
-     * The resolved bindings in the form the type substitution machinery takes.
-     */
-    SPP_ATTR_NODISCARD auto ToInferenceMap() const
-      -> type_compare::GenericInferenceMap;
-
-    /**
-     * The resolved bindings as generic arguments, ordered to match the parameter declarations. Order matters because
-     * the argument list ends up in a type's name, and two spellings of one instantiation have to mangle alike.
-     * @param p_group The parameter group the bindings are for.
-     */
-    SPP_ATTR_NODISCARD auto ToArgs(
-      asts::GenericParameterGroupAst const &p_group) const
-      -> Vec<Unique<asts::GenericArgumentAst>>;
-
-  private:
-    struct _Candidates {
-      Vec<Shared<asts::TypeAst>> Types;
-      Vec<asts::ExpressionAst*> Comps;
-    };
-
-    /**
-     * The written arguments, kept alive because a comp binding borrows the expression inside one.
-     */
-    Vec<Unique<asts::GenericArgumentAst>> _OwnedArgs;
-
-    Map<
-      Shared<asts::TypeIdentifierAst>, _Candidates,
-      spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-      spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>> _Table;
-  };
+    Shared<TypeAst> const &type)
+    -> Shared<TypeAst>;
 }

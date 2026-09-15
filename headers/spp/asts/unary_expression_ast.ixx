@@ -9,32 +9,20 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct UnaryExpressionAst;
-  SPP_EXP_CLS struct UnaryExpressionOperatorAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(UnaryExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct UnaryExpressionOperatorAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(UnaryExpressionAst);
 
-  /**
-   * The operator token that represents the unary operation. This indicates the type of operation being performed.
-   */
+  /// The unary operator applied to the expression.
   Unique<UnaryExpressionOperatorAst> Op;
 
-  /**
-   * The expression that is being operated on by the unary operator.
-   */
+  /// The expression being operated on by the unary operator.
   Unique<ExpressionAst> Expr;
 
-  /**
-   * Construct the UnaryExpressionAst with the arguments matching the members.
-   * @param[in] tok_op The operator token that represents the unary operation.
-   * @param[in] expr The expression that is being operated on by the unary operator.
-   */
   UnaryExpressionAst(
     decltype(Op) &&tok_op,
     decltype(Expr) &&expr);
@@ -52,6 +40,6 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
-};
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UnaryExpressionAst)
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+};

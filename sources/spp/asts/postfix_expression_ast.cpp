@@ -66,13 +66,13 @@ auto spp::asts::PostfixExpressionAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::expr_utils::PrimaryExpressionOptions;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::ResolveWrittenType;
   using analyse::errors::SppInvalidPrimaryExpressionError;
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
@@ -89,12 +89,9 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
-    meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
-      temp_lhs->Stage7_AnalyseSemantics(sm, meta);
-      temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
-      temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs.get())->FqName();
+      temp_lhs = ResolveWrittenType(*temp_lhs, *sm, *meta);
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
@@ -121,8 +118,8 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -173,8 +170,8 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward into the operator AST.
   const auto _meta_guard = meta::MetaGuard(meta);
@@ -183,8 +180,8 @@ auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Memory analysis used the transformed AST to not
@@ -204,7 +201,7 @@ auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
 
 auto spp::asts::PostfixExpressionAst::InferType(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Check cache.
   // if (Source.CachedInference != nullptr) { return Source.CachedInference; }
@@ -238,6 +235,16 @@ auto spp::asts::PostfixExpressionAst::SubstituteGenericsExpr(
   return MakeShared<PostfixExpressionAst>(
     AstClone(Lhs->SubstituteGenericsExpr(args)),
     Op->SubstituteGenericsExpr(args));
+}
+
+auto spp::asts::PostfixExpressionAst::IsAllowedInDefault() const
+  -> bool {
+  // Check both the lhs and the postfix op on this ast.
+  // Leaving the nullptr guards in because there is some
+  // std::move(ast) for postfix iirc.
+  return
+    (Lhs == nullptr or Lhs->IsAllowedInDefault()) and
+    (Op == nullptr or Op->IsAllowedInDefault());
 }
 
 SPP_MOD_END

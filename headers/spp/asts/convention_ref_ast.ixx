@@ -7,33 +7,20 @@ import spp.asts.convention_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ConventionRefAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(ConventionRefAst);
+use(spp::asts, struct TokenAst);
 
-/**
- * The ConventionRefAst represents a convention for immutable borrows. Immutable borrows can be taken from immutable or
- * mutable values.
- */
+/// A convention for immutable borrows, which can be taken from
+/// immutable or mutable values.
 SPP_EXP_CLS struct spp::asts::ConventionRefAst final : ConventionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ConventionRefAst);
 
-  /**
-   * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
-   * being made.
-   */
+  /// The "&" borrow marker, showing a borrow of some convention
+  /// is being made.
   Unique<TokenAst> TokBorrow;
 
-  /**
-   * Construct the ConventionRefAst with the arguments matching the members.
-   * @param tok_borrow The token that represents the @c & borrow marker.
-   */
   explicit ConventionRefAst(
     decltype(TokBorrow) &&tok_borrow);
 
   ~ConventionRefAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ConventionRefAst)

@@ -18,10 +18,13 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_postfix_expression_ast;
+import spp.asts.type_postfix_expression_operator_nested_type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func;
 import spp.lex.tokens;
+import spp.utils.ptr;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
@@ -93,8 +96,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
@@ -127,7 +130,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
         // Todo: Add fwd-ref type member candidates
 
         auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
-          | genex::views::filter([](auto const &sym) { return sym->Type->IsCompilerGeneratedType(); })
+          | genex::views::filter([](auto const &sym) { return sym->Kind == analyse::scopes::VariableKind::Function; })
           | genex::to<Vec>();
         RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
       }
@@ -135,7 +138,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     }
 
     // Check there is only 1 target field on the type at the highest level.
-    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Type->IsCompilerGeneratedType()) {
+    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Kind == analyse::scopes::VariableKind::Function) {
       return;
     }
 
@@ -205,13 +208,14 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Handle accessing a symbol on a type.
   if (_LhsTypeSym != nullptr) {
     const auto sym = StaticMemberOf(*_LhsTypeSym->LinkedScope, *Name);
-    auto tm = ScopeManager(sm->GlobalScope, _LhsTypeSym->LinkedScope);
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, _LhsTypeSym->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CmpResult = AstClone(meta->CmpResult);
     return;
@@ -226,8 +230,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeR
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   const auto uid = "." + spp::utils::Uid(this);
@@ -245,8 +249,22 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
   if (_LhsTypeSym != nullptr) {
     const auto var_sym = StaticMemberOf(*_LhsTypeSym->LinkedScope, *Name);
-    if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
-    SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
+
+    // A method named as a value is its "$" mock's constant, the
+    // "{fn, env}" pair; without one there is nothing to load.
+    if (var_sym->Kind == analyse::scopes::VariableKind::Function and var_sym->LlvmInfo->Alloca == nullptr) {
+      return nullptr;
+    }
+
+    // A constant typed by a "sup" block's generic ("cmp n: T")
+    // has no global (only the template is generated), so its
+    // folded value is emitted in place.
+    if (var_sym->LlvmInfo->Alloca == nullptr) {
+      Stage9_CompTimeResolve(sm, meta);
+      const auto folded = std::move(meta->CmpResult);
+      SPP_ASSERT(folded != nullptr);
+      return folded->Stage11_CodeGen(sm, meta, ctx);
+    }
     const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
       *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
       *codegen::GetEmissionModule(*ctx));
@@ -256,7 +274,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
   const auto lhs_ns_scope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
   const auto var_sym = lhs_ns_scope->GetVarSymbol(Name.get(), true);
-  if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
+  if (var_sym->Kind == analyse::scopes::VariableKind::Function) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
   const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
     *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
@@ -265,8 +283,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using analyse::utils::type_utils::GetFwdTypes;
@@ -277,6 +295,16 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
     // todo: const auto sym = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
     const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_as_type);
     const auto sym = StaticMemberOf(*lhs_type_sym->LinkedScope, *Name);
+
+    // A method's "$" mock is declared in its "sup" block, so it is
+    // named as a nested type of the owner: "main::A::$Method". There
+    // is one mock per "sup" block the overloads are written in, each
+    // given all of them ("ScopeManager::CoalesceMethodMock").
+    if (sym != nullptr and sym->Kind == analyse::scopes::VariableKind::Function and sym->Type->IsTypeIdentifier()) {
+      return MakeShared<TypePostfixExpressionAst>(
+        AstCloneShared(lhs_type_sym->FqName()), MakeShared<TypePostfixExpressionOperatorNestedTypeAst>(
+          nullptr, dynamic_shared_cast<TypeIdentifierAst>(AstCloneShared(sym->Type))));
+    }
     if (sym != nullptr) { return sym->Type; }
 
     // This is where we need to handle the FwdRef/FwdMut logic.
@@ -297,6 +325,12 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() cons
   -> Vec<IdentifierAst*> {
   // Static member access does not have any expression parts.
   return {Name.get()};
+}
+
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::IsAllowedInDefault() const
+  -> bool {
+  // Reads what it is applied to, and holds nothing of its own.
+  return true;
 }
 
 SPP_MOD_END

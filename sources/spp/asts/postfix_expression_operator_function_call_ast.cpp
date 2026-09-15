@@ -141,8 +141,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidComptimeOperationError;
@@ -202,9 +202,26 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     .Proto = overload.Proto
   };
   if (const auto self_param = _OverloadInfo->Proto->FnParamGroup->GetSelfParam()) {
-    FnArgGroup->Args[0]->Conv = AstClone(self_param->Conv);
+    // Cloned from the prototype, so placed on the receiver.
+    auto &self_arg = *FnArgGroup->Args[0];
+    self_arg.Conv = AstClone(self_param->Conv);
+    if (auto *const m = self_arg.Conv != nullptr ? self_arg.Conv->To<ConventionMutAst>() : nullptr) {
+      m->TokBorrow->PatchPos(self_arg.Val->PosStart());
+      m->TokMut->PatchPos(self_arg.Val->PosStart());
+    }
+    else if (auto *const r = self_arg.Conv != nullptr ? self_arg.Conv->To<ConventionRefAst>() : nullptr) {
+      r->TokBorrow->PatchPos(self_arg.Val->PosStart());
+    }
   }
   FnArgGroup->Args = std::move(overload.FnArgs->Args);
+
+  // An argument naming a function, passed as a function type, is
+  // the overload that type picks; a generic one is minted here.
+  auto const &params = _OverloadInfo->Proto->FnParamGroup->Params;
+  for (auto i = 0uz; i < FnArgGroup->Args.Len() and i < params.Len(); ++i) {
+    analyse::utils::func_utils::InstantiateFunctionValue(
+      *FnArgGroup->Args[i]->InferType(sm, meta), *params[i]->Type, sm, meta);
+  }
 
   // A unit test belongs to the harness, not to the program.
   // Calling one would run it as part of whatever called it,
@@ -224,14 +241,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 
   // Special case for GenOnce called as a coroutine => auto
   // move into the "Yield" type.
-  if (_OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_COR and not meta->PreventAutoGeneratorResume) {
+  if (_OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_COR) {
     // This needs to be any type that EXTENDS GenOnce, not
     // just GenOnce itself.
     auto [_, _, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
       *_OverloadInfo->Proto->ReturnType, *sm->CurrentScope, *meta->PostfixExpressionLhs, "GenOnce collapse");
     _IsCoroAndAutoResume = is_once;
   }
-  meta->PreventAutoGeneratorResume = false;
 
   // Todo: Is this needed?
   const auto ret_type = InferType(sm, meta);
@@ -254,8 +270,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // If a fold is taking place, analyse the folded
   // transformations.
@@ -285,8 +301,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppCompileTimeConstantError;
@@ -330,13 +346,23 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) { gn_arg_type_map.EmplaceBack(gn_arg->Val.get()); }
   for (auto &&gn_arg : GnArgGroup->GetCompArgs()) { gn_arg_comp_map.EmplaceBack(gn_arg->Val.get()); }
 
-  // Resolve the function with the arguments.
+  // Resolve the function with the arguments. The first call to
+  // be folded is the one the user wrote, and the calls it makes
+  // report their errors there rather than inside std.
+  const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
+  const auto *const outer_site = meta->CmpCallSite;
+  auto *const outer_scope = meta->CmpCallSiteScope;
   {
     const auto _meta_guard = meta::MetaGuard(meta);
+    if (outer_site == nullptr) {
+      meta->CmpCallSite = owner;
+      meta->CmpCallSiteScope = sm->CurrentScope;
+    }
     meta->CmpArgs = std::move(fn_arg_map);
     meta->CmpGnTypeArgs = std::move(gn_arg_type_map);
     meta->CmpGnCompArgs = std::move(gn_arg_comp_map);
-    auto tm = ScopeManager(sm->GlobalScope, fn_proto->GetAstScope());
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, fn_proto->GetAstScope());
     tm.Reset(not tm.CurrentScope->Children.IsEmpty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
   }
@@ -346,12 +372,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
   // its type can hold. Comp-time arithmetic is exact, so a
   // result that does not fit arrives intact rather than having
   // wrapped on the way out. Checked per call to catch overflow.
-  const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
+  auto const &site = outer_site != nullptr ? *outer_site : *owner;
+  auto const &site_scope = outer_site != nullptr ? *outer_scope : *sm->CurrentScope;
   if (const auto int_result = meta->CmpResult != nullptr ? meta->CmpResult->To<IntegerLiteralAst>() : nullptr) {
-    int_result->ValidateBounds(*owner, *sm);
+    int_result->ValidateBounds(site, site_scope);
   }
   else if (const auto flt_result = meta->CmpResult != nullptr ? meta->CmpResult->To<FloatLiteralAst>() : nullptr) {
-    flt_result->ValidateBounds(*owner, *sm);
+    flt_result->ValidateBounds(site, site_scope);
   }
 
   if (revoke) {
@@ -360,24 +387,36 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   using analyse::utils::type_predicates::IsTypeVoid;
 
   // For folding, generate the code for the folded
   // transformations and combine into single block.
+  // Each is generated in place, from a clone so the fold can be
+  // generated again, and their results make up the tuple the fold
+  // is typed as. An inner scope built here to hold them would step
+  // the scope walk into a scope that was never created.
   if (Fold != nullptr) {
-    const auto merge = InnerScopeExpressionAst::NewEmpty();
-    merge->Members = _FoldedAsts
-      | genex::views::transform([&meta](auto &&ast) {
-        auto clone_lhs = AstClone(meta->PostfixExpressionLhs);
-        auto pf = MakeUnique<PostfixExpressionAst>(std::move(clone_lhs), std::move(ast));
-        return Unique<StatementAst>(pf.release());
-      })
-      | genex::to<Vec>();
-    return merge->Stage11_CodeGen(sm, meta, ctx);
+    const auto tuple_type = InferType(sm, meta);
+    auto results = Vec<llvm::Value*>();
+    for (auto const &ast : _FoldedAsts) {
+      auto pf = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), AstClone(ast));
+      results.EmplaceBack(pf->Stage11_CodeGen(sm, meta, ctx));
+    }
+
+    const auto tuple_sym = sm->CurrentScope->GetTypeSymbol(tuple_type.get());
+    const auto tuple_llvm_type = tuple_sym != nullptr ? codegen::GetLlvmType(*tuple_sym, ctx) : nullptr;
+    if (tuple_llvm_type == nullptr or not tuple_llvm_type->isStructTy()) { return nullptr; }
+    auto tuple_val = static_cast<llvm::Value*>(llvm::PoisonValue::get(tuple_llvm_type));
+    for (auto i = 0uz; i < results.Len(); ++i) {
+      if (results[i] == nullptr or results[i]->getType()->isVoidTy()) { continue; }
+      tuple_val = ctx->Builder.CreateInsertValue(
+        tuple_val, results[i], {codegen::GetPhysicalFieldIndex(*tuple_sym->LlvmInfo, i)});
+    }
+    return tuple_val;
   }
 
   // Closure calls: the left-hand side is a closure value, a
@@ -471,7 +510,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // For generically converted function prototypes, generate
   // their llvm declaration in-walk if it is still missing.
   if (Target()->GetLlvmFunc() == nullptr) {
-    auto tm = ScopeManager(sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, const_cast<analyse::scopes::Scope*>(_OverloadInfo->OverloadScope));
     tm.Reset(tm.CurrentScope);
     const auto owner_ctx = Target()->OwnerCtx();
     Target()->GenerateLlvmDeclaration(
@@ -509,11 +549,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // The parameter's type is named where the overload lives,
     // so it is qualified there and then re-resolved here. The
     // coercion compares the two types from this scope, and a
-    // parameter that does not resolve from it (a "Self" or a
-    // generic still standing in for one) is not a variant this
-    // call has to widen into anyway.
-    const auto param_type_sym = p < fn_params.Len()
-      ? _OverloadInfo->OverloadScope->GetTypeSymbol(fn_params[p]->Type.get())
+    // parameter that does not resolve from it (a generic still
+    // standing in for one) is not a variant this call has to
+    // widen into anyway. "Self" is the owner, as it is in the
+    // declaration's own signature, else "Self or S32" widens
+    // into "Var[Self, S32]" and the call mismatches it.
+    const auto param_written = p < fn_params.Len()
+      ? analyse::utils::type_utils::SubstituteSelfType(*fn_params[p]->Type, *_OverloadInfo->OverloadScope, *meta)
+      : nullptr;
+    const auto param_type_sym = param_written != nullptr
+      ? _OverloadInfo->OverloadScope->GetTypeSymbol(param_written.get())
       : nullptr;
     const auto param_type = param_type_sym != nullptr ? param_type_sym->FqName() : nullptr;
 
@@ -527,6 +572,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
     if (param_type != nullptr and not param_is_borrow
       and sm->CurrentScope->GetTypeSymbol(param_type.get()) != nullptr) {
+      llvm_arg = codegen::CoerceToFunctionValue(
+        llvm_arg, *param_type, *arg->InferType(sm, meta), *sm, ctx);
       llvm_arg = codegen::CoerceToVariant(
         llvm_arg, *param_type, *arg->InferType(sm, meta),
         *sm->CurrentScope, "arg.variant" + uid, ctx);
@@ -554,6 +601,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
         }
       }
     }
+
+    // A "!" argument never exists, so the call is dead code, but
+    // its operand still has to be the parameter's type. Taken from
+    // the llvm function itself, which holds however the parameter
+    // is written (a generic "sup" method's may not resolve here).
+    if (arg->InferType(sm, meta)->IsNeverType()) {
+      const auto fn_ty = llvm_func->getFunctionType();
+      if (llvm_func_args.Len() < fn_ty->getNumParams()) {
+        llvm_arg = llvm::PoisonValue::get(fn_ty->getParamType(static_cast<unsigned>(llvm_func_args.Len())));
+      }
+    }
+
     llvm_func_args.EmplaceBack(llvm_arg);
     ++p;
   }
@@ -601,13 +660,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using generate::common_types::SelfType;
   using generate::common_types::TupleType;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
 
   // For function folding, collect a tuple of all return types.
   if (not _FoldedAsts.IsEmpty()) {
@@ -627,7 +685,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
   }
 
   // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
-  if (_IsCoroAndAutoResume and not meta->PreventAutoGeneratorResume) {
+  if (_IsCoroAndAutoResume) {
     auto [_, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
       *ret_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "function call");
     ret_type = yield_type;
@@ -776,6 +834,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::SubstituteGenericsExpr
   // cast postfix operator AST.
   return MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     std::move(gn_arg_group), std::move(fn_arg_group), AstClone(Fold));
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::IsAllowedInDefault() const
+  -> bool {
+  // A call is allowed when its arguments are. Folding
+  // isn't allowed here (too complex right now).
+  return
+    FnArgGroup->IsAllowedInDefault() and Fold == nullptr;
 }
 
 SPP_MOD_END

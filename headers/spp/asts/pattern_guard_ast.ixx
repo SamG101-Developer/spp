@@ -9,33 +9,21 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-    SPP_EXP_CLS struct ExpressionAst;
-    SPP_EXP_CLS struct PatternGuardAst;
-    SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(PatternGuardAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PatternGuardAst);
 
-  /**
-     * The @c and keyword token. This is used to indicate that the pattern guard is being introduced, following a
-     * pattern.
-     */
+  /// The "and" keyword token, introducing the pattern guard
+  /// after a pattern.
   Unique<TokenAst> TokAnd;
 
-  /**
-     * The expression that is used as the guard for the pattern. This expression is evaluated to determine if the
-     * pattern matches, and must be a boolean expression.
-     */
+  /// The guard expression, evaluated to determine if the
+  /// pattern matches. Must be a boolean expression.
   Unique<ExpressionAst> Expr;
 
-  /**
-     * Constructor for the @c PatternGuardAst.
-     * @param tok_and The @c and keyword token.
-     * @param expression The expression that is used as the guard for the pattern.
-     */
   PatternGuardAst(
     decltype(TokAnd) &&tok_and,
     decltype(Expr) &&expression);
@@ -50,5 +38,3 @@ SPP_EXP_CLS struct spp::asts::PatternGuardAst final : Ast {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PatternGuardAst)

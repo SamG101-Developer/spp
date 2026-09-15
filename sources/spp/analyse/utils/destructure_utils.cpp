@@ -79,7 +79,7 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
   // Mirror the symbol an initialized single-identifier "let"
   // would create.
   const auto sym = MakeShared<scopes::VariableSymbol>(
-    name, val_type, sm.CurrentScope, true);
+    name, val_type, sm.CurrentScope, scopes::VariableKind::Temporary, true);
   sym->MemInfo->AstInitialization = {name.get(), sm.CurrentScope};
   sym->MemInfo->AstInitializationOrigin = {name.get(), sm.CurrentScope};
   sym->MemInfo->InitializationCounter = 1;
@@ -92,24 +92,6 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
 
   sm.CurrentScope->AddVarSymbol(sym);
   return name;
-}
-
-auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
-  asts::Ast const &owner,
-  asts::IdentifierAst const &tmp_name,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *const meta)
-  -> void {
-  // The value is moved into the temporary as a whole, so it
-  // is checked (and consumed) once here, rather than once
-  // per expanded "let". This traversal is also what walks
-  // the scopes the value created in stage 7.
-  meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
-  mem_utils::ValidateSymbolMemory(*meta->LetStatementValue, owner, sm, true, true, true, true, meta);
-
-  // Mark the temporary as initialized by the value.
-  const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
-  sym->MemInfo->InitializedBy(tmp_name, sm.CurrentScope);
 }
 
 auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
@@ -148,9 +130,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     // Get the region path of the value, and check if any parts
     // have not been considered by the destructure. These cannot
     // be left unbound, because they would silently drop.
-    const auto region = mem_utils::RegionPath(*val)
-      | genex::views::transform([](const auto step) { return step->Val; })
-      | genex::to<Vec>();
+    const auto region = mem_utils::RegionPath(*val);
 
     if (const auto skipped = linear_utils::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
       Raise<errors::SppDestructureSkipsOwnedPartError>(
@@ -181,6 +161,24 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
   if (sym == nullptr) { return; }
   sym->MemInfo->MovedBy(tmp_name, sm.CurrentScope);
   sym->MemInfo->AstPartialMoves.Clear();
+}
+
+auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
+  asts::Ast const &owner,
+  asts::IdentifierAst const &tmp_name,
+  scopes::ScopeManager &sm,
+  asts::meta::CompilerMetaData *const meta)
+  -> void {
+  // The value is moved into the temporary as a whole, so it
+  // is checked (and consumed) once here, rather than once
+  // per expanded "let". This traversal is also what walks
+  // the scopes the value created in stage 7.
+  meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
+  mem_utils::ValidateSymbolMemory(*meta->LetStatementValue, owner, sm, true, true, true, true, meta);
+
+  // Mark the temporary as initialized by the value.
+  const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
+  sym->MemInfo->InitializedBy(tmp_name, sm.CurrentScope);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage9(

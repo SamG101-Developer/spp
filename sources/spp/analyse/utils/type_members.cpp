@@ -57,9 +57,6 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
-import spp.lex.lexer;
-import spp.parse.parser_spp;
-import spp.parse.errors.parser_error;
 import spp.utils.algorithms;
 import spp.utils.interner;
 import spp.utils.ptr;
@@ -110,7 +107,7 @@ namespace spp::analyse::utils::type_members {
       for (auto *sup_scope : all_scopes) {
         if (AstAs<asts::ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
         for (auto *sym : sup_scope->AllVarSymbols(true)) {
-          if (sym->IsGeneric) { continue; }
+          if (sym->Kind != scopes::VariableKind::Attribute) { continue; }
           attrs.PushBack(MakePair(sup_scope, sym));
         }
       }
@@ -135,7 +132,9 @@ auto spp::analyse::utils::type_members::GetAllParts(
 
     for (auto i = 0uz; i < elems; ++i) {
       const auto elem_type = type_predicates::GetNthTypeOfIndexableType(i, type, scope);
-      parts.EmplaceBack(std::to_string(i), i, elem_type, scope.GetTypeSymbol(elem_type.get()), &scope);
+      parts.EmplaceBack(
+        MakeShared<asts::IdentifierAst>(0uz, std::to_string(i)), i, elem_type, scope.GetTypeSymbol(elem_type.get()),
+        &scope);
     }
     return parts;
   }
@@ -144,7 +143,7 @@ auto spp::analyse::utils::type_members::GetAllParts(
   // each one's type resolves in with them.
   auto index = 0uz;
   for (auto const &[name, attr_sym, attr_scope] : GetAllAttrs(type, scope)) {
-    parts.EmplaceBack(name->Val, index++, attr_sym->FqName(), attr_sym, attr_scope);
+    parts.EmplaceBack(name, index++, attr_sym->FqName(), attr_sym, attr_scope);
   }
   return parts;
 }
@@ -181,10 +180,10 @@ auto spp::analyse::utils::type_members::CheckShadowedCmpAgreesInType(
     if (declared.Where == &own_scope) { continue; }
 
     // A class attribute is a different member reached a different
-    // way, not another declaration of this constant.
+    // way, not another declaration of this constant, and a method's
+    // mock has its own overload rules.
     const auto sym = declared.Symbol;
-    if (sym->MemInfo->AstCompTime == nullptr) { continue; }
-    if (sym->Type->IsCompilerGeneratedType()) { continue; }
+    if (not sym->IsCompTime() or sym->Kind == scopes::VariableKind::Function) { continue; }
 
     // If the type is inconsistent with the cmp statement being
     // checked then raise an error here.
@@ -228,7 +227,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   };
 
   if (type_scope.TySym != nullptr) {
-    if (type_scope.TySym->Name->IsCompilerGeneratedType()) { return remember({}); }
+    if (type_scope.TySym->IsMock()) { return remember({}); }
     if (const auto fq_name = type_scope.TySym->FqName(); fq_name != nullptr and type_predicates::IsTypeFunc(
       *fq_name, type_scope)) {
       return remember({});

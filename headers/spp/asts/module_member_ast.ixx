@@ -4,16 +4,12 @@ module;
 export module spp.asts.module_member_ast;
 import spp.asts.ast;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ModuleMemberAst;
-}
+SPP_AST_COMMON_FWD_DECL(ModuleMemberAst);
 
-/**
- * The ModuleMemberAst class is the base class for all members of a module in the abstract syntax tree. This is
- * applicable to CmpStatementAst, ClassPrototypeAst, FunctionPrototypeAst, SupPrototypeExtensionAst,
- * SupPrototypeFunctionsAst, TypeStatementAst, UseStatementAst, UseVariableStatementAst.
- * @note: This is a tag-based base class.
- */
+/// The tag-based base class for all members of a module:
+/// CmpStatementAst, ClassPrototypeAst, FunctionPrototypeAst,
+/// SupPrototypeExtensionAst, SupPrototypeFunctionsAst,
+/// TypeStatementAst, UseStatementAst, UseVariableStatementAst.
 SPP_EXP_CLS struct spp::asts::ModuleMemberAst {
   ModuleMemberAst();
 

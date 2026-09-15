@@ -78,46 +78,6 @@ namespace spp::analyse::utils::mem_utils {
       return step.NameId() == other->NameId();
     }
 
-    auto SameRegionSection(
-      asts::IdentifierAst const &step,
-      Str const &name)
-      -> bool {
-      // String based overload of the region section check, using
-      // standard comparison.
-      return step.Val == name;
-    }
-
-    /**
-     * How two regions relate to each other. Do a section scan on each region, and compare for inequality, and then
-     * length to determine who contains who if they aren't disjoint.
-     * @param path The path of the region being related.
-     * @param steps The steps of the place to relate it to.
-     * @return How @p path sits against @p steps.
-     */
-    template <typename Steps>
-    auto RelateSteps(
-      Vec<asts::IdentifierAst*> const &path,
-      Steps const &steps)
-      -> MemRegionRelation {
-      // Failsafe - nothing to name is nothing to share: a
-      // temporary owns a region no other expression has a
-      // spelling for. This should never happen.
-      if (path.IsEmpty() or steps.IsEmpty()) { return MemRegionRelation::Disjoint; }
-
-      // Iterate through the two paths and look for a mismatch
-      // at an equal level, ie "a" vs "b", or "a.b" vs "a.c" on
-      // the second part.
-      for (auto i = 0uz; i < std::min(path.Len(), steps.Len()); ++i) {
-        if (not SameRegionSection(*path[i], steps[i])) { return MemRegionRelation::Disjoint; }
-      }
-
-      // If there were no equal-level mismatches, then by length
-      // check who contains who. Two regions of the same path ie
-      // "a" and "a" are marked as "contains".
-      return path.Len() <= steps.Len()
-        ? MemRegionRelation::Contains
-        : MemRegionRelation::ContainedBy;
-    }
   }
 }
 
@@ -131,13 +91,27 @@ auto spp::analyse::utils::mem_utils::RegionPath(
 }
 
 auto spp::analyse::utils::mem_utils::MemRegionRelate(
-  asts::Ast const &region,
-  Vec<Str> const &steps)
+  Vec<asts::IdentifierAst*> const &r1,
+  Vec<asts::IdentifierAst*> const &r2)
   -> MemRegionRelation {
-  // A hypothetical place is only ever asked about to decide
-  // whether it was consumed, and a step this cannot name
-  // must not let "it might have been" read as "it was".
-  return RelateSteps(RegionPath(region), steps);
+  // Failsafe - nothing to name is nothing to share: a
+  // temporary owns a region no other expression has a
+  // spelling for. This should never happen.
+  if (r1.IsEmpty() or r2.IsEmpty()) { return MemRegionRelation::Disjoint; }
+
+  // Iterate through the two paths and look for a mismatch
+  // at an equal level, ie "a" vs "b", or "a.b" vs "a.c" on
+  // the second part.
+  for (auto i = 0uz; i < std::min(r1.Len(), r2.Len()); ++i) {
+    if (not SameRegionSection(*r1[i], r2[i])) { return MemRegionRelation::Disjoint; }
+  }
+
+  // If there were no equal-level mismatches, then by length
+  // check who contains who. Two regions of the same path ie
+  // "a" and "a" are marked as "contains".
+  return r1.Len() <= r2.Len()
+    ? MemRegionRelation::Contains
+    : MemRegionRelation::ContainedBy;
 }
 
 auto spp::analyse::utils::mem_utils::MemRegionOverlap(
@@ -146,7 +120,7 @@ auto spp::analyse::utils::mem_utils::MemRegionOverlap(
   -> bool {
   // Either holding the other is an overlap, so anything
   // but "no relation" is one.
-  return RelateSteps(RegionPath(ast_1), RegionPath(ast_2)) !=
+  return MemRegionRelate(RegionPath(ast_1), RegionPath(ast_2)) !=
     MemRegionRelation::Disjoint;
 }
 
@@ -290,7 +264,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
 
   // Check we aren't trying to move a comptime constant
   // (unless copyable).
-  if (check_move and moves_value and var_sym->MemInfo->AstCompTime != nullptr) {
+  if (check_move and moves_value and var_sym->IsCompTime()) {
     Raise<errors::SppMovingComptimeConstantMemoryError>(
       {sm.CurrentScope}, ERR_ARGS(value_ast, move_ast));
   }
@@ -318,7 +292,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     const auto overlaps = var_sym->MemInfo->AstPartialMoves
       | genex::views::filter([&](auto const &x) {
         const auto path = RegionPath(*x);
-        return RelateSteps(path, steps) == MemRegionRelation::Contains
+        return MemRegionRelate(path, steps) == MemRegionRelation::Contains
           and (not place_is_written or path.Len() < steps.Len());
       })
       | genex::to<Vec>();
@@ -335,9 +309,8 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   if (check_move_from_borrowed_ctx and spp::get<0>(var_sym->MemInfo->AstBorrowed) and value_ast.To<
     asts::IdentifierAst>() == nullptr and not partial_copies) {
     const auto [where_borrow, _] = var_sym->MemInfo->AstBorrowed;
-    const auto [where_pm, _] = var_sym->MemInfo->AstBorrowed;
     Raise<errors::SppMoveFromBorrowedMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_pm, *where_borrow));
+      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_borrow, *where_borrow));
   }
 
   // A narrowed view of a value is that value: consuming

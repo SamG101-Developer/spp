@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
@@ -54,9 +55,6 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
-import spp.lex.lexer;
-import spp.parse.parser_spp;
-import spp.parse.errors.parser_error;
 import spp.utils.algorithms;
 import spp.utils.interner;
 import spp.utils.ptr;
@@ -117,7 +115,7 @@ namespace spp::analyse::utils::type_compare {
       if (not rhs_args.IsEmpty()) {
         if (auto const *last = rhs_args.Back()->To<GenericArgumentTypeAst>(); last != nullptr) {
           const auto sym = rhs_scope.GetTypeSymbol(last->Val->WithoutGenerics().get(), false);
-          if (sym != nullptr and sym->IsGeneric and sym->IsVariadic) { pack = sym; }
+          if (sym != nullptr and sym->IsTypeGeneric() and sym->IsVariadic and sym->AsBoundSymbol() == sym) { pack = sym; }
         }
       }
 
@@ -251,7 +249,12 @@ namespace spp::analyse::utils::type_compare {
           return true;
         }
       }
-      return false;
+
+      // A generic function's superimposed type still names its own
+      // generics, so it only matches once they are inferred off the
+      // target. A closure has no named function behind its type.
+      return func_utils::MatchFunctionValue(
+          mock_type, func_type, mock_scope, func_scope).has_value();
     }
   }
 }
@@ -328,7 +331,7 @@ auto spp::analyse::utils::type_compare::TypeEq(
   // Only worth doing when the other side does name a class. Against a symbol that carries no prototype either (an
   // unbound generic parameter, most of all) the two match precisely by both being prototype-less, which is what lets
   // a method written in terms of "Self" register as overriding an abstract one; resolving would break that.
-  const auto resolve_self_sym = [](scopes::TypeSymbol *const sym, scopes::TypeSymbol *const other) {
+  const auto resolve_self_sym = [](scopes::TypeSymbol *sym, scopes::TypeSymbol const *other) {
     return other != nullptr and other->Type != nullptr and sym != nullptr ? sym->AsClassSymbol() : sym;
   };
   if (lhs_type.IsSelfType()) { stripped_lhs_sym = resolve_self_sym(stripped_lhs_sym, stripped_rhs_sym); }
@@ -343,7 +346,7 @@ auto spp::analyse::utils::type_compare::TypeEq(
 
   // Todo: document this.
   if (stripped_lhs_sym != nullptr and stripped_rhs_sym != nullptr
-    and stripped_lhs_sym->IsGeneric and stripped_rhs_sym->IsGeneric
+    and stripped_lhs_sym->IsTypeGeneric() and stripped_rhs_sym->IsTypeGeneric()
     and (stripped_lhs_sym->Type == nullptr or stripped_rhs_sym->Type == nullptr)
     and *stripped_lhs_sym->Name == *stripped_rhs_sym->Name) {
     return true;
@@ -439,7 +442,7 @@ auto spp::analyse::utils::type_compare::TypeFwdEq(
   const auto &fwd_target = is_both_ref ? FWD_REF : FWD_MUT;
   const auto arg_bare = arg_type.WithoutConvention();
   const auto arg_bare_sym = arg_scope.GetTypeSymbol(arg_bare.get());
-  if (arg_bare_sym == nullptr or arg_bare_sym->IsGeneric) { return false; }
+  if (arg_bare_sym == nullptr or arg_bare_sym->IsTypeGeneric()) { return false; }
 
   // An argument that already names the parameter's own class is
   // not forwarded to it. The loop below reaches the parameter's
@@ -505,7 +508,7 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
   // A generic on the right accepts whatever is on the left.
   const auto stripped_rhs_sym = rhs_scope.GetTypeSymbol(stripped_rhs.get());
   if (stripped_rhs_sym == nullptr) { return false; }
-  if (stripped_rhs_sym->IsGeneric) {
+  if (stripped_rhs_sym->IsTypeGeneric()) {
     return bind(stripped_rhs, stripped_rhs_sym, lhs_type, rhs_scope, lhs_scope);
   }
 
@@ -517,7 +520,7 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
   const auto stripped_lhs = mut_shared_cast(lhs_type.WithoutGenerics()->WithoutConvention());
   const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs.get());
   if (stripped_lhs_sym == nullptr) { return false; }
-  if (stripped_lhs_sym->IsGeneric) {
+  if (stripped_lhs_sym->IsTypeGeneric()) {
     return bind(stripped_lhs, stripped_lhs_sym, rhs_type, lhs_scope, rhs_scope);
   }
 
@@ -577,8 +580,8 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
       if (strict_generic_args) {
         const auto lhs_arg_sym = lhs_scope.GetTypeSymbol(lhs_generic_part->Val->WithoutGenerics().get());
         const auto rhs_arg_sym = rhs_scope.GetTypeSymbol(rhs_generic_part->Val->WithoutGenerics().get());
-        if (lhs_arg_sym != nullptr and lhs_arg_sym->IsGeneric and lhs_arg_sym->Type == nullptr
-          and rhs_arg_sym != nullptr and not rhs_arg_sym->IsGeneric) { return false; }
+        if (lhs_arg_sym != nullptr and lhs_arg_sym->IsTypeGeneric() and lhs_arg_sym->Type == nullptr
+          and rhs_arg_sym != nullptr and not rhs_arg_sym->IsTypeGeneric()) { return false; }
       }
 
       if (not RelaxedTypeEq(
@@ -630,8 +633,10 @@ auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
 
   // Determine the concrete symbol, and if non-generic, add its scope.
   const auto concrete_sym = concrete_scope.GetTypeSymbol(&concrete_type);
+  if (concrete_sym == nullptr) { return nullptr; } // Failsafe for some $ClosureTypes
+
   auto sup_info = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
-  if (concrete_type.IsSelfType() and not concrete_sym->IsGeneric) {
+  if (concrete_type.IsSelfType() and not concrete_sym->IsTypeGeneric()) {
     // Todo: might need to keep the self sym, mapped to fq
     sup_info.EmplaceBack(concrete_sym->FqName(), concrete_sym->LinkedScope);
   }

@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
@@ -14,6 +15,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
+import spp.asts.binary_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
@@ -38,6 +40,7 @@ import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -54,9 +57,6 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
-import spp.lex.lexer;
-import spp.parse.parser_spp;
-import spp.parse.errors.parser_error;
 import spp.utils.algorithms;
 import spp.utils.interner;
 import spp.utils.ptr;
@@ -78,7 +78,7 @@ namespace spp::analyse::utils::type_predicates {
            | genex::views::cast_dynamic<asts::ClassAttributeAst*>) {
         auto type_sym = cls_scope->GetTypeSymbol(member->Type.get());
         if (genex::contains(attr_symbols, type_sym, [](auto &&x) { return x.first; })) { continue; }
-        if (type_sym->IsGeneric) { continue; }
+        if (type_sym->IsTypeGeneric()) { continue; }
 
         attr_symbols.EmplaceBack(type_sym, member);
         GetAttrTypes(type_sym->Type, type_sym->LinkedScope, attr_symbols);
@@ -188,17 +188,10 @@ auto spp::analyse::utils::type_predicates::IsTypeNever(
   scopes::Scope const &scope)
   -> bool {
   // Check the type against "std::never::Never". This only
-  // considers the type directly, not any supertypes.
+  // considers the type directly, not any supertypes. "!" goes
+  // on the left: on the right, "TypeEq" lets it fit anything.
   using asts::generate::common_types_precompiled::NEVER;
-  return type_compare::TypeEq(type, *NEVER, scope, scope);
-}
-
-auto spp::analyse::utils::type_predicates::IsTypeSelf(
-  asts::TypeAst const &type)
-  -> bool {
-  // Check for a string match to "Self".
-  const auto type_identifier = type.To<asts::TypeIdentifierAst>();
-  return type_identifier != nullptr and type_identifier->Name == "Self";
+  return type_compare::TypeEq(*NEVER, type, scope, scope);
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeFunc(

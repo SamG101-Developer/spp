@@ -9,28 +9,19 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct InnerScopeExpressionAst;
-  SPP_EXP_CLS struct PostfixExpressionOperatorEarlyReturnAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorEarlyReturnAst);
+use(spp::asts, struct InnerScopeExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorEarlyReturnAst);
 
-  /**
-   * The @c ? token that indicates an early return in a postfix expression. This token is used to signify that the
-   * expression should be checked for its result-type failure type, and if it matches, the expression will lift the
-   * error to the caller.
-   */
+  /// The "?" token that indicates an early return. The
+  /// expression is checked for its result-type failure type,
+  /// and if it matches, the error is lifted to the caller.
   Unique<TokenAst> TokQst;
 
-  /**
-   * Construct the PostfixExpressionOperatorEarlyReturnAst with the arguments matching the members.
-   * @param[in] tok_qst The @c ? token that indicates an early return in a postfix expression.
-   */
   explicit PostfixExpressionOperatorEarlyReturnAst(
     decltype(TokQst) &&tok_qst);
 
@@ -47,22 +38,23 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : Po
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
 private:
-  /**
-   * The lowered form of the "?" operator, built and analysed in @c Stage7_AnalyseSemantics and forwarded to by every
-   * later stage:
-   * @code
-   * {
-   *     let $temp = <lhs>
-   *     case $temp is <Residual>(..) { ret $temp }   # "gen $temp" then a bare "ret" in a coroutine
-   *     $temp.op_as_value()
-   * }
-   * @endcode
-   * The left-hand-side is bound to a temporary because it is referred to three times (the residual test, the early
-   * return, and the value extraction), so evaluating it in place would run any side effect three times - and the
-   * residual test needs a plain identifier anyway, since that is what lets the case pattern flow-type the condition
-   * and read its discriminant.
-   */
+  /// The lowered form of the "?" operator, built and analysed
+  /// in "Stage7_AnalyseSemantics" and forwarded to by every
+  /// later stage:
+  ///
+  ///   {
+  ///       let $temp = <lhs>
+  ///       case $temp is <Residual>(..) { ret $temp }
+  ///       $temp.op_as_value()
+  ///   }
+  ///
+  /// In a coroutine, the "ret $temp" is "gen $temp" then a bare
+  /// "ret". The left-hand-side is bound to a temporary because
+  /// it is referred to three times (the residual test, the
+  /// early return, and the value extraction), so evaluating it
+  /// in place would run any side effect three times - and the
+  /// residual test needs a plain identifier anyway, since that
+  /// lets the case pattern flow-type the condition and read its
+  /// discriminant.
   Shared<InnerScopeExpressionAst> _TransformedExpr;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorEarlyReturnAst)

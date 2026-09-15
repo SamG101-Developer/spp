@@ -10,56 +10,36 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct BinaryExpressionAst;
-  SPP_EXP_CLS struct CaseExpressionBranchAst;
-  SPP_EXP_CLS struct CasePatternVariantAst;
-  SPP_EXP_CLS struct InnerScopeExpressionAst;
-  SPP_EXP_CLS struct PatternGuardAst;
-  SPP_EXP_CLS struct StatementAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(CaseExpressionBranchAst);
+use(spp::asts, struct BinaryExpressionAst);
+use(spp::asts, struct CasePatternVariantAst);
+use(spp::asts, struct InnerScopeExpressionAst);
+use(spp::asts, struct PatternGuardAst);
+use(spp::asts, struct StatementAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
-/**
- * The @c CaseExpressionBranchAst represents a branch on a @c case block. It contains the patterns to match the @c case
- * expression against, can be "guarded", and contains the body of the block.
- */
+/// A branch on a "case" block. It contains the patterns to
+/// match the "case" expression against, can be "guarded", and
+/// contains the body of the block.
 SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeInferrableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CaseExpressionBranchAst);
 
-  /**
-   * The optional comparison operator. This is for cases pattern matching cases that look something like
-   * @code== 123 { ... }@endcode.
-   */
+  /// The optional comparison operator, for pattern matching
+  /// branches like "== 123 { ... }".
   Unique<TokenAst> Op;
 
-  /**
-   * The list of patterns that this branch matches against. There can be more than 1 pattern for non-destructuring
-   * operations.
-   */
+  /// The patterns this branch matches against. There can be
+  /// more than 1 for non-destructuring operations.
   Vec<Unique<CasePatternVariantAst>> Patterns;
 
-  /**
-   * The optional guard for the case branch. This is a boolean expression that must evaluate to true for destructuring
-   * patterns only.
-   */
+  /// The optional guard, a boolean expression that must be
+  /// true, for destructuring patterns only.
   Unique<PatternGuardAst> Guard;
 
-  /**
-   * The body of the case branch. This is an inner scope that contains the statements that will be executed if the
-   * branch matches.
-   */
+  /// The statements executed if the branch matches.
   Unique<InnerScopeExpressionAst> Body;
 
-  /**
-   * Construct the CaseExpressionBranchAst with the arguments matching the members.
-   * @param op The optional comparison operator.
-   * @param patterns The list of patterns that this branch matches against.
-   * @param guard The optional guard for the case branch.
-   * @param body The body of the case branch.
-   */
   CaseExpressionBranchAst(
     decltype(Op) &&op,
     decltype(Patterns) &&patterns,
@@ -83,22 +63,14 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 private:
   bool _ForIterLoopYield;
 
-  /**
-   * Save the generated combined pattern expressions for code generation without needed to re-walk asts and scopes that
-   * messes up the scope manager's alignment.
-   */
+  /// Save the generated combined pattern expressions for
+  /// codegen, without re-walking asts and scopes, which messes
+  /// up the scope manager's alignment.
   Vec<Unique<BinaryExpressionAst>> _MappedPatFuncs;
 
-  /**
-   * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is
-   * because the semantic analysis will have guaranteed that all the expressions are boolean. If there is only 1
-   * pattern, such as with case-of patterns, then this pattern's codegen is returned directly.
-   * @param sm The scope manager.
-   * @param meta Associated metadata.
-   * @param ctx The llvm code generation context.
-   * @return The llvm value representing the combined pattern matches.
-   */
+  /// With multiple patterns, the llvm value is a logical OR of
+  /// all the pattern matches (analysis guarantees they are all
+  /// boolean). With 1 pattern, such as case-of patterns, its
+  /// codegen is returned directly.
   auto _CodegenCombinePatterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CaseExpressionBranchAst)

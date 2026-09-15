@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_uninitialized_ast;
@@ -42,12 +43,13 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
 spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;
 
 auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
-  // Analyse the type.
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  // Analyse the type. "Self" is kept, and substituted per call.
+  using analyse::utils::type_utils::ResolveWrittenType;
+  using analyse::utils::type_utils::SelfPolicy;
+  Type = ResolveWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
 
   // Create the variable for the parameter (use temp copies and put them back).
   const auto ast = MakeUnique<LetStatementUninitializedAst>(nullptr, std::move(Var), nullptr, Type);
@@ -64,8 +66,8 @@ auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Check the memory of each name.
   for (auto const &name : ExtractNames()) {
@@ -75,8 +77,8 @@ auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::FunctionParameterAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the local variable so that the symbol table receives the alloca.

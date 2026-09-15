@@ -347,7 +347,6 @@ namespace {
     return machine;
   }
 
-
   /** The attribute a backend reads to decide whether a prologue probes, and the value asking it to do so inline. */
   constexpr auto kProbeStackAttr = llvm::StringLiteral("probe-stack");
   constexpr auto kProbeStackInlineAsm = llvm::StringLiteral("inline-asm");
@@ -441,7 +440,6 @@ auto spp::codegen::RunCoroLoweringPipeline(
   // fixed point cannot spin.
   auto previous = PendingCoroUses(llvm_mod);
   for (auto round = 0U; round < kMaxCoroLoweringRounds; ++round) {
-
     auto loop_am = llvm::LoopAnalysisManager();
     auto func_am = llvm::FunctionAnalysisManager();
     auto cgscc_am = llvm::CGSCCAnalysisManager();
@@ -601,7 +599,6 @@ auto spp::codegen::EmitCEntryPoint(
   return true;
 }
 
-
 auto spp::codegen::ApplyStackProtector(
   void *llvm_module)
   -> unsigned long {
@@ -619,7 +616,6 @@ auto spp::codegen::ApplyStackProtector(
   }
   return stamped;
 }
-
 
 auto spp::codegen::ApplyStackClashProtection(
   void *llvm_module)
@@ -646,7 +642,6 @@ auto spp::codegen::ApplyStackClashProtection(
   return stamped;
 }
 
-
 auto spp::codegen::ApplySafeStack(
   void *llvm_module)
   -> unsigned long {
@@ -667,6 +662,22 @@ auto spp::codegen::ApplySafeStack(
   return stamped;
 }
 
+auto spp::codegen::ApplyUnwindTables(
+  void *llvm_module)
+  -> unsigned long {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  auto stamped = 0UL;
+  for (auto &fn : llvm_mod) {
+    // Async, not sync: a trap or a fault stops the program mid-
+    // function, not at a call, and the walk has to start there.
+    if (fn.isDeclaration()) { continue; }
+    if (fn.getUWTableKind() == llvm::UWTableKind::Async) { continue; }
+    fn.setUWTableKind(llvm::UWTableKind::Async);
+    stamped += 1;
+  }
+  return stamped;
+}
 
 auto spp::codegen::AssertIntrinsicNamingIsSound()
   -> void {

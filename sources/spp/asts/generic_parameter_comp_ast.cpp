@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
@@ -38,29 +39,26 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
   // Default the "cmp" and ":" tokens if they are null.
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
 
 auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Create a variable symbol for this constant in the current scope (class / function).
   auto sym = MakeUnique<analyse::scopes::VariableSymbol>(
     IdentifierAst::FromType(*Name), Type, sm->CurrentScope,
-    false, true, utils::Visibility::kPublic);
+    analyse::scopes::VariableKind::GenericCompParam, false, utils::Visibility::kPublic);
   // sym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
-  sym->MemInfo->AstCompTime = AstClone(this);
   sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
-  sym->CompTimeValue = AstClone(this); // TODO: this or name?
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
 auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -68,11 +66,12 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
 
   // Qualify the type on the generic parameter.
   const auto _meta_guard = meta::MetaGuard(meta);
-  meta->IgnoreCmpGeneric = Name;
+  meta->IgnoreCmpGeneric = IdentifierAst::FromType(*Name);
 
   // Check the type exists and qualify.
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  // Todo: a method's "cmp p: Box[T]" (or "Self") in a generic sup keeps the sup's "T", unknown at the call (E26,
+  //  located in std) - GenericParameterCompGenericClass.test_valid_comp_parameter_typed_by_the_class_generic.
+  Type = analyse::utils::type_utils::ResolveWrittenType(*Type, *sm, *meta);
   const auto sym = sm->CurrentScope->GetVarSymbol(
     IdentifierAst::FromType(*Name).get());
   sym->Type = Type;
@@ -86,24 +85,24 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::GenericParameterCompAst::Stage7_AnalyseSemantics(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> void {
   // Analyse the type.
   // type->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::GenericParameterCompAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *meta)
   -> void {
   // Return the identifier.
   meta->CmpResult = IdentifierAst::FromType(*Name);
 }
 
 auto spp::asts::GenericParameterCompAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The compile time constants' symbols need to be allocated into

@@ -9,25 +9,16 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantExpressionAst;
-  SPP_EXP_CLS struct ExpressionAst;
-}
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantExpressionAst);
+use(spp::asts, struct ExpressionAst);
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantExpressionAst);
 
-  /**
-   * The expression that is used in the case pattern variant. This is the expression that will be matched against the
-   * condition from the @c case statement.
-   */
+  /// The expression matched against the condition from the
+  /// "case" statement.
   Unique<ExpressionAst> Expr;
 
-  /**
-   * Construct the CasePatternVariantExpressionAst with the arguments matching the members.
-   * @param expr The expression that is used in the case pattern variant.
-   */
   explicit CasePatternVariantExpressionAst(
     decltype(Expr) &&expr);
 
@@ -41,5 +32,3 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatter
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantExpressionAst)

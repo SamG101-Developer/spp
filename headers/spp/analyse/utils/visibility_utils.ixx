@@ -6,64 +6,76 @@ import spp.asts.utils.visibility;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct TypeSymbol;
-  SPP_EXP_CLS struct VariableSymbol;
-}
-
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct IdentifierAst;
-}
-
-namespace spp::asts::meta {
-  SPP_EXP_CLS struct CompilerMetaData;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class ScopeManager;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::asts, struct Ast);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::visibility_utils {
-  /**
-   * Whether a type member is accessible from where it is being named. The non-raising half of
-   * @c CheckTypeMemberVisibility , for the caller that has several same-named candidates and must not reject the
-   * access while any one of them is reachable.
-   * @param sym The symbol whose visibility is being tested.
-   * @param type_scope The scope @p sym was defined in.
-   * @param sm The scope manager, positioned at the accessing scope.
-   * @param meta Associated metadata.
-   * @return Whether the access is allowed.
-   */
+  /// Check if a type member is accessible from where it is
+  /// being named. The non-throwing core of normal type member
+  /// visibility.
   SPP_EXP_FUN auto IsTypeMemberVisible(
-    scopes::VariableSymbol const &sym,
-    scopes::Scope const &type_scope,
-    scopes::ScopeManager const &sm,
-    asts::meta::CompilerMetaData const &meta)
+    VariableSymbol const &sym,
+    Scope const &type_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
     -> bool;
 
+  /// Check if a type member is accessible from where it is
+  /// being named. Throws an error on bad visibility, uses the
+  /// type member core.
   SPP_EXP_FUN auto CheckTypeMemberVisibility(
-    scopes::VariableSymbol const &sym,
-    asts::Ast const &access_ast,
-    scopes::Scope const &type_scope,
-    scopes::ScopeManager const &sm,
-    asts::meta::CompilerMetaData const &meta)
+    VariableSymbol const &sym,
+    Ast const &access_ast,
+    Scope const &type_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
     -> void;
 
+  /// Check if a type's nested type is accessible from where it
+  /// is being named. Throws an error on bad visibility, uses
+  /// the (internal) type member core.
+  SPP_EXP_FUN auto CheckTypeTypeVisibility(
+    TypeSymbol const &sym,
+    Ast const &access_ast,
+    Scope const &type_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
+    -> void;
+
+  /// Check if a module member is accessible from where it is
+  /// being named. The non-throwing core of normal module member
+  /// visibility.
+  SPP_EXP_FUN auto IsModuleMemberVisible(
+    VariableSymbol const &sym,
+    Scope const &definition_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
+    -> bool;
+
+  /// Check if a module member is accessible from where it is
+  /// being named. Throws an error on bad visibility, uses the
+  /// (internal) module member core.
   SPP_EXP_FUN auto CheckModuleMemberVisibility(
-    scopes::VariableSymbol const &sym,
-    asts::Ast const &access_ast,
-    scopes::Scope const &definition_scope,
-    scopes::ScopeManager const &sm,
-    asts::meta::CompilerMetaData const &meta)
+    VariableSymbol const &sym,
+    Ast const &access_ast,
+    Scope const &definition_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
     -> void;
 
+  /// Check if a module type member is accessible from where it
+  /// is being named. Throws an error on bad visibility, uses
+  /// the (internal) module member core.
   SPP_EXP_FUN auto CheckModuleTypeVisibility(
-    scopes::TypeSymbol const &sym,
-    asts::Ast const &access_ast,
-    scopes::Scope const &definition_scope,
-    scopes::ScopeManager const &sm,
-    asts::meta::CompilerMetaData const &meta)
+    TypeSymbol const &sym,
+    Ast const &access_ast,
+    Scope const &definition_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
     -> void;
 }

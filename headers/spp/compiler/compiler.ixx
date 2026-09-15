@@ -56,10 +56,10 @@ private:
 
   bool m_for_cpp_google_test = false;
 
-  /** How many unit tests the generated harness runs. Read off the boot once parsing has written the harness. */
+  /// How many unit tests the generated harness runs. Read off the boot once parsing has written the harness.
   std::size_t m_test_count = 0;
 
-  /** The names of those tests, kept past @c Cleanup so the driver can re-run them one at a time. */
+  /// The names of those tests, kept past @c Cleanup so the driver can re-run them one at a time.
   Vec<Str> m_test_names;
 
   /**

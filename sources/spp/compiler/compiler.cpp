@@ -51,6 +51,7 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
   c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
   c->m_path = std::filesystem::current_path() / "src";
   c->m_boot = MakeUnique<CompilerBoot>();
+  c->m_boot->VerifyOnly = true;
   c->m_for_cpp_google_test = true;
   return c;
 }
@@ -106,11 +107,9 @@ auto spp::compiler::Compiler::Compile() -> void {
     m_boot->Stage8_CheckMemory(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage9_CompTimeResolve(next_bar(), *m_modules, m_scope_manager.get());
     CollectCompTimeConstants();
-    if (not m_for_cpp_google_test) {
-      m_boot->Stage9_5_Monomorphise(next_bar(), *m_modules, m_scope_manager.get());
-      m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
-      m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
-    }
+    m_boot->Stage9_5_Monomorphise(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
 #if !SPP_DEBUG
   }
   catch (...) {

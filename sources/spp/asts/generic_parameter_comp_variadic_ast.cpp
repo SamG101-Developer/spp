@@ -35,7 +35,7 @@ auto spp::asts::GenericParameterCompVariadicAst::PosStart() const
 auto spp::asts::GenericParameterCompVariadicAst::PosEnd() const
   -> std::size_t {
   // Use the type.
-  return Source.OriginalType->PosEnd();
+  return Type->PosEnd();
 }
 
 auto spp::asts::GenericParameterCompVariadicAst::Clone() const

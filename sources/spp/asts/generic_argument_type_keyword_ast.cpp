@@ -86,7 +86,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::PosStart() const
 auto spp::asts::GenericArgumentTypeKeywordAst::PosEnd() const
   -> std::size_t {
   // Use the value.
-  return Source.OriginalValPosEnd;
+  return Val->PosEnd();
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Clone() const
@@ -106,17 +106,20 @@ auto spp::asts::GenericArgumentTypeKeywordAst::ToString() const
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   if (Val->IsSelfType() and sm->CurrentScope->AstNode != nullptr and AstAs<InnerScopeExpressionAst>(sm->CurrentScope->AstNode) == nullptr) { return; }
-  if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta); }
+  if (Val->IsSelfType()) { Val = sm->CurrentScope->GetEnclosingSelfType(*meta)->WithSourceSpanOf(*Val); }
   Val->Stage7_AnalyseSemantics(sm, meta);
 
-  // Todo: Document.
+  // Rewrite the argument as the qualified name of what it names. In a template a generic
+  // stays its own name ("FqName"), keeping the body written in terms of its parameters. An
+  // instantiation's own body (a private clone, so rewriting in place is safe) takes what the
+  // parameter is bound to instead ("BoundName"): "Vec[T]" in "f[T=S32]" becomes "Vec[S32]".
   const auto val_sym = sm->CurrentScope->GetTypeSymbol(Val.get());
-  auto val_name = meta->ResolveBoundCompGenerics
+  auto val_name = meta->ResolveBoundGenerics
     ? val_sym->BoundName()
     : val_sym->FqName();
 
@@ -125,7 +128,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
   }
 
   if (*Val->WithoutConvention() != *val_name) {
-    Val = val_name->WithConvention(AstClone(Val->GetConvention()));
+    Val = val_name->WithConvention(AstClone(Val->GetConvention()))->WithSourceSpanOf(*Val);
   }
 }
 

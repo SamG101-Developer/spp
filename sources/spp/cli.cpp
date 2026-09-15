@@ -5,13 +5,13 @@ module;
 #include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
-    if (not handle_validate(is_exe)) { return; }
+  if (not handle_validate(is_exe)) { return; }
 
 #define SPP_VALIDATE_STRUCTURE_OR(is_exe, ...) \
-    if (not handle_validate(is_exe)) { return __VA_ARGS__; }
+  if (not handle_validate(is_exe)) { return __VA_ARGS__; }
 
 #define SPP_CLI_NULL \
-    bp::v1::std_out > bp::v1::null
+  bp::v1::std_out > bp::v1::null
 
 module spp.cli;
 import spp.analyse.scopes.scope_manager;
@@ -40,7 +40,7 @@ inline constexpr spp::Str STUB_FILE = "stub.spp";
 
 inline const spp::Str MAIN_FILE_CONTENTS = R"(
 fun main() -> Void {
-    std::io::println("Hello world!")
+  std::console::println("Hello world!")
 })";
 
 inline const spp::Str CONFIG_FILE_CONTENTS = R"(
@@ -325,7 +325,7 @@ auto spp::cli::handle_vcs()
   // section. A project with no dependencies has nothing to
   // fetch, which is a successful outcome rather than a failure.
   const auto toml = toml::parse_file(CONFIG_FILE);
-  if (not toml.contains("vcs")) { return true; }
+  if (not toml["vcs"]) { return true; }
 
   // Move into the VCS folder.
   const auto cwd = std::filesystem::current_path();

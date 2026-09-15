@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -12,8 +13,8 @@ spp::asts::CasePatternVariantAst::CasePatternVariantAst() :
 }
 
 auto spp::asts::CasePatternVariantAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> void {
   // No behaviour but c++ module issues require this be
   // defined here (maybe GCC bug).

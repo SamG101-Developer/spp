@@ -71,8 +71,8 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::BindsByMove() const
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Get the variable name.
   auto var = ConvToVar(meta);
@@ -84,16 +84,16 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward memory checks into the name and alias.
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Emit the binding, then report a constant "true" match so
@@ -103,7 +103,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::ConvToVar(
-  CompilerMetaData *)
+  meta::CompilerMetaData *)
   -> Unique<LocalVariableAst> {
   // Create the local variable single identifier binding AST.
   // (Note no convention is propagated into the variable, as

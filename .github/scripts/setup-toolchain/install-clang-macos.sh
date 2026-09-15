@@ -16,10 +16,21 @@ if [ -n "${CLANG_VERSION:-}" ] && [ "$CLANG_VERSION" != "$pinned" ]; then
   exit 1
 fi
 
+# libc++ is linked statically. As a dylib it is resolved at run time,
+# and wherever the rpath misses - every user's machine, for a released
+# binary - dyld silently binds /usr/lib's older libc++ instead, which
+# disagrees with these headers on the layout of std::locale.
+libcxx="$(find "${prefix}/lib" -maxdepth 2 -name libc++.a | head -n 1)"
+libcxxabi="$(find "${prefix}/lib" -maxdepth 2 -name libc++abi.a | head -n 1)"
+if [ -z "$libcxx" ] || [ -z "$libcxxabi" ]; then
+  echo "::error::no libc++.a / libc++abi.a under ${prefix}/lib; libc++ cannot be linked statically" >&2
+  exit 1
+fi
+
 {
   echo "CC=${prefix}/bin/clang"
   echo "CXX=${prefix}/bin/clang++"
-  echo "LDFLAGS=-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lc++abi"
+  echo "LDFLAGS=-nostdlib++ ${libcxx} ${libcxxabi}"
 } >> "$GITHUB_ENV"
 
 # The manifest's paths are relative to its own directory, which sits

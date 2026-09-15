@@ -102,7 +102,7 @@ namespace spp::analyse::utils::monomorphization_utils {
         if (type_arg->Val->IsSelfType()) {
           return MakeShared<scopes::TypeSymbol>(
             NameLastTypePart(*type_arg->Name), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
-            true);
+            scopes::TypeKind::GenericArg);
         }
 
         const auto true_val_sym = sm.CurrentScope->GetTypeSymbol(type_arg->Val.get());
@@ -110,7 +110,8 @@ namespace spp::analyse::utils::monomorphization_utils {
         // Build the type symbol for the generic type argument.
         auto sym = MakeShared<scopes::TypeSymbol>(
           NameLastTypePart(*type_arg->Name), true_val_sym ? true_val_sym->Type : nullptr,
-          true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(), true,
+          true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
+          scopes::TypeKind::GenericArg,
           true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
           asts::AstClone(type_arg->Val->GetConvention()));
         sym->GenericConstraints = true_val_sym
@@ -132,8 +133,8 @@ namespace spp::analyse::utils::monomorphization_utils {
           asts::IdentifierAst::FromType(*comp_arg->Name),
           comp_arg->Val->InferType(tm ? tm : &sm, meta),
           sm.CurrentScope,
-          false, true, asts::utils::Visibility::kPublic);
-        sym->MemInfo->AstCompTime = asts::AstClone(comp_arg);
+          scopes::VariableKind::GenericCompArg, false, asts::utils::Visibility::kPublic);
+        sym->CompTimeValue = asts::AstClone(comp_arg->Val);
         return sym;
       }
 
@@ -178,7 +179,10 @@ namespace spp::analyse::utils::monomorphization_utils {
       // parameter's constraints are written on the template, so they are carried over onto the binding.
       for (auto const &e : generic_syms | spp::views::cast_shared<scopes::TypeSymbol>()) {
         const auto old = scope->RemTypeSymbol(e->Name.get());
-        if (old) { e->GenericConstraints = asts::AstCloneVecShared(old->GenericConstraints); }
+        if (old) {
+          e->GenericConstraints = asts::AstCloneVecShared(old->GenericConstraints);
+          e->IsVariadic = old->IsVariadic;
+        }
         scope->AddTypeSymbol(e);
       }
       for (auto const &e : generic_syms | spp::views::cast_shared<scopes::VariableSymbol>()) {
@@ -235,7 +239,7 @@ namespace spp::analyse::utils::monomorphization_utils {
         if (meta->CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) {
           // Note: DO NOT inline "analysed_type", because the scoped_sym->Type
           // can change during the analysis that uses it, leaving the original
-          // dereerence pointing to garbage.
+          // dereference pointing to garbage.
           const auto analysed_type = scoped_sym->Type;
           AnalyseSubstitutedType(*analysed_type, tm, meta, true, false);
         }
@@ -255,7 +259,8 @@ namespace spp::analyse::utils::monomorphization_utils {
       scopes::ScopeManager const &sm)
       -> void {
       scope.AddTypeSymbol(MakeShared<scopes::TypeSymbol>(
-        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm.SelfProto(), cls_scope, &scope));
+        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm.SelfProto(), cls_scope, &scope, nullptr,
+        scopes::TypeKind::Self));
     }
 
     /**
@@ -375,7 +380,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   // copyable, and a zero type, exactly when the template it substitutes is.
   const auto new_cls_sym = MakeShared<scopes::TypeSymbol>(
     name_clone, AstAs<asts::ClassPrototypeAst>(new_cls_scope->AstNode), new_cls_scope.get(), sm->CurrentScope,
-    old_cls_scope->Parent, old_cls_sym->IsGeneric, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
+    old_cls_scope->Parent, old_cls_sym->Kind, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
   new_cls_sym->DerivesFromSym = old_cls_sym;
 
   new_cls_sym->IsConcrete = type_predicates::AreGenericArgsConcrete(
@@ -582,7 +587,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericSupScope(
     scoped_sym->Alias = std::move(substituted);
 
     if (old_type_sub_sym != nullptr) {
-      old_type_sub_sym->AliasedBySyms.PushBack(scoped_sym->SharedFromThis<scopes::TypeSymbol>());
+      scoped_sym->LlvmInfo = old_type_sub_sym->LlvmInfo;
       scoped_sym->Type = old_type_sub_sym->Type;
       scoped_sym->LinkedScope = old_type_sub_sym->LinkedScope;
       scoped_sym->InvalidateFqNameCache();

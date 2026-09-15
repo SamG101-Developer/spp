@@ -66,8 +66,8 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::ToString() const
 }
 
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Prepare the fully qualified constraints vector.
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -94,9 +94,10 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
     // alias. Todo: should this have been pre-qualified?
     auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics().get());
     fq_constraints.EmplaceBack(
-      constraint_type_sym->Alias != nullptr
+      (constraint_type_sym->Alias != nullptr
         ? constraint_type_sym->FqName()->SubstituteGenerics(constraint->LastTypePart()->GnArgGroup->GetAllArgs())
-        : constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->LastTypePart()->GnArgGroup)));
+        : constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->LastTypePart()->GnArgGroup)))
+      ->WithSourceSpanOf(*constraint));
   }
 
   // Replace the constraints with their fully qualified versions.

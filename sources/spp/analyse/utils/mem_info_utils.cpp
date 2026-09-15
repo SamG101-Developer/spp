@@ -55,7 +55,6 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
   static_cast<MemoryConsistency&>(*out) = *this;
   out->AstInitializationOrigin = AstInitializationOrigin;
   out->AstBorrowed = AstBorrowed;
-  out->AstCompTime = asts::AstClone(AstCompTime);
   return out;
 }
 

@@ -42,8 +42,8 @@ auto spp::asts::FoldExpressionAst::ToString() const
 }
 
 auto spp::asts::FoldExpressionAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // Fold expressions are always "Void".
   using generate::common_types::VoidType;

@@ -10,12 +10,12 @@ import magic_enum;
 
 SPP_MOD_BEGIN
 spp::lex::Lexer::Lexer(Str code, const bool add_prelude)
-  : m_code("\n" + std::move(code)) {
+  : _Code("\n" + std::move(code)) {
   // Add the prelude at the end so it doesn't offset line numbers from the actual code. Due to the order-agnostic
   // definition system, this is fine.
   if (add_prelude) {
-    m_PreludeCharOffset = m_code.length();
-    m_code += "\n" + compiler::kPrelude;
+    _PreludeCharOffset = _Code.length();
+    _Code += "\n" + compiler::kPrelude;
   }
 }
 
@@ -27,7 +27,7 @@ auto spp::lex::Lexer::Lex()
   auto in_string = false;
   auto in_single_line_comment = false;
   auto in_multi_line_comment = false;
-  tokens.reserve(m_code.length() / 2);
+  tokens.reserve(_Code.length() / 2);
 
   // Save keywords.
   auto keywords = Map<RawTokenType, Str>();
@@ -41,16 +41,16 @@ auto spp::lex::Lexer::Lex()
 
   // Iterate the source code.
   auto i = 0uz;
-  while (i < m_code.length()) {
+  while (i < _Code.length()) {
     // The first token at or past where the prelude was appended is
     // the first token that is not the author's. Taken on the way
     // through rather than worked out afterwards, because a token
     // carries no source offset to work it out from.
-    if (i >= m_PreludeCharOffset and m_PreludeTokenIndex == Str::npos) {
-      m_PreludeTokenIndex = tokens.Len();
+    if (i >= _PreludeCharOffset and _PreludeTokenIndex == Str::npos) {
+      _PreludeTokenIndex = tokens.Len();
     }
 
-    const auto c = m_code[i];
+    const auto c = _Code[i];
 
     // Skip any characters in a single-line comment (except terminating newline character).
     if (in_single_line_comment and c != '\n') {
@@ -73,14 +73,14 @@ auto spp::lex::Lexer::Lex()
     }
 
     // Enter a multi-line comment on '##' (not currently in a multi-line comment).
-    if (not in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
+    if (not in_multi_line_comment and c == '#' and _Code[i + 1] == '#') {
       in_multi_line_comment = true;
       i += 2;
       continue;
     }
 
     // Exit a multi-line comment on '##' (currently in a multi-line comment).
-    if (in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
+    if (in_multi_line_comment and c == '#' and _Code[i + 1] == '#') {
       in_multi_line_comment = false;
       i += 2;
       continue;
@@ -262,11 +262,11 @@ auto spp::lex::Lexer::Lex()
 
     // No symbolic tokens match, so try to match a keyword.
     auto found_kw = false;
-    const auto is_prev_alnum = i > 0 and utils::strings::IsAlNum(m_code[i - 1]);
+    const auto is_prev_alnum = i > 0 and utils::strings::IsAlNum(_Code[i - 1]);
     for (auto const &[kw_enum, kw_string] : keywords) {
-      const auto is_next_alnum = i + kw_string.length() < m_code.length() and utils::strings::IsAlNum(
-        m_code[i + kw_string.length()]);
-      const auto remaining = StrView(m_code).substr(i);
+      const auto is_next_alnum = i + kw_string.length() < _Code.length() and utils::strings::IsAlNum(
+        _Code[i + kw_string.length()]);
+      const auto remaining = StrView(_Code).substr(i);
 
       if (remaining.starts_with(kw_string) and not is_prev_alnum and not is_next_alnum) {
         tokens.EmplaceBack(kw_enum, kw_string);

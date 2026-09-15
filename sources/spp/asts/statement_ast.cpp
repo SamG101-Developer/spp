@@ -11,8 +11,8 @@ spp::asts::StatementAst::StatementAst() = default;
 spp::asts::StatementAst::~StatementAst() = default;
 
 auto spp::asts::StatementAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // All statements are inferred as the Void type.
   using generate::common_types::VoidType;

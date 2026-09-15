@@ -209,7 +209,9 @@ auto spp::asts::generate::common_types::StringViewType(std::size_t pos) -> Share
 }
 
 auto spp::asts::generate::common_types::NeverType(std::size_t pos) -> Shared<TypeAst> {
-  MAKE_TYPE("Never");
+  const auto never = MakeShared<TypeIdentifierAst>(pos, Str("Never"), nullptr);
+  never->MarkNeverType();
+  Shared<TypeAst> type = never;
   ADD_NAMESPACE("never");
   ADD_NAMESPACE("std");
   FINISH_TYPE();

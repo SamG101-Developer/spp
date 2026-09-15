@@ -65,6 +65,7 @@ export namespace llvm {
   using ::llvm::Triple;
   using ::llvm::Type;
   using ::llvm::TypeSize;
+  using ::llvm::PoisonValue;
   using ::llvm::UndefValue;
   using ::llvm::Value;
 

@@ -53,11 +53,11 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::ToString(
 }
 
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::ConvToVar(
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Unique<LocalVariableAst> {
   // Create the local variable destructure attribute binding AST.
   auto var = MakeUnique<LocalVariableDestructureSkipMultipleArgumentsAst>(
-    nullptr, Binding ? Binding->ConvToVar(meta) : nullptr);
+    AstClone(TokEllipsis), Binding ? Binding->ConvToVar(meta) : nullptr);
   var->MarkFromCasePattern();
   return var;
 }

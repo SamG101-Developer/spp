@@ -7,16 +7,22 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
+import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_postfix_expression_ast;
+import spp.asts.type_postfix_expression_operator_nested_type_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
@@ -61,14 +67,14 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   Shared<asts::IdentifierAst> name,
   Shared<asts::TypeAst> type,
   Scope *ScopeDefinedIn,
+  const VariableKind kind,
   const bool is_mutable,
-  const bool is_generic,
   const asts::utils::Visibility visibility) :
   Name(std::move(name)),
   Type(std::move(type)),
   ScopeDefinedIn(ScopeDefinedIn),
+  Kind(kind),
   IsMutable(is_mutable),
-  IsGeneric(is_generic),
   Visibility(visibility),
   MemInfo(MakeUnique<utils::mem_info_utils::MemoryInfo>()) {
   LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
@@ -80,17 +86,16 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   Name(AstCloneShared(that.Name)),
   Type(that.Type),
   ScopeDefinedIn(that.ScopeDefinedIn),
+  Kind(that.Kind),
   IsMutable(that.IsMutable),
-  IsGeneric(that.IsGeneric),
-  IsFlowNarrowing(that.IsFlowNarrowing),
+  AliasSym(that.AliasSym),
   NarrowsSym(that.NarrowsSym),
   CallableAsType(that.CallableAsType),
   Visibility(that.Visibility),
   VisibilityAnnotation(that.VisibilityAnnotation),
   MemInfo(that.MemInfo->Clone()),
   LlvmInfo(MakeShared<codegen::LlvmVarSymInfo>()),
-  CompTimeValue(asts::AstClone(that.CompTimeValue)),
-  AliasSym(that.AliasSym) {
+  CompTimeValue(asts::AstClone(that.CompTimeValue)) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
 }
 
@@ -213,16 +218,19 @@ namespace {
     // was bound to; an unbound one is safe only where it was
     // constrained to be, because nothing else stops it being
     // instantiated with a hazard.
-    if (sym->IsGeneric) {
+    if (sym->IsTypeGeneric()) {
       const auto bound = sym->LinkedScope != nullptr ? sym->LinkedScope->TySym.get() : nullptr;
-      if (bound != nullptr and bound != sym and not bound->IsGeneric) { return IsThreadSafeRec(bound, seen); }
+      if (bound != nullptr and bound != sym and not bound->IsTypeGeneric()) { return IsThreadSafeRec(bound, seen); }
       const auto ok = HasThreadSafeConstraint(*sym);
       return ok;
     }
 
-    const auto arg_scope = sym->ScopeDefinedIn != nullptr
-      ? sym->ScopeDefinedIn
-      : sym->LinkedScope;
+    // The arguments are resolved through the instantiation's own
+    // scope, which lives as long as the symbol. "ScopeDefinedIn"
+    // is where the type was first written, which can be a body
+    // scope of a generic function instantiation that is later
+    // discarded. The arguments are qualified by then.
+    const auto arg_scope = sym->LinkedScope;
 
     // There are some types that don't hold attributes in the
     // std library, but are representative of internal values,
@@ -258,6 +266,21 @@ namespace {
   }
 }
 
+auto spp::analyse::scopes::TypeSymbol::IsTypeGeneric() const
+  -> bool {
+  return Kind == TypeKind::GenericParam or Kind == TypeKind::GenericArg;
+}
+
+auto spp::analyse::scopes::TypeSymbol::IsMock() const
+  -> bool {
+  return Kind == TypeKind::FunctionMock or Kind == TypeKind::ClosureMock;
+}
+
+auto spp::analyse::scopes::TypeSymbol::IsSelf() const
+  -> bool {
+  return Kind == TypeKind::Self or (Kind == TypeKind::GenericArg and Name->IsSelfType());
+}
+
 auto spp::analyse::scopes::TypeSymbol::IsThreadSafe() const
   -> bool {
   // Only ever asked where a "ThreadSafe" constraint was
@@ -268,22 +291,36 @@ auto spp::analyse::scopes::TypeSymbol::IsThreadSafe() const
   return IsThreadSafeRec(this, seen);
 }
 
+auto spp::analyse::scopes::VariableSymbol::IsCompGeneric() const
+  -> bool {
+  return Kind == VariableKind::GenericCompParam or Kind == VariableKind::GenericCompArg;
+}
+
+auto spp::analyse::scopes::VariableSymbol::IsCompTime() const
+  -> bool {
+  // Everything with no runtime storage of its own: a "cmp"
+  // constant, a function's mock constant, and a comp generic.
+  return Kind == VariableKind::Constant or Kind == VariableKind::Function or IsCompGeneric();
+}
+
+auto spp::analyse::scopes::VariableSymbol::IsImport() const
+  -> bool {
+  // Before stage 3 an import is marked by its kind; after, by the
+  // target it found (and it takes that target's kind).
+  return Kind == VariableKind::Import or AliasSym != nullptr;
+}
+
 auto spp::analyse::scopes::VariableSymbol::BoundCompValue() const
   -> asts::ExpressionAst* {
   // Only a comp generic carries a binding, and only once an
   // argument has been given for it.
-  if (not IsGeneric or MemInfo->AstCompTime == nullptr) { return nullptr; }
-
-  // An instantiation records the argument the parameter was
-  // bound to; a template records the parameter itself, which
-  // is a declaration rather than a value, so it is not a binding.
-  const auto bound = MemInfo->AstCompTime->To<asts::GenericArgumentCompAst>();
-  return bound != nullptr ? bound->Val.get() : nullptr;
+  if (Kind != VariableKind::GenericCompArg or CompTimeValue == nullptr) { return nullptr; }
+  return CompTimeValue->To<asts::ExpressionAst>();
 }
 
 auto spp::analyse::scopes::VariableSymbol::FqName() const
   -> Shared<asts::ExpressionAst> {
-  if (IsGeneric) { return Name; }
+  if (IsCompGeneric()) { return Name; }
 
   // Fully qualify the name from the root scope.
   auto qualifier_scope = ScopeDefinedIn;
@@ -320,7 +357,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
   Scope *scope,
   Scope *scope_defined_in,
   Scope *scope_module,
-  const bool is_generic,
+  const TypeKind kind,
   const bool is_directly_copyable,
   const asts::utils::Visibility visibility,
   Unique<asts::ConventionAst> &&convention,
@@ -330,11 +367,10 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
   LinkedScope(scope),
   ScopeDefinedIn(scope_defined_in),
   ScopeModule(scope_module),
-  IsGeneric(is_generic),
+  Kind(kind),
   GenericConstraints(generic_constraints),
   Visibility(visibility),
   Convention(std::move(convention)),
-  GenericImpl(this),
   LlvmInfo(MakeShared<codegen::LlvmTypeSymInfo>()),
   IsDirectlyCopyable(is_directly_copyable),
   IsDirectlyZeroType(false) {
@@ -346,14 +382,13 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   LinkedScope(that.LinkedScope),
   ScopeDefinedIn(that.ScopeDefinedIn),
   ScopeModule(that.ScopeModule),
-  IsGeneric(that.IsGeneric),
+  Kind(that.Kind),
   IsVariadic(that.IsVariadic),
   GenericConstraints(that.GenericConstraints),
   GenericVal(that.GenericVal),
   DerivesFromSym(that.DerivesFromSym),
   Visibility(that.Visibility),
   Convention(asts::AstClone(that.Convention)),
-  GenericImpl(that.GenericImpl),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsDirectlyZeroType(that.IsDirectlyZeroType),
   IsDirectlyThreadHazard(that.IsDirectlyThreadHazard) {
@@ -395,7 +430,7 @@ auto spp::analyse::scopes::TypeSymbol::AsBoundSymbol() const
   // Borrowed rather than owned, as with "AsClassSymbol": the
   // symbol answered with is owned by the scope it links to.
   const auto self = const_cast<TypeSymbol*>(this);
-  if (IsGeneric and LinkedScope != nullptr and LinkedScope->TySym != nullptr and LinkedScope->TySym.get() != self) {
+  if (IsTypeGeneric() and LinkedScope != nullptr and LinkedScope->TySym != nullptr and LinkedScope->TySym.get() != self) {
     return LinkedScope->TySym->AsBoundSymbol();
   }
   return self;
@@ -411,13 +446,36 @@ auto spp::analyse::scopes::TypeSymbol::FqName(
   }
 
   // If the type is generic, or is "Self", return the name as-is.
-  if (IsGeneric or LinkedScope == nullptr or Name->IsSelfType()) {
+  if (IsTypeGeneric() or LinkedScope == nullptr or IsSelf()) {
     return Name;
   }
 
-  if (Name->IsCompilerGeneratedType()
+  if (IsMock()
     and (ignore_dollar or LinkedScope->Parent != LinkedScope->ParentModule())) {
-    return Name;
+    // A method's mock is declared in its "sup" block, so it is named
+    // through the type that block is over: "main::A::$Method". A
+    // closure's mock, and a declaration site, keep the bare name.
+    const auto sup_node = LinkedScope->Parent->AstNode;
+    const auto in_sup_block = asts::AstAs<asts::SupPrototypeFunctionsAst>(sup_node) != nullptr
+      or asts::AstAs<asts::SupPrototypeExtensionAst>(sup_node) != nullptr;
+    if (ignore_dollar or not in_sup_block or Kind == TypeKind::ClosureMock) { return Name; }
+
+    // Todo: a generic owner ("sup [T] A[T]", or "sup Str" over a
+    //  defaulted "Str[A]") would need its arguments carried through
+    //  each instantiation, so it keeps the bare name.
+    const auto owner_name = asts::AstName(sup_node);
+    const auto owner_gn = owner_name->LastTypePart()->GnArgGroup.get();
+    if (owner_gn != nullptr and not owner_gn->Args.IsEmpty()) { return Name; }
+    const auto owner_sym = LinkedScope->Parent->GetTypeSymbol(owner_name->WithoutGenerics().get());
+    if (owner_sym == nullptr or owner_sym == this or owner_sym->IsTypeGeneric()
+      or owner_sym->IsMock()
+      or (owner_sym->Type != nullptr and not owner_sym->Type->GnParamGroup->Params.IsEmpty())) { return Name; }
+    // Built from copies: the owner's name is its shared cached one,
+    // and analysing this type would mark that as analysed for every
+    // other use of it (skipping, say, its abstract-type check).
+    return MakeShared<asts::TypePostfixExpressionAst>(
+      asts::AstCloneShared(owner_sym->FqName()),
+      MakeShared<asts::TypePostfixExpressionOperatorNestedTypeAst>(nullptr, asts::AstCloneShared(Name)));
   }
 
   // Everything above returns a name that already exists. What
@@ -459,7 +517,7 @@ auto spp::analyse::scopes::TypeSymbol::BoundName() const
   -> Shared<asts::TypeAst> {
   // Not a parameter, so there is no binding to follow and
   // the name is the whole answer.
-  if (not IsGeneric) { return FqName(); }
+  if (not IsTypeGeneric()) { return FqName(); }
 
   // Bound to a real type: that type's own name, carrying
   // over whatever convention the binding was written with.

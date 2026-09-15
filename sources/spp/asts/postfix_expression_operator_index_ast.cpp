@@ -83,8 +83,8 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Already analysed => return early.
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -98,10 +98,11 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
     meta->PostfixExpressionLhs->InferType(sm, meta));
 
   // Check the lhs is actually a typed variable, (issues
-  // with ambiguities for parsing generics vs indexing etc)
+  // with ambiguities for parsing generics vs indexing etc).
+  // A function value (a "$" mock) is never indexable.
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
   RaiseIf<SppMemberAccessNonIndexableError>(
-    type_sym == nullptr or type_sym->LinkedScope == nullptr,
+    type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
     {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *this));
 
   auto sup_types = Vec{lhs_type};
@@ -124,21 +125,21 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the mapped function.
   _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward to the mapped function.
@@ -147,7 +148,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::InferType(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
   return _MappedFunc->InferType(sm, meta);
@@ -163,6 +164,12 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::SubstituteGenericsExpr(
     AstClone(TokMut),
     AstClone(Expr->SubstituteGenericsExpr(args)),
     AstClone(TokR));
+}
+
+auto spp::asts::PostfixExpressionOperatorIndexAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the inner expression.
+  return Expr->IsAllowedInDefault();
 }
 
 SPP_MOD_END

@@ -58,13 +58,15 @@ auto spp::asts::TypeUnaryExpressionAst::Equals(
 
 auto spp::asts::TypeUnaryExpressionAst::PosStart() const
   -> std::size_t {
-  // Use the operator.
+  // Use the operator, unless this replaces a written type.
+  if (_HasSourceSpan) { return _SpanStart; }
   return Op->PosStart();
 }
 
 auto spp::asts::TypeUnaryExpressionAst::PosEnd() const
   -> std::size_t {
-  // Use the rhs.
+  // Use the rhs, unless this replaces a written type.
+  if (_HasSourceSpan) { return _SpanEnd; }
   return Rhs->PosEnd();
 }
 
@@ -74,6 +76,7 @@ auto spp::asts::TypeUnaryExpressionAst::Clone() const
   auto t = MakeUnique<TypeUnaryExpressionAst>(
     Op, AstCloneShared(Rhs));
   t->_CachedWithoutGenerics = _CachedWithoutGenerics;
+  CopySourceSpanTo(*t);
   return t;
 }
 
@@ -86,12 +89,12 @@ auto spp::asts::TypeUnaryExpressionAst::ToString() const
 }
 
 auto spp::asts::TypeUnaryExpressionAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify the RHS type.
   if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
-    const auto tm = ScopeManager(
+    const auto tm = analyse::scopes::ScopeManager(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, tm);
@@ -105,12 +108,12 @@ auto spp::asts::TypeUnaryExpressionAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the RHS type.
   if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
-    const auto tm = ScopeManager(
+    const auto tm = analyse::scopes::ScopeManager(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
@@ -124,8 +127,8 @@ auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypeUnaryExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // These are always "zero_type", so return init.
@@ -134,8 +137,8 @@ auto spp::asts::TypeUnaryExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::TypeUnaryExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the RHS type.
   const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
@@ -152,7 +155,9 @@ auto spp::asts::TypeUnaryExpressionAst::AnyPart(
 
 auto spp::asts::TypeUnaryExpressionAst::IsNeverType() const noexcept
   -> bool {
-  return false;
+  // A namespace only qualifies the name, so "std::never::Never"
+  // is "!" when its name is; a borrow of "!" is a real value.
+  return Op->To<TypeUnaryExpressionOperatorNamespaceAst>() and Rhs->IsNeverType();
 }
 
 auto spp::asts::TypeUnaryExpressionAst::IsSelfType() const noexcept
@@ -221,18 +226,28 @@ auto spp::asts::TypeUnaryExpressionAst::GetConvention() const
 auto spp::asts::TypeUnaryExpressionAst::WithConvention(
   Unique<ConventionAst> &&conv) const
   -> Shared<TypeAst> {
-  if (conv == nullptr and Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
-    // Remove the convention
-    return Rhs;
-  }
-  if (conv == nullptr) {
-    return MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
-  }
-  if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
-    return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
-  }
-  return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
-                                            MakeShared<TypeUnaryExpressionAst>(Op, Rhs));
+  auto result = [&]() -> Shared<TypeAst> {
+    if (conv == nullptr and Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
+      // Remove the convention
+      return Rhs;
+    }
+    if (conv == nullptr) {
+      return MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
+    }
+    if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
+      return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
+    }
+    return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
+                                              MakeShared<TypeUnaryExpressionAst>(Op, Rhs));
+  }();
+
+  // A type rebuilt in place of a written one keeps pointing at
+  // what was written, whatever convention it is given. "Rhs" is
+  // shared with this type, so it is copied before being marked.
+  if (not _HasSourceSpan) { return result; }
+  if (result == Rhs) { result = AstCloneShared(Rhs); }
+  CopySourceSpanTo(*result);
+  return result;
 }
 
 auto spp::asts::TypeUnaryExpressionAst::WithoutGenerics() const

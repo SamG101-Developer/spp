@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_predicates;
+import spp.asts.convention_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
@@ -86,8 +87,8 @@ auto spp::asts::TupleLiteralAst::ToString() const
 }
 
 auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -116,8 +117,8 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -130,8 +131,8 @@ auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
@@ -147,8 +148,8 @@ auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
@@ -219,15 +220,25 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::TupleLiteralAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using generate::common_types::TupleType;
 
-  // Create a "..Ts" type, for the tuple type.
+  // Create a "..Ts" type, for the tuple type. A bound generic keeps
+  // its parameter's name ("T"), so each element is taken as what it
+  // is bound to - or an instantiation's "(T(), U())" is the generic
+  // tuple "(T, U)", which has no layout to generate. Todo: TIDY
   auto types_gen = Elems
-    | genex::views::transform([sm, meta](auto const &elem) { return elem->InferType(sm, meta); })
+    | genex::views::transform([sm, meta](auto const &elem) {
+      auto type = elem->InferType(sm, meta);
+      const auto sym = sm->CurrentScope->GetTypeSymbol(type->WithoutConvention().get());
+      if (sym != nullptr and sym->IsTypeGeneric() and sym->AsBoundSymbol() != sym) {
+        type = sym->AsBoundSymbol()->FqName()->WithConvention(AstClone(type->GetConvention()));
+      }
+      return type;
+    })
     | genex::to<Vec>();
 
   // Create a tuple type with the inferred element types.
@@ -245,6 +256,16 @@ auto spp::asts::TupleLiteralAst::SubstituteGenericsExpr(
   elems.Reserve(Elems.Len());
   for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
+}
+
+auto spp::asts::TupleLiteralAst::IsAllowedInDefault() const
+  -> bool {
+  // Check every element - one bad one prevents the entire
+  // ast from being allowed in this specific context.
+  for (auto const &x : Elems) {
+    if (not x->IsAllowedInDefault()) { return false; }
+  }
+  return true;
 }
 
 SPP_MOD_END

@@ -112,6 +112,7 @@ export import spp.asts.postfix_expression_operator_deref_ast;
 export import spp.asts.postfix_expression_operator_early_return_ast;
 export import spp.asts.postfix_expression_operator_function_call_ast;
 export import spp.asts.postfix_expression_operator_index_ast;
+export import spp.asts.postfix_expression_operator_keyword_await_ast;
 export import spp.asts.postfix_expression_operator_keyword_not_ast;
 export import spp.asts.postfix_expression_operator_keyword_res_ast;
 export import spp.asts.postfix_expression_operator_runtime_member_access_ast;

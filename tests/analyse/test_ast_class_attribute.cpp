@@ -165,3 +165,59 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         a: Opt[Str] = true
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClassAttributeAst,
+  test_invalid_case_default,
+  SppInvalidDefaultValueError, R"(
+    cls A {
+        a: S32 = case true { 1_s32 } else { 2_s32 }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClassAttributeAst,
+  test_invalid_ret_in_a_scope_default,
+  SppInvalidDefaultValueError, R"(
+    cls A {
+        a: S32 = { ret 1_s32 }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClassAttributeAst,
+  test_invalid_scope_default,
+  SppInvalidDefaultValueError, R"(
+    cls A {
+        a: S32 = {
+            let x = 1_s32
+            x + 1_s32
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClassAttributeAst,
+  test_invalid_closure_default,
+  SppInvalidDefaultValueError, R"(
+    cls A {
+        a: FunRef[(S32,), S32] = (x: S32) { ret x }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClassAttributeAst,
+  test_invalid_scope_default_on_a_constructed_class,
+  SppInvalidDefaultValueError, R"(
+    fun f() -> Void {
+        let y = A()
+    }
+
+    cls A {
+        !public
+        a: S32 = {
+            let x = 1_s32
+            x
+        }
+    }
+)");

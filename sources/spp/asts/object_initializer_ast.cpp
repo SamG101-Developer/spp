@@ -24,6 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
@@ -74,8 +75,8 @@ auto spp::asts::ObjectInitializerAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -125,7 +126,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     })
     | genex::to<Vec>();
 
-  auto generic_infer_target = not base_cls_sym->IsGeneric
+  auto generic_infer_target = not base_cls_sym->IsTypeGeneric()
     ? base_cls_sym->Type->Impl->Members
     | genex::views::ptr
     | genex::views::cast_dynamic<ClassAttributeAst*>()
@@ -141,8 +142,9 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
       generic_infer_source.begin(), generic_infer_source.end());
     meta->InferTarget = MakeShared<meta::GenericInferenceBindings>(
       generic_infer_target.begin(), generic_infer_target.end());
+    Type = analyse::utils::type_utils::SubstituteSelfType(*Type, *sm->CurrentScope, *meta)->WithSourceSpanOf(*Type);
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithSourceSpanOf(*Type);
   }
 
   // A generator cannot be initialized either.
@@ -158,16 +160,16 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the memory of the object argument group.
   ArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::ObjectInitializerAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
@@ -183,8 +185,8 @@ auto spp::asts::ObjectInitializerAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -264,6 +266,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
       // argument gets at a function call.
       const auto attr_index = spp_attr_index_of(*arg->Name);
       if (const auto attr_type_sym = spp::get<1>(attrs[attr_index]); attr_type_sym != nullptr) {
+        val = codegen::CoerceToFunctionValue(
+          val, *attr_type_sym->FqName(), *arg->Val->InferType(sm, meta), *sm, ctx);
         val = codegen::CoerceToVariant(
           val, *attr_type_sym->FqName(), *arg->Val->InferType(sm, meta),
           *sm->CurrentScope, "obj_init.variant" + uid, ctx);
@@ -336,8 +340,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
 }
 
 auto spp::asts::ObjectInitializerAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // The type of the object initializer is the type being
   // initialized. The conventions are added for dummy types
@@ -348,8 +352,8 @@ auto spp::asts::ObjectInitializerAst::InferType(
 }
 
 auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // Use the source original type.
   return Source.OriginalType;
@@ -363,6 +367,13 @@ auto spp::asts::ObjectInitializerAst::SubstituteGenericsExpr(
   auto arg_group = AstClone(ArgGroup);
   for (auto const &arg : arg_group->Args) { arg->Val = AstClone(arg->Val->SubstituteGenericsExpr(args)); }
   return MakeShared<ObjectInitializerAst>(Type->SubstituteGenerics(args), std::move(arg_group));
+}
+
+auto spp::asts::ObjectInitializerAst::IsAllowedInDefault() const
+  -> bool {
+  // Check the argument group for validity of being used
+  // in the default context.
+  return ArgGroup->IsAllowedInDefault();
 }
 
 SPP_MOD_END

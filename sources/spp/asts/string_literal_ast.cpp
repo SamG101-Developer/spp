@@ -73,16 +73,16 @@ auto spp::asts::StringLiteralAst::ToString() const
 }
 
 auto spp::asts::StringLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *meta)
   -> void {
   // Clone and return the float literal as is for compile-time resolution.
   meta->CmpResult = AstClone(this);
 }
 
 auto spp::asts::StringLiteralAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -127,8 +127,8 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::StringLiteralAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // A char literal is either a StrView or Vec[U8] type,
   // depending on the "b" byte prefix.

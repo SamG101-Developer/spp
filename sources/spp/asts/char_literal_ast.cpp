@@ -73,8 +73,8 @@ auto spp::asts::CharLiteralAst::ToString() const
 }
 
 auto spp::asts::CharLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // A byte-prefixed literal ("b'...'") must decode to a single
   // to prevent truncation by the codegen mask, instead of being
@@ -89,8 +89,8 @@ auto spp::asts::CharLiteralAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CharLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *meta)
   -> void {
   // Clone and return the char literal as is for compile-time
   // resolution.
@@ -98,8 +98,8 @@ auto spp::asts::CharLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CharLiteralAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Decode the char literal token (which includes its
@@ -126,8 +126,8 @@ auto spp::asts::CharLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CharLiteralAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // A char literal is either a Char or U8 type, depending on the "b" byte prefix.
   using generate::common_types::U8;

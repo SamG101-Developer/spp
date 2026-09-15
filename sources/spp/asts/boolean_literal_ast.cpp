@@ -98,8 +98,8 @@ auto spp::asts::BooleanLiteralAst::CppVal() const
 }
 
 auto spp::asts::BooleanLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *meta)
   -> void {
   // Clone and return the boolean literal as is for compile-time
   // resolution.
@@ -107,8 +107,8 @@ auto spp::asts::BooleanLiteralAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   SPP_ASSERT(
@@ -130,8 +130,8 @@ auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
 }
 
 auto spp::asts::BooleanLiteralAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // The boolean ast is always inferred as "std::boolean::Bool".
   using generate::common_types::BooleanType;

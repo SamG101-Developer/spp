@@ -214,9 +214,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Red: an async call lowers to "Fut[T]::async_(a, ..args)", and the variadic pack drops each argument's convention, so
-// "Ts" infers as "Tup[S32]" against the mock's own "FunRef[Args=Tup[&S32], Out=Void]" and the "F: FunMov[(Ts), T]"
-// constraint is not satisfied. See the Todo in "func_utils.cpp".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_postfix_func_call_async_correct_pins, R"(
@@ -224,7 +221,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x = 123
-        async a(&x)
+        let fut = async a(&x)
+        std::mem::ops::drop(fut.await)
     }
 )");
 

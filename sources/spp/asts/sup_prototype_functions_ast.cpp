@@ -1,7 +1,6 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
-#include <utility>
 
 module spp.asts.sup_prototype_functions_ast;
 import spp.analyse.errors.semantic_error;
@@ -47,7 +46,6 @@ spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokSup, lex::SppTokenType::KW_SUP, "sup");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
-  Source.OriginalName = AstClone(Name);
 }
 
 spp::asts::SupPrototypeFunctionsAst::~SupPrototypeFunctionsAst() = default;
@@ -61,7 +59,7 @@ auto spp::asts::SupPrototypeFunctionsAst::PosStart() const
 auto spp::asts::SupPrototypeFunctionsAst::PosEnd() const
   -> std::size_t {
   // Use the name.
-  return Source.OriginalName->PosEnd();
+  return Name->PosEnd();
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Clone() const
@@ -97,8 +95,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage1_PreProcess(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSuperimpositionOptionalGenericParameterError;
@@ -131,19 +129,29 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
-  // Forward to the implementation.
+  // Register "Self" before any alias in the block is resolved,
+  // so that one naming it has something to resolve to. The name
+  // is not qualified yet, so the base symbol is what answers
+  // here; Stage 5 replaces this with the precise one.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  if (not Name->IsCompilerGeneratedType()) {
+    // The name need not resolve to anything here: a superimposition over a type that does not exist is reported by
+    // the stage that qualifies it, not this one, so this asks for the symbol rather than assuming it.
+    if (const auto base_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())) {
+      sm->AddSelfTypeSymbol(base_sym->LinkedScope, Name->PosStart());
+    }
+  }
   Impl->Stage3_GenTopLvlAliases(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the implementation.
   sm->MoveToNextScope();
@@ -154,8 +162,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -176,30 +184,28 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*Name, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalName, "superimposition type"));
+    {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
 
   // A "$Func" mock keeps its bare name here - see the
   // matching note in "SupPrototypeExtensionAst".
-  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true);
+  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true)->WithSourceSpanOf(*Name);
 
   // Register the superimposition against the base symbol.
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
   if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
-    if (not base_cls_sym->IsGeneric) {
-      ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
+    if (not base_cls_sym->IsTypeGeneric()) {
+      analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
     }
     else {
-      ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
+      analyse::scopes::ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
     }
   }
 
-  // Add the "Self" symbol into the scope.
+  // Re-register "Self" against the fully-resolved name,
+  // replacing the provisional one from Stage 3.
   if (not Name->IsCompilerGeneratedType()) {
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-      MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-      sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
+    sm->AddSelfTypeSymbol(
+      sm->CurrentScope->GetTypeSymbol(Name.get())->LinkedScope, Name->PosStart());
   }
 
   // Load the implementation and move out of the scope.
@@ -208,8 +214,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_members::CheckShadowedCmpAgreesInType;
@@ -233,8 +239,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
@@ -258,20 +264,21 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
     self_sym->Type = cls_sym->Type;
-    cls_sym->AliasedBySyms.EmplaceBack(self_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
+    self_sym->LlvmInfo = cls_sym->LlvmInfo;
   }
 
   const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
   if (cls_sym->Type)
     EnforceGenericConstraintsAllArgs(
-      *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+      *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta,
+      cls_sym->LinkedScope);
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -281,8 +288,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -292,8 +299,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.
@@ -305,8 +312,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Move to the next scope.

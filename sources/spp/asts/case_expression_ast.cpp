@@ -111,8 +111,8 @@ auto spp::asts::CaseExpressionAst::ToString() const
 }
 
 auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::errors::SppCaseBranchElseNotLastError;
@@ -198,8 +198,8 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::case_utils::ValidateInconsistentMemory;
@@ -269,8 +269,8 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::CaseExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Scopes.
   sm->MoveToNextScope();
@@ -293,8 +293,8 @@ auto spp::asts::CaseExpressionAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Scope shift.
@@ -393,8 +393,8 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::CaseExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Alias the common utils functions and types.
   using analyse::errors::SppCaseBranchMissingElseError;

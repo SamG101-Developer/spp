@@ -75,8 +75,8 @@ auto spp::asts::LoopConditionalExpressionAst::ToString() const
 }
 
 auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -123,8 +123,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -135,7 +135,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
 
   // Check twice so that invalidation fails on the second loop.
   // Todo: use the "reset" on "sm" like in TypeStatementAst?
-  auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+  auto tm = analyse::scopes::ScopeManager(
+    sm->GlobalScope, sm->CurrentScope);
   tm.Reset(sm->CurrentScope, sm->CurrentIterator());
 
   ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, meta);
@@ -154,8 +155,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -276,8 +277,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::LoopConditionalExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using generate::common_types::NeverType;

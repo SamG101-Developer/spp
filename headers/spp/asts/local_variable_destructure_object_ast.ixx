@@ -9,56 +9,33 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS struct VariableSymbol;
-}
-
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantDestructureObjectAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct LocalVariableDestructureObjectAst;
-  SPP_EXP_CLS struct LetStatementInitializedAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureObjectAst);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::asts, struct CasePatternVariantDestructureObjectAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LetStatementInitializedAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVariableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureObjectAst);
 
-  /**
-   * The type of the object being destructured. This is used to determine the type of the destructured elements (by
-   * attribute type inference)
-   */
+  /// The type of the object being destructured, used to
+  /// infer the types of the destructured elements from the
+  /// attribute types.
   Shared<TypeAst> Type;
 
-  /**
-   * The @code (@endcode token that indicates the start of a object destructuring pattern.
-   */
+  /// The "(" token that starts the object destructure.
   Unique<TokenAst> TokL;
 
-  /**
-   * The elements of the object destructuring pattern. This is a list of patterns that will be destructured from the
-   * object. Each element can be a single identifier, a nested destructuring pattern, or a literal.
-   */
+  /// The patterns destructured from the object. Each element
+  /// can be a single identifier, a nested destructure, or a
+  /// literal.
   Vec<Unique<LocalVariableAst>> Elems;
 
-  /**
-   * The @code )@endcode token that indicates the end of an object destructuring pattern.
-   */
+  /// The ")" token that ends the object destructure.
   Unique<TokenAst> TokR;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
-  /**
-   * Construct the LocalVariableDestructureObjectAst with the arguments matching the members.
-   * @param[in] type The type of the object being destructured.
-   * @param[in] tok_l The @code (@endcode token that indicates the start of a object destructuring pattern.
-   * @param[in] elems The elements of the object destructuring pattern.
-   * @param[in] tok_r The @code )@endcode token that indicates the end of a object destructuring pattern.
-   */
   LocalVariableDestructureObjectAst(
     decltype(Type) &&type,
     decltype(TokL) &&tok_l,
@@ -77,18 +54,14 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  SPP_ATTR_NODISCARD auto ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
-  SPP_ATTR_NODISCARD auto ExtractName() const
-    -> Shared<IdentifierAst> override;
+  SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 
 private:
   Vec<Unique<LetStatementInitializedAst>> _NewAsts;
-  Shared<analyse::scopes::VariableSymbol> _CondSym;
-  Shared<analyse::scopes::VariableSymbol> _FlowSym;
+  Shared<VariableSymbol> _CondSym;
+  Shared<VariableSymbol> _FlowSym;
   Unique<LetStatementInitializedAst> _CondLet;
   Shared<IdentifierAst> _TmpName;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureObjectAst)

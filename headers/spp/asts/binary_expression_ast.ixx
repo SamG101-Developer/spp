@@ -9,37 +9,28 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct BinaryExpressionAst;
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct PostfixExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(BinaryExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct LetStatementInitializedAst);
+use(spp::asts, struct PostfixExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
-/**
- * The BinaryExpressionAst represents a binary expression in the source code, which consists of two operands (left-hand
- * side and right-hand side) and an operator that defines the operation to be performed on those operands. Each operator
- * maps the expressions into a method on the left-hand-side type, so @code 1 + 2@endcode will map to the method
- * @code 1.add(2)@endcode.
- */
+/// A binary expression between 2 operators, either a normal
+/// "+", "*" etc, or a compound assignment operator like "+=".
+/// These all map to their method like ".add". Also handles
+/// comparison chain collapsing, like Python, and binary
+/// folding. Note "is" has its own expression ast.
 SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(BinaryExpressionAst);
 
-  /**
-   * The left-hand side expression of the binary expression. This is the first operand.
-   */
+  /// The left-hand-side value.
   Unique<ExpressionAst> Lhs;
 
-  /**
-   * The operator token that represents the binary operation. This indicates the type of operation being performed.
-   */
+  /// The binary operation token.
   Unique<TokenAst> TokOp;
 
-  /**
-   * The right-hand side expression of the binary expression. This is the second operand.
-   */
+  /// The right-hand-side value.
   Unique<ExpressionAst> Rhs;
 
   struct {
@@ -47,25 +38,11 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     std::size_t OriginalPosEnd;
   } Source;
 
-  /**
-   * Whether this is one of the two logical keyword operators, @c and or @c or.
-   *
-   * @n
-   * They are the only binary operators that do not map to a method on their left operand. Every other one does,
-   * which is what lets a type give it a meaning; these two cannot, because their meaning is control flow rather than
-   * a value: the right operand is evaluated only if the left one did not already settle the answer. A method call
-   * evaluates its argument to pass it, so an overloadable @c and would evaluate both sides whatever the left said -
-   * which is what @c not avoids by being built in, and what these now avoid the same way. Both operands are required
-   * to be @c Bool for the same reason.
-   */
+  /// Check if this is a logical binary operator ("and"/"or"),
+  /// which have some special behaviour - no function mapping,
+  /// direct LLVM intrinsics, for short-circuiting.
   SPP_ATTR_NODISCARD auto IsLogicalOperator() const -> bool;
 
-  /**
-   * Construct the BinaryExpressionAst with the arguments matching the members.
-   * @param[in] lhs The left-hand side expression of the binary expression.
-   * @param[in] tok_op The operator token that represents the binary operation.
-   * @param[in] rhs The right-hand side expression of the binary expression.
-   */
   BinaryExpressionAst(
     decltype(Lhs) &&lhs,
     decltype(TokOp) &&tok_op,
@@ -73,75 +50,56 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
 
   ~BinaryExpressionAst() override;
 
-  /**
-   * Ensure the operator exists over the left-hand-side type, compatible with the right-hand-side type. This is done
-   * by. Also handle any binary fold operations, like @code a + ..@endcode.
-   * @param[in] sm The scope manager to use for type checking.
-   * @param[in,out] meta Associated metadata.
-   */
+  /// Handle the conversion of a binary expression into a method,
+  /// collapse comparison chains, and handle binary folding
+  /// like "a + .." for tuples.
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /**
-   * Forward the memory checking to the mapped function. This checks the created argument group for the mapped
-   * function.
-   * @param[in] sm The scope manager to use for memory checking.
-   * @param[in,out] meta Associated metadata.
-   */
+  /// Run the memory check through the mapped function. For
+  /// logical operations, check the left and right are valid -
+  /// we could be doing "a.b or c", and "a" must be valid.
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /**
-   * Resolve the binary expression at compile time. This maps to the comptime resolution of the mapped function.
-   * @param sm The scope manager to use for resolution.
-   * @param meta Associated metadata.
-   * @return The result of the compile time resolution.
-   */
+  /// Resolve the binary operator at compile time - either
+  /// moving into the mapped function (must be "cmp") or
+  /// manually computing the "and"/"or" (+ short circuiting)
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /**
-   * Forward the code generation to the mapped function. This just generates a standard function call. Some functions
-   * like @code (1 + 2)@endcode will map to LLVM IR directly.
-   * @param sm The scope manager to use for code generation.
-   * @param meta Associated metadata.
-   * @param ctx The LLVM context to use for code generation.
-   * @return The LLVM value generated from this AST.
-   */
+  /// Forward the codegen into the mapped function, or build
+  /// an "and"/"or" IR injection that allows for short
+  /// circuiting.
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  /**
-   * Forward the type checking to the mapped function. This just applies standard type inference from a function call.
-   * @param[in] sm The scope manager to use for type inference.
-   * @param[in,out] meta Associated metadata.
-   * @return The inferred type of the binary expression, which is the return type of the mapped function.
-   */
+  /// Infer the type from the mapped function, or use Bool for
+  /// the logical operators.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  /// Do the substitution of the left and right side operators.
+  /// Todo: Do we need to use function mapping here?
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 
+  /// Check the left and right side are safe to use in runtime
+  /// default contexts.
+  /// Todo: Do we need to use function mapping here?
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
 private:
-  /**
-   * The AST that represents the functional version of this binary expression. For example, @code 1 + 2@endcode
-   * becomes @c 1.add(2). The mapped function itself has its own internal mapping, in this case that would be
-   * @c std::number::S32::add(1, 2).
-   */
+  /// The compiler-generated function call representing the
+  /// operation. Stays nullptr for the logical operators.
   Shared<PostfixExpressionAst> _MappedFunc;
 
-  /**
-   * Whether the logical path has already analysed this expression. @c _MappedFunc is what marks every other operator
-   * as done - it is set once and returned early on afterwards - and a logical operator never gets one, so it needs a
-   * mark of its own. Without it the analysis runs again on each visit, and the comparison-chain rewrite moves the
-   * operands out of the expression a second time.
-   */
+  /// When we collapse comparisons with temporaries, we need
+  /// to store them so they aren't cloned: "a < f() < b" needs
+  /// to materialize "f()".
+  Vec<Unique<LetStatementInitializedAst>> _ChainTemps;
+
+  /// Check whether a logical operator has been analysed - the
+  /// mirror of checking if "_MappedFunc" is not nullptr.
   bool _LogicalAnalysed;
 
-  /**
-   * Whether the operator is @c and or @c or, decided from the token and then remembered. It cannot be read back off
-   * @c TokOp on demand: converting the expression into a call moves the operands and the operator out of it, so by
-   * the time anything asks, the token is gone. It is settled again after the comparison-chain rewrite, which is what
-   * turns @code a < b < c@endcode into an @c and that was not written as one.
-   */
+  /// Track if this binary operation is a logic "and"/"or"
+  /// operation or not.
   bool _IsLogical;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BinaryExpressionAst)

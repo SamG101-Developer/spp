@@ -8,7 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_utils;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
@@ -33,7 +35,6 @@ spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
   //
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::LetStatementInitializedAst::~LetStatementInitializedAst() = default;
@@ -73,14 +74,15 @@ auto spp::asts::LetStatementInitializedAst::ToString() const
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_compare::TypeEq;
+  using analyse::utils::type_utils::ResolveWrittenType;
 
   // An explicit type can only be applied if the left-hand-side is a single identifier.
   RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
@@ -89,8 +91,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
 
   // Analyse the type if it has been given.
   if (Type != nullptr) {
-    Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    Type = ResolveWrittenType(*Type, *sm, *meta);
   }
 
   // Add the type into the return type overload resolver.
@@ -112,7 +113,12 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     const auto val_type = Val->InferType(sm, meta);
     RaiseIf<analyse::errors::SppTypeMismatchError>(
       not TypeEq(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Val, *val_type));
+      {sm->CurrentScope}, ERR_ARGS(*Type, *Type, *Val, *val_type));
+
+    // A function named as the value stands for the overload
+    // the declared type asks for.
+    analyse::utils::func_utils::InstantiateFunctionValue(
+      *val_type, *Type, sm, meta);
   }
 
   meta->LetStatementExplicitType = Type;
@@ -121,8 +127,8 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the variable's memory (which in turn checks the
   // values memory - must be done this way for destructuring).
@@ -134,8 +140,8 @@ auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Fix variable shadowing, where a newer version of the symbol is
   // gotten because stage7 added it, when we are trying to use the
@@ -158,8 +164,8 @@ auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Setup a lot of meta information for the local variable to

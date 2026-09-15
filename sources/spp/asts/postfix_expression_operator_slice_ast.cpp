@@ -91,8 +91,8 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::ToString() const
 }
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Already analysed => return early.
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -108,10 +108,11 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
     meta->PostfixExpressionLhs->InferType(sm, meta));
 
   // Check the lhs is actually a typed variable, (issues
-  // with ambiguities for parsing generics vs indexing etc)
+  // with ambiguities for parsing generics vs indexing etc).
+  // A function value (a "$" mock) is never sliceable.
   const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
   RaiseIf<SppMemberAccessNonIndexableError>(
-    type_sym == nullptr or type_sym->LinkedScope == nullptr,
+    type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
     {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *this));
 
   auto sup_types = Vec{lhs_type};
@@ -149,21 +150,21 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward to the mapped function.
   _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Forward to the mapped function.
@@ -172,7 +173,7 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
 
 auto spp::asts::PostfixExpressionOperatorSliceAst::InferType(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta)
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
   return _MappedFunc->InferType(sm, meta);
@@ -190,6 +191,15 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::SubstituteGenericsExpr(
     AstClone(TokTo),
     AstClone(ExprRBound->SubstituteGenericsExpr(args)),
     AstClone(TokR));
+}
+
+auto spp::asts::PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const
+  -> bool {
+  // Check both the left and right bounds, which can be
+  // nullptr for the unbound slicing.
+  return
+    (ExprLBound == nullptr or ExprLBound->IsAllowedInDefault()) and
+    (ExprRBound == nullptr or ExprRBound->IsAllowedInDefault());
 }
 
 SPP_MOD_END

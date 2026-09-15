@@ -22,8 +22,10 @@ set(
   CMAKE_MSVC_RUNTIME_LIBRARY
   "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
+# /EHsc is explicit because CI's -DCMAKE_CXX_FLAGS replaces
+# CMake's MSVC default flags, which is where it came from.
 if (MSVC)
-  add_compile_options($<IF:$<CONFIG:Debug>,/MDd,/MD> /Zc:preprocessor)
+  add_compile_options($<IF:$<CONFIG:Debug>,/MDd,/MD> /Zc:preprocessor /EHsc)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 endif ()
 
@@ -86,8 +88,10 @@ if (NOT MSVC)
   add_compile_options(-fvisibility-inlines-hidden)
 endif ()
 
-# Only allow mimalloc for release, non-sanitizer builds.
-set(SPP_NO_MIMALLOC_GENEX $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>>)
+# Only allow mimalloc for release, non-sanitizer, non-macOS builds.
+set(
+  SPP_NO_MIMALLOC_GENEX
+  $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>,$<PLATFORM_ID:Darwin>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
 if (NOT APPLE)
@@ -211,6 +215,7 @@ target_compile_definitions(
   PRIVATE
   # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127193
   ANKERL_UNORDERED_DENSE_HAS_SSE2=0
+  TOML_EXCEPTIONS=1
   $<$<BOOL:${SPP_ALL_TARGETS}>:SPP_ALL_TARGETS>
   SPP_HOST_TRIPLE="${LLVM_HOST_TRIPLE}")
 
@@ -263,10 +268,6 @@ target_link_libraries(
 
 if (WIN32)
   target_link_libraries(${PROJECT_NAME}_lib PRIVATE pthreads4w::pthreadVC3)
-endif ()
-
-if (APPLE)
-  target_link_libraries(${PROJECT_NAME}_lib PRIVATE c++abi)
 endif ()
 
 add_executable(${PROJECT_NAME} main.cpp)

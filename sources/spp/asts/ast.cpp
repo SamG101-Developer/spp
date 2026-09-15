@@ -28,8 +28,8 @@ auto spp::asts::Ast::Stage1_PreProcess(
 }
 
 auto spp::asts::Ast::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   _Scope = sm->CurrentScope;
 }
@@ -54,6 +54,11 @@ auto spp::asts::Ast::SetAstScope(
   analyse::scopes::Scope *scope)
   -> void {
   _Scope = scope;
+}
+
+auto spp::asts::Ast::IsAllowedInDefault() const
+  -> bool {
+  return false;
 }
 
 SPP_MOD_END

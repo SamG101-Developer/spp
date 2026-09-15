@@ -9,37 +9,25 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct ObjectInitializerAst;
-  SPP_EXP_CLS struct ObjectInitializerArgumentGroupAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct ObjectInitializerArgumentGroupAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ObjectInitializerAst);
 
-  /**
-   * The type being initialized by the object initializer. This is the type of the object being created.
-   */
+  /// The type of the object being created.
   Shared<TypeAst> Type;
 
-  /**
-   * The object initializer argument group that contains the arguments for the object initializer. These arguments
-   * will be passed into the attributes of the object being created.
-   */
+  /// The argument group, whose arguments are passed into the
+  /// attributes of the object being created.
   Unique<ObjectInitializerArgumentGroupAst> ArgGroup;
 
   struct {
     Shared<TypeAst> OriginalType;
   } Source;
 
-  /**
-   * Construct the ObjectInitializerAst with the arguments matching the members.
-   * @param type The type being initialized by the object initializer.
-   * @param arg_group The object initializer argument group that contains the arguments for the object initializer.
-   */
   ObjectInitializerAst(
     decltype(Type) type,
     decltype(ArgGroup) &&arg_group);
@@ -61,6 +49,6 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
-};
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerAst)
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+};

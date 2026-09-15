@@ -60,8 +60,8 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppObjectInitializerInvalidArgumentError;

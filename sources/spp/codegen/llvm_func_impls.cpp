@@ -10,6 +10,7 @@ import spp.analyse.utils.type_members;
 import spp.asts.ast_kind;
 import spp.asts.boolean_literal_ast;
 import spp.asts.coroutine_prototype_ast;
+import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
@@ -74,9 +75,11 @@ namespace {
     const auto dprintf_fn = mod->getOrInsertFunction(
       "dprintf", llvm::FunctionType::get(i32_ty, {i32_ty, ptr_ty}, true));
 
-    auto call_args = std::vector<llvm::Value*>{ // Todo: Vec
+    auto call_args = std::vector<llvm::Value*>{
+      // Todo: Vec
       llvm::ConstantInt::get(i32_ty, 2),
-      ctx->Builder.CreateGlobalString(spp::Str(fmt) + "\n")};
+      ctx->Builder.CreateGlobalString(spp::Str(fmt) + "\n")
+    };
     call_args.insert(call_args.end(), args.begin(), args.end());
     ctx->Builder.CreateCall(dprintf_fn, call_args);
 
@@ -163,18 +166,24 @@ namespace {
    * @return The declaration, ready to call with two @p ty operands for a "{ty, i1}" result.
    */
   auto OverflowIntrinsic(
-    spp::codegen::LlvmCtx *const ctx,
+    spp::codegen::LlvmCtx const *ctx,
     const llvm::Intrinsic::IndependentIntrinsics intrinsic,
     llvm::Type *const ty)
     -> llvm::Function* {
     auto op = std::string_view();
     switch (intrinsic) {
-      case llvm::Intrinsic::sadd_with_overflow: op = "sadd"; break;
-      case llvm::Intrinsic::uadd_with_overflow: op = "uadd"; break;
-      case llvm::Intrinsic::ssub_with_overflow: op = "ssub"; break;
-      case llvm::Intrinsic::usub_with_overflow: op = "usub"; break;
-      case llvm::Intrinsic::smul_with_overflow: op = "smul"; break;
-      case llvm::Intrinsic::umul_with_overflow: op = "umul"; break;
+      case llvm::Intrinsic::sadd_with_overflow: op = "sadd";
+        break;
+      case llvm::Intrinsic::uadd_with_overflow: op = "uadd";
+        break;
+      case llvm::Intrinsic::ssub_with_overflow: op = "ssub";
+        break;
+      case llvm::Intrinsic::usub_with_overflow: op = "usub";
+        break;
+      case llvm::Intrinsic::smul_with_overflow: op = "smul";
+        break;
+      case llvm::Intrinsic::umul_with_overflow: op = "umul";
+        break;
       default: std::unreachable();
     }
 
@@ -227,7 +236,8 @@ namespace {
       OverflowIntrinsic(ctx, intrinsic, a->getType()), {a, b}, "arith.checked" + uid);
     return {
       ctx->Builder.CreateExtractValue(pair, 0, "arith.value" + uid),
-      ctx->Builder.CreateExtractValue(pair, 1, "arith.overflowed" + uid)};
+      ctx->Builder.CreateExtractValue(pair, 1, "arith.overflowed" + uid)
+    };
   }
 
   /**
@@ -583,7 +593,7 @@ namespace {
       case ConvOp::FPToSI:
       case ConvOp::FPToUI: return src->isFloatingPointTy() and dst->isIntegerTy();
       case ConvOp::BitCast: return src->isPtrOrPtrVectorTy() == dst->isPtrOrPtrVectorTy()
-        and (src->isPtrOrPtrVectorTy() or src->getPrimitiveSizeInBits() == dst->getPrimitiveSizeInBits());
+          and (src->isPtrOrPtrVectorTy() or src->getPrimitiveSizeInBits() == dst->getPrimitiveSizeInBits());
       default: std::unreachable();
     }
   }
@@ -764,12 +774,18 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call_overflow(
   const auto rhs = fn->arg_begin() + 1;
   auto op = BinOp::SAddChecked;
   switch (intrinsic) {
-    case llvm::Intrinsic::sadd_with_overflow: op = BinOp::SAddChecked; break;
-    case llvm::Intrinsic::uadd_with_overflow: op = BinOp::UAddChecked; break;
-    case llvm::Intrinsic::ssub_with_overflow: op = BinOp::SSubChecked; break;
-    case llvm::Intrinsic::usub_with_overflow: op = BinOp::USubChecked; break;
-    case llvm::Intrinsic::smul_with_overflow: op = BinOp::SMulChecked; break;
-    case llvm::Intrinsic::umul_with_overflow: op = BinOp::UMulChecked; break;
+    case llvm::Intrinsic::sadd_with_overflow: op = BinOp::SAddChecked;
+      break;
+    case llvm::Intrinsic::uadd_with_overflow: op = BinOp::UAddChecked;
+      break;
+    case llvm::Intrinsic::ssub_with_overflow: op = BinOp::SSubChecked;
+      break;
+    case llvm::Intrinsic::usub_with_overflow: op = BinOp::USubChecked;
+      break;
+    case llvm::Intrinsic::smul_with_overflow: op = BinOp::SMulChecked;
+      break;
+    case llvm::Intrinsic::umul_with_overflow: op = BinOp::UMulChecked;
+      break;
     default: std::unreachable();
   }
 
@@ -777,7 +793,7 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call_overflow(
   // rather than returned as whatever anonymous pair they were computed as - llvm compares struct types by identity,
   // not by layout, so an alike-looking "{T, i1}" is still a different type.
   const auto [value, overflowed] = EmitOverflowPair(ctx, op, lhs, rhs);
-  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   packed = ctx->Builder.CreateInsertValue(packed, value, {0}, "intrinsic.packed" + uid);
   packed = ctx->Builder.CreateInsertValue(packed, overflowed, {1}, "intrinsic.packed" + uid);
   ctx->Builder.CreateRet(packed);
@@ -837,7 +853,8 @@ auto spp::codegen::func_impls::simple_coro_iter(
       decltype(borrow) &borrow)
       : I(i), ArrTy(arr_ty), ElemTy(elem_ty), SelfPtr(self_ptr), Borrow(borrow) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, asts::meta::CompilerMetaData *meta,
+      LlvmCtx *ctx) -> llvm::Value* override {
       const auto idx_0 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0uz);
       const auto idx_i = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), *I);
       const auto shift = ctx->Builder.CreateGEP(ArrTy, SelfPtr, {idx_0, idx_i});
@@ -932,7 +949,8 @@ auto spp::codegen::func_impls::simple_coro_view_iter(
       decltype(index) &index, decltype(data) &data, decltype(uid) &uid, llvm::Type *elem_ty, const bool borrow)
       : _Index(index), _Data(data), _Uid(uid), _ElemTy(elem_ty), _Borrow(borrow) {}
 
-    auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *, LlvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *, asts::meta::CompilerMetaData *,
+      LlvmCtx *ctx) -> llvm::Value* override {
       // Indexed over the element type, so one step of the index advances by one element rather than by one byte.
       const auto shift = ctx->Builder.CreateGEP(_ElemTy, _Data, {_Index}, "view.iter.elem_ptr" + _Uid);
       return _Borrow
@@ -983,7 +1001,8 @@ auto spp::codegen::func_impls::simple_coro_non_null_fwd(
       decltype(self_ptr) &self_ptr)
       : SelfPtr(self_ptr) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, asts::meta::CompilerMetaData *meta,
+      LlvmCtx *ctx) -> llvm::Value* override {
       return SelfPtr;
     }
   };
@@ -1047,7 +1066,8 @@ auto spp::codegen::func_impls::simple_coro_view_slice(
       : _FromAlloca(from_alloca), _UptoAlloca(upto_alloca), _SelfPtr(self_ptr), _Uid(uid), _ViewTy(view_ty),
         _ElemTy(elem_ty), _DataIdx(data_idx), _LengthIdx(length_idx) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, asts::meta::CompilerMetaData *meta,
+      LlvmCtx *ctx) -> llvm::Value* override {
       // Read the bounds out of the parameters' storage.
       const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
       const auto from_val = ctx->Builder.CreateLoad(i64_ty, _FromAlloca, "view.slice.from_val" + _Uid);
@@ -1125,7 +1145,7 @@ auto spp::codegen::func_impls::simple_coro_contiguous_fwd(
       : _Data(data), _Length(length), _ViewTy(view_ty), _DataIdx(data_idx), _LengthIdx(length_idx),
         _Uid(std::move(uid)) {}
 
-    auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *, LlvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *, asts::meta::CompilerMetaData *, LlvmCtx *ctx) -> llvm::Value* override {
       const auto view = LlvmEntryAlloca(_ViewTy, "fwd.view" + _Uid, ctx);
       ctx->Builder.CreateStore(
         _Data, ctx->Builder.CreateStructGEP(_ViewTy, view, _DataIdx, "fwd.view.data_ptr" + _Uid));
@@ -1250,7 +1270,8 @@ auto spp::codegen::func_impls::simple_coro_view_index(
       _IdxAlloca(idx_alloca), _SelfPtr(self_ptr), _Uid(uid), _ViewTy(view_ty), _ElemTy(elem_ty), _DataIdx(data_idx),
       _LengthIdx(length_idx) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, asts::meta::CompilerMetaData *meta,
+      LlvmCtx *ctx) -> llvm::Value* override {
       const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
       const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
       const auto idx_val = ctx->Builder.CreateLoad(i64_ty, _IdxAlloca, "view.index.idx_val" + _Uid);
@@ -2468,7 +2489,7 @@ auto spp::codegen::func_impls::std_cffi_c_closure_from(
   const auto pair = ctx->Builder.CreateLoad(pair_ty, value_sym->LlvmInfo->Alloca, "c_closure.from.pair" + uid);
 
   const auto ret_ty = ctx->Builder.GetInsertBlock()->getParent()->getReturnType();
-  auto out = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto out = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   out = ctx->Builder.CreateInsertValue(
     out, ctx->Builder.CreateExtractValue(pair, {0}, "c_closure.from.fn" + uid), {0});
   out = ctx->Builder.CreateInsertValue(
@@ -2563,8 +2584,8 @@ auto spp::codegen::func_impls::std_non_null_raw(
 
   const auto ptr_struct_ty = llvm::cast<llvm::StructType>(ty);
   const auto addr_val = ctx->Builder.CreatePtrToInt(data_ptr, ptr_struct_ty->getElementType(0), "non_null.raw.addr");
-  const auto undef = llvm::UndefValue::get(ptr_struct_ty);
-  const auto result = ctx->Builder.CreateInsertValue(undef, addr_val, {0}, "non_null.raw.result");
+  const auto poison = llvm::PoisonValue::get(ptr_struct_ty);
+  const auto result = ctx->Builder.CreateInsertValue(poison, addr_val, {0}, "non_null.raw.result");
   ctx->Builder.CreateRet(result);
 }
 
@@ -2996,7 +3017,13 @@ auto spp::codegen::func_impls::std_mem_ops_drop(
   // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot
   // is what the destruction works through. This is the owning counterpart of "drop_in_place": the value is consumed by
   // being passed in, so nothing is left behind in the caller for the destroyed storage to be read back out of.
-  const auto val_param = proto->FnParamGroup->GetAllParams()[0];
+  // A Void generic arg removes the parameter from the signature, and a Void has nothing to destroy.
+  const auto params = proto->FnParamGroup->GetAllParams();
+  if (params.IsEmpty()) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+  const auto val_param = params[0];
   const auto val_sym = sm->CurrentScope->GetVarSymbol(val_param->ExtractName().get());
 
   const auto t_ast = asts::TypeIdentifierAst::FromString("T");
@@ -3106,7 +3133,7 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_inner(
 
   // Repack
   const auto uid = "." + utils::Uid();
-  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   packed = ctx->Builder.CreateInsertValue(
     packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {0}, "compex.value" + uid), {0}, "compex.packed" + uid);
   packed = ctx->Builder.CreateInsertValue(
@@ -3136,7 +3163,7 @@ auto spp::codegen::func_impls::std_threading_atomic_compex_weak_inner(
 
   // Repack
   const auto uid = "." + utils::Uid();
-  auto packed = llvm::cast<llvm::Value>(llvm::UndefValue::get(ret_ty));
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   packed = ctx->Builder.CreateInsertValue(
     packed, ctx->Builder.CreateExtractValue(cmpxchg_inst, {0}, "compex.value" + uid), {0}, "compex.packed" + uid);
   packed = ctx->Builder.CreateInsertValue(

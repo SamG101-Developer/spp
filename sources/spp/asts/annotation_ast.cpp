@@ -118,16 +118,16 @@ auto spp::asts::AnnotationAst::Stage1_PreProcess(
 }
 
 auto spp::asts::AnnotationAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Default AST processing (sets scope).
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 }
 
 auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   // Special annotation handling.
   const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).first;
@@ -161,8 +161,8 @@ auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Handle builtin annotations.
   using A = analyse::utils::annotation_utils::BuiltinAnnotations;
@@ -282,8 +282,8 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::AnnotationAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Todo: Validate "Void" return type on annotation + test.
 
@@ -309,8 +309,8 @@ auto spp::asts::AnnotationAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Load up different construct casts that an annotation may apply to.
   using analyse::utils::annotation_utils::AnnotationInfo;
@@ -326,7 +326,8 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
   const auto annotation_scope_name = INJECT_CODE("std::annotations", parse_expression);
   const auto annotation_scope = const_cast<analyse::scopes::Scope*>(
     sm->CurrentScope->ConvertPostfixToNestedScope(annotation_scope_name.get()));
-  auto tm = ScopeManager(sm->GlobalScope, annotation_scope);
+  auto tm = analyse::scopes::ScopeManager(
+    sm->GlobalScope, annotation_scope);
   const auto allowed_ctx = [&] {
     const auto _meta_guard = meta::MetaGuard(meta);
     annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);
@@ -340,32 +341,32 @@ auto spp::asts::AnnotationAst::Stage9_CompTimeResolve(
   // Error for incompatible asts when classes are not valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<ClassPrototypeAst>() and not(allowed_ctx & AnnotationInfo::kClassContext),
-    {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when free functions are not valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<FunctionPrototypeAst>() and outer_mod_ctx and not(allowed_ctx & AnnotationInfo::kFunctionCtx),
-    {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when methods are not valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<FunctionPrototypeAst>() and outer_sup_ctx and not(allowed_ctx & AnnotationInfo::kMethodCtx),
-    {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when overriding methods are not valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<FunctionPrototypeAst>() and outer_ext_ctx and not(allowed_ctx & AnnotationInfo::kExtensionContext),
-    {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when type statements are not valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<TypeStatementAst>() and not(allowed_ctx & AnnotationInfo::kTypeStmtCtx),
-    {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when cmp statements are not valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<CmpStatementAst>() and not(allowed_ctx & AnnotationInfo::kCmpStmtCtx),
-    {sm->CurrentScope, annotation_scope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
 }
 
 SPP_MOD_END

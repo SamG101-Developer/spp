@@ -65,7 +65,6 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
     ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
     : nullptr;
   ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
-  ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->AbstractAnnotation = AbstractAnnotation;
@@ -83,8 +82,8 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
 }
 
 auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_compare::TypeEq;
@@ -105,13 +104,14 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   Impl->Stage7_AnalyseSemantics(sm, meta);
 
   // Handle the "!" never type.
-  auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope->Children[0].get());
+  auto tm = analyse::scopes::ScopeManager(
+    sm->GlobalScope, sm->CurrentScope->Children[0].get());
   const auto is_never = [&] {
     const auto _meta_guard = meta::MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
     return not Impl->Members.IsEmpty() and TypeEq(
-      *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta), *NEVER,
-      *tm.CurrentScope, *sm->CurrentScope);
+      *NEVER, *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta),
+      *sm->CurrentScope, *tm.CurrentScope);
   }();
 
   // Check for a void return type.
@@ -124,7 +124,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   const auto final_member_check = (not Impl->Members.IsEmpty() and Impl->Members.Back()->To<RetStatementAst>());
   RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
     is_void or is_never or annotation_blocks_ret or final_member_check,
-    {sm->CurrentScope}, ERR_ARGS(*final_member, *Source.OriginalReturnType, *ReturnType));
+    {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType, *ReturnType));
 
   // Ffi functions cannot be generic, otherwise we get
   // multiple prototypes for the singular C function,
@@ -144,7 +144,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 
 auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
   analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Build the function body.

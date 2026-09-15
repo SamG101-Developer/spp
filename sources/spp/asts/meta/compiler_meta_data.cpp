@@ -15,7 +15,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
   CaseConsumedSubjects.Clear();
-  ClsSym = nullptr;
   EnclosingFunctionScope = nullptr;
   EnclosingFunctionFlavour = nullptr;
   EnclosingFunctionRetType = {};
@@ -25,7 +24,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   CurrentLambdaOuterScope = nullptr;
   TargetCallFunctionPrototype = nullptr;
   TargetCallWasFunctionAsync = false;
-  PreventAutoGeneratorResume = false;
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
@@ -43,10 +41,8 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreCmpGeneric = nullptr;
   AllowMoveDeref = false;
   LlvmEndBB = nullptr;
-  LlvmCtx = nullptr;
   LlvmWantAddress = false;
   LlvmAssignmentTarget = nullptr;
-  LlvmAssignmentTargetType = nullptr;
   LlvmCaseCondition = nullptr;
   LlvmPhi = nullptr;
   LlvmLoopStack = {};
@@ -54,7 +50,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
-  ResolveBoundCompGenerics = false;
   LlvmGenerator = nullptr;
   LlvmGeneratorState = nullptr;
 }
@@ -75,7 +70,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.CaseCondition = CaseCondition;
   s.CaseConsumedSubjects = CaseConsumedSubjects;
   s.WithinDeferTok = WithinDeferTok;
-  s.ClsSym = ClsSym;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   s.EnclosingFunctionScope = EnclosingFunctionScope;
   s.EnclosingFunctionFlavour = EnclosingFunctionFlavour;
@@ -85,7 +79,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
   s.TargetCallFunctionPrototype = TargetCallFunctionPrototype;
   s.TargetCallWasFunctionAsync = TargetCallWasFunctionAsync;
-  s.PreventAutoGeneratorResume = PreventAutoGeneratorResume;
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
@@ -103,10 +96,8 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.IgnoreCmpGeneric = IgnoreCmpGeneric;
   s.AllowMoveDeref = AllowMoveDeref;
   s.LlvmEndBB = LlvmEndBB;
-  s.LlvmCtx = LlvmCtx;
   s.LlvmWantAddress = LlvmWantAddress;
   s.LlvmAssignmentTarget = LlvmAssignmentTarget;
-  s.LlvmAssignmentTargetType = LlvmAssignmentTargetType;
   s.LlvmCaseCondition = LlvmCaseCondition;
   s.LlvmPhi = LlvmPhi;
   s.LlvmLoopStack = LlvmLoopStack;
@@ -123,7 +114,8 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
-  s.ResolveBoundCompGenerics = ResolveBoundCompGenerics;
+  s.CmpCallSite = CmpCallSite;
+  s.CmpCallSiteScope = CmpCallSiteScope;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
@@ -140,9 +132,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AssignmentTargetType = std::move(state.AssignmentTargetType);
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
-  CaseConsumedSubjects = state.CaseConsumedSubjects;
+  CaseConsumedSubjects = std::move(state.CaseConsumedSubjects);
   WithinDeferTok = state.WithinDeferTok;
-  ClsSym = state.ClsSym;
   if (heavy) {
     EnclosingFunctionScope = state.EnclosingFunctionScope;
     EnclosingFunctionFlavour = state.EnclosingFunctionFlavour;
@@ -154,7 +145,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   CurrentLambdaOuterScope = state.CurrentLambdaOuterScope;
   TargetCallFunctionPrototype = state.TargetCallFunctionPrototype;
   TargetCallWasFunctionAsync = state.TargetCallWasFunctionAsync;
-  PreventAutoGeneratorResume = state.PreventAutoGeneratorResume;
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
@@ -172,10 +162,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreCmpGeneric = std::move(state.IgnoreCmpGeneric);
   AllowMoveDeref = state.AllowMoveDeref;
   LlvmEndBB = state.LlvmEndBB;
-  LlvmCtx = state.LlvmCtx;
   LlvmWantAddress = state.LlvmWantAddress;
   LlvmAssignmentTarget = state.LlvmAssignmentTarget;
-  LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
   LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
@@ -189,7 +177,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
-  ResolveBoundCompGenerics = state.ResolveBoundCompGenerics;
+  CmpCallSite = state.CmpCallSite;
+  CmpCallSiteScope = state.CmpCallSiteScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
 }
@@ -201,7 +190,7 @@ auto spp::asts::meta::CompilerMetaData::Depth() const
 }
 
 spp::asts::meta::MetaGuard::MetaGuard(
-  CompilerMetaData *const meta,
+  meta::CompilerMetaData *const meta,
   const bool heavy) :
   _Meta(meta),
   _Heavy(heavy) {

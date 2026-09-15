@@ -9,37 +9,24 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct RetStatementAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(RetStatementAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(RetStatementAst);
 
-  /**
-   * The @c ret token that starts this statement.
-   */
+  /// The "ret" token that starts this statement.
   Unique<TokenAst> TokRet;
 
-  /**
-   * The optional value that is being returned from the function. This is the expression that will be evaluated and
-   * returned.
-   */
+  /// The optional value being returned from the function.
   Unique<ExpressionAst> Expr;
 
   struct {
     Shared<TypeAst> _OriginalRetType;
   } Source;
 
-  /**
-   * Construct the RetStatementAst with the arguments matching the members.
-   * @param tok_ret The @c return token that starts this statement.
-   * @param val The optional value that is being returned from the function.
-   */
   RetStatementAst(
     decltype(TokRet) &&tok_ret,
     decltype(Expr) &&val);
@@ -59,5 +46,3 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
 private:
   Shared<TypeAst> _RetType;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::RetStatementAst)

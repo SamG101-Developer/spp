@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -83,8 +84,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::ToString() const
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppArgumentNameInvalidError;
@@ -146,7 +147,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
         // Use the type off the single matching attribute.
         const auto attr_type_sym = spp::get<1>(attrs[0]);
-        const auto attr_type = attr_type_sym->IsGeneric ? nullptr : attr_type_sym->FqName();
+        const auto attr_type = attr_type_sym->IsTypeGeneric() ? nullptr : attr_type_sym->FqName();
         meta->ReturnTypeOverloadResolverType = std::move(attr_type);
       }
     }
@@ -156,8 +157,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::type_compare::TypeEq;
@@ -208,6 +209,11 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*attr_type, *arg_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*attr, *attr_type, *arg, *arg_type));
+
+    // A function named as the value stands for the overload the
+    // attribute's type asks for.
+    analyse::utils::func_utils::InstantiateFunctionValue(
+      *arg_type, *attr_type, sm, meta);
   }
 
   // Type check the default argument (if it exists).
@@ -276,8 +282,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the memory of the arguments.
   for (auto const &arg : Args) { arg->Stage8_CheckMemory(sm, meta); }
@@ -327,6 +333,16 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::GetKeywordArgs()
     | genex::views::ptr
     | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
     | genex::to<Vec>();
+}
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::IsAllowedInDefault() const
+  -> bool {
+  // Check every argument - one bad one prevents the entire
+  // group from being allowed in this specific context.
+  for (auto const &x : Args) {
+    if (not x->IsAllowedInDefault()) { return false; }
+  }
+  return true;
 }
 
 SPP_MOD_END

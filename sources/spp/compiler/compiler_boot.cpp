@@ -189,12 +189,14 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Pre-analyse semantics stage.
+  asts::FunctionPrototypeAst::ClearPendingDefaults();
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Stage6_PreAnalyseSemantics(sm, &meta);
     sm->Reset();
     bar.Next();
   }
+  asts::FunctionPrototypeAst::AnalysePendingDefaults(sm);
   bar.Finish();
 }
 
@@ -295,17 +297,20 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
-    meta.LlvmCtx = ctx;
     mod->Stage11_CodeGen(sm, &meta, ctx);
     sm->Reset();
     bar.Next();
   }
   bar.Finish();
 
-  // Write the llvm modules to file.
+  // Write the llvm modules to file. The unit tests only verify:
+  // their parallel processes share one project directory, and
+  // nothing reads the files back.
   const auto &out = tree.Out();
-  std::filesystem::create_directories(out.LlvmRoot());
-  std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
+  if (not VerifyOnly) {
+    std::filesystem::create_directories(out.LlvmRoot());
+    std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
+  }
 
   // Paired with the modules, because the file each context belongs
   // to comes from the module's own path. Every module is verified
@@ -333,6 +338,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     // Written last, so the file on disk is the module as it will
     // actually be built.
+    if (VerifyOnly) { continue; }
     const auto file = tree.LlvmOutPathFor(mod->FilePath);
     std::filesystem::create_directories(file.parent_path());
 
@@ -349,6 +355,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   if (not invalid_modules.IsEmpty()) {
     llvm::errs() << invalid_modules.Len() << " invalid module(s):\n";
     for (auto const &name : invalid_modules) { llvm::errs() << "  " << name << "\n"; }
+    if (VerifyOnly) {
+      throw std::runtime_error(std::to_string(invalid_modules.Len()) + " invalid module(s), see the verifier above");
+    }
     std::abort();
   }
 
@@ -380,6 +389,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   for (auto const &ctx : _LlvmCtxs | genex::views::ptr) {
     if (codegen::LinkIntoLtoModule(lto_module.get(), ctx->Module.get())) { continue; }
     llvm::errs() << "Failed to link module into the lto module: " << ctx->Module->getName() << "\n";
+    if (VerifyOnly) { throw std::runtime_error("Failed to link module into the lto module"); }
     return;
   }
 
@@ -387,8 +397,13 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // checks for errors in the combined module.
   if (llvm::verifyModule(*lto_module, &llvm::errs())) {
     llvm::errs() << "Invalid lto module\n";
+    if (VerifyOnly) { throw std::runtime_error("Invalid lto module, see the verifier above"); }
     return;
   }
+
+  // The unit tests stop here: the combined module is valid, and
+  // optimising, emitting and linking it would add nothing more.
+  if (VerifyOnly) { return; }
 
   // Internalize all the definitions in the lto module before
   // optimizing. The C entry point is added before internalizing,
@@ -432,6 +447,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
   FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
   FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
+  codegen::ApplyUnwindTables(lto_module.get());
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
 
   // A cross build stops at the object, no linking available for

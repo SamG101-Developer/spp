@@ -50,7 +50,6 @@ cmake_install() {
   cmake -S "$name" -B "$name/build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-    -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib \
     -DBUILD_TESTING=OFF "$@"
   cmake --build "$name/build" --target install
 }

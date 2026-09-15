@@ -128,12 +128,12 @@ auto spp::codegen::EmitDrop(
     const auto part_ptr = is_arr
       ? ctx->Builder.CreateGEP(
         elem_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
-        "drop.elem" + uid + "." + part.Step)
+        "drop.elem" + uid + "." + part.Step->Val)
       : is_indexable
-        ? ctx->Builder.CreateStructGEP(elem_ty, ptr, index, "drop.elem" + uid + "." + part.Step)
+        ? ctx->Builder.CreateStructGEP(elem_ty, ptr, index, "drop.elem" + uid + "." + part.Step->Val)
         : ctx->Builder.CreateStructGEP(
           elem_ty, ptr, GetPhysicalFieldIndex(*type_sym.LlvmInfo, part.Index),
-          "drop.field" + uid + "." + part.Step);
+          "drop.field" + uid + "." + part.Step->Val);
     EmitDrop(*part.Sym, part_ptr, sm, meta, ctx);
   }
 }

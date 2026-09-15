@@ -7,31 +7,19 @@ import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ObjectInitializerArgumentKeywordAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentKeywordAst);
+use(spp::asts, struct TokenAst);
 
-/**
- * The ObjectInitializerArgumentKeywordAst represents a keyword argument in a object initializer. It is forces the
- * argument to be matched by a keyword rather than shorthand value.
- */
+/// A keyword argument in an object initializer. It forces the
+/// argument to be matched by a keyword rather than a
+/// shorthand value.
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerArgumentAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ObjectInitializerArgumentKeywordAst);
 
-  /**
-   * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
-   * argument from the expression that is being passed as the argument's value.
-   */
+  /// The "=" token, separating the argument name from the
+  /// expression passed as the argument's value.
   Unique<TokenAst> TokAssign;
 
-  /**
-   * Construct the ObjectInitializerArgumentKeywordAst with the arguments matching the members.
-   * @param name The name of the keyword argument.
-   * @param tok_assign The token that represents the assignment operator @c = in the keyword argument.
-   * @param val The expression that is being passed as the argument to the object initializer.
-   */
   ObjectInitializerArgumentKeywordAst(
     decltype(Name) name,
     decltype(TokAssign) &&tok_assign,
@@ -39,5 +27,3 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : Object
 
   ~ObjectInitializerArgumentKeywordAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ObjectInitializerArgumentKeywordAst)

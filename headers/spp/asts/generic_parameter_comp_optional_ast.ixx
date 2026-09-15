@@ -3,39 +3,32 @@ module;
 
 export module spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.ast_kind;
+import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_comp_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericParameterCompOptionalAst;
-  SPP_EXP_CLS struct TokenAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterCompOptionalAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
+
+namespace spp::asts::detail {
+  template <>
+  struct make_optional_param<GenericParameterCompAst> {
+    using type = GenericParameterCompOptionalAst;
+  };
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericParameterCompOptionalAst);
 
-  /**
-   * The token that separates the parameter name from the default value.
-   */
+  /// The "=" token separating the parameter from its default.
   Unique<TokenAst> TokAssign;
 
-  /**
-   * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
-   */
+  /// The default value, used if the argument is not provided.
   Unique<ExpressionAst> DefaultVal;
 
-  /**
-   * Construct the GenericParameterCompOptionalAst with the arguments matching the members.
-   * @param tok_cmp The @c cmp token that represents the generic comp parameter.
-   * @param name The value of the generic comp parameter.
-   * @param tok_colon The token that represents the @c : colon in the generic parameter.
-   * @param type The type of the parameter.
-   * @param tok_assign The token that separates the parameter name from the default value.
-   * @param default_val The default value for the parameter.
-   */
   GenericParameterCompOptionalAst(
     decltype(TokCmp) &&tok_cmp,
     decltype(Name) &&name,
@@ -51,4 +44,4 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompOptionalAst final : GenericPar
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompOptionalAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompOptionalAst);

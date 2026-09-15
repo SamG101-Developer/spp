@@ -184,6 +184,18 @@ namespace spp::analyse::utils::generic_bindings {
           // for "func[..Ts]" to "func[Ts = (U32, U32)]". Uses the
           // tuple type + analysis for generic implementation.
           else {
+            // A lone argument naming a pack ("A[Ts]" inside
+            // "g[..Ts]") is already the tuple, so is forwarded.
+            if (i + 1 == a_group.Args.Len()) {
+              const auto &val = positional_arg->To<GenericArgType>()->Val;
+              const auto sym = sm.CurrentScope->GetTypeSymbol(val->WithoutGenerics().get(), false);
+              if (sym != nullptr and sym->IsTypeGeneric() and sym->IsVariadic) {
+                kw_arg->Val = asts::AstClone(val);
+                if (meta.CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) { kw_arg->Val->Stage7_AnalyseSemantics(&sm, &meta); }
+                a_group.Args[i] = std::move(kw_arg);
+                break;
+              }
+            }
             auto elems = MAKE_VARIADIC_TYPE_ARGS(a_group.Args);
             auto tuple = TupleType(positional_arg->PosStart(), std::move(elems));
             if (meta.CurrentStage >= asts::meta::CompilerStage::kQualifyTypes) { tuple->Stage7_AnalyseSemantics(&sm, &meta); }
@@ -499,6 +511,8 @@ auto spp::analyse::utils::generic_bindings::GenericBindingSet::EnforceNoConflict
 
     // Use the TypeEq equality checker for types, to
     // ensure they are consistent.
+    // Todo: a type inferred off a literal ("v=1") is generated, so its block reads "<generated code>"; point at the
+    //  argument it came from (TestSelfTypePositionsGeneric.test_invalid_self_class_attribute_generic_argument_...).
     for (auto i = 1uz; i < types.Len(); ++i) {
       RaiseIf<SppGenericParameterConflictError>(
         not TypeEq(*types[i], *types[0], *sm.CurrentScope, *sm.CurrentScope),
@@ -563,12 +577,14 @@ auto spp::analyse::utils::generic_bindings::GenericBindingSet::ToArgs(
 
 SPP_MOD_END
 
+
 auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
   asts::GenericParameterGroupAst const &p_group,
   asts::GenericArgumentGroupAst const &a_group,
   scopes::Scope const &owner_scope,
   scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData &meta)
+  asts::meta::CompilerMetaData &meta,
+  scopes::Scope const *const decl_scope)
   -> void {
   using errors::SppGenericConstraintError;
 
@@ -600,6 +616,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
     // parameter's constraints.
     auto p_cons = Vec<Shared<asts::TypeAst>>();
     for (auto p_con : p_con_groups[i]) {
+      const auto written = p_con;
       auto def_type_raw = p_con->WithoutGenerics();
       if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_val_type_sym != nullptr and meta.
         CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
@@ -614,7 +631,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
         meta.AllowAbstractType = true;
         sub->Stage7_AnalyseSemantics(&con_sm, &meta);
       }
-      p_cons.push_back(std::move(sub));
+      p_cons.push_back(sub->WithSourceSpanOf(*written));
     }
 
     // Handle variadic constraint checks. Todo: Expand docs
@@ -634,7 +651,7 @@ auto spp::analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs(
       const auto unsatisfied = type_compare::EnforceGenericConstraintsOneArg(
         p_cons, *target, owner_scope, *sm.CurrentScope);
       RaiseIf<SppGenericConstraintError>(
-        unsatisfied != nullptr, {&owner_scope, sm.CurrentScope},
+        unsatisfied != nullptr, {decl_scope != nullptr ? decl_scope : &owner_scope, sm.CurrentScope},
         ERR_ARGS(*unsatisfied, *target));
     }
   }
@@ -716,7 +733,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
       // the calling scope.
       const auto concrete_sym = sm.CurrentScope->GetTypeSymbol(inferred_type.get());
       auto candidates = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
-      if (concrete_sym != nullptr and not concrete_sym->IsGeneric) {
+      if (concrete_sym != nullptr and not concrete_sym->IsTypeGeneric()) {
         candidates.EmplaceBack(concrete_sym->FqName(), sm.CurrentScope);
         if (concrete_sym->LinkedScope != nullptr) {
           for (auto const *sup_scope : concrete_sym->LinkedScope->SupScopes()) {
@@ -756,7 +773,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
             type_params, [&](auto const *other) { return constraint->ContainsGenerics(*other); });
           RaiseIf<SppGenericConstraintError>(
             constraint_drives_inference,
-            {sm.CurrentScope, &owner_scope}, ERR_ARGS(*constraint, *inferred_type));
+            {&owner_scope, sm.CurrentScope}, ERR_ARGS(*constraint, *inferred_type));
         }
 
         for (auto const &[inferred_name, inferred_val] : temp_gs) {
@@ -786,7 +803,7 @@ auto spp::analyse::utils::generic_bindings::InferGnArgs(
     auto def_type_raw = def_type->WithoutGenerics();
     if (auto def_sym = owner_scope.GetTypeSymbol(def_type_raw.get()); def_sym != nullptr and meta.CurrentStage >= asts::meta::CompilerStage::kGenTopLvlAliases) {
       auto temp = def_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
-      if (not type_predicates::IsTypeSelf(*def_type)) {
+      if (not def_type->IsSelfType()) {
         temp = temp->WithGenerics(asts::AstClone(def_type->LastTypePart()->GnArgGroup));
       }
       def_type = std::move(temp);

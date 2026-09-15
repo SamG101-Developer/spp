@@ -8,250 +8,379 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts::meta {
-  SPP_EXP_CLS enum class CompilerStage : std::uint8_t;
-  SPP_EXP_CLS struct MetaGuard;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts, struct Ast);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LoopExpressionAst);
+use(spp::asts, struct FunctionPrototypeAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts::meta, enum class CompilerStage : std::uint8_t);
+use(spp::asts::meta, struct CompilerMetaData);
+use(spp::asts::meta, struct CompilerMetaDataState);
+use(spp::asts::meta, struct LlvmLoopInfo);
+use(spp::asts::meta, struct MetaGuard);
+use(spp::codegen, struct LlvmCtx);
 
 SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
   kNone = 0,
-  kGenTopLvlScopes,     // stage 2
-  kGenTopLvlAliases,    // stage 3
-  kQualifyTypes,        // stage 4
-  kLoadSupScopes,       // stage 5
-  kAttachSupScopes,     // the tail of stage 5
+  kGenTopLvlScopes, // stage 2
+  kGenTopLvlAliases, // stage 3
+  kQualifyTypes, // stage 4
+  kLoadSupScopes, // stage 5
+  kAttachSupScopes, // the tail of stage 5
   kPreAnalyseSemantics, // stage 6
-  kAnalyseSemantics,    // stage 7
-  kCheckMemory,         // stage 8
-  kCompTimeResolve,     // stage 9
-  kMonomorphise,        // between stages 9 and 10
-  kPreCodeGen,          // stage 10
-  kCodeGen,             // stage 11
+  kAnalyseSemantics, // stage 7
+  kCheckMemory, // stage 8
+  kCompTimeResolve, // stage 9
+  kMonomorphise, // between stages 9 and 10
+  kPreCodeGen, // stage 10
+  kCodeGen, // stage 11
 };
-
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct LoopExpressionAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct TypeSymbol;
-}
 
 namespace spp::asts::meta {
-  SPP_EXP_CLS struct LlvmLoopInfo;
-  SPP_EXP_CLS struct CompilerMetaDataState;
-  SPP_EXP_CLS struct CompilerMetaData;
-
-  /**
-   * Generic parameter names mapped to the types an object initializer infers their arguments from.
-   */
-  SPP_EXP_CLS
-  using GenericInferenceBindings = Map<
+  /// Generic parameter names mapped to the types an object
+  /// initializer infers their arguments from.
+  SPP_EXP_CLS using GenericInferenceBindings = Map<
     Shared<IdentifierAst>, Shared<TypeAst>,
-    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>>;
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>,
+    utils::ptr::ptr_eq<Shared<IdentifierAst>>>;
 }
 
-namespace spp::codegen {
-  SPP_EXP_CLS struct LlvmCtx;
-}
-
-/**
- * The llvm blocks belonging to a single enclosing loop, tracked so that @c exit and @c skip statements can branch to
- * the correct loop. The stack of these is ordered outermost-first, so the innermost loop is the back element.
- */
+/// The LLVM blocks belonging to a single enclosing loop,
+/// tracked so that "exit" and "skip" loop flow control
+/// statements can branch to the correct loop. The stack
+/// of these is ordered outermost-first, so the innermost
+/// loop is the back element.
 SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
-  llvm::BasicBlock *CondBB;
-  llvm::BasicBlock *EndBB;
-  llvm::PHINode *Phi;
-  llvm::Value *EnteredFlag;
+  /// The LLVM building block for the condition.
+  llvm::BasicBlock *CondBB = nullptr;
 
-  /**
-   * The scope the loop statement itself is written in - the first scope an @c exit or a @c skip is *not* leaving.
-   * Every scope between the jump and this one is being left without reaching its end, so their drops are emitted at
-   * the jump instead; this is where that walk stops.
-   */
-  analyse::scopes::Scope const *ScopeContainingLoop;
+  /// The LLVM building block for the end section; the part
+  /// after the loop.
+  llvm::BasicBlock *EndBB = nullptr;
+
+  /// The LLVM phi node to receive values into from the loop
+  /// exiting with a value.
+  llvm::PHINode *Phi = nullptr;
+
+  /// Whether the loop has run its body at least once or not,
+  /// so we know whether to take the "else" block under the
+  /// loop or not.
+  llvm::Value *EnteredFlag = nullptr;
+
+  /// The scope that a loop statement is written in; were we
+  /// to break out of this loop, this is the scope we'd end
+  /// up in. All the scopes between the jump, and this one,
+  /// are being left without reaching the end, so their drops
+  /// need to be emitted here instead.
+  Scope const *ScopeContainingLoop = nullptr;
 };
 
+/// The master meta context used for additional information
+/// passing between asts.
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
+  /// The current stage. This is tracked here for two reasons;
+  /// one, helper functions have no notion of the stage they
+  /// are called from. and two, some stage4 functions call a
+  /// stage 7 ont-hit analysis, so there is some stage-dependent
+  /// behaviour that might need to be enforced.
   CompilerStage CurrentStage;
+
+  /// When a function is being called with two overloads that
+  /// differ only in their return type, we can provide a type
+  /// that resolves this, maybe from a "let: Type = ...", or a
+  /// "cmp: Type = ..." explicit designator.
   Shared<TypeAst> ReturnTypeOverloadResolverType;
+
+  /// The target of an assignment. This provides a handle that
+  /// the rhs expression might want to use for example. Also
+  /// used by "let" which is an assignment of sorts too.
   Shared<IdentifierAst> AssignmentTarget;
+
+  /// Tracked with the assignment target, this is the type of
+  /// the assignment target, always valid for "=" as the left
+  /// side symbol already exists, where-as the "let" only
+  /// sometimes has its type.
   Shared<TypeAst> AssignmentTargetType;
+
+  /// There are some contexts where we allow ignoring a missing
+  /// else branch, such as some basic type analysis that just
+  /// needs to know the branch's returning type.
   bool IgnoreMissingElseBranchForInference;
+
+  /// The condition on a "case" ast, being propagated into the
+  /// pattern analysis, where it might get combined into a
+  /// method from the operator, like "==" creating ".eq()" on the
+  /// condition.
   ExpressionAst *CaseCondition;
 
-  /**
-   * The symbols the surrounding @c "case ... of" expressions take when their patterns bind by move, while their
-   * branches are being walked. The take is marked once, after the branches, because they have to bind off the value
-   * first - but a @c ret or a loop jump inside a branch is checked before that happens, and would otherwise report a
-   * subject as a value the branch abandoned when the @c case is exactly what consumed it.
-   */
+  /// If we are consuming the case condition or not. It is stored
+  /// as a vector so that nested "case" statements work properly,
+  /// moving back to the correct case expression per case block.
   Vec<Shared<IdentifierAst>> CaseConsumedSubjects;
 
-  /**
-   * The @c defer keyword whose expression is currently being analysed, or @c nullptr outside one. A deferred
-   * expression runs because its scope is being left, so nothing inside it may leave that scope itself - and @c ?
-   * expands to a @c ret, so it is caught here rather than by @c Terminates , which reports only unconditional exits.
-   * Cleared when entering a closure body: a @c ? there returns from the closure, not from the deferring function.
-   */
+  /// Whether we are currently operating within a "defer"
+  /// statement's expression - different rules for analysis and
+  /// terminating.
   TokenAst *WithinDeferTok = nullptr;
-  analyse::scopes::TypeSymbol *ClsSym;
-  analyse::scopes::Scope *OverriddenScopeForClosure;
-  analyse::scopes::Scope *EnclosingFunctionScope;
+
+  /// The actual "current scope" of the program, which has been
+  /// hidden by the isolated closure scope being set to the
+  /// current scope.
+  Scope *OverriddenScopeForClosure;
+
+  /// The function scope containing the surrounding function. This
+  /// is not reset on a restore, so persists throughout all save/
+  /// restore operations on "meta" during analysis.
+  Scope *EnclosingFunctionScope;
+
+  /// The function variant of the surrounding function: whether
+  /// we are inside a subroutine (fun) or coroutine (cor). Needed
+  /// for "ret" and "gen" position checking.
   TokenAst *EnclosingFunctionFlavour;
+
+  /// The return type of the enclosing function type. Again needed
+  /// for "ret" and "gen" type checking.
   Vec<Shared<TypeAst>> EnclosingFunctionRetType;
+
+  /// The "source" return type of the enclosing function type.
+  /// Needed for "ret" and "gen" type checking error reporting.
   Vec<Shared<TypeAst>> EnclosingFunctionSourceRetType;
+
+  /// Whether the enclosing function is a "cmp" compile time
+  /// function or not. Required because "cmp" functions cannot
+  /// call non-"cmp" functions in their body.
   TokenAst *EnclosingFunctionCmp;
-  analyse::scopes::Scope *CurrentLambdaOuterScope;
+
+  /// The current "outer" closure scope. This is needed so that
+  /// when we are in the "inner" closure scope, we can lookup
+  /// symbols from the outer scope, and then move then in.
+  Scope *CurrentLambdaOuterScope;
+
+  /// The function prototype being called by a postfix function
+  /// call operator. Needed for coroutine target checking during
+  /// analysis, especially memory rules.
   FunctionPrototypeAst *TargetCallFunctionPrototype;
+
+  /// Similar to above, but rather than tracking the variation
+  /// of the target function prototype, check the calling
+  /// convention for "async", for memory rules.
   bool TargetCallWasFunctionAsync;
-  bool PreventAutoGeneratorResume;
+
+  /// The explicit type, if provided, on a "let" statement,
+  /// carried forward for local variable asts to analyse values
+  /// against.
   Shared<TypeAst> LetStatementExplicitType;
+
+  /// The value on a let statement, carried forward for local
+  /// variables to manage destructuring for.
   ExpressionAst *LetStatementValue;
+
+  /// Whether the "let" statement was for the uninitialized
+  /// "let x: Type", so local variables don't try to get a value
+  /// that's not there.
   bool LetStatementFromUninitialized;
 
-  /**
-   * When set, a local variable's initializer is this already-generated llvm value rather than the result of
-   * code-generating @c LetStatementValue. Used to bind a function/closure parameter directly to its incoming
-   * @c llvm::Argument, since there is no expression AST to codegen for it (see
-   * @c FunctionParameterGroupAst::Stage11_CodeGen).
-   */
+  /// The precomputed LLVM version of the "LetStatementValue",
+  /// so we don't have to regenerate the "let" value, which
+  /// could cause scope-desync.
   llvm::Value *LetStatementPrecomputedValue;
 
+  /// Loop depth tracking for "skip" and "exit" statements to
+  /// use.
   std::size_t LoopCurrentDepth;
+
+  /// Loop ast tracking through multiple depths, for error
+  /// reporting with incompatible "exit" levels.
   LoopExpressionAst *LoopCurrentAst;
-  Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
+
+  /// Loop return type tracking over multiple levels, ensuring
+  /// good type checking against "exit" statements at any
+  /// level, targeting any level.
+  Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>> LoopReturnTypes;
+
+  /// The object initializer type, because the object initializer
+  /// group needs it for generic inference.
   Shared<TypeAst> ObjectInitType;
-  /**
-   * The object-initializer bindings a generic argument is inferred from, and the parameters they are inferred onto.
-   *
-   * @n
-   * Held behind a @c Shared , like @c LoopReturnTypes , because @c Save copies every field it tracks and these two are
-   * the only maps among them: a save that copied them element-wise would pay for a map of shared pointers on entry to
-   * every guarded region, and almost no region touches them. The only writer replaces the whole map rather than
-   * inserting into one, so sharing a map with a saved state can never let a region write through to it.
-   */
+
+  /// Critical to advanced generic inference, the infer source
+  /// is the map of "arguments" such as function or object init
+  /// arguments. These are compared by name against the inference
+  /// targets to infer generics.
   Shared<GenericInferenceBindings> InferSource;
+
+  /// Critical to advanced generic inference, the infer target
+  /// is the map of "parameters" such as function param or object
+  /// init class fields. These are compared by name against the
+  /// inference sources to infer generics.
   Shared<GenericInferenceBindings> InferTarget;
+
+  /// Track the left-hand-side of a postfix expression so that
+  /// the operator being applied to it can read from it.
   ExpressionAst *PostfixExpressionLhs;
 
+  /// Track the right-hand-side of a unary expression so that
+  /// the operator being applied to it can reach from it.
   ExpressionAst *UnaryExpressionRhs;
-  bool SkipTypeAnalysisGenericChecks;
-  analyse::scopes::Scope *TypeAnalysisTypeScope;
-  Shared<TypeAst> IgnoreCmpGeneric;
-  bool AllowMoveDeref;
-  llvm::BasicBlock *LlvmEndBB;
-  codegen::LlvmCtx *LlvmCtx;
 
-  /**
-   * Set when the consumer ast of an expression needs the address of the storage it names (an assignment target, or a
-   * borrow being passed into a function), rather than its value. Only expressions that name storage use it.
-   */
+  /// There are some instances where we want to analyse a type
+  /// but not the generics attached to it, so allow that.
+  /// Todo: Remove and use ->WithoutGenerics()->Stage7...()?
+  bool SkipTypeAnalysisGenericChecks;
+
+  /// The overriding type scope to analyse a type in. This is
+  /// used for example from a type unary expression to provide
+  /// the namespace scope for the type identifier ast.
+  Scope *TypeAnalysisTypeScope;
+
+  /// The comp generic parameter whose own type is being
+  /// qualified, so generic instantiations made while doing
+  /// so don't carry in its not-yet-typed symbol.
+  Shared<IdentifierAst> IgnoreCmpGeneric;
+
+  /// There are some instances where "moving" the value under
+  /// a deref is allowed, because a move doesn't actually happen,
+  /// but it appears to, for example with "a@ = 1".
+  bool AllowMoveDeref;
+
+  /// The "end" building block for "case" and "loop" blocks,
+  /// so we have a way to branch to the end from case branches
+  /// etc.
+  llvm::BasicBlock *LlvmEndBB;
+
+  /// The LLVM meta context containing the LLVM context, module,
+  /// builder, etc. Overarching, persistent, LLVM context fields.
+
+  /// Set when a consumer ast of an expression needs the address
+  /// of the storage it is naming, like an assignment target or
+  /// borrow argument, rather than the value. Only expressions
+  /// naming storage need it.
   bool LlvmWantAddress;
 
+  /// Stage 11 versions of the assignment target fields, needed
+  /// for detecting handles etc.
   llvm::Value *LlvmAssignmentTarget;
-  llvm::Value *LlvmAssignmentTargetType;
+
+  /// Stage 11 equivalent of the case condition above, needed
+  /// for the case branches and patterns to interact with the
+  /// condition, forming expressions and destructures etc.
   llvm::Value *LlvmCaseCondition;
 
+  /// The phi node is needed so that inner branches can send
+  /// data back into the case/loop owned phi node.
   llvm::PHINode *LlvmPhi;
+
+  /// Loop tracking information during stage 11, for nested
+  /// loops and control flow.
   Vec<LlvmLoopInfo> LlvmLoopStack;
+
+  /// A collection of "cmp" compile-time information, typically
+  /// used in stage 9, to compute instructions at compile time.
   Map<
     Shared<IdentifierAst>, Unique<ExpressionAst>,
-    utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>,
+    utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
   Vec<TypeAst*> CmpGnTypeArgs;
   Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;
-
-  /**
-   * Whether the comp-time frame currently being resolved has hit a @c ret . A @c ret nested inside a @c case branch
-   * has to stop the statement loop that contains the @c case , or the statements after it go on resolving and
-   * overwrite @c CmpResult with a value the call never reached. Like @c CmpResult it is deliberately not saved and
-   * restored, so that it passes back up; the function implementation opens and closes a frame around it.
-   */
   bool CmpReturned = false;
 
+  /// The outermost call a comp-time evaluation started from, and
+  /// the scope it was written in. An error raised while a nested
+  /// call is evaluated (std's arithmetic, an intrinsic) reports
+  /// here, where the user wrote the expression.
+  Ast const *CmpCallSite = nullptr;
+  Scope *CmpCallSiteScope = nullptr;
+
+  /// Ignore access modifier violations during analysis. This is
+  /// for when certain asts map to functions private on STD types,
+  /// so they can't manually be called, only mapped onto.
   bool IgnoreAccessModifierViolations;
 
+  /// A monomorphization helper, to prevent constraints being
+  /// checked for a generic-substituted type.
+  /// Todo: Why is this needed (it IS needed).
   bool SkipSubstitutedConstraintChecks = false;
 
-  /**
-   * Whether the module being analysed is the entry point a test build generates. Only there may a unit test be called:
-   * it is the one caller that is supposed to run them.
-   */
+  /// Track whether we are in a S++ test harness ie is the module
+  /// in the "tst" folder not "src". Used to prevent certain
+  /// actions.
   bool IsTestHarness = false;
+
+  /// Whitelist contexts where abstract types are allows to appear,
+  /// such as for generic constraints. Abstract types are very
+  /// limited in where they can be used.
   bool AllowAbstractType;
 
-  /**
-   * Whether a comp generic argument written as a plain name should resolve to what that name is bound to in the
-   * current scope. Only set while re-analysing a generic function instantiation's own body, which is a private clone
-   * of the template's, because the resolution rewrites the argument in place: every other analysis can be looking at
-   * an ast shared with the template (an instantiated "sup" scope keeps the template's ast node), where baking one
-   * instantiation's bindings in would corrupt the template for every other caller.
-   */
-  bool ResolveBoundCompGenerics;
-
-  /**
-   * The coroutine currently being generated into, for "gen" and "res" to reach. Shared rather than uniquely owned so
-   * that @c CompilerMetaData::Save can copy it into the snapshot like every other field: a @c Unique could only be
-   * moved, which left this null for the whole duration of the saved scope, and so nullptr for any "gen" nested inside
-   * one - a "gen" in a case branch, a loop body, and so on.
-   */
+  /// The coroutine being generated into, for "gen" and ".res()"
+  /// to interact with in stage 11.
   Shared<codegen::LlvmGenerator> LlvmGenerator;
 
-  /**
-   * The coroutine's promise, held as the alloca it is rather than as a bare value, so that a "gen" reaching a slot
-   * through it takes the struct type from the allocation itself. The two cannot then disagree about where the send
-   * slot begins, which they would if each rebuilt the type from the coroutine's signature separately.
-   */
+  /// Additional coroutine information for the "gen" expression
+  /// to interact with.
   llvm::AllocaInst *LlvmGeneratorState;
 };
 
-/**
- * Shared metadata for ASTs, exclusive to the stage of compilation taking place. For example, tracking if an assignment
- * is taking place, when the RHS expression is being analysed. Use a pooled save/restore history. This is a hand-rolled
- * stack over a vector that never shrinks: `_Depth` is the live top-of-stack, and slots above it are parked (retaining
- * their allocated buffers) for reuse by the next Save. This avoids the alloc/free churn a `std::stack<..., std::deque>`
- * incurs across nested Save/Restore cycles.
- */
-SPP_EXP_CLS struct spp::asts::meta::CompilerMetaData : CompilerMetaDataState {
+/// The CompilerMetaData inherits the state, which acts as
+/// the "current version" of the meta context, and contains
+/// save and restore capabilities to map properties back.
+/// Hand-rolled pool system to prevent hot paths allocation
+/// churn on save/restore.
+SPP_EXP_CLS struct spp::asts::meta::CompilerMetaData :
+  CompilerMetaDataState {
 private:
+  /// The history of the meta changes, snapshotted by the
+  /// "Save" method.
   Vec<CompilerMetaDataState> _History;
+
+  /// The tracking depth of the current version in the
+  /// history.
   std::size_t _Depth = 0;
 
 public:
   CompilerMetaData();
 
+  /// Snapshot all the current values into the history, making
+  /// them "restorable".
   auto Save() -> void;
 
+  /// Restore all the light values (everything except function
+  /// context, which we want to persist upwards). Set "heavy"
+  /// to true to clear those too.
   auto Restore(bool heavy = false) -> void;
 
+  /// Getter for the internal depth. This is used when an catchable
+  /// error might have raised in between a "Save" and "Restore",
+  /// and we want to manually sync the meta context depth (unlikely
+  /// with the new guard though).
   SPP_ATTR_NODISCARD auto Depth() const -> std::size_t;
 };
 
-/**
- * Scoped @c CompilerMetaData::Save / @c Restore . The pair has to bracket exactly, and writing it by hand means a
- * @c return or a raised @c SemanticError between the two leaks the saved state into whatever runs next - which is
- * why @c DetermineOverload carries a loop that unwinds back to a remembered depth by hand. Declaring one of these
- * instead ties the restore to the scope, so both cases are handled by the language.
- */
+/// A scoped guard to prevent the desync of "Save"/"Restore"
+/// when a catchable error raises between the two. Given the
+/// scope exits at the error, we can call "Restore" there,
+/// re-syncing the differences.
 SPP_EXP_CLS struct spp::asts::meta::MetaGuard {
+  /// Propagate the "heavy" tag into the "Restore" call for
+  /// consistency.
   explicit MetaGuard(CompilerMetaData *meta, bool heavy = false);
 
+  /// Destructor restores the context with the stored "heavy"
+  /// tag.
   ~MetaGuard();
 
+  /// No copying or assignment.
   MetaGuard(MetaGuard const &) = delete;
-
   auto operator=(MetaGuard const &) -> MetaGuard& = delete;
 
 private:
-  CompilerMetaData *_Meta;
+  /// The meta context to restore to.
+  meta::CompilerMetaData *_Meta;
+
+  /// Whether to restore the "heavy" fields too.
   bool _Heavy;
 };

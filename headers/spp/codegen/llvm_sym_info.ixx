@@ -13,10 +13,8 @@ namespace spp::codegen {
   };
 
   SPP_EXP_CLS struct LlvmVarSymInfo {
-    /**
-     * The LLVM allocation handle for the local variable being represented by a variable symbol.
-     */
+    /// The llvm allocation for the local variable a variable
+    /// symbol represents.
     llvm::Value *Alloca = nullptr;
-
   };
 }

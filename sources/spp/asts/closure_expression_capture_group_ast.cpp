@@ -74,8 +74,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::ToString() const
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Add the capture variables after analysis, otherwise their symbol checks refer to the new captures, not the
   // original asts from the argument group analysis.
@@ -85,10 +85,19 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
     auto var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, AstClone(cap_val), nullptr);
     const auto let = MakeUnique<LetStatementInitializedAst>(
       nullptr, std::move(var), nullptr, nullptr, AstClone(cap->Val));
+
+    // A generic parameter bound to a callable is called through its
+    // constraint, not its own type (see "ReattachCallableConstraints"),
+    // and a capture of it has to keep that: "(caps f) { f() }" inside a
+    // "FunMov"-constrained generic consumes "f", whatever closure it is.
+    const auto outer_sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+    const auto callable_as = outer_sym != nullptr ? outer_sym->CallableAsType : nullptr;
     let->Stage7_AnalyseSemantics(sm, meta);
 
     // Apply the borrow to the symbol.
     const auto sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+    if (callable_as != nullptr) { sym->CallableAsType = callable_as; }
+    sym->Kind = analyse::scopes::VariableKind::Capture;
     const auto conv = cap->Conv.get();
     sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
     sym->Type = sym->Type->WithConvention(AstClone(cap->Conv));
@@ -96,8 +105,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Any borrowed captures need pinning and marking as extended borrows.
   auto ass_sym = static_cast<analyse::scopes::VariableSymbol*>(nullptr);
@@ -137,8 +146,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
@@ -169,7 +178,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
     // Add the alloca to the current scope as a variable symbol.
     // Todo: Handle mutability properly.
     auto var_sym = MakeShared<analyse::scopes::VariableSymbol>(
-      AstClone(cap_val), cap_ty, sm->CurrentScope, false, false);
+      AstClone(cap_val), cap_ty, sm->CurrentScope, analyse::scopes::VariableKind::Capture);
     var_sym->LlvmInfo->Alloca = alloca;
     sm->CurrentScope->AddVarSymbol(std::move(var_sym));
   }

@@ -9,45 +9,35 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterCompAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
+SPP_AST_COMMON_FWD_DECL(GenericParameterCompAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+
+namespace spp::asts::detail {
+  template <>
+  struct make_required_param<GenericParameterCompAst> {
+    using type = GenericParameterCompAst;
+  };
+
+  template <>
+  struct generic_param_value_type<GenericParameterCompAst> {
+    using type = ExpressionAst const*;
+  };
 }
 
 SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
-  SPP_GCC_VTABLE_FIX
-
-  /**
-   * The @c cmp token that represents the generic comp parameter. This is used to indicate that the parameter is a
-   * comp generic and not a type generic.
-   */
+  /// The "cmp" token, marking this as a comp generic rather
+  /// than a type generic.
   Unique<TokenAst> TokCmp;
 
-  /**
-   * The token that represents the @code :@endcode colon in the generic parameter. This separates the parameter name
-   * from the type.
-   */
+  /// The ":" token separating the parameter name from its type.
   Unique<TokenAst> TokColon;
 
-  /**
-   * The type of the parameter. This is used to specify the type of the generic comp parameter, such as @c I32 or
-   * @c F64 . This is a required field, as the type of the parameter must be known at compile time.
-   */
+  /// The type of the parameter, such as "I32" or "F64". This is
+  /// required, as the type must be known at compile time.
   Shared<TypeAst> Type;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
-  /**
-   * Construct the GenericParameterCompAst with the arguments matching the members.
-   * @param tok_cmp The @c cmp token that represents the generic comp parameter.
-   * @param name The value of the generic comp parameter.
-   * @param tok_colon The token that represents the @c : colon in the generic parameter.
-   * @param type The type of the parameter.
-   * @param order_tag The order tag for this generic parameter, used to enforce ordering rules.
-   */
   GenericParameterCompAst(
     decltype(TokCmp) &&tok_cmp,
     decltype(Name) name,
@@ -67,5 +57,3 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompAst)

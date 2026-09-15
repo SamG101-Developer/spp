@@ -9,40 +9,26 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantDestructureArrayAst;
-  SPP_EXP_CLS struct LocalVariableDestructureArrayAst;
-  SPP_EXP_CLS struct LetStatementInitializedAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct IdentifierAst;
-}
+SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureArrayAst);
+use(spp::asts, struct CasePatternVariantDestructureArrayAst);
+use(spp::asts, struct LetStatementInitializedAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct IdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureArrayAst);
 
-  /**
-   * The @code [@endcode token that indicates the start of an array destructuring pattern.
-   */
+  /// The "[" token that starts the array destructure.
   Unique<TokenAst> TokL;
 
-  /**
-   * The elements of the array destructuring pattern. This is a list of patterns that will be destructured from the
-   * array. Each element can be a single identifier, a nested destructuring pattern, or a literal.
-   */
+  /// The patterns destructured from the array. Each element
+  /// can be a single identifier, a nested destructure, or a
+  /// literal.
   Vec<Unique<LocalVariableAst>> Elems;
 
-  /**
-   * The @code ]@endcode token that indicates the end of an array destructuring pattern.
-   */
+  /// The "]" token that ends the array destructure.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the LocalVariableDestructureArrayAst with the arguments matching the members.
-   * @param[in] tok_l The @code [@endcode token that indicates the start of an array destructuring pattern.
-   * @param[in] elems The elements of the array destructuring pattern.
-   * @param[in] tok_r The @code ]@endcode token that indicates the end of an array destructuring pattern.
-   */
   LocalVariableDestructureArrayAst(
     decltype(TokL) &&tok_l,
     decltype(Elems) &&elems,
@@ -60,15 +46,11 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVari
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  SPP_ATTR_NODISCARD auto ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
-  SPP_ATTR_NODISCARD auto ExtractName() const
-    -> Shared<IdentifierAst> override;
+  SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 
 private:
   Vec<Unique<LetStatementInitializedAst>> _NewAsts;
   Shared<IdentifierAst> _TmpName;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureArrayAst)

@@ -65,8 +65,8 @@ auto spp::asts::FunctionParameterGroupAst::ToString() const
 }
 
 auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppMultipleSelfParametersError;
@@ -123,16 +123,16 @@ auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::FunctionParameterGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check each parameter's memory.
   for (auto const &param : Params) { param->Stage8_CheckMemory(sm, meta); }
 }
 
 auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Bind each parameter's storage to its actual incoming

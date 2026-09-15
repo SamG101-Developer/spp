@@ -9,39 +9,23 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::compiler {
-  SPP_EXP_CLS struct CompilerBoot;
-}
+SPP_AST_COMMON_FWD_DECL(ModulePrototypeAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct FunctionPrototypeAst);
+use(spp::asts, struct ModuleImplementationAst);
+use(spp::compiler, struct CompilerBoot);
 
-namespace spp::asts {
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-  SPP_EXP_CLS struct ModulePrototypeAst;
-  SPP_EXP_CLS struct ModuleImplementationAst;
-}
-
-/**
- * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of
- * the module.
- */
+/// A prototype for a module, containing the implementation of
+/// the module.
 SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
-  SPP_GCC_VTABLE_FIX
-
-  /**
-   * The file path of the module prototype. This is interacted with by the compiler to resolve module imports. Not got
-   * from parsing children AST nodes.
-   */
+  /// The file path of the module prototype, used by the
+  /// compiler to resolve module imports. Not got from parsing
+  /// children asts.
   std::filesystem::path FilePath = "";
 
-  /**
-   * The module implementation AST that this prototype represents.
-   */
+  /// The module implementation ast this prototype represents.
   Unique<ModuleImplementationAst> Impl;
 
-  /**
-   * Construct the ModulePrototypeAst with the given implementation.
-   * @param[in] impl The module implementation AST that this prototype represents.
-   */
   explicit ModulePrototypeAst(
     decltype(Impl) &&impl);
 
@@ -73,5 +57,3 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   SPP_ATTR_NODISCARD auto Name() const -> Unique<IdentifierAst>;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ModulePrototypeAst)

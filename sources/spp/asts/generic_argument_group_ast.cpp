@@ -128,8 +128,13 @@ auto spp::asts::GenericArgumentGroupAst::ToString() const
   -> Str {
   SPP_STRING_START;
   if (not Args.IsEmpty()) {
+    // Separators go between the arguments only, so there is no
+    // trailing ", " before the "]".
     SPP_STRING_APPEND_RAW("[");
-    SPP_STRING_EXTEND(Args, ", ");
+    for (auto i = 0uz; i < Args.Len(); ++i) {
+      if (i != 0) { SPP_STRING_APPEND_RAW(", "); }
+      SPP_STRING_APPEND(Args[i]);
+    }
     SPP_STRING_APPEND_RAW("]");
   }
   SPP_STRING_END;
@@ -165,8 +170,8 @@ auto spp::asts::GenericArgumentGroupAst::operator+(
 }
 
 auto spp::asts::GenericArgumentGroupAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   for (auto const &x : Args) {
     x->Stage4_QualifyTypes(sm, meta);
@@ -174,8 +179,8 @@ auto spp::asts::GenericArgumentGroupAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppIdentifierDuplicateError;
@@ -220,8 +225,8 @@ auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenericArgumentGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Check the arguments for memory issues.
   for (auto const &x : Args) { x->Stage8_CheckMemory(sm, meta); }

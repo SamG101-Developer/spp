@@ -6,19 +6,13 @@ import spp.asts.inner_scope_expression_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct FunctionImplementationAst;
-}
+SPP_AST_COMMON_FWD_DECL(FunctionImplementationAst);
+use(spp::asts, struct Ast);
 
-/**
- * The FunctionImplementationAst represents the implementation of a function. It is used to define the body of a
- * function and contains the statements that make up the function's implementation. Semantically equivalent to a basic
- * InnerScopeAst.
- */
+/// The implementation of a function: the body holding the
+/// statements that make up the function. Semantically
+/// equivalent to a basic InnerScopeAst.
 SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAst {
-  SPP_GCC_VTABLE_FIX
-
   static auto NewEmpty() -> Unique<FunctionImplementationAst>;
 
   using InnerScopeExpressionAst::InnerScopeExpressionAst;
@@ -31,5 +25,3 @@ SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAs
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionImplementationAst)

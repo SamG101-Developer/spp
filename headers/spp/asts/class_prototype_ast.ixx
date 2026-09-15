@@ -12,74 +12,46 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-  SPP_EXP_CLS struct TypeSymbol;
-}
+SPP_AST_COMMON_FWD_DECL(ClassPrototypeAst);
+use(spp::asts, struct AnnotationAst);
+use(spp::asts, struct ClassImplementationAst);
+use(spp::asts, struct GenericParameterGroupAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeStatementAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeSymbol);
 
-namespace spp::asts {
-  SPP_EXP_CLS struct AnnotationAst;
-  SPP_EXP_CLS struct ClassPrototypeAst;
-  SPP_EXP_CLS struct ClassImplementationAst;
-  SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeStatementAst;
-}
-
-/**
- * The ClassPrototypeAst represents the prototype of a class in the abstract syntax tree. It defines the structure of a
- * class, including its name and any generic parameters it may have. The attributes are defined in the implementation
- * ast for this class, allowing for scoping rules to be made easier.
- */
+/// The prototype of a class, defining its structure: its name
+/// and any generic parameters. The attributes are defined in
+/// the implementation ast, making the scoping rules easier.
 SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ClassPrototypeAst);
 
-  /**
-   * The list of annotations that are applied to this class prototype. Typically, access modifiers in this context.
-   */
+  /// The annotations applied to this class prototype.
+  /// Typically, access modifiers in this context.
   Vec<Unique<AnnotationAst>> Annotations;
 
-  /**
-   * The @c cls keyword that represents the start of the class prototype. This is used to indicate that a class is
-   * being defined.
-   */
+  /// The "cls" keyword starting the class prototype.
   Unique<TokenAst> TokCls;
 
-  /**
-   * Optional @c \@zero_type annotation. This is used to indicate that the class is guaranteed to occupy no storage,
-   * which also makes it @c Copy .
-   */
+  /// Optional "!zero_type" annotation, indicating the class is
+  /// guaranteed to occupy no storage. Layout only: the class
+  /// is still linear unless it is also "Copy".
   AnnotationAst *ZeroTypeAnnotation;
 
-  /**
-   * The name of the class prototype. This is the identifier that is used to refer to the class, and must be unique
-   * within the scope.
-   */
+  /// The name used to refer to the class, which must be unique
+  /// within the scope.
   Shared<TypeAst> Name;
 
-  /**
-   * An optional generic parameter group for the class prototype. This is used to define generic types that the class
-   * can use.
-   */
+  /// An optional generic parameter group, defining generic
+  /// types the class can use.
   Shared<GenericParameterGroupAst> GnParamGroup;
 
-  /**
-   * The list of class attributes that are defined on the class prototype. These are the properties that the class
-   * will have, and can be accessed through instances of the class.
-   */
+  /// The class attributes defined on the class prototype: the
+  /// properties accessible through instances of the class.
   Unique<ClassImplementationAst> Impl;
 
-  /**
-   * Construct the ClassPrototypeAst with the arguments matching the members.
-   * @param[in] annotations The list of annotations that are applied to this class prototype.
-   * @param[in] tok_cls The @c cls keyword that represents the start of the class prototype.
-   * @param[in] name The name of the class prototype.
-   * @param[in] generic_param_group An optional generic parameter group for the class prototype.
-   * @param[in] impl The list of class attributes that are defined on the class prototype.
-   */
   ClassPrototypeAst(
     decltype(Annotations) &&annotations,
     decltype(TokCls) &&tok_cls,
@@ -111,28 +83,18 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto RegisterGenericSubstitution(
-    analyse::scopes::Scope *scope,
-    Unique<ClassPrototypeAst> &&new_ast)
-    -> void;
+  auto RegisterGenericSubstitution(Scope *scope, Unique<ClassPrototypeAst> &&new_ast) -> void;
 
-  SPP_ATTR_NODISCARD auto GetRegisteredGenericSubstitutions() const
-    -> Vec<Pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
+  SPP_ATTR_NODISCARD auto GetRegisteredGenericSubstitutions() const -> Vec<Pair<Scope*, ClassPrototypeAst*>>;
 
-  SPP_ATTR_NODISCARD auto GetClsSym() const
-    -> Shared<analyse::scopes::TypeSymbol>;
+  SPP_ATTR_NODISCARD auto GetClsSym() const -> Shared<TypeSymbol>;
 
-  auto FillLlvmLayout(
-    ScopeManager const *sm,
-    analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LlvmCtx const *ctx) const -> void;
+  auto FillLlvmLayout(ScopeManager const *sm, TypeSymbol const *type_sym, codegen::LlvmCtx const *ctx) const -> void;
 
 private:
-  Vec<Pair<analyse::scopes::Scope*, Unique<ClassPrototypeAst>>> _GenericSubstitutions;
+  Vec<Pair<Scope*, Unique<ClassPrototypeAst>>> _GenericSubstitutions;
 
-  Shared<analyse::scopes::TypeSymbol> _ClsSym;
+  Shared<TypeSymbol> _ClsSym;
 
-  auto _GenerateSymbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
+  auto _GenerateSymbols(ScopeManager *sm) -> TypeSymbol*;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)

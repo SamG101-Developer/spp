@@ -10,62 +10,38 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct SupImplementationAst;
-  SPP_EXP_CLS struct SupPrototypeFunctionsAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(SupPrototypeFunctionsAst);
+use(spp::asts, struct GenericParameterGroupAst);
+use(spp::asts, struct SupImplementationAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
-/**
- * The SupPrototypeFunctionsAst represents a superimposition of methods over a type. This is used to add behavior to a
- * type. For example, to extend the @c std::Str type with additional methods, the following code can be used:
- * @code
- * sup std::Str {
- *     fun to_upper() -> std::Str { ... }
- * }
- * @endcode
- */
+/// A superimposition of methods over a type, used to add
+/// behaviour to a type. For example, to extend the "std::Str"
+/// type with additional methods:
+///
+///   sup std::Str {
+///       fun to_upper() -> std::Str { ... }
+///   }
 SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMemberAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(SupPrototypeFunctionsAst);
 
-  /**
-   * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
-   * being extended with additional methods.
-   */
+  /// The "sup" keyword that starts the superimposition.
   Unique<TokenAst> TokSup;
 
-  /**
-   * The generics available for this superimposition. This is used to superimpose over generic types (all generics
-   * must be used by the type being extended).
-   */
+  /// The generics available for this superimposition, used to
+  /// superimpose over generic types (all generics must be used
+  /// by the type being extended).
   Unique<GenericParameterGroupAst> GnParamGroup;
 
-  /**
-   * The name of the type that is being extended. This is the type that will gain the additional methods defined in
-   * the body of this superimposition.
-   */
+  /// The name of the type being extended. This type gains the
+  /// methods defined in the body of this superimposition.
   Shared<TypeAst> Name;
 
-  /**
-   * The body of the superimposition. This is a list of methods that are being added to the type. Each method is
-   * defined as a FunctionPrototypeAst, which includes the method's name, parameters, and return type.
-   */
+  /// The body of the superimposition: the methods (each a
+  /// FunctionPrototypeAst) being added to the type.
   Unique<SupImplementationAst> Impl;
 
-  struct {
-    Shared<TypeAst> OriginalName;
-  } Source;
-
-  /**
-   * Construct the SupPrototypeFunctionsAst with the arguments matching the members.
-   * @param tok_sup The @c sup keyword that represents the start of the superimposition.
-   * @param generic_param_group The generics available for this superimposition.
-   * @param name The name of the type that is being extended.
-   * @param impl The body of the superimposition.
-   */
   SupPrototypeFunctionsAst(
     decltype(TokSup) &&tok_sup,
     decltype(GnParamGroup) &&generic_param_group,
@@ -96,5 +72,3 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMember
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::SupPrototypeFunctionsAst)

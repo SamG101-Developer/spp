@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_utils;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
@@ -54,7 +55,6 @@ spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
   //
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
-  Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::LocalVariableDestructureObjectAst::~LocalVariableDestructureObjectAst() = default;
@@ -102,8 +102,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::BindsByMove() const
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppArgumentMissingError;
@@ -117,8 +117,9 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // Get the value and analyse it and the type.
   const auto val = meta->LetStatementValue;
   const auto val_type = val->InferType(sm, meta);
-  Type->Stage7_AnalyseSemantics(sm, meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  // Todo: in a generic sup, "let Box[T](v) = self" (or "Self(v)") raises E105 though "v" is bound -
+  //  LocalVariableDestructureObjectGeneric.test_valid_destructure_of_a_generic_class_in_its_sup.
+  Type = analyse::utils::type_utils::ResolveWrittenType(*Type, *sm, *meta);
 
   const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type.get())->Type;
   const auto cls_attrs = cls_proto != nullptr
@@ -161,7 +162,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // Check the type matches.
   RaiseIf<SppTypeMismatchError>(
     not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern) and not conv_only_mismatch,
-    {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Source.OriginalType, *Type));
+    {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Type, *Type));
 
   // Only 1 "multi-skip" allowed in a destructure.
   RaiseIf<SppMultipleRestPatternsError>(
@@ -253,8 +254,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // The hidden temporary holds the only analysis of the
   // value, so the value is checked (and its scopes walked)
@@ -287,8 +288,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Hand the already-resolved value to the hidden temporary,
   // so anything indexing it can resolve.
@@ -306,8 +307,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the value into the hidden temporary once, before

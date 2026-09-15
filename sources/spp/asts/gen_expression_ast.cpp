@@ -86,13 +86,13 @@ auto spp::asts::GenExpressionAst::ToString() const
 }
 
 auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::utils::type_compare::TypeEq;
   using generate::common_types::GenType;
   using generate::common_types::VoidType;
@@ -117,7 +117,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
         *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
 
       meta->AssignmentTargetType = yield_type;
-      meta->AssignmentTargetType = ResolveAndSubstituteSelfType(
+      meta->AssignmentTargetType = SubstituteSelfTypeAndAnalyse(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
       meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
       SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = std::move(yield_type); }
@@ -178,8 +178,8 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -216,8 +216,8 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::GenExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Consider if we are in a subroutine by desugar (ie for a
@@ -242,11 +242,15 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   // store it in the generator state object. The slot layout is taken from the promise's own allocation rather than
   // rebuilt here, so the store cannot be wider than the storage the frame reserved for it.
   const auto llvm_gen_state_ty = meta->LlvmGeneratorState->getAllocatedType();
-  const auto llvm_yield_val = Expr->Stage11_CodeGen(sm, meta, ctx);
-  const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
-    meta->LlvmGeneratorState, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT,
-    "gen.yield.slot", ctx);
-  ctx->Builder.CreateStore(llvm_yield_val, llvm_yield_slot);
+  const auto llvm_yield_val = Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+
+  // A bare "gen" yields Void, so there is nothing to store.
+  if (llvm_yield_val != nullptr) {
+    const auto llvm_yield_slot = codegen::GetLlvmGeneratorSlotPtr(
+      meta->LlvmGeneratorState, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::YIELD_SLOT,
+      "gen.yield.slot", ctx);
+    ctx->Builder.CreateStore(llvm_yield_val, llvm_yield_slot);
+  }
 
   // Step 2: Invoke the coroutine suspension intrinsic, allowing
   // the caller to use the yielded value. Control comes back into the block this leaves the builder in.
@@ -278,8 +282,8 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::GenExpressionAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // Get the "Send" generic type parameter from the generator type.
   // As there is no "Send" on "GenOnce", use "Void" in this case.

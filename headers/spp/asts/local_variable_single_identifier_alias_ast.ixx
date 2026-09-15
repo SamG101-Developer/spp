@@ -7,37 +7,23 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(LocalVariableSingleIdentifierAliasAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LocalVariableSingleIdentifierAliasAst);
 
-  /**
-   * The @c as token that indicates the alias for the local variable. This separates the identifier from the alias.
-   */
+  /// The "as" token separating the identifier from its alias.
   Unique<TokenAst> TokAs;
 
-  /**
-   * The identifier that is used as the alias for the local variable. This will be the name on the symbol that is
-   * introduced.
-   */
+  /// The alias for the local variable. This will be the name
+  /// on the symbol that is introduced.
   Shared<IdentifierAst> Name;
 
-  /**
-   * Construct the LocalVariableSingleIdentifierAliasAst with the arguments matching the members.
-   * @param tok_as The @c as token that indicates the alias for the local variable.
-   * @param name The identifier that is used as the alias for the local variable.
-   */
   LocalVariableSingleIdentifierAliasAst(
     decltype(TokAs) &&tok_as,
     decltype(Name) &&name);
 
   ~LocalVariableSingleIdentifierAliasAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableSingleIdentifierAliasAst)

@@ -78,7 +78,11 @@ spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOpe
   Name(std::move(name)),
   _MappedFwd(nullptr) {
   Source.OriginalExpr = nullptr;
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokDot, lex::SppTokenType::TK_DOT, ".");
+
+  // A generated access ("tmp.x" from a destructure) has no "."
+  // written, so it is placed on the name it accesses.
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokDot, lex::SppTokenType::TK_DOT, ".", this->Name != nullptr ? this->Name->PosStart() : 0);
 }
 
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::~PostfixExpressionOperatorRuntimeMemberAccessAst() = default
@@ -118,8 +122,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() cons
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppExpressionNotTryError;
@@ -221,7 +225,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     // attribute handling below, so without this the
     // visibility check never runs for method accesses.
     auto fn_scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return x.Symbol->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return x.Symbol->Kind == analyse::scopes::VariableKind::Function; })
       | genex::to<Vec>();
 
     if (not fn_scopes_and_syms.IsEmpty()) {
@@ -235,7 +239,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     }
 
     const auto members = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return not x.Symbol->Type->IsCompilerGeneratedType(); })
+      | genex::views::filter([](auto const &x) { return x.Symbol->Kind != analyse::scopes::VariableKind::Function; })
       | genex::to<Vec>();
 
     const auto runtime_members = MembersReachableBy(
@@ -265,8 +269,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::cmp_utils::GetCompTimeAttrValue;
@@ -305,8 +309,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTime
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -444,8 +448,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   //
   using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
@@ -483,6 +487,12 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver(
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const
   -> Vec<IdentifierAst*> {
   return {Name.get()};
+}
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::IsAllowedInDefault() const
+  -> bool {
+  // Reads what it is applied to, and holds nothing of its own.
+  return true;
 }
 
 SPP_MOD_END

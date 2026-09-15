@@ -35,8 +35,8 @@ spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
 spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
 
 auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   //
   using utils::Visibility;
@@ -54,27 +54,28 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
   // Create the type symbol for the generic parameter.
   const auto sym = MakeShared<analyse::scopes::TypeSymbol>(
     AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(),
-    sm->CurrentScope, nullptr, true, false, Visibility::kPublic,
+    sm->CurrentScope, nullptr, analyse::scopes::TypeKind::GenericParam, false, Visibility::kPublic,
     nullptr, Constraints->Constraints);
   sym->IsVariadic = To<GenericParameterTypeVariadicAst>() != nullptr;
   sm->CurrentScope->AddTypeSymbol(sym);
   dummy_scope->TySym = sym;
 
   _DummyScopes.EmplaceBack(dummy_scope.get());
-  ScopeManager::temp_scopes.EmplaceBack(std::move(dummy_scope));
+  analyse::scopes::ScopeManager::temp_scopes.EmplaceBack(
+    std::move(dummy_scope));
 }
 
 auto spp::asts::GenericParameterTypeAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Qualify the name.
   Name->Stage4_QualifyTypes(sm, meta);
 }
 
 auto spp::asts::GenericParameterTypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Analyse the name.
   Name->Stage7_AnalyseSemantics(sm, meta);

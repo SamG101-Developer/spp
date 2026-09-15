@@ -159,3 +159,80 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(x)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMscVisibility,
+  test_invalid_visibility_access_private_nested_type_diff_ctx_same_module,
+  SppAccessViolationError, R"(
+    cls Holder { }
+
+    sup Holder {
+        !private type Inner = Bool
+    }
+
+    fun f() -> Void {
+        let x: Holder::Inner = true
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestMscVisibility,
+  test_valid_visibility_access_private_nested_type_same_ctx_same_module, R"(
+    cls Holder { }
+
+    sup Holder {
+        !private type Inner = Bool
+
+        fun f(&self) -> Void {
+            let x: Inner = true
+            let y: Holder::Inner = false
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestMscVisibility,
+  test_valid_visibility_access_protected_nested_type_extended_ctx_same_module, R"(
+    cls A { }
+
+    sup A {
+        !protected type Inner = Bool
+    }
+
+    cls B { }
+
+    sup B ext A { }
+
+    sup B {
+        fun f(&self) -> Void {
+            let x: A::Inner = true
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMscVisibility,
+  test_invalid_visibility_access_protected_nested_type_diff_ctx_same_module,
+  SppAccessViolationError, R"(
+    cls A { }
+
+    sup A {
+        !protected type Inner = Bool
+    }
+
+    fun f() -> Void {
+        let x: A::Inner = true
+    }
+)");
+
+// Todo: red - a private generic class as a std generic argument is reported as accessed from std (E83, at
+// vector.spp "use std::cast::From"); a private non-generic class is fine.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestVisibilityGenericArgument,
+  test_valid_private_generic_class_as_a_std_generic_argument, R"(
+    cls Box[T] { !public v: T }
+    fun f() -> Void {
+        let v = Vec[Box[S32]]::new()
+        std::mem::ops::drop(v)
+    }
+)");

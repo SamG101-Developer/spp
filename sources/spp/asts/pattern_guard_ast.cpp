@@ -55,8 +55,8 @@ auto spp::asts::PatternGuardAst::ToString() const
 }
 
 auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
@@ -78,8 +78,8 @@ auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
@@ -91,16 +91,16 @@ auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::PatternGuardAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Resolve the expression at compile-time.
   Expr->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto spp::asts::PatternGuardAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the expression.

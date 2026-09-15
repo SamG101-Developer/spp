@@ -20,6 +20,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
+import spp.utils.interner;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
@@ -131,8 +132,11 @@ auto spp::asts::IdentifierAst::PosEnd() const
 auto spp::asts::IdentifierAst::Clone() const
   -> Unique<Ast> {
   // The copy spells the same name, so it carries the
-  // id over rather than interning the string again.
-  return Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
+  // id over rather than interning the string again. A
+  // name mapped from a token keeps that token's length.
+  auto id = Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
+  id->_ForTok = _ForTok;
+  return id;
 }
 
 auto spp::asts::IdentifierAst::ToString() const
@@ -153,8 +157,8 @@ auto spp::asts::IdentifierAst::operator+(
 }
 
 auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppSelfIdentifierInvalidContextError;
@@ -177,8 +181,8 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppCompileTimeConstantError;
@@ -189,11 +193,18 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
   auto tm = analyse::scopes::ScopeManager(
     sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
 
-  // If there is no comptime value on this symbol, then
-  // it's an error (not sure this ever triggers? - a non
-  // cmp function call triggers an error i think).
+  // An unbound comp generic has no value yet, and stands for
+  // itself - as it does in a template's signature.
+  if (var_sym != nullptr and var_sym->Kind == analyse::scopes::VariableKind::GenericCompParam) {
+    meta->CmpResult = AstClone(this);
+    return;
+  }
+
+  // Anything else resolves through its value, and having none
+  // is an error.
+  auto *const value = var_sym != nullptr ? var_sym->CompTimeValue.get() : nullptr;
   RaiseIf<SppCompileTimeConstantError>(
-    var_sym != nullptr and var_sym->CompTimeValue == nullptr,
+    var_sym != nullptr and value == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*this));
 
   // A constant whose value reaches its own symbol again has
@@ -206,12 +217,12 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.
   const auto guard = ResolvingCompTimeSymGuard(var_sym);
-  var_sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
+  value->Stage9_CompTimeResolve(&tm, meta);
 }
 
 auto spp::asts::IdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   //
@@ -286,8 +297,8 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
 }
 
 auto spp::asts::IdentifierAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> Shared<TypeAst> {
   // Extract the symbol from the current scope, as a variable
   // symbol.
@@ -339,6 +350,12 @@ auto spp::asts::IdentifierAst::SubstituteGenericsExpr(
 auto spp::asts::IdentifierAst::ToView() const noexcept
   -> StrView {
   return Val;
+}
+
+auto spp::asts::IdentifierAst::IsAllowedInDefault() const
+  -> bool {
+  // A name reads a value.
+  return true;
 }
 
 SPP_MOD_END

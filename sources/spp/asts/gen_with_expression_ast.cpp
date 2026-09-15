@@ -79,8 +79,8 @@ auto spp::asts::GenWithExpressionAst::ToString() const
 }
 
 auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
@@ -114,8 +114,8 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Forward the memory check to the desugared loop (which
   // checks the sub-generator expression and the inner "gen").
@@ -123,8 +123,8 @@ auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Generate the desugared loop, already built and analysed

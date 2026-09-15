@@ -7,48 +7,29 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionCallArgumentAst;
-  SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
-  SPP_EXP_CLS struct FunctionCallArgumentKeywordAst;
-  SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentGroupAst);
+use(spp::asts, struct FunctionCallArgumentAst);
+use(spp::asts, struct FunctionCallArgumentKeywordAst);
+use(spp::asts, struct FunctionCallArgumentPositionalAst);
+use(spp::asts, struct TokenAst);
 
-/**
- * The FunctionCallArgumentGroupAst represents a group of function call arguments. It is used to group multiple
- * positional or keyword arguments together in a function call.
- */
+/// A group of function call arguments, grouping multiple
+/// positional or keyword arguments together in a function call.
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentGroupAst);
 
-  /**
-   * The token that represents the left parenthesis @code (@endcode in the function call argument group. This
-   * introduces the function call argument group.
-   */
+  /// The "(" token that opens the argument group.
   Unique<TokenAst> TokL;
 
-  /**
-   * The list of arguments in the function call argument group. This can contain both positional and keyword
-   * arguments.
-   */
+  /// The arguments in the group, which can be both positional
+  /// and keyword arguments.
   Vec<Unique<FunctionCallArgumentAst>> Args;
 
-  /**
-   * The token that represents the right parenthesis @code )@endcode in the function call argument group. This closes
-   * the function call argument group.
-   */
+  /// The ")" token that closes the argument group.
   Unique<TokenAst> TokR;
 
   static auto NewEmpty() -> Unique<FunctionCallArgumentGroupAst>;
 
-  /**
-   * Construct the FunctionCallArgumentGroupAst with the arguments matching the members.
-   * @param tok_l The token that represents the left parenthesis @code (@endcode in the function call argument group.
-   * @param args The list of arguments in the function call argument group.
-   * @param tok_r The token that represents the right parenthesis @code )@endcode in the function call argument group.
-   */
   FunctionCallArgumentGroupAst(
     decltype(TokL) &&tok_l,
     decltype(Args) &&args,
@@ -69,6 +50,6 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
   auto At(const char *key) const -> FunctionCallArgumentAst const*;
 
   SPP_ATTR_NODISCARD auto ConvertToPositional() const -> Unique<FunctionCallArgumentGroupAst>;
-};
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentGroupAst)
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+};

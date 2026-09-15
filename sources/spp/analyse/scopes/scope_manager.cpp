@@ -197,12 +197,49 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopes(
   // There are usually none at all, and then the stored list is handed over as it stands.
   if (generic_sup_blocks.IsEmpty()) {
     if (normal != nullptr) { AttachSpecificSuperScopesImpl(scope, *normal, meta, deferred); }
-    return;
   }
+  else {
+    auto scopes = normal != nullptr ? *normal : Vec<Scope*>();
+    scopes.AppendRange(generic_sup_blocks);
+    AttachSpecificSuperScopesImpl(scope, scopes, meta, deferred);
+  }
+  CoalesceMethodMock(scope);
+}
 
-  auto scopes = normal != nullptr ? *normal : Vec<Scope*>();
-  scopes.AppendRange(generic_sup_blocks);
-  AttachSpecificSuperScopesImpl(scope, scopes, meta, deferred);
+auto spp::analyse::scopes::ScopeManager::CoalesceMethodMock(
+  Scope &scope) const
+  -> void {
+  // A method's overloads written in several "sup" blocks of one owner get a "$" mock each, and naming the mock
+  // through the owner ("A::$M") reaches only one of them. So each is given the overloads of all the others: their
+  // "sup $M ext FunXxx { fun m }" blocks, and the function types those blocks superimpose.
+  if (scope.TySym == nullptr or scope.TySym->Kind != TypeKind::FunctionMock or scope.Parent == nullptr) { return; }
+  const auto sup_node = scope.Parent->AstNode;
+  if (AstAs<asts::SupPrototypeFunctionsAst>(sup_node) == nullptr
+    and AstAs<asts::SupPrototypeExtensionAst>(sup_node) == nullptr) { return; }
+  const auto owner_sym = scope.Parent->GetTypeSymbol(asts::AstName(sup_node)->WithoutGenerics().get());
+  const auto owner_blocks = owner_sym != nullptr ? normal_sup_blocks.find(owner_sym) : normal_sup_blocks.end();
+  if (owner_blocks == normal_sup_blocks.end()) { return; }
+
+  const auto mock_name = scope.TySym->Name->WithoutGenerics();
+  for (auto const *block : owner_blocks->second) {
+    if (block == scope.Parent) { continue; }
+    const auto sibling = block->GetTypeSymbol(mock_name.get(), true, false);
+    if (sibling == nullptr or sibling == scope.TySym.get()) { continue; }
+    const auto sibling_blocks = normal_sup_blocks.find(sibling);
+    if (sibling_blocks == normal_sup_blocks.end()) { continue; }
+
+    for (auto *ext_scope : sibling_blocks->second) {
+      const auto ext = AstAs<asts::SupPrototypeExtensionAst>(ext_scope->AstNode);
+      if (ext == nullptr or genex::contains(scope.DirectSupScopes, ext_scope)) { continue; }
+      BumpTypeStructureGeneration();
+      scope.DirectSupScopes.EmplaceBack(ext_scope);
+      if (const auto fn_sym = scope.GetTypeSymbol(ext->SuperClass.get());
+        fn_sym != nullptr and fn_sym->LinkedScope != nullptr
+        and not genex::contains(scope.DirectSupScopes, fn_sym->LinkedScope)) {
+        scope.DirectSupScopes.EmplaceBack(fn_sym->LinkedScope);
+      }
+    }
+  }
 }
 
 auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
@@ -276,8 +313,11 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
       }
     }
 
-    // Prevent double inheritance, cyclic inheritance and self extension.
-    if (const auto ext_ast = AstAs<asts::SupPrototypeExtensionAst>(sup_scope->AstNode); ext_ast != nullptr) {
+    // Prevent double inheritance, cyclic inheritance and self extension. A "$" mock's blocks are generated (one per
+    // overload, over a function type), and a method's mock is named bare, so elsewhere it resolves to another type's
+    // mock of the same name - the checks have nothing to find and would only be misled.
+    if (const auto ext_ast = AstAs<asts::SupPrototypeExtensionAst>(sup_scope->AstNode);
+      ext_ast != nullptr and not ext_ast->Name->IsCompilerGeneratedType()) {
       ext_ast->CheckCyclicExtension(*sup_sym, *sup_scope);
       ext_ast->CheckDoubleExtension(*cls_sym, *sup_scope);
       ext_ast->CheckSelfExtension(*sup_scope);
@@ -366,35 +406,37 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
     })
     | genex::to<Vec>();
 
-  // Check for conflicting "type" statements.
-  Vec<Shared<asts::TypeIdentifierAst>> new_types;
+  // Check for conflicting "type" statements. Each name keeps the
+  // scope it was written in, so the first one is reported from
+  // its own file.
+  Vec<Pair<Shared<asts::TypeIdentifierAst>, Scope const*>> new_types;
   for (auto const *scope : existing_scopes) {
     const auto body = asts::AstBody(scope->AstNode);
     for (auto const *member : body) {
       if (auto const *type_stmt = member->To<asts::TypeStatementAst>(); type_stmt != nullptr) {
-        for (auto const &new_type : new_types) {
+        for (auto const &[new_type, new_type_scope] : new_types) {
           RaiseIf<errors::SppIdentifierDuplicateError>(
-            *new_type == *type_stmt->NewType, {scope, &sup_scope},
+            *new_type == *type_stmt->NewType, {new_type_scope, scope},
             ERR_ARGS(*new_type, *type_stmt->NewType, "associated type"));
         }
-        new_types.EmplaceBack(type_stmt->NewType);
+        new_types.EmplaceBack(type_stmt->NewType, scope);
       }
     }
   }
 
   // Check for conflicting "cmp" statements.
-  Vec<Shared<asts::IdentifierAst>> new_cmps;
+  Vec<Pair<Shared<asts::IdentifierAst>, Scope const*>> new_cmps;
   for (const auto *scope : existing_scopes) {
     const auto body = asts::AstBody(scope->AstNode);
     for (auto const *member : body) {
       if (auto const *cmp_stmt = member->To<asts::CmpStatementAst>(); cmp_stmt != nullptr and not cmp_stmt->Type->
         IsCompilerGeneratedType()) {
-        for (auto const &new_cmp : new_cmps) {
+        for (auto const &[new_cmp, new_cmp_scope] : new_cmps) {
           RaiseIf<errors::SppIdentifierDuplicateError>(
-            *new_cmp == *cmp_stmt->Name, {scope, &sup_scope},
+            *new_cmp == *cmp_stmt->Name, {new_cmp_scope, scope},
             ERR_ARGS(*new_cmp, *cmp_stmt->Name, "comptime constant"));
         }
-        new_cmps.EmplaceBack(cmp_stmt->Name);
+        new_cmps.EmplaceBack(cmp_stmt->Name, scope);
       }
     }
   }
@@ -408,6 +450,17 @@ auto spp::analyse::scopes::ScopeManager::CurrentIterator()
 auto spp::analyse::scopes::ScopeManager::SelfProto() const
   -> asts::ClassPrototypeAst* {
   return _SelfProto.get();
+}
+
+auto spp::analyse::scopes::ScopeManager::AddSelfTypeSymbol(
+  Scope *const linked_scope,
+  const std::size_t pos) const
+  -> void {
+  if (linked_scope == nullptr) { return; }
+  const auto self_sym = MakeShared<TypeSymbol>(
+    MakeUnique<asts::TypeIdentifierAst>(pos, "Self", nullptr),
+    SelfProto(), linked_scope, CurrentScope, nullptr, TypeKind::Self);
+  CurrentScope->AddTypeSymbol(self_sym);
 }
 
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {

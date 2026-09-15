@@ -221,8 +221,8 @@ auto spp::asts::GenericParameterGroupAst::OptToReq() const
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppIdentifierDuplicateError;
@@ -245,8 +245,8 @@ auto spp::asts::GenericParameterGroupAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Run the type qualifier steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage4_QualifyTypes(sm, meta); }
@@ -272,8 +272,8 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::errors::SppOrderInvalidError;
@@ -307,16 +307,34 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Run the memory checks on each parameter in the group.
   for (auto const &p : Params) { p->Stage8_CheckMemory(sm, meta); }
 }
 
+auto spp::asts::GenericParameterGroupAst::Stage9_CompTimeResolve(
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
+  -> void {
+  // Fold each comp default, to prove it is a constant even if
+  // nothing ever uses it. The result is thrown away - a use
+  // site folds its own copy.
+  for (auto const &p : Params) {
+    const auto comp = p->To<GenericParameterCompOptionalAst>();
+    if (comp == nullptr) { continue; }
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, sm->CurrentScope);
+    tm.Reset(sm->CurrentScope);
+    comp->DefaultVal->Stage9_CompTimeResolve(&tm, meta);
+    meta->CmpResult = nullptr;
+  }
+}
+
 auto spp::asts::GenericParameterGroupAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Run the code generation steps on each parameter in the group.

@@ -108,8 +108,8 @@ auto spp::asts::TypeStatementAst::Stage1_PreProcess(
 }
 
 auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Run top level scope generation for the annotations.
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -123,7 +123,7 @@ auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
 
   // Create the type symbol for this type, that will point to the old type.
   _AliasSym = MakeShared<analyse::scopes::TypeSymbol>(
-    NewType, nullptr, nullptr, sm->CurrentScope, sm->CurrentScope->ParentModule());
+    NewType, nullptr, nullptr, sm->CurrentScope, sm->CurrentScope->ParentModule(), analyse::scopes::TypeKind::Alias);
   _AliasSym->Alias = MakeShared<analyse::scopes::AliasInfo>();
   _AliasSym->Alias->Written = OldType;
   // Seeded with the written type, and refined in stage 3 once the chain behind it has been followed. It is never
@@ -149,12 +149,16 @@ auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
 }
 
 auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  // Todo: in a generic sup, "type Mine = Self" raises E72 (T not inferred) and "type Many = Vec[Self]" substitutes
+  //  twice ("Vec[Box[Box[S32]]]") - TestSelfTypePositionsGeneric.test_valid_self_{as_a_type_alias_target,in_a_type_alias_generic_argument}.
+  OldType = analyse::utils::type_utils::SubstituteSelfType(
+    *OldType, *sm->CurrentScope, *meta)->WithSourceSpanOf(*OldType);
 
   // An alias names a type, and a borrow is not one a type can be: it is second class, so it cannot be what a name
   // stands for any more than it can be an attribute or a variant member. The new type is checked at stage 2, where
@@ -183,6 +187,10 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   _AliasSym->Alias->Resolved = mapped_old_type;
   _AliasSym->Alias->TrackingScope = tracking_scope;
 
+  // An alias of "!" is "!" too, so its own name carries the
+  // never flag, as the class's does.
+  if (mapped_old_type->IsNeverType()) { NewType->MarkNeverType(); }
+
   if (attach_generics != nullptr and not attach_generics->Params.IsEmpty()) {
     GnParamGroup = attach_generics;
     GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
@@ -193,8 +201,8 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
 }
 
 auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
@@ -208,13 +216,14 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
   // Add the "Self" symbol into the scope, mirroring class/sup prototype logic.
   const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
     MakeUnique<TypeIdentifierAst>(NewType->PosStart(), "Self", nullptr),
-    sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope);
+    sm->SelfProto(), _AliasSym->LinkedScope, sm->CurrentScope, nullptr, analyse::scopes::TypeKind::Self);
   sm->CurrentScope->AddTypeSymbol(self_sym);
 
   // Get the resolved type's symbol, without generics.
   const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(alias.Resolved->WithoutGenerics().get(), false);
-  if (not stripped_old_sym->IsGeneric) {
-    auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, alias.TrackingScope);
+  if (not stripped_old_sym->IsTypeGeneric()) {
+    auto tm = analyse::scopes::ScopeManager(
+      sm->GlobalScope, alias.TrackingScope);
     GnParamGroup->Stage4_QualifyTypes(alias.ParamsFromTarget ? &tm : sm, meta);
     alias.Resolved->Stage4_QualifyTypes(&tm, meta); // Qualify from scope of lowest level alias
     alias.Resolved->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
@@ -224,14 +233,14 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     _AliasSym->LinkedScope = old_sym->LinkedScope;
     _AliasSym->InvalidateFqNameCache();
     _AliasSym->DerivesFromSym = old_sym->SharedFromThis<analyse::scopes::TypeSymbol>();
-    old_sym->AliasedBySyms.EmplaceBack(_AliasSym);
+    _AliasSym->LlvmInfo = old_sym->LlvmInfo;
   }
   sm->MoveOutOfCurrentScope();
 }
 
 auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -248,8 +257,8 @@ auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
 }
 
 auto spp::asts::TypeStatementAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -257,8 +266,8 @@ auto spp::asts::TypeStatementAst::Stage6_PreAnalyseSemantics(
 }
 
 auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
@@ -279,10 +288,10 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     }
 
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(resolved.get());
-    if (cls_sym->Type) {
+    if (cls_sym != nullptr and cls_sym->Type) {
       EnforceGenericConstraintsAllArgs(
         *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
-        *sm->CurrentScope, *sm, *meta);
+        *sm->CurrentScope, *sm, *meta, cls_sym->LinkedScope);
     }
 
     // Check visibility here specifically (almost always done in TypeIdentifierAst) because of the source type
@@ -314,8 +323,8 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypeStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -323,8 +332,8 @@ auto spp::asts::TypeStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::TypeStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -333,8 +342,8 @@ auto spp::asts::TypeStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *)
   -> llvm::Value* {
   sm->MoveToNextScope();
@@ -344,8 +353,8 @@ auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::TypeStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *,
   codegen::LlvmCtx *)
   -> llvm::Value* {
   sm->MoveToNextScope();

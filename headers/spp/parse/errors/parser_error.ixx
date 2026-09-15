@@ -2,17 +2,19 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.parse.errors.parser_error;
-import spp.lex.tokens;
 import spp.utils.errors;
 import spp.utils.types;
 import std;
 
-namespace spp::parse::errors {
-  SPP_EXP_CLS struct SyntacticError;
-  SPP_EXP_CLS struct SppSyntaxError;
-}
+use(spp::parse::errors, struct SyntacticError);
+use(spp::parse::errors, struct SppSyntaxError);
 
-SPP_EXP_CLS struct spp::parse::errors::SyntacticError : utils::errors::AbstractError {
+/// The base syntactic error for the parser to use, currently
+/// only inherited by the standard syntax error, but flexible
+/// for future expansions.
+SPP_EXP_CLS struct spp::parse::errors::SyntacticError :
+  utils::errors::AbstractError {
+  /// Header text.
   Str header;
 
   explicit SyntacticError(Str &&header);
@@ -20,10 +22,11 @@ SPP_EXP_CLS struct spp::parse::errors::SyntacticError : utils::errors::AbstractE
   ~SyntacticError() override = default;
 };
 
-SPP_EXP_CLS struct spp::parse::errors::SppSyntaxError final : SyntacticError {
-  std::size_t pos;
-  Set<lex::SppTokenType> tokens;
-
+/// Raised when there is invalid syntax being parsed. This
+/// reports the incorrect token, and the allowed tokens to
+/// follow it.
+SPP_EXP_CLS struct spp::parse::errors::SppSyntaxError final :
+  SyntacticError {
   explicit SppSyntaxError(Str &&header);
   ~SppSyntaxError() override = default;
 };

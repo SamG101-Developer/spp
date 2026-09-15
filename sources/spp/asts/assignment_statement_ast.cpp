@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.assignment_utils;
 import spp.analyse.utils.cmp_utils;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
@@ -23,6 +24,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
@@ -76,8 +78,8 @@ auto spp::asts::AssignmentStatementAst::ToString() const
 }
 
 auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::errors::SppInvalidMutationError;
@@ -164,12 +166,16 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*lhs_type, *rhs_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type));
+
+    // A function named as the value stands for the overload the
+    // target's type asks for.
+    analyse::utils::func_utils::InstantiateFunctionValue(*rhs_type, *lhs_type, sm, meta);
   }
 }
 
 auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::assignment_utils::IsAttr;
@@ -223,8 +229,8 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   // Alias the common utils functions and types.
   using analyse::utils::assignment_utils::IsAttr;
@@ -257,8 +263,8 @@ auto spp::asts::AssignmentStatementAst::Stage9_CompTimeResolve(
 }
 
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // Alias the common utils functions and types.
@@ -287,6 +293,8 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
       // raw over the slot (which would land the member on top of
       // the tag).
       if (const auto target_type = Lhs[i]->InferType(sm, meta); target_type != nullptr) {
+        value = codegen::CoerceToFunctionValue(
+          value, *target_type, *Rhs[i]->InferType(sm, meta), *sm, ctx);
         value = codegen::CoerceToVariant(
           value, *target_type, *Rhs[i]->InferType(sm, meta),
           *sm->CurrentScope, "assign.variant." + spp::utils::Uid(this), ctx);

@@ -10,34 +10,23 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct LoopElseStatementAst;
-  SPP_EXP_CLS struct InnerScopeExpressionAst;
-  SPP_EXP_CLS struct StatementAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(LoopElseStatementAst);
+use(spp::asts, struct InnerScopeExpressionAst);
+use(spp::asts, struct StatementAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : Ast, mixins::TypeInferrableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LoopElseStatementAst);
 
-  /**
-   * The @c else keyword that indicates this is an else statement for the loop.
-   */
+  /// The "else" keyword starting the loop's else statement.
   Unique<TokenAst> TokElse;
 
-  /**
-   * The body of the else statement. This is a block of statements that will be executed if the loop condition is
-   * immediately false, or the iterable is already exhausted (no loops take place).
-   */
+  /// The body of the else statement, executed if the loop
+  /// condition is immediately false, or the iterable is
+  /// already exhausted (no loops take place).
   Unique<InnerScopeExpressionAst> Body;
 
-  /**
-   * Construct the LoopElseStatementAst with the arguments matching the members.
-   * @param[in] tok_else The @c else keyword that indicates this is an else statement for the loop.
-   * @param[in] body The body of the else statement.
-   */
   LoopElseStatementAst(
     decltype(TokElse) &&tok_else,
     decltype(Body) &&body);
@@ -52,5 +41,3 @@ SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : Ast, mixins::TypeInfe
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopElseStatementAst)

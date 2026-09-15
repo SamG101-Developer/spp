@@ -66,22 +66,26 @@ auto spp::asts::TypePostfixExpressionAst::Equals(
 
 auto spp::asts::TypePostfixExpressionAst::PosStart() const
   -> std::size_t {
-  // Use the lhs.
+  // Use the lhs, unless this replaces a written type.
+  if (_HasSourceSpan) { return _SpanStart; }
   return Lhs->PosStart();
 }
 
 auto spp::asts::TypePostfixExpressionAst::PosEnd() const
   -> std::size_t {
-  // Use the operator.
+  // Use the operator, unless this replaces a written type.
+  if (_HasSourceSpan) { return _SpanEnd; }
   return TokOp->PosEnd();
 }
 
 auto spp::asts::TypePostfixExpressionAst::Clone() const
   -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<TypePostfixExpressionAst>(
+  auto t = MakeUnique<TypePostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(TokOp));
+  CopySourceSpanTo(*t);
+  return t;
 }
 
 auto spp::asts::TypePostfixExpressionAst::ToString() const
@@ -93,8 +97,8 @@ auto spp::asts::TypePostfixExpressionAst::ToString() const
 }
 
 auto spp::asts::TypePostfixExpressionAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   (void)sm;
   (void)meta;
@@ -102,8 +106,8 @@ auto spp::asts::TypePostfixExpressionAst::Stage4_QualifyTypes(
 }
 
 auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> void {
   //
   using analyse::utils::expr_utils::ClosestScopes;
@@ -117,11 +121,16 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type.get());
   const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
-  // Check there is only 1 target field on the lhs at the highest level.
+  // Check there is only 1 target field on the lhs at the
+  // highest level. A method's "$" mock is declared once
+  // per "sup" block its overloads are written in, and each
+  // is given all the overloads, so any one of them will do.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  RaiseIfAmbiguous(
-    ClosestScopes(ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
-    *op_nested->Name, *sm);
+  if (not op_nested->Name->IsCompilerGeneratedType()) {
+    RaiseIfAmbiguous(
+      ClosestScopes(ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
+      *op_nested->Name, *sm);
+  }
 
   // Ensure the type exists on the "lhs" part.
   const auto _meta_guard = meta::MetaGuard(meta);
@@ -130,8 +139,8 @@ auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::TypePostfixExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta,
   codegen::LlvmCtx *ctx)
   -> llvm::Value* {
   // These are always "zero_type", so return init.
@@ -140,8 +149,8 @@ auto spp::asts::TypePostfixExpressionAst::Stage11_CodeGen(
 }
 
 auto spp::asts::TypePostfixExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
+  analyse::scopes::ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Shared<TypeAst> {
   // Infer the type of the left-hand-side.
   Lhs->Stage7_AnalyseSemantics(sm, meta);
@@ -231,6 +240,10 @@ auto spp::asts::TypePostfixExpressionAst::WithConvention(
   if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
   auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
   auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
+
+  // A type rebuilt in place of a written one keeps pointing at
+  // what was written once it is borrowed.
+  if (_HasSourceSpan) { CopySourceSpanTo(*wrapped); }
   return wrapped;
 }
 
@@ -271,8 +284,9 @@ auto spp::asts::TypePostfixExpressionAst::WithGenerics(
 
 auto spp::asts::TypePostfixExpressionAst::IsCompilerGeneratedType() const
   -> bool {
-  // Won't ever be true.
-  return false;
+  // A method's "$" mock is named through its owner
+  // ("main::A::$Method"), so check the nested part.
+  return LastTypePart()->IsCompilerGeneratedType();
 }
 
 auto spp::asts::TypePostfixExpressionAst::ResetCache()

@@ -7,117 +7,105 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-}
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeIdentifierAst);
+use(spp::analyse::scopes, class Scope);
 
 namespace spp::analyse::utils::type_compare {
-  SPP_EXP_CLS
-  using GenericInferenceMap = Map<
-    Shared<asts::TypeIdentifierAst>, asts::ExpressionAst*,
-    spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
-    spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
+  SPP_EXP_CLS using GenericInferenceMap = Map<
+    Shared<TypeIdentifierAst>, ExpressionAst*,
+    spp::utils::ptr::ptr_hash<Shared<TypeIdentifierAst>>,
+    spp::utils::ptr::ptr_eq<Shared<TypeIdentifierAst>>>;
 
+  /// Convention equality checks two types for a matching
+  /// convention, and allows "&mut" to coalesce to "&", providing
+  /// a way to move a borrow that should be compatible.
   SPP_EXP_FUN auto ConventionEq(
-    asts::TypeAst const &lhs_type,
-    asts::TypeAst const &rhs_type)
+    TypeAst const &lhs_type,
+    TypeAst const &rhs_type)
     -> bool;
 
-  /**
-   * The symbolic equality type checker is a complex type checking algorithm that takes namespacing, scopes, aliases,
-   * variants, etc, all into account, and returns whether two types are indeed the same. Generic arguments are also
-   * taken into account, as-well as the variadic generic variation.
-   *
-   * Variant type matching allows the rhs to match against the lhs side, when the lhs is a variant, such as
-   * @c {Opt[T]}, and the rhs is a inner type to the variant, such as @c {Some[T]}, or @c {None}.
-   *
-   * The type checking of generic types, such as @c {Vec[Str]} vs @c {Vec[Str]}, require the generic arguments to be
-   * symbolically equal too. A recursive algorithm is used to inspect arguments. However, non-type generic arguments
-   * (comp generic arguments) can't be "type-compared", so their values are compared instead. See the other overload
-   * of this function.
-   *
-   * @param lhs_type The left hand side type to compare.
-   * @param rhs_type The right hand side type to compare.
-   * @param lhs_scope The scope to identify the lhs type in. This is used to resolve aliases and namespaces.
-   * @param rhs_scope The scope to identify the rhs type in. This is used to resolve aliases and namespaces.
-   * @param check_variant Whether to allow "variant matches" for types.
-   * @return If the two types are symbolically equal, meaning they are the same type, or one is a variant of the
-   * other.
-     */
+  /// The master type equality function used for checking if
+  /// two types, in their respective scopes, are semantically
+  /// equal. This takes namespaces, scopes and aliases into
+  /// account. There is a checker for the variants too, allowing
+  /// "Some[S32]" to match "Opt[S32]" in one way (narrow into
+  /// wide), and type forwarding int he same way. Generic
+  /// checking is recursed into to all depths. Variadics have
+  /// special handling too.
   SPP_EXP_FUN auto TypeEq(
-    asts::TypeAst const &lhs_type,
-    asts::TypeAst const &rhs_type,
-    scopes::Scope const &lhs_scope,
-    scopes::Scope const &rhs_scope,
+    TypeAst const &lhs_type,
+    TypeAst const &rhs_type,
+    Scope const &lhs_scope,
+    Scope const &rhs_scope,
     bool check_variant = true)
     -> bool;
 
+  /// The overload called when generic comp arguments get compared
+  /// to each other, which just reuses the expression ast normal
+  /// equality methods. Provides uniformity over generic equality
+  /// checking with respect to type generics.
   SPP_EXP_FUN auto TypeEq(
-    asts::ExpressionAst const &lhs_expr,
-    asts::ExpressionAst const &rhs_expr,
-    scopes::Scope const &lhs_scope,
-    scopes::Scope const &rhs_scope)
+    ExpressionAst const &lhs_expr,
+    ExpressionAst const &rhs_expr,
+    Scope const &lhs_scope,
+    Scope const &rhs_scope)
     -> bool;
 
+  /// Check if two types are equal with respect to type forwarding.
+  /// For example, Str forwards to &StrView, to has to be able to
+  /// match the type that way around, like variants.
   SPP_EXP_FUN auto TypeFwdEq(
-    asts::TypeAst const &arg_type,
-    asts::TypeAst const &param_type,
-    scopes::Scope const &arg_scope,
-    scopes::Scope const &param_scope)
+    TypeAst const &arg_type,
+    TypeAst const &param_type,
+    Scope const &arg_scope,
+    Scope const &param_scope)
     -> bool;
 
-  /**
-   * @param strict_generic_args Whether a generic @e argument that is still an unbound parameter fails to match a type
-   * written opposite it. Off for the argument/parameter checks, which is the whole point of them - a "T" parameter
-   * accepts the "U8" argument offered for it. On when deciding whether a @c sup block applies to a type: an unbound
-   * "T" is not yet anything, so letting it match attaches @c "sup NonNull[U8]" to the template @c "NonNull[T]" and
-   * lets a body written for every "T" call what only "NonNull[U8]" has - resolving while "T" stands for nothing, and
-   * failing once it stands for something, against code the author cannot see.
-   *
-   * @note Only the arguments are held to this, never the bare parameter itself. @c "A" compared against @c "Alloc" is
-   * how a constraint's @c sup block is attached to @c "A" to begin with, so refusing that match would leave every
-   * constrained parameter with none of the members its constraint gives it.
-   */
+  /// The relaxed type equality function does a normal advanced
+  /// type equality check, but allows unbound generics to match
+  /// against anything, and records the generic binding in the map.
+  /// This uses two way binding checks, with a strict mode to
+  /// enforce one way checking. Generic constraints are enforced
+  /// here too.
   SPP_EXP_FUN auto RelaxedTypeEq(
-    asts::TypeAst const &lhs_type,
-    asts::TypeAst const &rhs_type,
-    scopes::Scope const &lhs_scope,
-    scopes::Scope const &rhs_scope,
+    TypeAst const &lhs_type,
+    TypeAst const &rhs_type,
+    Scope const &lhs_scope,
+    Scope const &rhs_scope,
     GenericInferenceMap &generic_args,
     bool check_variant = false,
     bool check_constraints = true,
     bool strict_generic_args = false)
     -> bool;
 
+  /// The expression variation of the relaxed type equality,
+  /// again reusing the equality functions on the expression
+  /// asts.
   SPP_EXP_FUN auto RelaxedTypeEq(
-    asts::ExpressionAst const &lhs_expr,
-    asts::ExpressionAst const &rhs_expr,
-    scopes::Scope const &lhs_scope,
-    scopes::Scope const &rhs_scope,
+    ExpressionAst const &lhs_expr,
+    ExpressionAst const &rhs_expr,
+    Scope const &lhs_scope,
+    Scope const &rhs_scope,
     GenericInferenceMap &generic_args)
     -> bool;
 
-  /**
-   * Check that @p concrete_type (and its supertypes) satisfy every constraint in @p constraints. Returns the first
-   * unsatisfied constraint, or @c nullptr if they are all satisfied. This is a non-throwing check so that hot callers
-   * (eg @c ConstraintEq via @c TypeEq) can branch on the result without paying for exception machinery; callers that
-   * want an error should raise @c SppGenericConstraintError from the returned constraint.
-   */
+  /// A method top check and enforce the generic constraints on
+  /// a single argument, given its constraints off the equivalent
+  /// generic parameter.
   SPP_EXP_FUN auto EnforceGenericConstraintsOneArg(
-    Vec<Shared<asts::TypeAst>> const &constraints,
-    asts::TypeAst const &concrete_type,
-    scopes::Scope const &constraints_owner_scope,
-    scopes::Scope const &concrete_scope)
-    -> asts::TypeAst const*;
+    Vec<Shared<TypeAst>> const &constraints,
+    TypeAst const &concrete_type,
+    Scope const &constraints_owner_scope,
+    Scope const &concrete_scope)
+    -> TypeAst const*;
 
+  /// The variant type de-duplicator, converting the variant type
+  /// "Str or Str or S32" into "Str or S32". Used in all variant
+  /// type analysis for uniform (and optimal) variant handling.
   SPP_EXP_FUN auto DedupVariableInnerTypes(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> Vec<Shared<asts::TypeAst>>;
+    TypeAst const &type,
+    Scope const &scope)
+    -> Vec<Shared<TypeAst>>;
 }
