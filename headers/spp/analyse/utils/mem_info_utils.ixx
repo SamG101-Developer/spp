@@ -116,8 +116,8 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo : MemoryState
   auto MovedBy(Ast const &ast, Scope *scope) -> void;
 
   /// Remove a specific partial move from the partial move list.
-  /// This is used when part of the object is re-assigned. If the
-  /// vector is now empty, then the object is marked as initialised.
+  /// This is used when part of the object is re-assigned. Once the
+  /// vector is empty, no part can be inconsistently moved either.
   auto RemovePartialMoves(Ast const &ast, Scope *scope) -> void;
 
   /// Generate a copied snapshot of the memory state, used to capture
