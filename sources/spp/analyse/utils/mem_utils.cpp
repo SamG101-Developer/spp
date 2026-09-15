@@ -309,9 +309,8 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   if (check_move_from_borrowed_ctx and spp::get<0>(var_sym->MemInfo->AstBorrowed) and value_ast.To<
     asts::IdentifierAst>() == nullptr and not partial_copies) {
     const auto [where_borrow, _] = var_sym->MemInfo->AstBorrowed;
-    const auto [where_pm, _] = var_sym->MemInfo->AstBorrowed;
     Raise<errors::SppMoveFromBorrowedMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_pm, *where_borrow));
+      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_borrow, *where_borrow));
   }
 
   // A narrowed view of a value is that value: consuming
