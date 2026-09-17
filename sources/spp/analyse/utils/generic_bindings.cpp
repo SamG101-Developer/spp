@@ -421,7 +421,7 @@ namespace spp::analyse::utils::generic_bindings {
         // the unbound once.
         const auto cast_name = dynamic_shared_cast<TypeIdentifierAst>(opt_param->Name);
         if (bindings.Contains(cast_name.get())) { continue; }
-        const auto default_val = opt_param->CompDefault.get();
+        auto default_val = opt_param->CompDefault.get();
 
         // Nothing to translate against before the aliases exist.
         // The lookup for "Self" is made here rather than up front
