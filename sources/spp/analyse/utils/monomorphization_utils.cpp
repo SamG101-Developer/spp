@@ -188,6 +188,7 @@ namespace spp::analyse::utils::monomorphization_utils {
       Raise<SppInternalCompilerError>(
         {sm.CurrentScope},
         ERR_ARGS(generic, "Unknown generic argument ast type"));
+      std::unreachable();
     }
 
     /**
