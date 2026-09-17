@@ -13,6 +13,7 @@ SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorEarlyReturnAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorEarlyReturnAst);
@@ -36,6 +37,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : Po
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
 private:
   /// The lowered form of the "?" operator, built and analysed

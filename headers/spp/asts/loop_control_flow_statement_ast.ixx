@@ -13,6 +13,7 @@ SPP_AST_COMMON_FWD_DECL(LoopControlFlowStatementAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
   SPP_AST_KEY_FUNCTIONS(LoopControlFlowStatementAst);
@@ -56,4 +57,6 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };

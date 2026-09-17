@@ -12,6 +12,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(ObjectInitializerAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct ObjectInitializerArgumentGroupAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
@@ -43,6 +44,8 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   auto InferTypeForDisplay(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 

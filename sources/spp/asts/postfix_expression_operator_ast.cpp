@@ -5,18 +5,16 @@ module spp.asts.postfix_expression_operator_ast;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionOperatorAst::PostfixExpressionOperatorAst() = default;
+PostfixExpressionOperatorAst::PostfixExpressionOperatorAst() = default;
 
-spp::asts::PostfixExpressionOperatorAst::~PostfixExpressionOperatorAst() = default;
+PostfixExpressionOperatorAst::~PostfixExpressionOperatorAst() = default;
 
-auto spp::asts::PostfixExpressionOperatorAst::ExprParts() const
-  -> Vec<IdentifierAst*> {
+auto PostfixExpressionOperatorAst::ExprParts() const -> Vec<IdentifierAst*> {
   return {};
 }
 
-auto spp::asts::PostfixExpressionOperatorAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &) const
-  -> Unique<PostfixExpressionOperatorAst> {
+auto PostfixExpressionOperatorAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &) const -> Unique<PostfixExpressionOperatorAst> {
   // Default implementation that the non-specialized
   // postfix expression operators will use.
   return AstClone(this);

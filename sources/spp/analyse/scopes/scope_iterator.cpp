@@ -5,36 +5,36 @@ module spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope;
 
 SPP_MOD_BEGIN
-spp::analyse::scopes::ScopeIterator::ScopeIterator(
+ScopeIterator::ScopeIterator(
   Scope *root) {
   if (root != nullptr) {
     _Stack.EmplaceBack(root, 0);
   }
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator*()
-  -> reference {
+auto ScopeIterator::operator*() -> reference {
+  // Hook into the node on the frame at the back of the stack.
   return _Stack.Back().Node;
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator*() const
-  -> const_reference {
+auto ScopeIterator::operator*() const -> const_reference {
+  // Hook into the node on the frame at the back of the stack.
   return _Stack.Back().Node;
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator->()
-  -> pointer {
+auto ScopeIterator::operator->() -> pointer {
+  // Hook into the node on the frame at the back of the stack.
   return &_Stack.Back().Node;
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator->() const
-  -> const_pointer {
+auto ScopeIterator::operator->() const -> const_pointer {
+  // Hook into the node on the frame at the back of the stack.
   return &_Stack.Back().Node;
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator++()
-  -> ScopeIterator& {
-  // Nothing in the stack means that no more iteration can be done.
+auto ScopeIterator::operator++() -> ScopeIterator& {
+  // Nothing in the stack means that no more iteration can be
+  // done.
   if (_Stack.IsEmpty()) { return *this; }
 
   // Descend into unseen children of this node.
@@ -59,28 +59,24 @@ auto spp::analyse::scopes::ScopeIterator::operator++()
     _Stack.PopBack();
   }
 
-  // At this point, the stack is empty, meaning the iteration is complete.
+  // At this point, the stack is empty, meaning the iteration is
+  // complete.
   return *this;
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator++(int)
-  -> ScopeIterator {
+auto ScopeIterator::operator++(int) -> ScopeIterator {
   auto tmp = *this;
   ++*this;
   return tmp;
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator==(
-  ScopeIterator const &other) const
-  -> bool {
-  return _Stack.IsEmpty()
-    and
-    other._Stack.IsEmpty();
+auto ScopeIterator::operator==(
+  ScopeIterator const &other) const -> bool {
+  return _Stack.IsEmpty() and other._Stack.IsEmpty();
 }
 
-auto spp::analyse::scopes::ScopeIterator::operator!=(
-  ScopeIterator const &other) const
-  -> bool {
+auto ScopeIterator::operator!=(
+  ScopeIterator const &other) const -> bool {
   return not(*this == other);
 }
 

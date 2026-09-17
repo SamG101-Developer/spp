@@ -30,7 +30,7 @@ import spp.utils.ptr;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
+PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
   Unique<TokenAst> &&tok_l,
   Unique<TokenAst> &&tok_mut,
   Unique<ExpressionAst> &&expr_l_bound,
@@ -46,22 +46,19 @@ spp::asts::PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
   _MappedFunc(nullptr) {
 }
 
-spp::asts::PostfixExpressionOperatorSliceAst::~PostfixExpressionOperatorSliceAst() = default;
+PostfixExpressionOperatorSliceAst::~PostfixExpressionOperatorSliceAst() = default;
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::PosStart() const
-  -> std::size_t {
+auto PostfixExpressionOperatorSliceAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL->PosStart();
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::PosEnd() const
-  -> std::size_t {
+auto PostfixExpressionOperatorSliceAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::Clone() const
-  -> Unique<Ast> {
+auto PostfixExpressionOperatorSliceAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionOperatorSliceAst>(
     AstClone(TokL),
@@ -74,8 +71,7 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Clone() const
   return ast;
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::ToString() const
-  -> Str {
+auto PostfixExpressionOperatorSliceAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_MappedFunc != nullptr) {
     SPP_STRING_APPEND(_MappedFunc->Op);
@@ -90,10 +86,8 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppMemberAccessNonIndexableError;
@@ -149,39 +143,36 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
+auto PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the mapped function.
   _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
   return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto PostfixExpressionOperatorSliceAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
   return _MappedFunc->InferType(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Unique<PostfixExpressionOperatorAst> {
+auto PostfixExpressionOperatorSliceAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  return _MappedFunc->InferTypeRef(sm, meta);
+}
+
+auto PostfixExpressionOperatorSliceAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expressions inside the []
   // tokens.
   return MakeUnique<PostfixExpressionOperatorSliceAst>(
@@ -193,8 +184,7 @@ auto spp::asts::PostfixExpressionOperatorSliceAst::SubstituteGenericsExpr(
     AstClone(TokR));
 }
 
-auto spp::asts::PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const
-  -> bool {
+auto PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const -> bool {
   // Check both the left and right bounds, which can be
   // nullptr for the unbound slicing.
   return

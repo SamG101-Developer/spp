@@ -21,6 +21,7 @@ use(spp::asts, struct TupleLiteralAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypeUnaryExpressionAst);
 use(spp::asts, struct TypePostfixExpressionAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct TypeAst);

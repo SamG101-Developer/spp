@@ -10,6 +10,7 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LocalVariableAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts::meta, struct CompilerMetaData);
@@ -86,6 +87,29 @@ namespace spp::analyse::utils::destructure_utils {
     Shared<IdentifierAst> const &tmp_name,
     ScopeManager const &sm,
     CompilerMetaData const *meta)
+    -> void;
+
+  /// Stage 8 for a destructure: check the hidden temporary, the flow-typing "let" if there is one, and each expanded
+  /// binding, then consume what was taken apart - the temporary if there is one, otherwise the source value.
+  SPP_EXP_FUN auto DestructureStage8(
+    LocalVariableAst const &destructure,
+    Vec<Unique<LocalVariableAst>> const &elems,
+    Vec<Unique<LetStatementInitializedAst>> const &new_asts,
+    Shared<IdentifierAst> const &tmp_name,
+    LetStatementInitializedAst *cond_let,
+    bool from_case_pattern,
+    ScopeManager &sm,
+    CompilerMetaData *meta)
+    -> void;
+
+  /// Stage 9 for a destructure: resolve the hidden temporary, the flow-typing "let" if there is one, and each expanded
+  /// binding.
+  SPP_EXP_FUN auto DestructureStage9(
+    Vec<Unique<LetStatementInitializedAst>> const &new_asts,
+    Shared<IdentifierAst> const &tmp_name,
+    LetStatementInitializedAst *cond_let,
+    ScopeManager &sm,
+    CompilerMetaData *meta)
     -> void;
 
   /// Run uniform stage 11 code generation on the destructure

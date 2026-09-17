@@ -22,7 +22,7 @@ import genex;
 import llvm;
 
 SPP_MOD_BEGIN
-spp::asts::IntegerLiteralAst::IntegerLiteralAst(
+IntegerLiteralAst::IntegerLiteralAst(
   decltype(TokSign) &&tok_sign,
   decltype(Val) &&val,
   Str &&type) :
@@ -30,11 +30,10 @@ spp::asts::IntegerLiteralAst::IntegerLiteralAst(
   Val(std::move(val)),
   Type(std::move(type)) {}
 
-spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
+IntegerLiteralAst::~IntegerLiteralAst() = default;
 
-auto spp::asts::IntegerLiteralAst::EqualsIntegerLiteral(
-  IntegerLiteralAst const &other) const
-  -> Ordering {
+auto IntegerLiteralAst::EqualsIntegerLiteral(
+  IntegerLiteralAst const &other) const -> Ordering {
   //
   if (
     ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
@@ -45,27 +44,23 @@ auto spp::asts::IntegerLiteralAst::EqualsIntegerLiteral(
   return Ordering::less;
 }
 
-auto spp::asts::IntegerLiteralAst::Equals(
-  ExpressionAst const &other) const
-  -> Ordering {
+auto IntegerLiteralAst::Equals(
+  ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch)/
   return other.EqualsIntegerLiteral(*this);
 }
 
-auto spp::asts::IntegerLiteralAst::PosStart() const
-  -> std::size_t {
+auto IntegerLiteralAst::PosStart() const -> std::size_t {
   // Use sign token or the value.
   return TokSign ? TokSign->PosStart() : Val->PosStart();
 }
 
-auto spp::asts::IntegerLiteralAst::PosEnd() const
-  -> std::size_t {
+auto IntegerLiteralAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto spp::asts::IntegerLiteralAst::Clone() const
-  -> Unique<Ast> {
+auto IntegerLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<IntegerLiteralAst>(
     AstClone(TokSign),
@@ -73,8 +68,7 @@ auto spp::asts::IntegerLiteralAst::Clone() const
     Type.c_str());
 }
 
-auto spp::asts::IntegerLiteralAst::ToString() const
-  -> Str {
+auto IntegerLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSign);
   SPP_STRING_APPEND(Val);
@@ -82,18 +76,14 @@ auto spp::asts::IntegerLiteralAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *)
-  -> void {
+auto IntegerLiteralAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "s32" : Type;
   ValidateBounds(*this, *sm->CurrentScope);
 }
 
-auto spp::asts::IntegerLiteralAst::BigVal() const
-  -> numex::BigInt {
-  //
+auto IntegerLiteralAst::BigVal() const -> numex::BigInt {
   using spp::utils::strings::NormaliseIntegerString;
 
   // Same normalisation Stage7 does: underscores out, and the
@@ -107,11 +97,8 @@ auto spp::asts::IntegerLiteralAst::BigVal() const
   return value;
 }
 
-auto spp::asts::IntegerLiteralAst::ValidateBounds(
-  Ast const &owner,
-  analyse::scopes::Scope const &scope) const
-  -> void {
-  //
+auto IntegerLiteralAst::ValidateBounds(
+  Ast const &owner, Scope const &scope) const -> void {
   using analyse::errors::SppIntegerOutOfBoundsError;
 
   // A value the type cannot hold is the same error whether
@@ -123,10 +110,8 @@ auto spp::asts::IntegerLiteralAst::ValidateBounds(
     {&scope}, ERR_ARGS(owner, value, lower, upper, Type));
 }
 
-auto spp::asts::IntegerLiteralAst::FromBigVal(
-  numex::BigInt const &value,
-  Str const &type)
-  -> Unique<IntegerLiteralAst> {
+auto IntegerLiteralAst::FromBigVal(
+  numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst> {
   // The sign travels as its own token, so the value token
   // carries the magnitude alone.
   const auto is_negative = value.IsNegative();
@@ -140,10 +125,8 @@ auto spp::asts::IntegerLiteralAst::FromBigVal(
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
 }
 
-auto spp::asts::IntegerLiteralAst::FromWrappedBigVal(
-  numex::BigInt const &value,
-  Str const &type)
-  -> Unique<IntegerLiteralAst> {
+auto IntegerLiteralAst::FromWrappedBigVal(
+  numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst> {
   //
   auto const &[lower, upper] = kBounds.at(type);
   const auto modulus = upper - lower + 1;
@@ -157,25 +140,19 @@ auto spp::asts::IntegerLiteralAst::FromWrappedBigVal(
   return FromBigVal(wrapped, type);
 }
 
-auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto IntegerLiteralAst::Stage9_CompTimeResolve(
+  ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
   meta->CmpResult = AstClone(this);
 }
 
-auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto IntegerLiteralAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using spp::utils::strings::NormaliseIntegerString;
 
   // Get the type of the integer literal.
-  const auto type_ast = InferType(sm, meta);
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
+  const auto type_sym = InferTypeRef(sm, meta).Sym;
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // If come from stage10 cmp statement, register the int type
@@ -203,10 +180,8 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
   return co_int;
 }
 
-auto spp::asts::IntegerLiteralAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto IntegerLiteralAst::_PrecompiledTypeSym(
+  ScopeManager *sm) const -> TypeSymbol* {
   //
   using namespace generate::common_types_precompiled;
   using analyse::errors::SppInternalCompilerError;
@@ -234,21 +209,31 @@ auto spp::asts::IntegerLiteralAst::InferType(
       ERR_ARGS(*this, "invalid integer literal type"));
   }
 
-  const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type);
-  return sym->FqName();
+  return sm->CurrentScope->GetTypeSymbol(spp_type);
+}
+
+auto IntegerLiteralAst::InferType(
+  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
+  return _PrecompiledTypeSym(sm)->FqName();
+}
+
+auto IntegerLiteralAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *) -> TypeRef {
+  return TypeRef::OfSym(*_PrecompiledTypeSym(sm), *sm->CurrentScope);
 }
 
 template <typename T> requires spp::utils::traits::integral<T>
-auto spp::asts::IntegerLiteralAst::CppVal() const -> T {
+auto IntegerLiteralAst::CppVal() const -> T {
   const auto raw_str = Val->ToString();
   const auto signed_str = TokSign != nullptr ? "-" + raw_str : raw_str;
   if constexpr (std::is_unsigned_v<T>) { return static_cast<T>(std::stoull(signed_str)); }
   else { return static_cast<T>(std::stoll(signed_str)); }
 }
 
-// Manual instantiation of.CppVal function, for the widths that are
-// actually asked for: shift counts and the annotation context mask.
-template auto spp::asts::IntegerLiteralAst::CppVal<std::uint32_t>() const -> std::uint32_t;
-template auto spp::asts::IntegerLiteralAst::CppVal<std::uint64_t>() const -> std::uint64_t;
+// Manual instantiation of.CppVal function, for the widths
+// that are actually asked for: shift counts and the annotation
+// context mask.
+template auto IntegerLiteralAst::CppVal<std::uint32_t>() const -> std::uint32_t;
+template auto IntegerLiteralAst::CppVal<std::uint64_t>() const -> std::uint64_t;
 
 SPP_MOD_END

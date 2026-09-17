@@ -50,3 +50,10 @@ enabled = true
 pattern = '#ifdef|#ifndef'
 message = "use #if defined(...) instead of #ifdef or #ifndef"
 files = '\.(?:cpp|ixx|hpp)$'
+
+[[rule]]
+id = "east-const"
+enabled = false
+pattern = '\bconst\s+(?:(?:typename|struct|class|enum)\s+)?[\w:]+(?:<[^;{}]*>)?(?:::\w+)*\s*(?:\bconst\b\s*)?[&*]'
+message = "use east const: \"Type const&\" / \"Type const*\", not \"const Type&\" / \"const Type*\""
+files = '\.(?:cpp|ixx|hpp)$'

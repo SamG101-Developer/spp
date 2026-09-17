@@ -11,8 +11,8 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.gen_expression_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
@@ -31,33 +31,33 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
-spp::asts::GenWithExpressionAst::GenWithExpressionAst(
+GenWithExpressionAst::GenWithExpressionAst(
   decltype(TokGen) &&tok_gen,
   decltype(TokWith) &&tok_with,
   decltype(Expr) &&expr) :
   TokGen(std::move(tok_gen)),
   TokWith(std::move(tok_with)),
   Expr(std::move(expr)) {
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokGen, lex::SppTokenType::KW_GEN, "gen");
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokWith, lex::SppTokenType::KW_WITH, "with");
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokGen, SppTokenType::KW_GEN, "gen");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokWith, SppTokenType::KW_WITH, "with");
 }
 
-spp::asts::GenWithExpressionAst::~GenWithExpressionAst() = default;
+GenWithExpressionAst::~GenWithExpressionAst() = default;
 
-auto spp::asts::GenWithExpressionAst::PosStart() const
-  -> std::size_t {
+auto GenWithExpressionAst::PosStart() const -> std::size_t {
   // Use the "gen" token.
   return TokGen->PosStart();
 }
 
-auto spp::asts::GenWithExpressionAst::PosEnd() const
-  -> std::size_t {
+auto GenWithExpressionAst::PosEnd() const -> std::size_t {
   // Use the expression.
   return Expr->PosEnd();
 }
 
-auto spp::asts::GenWithExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto GenWithExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<GenWithExpressionAst>(
     AstClone(TokGen),
@@ -65,8 +65,7 @@ auto spp::asts::GenWithExpressionAst::Clone() const
     AstClone(Expr));
 }
 
-auto spp::asts::GenWithExpressionAst::ToString() const
-  -> Str {
+auto GenWithExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_MappedLoop != nullptr) {
     SPP_STRING_APPEND(_MappedLoop);
@@ -78,11 +77,8 @@ auto spp::asts::GenWithExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto GenWithExpressionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
 
   // Check the enclosing function is a coroutine and not a
@@ -99,8 +95,11 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
   const auto uid = "_" + spp::utils::Uid(this);
   auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, MakeShared<IdentifierAst>(PosStart(), "$gen_with" + uid), nullptr);
-  auto gen_value = MakeUnique<IdentifierAst>(PosStart(), "$gen_with" + uid);
-  auto gen_expression = MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
+  auto gen_value = MakeUnique<IdentifierAst>(
+    PosStart(), "$gen_with" + uid);
+  auto gen_expression = MakeUnique<GenExpressionAst>(
+    nullptr, nullptr, std::move(gen_value));
+
   auto loop_body = InnerScopeExpressionAst::NewEmpty();
   loop_body->Members.EmplaceBack(std::move(gen_expression));
   _MappedLoop = MakeUnique<LoopIterableExpressionAst>(
@@ -113,20 +112,15 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
   _MappedLoop->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto GenWithExpressionAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the memory check to the desugared loop (which
   // checks the sub-generator expression and the inner "gen").
   _MappedLoop->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto GenWithExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the desugared loop, already built and analysed
   // in Stage7 (its scope aligns with the walk here). As the
   // "gen with" is parsed as a statement rather than a "gen"

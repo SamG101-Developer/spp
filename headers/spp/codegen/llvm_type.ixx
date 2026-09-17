@@ -9,6 +9,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct FunctionPrototypeAst);
@@ -37,10 +38,11 @@ namespace spp::codegen {
   SPP_EXP_FUN auto GetLlvmType(
     TypeSymbol const &type_sym, LlvmCtx const *ctx) -> llvm::Type*;
 
-  /// Early pointer check for the type's convention, followed by
-  /// the type symbol lookup and "GetLlvmType" lookup.
+  /// The LLVM type of a resolved type: a borrow is the opaque
+  /// pointer type (whatever it borrows), anything else its
+  /// symbol's type. A written type is resolved by "TypeRef::Of".
   SPP_EXP_FUN auto GetLlvmTypeOf(
-    TypeAst const &type, Scope const &scope, LlvmCtx const *ctx) -> llvm::Type*;
+    TypeRef const &ref, LlvmCtx const *ctx) -> llvm::Type*;
 
   /// Ensure the provided type symbol has its LLVM type information
   /// registered all the way down its field types (so that the
@@ -64,5 +66,5 @@ namespace spp::codegen {
   /// "{ fn_ptr, env_ptr }" pair in a 1-item vector (for future
   /// expansion).
   SPP_EXP_FUN auto GetFatPointerFields(
-    TypeAst const &type, Scope const &scope, LlvmCtx const *ctx) -> std::optional<Vec<llvm::Type*>>;
+    TypeSymbol const &sym, Scope const &scope, LlvmCtx const *ctx) -> std::optional<Vec<llvm::Type*>>;
 }

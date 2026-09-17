@@ -16,6 +16,7 @@ use(spp::asts, struct ConventionAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 /// The base class for an argument in a function call, inherited
 /// into the "positional" and "keyword" variants.
@@ -44,6 +45,8 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAs
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   auto SetSelfType(Shared<TypeAst> self_type) -> void;
 

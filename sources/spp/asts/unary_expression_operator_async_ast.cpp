@@ -47,28 +47,25 @@ import spp.lex.tokens;
 import spp.parse.parser_spp;
 
 SPP_MOD_BEGIN
-spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
+UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
   decltype(TokAsync) &&tok_async) :
   TokAsync(std::move(tok_async)),
   _TransformedFunc(nullptr) {
 }
 
-spp::asts::UnaryExpressionOperatorAsyncAst::~UnaryExpressionOperatorAsyncAst() = default;
+UnaryExpressionOperatorAsyncAst::~UnaryExpressionOperatorAsyncAst() = default;
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::PosStart() const
-  -> std::size_t {
+auto UnaryExpressionOperatorAsyncAst::PosStart() const -> std::size_t {
   // Use the "async" token.
   return TokAsync->PosStart();
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::PosEnd() const
-  -> std::size_t {
+auto UnaryExpressionOperatorAsyncAst::PosEnd() const -> std::size_t {
   // Use the "async" token.
   return TokAsync->PosEnd();
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::Clone() const
-  -> Unique<Ast> {
+auto UnaryExpressionOperatorAsyncAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<UnaryExpressionOperatorAsyncAst>(
     AstClone(TokAsync));
@@ -76,8 +73,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Clone() const
   return ast;
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::ToString() const
-  -> Str {
+auto UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_TransformedFunc != nullptr) {
     SPP_STRING_APPEND(_TransformedFunc);
@@ -87,10 +83,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppAsyncTargetNotFunctionCallError;
   using analyse::utils::async_utils::CaptureBorrow;
@@ -253,10 +247,8 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   _TransformedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Failsafe - Todo: is this ever hittable? Not sure if it is
   // needed
   if (_TransformedFunc == nullptr) {
@@ -269,21 +261,16 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
   _TransformedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the mapped object initialization, which handles the
   // sppc lowering.
   const auto value = _TransformedFunc->Stage11_CodeGen(sm, meta, ctx);
   return value;
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto UnaryExpressionOperatorAsyncAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   using generate::common_types::FutureType;
 
@@ -295,8 +282,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::InferType(
   return future_type;
 }
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const
-  -> bool {
+auto UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const -> bool {
   // Lowers into a closure => not allowed as a default.
   return false;
 }

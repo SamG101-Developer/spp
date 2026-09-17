@@ -43,7 +43,7 @@ namespace spp::analyse::utils::type_members {
   /// (and its super types' fields), or the indexes for a tuple
   /// or array. Use the new type part struct.
   SPP_EXP_FUN auto GetAllParts(
-    TypeAst const &type,
+    TypeSymbol const &sym,
     Scope const &scope,
     bool collapse_arrays = false)
     -> Vec<TypePart>;
@@ -53,16 +53,14 @@ namespace spp::analyse::utils::type_members {
   /// we know which super class it came from if it's not on the
   /// actual type itself.
   SPP_EXP_FUN auto GetAllAttrs(
-    TypeAst const &type,
-    Scope const &scope)
+    TypeSymbol const &cls_sym)
     -> Vec<Tup<Shared<IdentifierAst>, TypeSymbol*, Scope*>>;
 
   /// Similar to the "GetAllAttrs", but in ast form, so that
   /// the default values can be extracted for object initializers,
   /// if required.
   SPP_EXP_FUN auto GetAllAttrAsts(
-    TypeAst const &type,
-    Scope const &scope)
+    TypeSymbol const &cls_sym)
     -> Vec<ClassAttributeAst*>;
 
   /// Check that all the instances of a "cmp" constant, in a
@@ -96,8 +94,7 @@ namespace spp::analyse::utils::type_members {
   /// can determine which slot to push data into. Takes into
   /// account hidden fat pointer fields too.
   SPP_EXP_FUN auto GetFieldIndexInType(
-    TypeAst const &type_sym,
-    IdentifierAst const &field_name,
-    Scope const &scope)
+    TypeSymbol const &type_sym,
+    IdentifierAst const &field_name)
     -> std::size_t;
 }

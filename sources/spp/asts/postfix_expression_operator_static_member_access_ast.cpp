@@ -12,8 +12,8 @@ import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.expression_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -31,9 +31,9 @@ import genex;
 
 namespace {
   auto StaticMemberOf(
-    spp::analyse::scopes::Scope &type_scope,
-    spp::asts::IdentifierAst const &name)
-    -> spp::analyse::scopes::VariableSymbol* {
+    Scope &type_scope,
+    IdentifierAst const &name)
+    -> VariableSymbol* {
     using spp::analyse::utils::expr_utils::LookupMemberForAccess;
     using spp::analyse::utils::expr_utils::MemberAccessForm;
     using spp::analyse::utils::expr_utils::MemberReachableBy;
@@ -55,7 +55,7 @@ namespace {
 }
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
+PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
   decltype(TokDblColon) &&tok_dbl_colon,
   decltype(Name) &&name) :
   TokDblColon(std::move(tok_dbl_colon)),
@@ -63,22 +63,19 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOper
   _LhsTypeSym(nullptr) {
 }
 
-spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
+PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosStart() const
-  -> std::size_t {
+auto PostfixExpressionOperatorStaticMemberAccessAst::PosStart() const -> std::size_t {
   // Use the "::" token.
   return Name->PosStart();
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosEnd() const
-  -> std::size_t {
+auto PostfixExpressionOperatorStaticMemberAccessAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Clone() const
-  -> Unique<Ast> {
+auto PostfixExpressionOperatorStaticMemberAccessAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto p = MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
     AstClone(TokDblColon),
@@ -87,18 +84,15 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Clone() const
   return p;
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
-  -> Str {
+auto PostfixExpressionOperatorStaticMemberAccessAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("::");
   SPP_STRING_APPEND(Name);
   SPP_STRING_END;
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
   using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
@@ -119,18 +113,17 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
 
     // Check the target field exists on the type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
-      auto [fwd_ref_type, fwd_mut_type] = analyse::utils::type_utils::GetFwdTypes(*lhs_type_sym->FqName(), *sm);
-      const auto temp = fwd_ref_type ? fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val.get() : nullptr;
-      const auto lhs_fwd_ref_type_sym = temp ? sm->CurrentScope->GetTypeSymbol(temp) : nullptr;
+      const auto [fwd_ref_sym, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
+      const auto lhs_fwd_ref_type_sym = fwd_ref_sym != nullptr ? fwd_ref_sym->BoundTypeArg("T") : nullptr;
       const auto found = lhs_fwd_ref_type_sym
         ? lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)
         : false;
-      if (fwd_ref_type == nullptr or (fwd_ref_type != nullptr and not found)) {
+      if (fwd_ref_sym == nullptr or not found) {
         // Todo: Need to filter these candidates to function groups who contain a static overload.
         // Todo: Add fwd-ref type member candidates
 
         auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
-          | genex::views::filter([](auto const &sym) { return sym->Kind == analyse::scopes::VariableKind::Function; })
+          | genex::views::filter([](auto const &sym) { return sym->Kind == VariableKind::Function; })
           | genex::to<Vec>();
         RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
       }
@@ -138,7 +131,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     }
 
     // Check there is only 1 target field on the type at the highest level.
-    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Kind == analyse::scopes::VariableKind::Function) {
+    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Kind == VariableKind::Function) {
       return;
     }
 
@@ -207,14 +200,12 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
   }
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Handle accessing a symbol on a type.
   if (_LhsTypeSym != nullptr) {
     const auto sym = StaticMemberOf(*_LhsTypeSym->LinkedScope, *Name);
-    auto tm = analyse::scopes::ScopeManager(
+    auto tm = ScopeManager(
       sm->GlobalScope, _LhsTypeSym->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CmpResult = AstClone(meta->CmpResult);
@@ -229,11 +220,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeR
   meta->CmpResult = AstClone(sym->CompTimeValue->To<ExpressionAst>());
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   const auto uid = "." + spp::utils::Uid(this);
 
   // In a constant context the caller wants a value,
@@ -252,7 +240,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
 
     // A method named as a value is its "$" mock's constant, the
     // "{fn, env}" pair; without one there is nothing to load.
-    if (var_sym->Kind == analyse::scopes::VariableKind::Function and var_sym->LlvmInfo->Alloca == nullptr) {
+    if (var_sym->Kind == VariableKind::Function and var_sym->LlvmInfo->Alloca == nullptr) {
       return nullptr;
     }
 
@@ -274,7 +262,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
   const auto lhs_ns_scope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
   const auto var_sym = lhs_ns_scope->GetVarSymbol(Name.get(), true);
-  if (var_sym->Kind == analyse::scopes::VariableKind::Function) { return nullptr; }
+  if (var_sym->Kind == VariableKind::Function) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
   const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
     *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
@@ -282,10 +270,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   using analyse::utils::type_utils::GetFwdTypes;
   // Todo: use the stored symbol? that if it's null? is that possible ie if used before analysis? shouldn't be.
@@ -300,7 +286,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
     // named as a nested type of the owner: "main::A::$Method". There
     // is one mock per "sup" block the overloads are written in, each
     // given all of them ("ScopeManager::CoalesceMethodMock").
-    if (sym != nullptr and sym->Kind == analyse::scopes::VariableKind::Function and sym->Type->IsTypeIdentifier()) {
+    if (sym != nullptr and sym->Kind == VariableKind::Function and sym->Type->IsTypeIdentifier()) {
       return MakeShared<TypePostfixExpressionAst>(
         AstCloneShared(lhs_type_sym->FqName()), MakeShared<TypePostfixExpressionOperatorNestedTypeAst>(
           nullptr, dynamic_shared_cast<TypeIdentifierAst>(AstCloneShared(sym->Type))));
@@ -308,9 +294,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
     if (sym != nullptr) { return sym->Type; }
 
     // This is where we need to handle the FwdRef/FwdMut logic.
-    auto [fwd_ref_type, _] = GetFwdTypes(*lhs_as_type, *sm);
-    const auto inner_type = fwd_ref_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val;
-    const auto inner_type_sym = sm->CurrentScope->GetTypeSymbol(inner_type.get());
+    const auto [fwd_ref_sym, _] = GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
+    const auto inner_type_sym = fwd_ref_sym->BoundTypeArg("T");
     const auto fwd_sym = inner_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
     return fwd_sym->Type;
   }
@@ -321,14 +306,12 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   return lhs_ns_scope->GetTypeSymbol(type.get())->FqName();
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const
-  -> Vec<IdentifierAst*> {
+auto PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
   // Static member access does not have any expression parts.
   return {Name.get()};
 }
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::IsAllowedInDefault() const
-  -> bool {
+auto PostfixExpressionOperatorStaticMemberAccessAst::IsAllowedInDefault() const -> bool {
   // Reads what it is applied to, and holds nothing of its own.
   return true;
 }

@@ -12,6 +12,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(CharLiteralAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TokenAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX;
@@ -41,6 +42,8 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CharLiteralAst);

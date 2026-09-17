@@ -17,6 +17,8 @@ SPP_AST_COMMON_FWD_DECL(FloatLiteralAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
 
 /// A floating-point literal, with an optional sign, an integer
 /// part, a decimal point, and a fractional part. The type can be
@@ -88,6 +90,8 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+
   /// The exact value of this literal. Comp-time arithmetic works
   /// in this rather than in a fixed-width C++ float, so that a
   /// result the type cannot hold arrives as a value the compiler
@@ -106,6 +110,10 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// comp-time arithmetic produced is checked where that
   /// arithmetic is invoked from.
   auto ValidateBounds(Ast const &owner, Scope const &scope) const -> void;
+
+private:
+  /// The precompiled type this literal's suffix names, resolved where "sm" is.
+  auto _PrecompiledTypeSym(ScopeManager *sm) const -> TypeSymbol*;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

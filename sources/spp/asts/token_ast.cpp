@@ -5,15 +5,12 @@ module spp.asts.token_ast;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-auto spp::asts::TokenAst::NewEmpty(
-  lex::SppTokenType token_type,
-  Str &&token_data,
-  const std::size_t pos)
-  -> Unique<TokenAst> {
+auto TokenAst::NewEmpty(
+  lex::SppTokenType token_type, Str &&token_data, const std::size_t pos) -> Unique<TokenAst> {
   return MakeUnique<TokenAst>(pos, token_type, std::move(token_data));
 }
 
-spp::asts::TokenAst::TokenAst(
+TokenAst::TokenAst(
   const std::size_t pos,
   const lex::SppTokenType token_type,
   Str &&token_data) :
@@ -22,16 +19,14 @@ spp::asts::TokenAst::TokenAst(
   _Pos(pos) {
 }
 
-spp::asts::TokenAst::~TokenAst() = default;
+TokenAst::~TokenAst() = default;
 
-auto spp::asts::TokenAst::PosStart() const
-  -> std::size_t {
+auto TokenAst::PosStart() const -> std::size_t {
   // Use the local position.
   return _Pos;
 }
 
-auto spp::asts::TokenAst::PosEnd() const
-  -> std::size_t {
+auto TokenAst::PosEnd() const -> std::size_t {
   // Keywords appear in the raw token stream as one multi-char raw token (e.g. "fun" is one
   // token, not three 'f'/'u'/'n' tokens), so the exclusive end index is _Pos + 1.
   // All other tokens use one raw token per source character, so data.length() gives the span.
@@ -41,8 +36,7 @@ auto spp::asts::TokenAst::PosEnd() const
   return is_single_raw_token_keyword ? _Pos + 1 : _Pos + TokenData.length();
 }
 
-auto spp::asts::TokenAst::Clone() const
-  -> Unique<Ast> {
+auto TokenAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<TokenAst>(
     _Pos,
@@ -50,20 +44,19 @@ auto spp::asts::TokenAst::Clone() const
     TokenData.c_str());
 }
 
-auto spp::asts::TokenAst::ToString() const
-  -> Str {
+auto TokenAst::ToString() const -> Str {
   // Use the token data.
   return TokenData;
 }
 
-auto spp::asts::TokenAst::operator==(
-  TokenAst const &that) const
-  -> bool {
+auto TokenAst::operator==(
+  TokenAst const &that) const -> bool {
   // Equality is dependent on the token type alone.
   return TokenType == that.TokenType;
 }
 
-auto spp::asts::TokenAst::PatchPos(const std::size_t pos) -> void {
+auto TokenAst::PatchPos(
+  const std::size_t pos) -> void {
   // Manually override the pos of this token.
   _Pos = pos;
 }

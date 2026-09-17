@@ -14,6 +14,7 @@ use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordAwaitAst final : PostfixExpressionOperatorAst {
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorKeywordAwaitAst);
@@ -37,6 +38,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordAwaitAst final : P
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const

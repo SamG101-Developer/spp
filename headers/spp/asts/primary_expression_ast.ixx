@@ -11,6 +11,7 @@ GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 

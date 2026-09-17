@@ -9,6 +9,7 @@ import llvm;
 import std;
 
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
@@ -29,7 +30,7 @@ SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
   kNone = 0,
   kGenTopLvlScopes, // stage 2
   kGenTopLvlAliases, // stage 3
-  kQualifyTypes, // stage 4
+  kResolveDeclarations, // stage 4
   kLoadSupScopes, // stage 5
   kAttachSupScopes, // the tail of stage 5
   kPreAnalyseSemantics, // stage 6
@@ -94,7 +95,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// differ only in their return type, we can provide a type
   /// that resolves this, maybe from a "let: Type = ...", or a
   /// "cmp: Type = ..." explicit designator.
-  Shared<TypeAst> ReturnTypeOverloadResolverType;
+  Shared<TypeRef> ReturnTypeOverloadResolverType;
 
   /// The target of an assignment. This provides a handle that
   /// the rhs expression might want to use for example. Also
@@ -237,11 +238,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// the namespace scope for the type identifier ast.
   Scope *TypeAnalysisTypeScope;
 
-  /// The comp generic parameter whose own type is being
-  /// qualified, so generic instantiations made while doing
-  /// so don't carry in its not-yet-typed symbol.
-  Shared<IdentifierAst> IgnoreCmpGeneric;
-
   /// There are some instances where "moving" the value under
   /// a deref is allowed, because a move doesn't actually happen,
   /// but it appears to, for example with "a@ = 1".
@@ -284,7 +280,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     Shared<IdentifierAst>, Unique<ExpressionAst>,
     utils::ptr::ptr_hash<Shared<IdentifierAst>>,
     utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
-  Vec<TypeAst*> CmpGnTypeArgs;
+  Vec<Shared<TypeRef>> CmpGnTypeArgs;
   Vec<ExpressionAst*> CmpGnCompArgs;
   Unique<ExpressionAst> CmpResult;
   bool CmpReturned = false;

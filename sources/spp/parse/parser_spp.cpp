@@ -320,75 +320,79 @@ auto spp::parse::ParserSpp::parse_generic_parameter()
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp()
-  -> Unique<asts::GenericParameterCompAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ALTERNATE(
-    p1, asts::GenericParameterCompAst, parse_generic_parameter_comp_variadic, parse_generic_parameter_comp_optional,
+    p1, asts::GenericParameterAst, parse_generic_parameter_comp_variadic, parse_generic_parameter_comp_optional,
     parse_generic_parameter_comp_required);
   return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp_required()
-  -> Unique<asts::GenericParameterCompRequiredAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ONCE(p1, parse_keyword_cmp);
   PARSE_ONCE(p2, parse_identifier);
   PARSE_ONCE(p3, parse_token_colon);
   PARSE_ONCE(p4, parse_type_expression);
-  return CREATE_AST(asts::GenericParameterCompRequiredAst, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4);
+  return CREATE_AST(
+    asts::GenericParameterAst, p1, nullptr, asts::TypeIdentifierAst::FromIdentifier(*p2), nullptr, p3, p4,
+    nullptr, nullptr, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp_optional()
-  -> Unique<asts::GenericParameterCompOptionalAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ONCE(p1, parse_keyword_cmp);
   PARSE_ONCE(p2, parse_identifier);
   PARSE_ONCE(p3, parse_token_colon);
   PARSE_ONCE(p4, parse_type_expression);
   PARSE_ONCE(p5, parse_token_assign);
   PARSE_ONCE(p6, parse_expression); // TODO: Force this "cmp" in SA?
-  return CREATE_AST(asts::GenericParameterCompOptionalAst, p1, asts::TypeIdentifierAst::FromIdentifier(*p2), p3, p4, p5,
-                    p6);
+  return CREATE_AST(
+    asts::GenericParameterAst, p1, nullptr, asts::TypeIdentifierAst::FromIdentifier(*p2), nullptr, p3, p4,
+    p5, nullptr, p6);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_comp_variadic()
-  -> Unique<asts::GenericParameterCompVariadicAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ONCE(p1, parse_keyword_cmp);
   PARSE_ONCE(p2, parse_token_double_dot);
   PARSE_ONCE(p3, parse_identifier);
   PARSE_ONCE(p4, parse_token_colon);
   PARSE_ONCE(p5, parse_type_expression);
-  return CREATE_AST(asts::GenericParameterCompVariadicAst, p1, p2, asts::TypeIdentifierAst::FromIdentifier(*p3), p4,
-                    p5);
+  return CREATE_AST(
+    asts::GenericParameterAst, p1, p2, asts::TypeIdentifierAst::FromIdentifier(*p3), nullptr, p4, p5,
+    nullptr, nullptr, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type()
-  -> Unique<asts::GenericParameterTypeAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ALTERNATE(
-    p1, asts::GenericParameterTypeAst, parse_generic_parameter_type_variadic, parse_generic_parameter_type_optional,
+    p1, asts::GenericParameterAst, parse_generic_parameter_type_variadic, parse_generic_parameter_type_optional,
     parse_generic_parameter_type_required);
   return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_required()
-  -> Unique<asts::GenericParameterTypeRequiredAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ONCE(p1, parse_type_identifier);
   PARSE_OPTIONAL(p2, parse_generic_parameter_type_inline_constraints);
-  return CREATE_AST(asts::GenericParameterTypeRequiredAst, p1, p2);
+  return CREATE_AST(asts::GenericParameterAst, nullptr, nullptr, p1, p2, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_optional()
-  -> Unique<asts::GenericParameterTypeOptionalAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ONCE(p1, parse_type_identifier);
   PARSE_OPTIONAL(p2, parse_generic_parameter_type_inline_constraints);
   PARSE_ONCE(p3, parse_token_assign);
   PARSE_ONCE(p4, parse_type_expression);
-  return CREATE_AST(asts::GenericParameterTypeOptionalAst, p1, p2, p3, p4);
+  return CREATE_AST(asts::GenericParameterAst, nullptr, nullptr, p1, p2, nullptr, nullptr, p3, p4, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_variadic()
-  -> Unique<asts::GenericParameterTypeVariadicAst> {
+  -> Unique<asts::GenericParameterAst> {
   PARSE_ONCE(p1, parse_token_double_dot);
   PARSE_ONCE(p2, parse_type_identifier);
   PARSE_OPTIONAL(p3, parse_generic_parameter_type_inline_constraints);
-  return CREATE_AST(asts::GenericParameterTypeVariadicAst, p1, p2, p3);
+  return CREATE_AST(asts::GenericParameterAst, nullptr, p1, p2, p3, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_inline_constraints()
@@ -414,48 +418,48 @@ auto spp::parse::ParserSpp::parse_generic_argument()
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_comp()
-  -> Unique<asts::GenericArgumentCompAst> {
+  -> Unique<asts::GenericArgumentAst> {
   PARSE_ALTERNATE(
-    p1, asts::GenericArgumentCompAst, parse_generic_argument_comp_keyword, parse_generic_argument_comp_positional);
+    p1, asts::GenericArgumentAst, parse_generic_argument_comp_keyword, parse_generic_argument_comp_positional);
   return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_comp_positional()
-  -> Unique<asts::GenericArgumentCompPositionalAst> {
+  -> Unique<asts::GenericArgumentAst> {
   PARSE_ONCE(p1, parse_expression); // TODO: Force this "cmp" in SA?
-  return CREATE_AST(asts::GenericArgumentCompPositionalAst, p1);
+  return asts::GenericArgumentAst::NewComp(nullptr, std::move(p1));
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_comp_keyword()
-  -> Unique<asts::GenericArgumentCompKeywordAst> {
+  -> Unique<asts::GenericArgumentAst> {
   PARSE_ONCE(p1, parse_identifier);
   PARSE_ONCE(p2, parse_token_assign);
   PARSE_ONCE(p3, parse_expression); // TODO: Force this "cmp" in SA?
-  return CREATE_AST(asts::GenericArgumentCompKeywordAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, p3);
+  return CREATE_AST(asts::GenericArgumentAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, nullptr, p3);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_type()
-  -> Unique<asts::GenericArgumentTypeAst> {
+  -> Unique<asts::GenericArgumentAst> {
   PARSE_ALTERNATE(
-    p1, asts::GenericArgumentTypeAst, parse_generic_argument_type_keyword, parse_generic_argument_type_positional);
+    p1, asts::GenericArgumentAst, parse_generic_argument_type_keyword, parse_generic_argument_type_positional);
   PARSE_NEGATE(lex::RawTokenType::TK_LEFT_PARENTHESIS)
   PARSE_NEGATE(lex::RawTokenType::TK_COLON)
   return FORWARD_AST(p1);
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_type_positional()
-  -> Unique<asts::GenericArgumentTypePositionalAst> {
+  -> Unique<asts::GenericArgumentAst> {
   // 1964
   PARSE_ONCE(p1, parse_type_expression);
-  return CREATE_AST(asts::GenericArgumentTypePositionalAst, asts::AstClone(p1));
+  return asts::GenericArgumentAst::NewType(nullptr, asts::AstClone(p1));
 }
 
 auto spp::parse::ParserSpp::parse_generic_argument_type_keyword()
-  -> Unique<asts::GenericArgumentTypeKeywordAst> {
+  -> Unique<asts::GenericArgumentAst> {
   PARSE_ONCE(p1, parse_upper_identifier);
   PARSE_ONCE(p2, parse_token_assign);
   PARSE_ONCE(p3, parse_type_expression);
-  return CREATE_AST(asts::GenericArgumentTypeKeywordAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, p3);
+  return CREATE_AST(asts::GenericArgumentAst, asts::TypeIdentifierAst::FromIdentifier(*p1), p2, p3, nullptr);
 }
 
 auto spp::parse::ParserSpp::parse_annotation()

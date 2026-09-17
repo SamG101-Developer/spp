@@ -11,8 +11,6 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(GenericParameterGroupAst);
 use(spp::asts, struct GenericParameterAst);
-use(spp::asts, struct GenericParameterCompAst);
-use(spp::asts, struct GenericParameterTypeAst);
 use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
@@ -39,13 +37,9 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
 
   ~GenericParameterGroupAst() override;
 
-  auto operator+(GenericParameterGroupAst const &other) const -> Unique<GenericParameterGroupAst>;
-
-  auto operator+=(GenericParameterGroupAst const &other) -> GenericParameterGroupAst&;
-
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -55,17 +49,13 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto MergeGenerics(decltype(Params) &&other_params) -> void;
-
-  SPP_ATTR_NODISCARD auto GetRequiredParams() const -> Vec<GenericParameterAst*>;
-
   SPP_ATTR_NODISCARD auto GetOptionalParams() const -> Vec<GenericParameterAst*>;
 
   SPP_ATTR_NODISCARD auto GetVariadicParams() const -> GenericParameterAst*;
 
-  SPP_ATTR_NODISCARD auto GetCompParams() const -> Vec<GenericParameterCompAst*>;
+  SPP_ATTR_NODISCARD auto GetCompParams() const -> Vec<GenericParameterAst*>;
 
-  SPP_ATTR_NODISCARD auto GetTypeParams() const -> Vec<GenericParameterTypeAst*>;
+  SPP_ATTR_NODISCARD auto GetTypeParams() const -> Vec<GenericParameterAst*>;
 
   SPP_ATTR_NODISCARD auto GetAllParams() const -> Vec<GenericParameterAst*>;
 

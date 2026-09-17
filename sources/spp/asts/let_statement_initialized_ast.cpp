@@ -21,7 +21,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
+LetStatementInitializedAst::LetStatementInitializedAst(
   decltype(TokLet) &&tok_let,
   decltype(Var) &&var,
   decltype(Type) type,
@@ -32,27 +32,26 @@ spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
   Type(std::move(type)),
   TokAssign(std::move(tok_assign)),
   Val(std::move(val)) {
-  //
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokLet, SppTokenType::KW_LET, "let");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokAssign, SppTokenType::TK_ASSIGN, "=");
 }
 
-spp::asts::LetStatementInitializedAst::~LetStatementInitializedAst() = default;
+LetStatementInitializedAst::~LetStatementInitializedAst() = default;
 
-auto spp::asts::LetStatementInitializedAst::PosStart() const
-  -> std::size_t {
+auto LetStatementInitializedAst::PosStart() const -> std::size_t {
   // Use the "let" token.
   return TokLet->PosStart();
 }
 
-auto spp::asts::LetStatementInitializedAst::PosEnd() const
-  -> std::size_t {
+auto LetStatementInitializedAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto spp::asts::LetStatementInitializedAst::Clone() const
-  -> Unique<Ast> {
+auto LetStatementInitializedAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LetStatementInitializedAst>(
     AstClone(TokLet),
@@ -62,8 +61,7 @@ auto spp::asts::LetStatementInitializedAst::Clone() const
     AstClone(Val));
 }
 
-auto spp::asts::LetStatementInitializedAst::ToString() const
-  -> Str {
+auto LetStatementInitializedAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokLet).append(" ");
   SPP_STRING_APPEND(Var);
@@ -73,18 +71,16 @@ auto spp::asts::LetStatementInitializedAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
+auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_compare::TypeEq;
   using analyse::utils::type_utils::ResolveWrittenType;
 
-  // An explicit type can only be applied if the left-hand-side is a single identifier.
+  // An explicit type can only be applied if the left-hand-side
+  // is a single identifier.
   RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
     Type != nullptr and Var->To<LocalVariableSingleIdentifierAst>() == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
@@ -95,8 +91,10 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   }
 
   // Add the type into the return type overload resolver.
-  const auto _meta_guard = meta::MetaGuard(meta);
-  meta->ReturnTypeOverloadResolverType = Type;
+  const auto _meta_guard = MetaGuard(meta);
+  meta->ReturnTypeOverloadResolverType = Type != nullptr
+    ? MakeShared<TypeRef>(TypeRef::Of(*Type, *sm->CurrentScope))
+    : nullptr;
 
   // Check the value is a valid expression type.
   Val->Stage7_AnalyseSemantics(sm, meta);
@@ -118,7 +116,8 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     // A function named as the value stands for the overload
     // the declared type asks for.
     analyse::utils::func_utils::InstantiateFunctionValue(
-      *val_type, *Type, sm, meta);
+      TypeRef::Of(*val_type, *sm->CurrentScope),
+      TypeRef::Of(*Type, *sm->CurrentScope), sm, meta);
   }
 
   meta->LetStatementExplicitType = Type;
@@ -126,52 +125,44 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   Var->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto LetStatementInitializedAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the variable's memory (which in turn checks the
-  // values memory - must be done this way for destructuring).
-  const auto _meta_guard = meta::MetaGuard(meta);
+  // value's memory - must be done this way for destructuring).
+  const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
-  meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::LetStatementInitializedAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  // Fix variable shadowing, where a newer version of the symbol is
-  // gotten because stage7 added it, when we are trying to use the
-  // original.
-  auto shadowed = Vec<Shared<analyse::scopes::VariableSymbol>>();
+auto LetStatementInitializedAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Fix variable shadowing, where a newer version of the symbol
+  // is gotten because stage7 added it, when we are trying to use
+  // the original.
+  auto shadowed = Vec<Shared<VariableSymbol>>();
   for (auto const &target : Var->ExtractNames()) {
     if (auto sym = sm->CurrentScope->RemVarSymbol(target.get()); sym != nullptr) {
       shadowed.EmplaceBack(std::move(sym));
     }
   }
+
   Val->Stage9_CompTimeResolve(sm, meta);
   for (auto const &sym : shadowed) { sm->CurrentScope->AddVarSymbol(sym); }
 
   // Assign the comptime value to the variable.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
-  meta->LetStatementExplicitType = Type;
   meta->LetStatementValue = Val.get();
   Var->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto LetStatementInitializedAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
   // Todo: Inconsistent with lower level stages?
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
   meta->AssignmentTargetType = Type;
   const auto val_type = Type ? Type : Val->InferType(sm, meta);

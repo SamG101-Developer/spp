@@ -99,7 +99,7 @@ auto spp::compiler::Compiler::Compile() -> void {
     m_boot->Stage1_PreProcess(next_bar(), *m_modules, nullptr);
     m_boot->Stage2_GenTopLvlScopes(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage3_GenTopLvlAliases(next_bar(), *m_modules, m_scope_manager.get());
-    m_boot->Stage4_QualifyTypes(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage4_ResolveDeclarations(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage5_LoadSupScopes(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage5_5_AttachSupScopes(next_bar(), m_scope_manager.get());
     m_boot->Stage6_PreAnalyseSemantics(next_bar(), *m_modules, m_scope_manager.get());

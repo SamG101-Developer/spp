@@ -22,7 +22,7 @@ import spp.utils.types;
 import llvm;
 
 SPP_MOD_BEGIN
-spp::asts::FloatLiteralAst::FloatLiteralAst(
+FloatLiteralAst::FloatLiteralAst(
   decltype(TokSign) &&tok_sign,
   decltype(IntVal) &&int_val,
   decltype(TokDot) &&tok_dot,
@@ -35,13 +35,13 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
   Type(std::move(type)) {
 }
 
-spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
+FloatLiteralAst::~FloatLiteralAst() = default;
 
-auto spp::asts::FloatLiteralAst::EqualsFloatLiteral(
-  FloatLiteralAst const &other) const
-  -> Ordering {
+auto FloatLiteralAst::EqualsFloatLiteral(
+  FloatLiteralAst const &other) const -> Ordering {
   // Equality based on the sign, integer part, fractional
-  // part, and type postfix.
+  // part, and type postfix. Todo: Tidy by inverting with
+  // guards.
   if (
     ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
     and IntVal->TokenData == other.IntVal->TokenData
@@ -52,27 +52,23 @@ auto spp::asts::FloatLiteralAst::EqualsFloatLiteral(
   return Ordering::less;
 }
 
-auto spp::asts::FloatLiteralAst::Equals(
-  ExpressionAst const &other) const
-  -> Ordering {
+auto FloatLiteralAst::Equals(
+  ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsFloatLiteral(*this);
 }
 
-auto spp::asts::FloatLiteralAst::PosStart() const
-  -> std::size_t {
+auto FloatLiteralAst::PosStart() const -> std::size_t {
   // Use the sign token or the integer part.
   return TokSign ? TokSign->PosStart() : IntVal->PosStart();
 }
 
-auto spp::asts::FloatLiteralAst::PosEnd() const
-  -> std::size_t {
+auto FloatLiteralAst::PosEnd() const -> std::size_t {
   // Use the fractional part.
   return FracVal->PosEnd();
 }
 
-auto spp::asts::FloatLiteralAst::Clone() const
-  -> Unique<Ast> {
+auto FloatLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<FloatLiteralAst>(
     AstClone(TokSign),
@@ -82,8 +78,7 @@ auto spp::asts::FloatLiteralAst::Clone() const
     Type.c_str());
 }
 
-auto spp::asts::FloatLiteralAst::ToString() const
-  -> Str {
+auto FloatLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSign);
   SPP_STRING_APPEND(IntVal);
@@ -93,18 +88,14 @@ auto spp::asts::FloatLiteralAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *)
-  -> void {
+auto FloatLiteralAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "f32" : Type;
   ValidateBounds(*this, *sm->CurrentScope);
 }
 
-auto spp::asts::FloatLiteralAst::BigVal() const
-  -> numex::BigDec {
-  //
+auto FloatLiteralAst::BigVal() const -> numex::BigDec {
   using spp::utils::strings::NormalizeFloatString;
 
   // The sign is a separate token, so it is applied after
@@ -116,11 +107,8 @@ auto spp::asts::FloatLiteralAst::BigVal() const
   return value;
 }
 
-auto spp::asts::FloatLiteralAst::ValidateBounds(
-  Ast const &owner,
-  analyse::scopes::Scope const &scope) const
-  -> void {
-  //
+auto FloatLiteralAst::ValidateBounds(
+  Ast const &owner, Scope const &scope) const -> void {
   using analyse::errors::SppFloatOutOfBoundsError;
 
   // A value the type cannot hold is the same error whether
@@ -132,10 +120,8 @@ auto spp::asts::FloatLiteralAst::ValidateBounds(
     {&scope}, ERR_ARGS(owner, value, lower, upper, Type));
 }
 
-auto spp::asts::FloatLiteralAst::FromBigVal(
-  numex::BigDec const &value,
-  Str const &type)
-  -> Unique<FloatLiteralAst> {
+auto FloatLiteralAst::FromBigVal(
+  numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst> {
   // "Decimal" gives the exact decimal, not in fraction form.
   const auto is_negative = value.IsNegative();
   const auto digits = (is_negative ? -value : value).Decimal(kDecimalPlaces.at(type));
@@ -155,25 +141,19 @@ auto spp::asts::FloatLiteralAst::FromBigVal(
     Str(type));
 }
 
-auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto FloatLiteralAst::Stage9_CompTimeResolve(
+  ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
   meta->CmpResult = AstClone(this);
 }
 
-auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto FloatLiteralAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using spp::utils::strings::NormalizeFloatString;
 
   // Get the type of the float literal.
-  const auto type_ast = InferType(sm, meta);
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast.get());
+  const auto type_sym = InferTypeRef(sm, meta).Sym;
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // If come from stage10 cmp statement, register the float
@@ -199,10 +179,8 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   return co_float;
 }
 
-auto spp::asts::FloatLiteralAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto FloatLiteralAst::_PrecompiledTypeSym(
+  ScopeManager *sm) const -> TypeSymbol* {
   //
   using analyse::errors::SppInternalCompilerError;
   using namespace generate::common_types_precompiled;
@@ -221,8 +199,17 @@ auto spp::asts::FloatLiteralAst::InferType(
       ERR_ARGS(*this, "invalid float literal type"));
   }
 
-  const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type);
-  return sym->FqName();
+  return sm->CurrentScope->GetTypeSymbol(spp_type);
+}
+
+auto FloatLiteralAst::InferType(
+  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
+  return _PrecompiledTypeSym(sm)->FqName();
+}
+
+auto FloatLiteralAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *) -> TypeRef {
+  return TypeRef::OfSym(*_PrecompiledTypeSym(sm), *sm->CurrentScope);
 }
 
 SPP_MOD_END

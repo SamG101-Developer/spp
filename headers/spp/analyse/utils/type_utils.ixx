@@ -9,10 +9,12 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionAst);
@@ -33,34 +35,41 @@ namespace spp::analyse::utils::type_utils {
     -> Shared<const TypeAst>;
 
   /// Check the type and search the supertypes to identifier a
-  /// generator superimposition. Retrieve it along with the Yield
-  /// type in the generator's generics, and if its Gen or GenOnce.
-  /// Fallible with >1 generator candidates.
+  /// generator superimposition. Retrieve its symbol along with the
+  /// Yield type in the generator's generics, and if its Gen or
+  /// GenOnce. Fallible with >1 generator candidates. The errors
+  /// are placed on "expr" and print the type "spell" gives, which
+  /// is only asked for when one is raised.
   SPP_EXP_FUN auto GetGenAndYieldTypes(
-    TypeAst const &type,
+    TypeRef const &ref,
     Scope const &scope,
     ExpressionAst const &expr,
+    std::function<Shared<TypeAst>()> const &spell,
     StrView what,
     bool raise = true)
-    -> Tup<Shared<const TypeAst>, Shared<TypeAst>, bool>;
+    -> Tup<TypeSymbol*, Shared<TypeAst>, bool>;
 
   /// Check the type and search the supertypes to identifier a
-  /// try-type superimposition. Retrieve it.
+  /// try-type superimposition. Retrieve its symbol, whose "Value"
+  /// and "Residual" arguments are what an early return reads. The
+  /// errors print the type "spell" gives, as above.
   SPP_EXP_FUN auto GetTryType(
-    TypeAst const &type,
+    TypeRef const &ref,
     ExpressionAst const &expr,
+    std::function<Shared<TypeAst>()> const &spell,
     ScopeManager const &sm,
     StrView what,
     bool raise = true)
-    -> Shared<const TypeAst>;
+    -> TypeSymbol*;
 
   /// Check the type and search the supertypes to identify a
   /// forwarding superimposition (pair). Retrieve the ref/mut
-  /// forwarding target types. "Str" -> "&StrView" etc.
+  /// forwarding super classes ("FwdRef[T=StrView]" for "Str"),
+  /// whose "T" is what is forwarded to.
   SPP_EXP_FUN auto GetFwdTypes(
-    TypeAst const &type,
-    ScopeManager const &sm)
-    -> Pair<Shared<TypeAst>, Shared<TypeAst>>;
+    TypeSymbol const &sym,
+    Scope const &scope)
+    -> Pair<TypeSymbol*, TypeSymbol*>;
 
   /// Manually build the hidden forwarding call that is
   /// abstracted over for things like member access, assignment,
@@ -68,7 +77,7 @@ namespace spp::analyse::utils::type_utils {
   /// access the forwarded object.
   SPP_EXP_FUN auto BuildFwdCall(
     ExpressionAst const &receiver,
-    TypeAst const &receiver_type,
+    TypeRef const &receiver_ref,
     ScopeManager *sm,
     meta::CompilerMetaData *meta)
     -> Unique<PostfixExpressionAst>;
@@ -112,13 +121,14 @@ namespace spp::analyse::utils::type_utils {
 
   /// Resolve the "Self" type for the scope, and do a substitution
   /// on the type to translate all the generics into the true type.
-  /// Do an analysis afterwards if a substitution actually happened.
-  /// Reuses the standard self type substitution function.
+  /// Do an analysis afterwards if a substitution actually happened,
+  /// which "substituted" reports.
   SPP_EXP_FUN auto SubstituteSelfTypeAndAnalyse(
     TypeAst const &type,
     Scope const &scope,
     ScopeManager &sm,
-    meta::CompilerMetaData &meta)
+    meta::CompilerMetaData &meta,
+    bool *substituted = nullptr)
     -> Shared<TypeAst>;
 
   /// Replace every "Self" part of a written type with a type given
@@ -146,4 +156,15 @@ namespace spp::analyse::utils::type_utils {
     meta::CompilerMetaData &meta,
     SelfPolicy self = SelfPolicy::kSubstitute)
     -> Shared<TypeAst>;
+
+  /// Stamp every name in a type whose meaning is fixed with
+  /// what it means in the scope the type is written in: a
+  /// generic parameter, a closed class, and the template at
+  /// the head of a name written with arguments. A copy read
+  /// again from any other scope then resolves through the
+  /// stamps ("Scope::Canon"), not by its spelling.
+  SPP_EXP_FUN auto StampWrittenParts(
+    TypeAst const &type,
+    Scope const &scope)
+    -> void;
 }

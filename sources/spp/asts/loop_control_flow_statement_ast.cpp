@@ -6,6 +6,7 @@ module spp.asts.loop_control_flow_statement_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
@@ -15,6 +16,7 @@ import spp.asts.loop_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_defer;
@@ -23,7 +25,7 @@ import genex;
 import llvm;
 
 SPP_MOD_BEGIN
-spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
+LoopControlFlowStatementAst::LoopControlFlowStatementAst(
   decltype(TokSeqExit) &&tok_seq_exit,
   decltype(TokSkip) &&tok_skip,
   decltype(Expr) &&expr) :
@@ -32,22 +34,19 @@ spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
   Expr(std::move(expr)) {
 }
 
-spp::asts::LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
+LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
 
-auto spp::asts::LoopControlFlowStatementAst::PosStart() const
-  -> std::size_t {
+auto LoopControlFlowStatementAst::PosStart() const -> std::size_t {
   // Use the first "exit" or "skip".
   return TokSeqExit.IsEmpty() ? TokSkip->PosStart() : TokSeqExit.Front()->PosStart();
 }
 
-auto spp::asts::LoopControlFlowStatementAst::PosEnd() const
-  -> std::size_t {
+auto LoopControlFlowStatementAst::PosEnd() const -> std::size_t {
   // Use expression or "skip" or last "exit".
   return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.Back()->PosEnd();
 }
 
-auto spp::asts::LoopControlFlowStatementAst::Clone() const
-  -> Unique<Ast> {
+auto LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LoopControlFlowStatementAst>(
     AstCloneVec(TokSeqExit),
@@ -55,8 +54,7 @@ auto spp::asts::LoopControlFlowStatementAst::Clone() const
     AstClone(Expr));
 }
 
-auto spp::asts::LoopControlFlowStatementAst::ToString() const
-  -> Str {
+auto LoopControlFlowStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(TokSeqExit, " ");
   SPP_STRING_APPEND_RAW(" ");
@@ -66,11 +64,8 @@ auto spp::asts::LoopControlFlowStatementAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppLoopTooManyControlFlowStatementsError;
   using analyse::errors::SppTypeMismatchError;
@@ -129,10 +124,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto LoopControlFlowStatementAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
@@ -156,11 +149,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
     TokSeqExit.Len(), TokSkip != nullptr, *sm, meta);
 }
 
-auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto LoopControlFlowStatementAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   using analyse::errors::SppInternalCompilerError;
 
@@ -193,15 +183,17 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   // loop's phi node collects the yielded value from this edge.
   const auto &target = meta->LlvmLoopStack[num_loops - num_exits];
 
-  // The jump skips every scope end between here and the loop, so what those scopes deferred runs at the jump. This
-  // happens before the phi edge is recorded, so the incoming block is whatever it left the builder inserting into.
+  // The jump skips every scope end between here and the loop,
+  // so what those scopes deferred runs at the jump. This
+  // happens before the phi edge is recorded, so the incoming
+  // block is whatever it left the builder inserting into.
   codegen::EmitDeferredUnwind(
     *sm->CurrentScope, target.ScopeContainingLoop, false, sm, meta, ctx);
 
   if (target.Phi != nullptr) {
     // A "!" value never reaches the phi, but the edge still needs
     // an operand of the phi's type.
-    const auto incoming_val = llvm_val != nullptr and Expr != nullptr and Expr->InferType(sm, meta)->IsNeverType()
+    const auto incoming_val = llvm_val != nullptr and Expr != nullptr and Expr->InferTypeRef(sm, meta).IsNever
       ? llvm::PoisonValue::get(target.Phi->getType())
       : llvm_val;
     const auto incoming_bb = ctx->Builder.GetInsertBlock();
@@ -218,19 +210,26 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::LoopControlFlowStatementAst::Terminates() const
-  -> bool {
-  // An "exit" or a "skip" always jumps, so nothing after it in this scope runs.
+auto LoopControlFlowStatementAst::Terminates() const -> bool {
+  // An "exit" or a "skip" always jumps, so nothing after it
+  // in this scope runs.
   return true;
 }
 
-auto spp::asts::LoopControlFlowStatementAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
-  // If there is an attached expression, return its type, otherwise Void.
+auto LoopControlFlowStatementAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  // If there is an attached expression, return its type,
+  // otherwise Void.
   using generate::common_types::VoidType;
   return Expr != nullptr ? Expr->InferType(sm, meta) : VoidType(PosStart());
+}
+
+auto LoopControlFlowStatementAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  using generate::common_types_precompiled::VOID;
+  return Expr != nullptr
+    ? Expr->InferTypeRef(sm, meta)
+    : TypeRef::Of(*VOID, *sm->CurrentScope);
 }
 
 SPP_MOD_END

@@ -5,18 +5,15 @@ module spp.analyse.scopes.scope_range;
 import spp.analyse.scopes.scope;
 
 SPP_MOD_BEGIN
-spp::analyse::scopes::ScopeRange::ScopeRange(
-  Scope *root) :
+ScopeRange::ScopeRange(Scope *root) :
   _Root(root) {
 }
 
-auto spp::analyse::scopes::ScopeRange::begin() const
-  -> ScopeIterator {
+auto ScopeRange::begin() const -> ScopeIterator {
   return ScopeIterator(_Root);
 }
 
-auto spp::analyse::scopes::ScopeRange::end() const
-  -> ScopeIterator {
+auto ScopeRange::end() const -> ScopeIterator {
   return ScopeIterator();
 }
 

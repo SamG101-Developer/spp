@@ -9,6 +9,7 @@ import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::utils::generic_bindings, struct GenericBinding);
 use(spp::analyse::utils::generic_bindings, class GenericBindingSet);
 use(spp::asts, struct Ast);
@@ -79,15 +80,9 @@ public:
     Shared<TypeAst> value)
     -> void;
 
-  /// Check whether is candidate type generic name is present
-  /// and has candidates.
-  SPP_ATTR_NODISCARD auto ContainsType(
-    TypeIdentifierAst const *name) const
-    -> bool;
-
-  /// Check whether is candidate comp generic name is present
-  /// and has candidates.
-  SPP_ATTR_NODISCARD auto ContainsComp(
+  /// Check whether a generic name is present and has
+  /// candidates, of either kind.
+  SPP_ATTR_NODISCARD auto Contains(
     TypeIdentifierAst const *name) const
     -> bool;
 
@@ -153,6 +148,16 @@ namespace spp::analyse::utils::generic_bindings {
     spp::utils::ptr::ptr_hash<Shared<IdentifierAst>>,
     spp::utils::ptr::ptr_eq<Shared<IdentifierAst>>>;
 
+  /// A sup block's or an alias's own generic parameters, standing
+  /// in as the arguments to the type they fill ("sup [T] Box[T]"),
+  /// checked against that type's constraints.
+  SPP_EXP_FUN auto EnforceGenericConstraintsOfParams(
+    TypeSymbol const &target,
+    GenericParameterGroupAst const &params,
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta)
+    -> void;
+
   /// Given the constraints on the generic parameters, ensure
   /// that the corresponding generic arguments satisfy the
   /// constraints. Also handles the cross-application of
@@ -199,18 +204,4 @@ namespace spp::analyse::utils::generic_bindings {
     bool is_tuple_owner = false)
     -> void;
 
-  /// Simple helper method to detect whether a generic is
-  /// binding to itself, ie a "T=T" or "n=n" part. Required
-  /// for filtering some generics out of analysis that will
-  /// be substituted later.
-  SPP_EXP_FUN auto BindsToItself(
-    GenericArgumentAst const &arg)
-    -> bool;
-
-  /// Strip the type down to a non-generic version if any
-  /// of the generics don't bind to itself. Needed for
-  /// qualification steps. Todo: preferable this goes.
-  SPP_EXP_FUN auto WithoutSelfBindingGenerics(
-    Shared<TypeAst> const &type)
-    -> Shared<TypeAst>;
 }

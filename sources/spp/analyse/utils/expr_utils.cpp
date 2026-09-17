@@ -29,24 +29,21 @@ import std;
 
 namespace spp::analyse::utils::expr_utils {
   namespace {
-    /**
-     * The body both @c ScopesDeclaringVar and @c ScopesDeclaringType are: walk the type's own scope and its
-     * superimpositions, ask each one for the name, and record how far it sits from where the lookup began.
-     */
+    /// The body that both the wrapper function "ScopesDeclaringVar"
+    /// and "ScopesDeclaringType" use; walk the type's own scope and
+    /// its superimpositions, asking each one for the name and
+    /// record how far it sits from where the lookup began.
     template <typename Entry, typename Name, typename Lookup>
     auto ScopesDeclaring(
-      scopes::Scope &type_scope,
-      Name const &name,
-      Lookup &&lookup)
-      -> Vec<Entry> {
-      // Build a vector of the type scope and all of its
-      // super scopes (of any level).
+      Scope &type_scope, Name const &name, Lookup &&lookup) -> Vec<Entry> {
+      // Build a vector of the type scope and all of its super scopes
+      // (of any level).
       auto scopes = Vec{&type_scope};
       scopes.AppendRange(type_scope.SupScopes());
 
-      // If we discover the symbol within the scope, keep
-      // it, otherwise discard. We are left only with the
-      // scopes that found contain the symbol directly.
+      // If we discover the symbol within the scope, keep it, otherwise
+      // discard. We are left only with the scopes that found contain
+      // the symbol directly.
       auto out = Vec<Entry>();
       for (auto *const scope : scopes) {
         if (auto *const sym = lookup(*scope, name); sym != nullptr) {
@@ -56,13 +53,10 @@ namespace spp::analyse::utils::expr_utils {
       return out;
     }
 
-    /**
-     * The body both @c ClosestScopes overloads are.
-     */
+    /// The body both the "ClosestScopes" wrap.
     template <typename Entry>
     auto ClosestScopesImpl(
-      Vec<Entry> const &candidates)
-      -> Vec<Entry> {
+      Vec<Entry> const &candidates) -> Vec<Entry> {
       // Find the minimum depth from all the provided info
       // blocks. This is the depth that must be unique for
       // a non-ambiguous lookup.
@@ -80,15 +74,11 @@ namespace spp::analyse::utils::expr_utils {
       return out;
     }
 
-    /**
-     * The body both @c RaiseIfAmbiguous overloads are.
-     */
+    /// The body both the "RaiseIfAmbiguous" wrap.
     template <typename Entry>
     auto RaiseIfAmbiguousImpl(
-      Vec<Entry> const &closest,
-      asts::Ast const &access,
-      scopes::ScopeManager const &sm)
-      -> void {
+      Vec<Entry> const &closest, Ast const &access,
+      ScopeManager const &sm) -> void {
       // If there is a maximum of 1 scope containing the
       // target identifier/type-identifier, then return.
       // Otherwise, there is an ambiguity, so raise an
@@ -103,33 +93,31 @@ namespace spp::analyse::utils::expr_utils {
 }
 
 auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
-  asts::ExpressionAst const &expr,
-  scopes::ScopeManager const &sm,
-  PrimaryExpressionOptions &&options)
-  -> bool {
+  ExpressionAst const &expr, ScopeManager const &sm,
+  PrimaryExpressionOptions &&options) -> bool {
   // Only allow types if types are explicitly allowed, or
   // are zero type.
-  if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
-    const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<asts::TypeAst>());
+  if (not options.AllowTypeAst and expr.To<TypeAst>() != nullptr) {
+    const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<TypeAst>());
     return type_sym->IsZeroType();
   }
 
   // Only allow tokens when they're explicit allowed,
   // like "5 + .."
-  if (not options.AllowTokenAst and expr.To<asts::TokenAst>() != nullptr) { return false; }
+  if (not options.AllowTokenAst and expr.To<TokenAst>() != nullptr) { return false; }
   return true;
 }
 
 auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
-  Vec<asts::StatementAst*> const &members,
-  scopes::ScopeManager const &sm)
-  -> void {
-  //
+  Vec<StatementAst*> const &members, ScopeManager const &sm) -> void {
   using errors::SppUnreachableCodeError;
 
-  // Check for statements after a terminating statement has been reached. Asked of the statement rather than matched
-  // against "ret" and "exit"/"skip" by hand: a block whose last statement returns, or a "case" whose every branch
-  // does, ends the scope just as surely, and only the two written forms were being caught.
+  // Check for statements after a terminating statement has
+  // been reached. Asked of the statement rather than matched
+  // against "ret" and "exit"/"skip" by hand: a block whose
+  // last statement returns, or a "case" whose every branch
+  // does, ends the scope just as surely, and only the two
+  // written forms were being caught.
   for (auto const &[i, member] : members | genex::views::enumerate) {
     RaiseIf<SppUnreachableCodeError>(
       member->Terminates() and member != members.Back(),
@@ -138,14 +126,9 @@ auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
 }
 
 auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
-  asts::Ast &member,
-  scopes::Scope *scope,
-  scopes::ScopeManager const &sm,
-  asts::meta::CompilerMetaData *const meta)
-  -> void {
-  //
+  Ast &member, Scope *scope, ScopeManager const &sm,
+  CompilerMetaData *const meta) -> void {
   using errors::SppDiscardedValueError;
-  using type_predicates::IsTypeNever;
   using type_predicates::IsTypeVoid;
 
   if (scope == nullptr) { return; }
@@ -154,7 +137,7 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   // end on, so that is where the discard is: reporting the "case"
   // itself would point at the wrong thing and say nothing about
   // which branch is at fault.
-  if (auto const *case_expr = member.To<asts::CaseExpressionAst>()) {
+  if (auto const *case_expr = member.To<CaseExpressionAst>()) {
     for (auto const &branch : case_expr->Branches) {
       if (branch->Body == nullptr or branch->Body->Members.IsEmpty()) { continue; }
       ValidateDiscardedValue(*branch->Body->FinalMember(), branch->Body->GetAstScope(), sm, meta);
@@ -163,7 +146,7 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   }
 
   // Same for a bare block, whose value is its final statement.
-  if (auto const *block = member.To<asts::InnerScopeExpressionAst>()) {
+  if (auto const *block = member.To<InnerScopeExpressionAst>()) {
     if (block->Members.IsEmpty()) { return; }
     ValidateDiscardedValue(*block->FinalMember(), block->GetAstScope(), sm, meta);
     return;
@@ -171,41 +154,37 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
 
   // Only an expression produces a value at all; a "let" or an
   // assignment is a statement and has nothing to discard.
-  const auto expr = member.To<asts::StatementAst>();
-  if (expr == nullptr or expr->To<asts::ExpressionAst>() == nullptr) { return; }
+  const auto expr = member.To<StatementAst>();
+  if (expr == nullptr or expr->To<ExpressionAst>() == nullptr) { return; }
 
   // Inferred against the scope the statement was written in, which
   // is not necessarily the one the walk is currently sitting in.
-  auto tm = scopes::ScopeManager(sm.GlobalScope, scope);
+  auto tm = ScopeManager(sm.GlobalScope, scope);
   const auto type = [&] {
-    const auto _meta_guard = asts::meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
     return expr->InferType(&tm, meta);
   }();
   if (type == nullptr) { return; }
 
   const auto type_name = type->ToString();
-  if (IsTypeVoid(*type, *scope) or IsTypeNever(*type, *scope)) { return; }
+  if (IsTypeVoid(TypeRef::OfHead(*type, *scope), *scope) or type->IsNeverType()) { return; }
   Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name)));
 }
 
 auto spp::analyse::utils::expr_utils::MemberReachableBy(
-  scopes::VariableSymbol const &sym,
-  const MemberAccessForm form)
-  -> bool {
+  VariableSymbol const &sym, const MemberAccessForm form) -> bool {
   // A method is reached either way: how it is called (static
   // or runtime) is what decides whether it errors. Anything
   // with no runtime storage of its own is reached statically,
   // and the rest - attributes - at runtime.
-  if (sym.Kind == scopes::VariableKind::Function) { return true; }
+  if (sym.Kind == VariableKind::Function) { return true; }
   return sym.IsCompTime() == (form == MemberAccessForm::Static);
 }
 
 auto spp::analyse::utils::expr_utils::LookupMemberForAccess(
-  scopes::Scope &type_scope,
-  asts::IdentifierAst const &name,
-  const MemberAccessForm form)
-  -> scopes::VariableSymbol* {
+  Scope &type_scope, IdentifierAst const &name,
+  const MemberAccessForm form) -> VariableSymbol* {
   // Get all the scopes that declare this variable (as a field),
   // keep the ones this form can reach, and take the nearest.
   const auto closest = ClosestScopes(
@@ -215,8 +194,7 @@ auto spp::analyse::utils::expr_utils::LookupMemberForAccess(
 
 auto spp::analyse::utils::expr_utils::MembersReachableBy(
   Vec<DeclaringVarScope> const &candidates,
-  const MemberAccessForm form)
-  -> Vec<DeclaringVarScope> {
+  const MemberAccessForm form) -> Vec<DeclaringVarScope> {
   auto out = Vec<DeclaringVarScope>();
   for (auto const &candidate : candidates) {
     if (MemberReachableBy(*candidate.Symbol, form)) { out.EmplaceBack(candidate); }
@@ -225,29 +203,25 @@ auto spp::analyse::utils::expr_utils::MembersReachableBy(
 }
 
 auto spp::analyse::utils::expr_utils::ScopesDeclaringVar(
-  scopes::Scope &type_scope,
-  asts::IdentifierAst const &name,
-  const bool sup_scope_search)
-  -> Vec<DeclaringVarScope> {
+  Scope &type_scope, IdentifierAst const &name,
+  const bool sup_scope_search) -> Vec<DeclaringVarScope> {
   // So a super scope search filtered to the scopes
   // that contain the variable symbol specified by
   // the identifier.
   return ScopesDeclaring<DeclaringVarScope>(
-    type_scope, name, [sup_scope_search](scopes::Scope const &scope, asts::IdentifierAst const &n) {
+    type_scope, name, [sup_scope_search](Scope const &scope, IdentifierAst const &n) {
       return scope.GetVarSymbol(&n, true, sup_scope_search);
     });
 }
 
 auto spp::analyse::utils::expr_utils::ScopesDeclaringType(
-  scopes::Scope &type_scope,
-  asts::TypeIdentifierAst const &name,
-  const bool sup_scope_search)
-  -> Vec<DeclaringTypeScope> {
+  Scope &type_scope, TypeIdentifierAst const &name,
+  const bool sup_scope_search) -> Vec<DeclaringTypeScope> {
   // So a super scope search filtered to the scopes
   // that contain the type symbol specified by the
   // type identifier.
   return ScopesDeclaring<DeclaringTypeScope>(
-    type_scope, name, [sup_scope_search](scopes::Scope const &scope, asts::TypeIdentifierAst const &n) {
+    type_scope, name, [sup_scope_search](Scope const &scope, TypeIdentifierAst const &n) {
       return scope.GetTypeSymbol(&n, true, sup_scope_search);
     });
 }
@@ -270,9 +244,7 @@ auto spp::analyse::utils::expr_utils::ClosestScopes(
 
 auto spp::analyse::utils::expr_utils::RaiseIfAmbiguous(
   Vec<DeclaringVarScope> const &closest,
-  asts::Ast const &access,
-  scopes::ScopeManager const &sm)
-  -> void {
+  Ast const &access, ScopeManager const &sm) -> void {
   // Wrap the implementation function to raise an error
   // if there are more than 1 scopes at the equal minimum
   // level => ambiguous lookup.
@@ -281,9 +253,7 @@ auto spp::analyse::utils::expr_utils::RaiseIfAmbiguous(
 
 auto spp::analyse::utils::expr_utils::RaiseIfAmbiguous(
   Vec<DeclaringTypeScope> const &closest,
-  asts::Ast const &access,
-  scopes::ScopeManager const &sm)
-  -> void {
+  Ast const &access, ScopeManager const &sm) -> void {
   // Wrap the implementation function to raise an error
   // if there are more than 1 scopes at the equal minimum
   // level => ambiguous lookup.
@@ -291,14 +261,10 @@ auto spp::analyse::utils::expr_utils::RaiseIfAmbiguous(
 }
 
 auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
-  asts::IdentifierAst const &identifier,
-  Vec<scopes::VariableSymbol*> const &var_symbols,
-  Vec<scopes::NamespaceSymbol*> const &ns_symbols,
-  scopes::ScopeManager const &sm)
-  -> void {
-  //
-  using spp::utils::strings::ClosestMatch;
+  IdentifierAst const &identifier, Vec<VariableSymbol*> const &var_symbols,
+  Vec<NamespaceSymbol*> const &ns_symbols, ScopeManager const &sm) -> void {
   using errors::SppIdentifierUnknownError;
+  using spp::utils::strings::ClosestMatch;
 
   //
   const auto v_alternatives = var_symbols
@@ -316,11 +282,8 @@ auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
 }
 
 auto spp::analyse::utils::expr_utils::RaiseMissingTypeIdentifierAndClosestOptions(
-  asts::TypeIdentifierAst const &identifier,
-  Vec<scopes::TypeSymbol*> const &symbols,
-  scopes::ScopeManager const &sm)
-  -> void {
-  //
+  TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols,
+  ScopeManager const &sm) -> void {
   using spp::utils::strings::ClosestMatch;
 
   //

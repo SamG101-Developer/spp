@@ -51,6 +51,23 @@ import llvm;
   meta.CurrentStage = (s)
 
 SPP_MOD_BEGIN
+namespace {
+  /// Lets a lookup make an instantiation not made yet ("Scope::OnInstantiationMissing") while an analysis stage runs,
+  /// analysed as that stage would analyse it.
+  auto InstallInstantiateOnLookup(
+    spp::analyse::scopes::ScopeManager *sm,
+    const spp::asts::meta::CompilerStage stage)
+    -> void {
+    spp::analyse::scopes::Scope::OnInstantiationMissing = [sm, stage](
+      spp::analyse::scopes::TypeSymbol &open_instance, spp::analyse::scopes::Scope const &scope) {
+      auto meta = spp::asts::meta::CompilerMetaData();
+      meta.CurrentStage = stage;
+      return spp::analyse::utils::monomorphization_utils::InstantiateForScope(
+        open_instance, scope, sm->GlobalScope, &meta);
+    };
+  }
+}
+
 auto spp::compiler::CompilerBoot::Lex(
   utils::ProgressBar &bar,
   ModuleTree &tree)
@@ -139,15 +156,15 @@ auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
   bar.Finish();
 }
 
-auto spp::compiler::CompilerBoot::Stage4_QualifyTypes(
+auto spp::compiler::CompilerBoot::Stage4_ResolveDeclarations(
   utils::ProgressBar &bar,
   ModuleTree &tree,
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Qualify types stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kQualifyTypes);
-    mod->Stage4_QualifyTypes(sm, &meta);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kResolveDeclarations);
+    mod->Stage4_ResolveDeclarations(sm, &meta);
     sm->Reset();
     bar.Next();
   }
@@ -179,6 +196,7 @@ auto spp::compiler::CompilerBoot::Stage5_5_AttachSupScopes(
   // thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAttachSupScopes);
   sm->AttachAllSuperScopes(&meta);
   bar.Finish();
 }
@@ -189,6 +207,7 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Pre-analyse semantics stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kPreAnalyseSemantics);
   asts::FunctionPrototypeAst::ClearPendingDefaults();
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
@@ -207,6 +226,7 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Analyse semantics stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAnalyseSemantics);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kAnalyseSemantics);
     mod->Stage7_AnalyseSemantics(sm, &meta);
@@ -225,6 +245,7 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Check memory stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCheckMemory);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCheckMemory);
     mod->Stage8_CheckMemory(sm, &meta);
@@ -247,6 +268,7 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Comptime resolution stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCompTimeResolve);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCompTimeResolve);
     mod->Stage9_CompTimeResolve(sm, &meta);
@@ -269,6 +291,7 @@ auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   // progress to report, only the whole thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kMonomorphise;
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kMonomorphise);
   MonomorphiseToFixedPoint(sm, &meta);
   bar.Finish();
 }
@@ -278,6 +301,9 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
   ModuleTree &tree,
   analyse::scopes::ScopeManager *sm)
   -> void {
+  // An instantiation made from here on would never be generated, so lookups stop making them.
+  analyse::scopes::Scope::OnInstantiationMissing = nullptr;
+
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreCodeGen);

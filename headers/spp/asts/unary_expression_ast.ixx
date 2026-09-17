@@ -12,6 +12,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(UnaryExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct UnaryExpressionOperatorAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
@@ -36,6 +37,8 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const

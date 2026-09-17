@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.scope;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbol_table;
 import spp.utils.types;
@@ -12,6 +13,7 @@ use(spp::asts, struct Ast);
 use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
@@ -124,6 +126,32 @@ public:
   /// variable, namespace), that belong to this scope.
   SymbolTable InternalTable;
 
+  /// Whether this scope's super scopes have been attached: they
+  /// are attached once. Not carried by a copy, as a clone is a
+  /// scope of its own.
+  bool SupsAttached = false;
+
+  /// The last "SupScopes()" answer and the "TypeStructureGeneration" it was computed at. The walk is the transitive
+  /// super-scope graph - 29 nodes per call, measured, 4.9M node visits over a std build - and the graph only changes
+  /// when a sup is attached, which bumps that generation. Left out of the copy constructor's list, so a clone starts
+  /// with none: it has a graph of its own.
+  mutable Vec<Scope*> _SupScopesCache;
+  mutable std::uint64_t _SupScopesGen = 0;
+
+  /// Called with a scope before anything reads its super scopes
+  /// while "ScopeManager::AttachAllSuperScopes" runs, which
+  /// attaches them first: a constraint checked mid-sweep never
+  /// reads a half-built graph.
+  inline static std::function<void(Scope const &)> OnSupScopesRead;
+
+  /// Called by "Canon" with an open instantiation and the scope
+  /// asking, when re-keying it through that scope's bindings
+  /// names one not made yet: it makes it, as a name written
+  /// there would, or returns null. Set while the analysis stages
+  /// run ("CompilerBoot"), as only they can make one; a lookup
+  /// cannot make it alone.
+  inline static std::function<TypeSymbol*(TypeSymbol &, Scope const &)> OnInstantiationMissing;
+
   Scope(
     ScopeName name,
     Scope *parent,
@@ -139,18 +167,14 @@ public:
   /// modules. There is a corresponding (unused) global namespace
   /// symbol too, for uniform scope setup.
   /// Todo: in the future, we might allow a "::" prefix like c++
-  static auto NewGlobal(
-    Module const &mod)
-    -> Shared<Scope>;
+  static auto NewGlobal(Module const &mod) -> Shared<Scope>;
 
   /// Given a scope and a fully qualified type, this function
   /// moves through the namespace parts of the type, moving into
   /// the next namespace scopes. Returns the innermost namespace
   /// scope and the unqualified type (for this scope).
   static auto ShiftForNamespacedType(
-    Scope const &scope,
-    TypeAst const &fq_type)
-    -> Pair<const Scope*, TypeIdentifierAst const*>;
+    Scope const &scope, TypeAst const &fq_type) -> Pair<const Scope*, TypeIdentifierAst const*>;
 
   /// Get the error formatter for this scope. This is either the
   /// dedicated formatter attached to this scope, or an ancestral
@@ -164,16 +188,7 @@ public:
   /// Get the generics associated with this scope, by searching all
   /// type and variable symbols, filtering them on their generic
   /// flag, and converting them into generic argument ast nodes.
-  SPP_ATTR_NODISCARD auto GetGenerics() const
-    -> Vec<Unique<GenericArgumentAst>>;
-
-  /// All the generic symbols that a generic instantiation needs
-  /// to carry in, in order for all generics to be resolvable, by
-  /// sweeping up to the module scope looking for generics.
-  SPP_ATTR_NODISCARD auto GetExtendedGenericSymbols(
-    Vec<GenericArgumentAst*> const &generics,
-    IdentifierAst const *ignore = nullptr) const
-    -> Vec<Shared<Symbol>>;
+  SPP_ATTR_NODISCARD auto GetGenerics() const -> Vec<Unique<GenericArgumentAst>>;
 
   /// Add a variable symbol into the scope, inserting it into the
   /// internal variable table within the main symbol table.
@@ -208,78 +223,73 @@ public:
   /// Get all the variable symbols from the internal variable
   /// table unrolled into a vector.
   SPP_ATTR_NODISCARD auto AllVarSymbols(
-    bool exclusive = false,
-    bool sup_scope_search = false) const
-    -> Vec<VariableSymbol*>;
+    bool exclusive = false, bool sup_scope_search = false) const -> Vec<VariableSymbol*>;
 
   /// Get all the type symbols from the internal type table
   /// unrolled into a vector.
   SPP_ATTR_NODISCARD auto AllTypeSymbols(
-    bool exclusive = false,
-    bool sup_scope_search = false) const
-    -> Vec<TypeSymbol*>;
+    bool exclusive = false, bool sup_scope_search = false) const -> Vec<TypeSymbol*>;
 
   /// Get all the namespace symbols from the internal namespace
   /// table unrolled into a vector.
-  SPP_ATTR_NODISCARD auto AllNsSymbols(
-    bool exclusive = false,
-    bool = false) const
-    -> Vec<NamespaceSymbol*>;
+  SPP_ATTR_NODISCARD auto AllNsSymbols(bool exclusive = false, bool = false) const -> Vec<NamespaceSymbol*>;
 
   /// Check if a variable symbol with a given name is present
   /// in the internal variable symbol table.
-  SPP_ATTR_NODISCARD auto HasVarSymbol(
-    IdentifierAst const *sym_name,
-    bool exclusive = false) const
-    -> bool;
-
-  /// Check if a type symbol with a given name is present in
-  /// the internal type symbol table.
-  SPP_ATTR_NODISCARD auto HasTypeSymbol(
-    TypeAst const *sym_name,
-    bool exclusive = false) const
-    -> bool;
+  SPP_ATTR_NODISCARD auto HasVarSymbol(IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
 
   /// Check if a namespace symbol with a given name is present
   /// in the internal namespace symbol table.
-  SPP_ATTR_NODISCARD auto HasNsSymbol(
-    IdentifierAst const *sym_name,
-    bool exclusive = false) const
-    -> bool;
+  SPP_ATTR_NODISCARD auto HasNsSymbol(IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
 
   /// Query the internal variable symbol table to get a symbol
   /// with a matching name, checking ancestor scopes and super
   /// scopes if configured too.
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetVarSymbol(
-    IdentifierAst const *sym_name,
-    bool exclusive = false,
-    bool sup_scope_search = true) const
-    -> VariableSymbol*;
+    IdentifierAst const *sym_name, bool exclusive = false, bool sup_scope_search = true) const -> VariableSymbol*;
+
+  /// What a comp generic parameter, named somewhere else, means from
+  /// this scope: this scope's binding of that very parameter (matched
+  /// by "ParamId"), or the parameter itself when nothing here binds
+  /// it. Anything else has no answer, and is resolved by name.
+  SPP_ATTR_NODISCARD auto CanonVar(VariableSymbol &sym) const -> VariableSymbol*;
 
   /// Query the internal type symbol table to get a symbol
   /// with a matching name, checking ancestor scopes and super
   /// scopes if configured too.
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetTypeSymbol(
-    TypeAst const *sym_name,
-    bool exclusive = false,
-    bool sup_scope_search = true) const
-    -> TypeSymbol*;
+    TypeAst const *sym_name, bool exclusive = false, bool sup_scope_search = true) const -> TypeSymbol*;
+
+  /// What a type symbol, resolved somewhere else, means from this
+  /// scope. A generic parameter is this scope's binding of that very
+  /// parameter - matched by "ParamId", not by name - or the parameter
+  /// itself when nothing here binds it; a closed class means the same
+  /// everywhere; an open instantiation is the one its arguments name
+  /// from here. Anything else (an alias, "Self", a mock), or an
+  /// instantiation that does not exist yet, has no answer, and is
+  /// resolved by name instead.
+  SPP_ATTR_NODISCARD auto Canon(TypeSymbol &sym) const -> TypeSymbol*;
+
+  /// The identity of a list of generic arguments, read from this
+  /// scope: each argument's name and what it resolves to - a
+  /// parameter's "ParamId", a symbol, a bound or literal value -
+  /// rather than how it is spelled. Instantiations are filed under
+  /// it in their template's "TypeSymbol::Instances".
+  SPP_ATTR_NODISCARD auto InstanceIdentityKey(
+    Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params = nullptr) const -> InstanceKey;
 
   /// Query the internal namespace symbol table to get a symbol
   /// with a matching name, checking ancestor scopes and super
   /// scopes if configured too.
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetNsSymbol(
-    IdentifierAst const *sym_name,
-    bool exclusive = false) const
-    -> NamespaceSymbol*;
+    IdentifierAst const *sym_name, bool exclusive = false) const -> NamespaceSymbol*;
 
   /// Split the expression into its parts by postfix member
   /// accessing, and move leftwards towards the outermost
   /// part. For "a.b.c", it would be "a". Then get the symbol
   /// for the outermost part by querying the variable table.
   SPP_ATTR_NODISCARD auto GetVarSymbolOutermost(
-    Ast const &expr) const
-    -> Pair<VariableSymbol*, Scope const*>;
+    Ast const &expr) const -> Pair<VariableSymbol*, Scope const*>;
 
   /// The difference in depth between 2 scopes, based on how
   /// close they are in the sup-scope chain. This is not a
@@ -317,11 +327,9 @@ public:
   /// entire tree of externally applied inheritance. This includes
   /// the "cls" type scopes, and the "sup" superimposition scopes,
   /// of all superimpositions.
-  SPP_ATTR_NODISCARD auto SupScopes() const -> Vec<Scope*>;
-
-  /// A constant version of the normal sup scopes list, used
-  /// to satisfy the C++ type system in certain contexts.
-  SPP_ATTR_NODISCARD auto SupScopesConst() const -> Vec<Scope const*>;
+  /// The answer is the scope's own cached vector, so a caller iterating it copies nothing. It stays valid until this
+  /// scope walks its super scopes again, which no caller does while holding the reference.
+  SPP_ATTR_NODISCARD auto SupScopes() const -> Vec<Scope*> const&;
 
   /// A list of all the sup types that this scope has, by taking
   /// the sup scopes, filtering them to the "cls" scopes, and

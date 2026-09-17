@@ -22,7 +22,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::ClassAttributeAst::ClassAttributeAst(
+ClassAttributeAst::ClassAttributeAst(
   decltype(Annotations) &&annotations,
   decltype(Name) &&name,
   decltype(TokColon) &&tok_colon,
@@ -36,22 +36,19 @@ spp::asts::ClassAttributeAst::ClassAttributeAst(
   Source.OriginalType = AstClone(Type);
 }
 
-spp::asts::ClassAttributeAst::~ClassAttributeAst() = default;
+ClassAttributeAst::~ClassAttributeAst() = default;
 
-auto spp::asts::ClassAttributeAst::PosStart() const
-  -> std::size_t {
+auto ClassAttributeAst::PosStart() const -> std::size_t {
   // Use the "name".
   return Name->PosStart();
 }
 
-auto spp::asts::ClassAttributeAst::PosEnd() const
-  -> std::size_t {
+auto ClassAttributeAst::PosEnd() const -> std::size_t {
   // Use the "type".
   return Type->PosEnd();
 }
 
-auto spp::asts::ClassAttributeAst::Clone() const
-  -> Unique<Ast> {
+auto ClassAttributeAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<ClassAttributeAst>(
     AstCloneVec(Annotations),
@@ -66,8 +63,7 @@ auto spp::asts::ClassAttributeAst::Clone() const
   return ast;
 }
 
-auto spp::asts::ClassAttributeAst::ToString() const
-  -> Str {
+auto ClassAttributeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
   SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
@@ -78,50 +74,45 @@ auto spp::asts::ClassAttributeAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::ClassAttributeAst::Stage1_PreProcess(
-  Ast *ctx)
-  -> void {
-  // Pre-process the AST by calling the base class method and then processing annotations.
+auto ClassAttributeAst::Stage1_PreProcess(
+  Ast *ctx) -> void {
+  // Pre-process the AST by calling the base class method
+  // and then processing annotations.
   Ast::Stage1_PreProcess(ctx);
   for (auto const &a : Annotations) { a->SetAstCtx(this); }
 }
 
-auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ClassAttributeAst::Stage2_GenTopLvlScopes(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run the generation steps for the annotations.
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
-  // Create a variable symbol for this attribute in the current scope (class scope).
-  auto sym = MakeShared<analyse::scopes::VariableSymbol>(
-    Name, Type, sm->CurrentScope, analyse::scopes::VariableKind::Attribute, false, Visibility.first);
+  // Create a variable symbol for this attribute in the
+  // current scope (class scope).
+  auto sym = MakeShared<VariableSymbol>(
+    Name, Type, sm->CurrentScope, VariableKind::Attribute, false, Visibility.first);
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
-auto spp::asts::ClassAttributeAst::Stage4_QualifyTypes(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ClassAttributeAst::Stage4_ResolveDeclarations(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
+  for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
   const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
 }
 
-auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto ClassAttributeAst::Stage5_LoadSupScopes(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_utils::ResolveWrittenType;
   using analyse::utils::type_utils::SelfPolicy;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
-  // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
+  // Sync the variable symbol's visibility from the AST
+  // (annotations set Visibility in Stage5).
   const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
@@ -129,7 +120,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   // What a default may hold is limited, because it is
   // copied into every object initializer that leaves
   // the attribute out. Checked before the analysis below
-  // rewrites it.
+  // rewrites it. Todo: Coalesce to single condition in
+  // the "raise_if".
   if (DefaultVal != nullptr) {
     RaiseIf<analyse::errors::SppInvalidDefaultValueError>(
       not DefaultVal->IsAllowedInDefault(),
@@ -137,7 +129,8 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   }
 
   // Check the type is valid before scopes are attached.
-  Type = ResolveWrittenType(*Type, *sm, *meta, Type->IsSelfType() ? SelfPolicy::kKeep : SelfPolicy::kSubstitute);
+  Type = ResolveWrittenType(
+    *Type, *sm, *meta, Type->IsSelfType() ? SelfPolicy::kKeep : SelfPolicy::kSubstitute);
   sm->CurrentScope->GetVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
@@ -146,58 +139,57 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
     {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
 }
 
-auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  // This can be reached via stage 4 generic substitution, so prevent that.
+auto ClassAttributeAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppTypeMismatchError;
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_compare::TypeEq;
 
-  if (meta->CurrentStage == meta::CompilerStage::kAnalyseSemantics) {
+  // This can be reached via stage 4 generic substitution,
+  // so prevent that.
+  if (meta->CurrentStage == CompilerStage::kAnalyseSemantics) {
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   }
 
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
   if (not Type->IsSelfType()) {
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()))->WithSourceSpanOf(*Type);
+    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()))->
+               WithSourceSpanOf(*Type);
     RaiseIf<SppSecondClassBorrowViolationError>(
       IsTypeBorrowed(*Type, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
   }
   var_sym->Type = Type;
 
-  if (meta->CurrentStage != meta::CompilerStage::kAnalyseSemantics) { return; }
+  if (meta->CurrentStage != CompilerStage::kAnalyseSemantics) { return; }
   if (DefaultVal != nullptr) {
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
-    const auto default_type = DefaultVal->InferType(sm, meta);
-
     // Make sure the default's inferred type matches the
-    // attribute's type.
-    RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
+    // attribute's type; it is only spelled out for the error.
+    if (not TypeEq(
+      TypeRef::Of(*Type, *sm->CurrentScope), DefaultVal->InferTypeRef(sm, meta),
+      *sm->CurrentScope, *sm->CurrentScope)) {
+      const auto default_type = DefaultVal->InferType(sm, meta);
+      Raise<SppTypeMismatchError>(
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
+    }
   }
 }
 
-auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ClassAttributeAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // If there is a default value, check it for memory errors.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
   if (DefaultVal == nullptr) { return; }
   DefaultVal->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
+  ValidateSymbolMemory(
+    *DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
 }
 
-auto spp::asts::ClassAttributeAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ClassAttributeAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
 }

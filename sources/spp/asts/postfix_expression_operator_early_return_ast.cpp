@@ -17,8 +17,8 @@ import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.gen_expression_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.let_statement_initialized_ast;
@@ -39,45 +39,39 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
+PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
   decltype(TokQst) &&tok_qst) :
   TokQst(std::move(tok_qst)),
   _TransformedExpr(nullptr) {
 }
 
-spp::asts::PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;
+PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::PosStart() const
-  -> std::size_t {
+auto PostfixExpressionOperatorEarlyReturnAst::PosStart() const -> std::size_t {
   // Use the "?" token.
   return TokQst->PosStart();
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::PosEnd() const
-  -> std::size_t {
+auto PostfixExpressionOperatorEarlyReturnAst::PosEnd() const -> std::size_t {
   // Use the "?" token.
   return TokQst->PosEnd();
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Clone() const
-  -> Unique<Ast> {
+auto PostfixExpressionOperatorEarlyReturnAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<PostfixExpressionOperatorEarlyReturnAst>(
     AstClone(TokQst));
   ast->_TransformedExpr = _TransformedExpr;
   return ast;
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::ToString() const
-  -> Str {
+auto PostfixExpressionOperatorEarlyReturnAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokQst);
   SPP_STRING_END;
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppDeferTerminatesError;
   using analyse::errors::SppTypeMismatchError;
@@ -185,7 +179,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   _TransformedExpr = MakeUnique<InnerScopeExpressionAst>(
     nullptr, std::move(members), nullptr);
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
     meta->ReturnTypeOverloadResolverType = nullptr;
@@ -197,9 +191,9 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   // through stage 7, and an expression that has not cannot be
   // asked for its type - a function call has no overload picked
   // yet, so "_OverloadInfo" is still empty.
-  const auto lhs_type = analysed_lhs->InferType(sm, meta);
-  const auto try_type = GetTryType(*lhs_type, *analysed_lhs, *sm, "early return");
-  const auto residual_type = try_type->LastTypePart()->GnArgGroup->TypeAt("Residual")->Val;
+  const auto residual_type = GetTryType(
+    analysed_lhs->InferTypeRef(sm, meta), *analysed_lhs, [&] { return analysed_lhs->InferType(sm, meta); }, *sm,
+    "early return")->TypeArgType("Residual");
 
   // Todo: Tidy!
   // Subroutine return type check.
@@ -216,8 +210,10 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   // Todo: Tidy!
   // Coroutine return type check.
   else {
+    auto const &ret_type = meta->EnclosingFunctionRetType.Back();
     auto [_, yield_type, _] = GetGenAndYieldTypes(
-      *meta->EnclosingFunctionRetType.Back(), *sm->CurrentScope, *analysed_lhs, "early return");
+      TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *analysed_lhs,
+      [&] { return ret_type; }, "early return");
     RaiseIf<SppTypeMismatchError>(
       not TypeEq(*yield_type, *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
       {meta->EnclosingFunctionScope, sm->CurrentScope},
@@ -225,42 +221,33 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   }
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the lowered form.
   _TransformedExpr->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorEarlyReturnAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the lowered form.
   _TransformedExpr->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
-  const auto _meta_guard = meta::MetaGuard(meta);
+auto PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTargetType = nullptr;
   const auto llvm_val = _TransformedExpr->Stage11_CodeGen(sm, meta, ctx);
   return llvm_val;
 }
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto PostfixExpressionOperatorEarlyReturnAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   using analyse::utils::type_utils::GetTryType;
   if (_TransformedExpr != nullptr) {
     // Infer from the transformed ast.
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
     auto transformed_type = _TransformedExpr->InferType(sm, meta);
@@ -271,9 +258,21 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
   // to reading it off the left-hand-side. This only works
   // for an operand that some other path has already analysed.
   const auto lhs = meta->PostfixExpressionLhs;
-  const auto lhs_type = lhs->InferType(sm, meta);
-  const auto try_type = GetTryType(*lhs_type, *lhs, *sm, "early return");
-  return try_type->LastTypePart()->GnArgGroup->TypeAt("Value")->Val;
+  return GetTryType(
+    lhs->InferTypeRef(sm, meta), *lhs, [&] { return lhs->InferType(sm, meta); }, *sm,
+    "early return")->TypeArgType("Value");
+}
+
+auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The try type's "Value" is read off the type's arguments, so only the transformed expression is forwarded.
+  if (_TransformedExpr != nullptr) {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
+    return _TransformedExpr->InferTypeRef(sm, meta);
+  }
+  return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
 }
 
 SPP_MOD_END

@@ -17,6 +17,7 @@ use(spp::asts, struct FloatLiteralAst);
 use(spp::asts, struct IntegerLiteralAst);
 use(spp::asts, struct StringLiteralAst);
 use(spp::asts, struct TupleLiteralAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LiteralAst : PrimaryExpressionAst {

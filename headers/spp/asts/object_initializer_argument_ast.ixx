@@ -10,6 +10,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 
 /// The base class for an argument in an object
@@ -42,6 +43,8 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 };

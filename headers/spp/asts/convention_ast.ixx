@@ -30,4 +30,6 @@ public:
   auto operator==(ConventionAst const *that) const -> bool;
 
   auto operator==(ConventionTag that_tag) const -> bool;
+
+  SPP_ATTR_NODISCARD auto Tag() const -> ConventionTag { return _Tag; }
 };

@@ -7,6 +7,7 @@ import spp.utils.types;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(CasePatternVariantAst);
+use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LocalVariableAst);
 
@@ -40,4 +41,13 @@ protected:
   /// The "let" statement that case-of-patterns are converted
   /// to, introducing the variables created by the pattern.
   Unique<LetStatementInitializedAst> _MappedLet;
+
+  /// Stage 7 for a destructuring pattern: map it to a "let" over @p cond introducing its bindings, analysed here, then
+  /// analyse the checks its literal elements generate. The nested elements are analysed by the "let".
+  auto AnalyseDestructure(
+    ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta)
+    -> void;
+
+  /// Stage 9 for a destructuring pattern: resolve its "let", and match exactly when every element does.
+  auto ResolveDestructure(Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta) const -> void;
 };

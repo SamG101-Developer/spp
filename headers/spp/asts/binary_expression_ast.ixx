@@ -15,6 +15,7 @@ use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 /// A binary expression between 2 operators, either a normal
 /// "+", "*" etc, or a compound assignment operator like "+=".
@@ -73,6 +74,8 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// Infer the type from the mapped function, or use Bool for
   /// the logical operators.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// Do the substitution of the left and right side operators.
   /// Todo: Do we need to use function mapping here?

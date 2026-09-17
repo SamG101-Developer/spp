@@ -12,8 +12,8 @@ import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -28,7 +28,7 @@ import genex;
 import llvm;
 
 SPP_MOD_BEGIN
-spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
+ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elements,
   decltype(TokR) &&tok_r) :
@@ -36,51 +36,53 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
   Elems(std::move(elements)),
   TokR(std::move(tok_r)) {
   // Default the two tokens.
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokL, SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokR, SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
-spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
+ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
-  ArrayLiteralExplicitElementsAst const &other) const
-  -> Ordering {
-  // If two explicit array asts don't have the same
-  // size, they cannot be equal.
+auto ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
+  ArrayLiteralExplicitElementsAst const &other) const -> Ordering {
+  // If two explicit array asts don't have the same size, they
+  // cannot be equal. Early guard to prevent wasting time on
+  // elements.
   if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
+  auto eq = [](auto const &pair) {
+    return *genex::get<0>(pair) == *genex::get<1>(pair);
+  };
 
-  // Ensure each element of the two array literals are
-  // equal.
-  const auto temp = genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr) | genex::to<Vec>();
-  if (genex::all_of(
-    temp,
-    [](auto const &pair) { return *genex::get<0>(pair) == *genex::get<1>(pair); })) {
+  // Ensure each element of the two array literals are equal.
+  // The length checks prevents trailing elements.
+  const auto temp = genex::views::zip(
+    Elems | genex::views::ptr,
+    other.Elems | genex::views::ptr) | genex::to<Vec>();
+  if (genex::all_of(temp, eq)) {
     return Ordering::equal;
   }
   return Ordering::less;
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::Equals(
-  ExpressionAst const &other) const
-  -> Ordering {
+auto ArrayLiteralExplicitElementsAst::Equals(
+  ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsArrayLiteralExplicitElements(*this);
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::PosStart() const
-  -> std::size_t {
+auto ArrayLiteralExplicitElementsAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Elems.IsEmpty() ? 0 : Elems.Front()->PosStart();
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::PosEnd() const
-  -> std::size_t {
+auto ArrayLiteralExplicitElementsAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Elems.IsEmpty() ? 0 : Elems.Back()->PosEnd();
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::Clone() const
-  -> Unique<Ast> {
+auto ArrayLiteralExplicitElementsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ArrayLiteralExplicitElementsAst>(
     AstClone(TokL),
@@ -88,8 +90,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Clone() const
     AstClone(TokR));
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::ToString() const
-  -> Str {
+auto ArrayLiteralExplicitElementsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Elems, ", ");
@@ -97,11 +98,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  // Alias the common utils functions and types.
+auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppTypeMismatchError;
@@ -110,9 +108,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::utils::type_compare::TypeEq;
 
-  // Analyse the element inside the array. Also enforce
-  // beforehand that the element is an acceptable primary
-  // expression, ie not a TypeAst or a TokenAst.
+  // Analyse the element inside the array. Also enforce that
+  // the element is an acceptable primary expression, ie not
+  // a TypeAst or a TokenAst.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -120,16 +118,16 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*elem));
   }
 
-  // Determine the "correct type" that all elements are
-  // compared against. If a pre-defined array type has
-  // been given, allowing a variant element type to be
-  // respected; otherwise just use the 0th element.
+  // Determine the "correct type" that all elements will be
+  // compared against; a pre-defined array type could have
+  // been given, allowing a variant element type to be used;
+  // otherwise just use the 0th element.
   const auto z_elem = Elems[0].get();
   const auto from_target = meta->AssignmentTargetType != nullptr and
-    IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope);
+    IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto z_type = from_target
-    ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->TypeAt("T")->Val
+    ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal
     : z_elem->InferType(sm, meta);
 
   RaiseIf<SppSecondClassBorrowViolationError>(
@@ -155,10 +153,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Alias the common utils functions and types.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
@@ -169,11 +165,11 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   }
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner elements to compile-time values.
+  // Todo: What happens if an inner element isn't comp
+  // time compatible? Does it raise there, or here?
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
@@ -181,17 +177,14 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
     cmp_elems.EmplaceBack(std::move(meta->CmpResult));
   }
 
-  // Wrap the compile-time array value.
+  // Wrap the comp-time array value, in the translated
+  // asts derived from requesting comp-time evaluation.
   meta->CmpResult = MakeUnique<ArrayLiteralExplicitElementsAst>(
     nullptr, std::move(cmp_elems), nullptr);
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
-  // Alias the common utils functions and types.
+auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using spp::utils::Uid;
 
   // Runtime allocation. This pathway generates each element
@@ -294,11 +287,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   }
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
-  // Alias the common utils functions and types.
+auto ArrayLiteralExplicitElementsAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using analyse::utils::type_predicates::IsTypeArr;
 
   // Create a "T" type and "n" size, for the array type. If
@@ -306,10 +296,14 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
   // target type), pull the element type from it so a variant
   // element type is preserved; otherwise use the 0th element's
   // inferred type.
-  auto size_tok = MakeUnique<TokenAst>(TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
-  auto size_gen = MakeUnique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");
-  auto elem_gen = meta->AssignmentTargetType != nullptr and IsTypeArr(*meta->AssignmentTargetType, *sm->CurrentScope)
-    ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->TypeAt("T")->Val)
+  auto size_tok = MakeUnique<TokenAst>(
+    TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
+  auto size_gen = MakeUnique<IntegerLiteralAst>(
+    nullptr, std::move(size_tok), "uz");
+
+  auto elem_gen = meta->AssignmentTargetType != nullptr
+    and IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope)
+    ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal)
     : Elems[0]->InferType(sm, meta);
 
   // Create an array type with the inferred element type and
@@ -319,18 +313,17 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
   return array_type;
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<ExpressionAst> {
+auto ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // Each element is an expression, so map them all.
   auto elems = Vec<Unique<ExpressionAst>>();
   elems.Reserve(Elems.Len());
   for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
-  return MakeShared<ArrayLiteralExplicitElementsAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
+  return MakeShared<ArrayLiteralExplicitElementsAst>(
+    AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::IsAllowedInDefault() const
-  -> bool {
+auto ArrayLiteralExplicitElementsAst::IsAllowedInDefault() const -> bool {
   // Check every element - one bad one prevents the entire
   // ast from being allowed in this specific context.
   for (auto const &x : Elems) {

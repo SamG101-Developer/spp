@@ -10,6 +10,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(FoldExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
   SPP_AST_KEY_FUNCTIONS(FoldExpressionAst);
@@ -24,4 +25,6 @@ SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
   ~FoldExpressionAst() override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };

@@ -34,14 +34,13 @@ import genex;
 import sys;
 
 SPP_MOD_BEGIN
-auto spp::asts::FunctionCallArgumentGroupAst::NewEmpty()
-  -> Unique<FunctionCallArgumentGroupAst> {
+auto FunctionCallArgumentGroupAst::NewEmpty() -> Unique<FunctionCallArgumentGroupAst> {
   // Empty ast.
   return MakeUnique<FunctionCallArgumentGroupAst>(
     nullptr, decltype(Args)(), nullptr);
 }
 
-spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
+FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Args) &&args,
   decltype(TokR) &&tok_r) :
@@ -50,22 +49,19 @@ spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
   TokR(std::move(tok_r)) {
 }
 
-spp::asts::FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
+FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
 
-auto spp::asts::FunctionCallArgumentGroupAst::PosStart() const
-  -> std::size_t {
+auto FunctionCallArgumentGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Args.IsEmpty() ? 0 : Args.Front()->PosStart();
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::PosEnd() const
-  -> std::size_t {
+auto FunctionCallArgumentGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Args.IsEmpty() ? 0 : Args.Back()->PosEnd();
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::Clone() const
-  -> Unique<Ast> {
+auto FunctionCallArgumentGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<FunctionCallArgumentGroupAst>(
     AstClone(TokL),
@@ -73,8 +69,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Clone() const
     AstClone(TokR));
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::ToString() const
-  -> Str {
+auto FunctionCallArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("(");
   SPP_STRING_EXTEND(Args, ", ");
@@ -82,8 +77,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::GetAllArgs() const
-  -> Vec<FunctionCallArgumentAst*> {
+auto FunctionCallArgumentGroupAst::GetAllArgs() const -> Vec<FunctionCallArgumentAst*> {
   // Filter by casting.
   auto out = Vec<FunctionCallArgumentAst*>();
   for (auto const &arg : Args) {
@@ -92,8 +86,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::GetAllArgs() const
   return out;
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::GetKeywordArgs() const
-  -> Vec<FunctionCallArgumentKeywordAst*> {
+auto FunctionCallArgumentGroupAst::GetKeywordArgs() const -> Vec<FunctionCallArgumentKeywordAst*> {
   // Filter by casting.
   auto out = Vec<FunctionCallArgumentKeywordAst*>();
   for (auto const &arg : Args) {
@@ -104,8 +97,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::GetKeywordArgs() const
   return out;
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::GetPositionalArgs() const
-  -> Vec<FunctionCallArgumentPositionalAst*> {
+auto FunctionCallArgumentGroupAst::GetPositionalArgs() const -> Vec<FunctionCallArgumentPositionalAst*> {
   // Filter by casting.
   auto out = Vec<FunctionCallArgumentPositionalAst*>();
   for (auto const &arg : Args) {
@@ -116,10 +108,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::GetPositionalArgs() const
   return out;
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppExpansionOfNonTupleError;
   using analyse::errors::SppIdentifierDuplicateError;
@@ -148,21 +138,24 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     not unordered_args.IsEmpty(), {sm->CurrentScope},
     ERR_ARGS(unordered_args[1].first, *unordered_args[1].second, unordered_args[0].first, *unordered_args[0].second));
 
-  // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
-  // Must use "materialize" because the list gets updates from within the loop.
+  // Expand tuple-expansion arguments ("..tuple" =>
+  // "tuple.0, tuple.1, ..."). Must use "materialize" because
+  // the list gets updates from within the loop.
   for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate | genex::to<Vec>()) {
     // Only check position arguments that have ".." tokens.
     const auto pos_arg = arg->To<FunctionCallArgumentPositionalAst>();
     if (pos_arg == nullptr or pos_arg->TokUnpack == nullptr) { continue; }
 
     // Check the argument value is a tuple expression.
-    auto arg_type = arg->InferType(sm, meta);
-    RaiseIf<SppExpansionOfNonTupleError>(
-      not IsTypeTup(*arg_type, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
+    const auto arg_ref = arg->InferTypeRef(sm, meta);
+    if (not IsTypeTup(arg_ref, *sm->CurrentScope)) {
+      const auto arg_type = arg->InferType(sm, meta);
+      Raise<SppExpansionOfNonTupleError>({sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
+    }
 
-    // Replace the tuple-expansion argument with the expanded arguments.
-    const auto max = static_cast<sys::ssize_t>(arg_type->LastTypePart()->GnArgGroup->Args.Len());
+    // Replace the tuple-expansion argument with the expanded
+    // arguments.
+    const auto max = static_cast<sys::ssize_t>(arg_ref.Sym->TypeArgTypes().Len());
     for (auto j = max - 1; j > -1z; --j) {
       auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
       auto new_ast = MakeUnique<PostfixExpressionAst>(
@@ -183,18 +176,16 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppMemoryOverlapUsageError;
   using analyse::errors::SppInvalidMutationError;
   using analyse::utils::mem_utils::ValidateSymbolMemory;
   using analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow;
   using analyse::utils::mem_utils::MemRegionOverlap;
 
-  // If the target is a coroutine, or the target is called as "async", then pins are required.
+  // If the target is a coroutine, or the target is called
+  // as "async", then pins are required.
   const auto is_target_coro = meta->TargetCallFunctionPrototype and
     meta->TargetCallFunctionPrototype->To<CoroutinePrototypeAst>() != nullptr;
   const auto pins_required = meta->TargetCallWasFunctionAsync or is_target_coro;
@@ -285,7 +276,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
       // because the first argument requires the owned object to outlive the function call, and moving it as the
       // second argument breaks this. Doesn't apply to copyable types.
-      if (not sm->CurrentScope->GetTypeSymbol(arg->Val->InferType(sm, meta).get())->IsCopyable()) {
+      if (not arg->Val->InferTypeRef(sm, meta).Sym->IsCopyable()) {
         auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
           | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
           | genex::to<Vec>();
@@ -356,9 +347,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   }
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::At(
-  const char *key) const
-  -> FunctionCallArgumentAst const* {
+auto FunctionCallArgumentGroupAst::At(
+  const char *key) const -> FunctionCallArgumentAst const* {
   // Iterate the comptime arguments to find the matching key.
   for (const auto *arg : GetKeywordArgs()) {
     if (arg->Name->Val == key) { return arg; }
@@ -366,25 +356,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::At(
   return nullptr;
 }
 
-auto spp::asts::FunctionCallArgumentGroupAst::ConvertToPositional() const
-  -> Unique<FunctionCallArgumentGroupAst> {
-  auto positional_args = Vec<Unique<FunctionCallArgumentAst>>();
-  for (auto const &arg : Args) {
-    if (arg->To<FunctionCallArgumentPositionalAst>()) {
-      positional_args.EmplaceBack(AstClone(arg.get()));
-    }
-    else {
-      auto positional_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
-        AstClone(arg->Conv), nullptr, AstClone(arg->Val));
-      positional_args.EmplaceBack(std::move(positional_arg));
-    }
-  }
-  return MakeUnique<FunctionCallArgumentGroupAst>(
-    AstClone(TokL), std::move(positional_args), AstClone(TokR));
-}
-
-auto spp::asts::FunctionCallArgumentGroupAst::IsAllowedInDefault() const
-  -> bool {
+auto FunctionCallArgumentGroupAst::IsAllowedInDefault() const -> bool {
   // Check every argument - one bad one prevents the entire
   // group from being allowed in this specific context.
   for (auto const &x : Args) {

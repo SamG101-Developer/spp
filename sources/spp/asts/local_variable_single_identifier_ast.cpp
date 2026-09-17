@@ -21,7 +21,7 @@ import spp.codegen.llvm_variant;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
-spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
+LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
   decltype(TokMut) &&tok_mut,
   decltype(Name) name,
   decltype(Alias) &&alias) :
@@ -30,22 +30,19 @@ spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
   Alias(std::move(alias)) {
 }
 
-spp::asts::LocalVariableSingleIdentifierAst::~LocalVariableSingleIdentifierAst() = default;
+LocalVariableSingleIdentifierAst::~LocalVariableSingleIdentifierAst() = default;
 
-auto spp::asts::LocalVariableSingleIdentifierAst::PosStart() const
-  -> std::size_t {
+auto LocalVariableSingleIdentifierAst::PosStart() const -> std::size_t {
   // Use the "mut" token or name.
   return TokMut ? TokMut->PosStart() : Name->PosStart();
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::PosEnd() const
-  -> std::size_t {
+auto LocalVariableSingleIdentifierAst::PosEnd() const -> std::size_t {
   // Use the alias or name.
   return Alias ? Alias->PosEnd() : Name->PosEnd();
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::Clone() const
-  -> Unique<Ast> {
+auto LocalVariableSingleIdentifierAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto l = MakeUnique<LocalVariableSingleIdentifierAst>(
     AstClone(TokMut),
@@ -56,8 +53,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Clone() const
   return l;
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::ToString() const
-  -> Str {
+auto LocalVariableSingleIdentifierAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokMut).append(TokMut ? " " : "");
   SPP_STRING_APPEND(Name).append(Alias ? " " : "");
@@ -65,16 +61,13 @@ auto spp::asts::LocalVariableSingleIdentifierAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::BindsByMove() const
-  -> bool {
+auto LocalVariableSingleIdentifierAst::BindsByMove() const -> bool {
   // A name binds what it stands for, unless it asks for it through a borrow, which leaves the value where it was.
   return Conv == nullptr;
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Get the value and its type from the "meta" information.
   const auto val = meta->LetStatementFromUninitialized
     ? nullptr
@@ -86,11 +79,11 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
 
   // Create a variable symbol for this identifier and value.
   const auto sym_name = Alias != nullptr ? Alias->Name : Name;
-  auto sym = MakeShared<analyse::scopes::VariableSymbol>(
+  auto sym = MakeShared<VariableSymbol>(
     sym_name,
     meta->LetStatementExplicitType != nullptr ? meta->LetStatementExplicitType : val_type,
     sm->CurrentScope,
-    sym_name->Val.starts_with("$") ? analyse::scopes::VariableKind::Temporary : analyse::scopes::VariableKind::Local,
+    sym_name->Val.starts_with("$") ? VariableKind::Temporary : VariableKind::Local,
     TokMut != nullptr or (Conv and *Conv == ConventionTag::MUT));
 
   // Update the type if there is a convention present.
@@ -127,10 +120,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // No value => nothing to check.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
   if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Sym); }
@@ -177,12 +168,10 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   }
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Assign the generated value into the variable symbol.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
   if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Sym); }
 
@@ -199,11 +188,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
   }
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Create the alloca for the variable.
   const auto uid = "." + spp::utils::Uid(this);
   const auto borrows = Conv != nullptr;
@@ -211,7 +197,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     ? static_cast<llvm::Type*>(llvm::PointerType::get(*ctx->Context, 0))
     : meta->LetStatementPrecomputedValue != nullptr
     ? meta->LetStatementPrecomputedValue->getType()
-    : codegen::GetLlvmTypeOf(*meta->LetStatementExplicitType, *sm->CurrentScope, ctx);
+    : codegen::GetLlvmTypeOf(TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // The storage for this variable. Normally a fresh alloca at the top of the function, but inside a coroutine the
@@ -237,7 +223,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     ctx->Builder.CreateStore(meta->LetStatementPrecomputedValue, alloca);
   }
   else if (not meta->LetStatementFromUninitialized) {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
     meta->LlvmAssignmentTarget = alloca;
 
@@ -260,10 +246,11 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // member's first bytes happened to be.
     if (not is_void and not borrows and meta->LetStatementExplicitType != nullptr) {
       llvm_val = codegen::CoerceToFunctionValue(
-        llvm_val, *meta->LetStatementExplicitType, *meta->LetStatementValue->InferType(sm, meta), *sm, ctx);
+        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope),
+        meta->LetStatementValue->InferTypeRef(sm, meta), *sm, ctx);
       llvm_val = codegen::CoerceToVariant(
-        llvm_val, *meta->LetStatementExplicitType, *meta->LetStatementValue->InferType(sm, meta),
-        *sm->CurrentScope, "local.variant" + uid, ctx);
+        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope),
+        meta->LetStatementValue->InferTypeRef(sm, meta), *sm->CurrentScope, "local.variant" + uid, ctx);
     }
 
     // Skip storing Void (created via generic implementation
@@ -275,9 +262,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::_UsesSavedSymbol(
-  analyse::scopes::ScopeManager const *sm) const
-  -> bool {
+auto LocalVariableSingleIdentifierAst::_UsesSavedSymbol(
+  ScopeManager const *sm) const -> bool {
   // A shadower of a binding in this scope always does. So does the binding it shadows, once the name has been taken by
   // a later binding here - told apart from a case branch's copied scope, which holds a copy of this binding's own
   // symbol made from the same declaration, and which the saved symbol does not belong to.
@@ -288,18 +274,16 @@ auto spp::asts::LocalVariableSingleIdentifierAst::_UsesSavedSymbol(
     and spp::get<0>(held->MemInfo->AstInitializationOrigin) != Name.get();
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::_OwnSymbol(
-  analyse::scopes::ScopeManager const *sm) const
-  -> analyse::scopes::VariableSymbol* {
+auto LocalVariableSingleIdentifierAst::_OwnSymbol(
+  ScopeManager const *sm) const -> VariableSymbol* {
   // Only one of a same-scope shadowing pair needs its saved symbol;
   // every other binding is found by its name, as it always was.
   if (_UsesSavedSymbol(sm)) { return _Sym.get(); }
   return sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::_ExposePreviousSymbol(
-  analyse::scopes::ScopeManager *sm) const
-  -> Shared<analyse::scopes::VariableSymbol> {
+auto LocalVariableSingleIdentifierAst::_ExposePreviousSymbol(
+  ScopeManager *sm) const -> Shared<VariableSymbol> {
   // For the value, the name has to mean what it did before this binding. For a shadower of a binding in this same scope
   // that is the binding it shadows, put back in its place; for anything else the name is taken away, leaving it to an
   // outer scope ("let x = x + 1"), as it always was. What comes back is re-added once the value is done.
@@ -309,15 +293,13 @@ auto spp::asts::LocalVariableSingleIdentifierAst::_ExposePreviousSymbol(
   return _Sym;
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::ExtractNames() const
-  -> Vec<Shared<IdentifierAst>> {
+auto LocalVariableSingleIdentifierAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // Return the single name as a vector that can get appended to
   // from nesting.
   return {Name};
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::ExtractName() const
-  -> Shared<IdentifierAst> {
+auto LocalVariableSingleIdentifierAst::ExtractName() const -> Shared<IdentifierAst> {
   // Return the single name (identifier) for matching capability.
   return Name;
 }

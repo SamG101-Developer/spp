@@ -24,9 +24,7 @@ import spp.asts.type_ast;
 import spp.utils.uid;
 import genex;
 
-auto spp::asts::AstNameOrNull(
-  Ast *ast)
-  -> Shared<TypeAst> {
+auto spp::asts::AstNameOrNull(Ast *ast) -> Shared<TypeAst> {
   if (const auto cls = ast->To<ClassPrototypeAst>(); cls != nullptr) {
     return cls->Name;
   }
@@ -39,9 +37,7 @@ auto spp::asts::AstNameOrNull(
   return nullptr;
 }
 
-auto spp::asts::AstName(
-  Ast *ast)
-  -> Shared<TypeAst> {
+auto spp::asts::AstName(Ast *ast) -> Shared<TypeAst> {
   if (auto name = AstNameOrNull(ast); name != nullptr) {
     return name;
   }
@@ -67,28 +63,27 @@ auto spp::asts::AstBody(
     return mod->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
   }
 
-  // Special case for the top level scope for generic types (sup scopes are constraints).
-  if (ast == nullptr) {
-    return {};
-  }
+  // Special case for the top level scope for generic types
+  // (sup scopes are constraints).
+  if (ast == nullptr) { return {}; }
 
   throw std::runtime_error("ast_body: Unsupported AST type");
 }
 
 auto spp::asts::IsRuntimeMemberAccess(
-  Ast const *ast)
-  -> bool {
-  // Check the ast is a postfix expression, whose operator is the runtime member access operator.
+  Ast const *ast) -> bool {
+  // Check the ast is a postfix expression, whose operator is
+  // the runtime member access operator.
   const auto postfix = ast->To<PostfixExpressionAst>();
-  return postfix != nullptr and postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
+  return postfix != nullptr
+    and postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
 }
 
 auto spp::asts::BindLocal(
-  Unique<ExpressionAst> &slot,
-  Vec<Unique<StatementAst>> &prelude,
-  const std::size_t pos)
-  -> Unique<IdentifierAst> {
-  // Bind the expression to a fresh local, "let $uid = <expr>", and read the local where the expression was.
+  Unique<ExpressionAst> &slot, Vec<Unique<StatementAst>> &prelude,
+  const std::size_t pos) -> Unique<IdentifierAst> {
+  // Bind the expression to a fresh local, "let $uid = <expr>",
+  // and read the local where the expression was.
   const auto uid = spp::utils::Uid();
   auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, MakeShared<IdentifierAst>(pos, Str(uid)), nullptr);

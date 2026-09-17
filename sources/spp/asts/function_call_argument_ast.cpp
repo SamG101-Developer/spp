@@ -20,7 +20,7 @@ import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 
 SPP_MOD_BEGIN
-spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
+FunctionCallArgumentAst::FunctionCallArgumentAst(
   decltype(Conv) &&conv,
   decltype(Val) &&val,
   const utils::OrderableTag order_tag) :
@@ -30,11 +30,8 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
   _InjectedSelfType(nullptr) {
 }
 
-auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::errors::SppInvalidPrimaryExpressionError;
 
@@ -45,36 +42,27 @@ auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*Val));
 }
 
-auto spp::asts::FunctionCallArgumentAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto FunctionCallArgumentAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory status of the value expression.
   Val->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::FunctionCallArgumentAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto FunctionCallArgumentAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Delegate comptime resolution to the value expression.
   Val->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto FunctionCallArgumentAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }
   return codegen::llvm_addr_of(*Val, sm, meta, ctx);
 }
 
-auto spp::asts::FunctionCallArgumentAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto FunctionCallArgumentAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Infer the type from the value expression, unless an explicit "self" type has been given.
   if (_InjectedSelfType != nullptr) { return _InjectedSelfType; }
 
@@ -83,21 +71,31 @@ auto spp::asts::FunctionCallArgumentAst::InferType(
   return type;
 }
 
-auto spp::asts::FunctionCallArgumentAst::SetSelfType(
-  Shared<TypeAst> self_type)
-  -> void {
+auto FunctionCallArgumentAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  if (_InjectedSelfType != nullptr) { return TypeRef::Of(*_InjectedSelfType, *sm->CurrentScope); }
+
+  // Held as the argument says: a borrow of "!" is a real value.
+  auto ref = Val->InferTypeRef(sm, meta);
+  if (Conv) {
+    ref.Conv = Conv->Tag();
+    ref.IsNever = false;
+  }
+  return ref;
+}
+
+auto FunctionCallArgumentAst::SetSelfType(
+  Shared<TypeAst> self_type) -> void {
   // Set the self type to the given type.
   _InjectedSelfType = std::move(self_type);
 }
 
-auto spp::asts::FunctionCallArgumentAst::GetSelfType() const
-  -> Shared<TypeAst> {
+auto FunctionCallArgumentAst::GetSelfType() const -> Shared<TypeAst> {
   // Get the self type.
   return _InjectedSelfType;
 }
 
-auto spp::asts::FunctionCallArgumentAst::IsAllowedInDefault() const
-  -> bool {
+auto FunctionCallArgumentAst::IsAllowedInDefault() const -> bool {
   // Check the internal value of the argument.
   // Todo: Remove the nullptr guard?
   return Val == nullptr or Val->IsAllowedInDefault();

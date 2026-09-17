@@ -23,7 +23,7 @@ import genex;
 import llvm;
 
 SPP_MOD_BEGIN
-spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
+FunctionParameterGroupAst::FunctionParameterGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Params) &&params,
   decltype(TokR) &&tok_r) :
@@ -32,22 +32,19 @@ spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
   TokR(std::move(tok_r)) {
 }
 
-spp::asts::FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
+FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
 
-auto spp::asts::FunctionParameterGroupAst::PosStart() const
-  -> std::size_t {
+auto FunctionParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto spp::asts::FunctionParameterGroupAst::PosEnd() const
-  -> std::size_t {
+auto FunctionParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::FunctionParameterGroupAst::Clone() const
-  -> Unique<Ast> {
+auto FunctionParameterGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<FunctionParameterGroupAst>(
     AstClone(TokL),
@@ -55,8 +52,7 @@ auto spp::asts::FunctionParameterGroupAst::Clone() const
     AstClone(TokR));
 }
 
-auto spp::asts::FunctionParameterGroupAst::ToString() const
-  -> Str {
+auto FunctionParameterGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Params, ", ");
@@ -64,11 +60,8 @@ auto spp::asts::FunctionParameterGroupAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppMultipleSelfParametersError;
   using analyse::errors::SppMultipleVariadicParametersError;
   using analyse::errors::SppIdentifierDuplicateError;
@@ -116,25 +109,21 @@ auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
   RaiseIf<SppOrderInvalidError>(
     not unordered_params.IsEmpty(), {sm->CurrentScope},
     ERR_ARGS(
-      unordered_params[1].first, *unordered_params[1].second, unordered_params[0].first, *unordered_params[0].second));
+      unordered_params[1].first, *unordered_params[1].second,
+      unordered_params[0].first, *unordered_params[0].second));
 
   // Analyse the parameters.
   for (auto const &param : Params) { param->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-auto spp::asts::FunctionParameterGroupAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto FunctionParameterGroupAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check each parameter's memory.
   for (auto const &param : Params) { param->Stage8_CheckMemory(sm, meta); }
 }
 
-auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto FunctionParameterGroupAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Bind each parameter's storage to its actual incoming
   // llvm::Argument, in declaration order. For closures, the
   // 0th argument is the closure env (skip it).
@@ -151,16 +140,14 @@ auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::FunctionParameterGroupAst::GetAllParams() const
-  -> Vec<FunctionParameterAst*> {
+auto FunctionParameterGroupAst::GetAllParams() const -> Vec<FunctionParameterAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterAst*>();
   for (auto const &param : Params) { out.push_back(param.get()); }
   return out;
 }
 
-auto spp::asts::FunctionParameterGroupAst::GetSelfParam() const
-  -> FunctionParameterSelfAst* {
+auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst* {
   // Filter by casting.
   auto out = Vec<FunctionParameterSelfAst*>();
   for (auto const &param : Params) {
@@ -169,8 +156,7 @@ auto spp::asts::FunctionParameterGroupAst::GetSelfParam() const
   return out.IsEmpty() ? nullptr : out[0];
 }
 
-auto spp::asts::FunctionParameterGroupAst::GetRequiredParams() const
-  -> Vec<FunctionParameterRequiredAst*> {
+auto FunctionParameterGroupAst::GetRequiredParams() const -> Vec<FunctionParameterRequiredAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterRequiredAst*>();
   for (auto const &param : Params) {
@@ -179,8 +165,7 @@ auto spp::asts::FunctionParameterGroupAst::GetRequiredParams() const
   return out;
 }
 
-auto spp::asts::FunctionParameterGroupAst::GetOptionalParams() const
-  -> Vec<FunctionParameterOptionalAst*> {
+auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterOptionalAst*>();
   for (auto const &param : Params) {
@@ -189,8 +174,7 @@ auto spp::asts::FunctionParameterGroupAst::GetOptionalParams() const
   return out;
 }
 
-auto spp::asts::FunctionParameterGroupAst::GetVariadicParams() const
-  -> FunctionParameterVariadicAst* {
+auto FunctionParameterGroupAst::GetVariadicParams() const -> FunctionParameterVariadicAst* {
   // Filter by casting.
   auto out = Vec<FunctionParameterVariadicAst*>();
   for (auto const &param : Params) {
@@ -199,8 +183,7 @@ auto spp::asts::FunctionParameterGroupAst::GetVariadicParams() const
   return out.IsEmpty() ? nullptr : out[0];
 }
 
-auto spp::asts::FunctionParameterGroupAst::GetNonSelfParams() const
-  -> Vec<FunctionParameterAst*> {
+auto FunctionParameterGroupAst::GetNonSelfParams() const -> Vec<FunctionParameterAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterAst*>();
   for (auto const &param : Params) {

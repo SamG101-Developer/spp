@@ -15,6 +15,7 @@ use(spp::asts, struct CasePatternVariantAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
   SPP_AST_KEY_FUNCTIONS(IsExpressionAst);
@@ -47,6 +48,8 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 

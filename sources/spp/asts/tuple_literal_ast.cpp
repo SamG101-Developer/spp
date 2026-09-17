@@ -23,7 +23,7 @@ import spp.utils.uid;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::TupleLiteralAst::TupleLiteralAst(
+TupleLiteralAst::TupleLiteralAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elements,
   decltype(TokR) &&tok_r) :
@@ -32,11 +32,10 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
   TokR(std::move(tok_r)) {
 }
 
-spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
+TupleLiteralAst::~TupleLiteralAst() = default;
 
-auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
-  TupleLiteralAst const &other) const
-  -> Ordering {
+auto TupleLiteralAst::EqualsTupleLiteral(
+  TupleLiteralAst const &other) const -> Ordering {
   // If two tuple asts don't have the same size, they cannot be equal.
   if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
 
@@ -49,27 +48,23 @@ auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
   return Ordering::less;
 }
 
-auto spp::asts::TupleLiteralAst::Equals(
-  ExpressionAst const &other) const
-  -> Ordering {
+auto TupleLiteralAst::Equals(
+  ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsTupleLiteral(*this);
 }
 
-auto spp::asts::TupleLiteralAst::PosStart() const
-  -> std::size_t {
+auto TupleLiteralAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL != nullptr ? TokL->PosStart() : Elems.IsEmpty() ? 0 : Elems.Front()->PosStart();
 }
 
-auto spp::asts::TupleLiteralAst::PosEnd() const
-  -> std::size_t {
+auto TupleLiteralAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR != nullptr ? TokR->PosEnd() : Elems.IsEmpty() ? 0 : Elems.Back()->PosEnd();
 }
 
-auto spp::asts::TupleLiteralAst::Clone() const
-  -> Unique<Ast> {
+auto TupleLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<TupleLiteralAst>(
     AstClone(TokL),
@@ -77,8 +72,7 @@ auto spp::asts::TupleLiteralAst::Clone() const
     AstClone(TokR));
 }
 
-auto spp::asts::TupleLiteralAst::ToString() const
-  -> Str {
+auto TupleLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("(");
   SPP_STRING_EXTEND(Elems, ", ");
@@ -86,10 +80,8 @@ auto spp::asts::TupleLiteralAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto TupleLiteralAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppSecondClassBorrowViolationError;
@@ -116,10 +108,8 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
   InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto TupleLiteralAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
@@ -130,10 +120,8 @@ auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
   }
 }
 
-auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto TupleLiteralAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
@@ -147,15 +135,11 @@ auto spp::asts::TupleLiteralAst::Stage9_CompTimeResolve(
     nullptr, std::move(cmp_elems), nullptr);
 }
 
-auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto TupleLiteralAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
   const auto uid = "." + spp::utils::Uid(this);
-  const auto tuple_type = InferType(sm, meta);
-  const auto tuple_type_sym = sm->CurrentScope->GetTypeSymbol(tuple_type.get());
+  const auto tuple_type_sym = InferTypeRef(sm, meta).Sym;
   const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
@@ -219,10 +203,8 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems.ToStdVector());
 }
 
-auto spp::asts::TupleLiteralAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto TupleLiteralAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   using generate::common_types::TupleType;
 
@@ -247,9 +229,8 @@ auto spp::asts::TupleLiteralAst::InferType(
   return tuple_type;
 }
 
-auto spp::asts::TupleLiteralAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<ExpressionAst> {
+auto TupleLiteralAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // Each element is an expression so substitute them
   // all too.
   auto elems = Vec<Unique<ExpressionAst>>();
@@ -258,8 +239,7 @@ auto spp::asts::TupleLiteralAst::SubstituteGenericsExpr(
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
-auto spp::asts::TupleLiteralAst::IsAllowedInDefault() const
-  -> bool {
+auto TupleLiteralAst::IsAllowedInDefault() const -> bool {
   // Check every element - one bad one prevents the entire
   // ast from being allowed in this specific context.
   for (auto const &x : Elems) {

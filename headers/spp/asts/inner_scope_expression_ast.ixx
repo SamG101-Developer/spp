@@ -15,6 +15,7 @@ SPP_AST_COMMON_FWD_DECL(InnerScopeExpressionAst);
 use(spp::asts, struct Ast);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   SPP_AST_KEY_FUNCTIONS(InnerScopeExpressionAst);
@@ -46,6 +47,8 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// Whether the value of the final statement in this scope
   /// goes nowhere. A block hands its final statement's value

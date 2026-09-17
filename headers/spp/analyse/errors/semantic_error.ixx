@@ -26,6 +26,7 @@ use(spp::analyse::errors, struct SppCaseBranchElseNotLastError);
 use(spp::analyse::errors, struct SppCaseBranchMissingElseError);
 use(spp::analyse::errors, struct SppIdentifierDuplicateError);
 use(spp::analyse::errors, struct SppRecursiveTypeError);
+use(spp::analyse::errors, struct SppGenericInstantiationDepthError);
 use(spp::analyse::errors, struct SppFloatOutOfBoundsError);
 use(spp::analyse::errors, struct SppIntegerOutOfBoundsError);
 use(spp::analyse::errors, struct SppOrderInvalidError);
@@ -276,6 +277,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierDuplicateError final : Sem
 
 SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticError {
   explicit SppRecursiveTypeError(Ast const &type, Ast const &recursion);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppGenericInstantiationDepthError final : SemanticError {
+  explicit SppGenericInstantiationDepthError(Ast const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {

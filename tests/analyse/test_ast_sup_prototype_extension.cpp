@@ -321,3 +321,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(b)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_instantiation_depth,
+  SppGenericInstantiationDepthError, R"(
+    cls Box[T] { }
+
+    sup [T] Box[T] ext Box[Box[T]] { }
+)");

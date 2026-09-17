@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
@@ -30,21 +31,16 @@ import spp.asts.function_call_argument_positional_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_optional_ast;
 import spp.asts.function_parameter_required_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.postfix_expression_ast;
@@ -62,7 +58,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.algorithms;
 import spp.utils.ptr;
-import spp.utils.ptr;
 import spp.utils.types;
 import genex;
 import sys;
@@ -71,14 +66,14 @@ namespace spp::analyse::utils::overload_utils {
   namespace {
     struct OverloadCandidates {
       bool IsClosure;
-      Unique<asts::FunctionPrototypeAst> ClosureProto;
+      Unique<FunctionPrototypeAst> ClosureProto;
       Vec<func_utils::FunctionOverload> Overloads;
     };
 
     struct PropagatedMethodCall {
       PassedOverload Overload;
       bool IsClosure;
-      Unique<asts::PostfixExpressionAst> TransformedAst;
+      Unique<PostfixExpressionAst> TransformedAst;
     };
 
     /**
@@ -96,12 +91,12 @@ namespace spp::analyse::utils::overload_utils {
      * @param meta Associated metadata.
      */
     auto ReattachCallableConstraints(
-      asts::FunctionPrototypeAst const &new_fn_proto,
-      asts::FunctionPrototypeAst const &fn_proto,
-      scopes::Scope *new_fn_scope,
-      asts::GenericArgumentGroupAst const &combined_generics,
-      scopes::ScopeManager &tm,
-      asts::meta::CompilerMetaData *meta)
+      FunctionPrototypeAst const &new_fn_proto,
+      FunctionPrototypeAst const &fn_proto,
+      Scope *new_fn_scope,
+      GenericArgumentGroupAst const &combined_generics,
+      ScopeManager &tm,
+      meta::CompilerMetaData *meta)
       -> void {
       for (auto *p : new_fn_proto.FnParamGroup->GetNonSelfParams()) {
         const auto declared = p->Source.OriginalType;
@@ -111,11 +106,11 @@ namespace spp::analyse::utils::overload_utils {
           fn_proto.GnParamGroup->Params, [&](auto const &g) { return *g->Name == *declared; });
         if (gn_param == fn_proto.GnParamGroup->Params.end()) { continue; }
 
-        const auto constraints = (*gn_param)->To<asts::GenericParameterTypeAst>();
-        if (constraints == nullptr or constraints->Constraints == nullptr) { continue; }
+        auto const &constraints = *gn_param;
+        if (constraints->Constraints == nullptr) { continue; }
 
         for (auto const &c : constraints->Constraints->Constraints) {
-          if (not type_predicates::IsTypeFunc(*c, *new_fn_scope)) { continue; }
+          if (not type_predicates::IsTypeFunc(TypeRef::OfHead(*c, *new_fn_scope), *new_fn_scope)) { continue; }
           const auto sym = new_fn_scope->Children[0]->GetVarSymbol(p->ExtractName().get(), true);
           if (sym == nullptr) { break; }
 
@@ -142,12 +137,12 @@ namespace spp::analyse::utils::overload_utils {
      * @param meta Associated metadata.
      */
     auto RetypeInheritedSymbols(
-      asts::FunctionPrototypeAst &new_fn_proto,
-      scopes::Scope *new_fn_scope,
-      asts::GenericArgumentGroupAst const &combined_generics,
-      Shared<asts::TypeAst> const &variadic_pack_type,
-      scopes::ScopeManager &tm,
-      asts::meta::CompilerMetaData *meta)
+      FunctionPrototypeAst &new_fn_proto,
+      Scope *new_fn_scope,
+      GenericArgumentGroupAst const &combined_generics,
+      Shared<TypeAst> const &variadic_pack_type,
+      ScopeManager &tm,
+      meta::CompilerMetaData *meta)
       -> void {
       // "self" is typed as "Self", so only a substitution that pins "Self" to the receiver has anything to rewrite.
       if (const auto self_param = new_fn_proto.FnParamGroup->GetSelfParam(); self_param != nullptr) {
@@ -158,15 +153,15 @@ namespace spp::analyse::utils::overload_utils {
           const auto self_name = self_param->ExtractName();
           if (const auto self_sym = new_fn_scope->Children[0]->GetVarSymbol(self_name.get(), true);
             self_sym != nullptr) {
-            self_sym->Type = substituted_self->WithConvention(asts::AstClone(self_param->Conv));
+            self_sym->Type = substituted_self->WithConvention(AstClone(self_param->Conv));
           }
         }
       }
-      new_fn_proto.VariadicPackType = asts::AstClone(variadic_pack_type);
+      new_fn_proto.VariadicPackType = AstClone(variadic_pack_type);
 
       // A variadic parameter declares one element but binds the whole tuple.
       if (variadic_pack_type != nullptr) {
-        auto pack_type = asts::AstClone(variadic_pack_type);
+        auto pack_type = AstClone(variadic_pack_type);
         pack_type->Stage7_AnalyseSemantics(&tm, meta);
         const auto pack_name = new_fn_proto.FnParamGroup->GetVariadicParams()->ExtractName();
         if (const auto pack_sym = new_fn_scope->Children[0]->GetVarSymbol(pack_name.get(), true);
@@ -189,14 +184,14 @@ namespace spp::analyse::utils::overload_utils {
      * @return If the instantiation is fully concrete.
      */
     auto ComputeIsConcrete(
-      asts::GenericArgumentGroupAst const &combined_generics,
-      asts::FunctionPrototypeAst const &new_fn_proto,
-      scopes::Scope const *new_fn_scope,
-      scopes::ScopeManager &tm,
-      scopes::ScopeManager const *sm,
-      asts::meta::CompilerMetaData *meta)
+      GenericArgumentGroupAst const &combined_generics,
+      FunctionPrototypeAst const &new_fn_proto,
+      Scope const *new_fn_scope,
+      ScopeManager &tm,
+      ScopeManager const *sm,
+      meta::CompilerMetaData *meta)
       -> bool {
-      const auto type_is_concrete = [&](asts::TypeAst const &type) {
+      const auto type_is_concrete = [&](TypeAst const &type) {
         const auto resolved = type_utils::SubstituteSelfTypeAndAnalyse(type, *new_fn_scope, tm, *meta);
         return type_predicates::IsTypeFullyConcrete(*resolved, *new_fn_scope);
       };
@@ -211,25 +206,25 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto GetFuncOwnerTypeAndFuncName(
-      asts::ExpressionAst const &lhs,
-      scopes::ScopeManager &sm,
-      asts::meta::CompilerMetaData *meta)
-      -> Tup<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>> {
+      ExpressionAst const &lhs,
+      ScopeManager &sm,
+      meta::CompilerMetaData *meta)
+      -> Tup<Shared<TypeAst>, Scope const*, Shared<IdentifierAst>> {
       //
       using expr_utils::RaiseMissingIdentifierAndClosestOptions;
 
       // Define some expression casts that are used commonly.
-      const auto postfix_lhs = lhs.To<asts::PostfixExpressionAst>();
+      const auto postfix_lhs = lhs.To<PostfixExpressionAst>();
       const auto runtime_field = postfix_lhs
-        ? postfix_lhs->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
+        ? postfix_lhs->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()
         : nullptr;
       const auto static_field = postfix_lhs
-        ? postfix_lhs->Op->To<asts::PostfixExpressionOperatorStaticMemberAccessAst>()
+        ? postfix_lhs->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>()
         : nullptr;
 
       // Specific casts.
-      const auto postfix_lhs_as_type = postfix_lhs ? postfix_lhs->Lhs->To<asts::TypeAst>() : nullptr;
-      const auto lhs_as_ident = lhs.To<asts::IdentifierAst>();
+      const auto postfix_lhs_as_type = postfix_lhs ? postfix_lhs->Lhs->To<TypeAst>() : nullptr;
+      const auto lhs_as_ident = lhs.To<IdentifierAst>();
 
       // If the lhs is an identifier, it must be a variable
       // symbol, not a namespace symbol.
@@ -240,9 +235,9 @@ namespace spp::analyse::utils::overload_utils {
       // Variables that will be set in each branch, and
       // returned. These are used to determine what variation
       // of function call is being performed.
-      auto fn_owner_type = Shared<asts::TypeAst>(nullptr);
-      auto fn_owner_scope = static_cast<scopes::Scope const*>(nullptr);
-      auto fn_name = Shared<asts::IdentifierAst>(nullptr);
+      auto fn_owner_type = Shared<TypeAst>(nullptr);
+      auto fn_owner_scope = static_cast<Scope const*>(nullptr);
+      auto fn_name = Shared<IdentifierAst>(nullptr);
 
       // Runtime access into an object: "object.method()".
       // No namespacing involved.
@@ -255,7 +250,7 @@ namespace spp::analyse::utils::overload_utils {
       // Static access into a type: "Type::method()" or
       // "ns::Type::method()".
       else if (static_field != nullptr and postfix_lhs_as_type != nullptr) {
-        fn_owner_type = asts::AstCloneShared(postfix_lhs_as_type);
+        fn_owner_type = AstCloneShared(postfix_lhs_as_type);
         fn_name = static_field->Name;
         fn_owner_scope = sm.CurrentScope->GetTypeSymbol(fn_owner_type.get())->LinkedScope;
       }
@@ -279,7 +274,7 @@ namespace spp::analyse::utils::overload_utils {
       // "function()":
       else if (lhs_as_ident != nullptr) {
         fn_owner_type = nullptr;
-        fn_name = asts::AstCloneShared(lhs_as_ident);
+        fn_name = AstCloneShared(lhs_as_ident);
 
         // A name declared inside the function (a function-type
         // variable) is a value being called, not a module function
@@ -301,8 +296,8 @@ namespace spp::analyse::utils::overload_utils {
       // calling it is calling the function - resolved like the name,
       // overloads and generics included, not through a pointer.
       if (fn_owner_type == nullptr and fn_owner_scope == nullptr) {
-        const auto lhs_type = const_cast<asts::ExpressionAst&>(lhs).InferType(&sm, meta);
-        if (auto [value_fn_name, value_fn_scope] = func_utils::GetFunctionValueName(*lhs_type, *sm.CurrentScope);
+        const auto lhs_ref = const_cast<ExpressionAst&>(lhs).InferTypeRef(&sm, meta);
+        if (auto [value_fn_name, value_fn_scope] = func_utils::GetFunctionValueName(lhs_ref);
           value_fn_name != nullptr) {
           fn_name = std::move(value_fn_name);
           fn_owner_scope = value_fn_scope;
@@ -313,13 +308,13 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto ConvertMethodToFuncForm(
-      asts::TypeAst const &function_owner_type,
-      asts::IdentifierAst const &function_name,
-      asts::PostfixExpressionAst const &lhs,
-      asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-      scopes::ScopeManager &sm,
-      asts::meta::CompilerMetaData *meta)
-      -> Pair<Unique<asts::PostfixExpressionAst>, Unique<asts::PostfixExpressionOperatorFunctionCallAst>> {
+      TypeAst const &function_owner_type,
+      IdentifierAst const &function_name,
+      PostfixExpressionAst const &lhs,
+      PostfixExpressionOperatorFunctionCallAst const &fn_call,
+      ScopeManager &sm,
+      meta::CompilerMetaData *meta)
+      -> Pair<Unique<PostfixExpressionAst>, Unique<PostfixExpressionOperatorFunctionCallAst>> {
       // A method reached through a forwarding type is invoked
       // on the forwarded-to value, not on the object that forwards
       // to it: "w.greet()" calls "greet" on "w.fwd_ref()". The
@@ -327,27 +322,27 @@ namespace spp::analyse::utils::overload_utils {
       // the receiver; a method found on the object's own type uses
       // the object itself.
       // Todo: Check this for when we use a method on a type who has a forwarding type, but the forward isn't used.
-      const auto member_access = lhs.Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>();
+      const auto member_access = lhs.Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
       const auto fwd_receiver = member_access != nullptr ? member_access->GetFwdReceiver() : nullptr;
       const auto self_expr = fwd_receiver != nullptr ? fwd_receiver : lhs.Lhs.get();
-      auto self_arg_val = asts::AstClone(self_expr);
+      auto self_arg_val = AstClone(self_expr);
 
       // Create the static method access (without the function
       // call and args).
-      auto field = MakeUnique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(
+      auto field = MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
         nullptr, AstClone(&function_name));
-      auto field_access = MakeUnique<asts::PostfixExpressionAst>(
+      auto field_access = MakeUnique<PostfixExpressionAst>(
         AstClone(&function_owner_type), std::move(field));
 
       // Create an argument for "self" and inject it into the
       // current arguments.
-      auto self_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(
+      auto self_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
         nullptr, nullptr, std::move(self_arg_val));
       auto fn_args = std::move(fn_call.FnArgGroup->Args);
       fn_args.Insert(fn_args.begin(), std::move(self_arg));
 
       // Create the function call with the new arguments.
-      auto new_fn_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(
+      auto new_fn_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
         AstClone(fn_call.GnArgGroup), AstClone(fn_call.FnArgGroup), nullptr);
       new_fn_call->FnArgGroup->Args = std::move(fn_args);
 
@@ -361,26 +356,26 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto CreateCallablePrototype(
-      asts::TypeAst const &expr_ty)
-      -> Unique<asts::FunctionPrototypeAst> {
+      TypeAst const &expr_ty)
+      -> Unique<FunctionPrototypeAst> {
       // Extract the parameter and return types from the
       // expression type.
-      auto ret_ty = expr_ty.LastTypePart()->GnArgGroup->TypeAt("Out")->Val;
-      auto p_tys = expr_ty.LastTypePart()->GnArgGroup->TypeAt("Args")->Val->LastTypePart()->GnArgGroup->GetTypeArgs()
+      auto ret_ty = expr_ty.LastTypePart()->GnArgGroup->At("Out")->TypeVal;
+      auto p_tys = expr_ty.LastTypePart()->GnArgGroup->At("Args")->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()
         | genex::views::transform([](auto *g) {
-          return MakeUnique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, g->Val);
+          return MakeUnique<FunctionParameterRequiredAst>(nullptr, nullptr, g->TypeVal);
         })
-        | spp::views::cast_unique<asts::FunctionParameterAst>();
+        | spp::views::cast_unique<FunctionParameterAst>();
 
       // Create a function prototype based off of the parameter
       // and return type.
       // Todo: When might it be a coroutine, not a subroutine?
       // Todo: Do we set "cmp" here for the subroutine ever?
-      auto dummy_param_group = MakeUnique<asts::FunctionParameterGroupAst>(
+      auto dummy_param_group = MakeUnique<FunctionParameterGroupAst>(
         nullptr, std::move(p_tys), nullptr);
-      auto dummy_name = MakeUnique<asts::IdentifierAst>(
+      auto dummy_name = MakeUnique<IdentifierAst>(
         0uz, "<anonymous>");
-      auto dummy_overload = MakeUnique<asts::SubroutinePrototypeAst>(
+      auto dummy_overload = MakeUnique<SubroutinePrototypeAst>(
         SPP_NO_ANNOTATIONS, nullptr, nullptr, std::move(dummy_name),
         nullptr, std::move(dummy_param_group),
         nullptr, std::move(ret_ty), nullptr);
@@ -390,72 +385,23 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto NamedArgsOnly(
-      Vec<Unique<asts::GenericArgumentAst>> &&args)
-      -> Vec<Unique<asts::GenericArgumentAst>> {
+      Vec<Unique<GenericArgumentAst>> &&args)
+      -> Vec<Unique<GenericArgumentAst>> {
       //
       using namespace spp::asts;
       auto out = Vec<Unique<GenericArgumentAst>>();
       for (auto &&arg : args) {
-        const auto named = arg->To<GenericArgumentTypeKeywordAst>() != nullptr
-          or arg->To<GenericArgumentCompKeywordAst>() != nullptr;
-        if (named) { out.EmplaceBack(std::move(arg)); }
+        if (arg->Name != nullptr) { out.EmplaceBack(std::move(arg)); }
       }
       return out;
-    }
-
-    /**
-     * Determine whether a (stripped) parameter type refers to a generic that is "rigid" at the call site: ie a
-     * generic parameter belonging to a scope that encloses the caller, and so is already fixed rather than being
-     * inferred/substituted for this particular call.
-     *
-     * When a parameter's type is such a rigid generic (eg calling @code slice_ref(from: I, into: I)@endcode from within
-     * a method of @code sup [V, I] SliceRef[V, I]@endcode), the argument must match that generic exactly. This is
-     * different from the "matches anything" behaviour of @code RelaxedTypeEq@endcode, which is only appropriate when a
-     * generic is genuinely free to be inferred for the call (eg a non-substitutable superclass generic in a sup-ext
-     * block, which is not visible as a generic from the caller's scope).
-     */
-    auto IsRigidGenericAtCaller(
-      asts::TypeAst const &param_type,
-      scopes::Scope const &caller_scope)
-      -> bool {
-      const auto stripped = param_type.WithoutGenerics()->WithoutConvention();
-      const auto sym = caller_scope.GetTypeSymbol(stripped.get());
-      return sym != nullptr and sym->IsTypeGeneric();
-    }
-
-    /**
-     * Whether a name that @c RelaxedTypeEq had to bind in order to match is one the caller cannot choose. The same
-     * rigidity test as @c IsRigidGenericAtCaller, applied to the bindings the relaxed match produced rather than to the
-     * parameter's head type, so that a generic appearing *inside* a parameter type is covered too: the "w" of
-     * @code that: &SizedInteger[w=w, signed=false]@endcode is fixed by whoever instantiated the enclosing block, even
-     * though @c SizedInteger itself is not generic and the head-type test therefore says nothing about it.
-     *
-     * A generic that is genuinely free for the call - the callee's own parameter, or a superclass generic in a sup-ext
-     * block that is not visible from the caller - is not found as a generic here, so the relaxed match keeps working
-     * for the cases it exists to serve.
-     */
-    auto IsRigidBindingAtCaller(
-      asts::TypeIdentifierAst const &bound_name,
-      scopes::Scope const &caller_scope)
-      -> bool {
-      if (const auto type_sym = caller_scope.GetTypeSymbol(&bound_name); type_sym != nullptr) {
-        return type_sym->IsTypeGeneric();
-      }
-      const auto as_id = asts::IdentifierAst::FromType(bound_name);
-      const auto comp_sym = caller_scope.GetVarSymbol(as_id.get());
-      return comp_sym != nullptr and comp_sym->IsCompGeneric();
     }
 
     /**
      * Whether a prototype's signature is written in terms of @c Self , and so reads differently per implementer.
      */
     auto SignatureNamesSelf(
-      asts::FunctionPrototypeAst const &fn_proto)
+      FunctionPrototypeAst const &fn_proto)
       -> bool {
-      const auto names_self = [](asts::TypeAst const &type) {
-        return type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; });
-      };
-
       // We need this so that for example when a TcpSocket method
       // is called that belongs to Socket, the "self=TcpSocket"
       // IR is available, not "self=Socket" + weird slicing / owned
@@ -463,10 +409,10 @@ namespace spp::analyse::utils::overload_utils {
       const auto self_param = fn_proto.FnParamGroup->GetSelfParam();
       if (self_param != nullptr and self_param->Conv == nullptr) { return true; }
 
-      return names_self(*fn_proto.ReturnType)
+      return type_predicates::NamesSelfType(*fn_proto.ReturnType)
         or genex::any_of(
           fn_proto.FnParamGroup->GetNonSelfParams(),
-          [&](auto const *p) { return names_self(*p->Type); });
+          [&](auto const *p) { return type_predicates::NamesSelfType(*p->Type); });
     }
 
     /**
@@ -478,17 +424,17 @@ namespace spp::analyse::utils::overload_utils {
      * @return The receiver type, or @c nullptr when the call was not made on one.
      */
     auto ReceiverTypeAtCallSite(
-      asts::meta::CompilerMetaData const *meta)
-      -> asts::TypeAst* {
+      meta::CompilerMetaData const *meta)
+      -> TypeAst* {
       if (meta->PostfixExpressionLhs == nullptr) { return nullptr; }
-      const auto postfix = meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>();
-      return postfix != nullptr ? postfix->Lhs->To<asts::TypeAst>() : nullptr;
+      const auto postfix = meta->PostfixExpressionLhs->To<PostfixExpressionAst>();
+      return postfix != nullptr ? postfix->Lhs->To<TypeAst>() : nullptr;
     }
 
     auto RetrieveOwnerGenericArgs(
-      Shared<asts::TypeAst> const &fwd_type,
-      asts::meta::CompilerMetaData const *meta)
-      -> Vec<Unique<asts::GenericArgumentAst>> {
+      Shared<TypeAst> const &fwd_type,
+      meta::CompilerMetaData const *meta)
+      -> Vec<Unique<GenericArgumentAst>> {
       // A forwarding type stands in for the owner, so its
       // generics are the ones that count.
       if (fwd_type != nullptr) {
@@ -499,7 +445,7 @@ namespace spp::analyse::utils::overload_utils {
       // on, if it was made on one at all - a module-level
       // function has no owner to inherit from.
       const auto receiver = ReceiverTypeAtCallSite(meta);
-      const auto is_type = receiver != nullptr ? asts::AstCloneShared(receiver) : nullptr;
+      const auto is_type = receiver != nullptr ? AstCloneShared(receiver) : nullptr;
       if (is_type != nullptr) {
         return NamedArgsOnly(std::move(is_type->LastTypePart()->GnArgGroup->Args));
       }
@@ -508,10 +454,10 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto RetrieveAllOverloads(
-      asts::IdentifierAst const *fn_name,
-      scopes::Scope const *fn_owner_scope,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
+      IdentifierAst const *fn_name,
+      Scope const *fn_owner_scope,
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
       -> OverloadCandidates {
       //
       using func_utils::IsTargetCallable;
@@ -533,7 +479,7 @@ namespace spp::analyse::utils::overload_utils {
         all_overloads.EmplaceBack(func_utils::FunctionOverload{
           .FnScope = sm->CurrentScope,
           .Proto = closure_fn_proto.get(),
-          .SupGenerics = asts::GenericArgumentGroupAst::NewEmpty(),
+          .SupGenerics = GenericArgumentGroupAst::NewEmpty(),
           .FwdType = nullptr
         });
         return OverloadCandidates{true, std::move(closure_fn_proto), std::move(all_overloads)};
@@ -544,12 +490,12 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto PropagateMethodToFunction(
-      asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
-      asts::TypeAst const &fn_owner_type,
-      asts::IdentifierAst const &fn_name,
-      asts::PostfixExpressionAst const &cast_lhs,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
+      PostfixExpressionOperatorFunctionCallAst &fn_call,
+      TypeAst const &fn_owner_type,
+      IdentifierAst const &fn_name,
+      PostfixExpressionAst const &cast_lhs,
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
       -> PropagatedMethodCall {
       //
 
@@ -561,18 +507,18 @@ namespace spp::analyse::utils::overload_utils {
       // Determine the overload based off the function
       // (uniform system).
       auto [overload, is_closure] = [&] {
-        const auto _meta_guard = asts::meta::MetaGuard(meta);
+        const auto _meta_guard = meta::MetaGuard(meta);
         meta->PostfixExpressionLhs = transformed_lhs.get();
         return DetermineOverload(*transformed_fn_call, sm, meta);
       }();
 
       // Get the argument group with the "self" injection,
       // and bind it to the function call.
-      fn_call.FnArgGroup = asts::AstClone(transformed_fn_call->FnArgGroup);
+      fn_call.FnArgGroup = AstClone(transformed_fn_call->FnArgGroup);
 
       // Create a mock postfix based on the transformation.
       transformed_lhs->Stage7_AnalyseSemantics(sm, meta);
-      auto pf = MakeUnique<asts::PostfixExpressionAst>(
+      auto pf = MakeUnique<PostfixExpressionAst>(
         std::move(transformed_lhs), std::move(transformed_fn_call));
       return PropagatedMethodCall{std::move(overload), is_closure, std::move(pf)};
     }
@@ -588,20 +534,20 @@ namespace spp::analyse::utils::overload_utils {
      * @param gn_args The generic arguments for this candidate, merged into in place.
      * @todo: See if this can be removed - works but bloaty
      */
-    auto BindSupGenericsFromReceiver(
-      scopes::Scope const *fn_scope,
-      asts::TypeAst const *fn_owner_type,
-      asts::GenericArgumentGroupAst &gn_args)
+    auto BindBlanketAndPackGenericsFromReceiver(
+      Scope const *fn_scope,
+      TypeAst const *fn_owner_type,
+      GenericArgumentGroupAst &gn_args)
       -> void {
       if (fn_owner_type == nullptr or fn_scope == nullptr) { return; }
 
       // A method is lowered into its own "sup $F ext FunXxx" block,
       // inside the one it was written in; the generics are on that.
-      const auto sup_pattern_of = [](scopes::Scope const *scope) -> Shared<asts::TypeAst> {
+      const auto sup_pattern_of = [](Scope const *scope) -> Shared<TypeAst> {
         if (scope == nullptr or scope->AstNode == nullptr) { return nullptr; }
-        const auto is_sup = scope->AstNode->To<asts::SupPrototypeFunctionsAst>() != nullptr
-          or scope->AstNode->To<asts::SupPrototypeExtensionAst>() != nullptr;
-        return is_sup ? asts::AstName(scope->AstNode) : nullptr;
+        const auto is_sup = scope->AstNode->To<SupPrototypeFunctionsAst>() != nullptr
+          or scope->AstNode->To<SupPrototypeExtensionAst>() != nullptr;
+        return is_sup ? AstName(scope->AstNode) : nullptr;
       };
       auto const *sup_scope = fn_scope;
       auto pattern = sup_pattern_of(sup_scope);
@@ -611,14 +557,14 @@ namespace spp::analyse::utils::overload_utils {
       }
       if (pattern == nullptr) { return; }
       const auto receiver = fn_owner_type->WithConvention(nullptr);
-      auto bound = Vec<Unique<asts::GenericArgumentAst>>();
+      auto bound = Vec<Unique<GenericArgumentAst>>();
 
       // A blanket block's type is its own generic, standing for
       // the whole receiver.
       const auto pattern_sym = sup_scope->GetTypeSymbol(pattern->WithoutGenerics().get());
       if (pattern_sym != nullptr and pattern_sym->IsTypeGeneric()) {
-        if (auto name = dynamic_shared_cast<asts::TypeIdentifierAst>(pattern->WithoutGenerics()); name != nullptr) {
-          bound.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(std::move(name), nullptr, receiver));
+        if (auto name = dynamic_shared_cast<TypeIdentifierAst>(pattern->WithoutGenerics()); name != nullptr) {
+          bound.EmplaceBack(GenericArgumentAst::NewType(std::move(name), receiver));
         }
       }
 
@@ -628,17 +574,17 @@ namespace spp::analyse::utils::overload_utils {
       else {
         auto const &pattern_args = pattern->LastTypePart()->GnArgGroup->Args;
         const auto receiver_args = receiver->LastTypePart()->GnArgGroup->GetTypeArgs();
-        const auto last = not pattern_args.IsEmpty()
-          ? pattern_args.Back()->To<asts::GenericArgumentTypeAst>()
+        const auto last = not pattern_args.IsEmpty() and pattern_args.Back()->TypeVal != nullptr
+          ? pattern_args.Back().get()
           : nullptr;
-        const auto last_sym = last != nullptr ? sup_scope->GetTypeSymbol(last->Val->WithoutGenerics().get()) : nullptr;
+        const auto last_sym = last != nullptr ? sup_scope->GetTypeSymbol(last->TypeVal->WithoutGenerics().get()) : nullptr;
         if (last_sym != nullptr and last_sym->IsTypeGeneric() and last_sym->IsVariadic
           and receiver_args.Len() + 1 >= pattern_args.Len()) {
-          auto elems = Vec<Shared<asts::TypeAst>>();
-          for (auto i = pattern_args.Len() - 1; i < receiver_args.Len(); ++i) { elems.EmplaceBack(receiver_args[i]->Val); }
-          if (auto name = dynamic_shared_cast<asts::TypeIdentifierAst>(last->Val); name != nullptr) {
-            bound.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
-              std::move(name), nullptr, asts::generate::common_types::TupleType(0, std::move(elems))));
+          auto elems = Vec<Shared<TypeAst>>();
+          for (auto i = pattern_args.Len() - 1; i < receiver_args.Len(); ++i) { elems.EmplaceBack(receiver_args[i]->TypeVal); }
+          if (auto name = dynamic_shared_cast<TypeIdentifierAst>(last->TypeVal); name != nullptr) {
+            bound.EmplaceBack(GenericArgumentAst::NewType(
+              std::move(name), generate::common_types::TupleType(0, std::move(elems))));
           }
         }
       }
@@ -661,13 +607,13 @@ namespace spp::analyse::utils::overload_utils {
      * @return The pinned receiver type to re-apply after inference, or @c nullptr when nothing was pinned.
      */
     auto PinSelfToReceiver(
-      asts::FunctionPrototypeAst const &fn_proto,
-      scopes::Scope const *fn_scope,
-      asts::TypeAst const *fn_owner_type,
-      asts::GenericArgumentGroupAst &gn_args,
-      scopes::ScopeManager const *sm,
-      asts::meta::CompilerMetaData const *meta)
-      -> Shared<asts::TypeAst> {
+      FunctionPrototypeAst const &fn_proto,
+      Scope const *fn_scope,
+      TypeAst const *fn_owner_type,
+      GenericArgumentGroupAst &gn_args,
+      ScopeManager const *sm,
+      meta::CompilerMetaData const *meta)
+      -> Shared<TypeAst> {
       using type_compare::TypeEq;
 
       const auto declared_self = fn_scope->GetEnclosingSelfType(*meta);
@@ -677,7 +623,7 @@ namespace spp::analyse::utils::overload_utils {
       const auto declared_on_abstract = declared_self_sym != nullptr and declared_self_sym->LinkedScope != nullptr
         and not type_members::GetUnimplementedAbstractMethods(*declared_self_sym->LinkedScope).IsEmpty();
 
-      auto self_pin = Shared<asts::TypeAst>(nullptr);
+      auto self_pin = Shared<TypeAst>(nullptr);
       if (fn_owner_type != nullptr and declared_self != nullptr
         and (SignatureNamesSelf(fn_proto) or declared_on_abstract)) {
         auto receiver = fn_owner_type->WithConvention(nullptr);
@@ -694,9 +640,9 @@ namespace spp::analyse::utils::overload_utils {
           if (not receiver->IsSelfType() and not receiver_sym->IsTypeGeneric()) {
             self_pin = receiver;
           }
-          auto self_arg = Vec<Unique<asts::GenericArgumentAst>>();
-          self_arg.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
-            asts::generate::common_types::SelfType(0), nullptr, std::move(receiver)));
+          auto self_arg = Vec<Unique<GenericArgumentAst>>();
+          self_arg.EmplaceBack(GenericArgumentAst::NewType(
+            generate::common_types::SelfType(0), std::move(receiver)));
           gn_args.MergeGenerics(std::move(self_arg));
         }
       }
@@ -704,14 +650,14 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto InferAllGenerics(
-      asts::FunctionPrototypeAst const &fn_proto,
-      asts::FunctionParameterGroupAst const &fn_params,
-      asts::FunctionCallArgumentGroupAst &fn_args,
-      asts::GenericArgumentGroupAst &gn_args,
+      FunctionPrototypeAst const &fn_proto,
+      FunctionParameterGroupAst const &fn_params,
+      FunctionCallArgumentGroupAst &fn_args,
+      GenericArgumentGroupAst &gn_args,
       const bool is_variadic_fn,
-      scopes::Scope const *fn_scope,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
+      Scope const *fn_scope,
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
       -> void {
       //
       using generic_bindings::EnforceGenericConstraintsAllArgs;
@@ -723,7 +669,7 @@ namespace spp::analyse::utils::overload_utils {
       // the owner's and the "sup" block's arguments in.
       NameFnArgs(
         fn_args, fn_params, *sm, meta, gn_args.GetAllArgs(),
-        const_cast<scopes::Scope*>(fn_scope));
+        const_cast<Scope*>(fn_scope));
 
       // The inference source is all the function arguments (except for
       // "self")
@@ -763,12 +709,12 @@ namespace spp::analyse::utils::overload_utils {
      * @param fn_scope The scope the candidate was declared in, which its types resolve in.
      */
     auto StripVoidParams(
-      asts::FunctionPrototypeAst const &fn_proto,
-      scopes::Scope const *fn_scope)
+      FunctionPrototypeAst const &fn_proto,
+      Scope const *fn_scope)
       -> void {
       auto &params = fn_proto.FnParamGroup->Params;
       for (auto i = params.Len(); i > 0uz; --i) {
-        if (type_predicates::IsTypeVoid(*params[i - 1uz]->Type, *fn_scope)) {
+        if (type_predicates::IsTypeVoid(TypeRef::OfHead(*params[i - 1uz]->Type, *fn_scope), *fn_scope)) {
           genex::actions::erase(params, params.begin() + static_cast<sys::ssize_t>(i - 1uz));
         }
       }
@@ -787,12 +733,12 @@ namespace spp::analyse::utils::overload_utils {
      * @param sm The scope manager, positioned at the call site.
      */
     auto CheckArgNamesAgainstParams(
-      asts::FunctionParameterGroupAst const &func_params,
-      Vec<Shared<asts::IdentifierAst>> const &func_param_names,
-      Vec<Shared<asts::IdentifierAst>> const &func_param_names_req,
-      Vec<asts::IdentifierAst*> const &func_arg_names,
-      asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-      scopes::ScopeManager const *sm)
+      FunctionParameterGroupAst const &func_params,
+      Vec<Shared<IdentifierAst>> const &func_param_names,
+      Vec<Shared<IdentifierAst>> const &func_param_names_req,
+      Vec<IdentifierAst*> const &func_arg_names,
+      PostfixExpressionOperatorFunctionCallAst const &fn_call,
+      ScopeManager const *sm)
       -> void {
       using errors::SppArgumentNameInvalidError;
       using errors::SppArgumentMissingError;
@@ -802,8 +748,8 @@ namespace spp::analyse::utils::overload_utils {
         | genex::to<Vec>();
 
       const auto param_ctx = func_params.Params.IsEmpty()
-        ? static_cast<asts::Ast const*>(&func_params)
-        : static_cast<asts::Ast const*>(func_params.Params[0].get());
+        ? static_cast<Ast const*>(&func_params)
+        : static_cast<Ast const*>(func_params.Params[0].get());
       RaiseIf<SppArgumentNameInvalidError>(
         not invalid_args.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(*param_ctx, "parameter", *invalid_args[0], "argument"));
@@ -817,12 +763,12 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto ValidateArgsMatchParams(
-      asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-      asts::FunctionPrototypeAst const &fn_proto,
-      scopes::Scope const *fn_scope,
-      asts::FunctionCallArgumentGroupAst const &func_args,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
+      PostfixExpressionOperatorFunctionCallAst const &fn_call,
+      FunctionPrototypeAst const &fn_proto,
+      Scope const *fn_scope,
+      FunctionCallArgumentGroupAst const &func_args,
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
       -> void {
       //
       using errors::SppArgumentNameInvalidError;
@@ -832,8 +778,9 @@ namespace spp::analyse::utils::overload_utils {
       using type_compare::RelaxedTypeEq;
 
       StripVoidParams(fn_proto, fn_scope);
-      const auto arg_is_void = [&](asts::FunctionCallArgumentKeywordAst const *a) {
-        return type_predicates::IsTypeVoid(*a->Val->InferType(sm, meta), *sm->CurrentScope);
+      const auto arg_is_void = [&](FunctionCallArgumentKeywordAst const *a) {
+        const auto kind_sym = a->Val->InferTypeRef(sm, meta).KindSym();
+        return kind_sym != nullptr and type_predicates::IsTypeVoid(*kind_sym, *sm->CurrentScope);
       };
 
       // Recreate the lists of function parameters, and their
@@ -851,7 +798,7 @@ namespace spp::analyse::utils::overload_utils {
       if (const auto self_param = fn_proto.FnParamGroup->GetSelfParam(); self_param != nullptr) {
         func_param_names_req.Insert(func_param_names_req.begin(), self_param->ExtractName());
       }
-      auto func_arg_names = Vec<asts::IdentifierAst*>();
+      auto func_arg_names = Vec<IdentifierAst*>();
       for (auto const &x : func_args.GetKeywordArgs()) {
         if (not arg_is_void(x)) { func_arg_names.EmplaceBack(x->Name.get()); }
       }
@@ -861,20 +808,39 @@ namespace spp::analyse::utils::overload_utils {
 
       // Type check the arguments against the parameters. Sort
       // the arguments into parameter order first.
-      auto sorted_func_arguments = Vec<asts::FunctionCallArgumentKeywordAst*>();
+      auto sorted_func_arguments = Vec<FunctionCallArgumentKeywordAst*>();
       for (auto const &x : func_args.GetKeywordArgs()) {
         if (not arg_is_void(x)) { sorted_func_arguments.EmplaceBack(x); }
       }
       genex::actions::sort(
         sorted_func_arguments,
-        {}, [&](asts::FunctionCallArgumentKeywordAst *arg) {
+        {}, [&](FunctionCallArgumentKeywordAst *arg) {
           return genex::position(func_param_names, [&arg](auto const &param) { return *arg->Name == *param; });
         });
 
       for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->GetAllParams())) {
+        // A "self" parameter carries no type check of its own:
+        // the receiver is what chose this overload to begin with,
+        // so there is nothing left to compare it against. It only
+        // needs the convention the prototype declares.
+        if (const auto self_param = param->To<FunctionParameterSelfAst>(); self_param != nullptr) {
+          // The prototype's convention is cloned, so its tokens
+          // sit in the prototype's file; they are placed on the
+          // receiver the call was made through instead.
+          arg->Conv = AstClone(self_param->Conv);
+          if (auto *const m = arg->Conv != nullptr ? arg->Conv->To<ConventionMutAst>() : nullptr) {
+            m->TokBorrow->PatchPos(arg->Val->PosStart());
+            m->TokMut->PatchPos(arg->Val->PosStart());
+          }
+          else if (auto *const r = arg->Conv != nullptr ? arg->Conv->To<ConventionRefAst>() : nullptr) {
+            r->TokBorrow->PatchPos(arg->Val->PosStart());
+          }
+          continue;
+        }
+
         auto p_type = fn_scope->GetTypeSymbol(param->Type.get())->FqName()->WithConvention(
-          asts::AstClone(param->Type->GetConvention()));
-        if (p_type->AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
+          AstClone(param->Type->GetConvention()));
+        if (type_predicates::NamesSelfType(*p_type)) {
           // "Self" is the type the function belongs to. Taking it from the call-site receiver is right when the
           // receiver is that type, and wrong when the method was reached by forwarding: "&Str" calling "StrView::eq"
           // bound "Self" in "that: &Self" to "Str", and since a bare "Self" is relaxed-matched against anything, the
@@ -893,53 +859,34 @@ namespace spp::analyse::utils::overload_utils {
           const auto reached_by_forwarding = owner_known and receiver != nullptr and conv != nullptr
             and not TypeEq(*owner, *receiver, *fn_scope, *sm->CurrentScope)
             and type_compare::TypeFwdEq(
-              *receiver->WithConvention(asts::AstClone(conv)),
-              *owner->WithConvention(asts::AstClone(conv)),
+              *receiver->WithConvention(AstClone(conv)),
+              *owner->WithConvention(AstClone(conv)),
               *sm->CurrentScope, *fn_scope);
 
           if (reached_by_forwarding or (owner_known and receiver == nullptr)) {
             p_type = type_utils::SubstituteSelfTypeAndAnalyse(*p_type->WithoutConvention(), *fn_scope, *sm, *meta)
-              ->WithConvention(asts::AstClone(conv));
+              ->WithConvention(AstClone(conv));
           }
           else if (receiver != nullptr) {
             p_type = type_utils::SubstituteSelfTypeWith(*p_type->WithoutConvention(), *receiver)
-              ->WithConvention(asts::AstClone(conv));
+              ->WithConvention(AstClone(conv));
           }
         }
 
         auto a_type = arg->InferType(sm, meta);
 
-        if (const auto variadic_param = param->To<asts::FunctionParameterVariadicAst>(); variadic_param != nullptr) {
+        if (const auto variadic_param = param->To<FunctionParameterVariadicAst>(); variadic_param != nullptr) {
           const auto variadic_gn_param = fn_proto.GetNonGenericImpl()->GnParamGroup->GetVariadicParams();
-          const auto orig_name = dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_param->Source.OriginalType);
+          const auto orig_name = dynamic_shared_cast<TypeIdentifierAst>(variadic_param->Source.OriginalType);
           const auto is_variadic_generic_type = variadic_gn_param != nullptr
             and orig_name != nullptr
-            and *orig_name == *dynamic_shared_cast<asts::TypeIdentifierAst>(variadic_gn_param->Name);
+            and *orig_name == *dynamic_shared_cast<TypeIdentifierAst>(variadic_gn_param->Name);
 
           if (not is_variadic_generic_type) {
             auto ts = Vec(a_type->LastTypePart()->GnArgGroup->Args.Len(), p_type);
-            p_type = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
+            p_type = generate::common_types::TupleType(param->PosStart(), std::move(ts));
             p_type->Stage7_AnalyseSemantics(sm, meta);
           }
-        }
-
-        // A "self" parameter carries no type check of its own:
-        // the receiver is what chose this overload to begin with,
-        // so there is nothing left to compare it against. It only
-        // needs the convention the prototype declares.
-        if (const auto self_param = param->To<asts::FunctionParameterSelfAst>(); self_param != nullptr) {
-          // The prototype's convention is cloned, so its tokens
-          // sit in the prototype's file; they are placed on the
-          // receiver the call was made through instead.
-          arg->Conv = asts::AstClone(self_param->Conv);
-          if (auto *const m = arg->Conv != nullptr ? arg->Conv->To<asts::ConventionMutAst>() : nullptr) {
-            m->TokBorrow->PatchPos(arg->Val->PosStart());
-            m->TokMut->PatchPos(arg->Val->PosStart());
-          }
-          else if (auto *const r = arg->Conv != nullptr ? arg->Conv->To<asts::ConventionRefAst>() : nullptr) {
-            r->TokBorrow->PatchPos(arg->Val->PosStart());
-          }
-          continue;
         }
 
         // An argument satisfies its parameter either outright,
@@ -956,18 +903,15 @@ namespace spp::analyse::utils::overload_utils {
           // held by binding such a generic is not a match either.
           auto inferred = type_compare::GenericInferenceMap();
           const auto relaxed_matched = type_compare::ConventionEq(*p_type, *a_type)
-            and not IsRigidGenericAtCaller(*p_type, *sm->CurrentScope)
-            and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, inferred)
-            and not genex::any_of(inferred, [&](auto const &binding) {
-              return IsRigidBindingAtCaller(*binding.first, *sm->CurrentScope);
-            });
+            and RelaxedTypeEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope, inferred);
 
           // Forwarding is the last resort, tried only once the
           // argument has failed to match any other way - so it
           // never displaces a relaxed match that would have bound
           // the parameter's generics correctly.
           if (not relaxed_matched and type_compare::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
-            if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
+            const auto a_ref = TypeRef::Of(*a_type, *sm->CurrentScope);
+            if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, a_ref, sm, meta); fwd_call != nullptr) {
               arg->Val = std::move(fwd_call);
               continue;
             }
@@ -980,17 +924,13 @@ namespace spp::analyse::utils::overload_utils {
 
         // The types matched, and may still have matched by forwarding ("&Vec[T]" satisfying a "&View[T]" parameter),
         // in which case what the callee is handed is the forwarded-to value, so the argument becomes that call. This
-        // is the argument-position counterpart of a method being called on the value its receiver forwards to.
-        //
-        // Todo: an argument accepted by the relaxed match above never reaches here, because that branch returns. A
-        //  parameter written as "&Self" is relaxed-matched against anything, so "eq(&self, that: &Self)" on a
-        //  "StrView" takes a "&Str" unforwarded and reads it through "StrView"'s "{ptr, length}" shape - which is why
-        //  "Str == Str" is false for equal strings. Trying the forward before the relaxed match instead is not the
-        //  answer: it rewrites arguments that the relaxed match would have bound correctly, and segfaults a third of
-        //  the suite. Resolving "Self" to the owning type rather than the call-site receiver is not enough on its own
-        //  either - it changes nothing here, because the pair never reaches this branch.
+        // is the argument-position counterpart of a method being called on the value its receiver forwards to. An
+        // argument the relaxed match accepted never reaches here; "Self" picking the owner when the receiver only
+        // forwards to it (above) is what keeps "Str == Str" from reading a "&Str" as a "StrView". Trying the forward
+        // before the relaxed match instead segfaults a third of the suite.
         if (type_compare::TypeFwdEq(*a_type, *p_type, *sm->CurrentScope, *fn_scope)) {
-          if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, *a_type, sm, meta); fwd_call != nullptr) {
+          const auto a_ref = TypeRef::Of(*a_type, *sm->CurrentScope);
+          if (auto fwd_call = type_utils::BuildFwdCall(*arg->Val, a_ref, sm, meta); fwd_call != nullptr) {
             arg->Val = std::move(fwd_call);
           }
         }
@@ -1008,8 +948,8 @@ namespace spp::analyse::utils::overload_utils {
      */
     auto NarrowByReturnType(
       Vec<PassedOverload> &pass_overloads,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
       -> void {
       using type_compare::TypeEq;
       using type_utils::SubstituteSelfTypeAndAnalyse;
@@ -1018,11 +958,12 @@ namespace spp::analyse::utils::overload_utils {
 
       auto return_matches = Vec<PassedOverload>();
       for (auto &&matched : pass_overloads) {
-        auto ret = asts::AstCloneShared(matched.Proto->ReturnType);
-        auto tm = scopes::ScopeManager(sm->GlobalScope, const_cast<scopes::Scope*>(matched.FnScope));
+        auto ret = AstCloneShared(matched.Proto->ReturnType);
+        auto tm = ScopeManager(sm->GlobalScope, const_cast<Scope*>(matched.FnScope));
         ret = SubstituteSelfTypeAndAnalyse(*ret, *matched.FnScope, tm, *meta);
 
-        if (TypeEq(*ret, *meta->ReturnTypeOverloadResolverType, *matched.FnScope, *sm->CurrentScope)) {
+        const auto ret_ref = TypeRef::Of(*ret, *matched.FnScope);
+        if (TypeEq(ret_ref, *meta->ReturnTypeOverloadResolverType, *matched.FnScope, *sm->CurrentScope)) {
           return_matches.EmplaceBack(std::move(matched));
         }
       }
@@ -1031,15 +972,26 @@ namespace spp::analyse::utils::overload_utils {
     }
 
     auto ManageMatchedOverloads(
-      asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
+      PostfixExpressionOperatorFunctionCallAst const &fn_call,
       Vec<PassedOverload> const &pass_overloads,
       Vec<FailedOverload> const &fail_overloads,
-      asts::FunctionCallArgumentGroupAst const &arg_group,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
+      FunctionCallArgumentGroupAst const &arg_group,
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
       -> void {
-      // If there are no pass overloads, raise an error.
+      // How the call's arguments read, for either error below.
       using namespace std::string_literals;
+      const auto arg_usage_signature = [&arg_group, sm, meta] {
+        return arg_group.Args
+          | genex::views::transform([sm, meta](auto const &x) {
+            return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self";
+          })
+          | genex::views::intersperse(", "_str)
+          | genex::views::join
+          | genex::to<Str>();
+      };
+
+      // If there are no pass overloads, raise an error.
       if (pass_overloads.IsEmpty()) {
         auto failed_signatures_and_errors = "\n" + (fail_overloads
           | genex::views::transform([](auto const &f) {
@@ -1049,20 +1001,12 @@ namespace spp::analyse::utils::overload_utils {
           | genex::views::join
           | genex::to<Str>());
 
-        auto arg_usage_signature = arg_group.Args
-          | genex::views::transform([sm, meta](auto const &x) {
-            return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self";
-          })
-          | genex::views::intersperse(", "_str)
-          | genex::views::join
-          | genex::to<Str>();
-
         auto sub_errors = fail_overloads
           | genex::views::transform([](auto const &f) { return f.Error; })
           | genex::to<Vec>();
 
         Raise<errors::SppFunctionCallNoValidSignaturesError>(
-          {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature),
+          {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature()),
           std::move(sub_errors));
       }
 
@@ -1074,17 +1018,24 @@ namespace spp::analyse::utils::overload_utils {
           | genex::views::join
           | genex::to<Str>());
 
-        auto arg_usage_signature = arg_group.Args
-          | genex::views::transform([sm, meta](auto const &x) {
-            return x->GetSelfType() == nullptr ? x->InferType(sm, meta)->ToString() : "Self";
-          })
-          | genex::views::intersperse(", "_str)
-          | genex::views::join
-          | genex::to<Str>();
-
         Raise<errors::SppFunctionCallOverloadAmbiguousError>(
-          {sm->CurrentScope}, ERR_ARGS(fn_call, signatures, arg_usage_signature));
+          {sm->CurrentScope}, ERR_ARGS(fn_call, signatures, arg_usage_signature()));
       }
+    }
+
+    /**
+     * The scope a prototype's generic parameters are looked up from: its own function scope, which declares its own
+     * and reaches the ones inherited from its "sup" block through its ancestors.
+     * @param fn_proto The prototype.
+     * @param fallback The scope to use when the prototype has no scope of its own.
+     * @return The scope to look the parameters up from.
+     */
+    auto CalleeScope(
+      FunctionPrototypeAst const &fn_proto,
+      Scope const &fallback)
+      -> Scope const& {
+      const auto *own = fn_proto.GetAstScope();
+      return own != nullptr ? *own : fallback;
     }
 
     /**
@@ -1093,93 +1044,94 @@ namespace spp::analyse::utils::overload_utils {
      * naming a bound comp generic becomes the value read back off its symbol. An unbound parameter names nothing yet
      * and is left alone, which is what keeps a template's signature written in its own terms.
      * @param combined_generics The argument group to normalise, rewritten in place.
+     * @param callee_scope The scope the callee's generic parameters are looked up from.
      * @param sm The scope manager, positioned at the call site.
      */
     auto NormaliseGenericArgs(
-      asts::GenericArgumentGroupAst &combined_generics,
-      scopes::ScopeManager const *sm)
+      GenericArgumentGroupAst &combined_generics,
+      Scope const &callee_scope,
+      ScopeManager const *sm)
       -> void {
-      // An unbound parameter is what it looks like and is left alone: its symbol carries no class prototype, which is
-      // what separates it from a parameter bound to a real type.
-      for (auto *arg : combined_generics.Args
-           | genex::views::ptr
-           | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()) {
-        const auto val_sym = sm->CurrentScope->GetTypeSymbol(arg->Val.get());
-        if (val_sym == nullptr or not val_sym->IsTypeGeneric() or val_sym->Type == nullptr) { continue; }
-        if (val_sym->LinkedScope == nullptr or val_sym->LinkedScope->TySym == nullptr) { continue; }
-        arg->Val = val_sym->LinkedScope->TySym->FqName();
-      }
+      // Bound generics are written as what they are bound to, as a class instantiation's arguments are.
+      monomorphization_utils::CanonicaliseGenericArgs(combined_generics, *sm->CurrentScope);
 
-      // The same for a comp-time argument naming a bound comp generic, whose value is on its symbol.
-      for (auto *arg : combined_generics.Args
-           | genex::views::ptr
-           | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()) {
-        const auto val_ident = arg->Val->To<asts::IdentifierAst>();
-        if (val_ident == nullptr) { continue; }
-
-        const auto val_sym = sm->CurrentScope->GetVarSymbol(val_ident);
-        const auto bound = val_sym != nullptr ? val_sym->BoundCompValue() : nullptr;
-        if (bound == nullptr) { continue; }
-        arg->Val = asts::AstClone(bound);
-      }
-
-      // Drop the arguments that only restate their parameter. What is left is what this instantiation actually pins,
-      // and if that is nothing then there is no instantiation to make.
-      combined_generics.Args |= genex::actions::remove_if(
-        [](auto const &a) { return generic_bindings::BindsToItself(*a); });
+      // Drop the arguments that name the very parameter they bind - a call made inside the generic context declaring
+      // it, as when one method of a generic "sup" block calls another. What is left is what this instantiation actually
+      // pins, and if that is nothing then there is no instantiation to make. Only the same declaration counts, which a
+      // parameter's "ParamId" identifies (a binding records the one it binds): another context's
+      // parameter of the same name is another type, and gets an instantiation of its own.
+      const auto names_own_param = [&](auto const &a) {
+        if (a->Name != nullptr and a->TypeVal != nullptr) {
+          const auto param_sym = callee_scope.GetTypeSymbol(a->Name.get());
+          const auto val_sym = sm->CurrentScope->GetTypeSymbol(a->TypeVal.get());
+          return param_sym != nullptr and val_sym != nullptr and param_sym->ParamId != 0
+            and (val_sym->ParamId == param_sym->ParamId or val_sym->BindsParamId == param_sym->ParamId);
+        }
+        if (a->Name != nullptr and a->CompVal != nullptr) {
+          const auto val_ident = a->CompVal->template To<IdentifierAst>();
+          if (val_ident == nullptr) { return false; }
+          const auto param_sym = callee_scope.GetVarSymbol(IdentifierAst::FromType(*a->Name).get());
+          return param_sym != nullptr and param_sym == sm->CurrentScope->GetVarSymbol(val_ident);
+        }
+        return false;
+      };
+      combined_generics.Args |= genex::actions::remove_if(names_own_param);
     }
 
     auto PotentiallyGenerateGenericSubstitutedPrototype(
-      asts::FunctionPrototypeAst *fn_proto,
-      scopes::Scope const *fn_scope,
-      asts::GenericArgumentGroupAst &generic_args,
-      Shared<asts::TypeAst> const &variadic_pack_type,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta)
-      -> Tup<asts::FunctionPrototypeAst*, scopes::Scope const*> {
+      FunctionPrototypeAst *fn_proto,
+      Scope const *fn_scope,
+      GenericArgumentGroupAst &combined_generics,
+      Shared<TypeAst> const &variadic_pack_type,
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
+      -> Tup<FunctionPrototypeAst*, Scope const*> {
       //
       using errors::SppSecondClassBorrowViolationError;
       using monomorphization_utils::CreateGenericFunScope;
       using type_predicates::IsTypeBorrowed;
 
-      // Inference has already produced a binding for every one of
-      // this prototype's generic parameters, including the ones it
-      // inherited from the enclosing "sup" block.
-      auto &combined_generics = generic_args;
+      // Inference has already produced a binding for every one of this prototype's generic parameters, including the
+      // ones it inherited from the enclosing "sup" block.
+      NormaliseGenericArgs(combined_generics, CalleeScope(*fn_proto, *fn_scope), sm);
 
-      NormaliseGenericArgs(combined_generics, sm);
+      // Stamp comp arguments naming a comp parameter with that parameter, where they are written. The instantiation
+      // below binds the callee's own generics in the same table, and a caller's "w" read there by name would be the
+      // callee's inherited "w" - "U32::from(SizedIntegerUnsigned[w]::from(..))" inside BigUInt's "sup [cmp w: U32]".
+      for (auto const *arg : combined_generics.GetCompArgs()) {
+        if (arg->CompVal != nullptr) { cmp_utils::StampCompGenerics(*arg->CompVal, *sm->CurrentScope); }
+      }
 
       // Separate variadic instantiation by the types going into the
       // variadic function parameter.
       if (variadic_pack_type != nullptr) {
-        auto pack_name = MakeUnique<asts::TypeIdentifierAst>(
+        auto pack_name = MakeUnique<TypeIdentifierAst>(
           variadic_pack_type->PosStart(),
           "VariadicPackOf" + fn_proto->FnParamGroup->GetVariadicParams()->ExtractName()->Val,
           nullptr);
-        combined_generics.Args.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
-          std::move(pack_name), nullptr, asts::AstClone(variadic_pack_type)));
+        combined_generics.Args.EmplaceBack(GenericArgumentAst::NewType(
+          std::move(pack_name), AstClone(variadic_pack_type)));
       }
 
       // Consider if we need to create a generic substituted
       // function prototype.
       if (not combined_generics.Args.IsEmpty()) {
-        // Reuse the instantiation for these exact arguments if one
-        // already exists.
-        if (auto [existing_scope, existing_proto] = fn_proto->FindGenericSubstitution(combined_generics);
+        // Reuse the instantiation for arguments of this identity if one already exists - what they resolve to from the
+        // call site, not how they are spelled.
+        const auto identity = sm->CurrentScope->InstanceIdentityKey(combined_generics.GetAllArgs());
+        if (auto [existing_scope, existing_proto] = fn_proto->FindGenericSubstitution(identity);
           existing_proto != nullptr) {
           return {existing_proto, existing_scope};
         }
 
-        auto new_fn_proto = asts::AstClone(fn_proto);
+        auto new_fn_proto = AstClone(fn_proto);
         new_fn_proto->SetNonGenericImpl(fn_proto);
         new_fn_proto->DetachLlvmFuncSlot();
 
         // Create the new function scope for the generic implementation.
-        const auto generic_syms = sm->CurrentScope->GetExtendedGenericSymbols(combined_generics.GetAllArgs());
         const auto new_fn_scope = CreateGenericFunScope(
-          *fn_scope, asts::GenericArgumentGroupAst(nullptr, AstCloneVec(combined_generics.Args), nullptr),
-          generic_syms, sm, meta);
-        auto tm = scopes::ScopeManager(sm->GlobalScope, new_fn_scope);
+          *fn_scope, GenericArgumentGroupAst(nullptr, AstCloneVec(combined_generics.Args), nullptr), sm, meta);
+        auto tm = ScopeManager(sm->GlobalScope, new_fn_scope);
 
         // Drop only the parameters this substitution actually bound.
         new_fn_proto->GnParamGroup->Params |= genex::actions::remove_if([&](auto const &param) {
@@ -1188,14 +1140,21 @@ namespace spp::analyse::utils::overload_utils {
           });
         });
 
-        auto &generic_sub_slot = asts::AstBody(
-          fn_scope->AstNode)[0]->To<asts::FunctionPrototypeAst>()->RegisteredGenericSubstitutions().back();
+        auto &generic_sub_slot = AstBody(
+          fn_scope->AstNode)[0]->To<FunctionPrototypeAst>()->RegisteredGenericSubstitutions().back();
+        generic_sub_slot.IdentityKey = identity;
 
         // Substitute and analyse the function parameters and return
         // type.
         for (auto *p : new_fn_proto->FnParamGroup->GetNonSelfParams()) {
           p->Type = p->Type->SubstituteGenerics(combined_generics.GetAllArgs());
           p->Type->Stage7_AnalyseSemantics(&tm, meta);
+
+          // The default is checked against the substituted type, so it is rebuilt from what was written, in the same
+          // terms. The template's copy carries the template's analysis: "Wrap[T]::new()" would still return "Wrap[T=T]".
+          if (auto *const opt = p->To<FunctionParameterOptionalAst>(); opt != nullptr and opt->Source.OriginalDefaultVal != nullptr) {
+            opt->DefaultVal = AstClone(opt->Source.OriginalDefaultVal->SubstituteGenericsExpr(combined_generics.GetAllArgs()));
+          }
         }
 
         ReattachCallableConstraints(*new_fn_proto, *fn_proto, new_fn_scope, combined_generics, tm, meta);
@@ -1232,9 +1191,9 @@ namespace spp::analyse::utils::overload_utils {
   }
 
 auto spp::analyse::utils::overload_utils::DetermineOverload(
-  asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
+  PostfixExpressionOperatorFunctionCallAst &fn_call,
+  ScopeManager *sm,
+  meta::CompilerMetaData *meta)
   -> Pair<PassedOverload, bool> {
   //
   using scopes::ScopeManager;
@@ -1246,8 +1205,8 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
 
   // Todo: Workaround for aliased variable symbols being used
   //  as function targets, due to scope lookup.
-  auto temp = Shared<asts::ExpressionAst>(nullptr);
-  if (const auto id = lhs->To<asts::IdentifierAst>()) {
+  auto temp = Shared<ExpressionAst>(nullptr);
+  if (const auto id = lhs->To<IdentifierAst>()) {
     // A name declared inside the function (a function-type
     // variable) is a value being called, not a module function
     // spelled the same.
@@ -1267,9 +1226,9 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
   const auto [fn_owner_type, fn_owner_scope, fn_name] = GetFuncOwnerTypeAndFuncName(
     *lhs, *sm, meta);
 
-  const auto is_postfix = meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>();
+  const auto is_postfix = meta->PostfixExpressionLhs->To<PostfixExpressionAst>();
   const auto is_runtime = is_postfix
-    ? is_postfix->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
+    ? is_postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()
     : nullptr;
 
   // If we are resolving a method, then use the free function
@@ -1300,8 +1259,8 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     // overload.
     const auto fn_params = fn_proto->FnParamGroup.get();
     const auto gn_params = fn_proto->GnParamGroup.get();
-    auto fn_args = asts::AstClone(fn_call.FnArgGroup);
-    auto gn_args = asts::AstClone(fn_call.GnArgGroup);
+    auto fn_args = AstClone(fn_call.FnArgGroup);
+    auto gn_args = AstClone(fn_call.GnArgGroup);
     const auto is_variadic_fn =
       fn_proto->FnParamGroup->GetVariadicParams() != nullptr;
 
@@ -1320,7 +1279,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       // block declares - the first binding offered for a name wins.
       generic_bindings::NameGnArgs(*gn_args, *gn_params, *fn_proto->Name, *sm, *meta);
       gn_args->MergeGenerics(RetrieveOwnerGenericArgs(candidate.FwdType, meta));
-      BindSupGenericsFromReceiver(fn_scope, fn_owner_type.get(), *gn_args);
+      BindBlanketAndPackGenericsFromReceiver(fn_scope, fn_owner_type.get(), *gn_args);
       gn_args->MergeGenerics(std::move(candidate.SupGenerics->Args));
 
       const auto self_pin = PinSelfToReceiver(
@@ -1333,9 +1292,9 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       // generic parameters, so the pin above - whose name is not
       // one of them - is dropped on the way out. Put it back.
       if (self_pin != nullptr) {
-        auto self_arg = Vec<Unique<asts::GenericArgumentAst>>();
-        self_arg.EmplaceBack(MakeUnique<asts::GenericArgumentTypeKeywordAst>(
-          asts::generate::common_types::SelfType(0), nullptr, std::move(self_pin)));
+        auto self_arg = Vec<Unique<GenericArgumentAst>>();
+        self_arg.EmplaceBack(GenericArgumentAst::NewType(
+          generate::common_types::SelfType(0), std::move(self_pin)));
         gn_args->MergeGenerics(std::move(self_arg));
       }
 
@@ -1343,7 +1302,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
       // arguments of a variadic call are already collapsed into one
       // tuple-valued argument. Its type is what the callee's variadic
       // parameter actually receives.
-      auto variadic_pack_type = Shared<asts::TypeAst>(nullptr);
+      auto variadic_pack_type = Shared<TypeAst>(nullptr);
       if (is_variadic_fn) {
         const auto variadic_name = fn_proto->FnParamGroup->GetVariadicParams()->ExtractName();
         for (auto const &a : fn_args->GetKeywordArgs()) {
@@ -1388,12 +1347,12 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
 }
 
 auto spp::analyse::utils::overload_utils::InstantiateOverload(
-  asts::FunctionPrototypeAst *fn_proto,
-  scopes::Scope const *fn_scope,
-  asts::GenericArgumentGroupAst &generic_args,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> asts::FunctionPrototypeAst* {
+  FunctionPrototypeAst *fn_proto,
+  Scope const *fn_scope,
+  GenericArgumentGroupAst &generic_args,
+  ScopeManager *sm,
+  meta::CompilerMetaData *meta)
+  -> FunctionPrototypeAst* {
   // The arguments arrive already named - they are read off a "sup" block that has bound them - so there is nothing
   // here for inference to do, and the substitution itself is the whole of what a call site would reach.
   return std::get<0>(PotentiallyGenerateGenericSubstitutedPrototype(
@@ -1401,13 +1360,13 @@ auto spp::analyse::utils::overload_utils::InstantiateOverload(
 }
 
 auto spp::analyse::utils::overload_utils::FindInstantiatedOverload(
-  asts::FunctionPrototypeAst *fn_proto,
-  asts::GenericArgumentGroupAst &generic_args,
-  scopes::ScopeManager const *sm)
-  -> asts::FunctionPrototypeAst* {
+  FunctionPrototypeAst *fn_proto,
+  GenericArgumentGroupAst &generic_args,
+  ScopeManager const *sm)
+  -> FunctionPrototypeAst* {
   // Nothing to substitute means the template is the only prototype there is, exactly as
   // "PotentiallyGenerateGenericSubstitutedPrototype" decides it.
-  NormaliseGenericArgs(generic_args, sm);
+  NormaliseGenericArgs(generic_args, CalleeScope(*fn_proto, *sm->CurrentScope), sm);
   if (generic_args.Args.IsEmpty()) { return fn_proto; }
-  return fn_proto->FindGenericSubstitution(generic_args).second;
+  return fn_proto->FindGenericSubstitution(sm->CurrentScope->InstanceIdentityKey(generic_args.GetAllArgs())).second;
 }

@@ -40,7 +40,7 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
   /// Qualify types in key positions that have been written
   /// as not fully-qualified. This allows inter-module analysis,
   /// such as optional generic type parameters' default values.
-  virtual auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  virtual auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Log the super scopes being attached to their respect type
   /// targets. These aren't actually attached here, but are

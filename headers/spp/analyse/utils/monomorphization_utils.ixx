@@ -24,13 +24,22 @@ namespace spp::analyse::utils::monomorphization_utils {
     meta::CompilerMetaData *meta)
     -> void;
 
+  /// Rewrite each argument that names a bound generic as what it
+  /// is bound to, read from "scope": a type argument as the bound
+  /// type's qualified name, a comp argument as its value (or what
+  /// it folds to). A function instantiation's arguments are
+  /// recorded this way.
+  SPP_EXP_FUN auto CanonicaliseGenericArgs(
+    GenericArgumentGroupAst &args,
+    Scope const &scope)
+    -> void;
+
   /// Create the generic substitution for a class, and register
   /// it against the base class. This adds information into the
   /// module symbol tables / scope tree etc.
   SPP_EXP_FUN auto CreateGenericClsScope(
     TypeIdentifierAst &type_part,
     Shared<TypeSymbol> const &old_cls_sym,
-    Vec<Shared<Symbol>> const &external_generic_syms,
     bool is_tuple,
     ScopeManager *sm,
     meta::CompilerMetaData *meta)
@@ -41,7 +50,6 @@ namespace spp::analyse::utils::monomorphization_utils {
   SPP_EXP_FUN auto CreateGenericFunScope(
     Scope const &old_fun_scope,
     GenericArgumentGroupAst const &generic_args,
-    Vec<Shared<Symbol>> const &external_generic_syms,
     ScopeManager *sm,
     meta::CompilerMetaData *meta)
     -> Scope*;
@@ -52,11 +60,19 @@ namespace spp::analyse::utils::monomorphization_utils {
     Scope &old_sup_scope,
     Scope &new_cls_scope,
     GenericArgumentGroupAst const &generic_args,
-    Vec<Shared<Symbol>> const &external_generic_syms,
     ScopeManager const *sm,
     meta::CompilerMetaData *meta)
     -> Tup<Scope*, Scope*>;
 
-  /// Clear the static queue to prevent memory leaks.
-  SPP_EXP_FUN auto ClearSupScopeInstantiations() -> void;
+  /// Make the instantiation an open one stands for where "scope"
+  /// reads it, when re-keying it through that scope's bindings names
+  /// one not made yet ("Scope::OnInstantiationMissing"): its qualified
+  /// name is analysed there, as a name written there would be. Null
+  /// if that analysis fails, or it is already being made.
+  SPP_EXP_FUN auto InstantiateForScope(
+    TypeSymbol &open_instance,
+    Scope const &scope,
+    Shared<Scope> const &global_scope,
+    meta::CompilerMetaData *meta)
+    -> TypeSymbol*;
 }

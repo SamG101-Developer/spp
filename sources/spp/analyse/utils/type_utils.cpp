@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
@@ -28,16 +29,9 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_comp_ast;
 import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_ast;
-import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
@@ -65,9 +59,9 @@ import genex;
 import std;
 
 auto spp::analyse::utils::type_utils::GetFunctionalType(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope)
-  -> Shared<const asts::TypeAst> {
+  TypeAst const &type,
+  Scope const &scope)
+  -> Shared<const TypeAst> {
   //
   const auto type_sym = scope.GetTypeSymbol(&type);
 
@@ -76,30 +70,32 @@ auto spp::analyse::utils::type_utils::GetFunctionalType(
   // constraint of FunMov but passed as FunMut needs to still
   // use the FunMov overload.
   for (auto const &constraint : type_sym->GenericConstraints) {
-    if (type_predicates::IsTypeFunc(*constraint, scope)) { return constraint; }
+    if (type_predicates::IsTypeFunc(TypeRef::OfHead(*constraint, scope), scope)) { return constraint; }
   }
 
   // Check the type itself and all its supertypes (a type
   // superimposing a function type is also callable).
-  auto sup_types = Vec<Shared<const asts::TypeAst>>();
-  if (not type.IsCompilerGeneratedType()) { sup_types.EmplaceBack(type.shared_from_this()); }
-  sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-  for (auto const &sup_type : sup_types) {
-    if (type_predicates::IsTypeFunc(*sup_type, scope)) { return sup_type; }
+  if (not type.IsCompilerGeneratedType() and type_predicates::IsTypeFunc(TypeRef::OfHead(type, scope), scope)) {
+    return type.shared_from_this();
+  }
+  for (auto const *sup_scope : type_sym->LinkedScope->SupScopes()) {
+    if (sup_scope->TySym == nullptr or asts::AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
+    if (type_predicates::IsTypeFunc(*sup_scope->TySym, scope)) { return sup_scope->TySym->FqName(); }
   }
 
   return nullptr;
 }
 
 auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope,
-  asts::ExpressionAst const &expr,
+  TypeRef const &ref,
+  Scope const &scope,
+  ExpressionAst const &expr,
+  std::function<Shared<TypeAst>()> const &spell,
   StrView what,
   const bool raise)
-  -> Tup<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool> {
+  -> Tup<TypeSymbol*, Shared<TypeAst>, bool> {
   //
-  using asts::generate::common_types_precompiled::GEN_ONCE;
+  using generate::common_types_precompiled::GEN_ONCE;
   using errors::SppExpressionNotGeneratorError;
   using errors::SppExpressionAmbiguousGeneratorError;
 
@@ -109,80 +105,89 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
   // about - so only the lookup itself is guarded.
   // Todo: Like Copy, can we rely on constraints here? Add
   //  unit tests. Reconcile with the "IsTypeGeneric()" early-outs in "GetTryType"/"GetFwdTypes" at the same time.
-  const auto type_sym = scope.GetTypeSymbol(&type);
+  const auto type_sym = ref.Sym;
   if (type_sym == nullptr) {
-    RaiseIf<SppExpressionNotGeneratorError>(raise, {&scope}, ERR_ARGS(expr, type, what));
+    if (raise) {
+      const auto type = spell();
+      Raise<SppExpressionNotGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
+    }
     return {nullptr, nullptr, false};
   }
 
-  // Discover the supertypes and add the current type to it.
-  auto sup_types = Vec{type.shared_from_this()};
-  sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-
-  // Search through the supertypes for a direct generator type.
-  // Simple comparison check against the Gen and GenOnce types.
-  const auto generator_type_candidates = sup_types
-    | genex::views::filter([&](auto const &sup_type) { return type_predicates::IsTypeGen(*sup_type, scope); })
-    | genex::to<Vec>();
+  // Search the type itself, then its super classes by symbol, for a direct generator type.
+  auto generator_candidates = Vec<TypeSymbol*>();
+  if (type_predicates::IsTypeGen(ref, scope)) { generator_candidates.EmplaceBack(type_sym); }
+  for (auto const *sup_scope : type_sym->LinkedScope->SupScopes()) {
+    if (sup_scope->TySym == nullptr or asts::AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
+    if (type_predicates::IsTypeGen(*sup_scope->TySym, scope)) {
+      generator_candidates.EmplaceBack(sup_scope->TySym.get());
+    }
+  }
 
   // If there are no Gen or GenOnce super types, then the
   // generator and yield type cannot be obtained, so either
   // throw an error or return nullptr.
-  if (generator_type_candidates.IsEmpty()) {
-    RaiseIf<SppExpressionNotGeneratorError>(
-      raise, {&scope}, ERR_ARGS(expr, type, what));
+  if (generator_candidates.IsEmpty()) {
+    if (raise) {
+      const auto type = spell();
+      Raise<SppExpressionNotGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
+    }
     return {nullptr, nullptr, false};
   }
 
   // If there are more than 1 Gen or GenOnce super types, then
   // the generator and yield types would be ambiguous, so either
   // throw an error or return nullptr.
-  if (generator_type_candidates.Len() > 1) {
-    RaiseIf<SppExpressionAmbiguousGeneratorError>(
-      raise, {&scope}, ERR_ARGS(expr, type, what));
+  if (generator_candidates.Len() > 1) {
+    if (raise) {
+      const auto type = spell();
+      Raise<SppExpressionAmbiguousGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
+    }
     return {nullptr, nullptr, false};
   }
 
   // Extract the generator and yield type from the candidates.
   // Accessing [0] is safe as we have already done the validation
   // beforehand.
-  auto generator_type = generator_type_candidates[0];
-  auto yield_type = generator_type->LastTypePart()->GnArgGroup->TypeAt("Yield")->Val;
-  auto is_once = type_compare::TypeEq(
-    *GEN_ONCE, *generator_type->WithoutGenerics(), scope, scope);
+  auto *const generator_sym = generator_candidates[0];
+  auto yield_type = generator_sym->TypeArgType("Yield");
+  auto is_once = type_predicates::IsTemplate(*generator_sym, *GEN_ONCE, scope);
 
   // Return all the information about the generator type.
-  return {generator_type, yield_type, is_once};
+  return {generator_sym, yield_type, is_once};
 }
 
 auto spp::analyse::utils::type_utils::GetTryType(
-  asts::TypeAst const &type,
-  asts::ExpressionAst const &expr,
-  scopes::ScopeManager const &sm,
+  TypeRef const &ref,
+  ExpressionAst const &expr,
+  std::function<Shared<TypeAst>()> const &spell,
+  ScopeManager const &sm,
   StrView what,
   const bool raise)
-  -> Shared<const asts::TypeAst> {
+  -> TypeSymbol* {
   // Generic types are not Try types, so return nullptr.
   // Todo: Like Copy, can we rely on constraints here? Add
   //  unit tests.
-  const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
+  const auto type_sym = ref.Sym;
   if (type_sym == nullptr or type_sym->IsTypeGeneric()) { return nullptr; }
 
-  // Discover the supertypes and add the current type to it.
-  auto sup_types = Vec{type.shared_from_this()};
-  sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-
-  // Search through the supertypes for a direct try type.
-  // Simple comparison check against the Try types.
-  const auto try_type_candidates = sup_types
-    | genex::views::filter([&sm](auto &&sup_type) { return type_predicates::IsTypeTry(*sup_type, *sm.CurrentScope); })
-    | genex::to<Vec>();
+  // Search the type itself, then its super classes by symbol, for a direct try type.
+  auto try_type_candidates = Vec<TypeSymbol*>();
+  if (type_predicates::IsTypeTry(ref, *sm.CurrentScope)) { try_type_candidates.EmplaceBack(type_sym); }
+  for (auto const *sup_scope : type_sym->LinkedScope->SupScopes()) {
+    if (sup_scope->TySym == nullptr or asts::AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
+    if (type_predicates::IsTypeTry(*sup_scope->TySym, *sm.CurrentScope)) {
+      try_type_candidates.EmplaceBack(sup_scope->TySym.get());
+    }
+  }
 
   // If there are no Try super types, then the try type cannot
   // be obtained, so either throw an error or return nullptr.
   if (try_type_candidates.IsEmpty()) {
-    RaiseIf<errors::SppExpressionNotTryError>(
-      raise, {sm.CurrentScope}, ERR_ARGS(expr, type));
+    if (raise) {
+      const auto type = spell();
+      Raise<errors::SppExpressionNotTryError>({sm.CurrentScope}, ERR_ARGS(expr, *type));
+    }
     return nullptr;
   }
 
@@ -190,8 +195,10 @@ auto spp::analyse::utils::type_utils::GetTryType(
   // type would be ambiguous, so either throw an error or
   // return nullptr.
   if (try_type_candidates.Len() > 1) {
-    RaiseIf<errors::SppExpressionAmbiguousTryError>(
-      raise, {sm.CurrentScope}, ERR_ARGS(expr, type, what));
+    if (raise) {
+      const auto type = spell();
+      Raise<errors::SppExpressionAmbiguousTryError>({sm.CurrentScope}, ERR_ARGS(expr, *type, what));
+    }
     return nullptr;
   }
 
@@ -200,65 +207,64 @@ auto spp::analyse::utils::type_utils::GetTryType(
 }
 
 auto spp::analyse::utils::type_utils::GetFwdTypes(
-  asts::TypeAst const &type,
-  scopes::ScopeManager const &sm)
-  -> Pair<Shared<asts::TypeAst>, Shared<asts::TypeAst>> {
+  TypeSymbol const &sym,
+  Scope const &scope)
+  -> Pair<TypeSymbol*, TypeSymbol*> {
   //
-  using asts::generate::common_types_precompiled::FWD_MUT;
-  using asts::generate::common_types_precompiled::FWD_REF;
+  using generate::common_types_precompiled::FWD_MUT;
+  using generate::common_types_precompiled::FWD_REF;
 
   // Generic types do not have forward types, so return nullptr.
-  const auto type_sym = sm.CurrentScope->GetTypeSymbol(&type);
-  if (type_sym == nullptr or type_sym->IsTypeGeneric()) { return {nullptr, nullptr}; }
+  if (sym.IsTypeGeneric() or sym.LinkedScope == nullptr) { return {nullptr, nullptr}; }
 
   // Find the first FwdRef and first FwdMut super type in a single pass.
-  auto fwd_ref_type = Shared<asts::TypeAst>(nullptr);
-  auto fwd_mut_type = Shared<asts::TypeAst>(nullptr);
-  const auto consider = [&](Shared<asts::TypeAst> const &candidate) {
-    const auto bare = candidate->WithoutGenerics();
-    if (fwd_ref_type == nullptr and type_compare::TypeEq(*bare, *FWD_REF, *sm.CurrentScope, *sm.CurrentScope)) {
-      fwd_ref_type = candidate;
+  auto *fwd_ref_sym = static_cast<TypeSymbol*>(nullptr);
+  auto *fwd_mut_sym = static_cast<TypeSymbol*>(nullptr);
+  const auto consider = [&](TypeSymbol *candidate) {
+    if (fwd_ref_sym == nullptr and type_predicates::IsTemplate(*candidate, *FWD_REF, scope)) {
+      fwd_ref_sym = candidate;
     }
-    else if (fwd_mut_type == nullptr and type_compare::TypeEq(*bare, *FWD_MUT, *sm.CurrentScope, *sm.CurrentScope)) {
-      fwd_mut_type = candidate;
+    else if (fwd_mut_sym == nullptr and type_predicates::IsTemplate(*candidate, *FWD_MUT, scope)) {
+      fwd_mut_sym = candidate;
     }
   };
 
-  // Search the types for whichever marker is still missing.
-  consider(type.WithoutGenerics());
-  for (auto const &sup_type : type_sym->LinkedScope->SupTypes()) {
-    if (fwd_ref_type != nullptr and fwd_mut_type != nullptr) { break; }
-    consider(sup_type);
+  // Search the type and its super classes for whichever marker is still missing.
+  consider(const_cast<TypeSymbol*>(&sym));
+  for (auto const *sup_scope : sym.LinkedScope->SupScopes()) {
+    if (fwd_ref_sym != nullptr and fwd_mut_sym != nullptr) { break; }
+    if (sup_scope->TySym == nullptr or asts::AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
+    consider(sup_scope->TySym.get());
   }
 
-  return {fwd_ref_type, fwd_mut_type};
+  return {fwd_ref_sym, fwd_mut_sym};
 }
 
 auto spp::analyse::utils::type_utils::BuildFwdCall(
-  asts::ExpressionAst const &receiver,
-  asts::TypeAst const &receiver_type,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> Unique<asts::PostfixExpressionAst> {
+  ExpressionAst const &receiver,
+  TypeRef const &receiver_ref,
+  ScopeManager *sm,
+  meta::CompilerMetaData *meta)
+  -> Unique<PostfixExpressionAst> {
   // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut".
-  const auto [fwd_ref_type, fwd_mut_type] = GetFwdTypes(receiver_type, *sm);
+  if (receiver_ref.Sym == nullptr) { return nullptr; }
+  const auto [fwd_ref_type, fwd_mut_type] = GetFwdTypes(*receiver_ref.Sym, *sm->CurrentScope);
   if (fwd_ref_type == nullptr and fwd_mut_type == nullptr) { return nullptr; }
 
   // Which of the two is taken follows the receiver's own convention: a value borrowed mutably forwards to a mutable
   // borrow of what it points at. Preferring the immutable one unconditionally turned a "&mut" receiver into a "&"
   // yield, which is what a mutable forward was for in the first place. Fall back to whichever exists when the
   // preferred one does not.
-  const auto conv = receiver_type.GetConvention();
-  const auto wants_mut = conv != nullptr and *conv == asts::ConventionTag::MUT and fwd_mut_type != nullptr;
+  const auto wants_mut = receiver_ref.Conv == ConventionTag::MUT and fwd_mut_type != nullptr;
 
   // Build "<receiver>.fwd_ref()". The forwarding coroutines return a "GenOnce", so the call resumes itself and the
   // expression evaluates to the borrow of the forwarded-to value.
-  auto field_name = MakeUnique<asts::IdentifierAst>(
+  auto field_name = MakeUnique<IdentifierAst>(
     receiver.PosStart(), wants_mut or fwd_ref_type == nullptr ? "fwd_mut" : "fwd_ref");
-  auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(&receiver), std::move(field));
-  auto func_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-  auto fwd_call = MakeUnique<asts::PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(&receiver), std::move(field));
+  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+  auto fwd_call = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
 
   // Analyse the built call, so that it can be inferred from and generated like any other analysed expression. The
   // receiver is analysed a second time here (it is a clone of an already analysed expression), which is what the
@@ -268,10 +274,10 @@ auto spp::analyse::utils::type_utils::BuildFwdCall(
 }
 
 auto spp::analyse::utils::type_utils::GetTypeSymOrError(
-  scopes::Scope const &scope,
-  asts::TypeIdentifierAst const &type_part,
-  scopes::ScopeManager const &sm)
-  -> scopes::TypeSymbol* {
+  Scope const &scope,
+  TypeIdentifierAst const &type_part,
+  ScopeManager const &sm)
+  -> TypeSymbol* {
   //
   using expr_utils::RaiseMissingTypeIdentifierAndClosestOptions;
 
@@ -286,10 +292,10 @@ auto spp::analyse::utils::type_utils::GetTypeSymOrError(
 }
 
 auto spp::analyse::utils::type_utils::GetNsScopeOrError(
-  scopes::Scope const &scope,
-  asts::IdentifierAst const &ns,
-  scopes::ScopeManager const &sm)
-  -> scopes::Scope* {
+  Scope const &scope,
+  IdentifierAst const &ns,
+  ScopeManager const &sm)
+  -> Scope* {
   //
   using expr_utils::RaiseMissingIdentifierAndClosestOptions;
 
@@ -304,18 +310,18 @@ auto spp::analyse::utils::type_utils::GetNsScopeOrError(
 }
 
 auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
-  asts::TypeStatementAst const &alias_stmt,
+  TypeStatementAst const &alias_stmt,
   const bool from_use_stmt,
-  scopes::Scope *tracking_scope,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> Tup<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*> {
+  Scope *tracking_scope,
+  ScopeManager *sm,
+  meta::CompilerMetaData *meta)
+  -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*> {
   //
   using generic_bindings::NameGnArgs;
 
   // How to extract generic parameters from a type symbol: alias, then type, otherwise none (generic).
-  const auto NO_PARAMS = asts::GenericParameterGroupAst::NewEmpty();
-  const auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
+  const auto NO_PARAMS = GenericParameterGroupAst::NewEmpty();
+  const auto extract_params = [&NO_PARAMS](TypeSymbol const &ts) {
     return ts.Alias
       ? ts.Alias->Params.get()
       : ts.Type
@@ -323,17 +329,11 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
       : NO_PARAMS.get();
   };
 
-  const auto filter_params = [](asts::GenericParameterGroupAst const &pg, asts::GenericArgumentGroupAst const &ag) {
-    auto out = asts::GenericParameterGroupAst::NewEmptyShared();
-    for (auto const &param : pg.GetTypeParams()) {
-      if (not genex::any_of(ag.GetTypeKeywordArgs(), [&](auto const *arg) { return *arg->Name == *param->Name; })) {
-        out->Params.EmplaceBack(asts::AstClone(param));
-      }
-    }
-    for (auto const &param : pg.GetCompParams()) {
-      if (not genex::any_of(ag.GetCompKeywordArgs(), [&](auto const *arg) { return *arg->Name == *param->Name; })) {
-        out->Params.EmplaceBack(asts::AstClone(param));
-      }
+  const auto filter_params = [](GenericParameterGroupAst const &pg, GenericArgumentGroupAst const &ag) {
+    auto out = GenericParameterGroupAst::NewEmptyShared();
+    const auto name_of = [](auto const *param) { return param->Name->LastTypePart()->Name.c_str(); };
+    for (auto const &param : pg.Params) {
+      if (ag.At(name_of(param.get())) == nullptr) { out->Params.EmplaceBack(AstClone(param)); }
     }
     return out;
   };
@@ -341,7 +341,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   // Consistent lookup function used multiple times
   // throughout this function, preventing crashing on
   // bad identifiers throughout the alias chain.
-  const auto lookup = [&](asts::TypeAst const &ty) {
+  const auto lookup = [&](TypeAst const &ty) {
     const auto sym = tracking_scope->GetTypeSymbol(ty.WithoutGenerics().get());
     if (sym == nullptr) {
       expr_utils::RaiseMissingTypeIdentifierAndClosestOptions(
@@ -358,12 +358,13 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   // For example, use Vec::Vec => type Vec[T, A: ... = ...] = Vec::Vec[T=T, A=A]
   if (from_use_stmt and old_sym->Alias == nullptr) {
     auto generic_params = old_sym->Type->GnParamGroup;
-    old_type = old_type->WithGenerics(asts::GenericArgumentGroupAst::FromParams(*generic_params));
+    old_type = old_type->WithGenerics(GenericArgumentGroupAst::FromParams(*generic_params));
     return {old_type, generic_params, old_sym->LinkedScope};
   }
 
-  const auto generic_args = asts::AstClone(old_type->LastTypePart()->GnArgGroup.get());
-  auto final_generic_params = asts::GenericParameterGroupAst::NewEmptyShared();
+  // Empty at first: the arguments written here are this target's own, bound by its parameters, not substituted into it.
+  const auto generic_args = GenericArgumentGroupAst::NewEmpty();
+  auto final_generic_params = GenericParameterGroupAst::NewEmptyShared();
   tracking_scope = old_sym->ScopeDefinedIn;
 
   // The walk below has no base case beyond "the next name is not an alias", so an alias that leads back to one
@@ -371,6 +372,9 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   // statement is what the source wrote and so is what the error can point at; the starting one is seeded so that a
   // self-alias ("type A = A") is caught on its first step rather than on its second.
   auto followed_aliases = Vec{&alias_stmt};
+
+  // Whether "old_type" has had the arguments bound so far substituted in, which a type must have exactly once.
+  auto bound = false;
 
   while (true) {
     // A "use" alias declares no parameters of its own - it renames a type without reshaping it - so arguments
@@ -386,6 +390,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
       }
       old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
       if (not is_tuple) { *generic_args += *old_type->LastTypePart()->GnArgGroup; }
+      bound = true;
     }
     tracking_scope = old_sym->ScopeDefinedIn;
 
@@ -399,9 +404,10 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
     auto const *carried = old_type->LastTypePart()->GnArgGroup.get();
     const auto carries_generics = passes_generics_through and not carried->Args.IsEmpty();
     old_type = carries_generics
-      ? old_sym->Alias->Written->WithGenerics(asts::AstClone(carried))
+      ? old_sym->Alias->Written->WithGenerics(AstClone(carried))
       : old_sym->Alias->Written;
     old_sym = lookup(*old_type);
+    bound = false;
 
     // Arguments just handed on still have to be bound by whatever received them, so the walk goes round once more
     // even when that is a class rather than another alias.
@@ -413,91 +419,119 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
   auto &temp = *old_type->LastTypePart()->GnArgGroup;
   NameGnArgs(
     temp, *extract_params(*old_sym), *old_type, *sm, *meta, type_predicates::IsTupSymbol(*old_sym));
-  old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
+  // Not again once bound: the last arguments bound are this type's own, and substituting a type's arguments into itself
+  // re-binds the ones naming a parameter spelled like its target's ("Single[Arr[T, n], A]" became
+  // "Single[Arr[Arr[T, n], n], A]").
+  if (not bound) { old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs()); }
   return {old_type, final_generic_params, tracking_scope};
 }
 
 auto spp::analyse::utils::type_utils::SubstituteSelfType(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope,
-  asts::meta::CompilerMetaData const &meta,
+  TypeAst const &type,
+  Scope const &scope,
+  meta::CompilerMetaData const &meta,
   bool *const substituted)
-  -> Shared<asts::TypeAst> {
-  // Todo: always clone here? performance hit i think.
-  using asts::generate::common_types::SelfType;
+  -> Shared<TypeAst> {
+  // Substitute "Self" with the concrete enclosing type, if there is one and the type names it.
   const auto true_self_type = scope.GetEnclosingSelfType(meta);
-  if (true_self_type == nullptr) { return AstClone(&type); }
-
-  // If "Self" is not present, return a plain clone.
-  if (not type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
-    return AstClone(&type);
-  }
-
-  // Substitute "Self" with the concrete enclosing type.
-  const auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(SelfType(0), nullptr, true_self_type);
-  const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
+  if (true_self_type == nullptr or not type_predicates::NamesSelfType(type)) { return AstClone(&type); }
   if (substituted != nullptr) { *substituted = true; }
-  return type.SubstituteGenerics(args);
+  return SubstituteSelfTypeWith(type, *true_self_type);
 }
 
 auto spp::analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse(
-  asts::TypeAst const &type,
-  scopes::Scope const &scope,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData &meta)
-  -> Shared<asts::TypeAst> {
-  auto substituted = false;
-  auto t = SubstituteSelfType(type, scope, meta, &substituted);
+  TypeAst const &type,
+  Scope const &scope,
+  ScopeManager &sm,
+  meta::CompilerMetaData &meta,
+  bool *const substituted)
+  -> Shared<TypeAst> {
+  auto replaced = false;
+  auto t = SubstituteSelfType(type, scope, meta, &replaced);
+  if (substituted != nullptr) { *substituted = replaced; }
 
   // Only a type that actually had a "Self" replaced is analysed here. One that did not is handed back as the plain
   // clone it is, so that this does not analyse a written type at a point its owner has not chosen to - and so that a
   // "Self" left standing for want of an enclosing type is reported by whoever does analyse it.
-  if (not substituted) { return t; }
+  if (not replaced) { return t; }
 
-  const auto _meta_guard = asts::meta::MetaGuard(&meta);
+  const auto _meta_guard = meta::MetaGuard(&meta);
   meta.AllowAbstractType = true;
   t->Stage7_AnalyseSemantics(&sm, &meta);
   return t;
 }
 
 auto spp::analyse::utils::type_utils::SubstituteSelfTypeWith(
-  asts::TypeAst const &type,
-  asts::TypeAst const &replacement)
-  -> Shared<asts::TypeAst> {
-  using asts::generate::common_types::SelfType;
+  TypeAst const &type,
+  TypeAst const &replacement)
+  -> Shared<TypeAst> {
+  using generate::common_types::SelfType;
 
   // If "Self" is not present, return a plain clone.
-  if (not type.AnyPart([](asts::TypeIdentifierAst const &part) { return part.Name == "Self"; })) {
-    return AstClone(&type);
-  }
+  if (not type_predicates::NamesSelfType(type)) { return AstClone(&type); }
 
-  const auto g = MakeUnique<asts::GenericArgumentTypeKeywordAst>(
-    SelfType(0), nullptr, AstClone(&replacement));
-  const auto args = Vec<asts::GenericArgumentAst*>{g.get()};
+  const auto g = GenericArgumentAst::NewType(
+    SelfType(0), AstClone(&replacement));
+  const auto args = Vec<GenericArgumentAst*>{g.get()};
   return type.SubstituteGenerics(args);
 }
 
 auto spp::analyse::utils::type_utils::ResolveWrittenType(
-  asts::TypeAst const &written,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData &meta,
+  TypeAst const &written,
+  ScopeManager &sm,
+  meta::CompilerMetaData &meta,
   const SelfPolicy self)
-  -> Shared<asts::TypeAst> {
+  -> Shared<TypeAst> {
+  // A type that had "Self" replaced is analysed as it is replaced ("SubstituteSelfTypeAndAnalyse"); any other here.
   auto substituted = false;
   auto t = self == SelfPolicy::kSubstitute
-    ? SubstituteSelfType(written, *sm.CurrentScope, meta, &substituted)
+    ? SubstituteSelfTypeAndAnalyse(written, *sm.CurrentScope, sm, meta, &substituted)
     : AstClone(&written);
-
-  if (substituted) {
-    const auto _meta_guard = asts::meta::MetaGuard(&meta);
-    meta.AllowAbstractType = true;
-    t->Stage7_AnalyseSemantics(&sm, &meta);
-  }
-  else {
-    t->Stage7_AnalyseSemantics(&sm, &meta);
-  }
+  if (not substituted) { t->Stage7_AnalyseSemantics(&sm, &meta); }
 
   return sm.CurrentScope->GetTypeSymbol(t.get())->FqName()
     ->WithConvention(AstClone(written.GetConvention()))
     ->WithSourceSpanOf(written);
+}
+
+auto spp::analyse::utils::type_utils::StampWrittenParts(
+  TypeAst const &type,
+  Scope const &scope)
+  -> void {
+  // Every part, nested arguments included. Comp arguments are stamped with the comp parameters they name.
+  static_cast<void>(type.AnyPart([&scope](TypeIdentifierAst const &part) {
+    for (auto const *comp_arg : part.GnArgGroup->GetCompArgs()) {
+      if (comp_arg->CompVal != nullptr) { cmp_utils::StampCompGenerics(*comp_arg->CompVal, scope); }
+    }
+
+    // A name written with arguments has the template it instantiates at its head, whatever the arguments become. A
+    // "use" of the template is an alias here, private to this module, so the head is the template it names.
+    if (not part.GnArgGroup->Args.IsEmpty()) {
+      // Followed through what each "use" names, not to the class at the end of the chain: a "use" of a "type" alias
+      // ("SizedIntegerUnsigned[w]") stops at that alias, whose own parameters are the ones the arguments bind; its
+      // target's are more ("SizedInteger[w, signed]").
+      auto *tmpl = scope.GetTypeSymbol(part.WithoutGenerics().get());
+      for (auto step = 0; step < 8 and tmpl != nullptr and tmpl->Alias != nullptr and tmpl->Alias->FromUseStmt
+        and tmpl->Alias->DeclScope != nullptr and tmpl->Alias->Written != nullptr; ++step) {
+        tmpl = tmpl->Alias->DeclScope->GetTypeSymbol(tmpl->Alias->Written->WithoutGenerics().get());
+      }
+      if (tmpl != nullptr and not tmpl->IsTypeGeneric()) { part.SetTemplateStamp(tmpl); }
+      return false;
+    }
+
+    // A plain name is stamped when it means the same from anywhere: a parameter or a closed class - directly, or through
+    // an alias of one, as a "use" of a class makes. Anything else still depends on the scope asking.
+    if (part.Stamp() != nullptr) { return false; }
+    auto *sym = scope.GetTypeSymbol(&part);
+    if (sym != nullptr and sym->Kind == TypeKind::Alias and sym->Alias != nullptr
+      and sym->Alias->DeclScope != nullptr) {
+      sym = sym->Alias->DeclScope->GetTypeSymbol(sym->Alias->Resolved.get());
+    }
+    if (sym != nullptr and (
+      (sym->Kind == TypeKind::GenericParam and sym->ParamId != 0)
+      or (sym->Kind == TypeKind::Class and sym->IsConcrete and sym->Alias == nullptr))) {
+      part.SetStamp(sym);
+    }
+    return false;
+  }));
 }

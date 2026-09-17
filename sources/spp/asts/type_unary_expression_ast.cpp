@@ -21,103 +21,74 @@ import spp.utils.ptr;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
+TypeUnaryExpressionAst::TypeUnaryExpressionAst(
   decltype(Op) op,
   decltype(Rhs) rhs) :
   Op(std::move(op)),
   Rhs(std::move(rhs)) {
 }
 
-spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
+TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
 
-auto spp::asts::TypeUnaryExpressionAst::operator<=>(
-  TypeUnaryExpressionAst const &other) const
-  -> Ordering {
+auto TypeUnaryExpressionAst::operator<=>(
+  TypeUnaryExpressionAst const &other) const -> Ordering {
   return EqualsTypeUnaryExpression(other);
 }
 
-auto spp::asts::TypeUnaryExpressionAst::operator==(
-  TypeUnaryExpressionAst const &other) const
-  -> bool {
+auto TypeUnaryExpressionAst::operator==(
+  TypeUnaryExpressionAst const &other) const -> bool {
   return EqualsTypeUnaryExpression(other) == Ordering::equal;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::EqualsTypeUnaryExpression(
-  TypeUnaryExpressionAst const &other) const
-  -> Ordering {
+auto TypeUnaryExpressionAst::EqualsTypeUnaryExpression(
+  TypeUnaryExpressionAst const &other) const -> Ordering {
   // Equality is based on the operator and rhs.
   return *Op == *other.Op && *Rhs == *other.Rhs ? Ordering::equal : Ordering::less;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::Equals(
-  ExpressionAst const &other) const
-  -> Ordering {
+auto TypeUnaryExpressionAst::Equals(
+  ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsTypeUnaryExpression(*this);
 }
 
-auto spp::asts::TypeUnaryExpressionAst::PosStart() const
-  -> std::size_t {
+auto TypeUnaryExpressionAst::PosStart() const -> std::size_t {
   // Use the operator, unless this replaces a written type.
   if (_HasSourceSpan) { return _SpanStart; }
   return Op->PosStart();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::PosEnd() const
-  -> std::size_t {
+auto TypeUnaryExpressionAst::PosEnd() const -> std::size_t {
   // Use the rhs, unless this replaces a written type.
   if (_HasSourceSpan) { return _SpanEnd; }
   return Rhs->PosEnd();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto TypeUnaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto t = MakeUnique<TypeUnaryExpressionAst>(
     Op, AstCloneShared(Rhs));
-  t->_CachedWithoutGenerics = _CachedWithoutGenerics;
+  t->_Stamp = _Stamp;
   CopySourceSpanTo(*t);
   return t;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::ToString() const
-  -> Str {
+auto TypeUnaryExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Op);
   SPP_STRING_APPEND(Rhs);
   SPP_STRING_END;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::Stage4_QualifyTypes(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  // Qualify the RHS type.
-  if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
-    const auto tm = analyse::scopes::ScopeManager(
-      sm->GlobalScope,
-      meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
-    const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, tm);
-    const auto _meta_guard = meta::MetaGuard(meta);
-    meta->TypeAnalysisTypeScope = type_scope;
-    Rhs->Stage4_QualifyTypes(sm, meta);
-  }
-  else {
-    Rhs->Stage4_QualifyTypes(sm, meta);
-  }
-}
-
-auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Analyse the RHS type.
   if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
-    const auto tm = analyse::scopes::ScopeManager(
+    const auto tm = ScopeManager(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->TypeAnalysisTypeScope = type_scope;
     Rhs->Stage7_AnalyseSemantics(sm, meta);
   }
@@ -126,106 +97,89 @@ auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto spp::asts::TypeUnaryExpressionAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto TypeUnaryExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // These are always "zero_type", so return init.
   const auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(this), nullptr);
   return mock_init->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto spp::asts::TypeUnaryExpressionAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto TypeUnaryExpressionAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Infer the RHS type.
   const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
   const auto type_sym = type_scope->GetTypeSymbol(this);
   return type_sym->FqName()->WithConvention(AstClone(GetConvention()));
 }
 
-auto spp::asts::TypeUnaryExpressionAst::AnyPart(
-  std::function<bool(TypeIdentifierAst const &)> const &pred) const
-  -> bool {
+auto TypeUnaryExpressionAst::AnyPart(
+  std::function<bool(TypeIdentifierAst const &)> const &pred) const -> bool {
   // Walk from the right-hand-side.
   return Rhs->AnyPart(pred);
 }
 
-auto spp::asts::TypeUnaryExpressionAst::IsNeverType() const noexcept
-  -> bool {
+auto TypeUnaryExpressionAst::IsNeverType() const noexcept -> bool {
   // A namespace only qualifies the name, so "std::never::Never"
   // is "!" when its name is; a borrow of "!" is a real value.
   return Op->To<TypeUnaryExpressionOperatorNamespaceAst>() and Rhs->IsNeverType();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::IsSelfType() const noexcept
-  -> bool {
+auto TypeUnaryExpressionAst::IsSelfType() const noexcept -> bool {
   // Allow for &Self to be considered "Self".
   return Op->To<TypeUnaryExpressionOperatorBorrowAst>() and Rhs->IsSelfType();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::NsParts() const
-  -> Vec<IdentifierAst const*> {
+auto TypeUnaryExpressionAst::NsParts() const -> Vec<IdentifierAst const*> {
   auto parts = Vec<IdentifierAst const*>();
   NsPartsInto(parts);
   return parts;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::NsParts()
-  -> Vec<IdentifierAst*> {
+auto TypeUnaryExpressionAst::NsParts() -> Vec<IdentifierAst*> {
   auto parts = Op->NsParts();
   parts.AppendRange(Rhs->NsParts());
   return parts;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::TypeParts() const
-  -> Vec<TypeIdentifierAst const*> {
+auto TypeUnaryExpressionAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
   auto parts = Vec<TypeIdentifierAst const*>();
   TypePartsInto(parts);
   return parts;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::TypeParts()
-  -> Vec<TypeIdentifierAst*> {
+auto TypeUnaryExpressionAst::TypeParts() -> Vec<TypeIdentifierAst*> {
   auto parts = Op->TypeParts();
   parts.AppendRange(Rhs->TypeParts());
   return parts;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::LastTypePart() const
-  -> TypeIdentifierAst const* {
+auto TypeUnaryExpressionAst::LastTypePart() const -> TypeIdentifierAst const* {
   // Unary operators (namespace, borrow) contribute
   // no type parts, so the final part is always the
   // rhs's.
   return std::as_const(*Rhs).LastTypePart();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::LastTypePart()
-  -> TypeIdentifierAst* {
+auto TypeUnaryExpressionAst::LastTypePart() -> TypeIdentifierAst* {
   return Rhs->LastTypePart();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::WithoutConvention() const
-  -> Shared<const TypeAst> {
+auto TypeUnaryExpressionAst::WithoutConvention() const -> Shared<const TypeAst> {
   if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
     return Rhs;
   }
   return shared_from_this();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::GetConvention() const
-  -> ConventionAst* {
+auto TypeUnaryExpressionAst::GetConvention() const -> ConventionAst* {
   if (const auto op_borrow = Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
     return op_borrow->Conv.get();
   }
   return nullptr;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::WithConvention(
-  Unique<ConventionAst> &&conv) const
-  -> Shared<TypeAst> {
+auto TypeUnaryExpressionAst::WithConvention(
+  Unique<ConventionAst> &&conv) const -> Shared<TypeAst> {
   auto result = [&]() -> Shared<TypeAst> {
     if (conv == nullptr and Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
       // Remove the convention
@@ -237,9 +191,15 @@ auto spp::asts::TypeUnaryExpressionAst::WithConvention(
     if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
       return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
     }
+    auto inner = MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
+    inner->SetStamp(_Stamp);
     return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
-                                              MakeShared<TypeUnaryExpressionAst>(Op, Rhs));
+                                              std::move(inner));
   }();
+
+  // A node rebuilt in place of this one names the same symbol, so it keeps the stamp; a lookup reads the outermost
+  // node's first. "Rhs" handed back as it is carries its own.
+  if (result != Rhs) { result->SetStamp(_Stamp); }
 
   // A type rebuilt in place of a written one keeps pointing at
   // what was written, whatever convention it is given. "Rhs" is
@@ -250,64 +210,45 @@ auto spp::asts::TypeUnaryExpressionAst::WithConvention(
   return result;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::WithoutGenerics() const
-  -> Shared<TypeAst> {
+auto TypeUnaryExpressionAst::WithoutGenerics() const -> Shared<TypeAst> {
   if (not _CachedWithoutGenerics) {
     _CachedWithoutGenerics = MakeShared<TypeUnaryExpressionAst>(Op, Rhs->WithoutGenerics());
   }
   return _CachedWithoutGenerics;
 }
 
-auto spp::asts::TypeUnaryExpressionAst::SubstituteGenerics(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<TypeAst> {
+auto TypeUnaryExpressionAst::SubstituteGenerics(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> {
   return MakeShared<TypeUnaryExpressionAst>(Op, Rhs->SubstituteGenerics(args));
 }
 
-auto spp::asts::TypeUnaryExpressionAst::ContainsGenerics(
-  GenericParameterAst const &generic) const
-  -> bool {
+auto TypeUnaryExpressionAst::ContainsGenerics(
+  GenericParameterAst const &generic) const -> bool {
   return Rhs->ContainsGenerics(generic);
 }
-
-auto spp::asts::TypeUnaryExpressionAst::WithGenerics(
-  Unique<GenericArgumentGroupAst> &&arg_group) const
-  -> Shared<TypeAst> {
-  // Clone this type and add the generics to
-  // the right most part.
-  auto type_clone = AstClone(this);
-  arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
-  type_clone->LastTypePart()->GnArgGroup = std::move(arg_group);
-  return type_clone;
-}
-
-auto spp::asts::TypeUnaryExpressionAst::IsCompilerGeneratedType() const
-  -> bool {
+auto TypeUnaryExpressionAst::IsCompilerGeneratedType() const -> bool {
   // Move into the rhs, ie for the type
   // "std::annotations::$Public", it moves to
   // the next part.
   return Rhs->IsCompilerGeneratedType();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::ResetCache()
-  -> void {
+auto TypeUnaryExpressionAst::ResetCache() -> void {
   // Forward into the RHS to reach the inner
   // TypeIdentifierAst.
   Rhs->ResetCache();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::NsPartsInto(
-  Vec<IdentifierAst const*> &out) const
-  -> void {
+auto TypeUnaryExpressionAst::NsPartsInto(
+  Vec<IdentifierAst const*> &out) const -> void {
   // Both sides append into the caller's buffer, so
   // a chain of any depth is one allocation.
   std::as_const(*Op).NsPartsInto(out);
   std::as_const(*Rhs).NsPartsInto(out);
 }
 
-auto spp::asts::TypeUnaryExpressionAst::TypePartsInto(
-  Vec<TypeIdentifierAst const*> &out) const
-  -> void {
+auto TypeUnaryExpressionAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*> &out) const -> void {
   // Both sides append into the caller's buffer, so
   // a chain of any depth is one allocation.
   std::as_const(*Op).TypePartsInto(out);

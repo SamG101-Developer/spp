@@ -67,7 +67,7 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
 
   auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -84,8 +84,6 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto RegisterGenericSubstitution(Scope *scope, Unique<ClassPrototypeAst> &&new_ast) -> void;
-
-  SPP_ATTR_NODISCARD auto GetRegisteredGenericSubstitutions() const -> Vec<Pair<Scope*, ClassPrototypeAst*>>;
 
   SPP_ATTR_NODISCARD auto GetClsSym() const -> Shared<TypeSymbol>;
 

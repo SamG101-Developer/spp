@@ -51,7 +51,7 @@ auto spp::codegen::EmitDrop(
   // Todo: "llvm.coro.destroy" releases the frame's storage but runs no destructors for the values living in it, so a
   //  generator abandoned while holding owned locals still leaks those. That needs drops emitted into the coroutine's
   //  own cleanup path.
-  if (analyse::utils::type_predicates::IsTypeGen(*type_sym.FqName(), *sm->CurrentScope)) {
+  if (analyse::utils::type_predicates::IsTypeGen(type_sym, *sm->CurrentScope)) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto handle = ctx->Builder.CreateLoad(ptr_ty, ptr, "drop.gen.handle" + uid);
 
@@ -103,15 +103,14 @@ auto spp::codegen::EmitDrop(
   // A bound generic parameter stands for its argument: the symbol keeps the parameter's name ("T"), which is not a
   // name the checks below can read a tuple or an array off. "NeedsDrop" resolves through for the same reason.
   auto const *const bare_sym = type_sym.AsBoundSymbol();
-  const auto bare_name = bare_sym->FqName();
 
   // Only a type that has no destructor of its own is destroyed part by part - its elements when it is a tuple or an
   // array, its attributes otherwise. A struct's parts are reached through its lowered form, which has to be one.
-  const auto is_indexable = IsTypeCompTimeIndexable(*bare_name, *sm->CurrentScope);
-  const auto is_arr = is_indexable and IsTypeArr(*bare_name, *sm->CurrentScope);
+  const auto is_indexable = IsTypeCompTimeIndexable(*bare_sym, *sm->CurrentScope);
+  const auto is_arr = is_indexable and IsTypeArr(*bare_sym, *sm->CurrentScope);
   if (not is_indexable and not llvm::isa<llvm::StructType>(elem_ty)) { return; }
 
-  const auto parts = GetAllParts(*bare_name, *sm->CurrentScope);
+  const auto parts = GetAllParts(*bare_sym, *sm->CurrentScope);
   const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
 
   // Reverse order: the last part built is the first one

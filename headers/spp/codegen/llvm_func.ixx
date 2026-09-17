@@ -6,6 +6,7 @@ import spp.codegen.llvm_ctx;
 import llvm;
 
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 use(spp::codegen, struct LlvmFuncWrapper);
 
@@ -61,8 +62,8 @@ namespace spp::codegen {
   /// the pair for the overload, that analysis chose there.
   SPP_EXP_FUN auto CoerceToFunctionValue(
     llvm::Value *llvm_val,
-    TypeAst const &target_type,
-    TypeAst const &source_type,
+    TypeRef const &target,
+    TypeRef const &source,
     ScopeManager const &sm,
     LlvmCtx *ctx)
     -> llvm::Value*;

@@ -7,7 +7,7 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 
 SPP_MOD_BEGIN
-spp::asts::meta::CompilerMetaData::CompilerMetaData() {
+CompilerMetaData::CompilerMetaData() {
   CurrentStage = CompilerStage::kNone;
   ReturnTypeOverloadResolverType = nullptr;
   AssignmentTarget = nullptr;
@@ -30,7 +30,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LetStatementPrecomputedValue = nullptr;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
-  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
+  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>>();
   ObjectInitType = nullptr;
   InferSource = MakeShared<GenericInferenceBindings>();
   InferTarget = MakeShared<GenericInferenceBindings>();
@@ -38,7 +38,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   UnaryExpressionRhs = nullptr;
   SkipTypeAnalysisGenericChecks = false;
   TypeAnalysisTypeScope = nullptr;
-  IgnoreCmpGeneric = nullptr;
   AllowMoveDeref = false;
   LlvmEndBB = nullptr;
   LlvmWantAddress = false;
@@ -54,7 +53,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   LlvmGeneratorState = nullptr;
 }
 
-auto spp::asts::meta::CompilerMetaData::Save() -> void {
+auto CompilerMetaData::Save() -> void {
   // Reuse a parked slot at this depth if one exists, otherwise grow the pool by one. Copy-assigning into an existing
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
   // storage persists across cycles. `CmpArgs` is moved (the guarded scope rebuilds it); `CmpResult` is not tracked.
@@ -93,7 +92,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.UnaryExpressionRhs = UnaryExpressionRhs;
   s.SkipTypeAnalysisGenericChecks = SkipTypeAnalysisGenericChecks;
   s.TypeAnalysisTypeScope = TypeAnalysisTypeScope;
-  s.IgnoreCmpGeneric = IgnoreCmpGeneric;
   s.AllowMoveDeref = AllowMoveDeref;
   s.LlvmEndBB = LlvmEndBB;
   s.LlvmWantAddress = LlvmWantAddress;
@@ -120,7 +118,7 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
 
-auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
+auto CompilerMetaData::Restore(const bool heavy) -> void {
   // Pop the top slot and move its owning fields back out. The slot is logically dead (the next Save overwrites it),
   // so stealing its shared_ptrs/maps/vecs avoids the atomic-refcount traffic and container copies that copy-assignment
   // would incur. Trivially-copyable fields are assigned directly.
@@ -159,7 +157,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   UnaryExpressionRhs = state.UnaryExpressionRhs;
   SkipTypeAnalysisGenericChecks = state.SkipTypeAnalysisGenericChecks;
   TypeAnalysisTypeScope = state.TypeAnalysisTypeScope;
-  IgnoreCmpGeneric = std::move(state.IgnoreCmpGeneric);
   AllowMoveDeref = state.AllowMoveDeref;
   LlvmEndBB = state.LlvmEndBB;
   LlvmWantAddress = state.LlvmWantAddress;
@@ -183,21 +180,21 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmGeneratorState = state.LlvmGeneratorState;
 }
 
-auto spp::asts::meta::CompilerMetaData::Depth() const
+auto CompilerMetaData::Depth() const
   -> std::size_t {
   // Get the number of live history items.
   return _Depth;
 }
 
-spp::asts::meta::MetaGuard::MetaGuard(
-  meta::CompilerMetaData *const meta,
+MetaGuard::MetaGuard(
+  CompilerMetaData *const meta,
   const bool heavy) :
   _Meta(meta),
   _Heavy(heavy) {
   _Meta->Save();
 }
 
-spp::asts::meta::MetaGuard::~MetaGuard() {
+MetaGuard::~MetaGuard() {
   _Meta->Restore(_Heavy);
 }
 

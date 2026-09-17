@@ -17,6 +17,7 @@ use(spp::asts, struct LoopConditionalExpressionAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::LoopIterableExpressionAst final : LoopExpressionAst {
   SPP_AST_KEY_FUNCTIONS(LoopIterableExpressionAst);
@@ -55,6 +56,8 @@ SPP_EXP_CLS struct spp::asts::LoopIterableExpressionAst final : LoopExpressionAs
   /// be used, because the "else" block and every "exit"
   /// statement belong to the transformed loop, not this node.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
 private:
   Unique<LetStatementInitializedAst> _TransformedLet;

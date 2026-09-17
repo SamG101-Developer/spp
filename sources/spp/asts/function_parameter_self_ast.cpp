@@ -18,32 +18,32 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 SPP_MOD_BEGIN
-spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
+FunctionParameterSelfAst::FunctionParameterSelfAst(
   decltype(Conv) &&conv,
   decltype(Var) &&var) :
-  FunctionParameterAst(std::move(var), nullptr, nullptr, utils::OrderableTag::kSelfParam),
+  FunctionParameterAst(
+    std::move(var), nullptr, nullptr,
+    utils::OrderableTag::kSelfParam),
   Conv(std::move(conv)) {
   // Set the type to "Self" -> will resolve later in scope.
   using generate::common_types::SelfType;
   Type = SelfType(PosStart());
 }
 
-spp::asts::FunctionParameterSelfAst::~FunctionParameterSelfAst() = default;
+FunctionParameterSelfAst::~FunctionParameterSelfAst() = default;
 
-auto spp::asts::FunctionParameterSelfAst::PosStart() const
-  -> std::size_t {
+auto FunctionParameterSelfAst::PosStart() const -> std::size_t {
   // Use the convention or the variable.
   return Conv != nullptr ? Conv->PosStart() : Var->PosStart();
 }
 
-auto spp::asts::FunctionParameterSelfAst::PosEnd() const
-  -> std::size_t {
-  // Use the token after convention (self keyword); it is mapped into local-var which calculates size differently.
+auto FunctionParameterSelfAst::PosEnd() const -> std::size_t {
+  // Use the token after convention (self keyword); it is mapped
+  // into local-var which calculates size differently.
   return PosStart() + 2;
 }
 
-auto spp::asts::FunctionParameterSelfAst::Clone() const
-  -> Unique<Ast> {
+auto FunctionParameterSelfAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto p = MakeUnique<FunctionParameterSelfAst>(
     AstClone(Conv),
@@ -52,18 +52,15 @@ auto spp::asts::FunctionParameterSelfAst::Clone() const
   return p;
 }
 
-auto spp::asts::FunctionParameterSelfAst::ToString() const
-  -> Str {
+auto FunctionParameterSelfAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Conv);
   SPP_STRING_APPEND(Var);
   SPP_STRING_END;
 }
 
-auto spp::asts::FunctionParameterSelfAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto FunctionParameterSelfAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Perform default analysis steps.
   FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);
 

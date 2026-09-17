@@ -15,6 +15,7 @@ use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixExpressionOperatorAst {
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorIndexAst);
@@ -56,6 +57,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixE
   /// left-hand-side type. For example, "hello"[5] becomes
   /// "hello".index_ref(5), and its return type is used.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const

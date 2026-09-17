@@ -3,6 +3,7 @@ module;
 
 module spp.codegen.llvm_func;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.asts.function_prototype_ast;
 import spp.asts.type_ast;
@@ -87,15 +88,15 @@ auto spp::codegen::BuildFunctionValue(
 
 auto spp::codegen::CoerceToFunctionValue(
   llvm::Value *llvm_val,
-  asts::TypeAst const &target_type,
-  asts::TypeAst const &source_type,
+  analyse::scopes::TypeRef const &target,
+  analyse::scopes::TypeRef const &source,
   analyse::scopes::ScopeManager const &sm,
   LlvmCtx *ctx)
   -> llvm::Value* {
   // A named function carries nothing at runtime, so whatever was
   // loaded for it is dropped and the chosen overload built.
   const auto fn = llvm_val != nullptr
-    ? analyse::utils::func_utils::FindFunctionValue(source_type, target_type, sm)
+    ? analyse::utils::func_utils::FindFunctionValue(source, target, sm)
     : nullptr;
   if (fn == nullptr or fn->GetLlvmFunc() == nullptr or fn->GetLlvmFunc()->Target == nullptr) { return llvm_val; }
   return BuildFunctionValue(*fn->GetLlvmFunc()->Target, ctx);

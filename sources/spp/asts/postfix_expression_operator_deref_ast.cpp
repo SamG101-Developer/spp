@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_compare;
+import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -19,43 +20,37 @@ import spp.codegen.llvm_sym_info;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
+PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
   decltype(TokDeref) &&tok_deref) :
   TokDeref(std::move(tok_deref)) {
 }
 
-spp::asts::PostfixExpressionOperatorDerefAst::~PostfixExpressionOperatorDerefAst() = default;
+PostfixExpressionOperatorDerefAst::~PostfixExpressionOperatorDerefAst() = default;
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::PosStart() const
-  -> std::size_t {
+auto PostfixExpressionOperatorDerefAst::PosStart() const -> std::size_t {
   // Use the "@" token.
   return TokDeref->PosStart();
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::PosEnd() const
-  -> std::size_t {
+auto PostfixExpressionOperatorDerefAst::PosEnd() const -> std::size_t {
   // Use the "@" token.
   return TokDeref->PosEnd();
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::Clone() const
-  -> Unique<Ast> {
+auto PostfixExpressionOperatorDerefAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<PostfixExpressionOperatorDerefAst>(
     AstClone(TokDeref));
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::ToString() const
-  -> Str {
+auto PostfixExpressionOperatorDerefAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDeref);
   SPP_STRING_END;
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppDereferenceNonBorrowedTypeError;
   using analyse::errors::SppNonCopyableTypeError;
@@ -84,19 +79,14 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // As this is cmp context, just return the "lhs" generation.
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Get the value underlying the borrow.
   const auto uid = "." + spp::utils::Uid(this);
   const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
@@ -106,8 +96,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   // value's type: under opaque pointers the latter is just
   // "ptr", so the pointee is unrecoverable from it and has
   // to come from the symbol table instead.
-  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-  const auto llvm_type = sm->CurrentScope->GetTypeSymbol(lhs_type.get())->LlvmInfo->LlvmType;
+  const auto llvm_type = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Sym->LlvmInfo->LlvmType;
   SPP_ASSERT(llvm_type != nullptr);
 
   // Dereference the borrow to get the underlying value.
@@ -116,10 +105,8 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   return deref_val;
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto PostfixExpressionOperatorDerefAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Get the right-hand-side expression's type.
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
@@ -128,8 +115,14 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::InferType(
   return AstClone(lhs_type->WithoutConvention());
 }
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::IsAllowedInDefault() const
-  -> bool {
+auto PostfixExpressionOperatorDerefAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  auto ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+  ref.Conv = ConventionTag::MOV;
+  return ref;
+}
+
+auto PostfixExpressionOperatorDerefAst::IsAllowedInDefault() const -> bool {
   // Reads what it is applied to, and holds nothing of its
   // own.
   return true;

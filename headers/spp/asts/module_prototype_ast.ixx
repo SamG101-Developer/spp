@@ -39,7 +39,7 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
 
   auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -54,6 +54,4 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
-
-  SPP_ATTR_NODISCARD auto Name() const -> Unique<IdentifierAst>;
 };

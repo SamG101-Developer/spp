@@ -11,7 +11,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 SPP_MOD_BEGIN
-spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
+FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
   decltype(Conv) &&conv,
   decltype(TokUnpack) &&tok_unpack,
   decltype(Val) &&val) :
@@ -19,22 +19,19 @@ spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
   TokUnpack(std::move(tok_unpack)) {
 }
 
-spp::asts::FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst() = default;
+FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst() = default;
 
-auto spp::asts::FunctionCallArgumentPositionalAst::PosStart() const
-  -> std::size_t {
+auto FunctionCallArgumentPositionalAst::PosStart() const -> std::size_t {
   // Use the ".." token or the value.
   return TokUnpack ? TokUnpack->PosStart() : Val->PosStart();
 }
 
-auto spp::asts::FunctionCallArgumentPositionalAst::PosEnd() const
-  -> std::size_t {
+auto FunctionCallArgumentPositionalAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto spp::asts::FunctionCallArgumentPositionalAst::Clone() const
-  -> Unique<Ast> {
+auto FunctionCallArgumentPositionalAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast
   auto ast = MakeUnique<FunctionCallArgumentPositionalAst>(
     AstClone(Conv),
@@ -44,8 +41,7 @@ auto spp::asts::FunctionCallArgumentPositionalAst::Clone() const
   return ast;
 }
 
-auto spp::asts::FunctionCallArgumentPositionalAst::ToString() const
-  -> Str {
+auto FunctionCallArgumentPositionalAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokUnpack);
   SPP_STRING_APPEND(Conv);

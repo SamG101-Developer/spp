@@ -8,6 +8,7 @@ import spp.utils.types;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(StatementAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 
 /// The base class for all statements. It represents asts that

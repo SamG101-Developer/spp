@@ -44,7 +44,7 @@ import genex;
 import std;
 
 SPP_MOD_BEGIN
-spp::asts::CaseExpressionAst::CaseExpressionAst(
+CaseExpressionAst::CaseExpressionAst(
   decltype(TokCase) &&tok_case,
   decltype(Cond) &&cond,
   decltype(TokOf) &&tok_of,
@@ -53,42 +53,44 @@ spp::asts::CaseExpressionAst::CaseExpressionAst(
   Cond(std::move(cond)),
   TokOf(std::move(tok_of)),
   Branches(std::move(branches)) {
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCase, lex::SppTokenType::KW_CASE, "case", cond ? cond->PosStart() : 0);
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokOf, lex::SppTokenType::KW_OF, "of", cond ? cond->PosEnd() : 0);
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokCase, SppTokenType::KW_CASE, "case", cond ? cond->PosStart() : 0);
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokOf, SppTokenType::KW_OF, "of", cond ? cond->PosEnd() : 0);
 }
 
-spp::asts::CaseExpressionAst::~CaseExpressionAst() = default;
+CaseExpressionAst::~CaseExpressionAst() = default;
 
-auto spp::asts::CaseExpressionAst::NewNonPatternMatch(
-  decltype(TokCase) &&tok_case,
-  decltype(Cond) &&cond,
-  Unique<InnerScopeExpressionAst> &&first,
+auto CaseExpressionAst::NewNonPatternMatch(
+  decltype(TokCase) &&tok_case, decltype(Cond) &&cond, Unique<InnerScopeExpressionAst> &&first,
   decltype(Branches) &&branches) -> Unique<CaseExpressionAst> {
-  // Convert consecutive if/else-if/else branches into case pattern matching.
+  // Convert consecutive if/else-if/else branches into case
+  // pattern matching.
   auto patterns = Vec<Unique<CasePatternVariantAst>>(1);
-  patterns[0] = MakeUnique<CasePatternVariantExpressionAst>(BooleanLiteralAst::True(tok_case->PosStart()));
-  auto first_branch = MakeUnique<CaseExpressionBranchAst>(nullptr, std::move(patterns), nullptr, std::move(first));
+  patterns[0] = MakeUnique<CasePatternVariantExpressionAst>(
+    BooleanLiteralAst::True(tok_case->PosStart()));
+  auto first_branch = MakeUnique<CaseExpressionBranchAst>(
+    nullptr, std::move(patterns), nullptr, std::move(first));
   branches.Insert(branches.begin(), std::move(first_branch));
 
   // Return the final, newly created, case expression AST.
-  auto out = MakeUnique<CaseExpressionAst>(std::move(tok_case), std::move(cond), nullptr, std::move(branches));
+  auto out = MakeUnique<CaseExpressionAst>(
+    std::move(tok_case), std::move(cond), nullptr, std::move(branches));
   return out;
 }
 
-auto spp::asts::CaseExpressionAst::PosStart() const
-  -> std::size_t {
+auto CaseExpressionAst::PosStart() const -> std::size_t {
   // Use the "case" token.
   return TokCase->PosStart();
 }
 
-auto spp::asts::CaseExpressionAst::PosEnd() const
-  -> std::size_t {
+auto CaseExpressionAst::PosEnd() const -> std::size_t {
   // Use the "of" token, or condition.
   return TokOf != nullptr ? TokOf->PosEnd() : Cond->PosEnd();
 }
 
-auto spp::asts::CaseExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto CaseExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<CaseExpressionAst>(
     AstClone(TokCase),
@@ -100,8 +102,7 @@ auto spp::asts::CaseExpressionAst::Clone() const
   return c;
 }
 
-auto spp::asts::CaseExpressionAst::ToString() const
-  -> Str {
+auto CaseExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokCase).append(" ");
   SPP_STRING_APPEND(Cond).append(" ");
@@ -110,23 +111,21 @@ auto spp::asts::CaseExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  // Alias the common utils functions and types.
+auto CaseExpressionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppCaseBranchElseNotLastError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
+  using analyse::utils::case_utils::ValidateInconsistentTypes;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
   // Create the scope for the case expression.
-  auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+  auto scope_name = ScopeBlockName::FromParts(
     "case-expr", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 
   SPP_DEREF_ALLOW_MOVE_HELPER(Cond) {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->AllowMoveDeref = true;
     Cond->Stage7_AnalyseSemantics(sm, meta);
   }
@@ -163,7 +162,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     }
 
     {
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->CaseCondition = Cond.get();
       branch->Stage7_AnalyseSemantics(sm, meta);
     }
@@ -183,75 +182,87 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   }
 
   // Enforce consistent branch type return values; either the
-  // values are being roppropagated up to an identifier, or
-  // they should all be void.
+  // values are being propagated up to an identifier, or they
+  // should all be void.
   {
-    using analyse::utils::case_utils::ValidateInconsistentTypes;
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->IgnoreMissingElseBranchForInference = true;
-    ValidateInconsistentTypes(Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
+    ValidateInconsistentTypes(
+      Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
   }
 
   // Move out of the case expression scope.
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  // Alias the common utils functions and types.
+auto CaseExpressionAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::case_utils::ValidateInconsistentMemory;
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
-  // Move into the "case" scope and check the memory status of the symbols in the branches.
+  // Move into the "case" scope and check the memory status
+  // of the symbols in the branches.
   sm->MoveToNextScope();
 
   // Check the memory state of the condition.
   Cond->Stage8_CheckMemory(sm, meta);
   ValidateSymbolMemory(*Cond, *Cond, *sm, true, true, false, false, meta);
 
-  // Whether this "case" takes its subject is decided before the branches run, because a "ret" or a loop jump inside
-  // one of them is checked while they run - and by then the subject has already been given up, even though the mark
-  // itself cannot be made until the branches have bound off it.
+  // Whether this "case" takes its subject is decided before
+  // the branches run, because a "ret" or a loop jump inside
+  // one of them is checked while they run - and by then the
+  // subject has already been given up, even though the mark
+  // itself cannot be made until the branches have bound off
+  // it.
   //
-  // A borrowed subject is not this scope's to give away, and copying leaves the original in place, so a copyable one
-  // is never taken however its patterns bind. That second guard is the one "ValidateSymbolMemory" applies through
-  // "moves_value", repeated here because marking the move directly is what skips it.
+  // A borrowed subject is not this scope's to give away, and
+  // copying leaves the original in place, so a copyable one
+  // is never taken however its patterns bind. That second
+  // guard is the one "ValidateSymbolMemory" applies through
+  // "moves_value", repeated here because marking the move
+  // directly is what skips it.
   const auto binds_by_move = TokOf != nullptr and not LoweredFromIsExpr and genex::any_of(
     Branches, [](auto const &branch) {
       return genex::any_of(branch->Patterns, [](auto const &p) { return p->BindsByMove(); });
     });
 
-  const auto cond_type = binds_by_move ? Cond->InferType(sm, meta) : nullptr;
-  const auto cond_ty_sym = cond_type != nullptr ? sm->CurrentScope->GetTypeSymbol(cond_type.get()) : nullptr;
+  const auto cond_ref = binds_by_move ? Cond->InferTypeRef(sm, meta) : TypeRef{};
+  const auto cond_ty_sym = cond_ref.Sym;
   const auto cond_sym = cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
     ? sm->CurrentScope->GetVarSymbolOutermost(*Cond).first
     : nullptr;
 
   const auto takes_subject = cond_sym != nullptr
-    and cond_type->GetConvention() == nullptr
+    and not cond_ref.IsBorrowed()
     and spp::get<0>(cond_sym->MemInfo->AstBorrowed) == nullptr;
 
-  // Validate the memory state across all branches (also calls stage 8 from within).
+  // Validate the memory state across all branches (also calls
+  // stage 8 from within).
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     if (takes_subject) { meta->CaseConsumedSubjects.EmplaceBack(cond_sym->Name); }
     ValidateInconsistentMemory(
       this, Branches | genex::views::ptr | genex::to<Vec>(), takes_subject ? cond_sym : nullptr, sm, meta);
   }
 
-  // The mark is made here, after the branches have bound off the subject and outside the per-branch snapshots
-  // "ValidateInconsistentMemory" takes. That is what keeps the branches agreeing: every one of them, "else" included,
-  // leaves the subject in the same state, because none of them is what moved it.
+  // The mark is made here, after the branches have bound off
+  // the subject and outside the per-branch snapshots
+  // "ValidateInconsistentMemory" takes. That is what keeps
+  // the branches agreeing: every one of them, "else" included,
+  // leaves the subject in the same state, because none of
+  // them is what moved it.
   //
-  // Marked directly rather than through "ValidateSymbolMemory", whose inconsistency checks run whatever flags it is
-  // given. Those checks are exactly what must not fire here: the branches having moved different parts of the subject
-  // stops meaning anything once the whole of it is taken, because all of it is gone either way.
+  // Marked directly rather than through "ValidateSymbolMemory",
+  // whose inconsistency checks run whatever flags it is given.
+  // Those checks are exactly what must not fire here: the
+  // branches having moved different parts of the subject stops
+  // meaning anything once the whole of it is taken, because all
+  // of it is gone either way.
   if (takes_subject) {
-    // "case x of" takes the symbol itself; "case x.inner of" takes one region of it, which is a partial move like any
+    // "case x of" takes the symbol itself; "case x.inner of"
+    // takes one region of it, which is a partial move like any
     // other.
     if (Cond->To<IdentifierAst>() != nullptr) {
       cond_sym->MemInfo->MovedBy(*Cond, sm->CurrentScope);
@@ -268,35 +279,32 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::CaseExpressionAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto CaseExpressionAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Scopes.
   sm->MoveToNextScope();
 
   // Load meta information for compile-time resolution.
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
 
-    // Delegate to the branches' compile-time resolution (break at first match).
+    // Delegate to the branches' compile-time resolution (break
+    // at first match).
     meta->CmpResult = nullptr;
     for (auto const &branch : Branches) {
       branch->Stage9_CompTimeResolve(sm, meta);
       if (meta->CmpResult != nullptr) { break; }
     }
 
-    // Otherwise, if no branches matched, this is non-returning, so nullptr is fine.
+    // Otherwise, if no branches matched, this is non-returning,
+    // so nullptr is fine.
   }
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto CaseExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Scope shift.
   sm->MoveToNextScope();
 
@@ -336,15 +344,19 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     // branch that might get entered for this "case" expression.
     const auto n = static_cast<unsigned>(Branches.Len());
 
-    // An "is" desugars into branches yielding "true" and "false", so the merged value is a boolean by construction.
-    // Inferring it instead would re-walk the branches with the scope manager standing where codegen left it rather
-    // than where analysis did, and a disagreement there surfaces as a type mismatch raised from the middle of code
-    // generation. "ret_type" stays null with it, which is what stops the branches trying to widen a bool into a
-    // variant on the way into the phi.
+    // An "is" desugars into branches yielding "true" and "false",
+    // so the merged value is a boolean by construction. Inferring
+    // it instead would re-walk the branches with the scope
+    // manager standing where codegen left it rather than where
+    // analysis did, and a disagreement there surfaces as a type
+    // mismatch raised from the middle of code generation.
+    // "ret_type" stays null with it, which is what stops the
+    // branches trying to widen a bool into a variant on the way
+    // into the phi.
     const auto llvm_phi_ty = [&] {
       if (LoweredFromIsExpr) { return static_cast<llvm::Type*>(llvm::Type::getInt1Ty(*ctx->Context)); }
       ret_type = InferType(sm, meta);
-      return codegen::GetLlvmTypeOf(*ret_type, *sm->CurrentScope, ctx);
+      return codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx);
     }();
 
     if (not codegen::IsValuelessType(llvm_phi_ty)) {
@@ -356,7 +368,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   // Set "case" information to the meta struct for branches and
   // patterns to use.
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->LlvmCaseCondition = llvm_cond;
     meta->LlvmEndBB = case_end_bb;
@@ -367,8 +379,9 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     meta->AssignmentTargetType = ret_type;
 
     // Generate each branch (no return value because branches don't
-    // return generated ir, rather the PHI nodes get registered as ret
-    // values, and the body code is generated by branching (auto bound).
+    // return generated ir, rather the PHI nodes get registered as
+    // ret values, and the body code is generated by branching (auto
+    // bound).
     ctx->Builder.SetInsertPoint(case_entry_bb);
     for (auto const &branch : Branches) {
       branch->Stage11_CodeGen(sm, meta, ctx);
@@ -392,11 +405,8 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   return phi;
 }
 
-auto spp::asts::CaseExpressionAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> Shared<TypeAst> {
-  // Alias the common utils functions and types.
+auto CaseExpressionAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using analyse::errors::SppCaseBranchMissingElseError;
   using analyse::utils::case_utils::ValidateInconsistentTypes;
   using generate::common_types::VoidType;
@@ -437,8 +447,7 @@ auto spp::asts::CaseExpressionAst::InferType(
     : master_branch_type_info.second;
 }
 
-auto spp::asts::CaseExpressionAst::Terminates() const
-  -> bool {
+auto CaseExpressionAst::Terminates() const -> bool {
   // Every branch has to terminate, and there has to be a branch
   // that always runs. Without a final "else" the case can match
   // nothing and fall straight through, so "case a { gen 1 ret }"

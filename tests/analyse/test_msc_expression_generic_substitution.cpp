@@ -213,3 +213,75 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f[Bool]()
     }
 )");
+
+// The four below pin down that a comp parameter is substituted by the scope that declares it, even where two nested
+// scopes spell theirs the same. Type substitution matches a parameter by "ParamId" and comp substitution still matches
+// by spelling ("IdentifierAst::SubstituteGenericsExpr"), which looks like a hygiene hole and is not one: every driver
+// of "SubstituteGenericsExpr" substitutes an expression against the arguments of the very scope that wrote it, and one
+// name is one parameter within a scope. Each same-spelling test is paired with a distinct-spelling control, so a
+// failure says whether the spelling is what broke it. The comp value is surfaced through a type, because that is what
+// makes a wrong binding observable to the analyser rather than only to a running program.
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_method_comp_parameter_spelled_like_its_sup_blocks, R"(
+    !public cls A[cmp n: U8] { }
+    !public cls H[cmp n: U8] { }
+
+    sup [cmp n: U8] H[n] {
+        !public fun m[cmp n: U8](&self) -> A[n] { ret A[n]() }
+    }
+
+    fun g() -> Void {
+        let h = H[3_u8]()
+        let x: A[7_u8] = h.m[7_u8]()
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(h)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_method_comp_parameter_spelled_unlike_its_sup_blocks, R"(
+    !public cls A[cmp n: U8] { }
+    !public cls H[cmp n: U8] { }
+
+    sup [cmp n: U8] H[n] {
+        !public fun m[cmp q: U8](&self) -> A[q] { ret A[q]() }
+    }
+
+    fun g() -> Void {
+        let h = H[3_u8]()
+        let x: A[7_u8] = h.m[7_u8]()
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(h)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_callee_comp_parameter_spelled_like_its_callers, R"(
+    !public cls A[cmp n: U8] { }
+
+    fun inner[cmp n: U8]() -> A[n] { ret A[n]() }
+    fun outer[cmp n: U8]() -> A[4_u8] { ret inner[4_u8]() }
+
+    fun g() -> Void {
+        let x: A[4_u8] = outer[9_u8]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_callee_comp_parameter_spelled_unlike_its_callers, R"(
+    !public cls A[cmp n: U8] { }
+
+    fun inner[cmp k: U8]() -> A[k] { ret A[k]() }
+    fun outer[cmp n: U8]() -> A[4_u8] { ret inner[4_u8]() }
+
+    fun g() -> Void {
+        let x: A[4_u8] = outer[9_u8]()
+        std::mem::ops::drop(x)
+    }
+)");

@@ -15,6 +15,7 @@ use(spp::asts, struct Ast);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct LoopExpressionAst);
 use(spp::asts, struct ModulePrototypeAst);
+use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeStatementAst);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::utils::errors, class ErrorFormatter);
@@ -32,10 +33,6 @@ SPP_EXP_CLS class spp::analyse::scopes::ScopeManager {
   ScopeIterator _It;
 
   /// The "Self" type symbol, which is a special type
-  /// symbol that is linked to the scope of the enclosing
-  /// class or superimposition block. Effectively a placeholder
-  /// ast until resolution is performed.
-  Unique<ClassPrototypeAst> _SelfProto;
 
 public:
   /// The static list of sup blocks that have been processed.
@@ -118,48 +115,23 @@ public:
   /// reached.
   auto ExhaustScope() -> void;
 
-  /// The deferment logic is explained below, but this struct
-  /// tracks the information needed to accurately defer the
-  /// constraint checking and subsequent potential pruning.
-  struct DeferredSupConstraint {
-    /// The scope the super scope was attached to (pruned if
-    /// the constraint fails).
-    Scope *owner_scope;
-
-    /// The (specialized) super scope that was attached.
-    Scope *sup_scope;
-
-    /// The paired super class scope also attached, or nullptr.
-    Scope *sup_cls_scope;
-
-    /// The original (constrained) generic sup block.
-    Scope *base_sup_scope;
-  };
-
-  /// For every type discovered upto this point, attach the
-  /// designated supertypes to them. By this point, all the
-  /// base classes and sup blocks will have been added to the
-  /// symbol tables, but not all the generic instantiation of
-  /// these types. A 2-phase attachment process happens,
-  /// allowing for order-agnostic attaching. The first phase
-  /// attaches every possible superscope for the type, and
-  /// defers any generic constraint check. This is because the
-  /// constraint might not have been built / sup-attached yet;
-  /// this would be order dependent. The second phase then
-  /// validates the constraints, and prunes off the unsatisfied
-  /// constraints. This is repeated to a fixpoint so transitive
-  /// constraint chains resolve.
+  /// For every type discovered up to this point, attach the
+  /// designated supertypes to it, checking each generic
+  /// constraint as it is attached. A constraint is checked
+  /// against the constrained type's own supertypes, which may
+  /// not be attached yet, so reading a scope's supertypes during
+  /// the sweep attaches them first ("Scope::OnSupScopesRead").
   auto AttachAllSuperScopes(CompilerMetaData *meta) -> void;
 
   /// The public method to attach all the super scopes to an
-  /// individual type. This is called repeatedly by the attach
-  /// all super scopes function, but also individually hit by
-  /// stage 7 monomorphisation.
+  /// individual type, once ("Scope::SupsAttached"), returning
+  /// whether it attached them now. Called by the attach all
+  /// super scopes function, and individually when a generic
+  /// class is instantiated.
   auto AttachSpecificSuperScopes(
     Scope &scope,
-    CompilerMetaData *meta,
-    Vec<DeferredSupConstraint> *deferred = nullptr) const
-    -> void;
+    CompilerMetaData *meta) const
+    -> bool;
 
 private:
   /// Given a method's "$", coalesce the overloads to this type,
@@ -174,16 +146,8 @@ private:
   auto AttachSpecificSuperScopesImpl(
     Scope &scope,
     Vec<Scope*> const &sup_scopes,
-    CompilerMetaData *meta,
-    Vec<DeferredSupConstraint> *deferred) const
+    CompilerMetaData *meta) const
     -> void;
-
-  /// Perform the pruning when constraints don't match. This
-  /// is the second stage of the 2-phase sup-scope attachment
-  /// strategy. Repeated to a "fixed point", because pruning
-  /// one attachment can invalidate the constraint of another
-  /// (transitive constraint chains).
-  auto PruneUnsatisfiedSupConstraints(Vec<DeferredSupConstraint> &deferred, CompilerMetaData *meta) const -> void;
 
   /// Once a super-scope has been registered against a scope,
   /// there are some post-attachment steps that need to be run.
@@ -197,14 +161,18 @@ public:
   /// scope manager clone.
   auto CurrentIterator() -> ScopeIterator&;
 
-  /// Get the placeholder self prototype. Todo: Might see if
-  /// this can be removed.
-  auto SelfProto() const -> ClassPrototypeAst*;
+  /// Build the symbol for the special "Self" type, linked to the
+  /// scope of the type it names and defined in "defined_in".
+  static auto MakeSelfTypeSymbol(Scope *linked_scope, Scope *defined_in, std::size_t pos) -> Shared<TypeSymbol>;
 
   /// Add the symbol for the special "Self" type, providing
   /// the linked scope for it to map against. Done as early
   /// as possible, making "Self" resolvable.
   auto AddSelfTypeSymbol(Scope *linked_scope, std::size_t pos) const -> void;
+
+  /// Point the current scope's "Self" symbol at the class "cls_name" names, taking that class's type and layout. A
+  /// compiler-generated name (a method's "$" mock) is left alone.
+  auto SyncSelfTypeSymbol(TypeAst const &cls_name) const -> void;
 
   /// Clear the static caches on the scope manager for general
   /// cleanup. Called at the end of a compilation.

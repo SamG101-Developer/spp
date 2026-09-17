@@ -5,109 +5,94 @@ module spp.asts.expression_ast;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
-spp::asts::ExpressionAst::ExpressionAst() = default;
-spp::asts::ExpressionAst::~ExpressionAst() = default;
+ExpressionAst::ExpressionAst() = default;
+ExpressionAst::~ExpressionAst() = default;
 
-auto spp::asts::ExpressionAst::operator<=>(
-  const ExpressionAst &rhs_expr) const
-  -> Ordering {
+auto ExpressionAst::operator<=>(
+  const ExpressionAst &rhs_expr) const -> Ordering {
   return Equals(rhs_expr);
 }
 
-auto spp::asts::ExpressionAst::operator==(
-  const ExpressionAst &rhs_expr) const
-  -> bool {
+auto ExpressionAst::operator==(
+  const ExpressionAst &rhs_expr) const -> bool {
   return Equals(rhs_expr) == Ordering::equal;
 }
 
-auto spp::asts::ExpressionAst::EqualsArrayLiteralExplicitElements(
-  ArrayLiteralExplicitElementsAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsArrayLiteralExplicitElements(
+  ArrayLiteralExplicitElementsAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsArrayLiteralRepeatedElement(
-  ArrayLiteralRepeatedElementAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsArrayLiteralRepeatedElement(
+  ArrayLiteralRepeatedElementAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsBooleanLiteral(
-  BooleanLiteralAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsBooleanLiteral(
+  BooleanLiteralAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsCharLiteral(
-  CharLiteralAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsCharLiteral(
+  CharLiteralAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsFloatLiteral(
-  FloatLiteralAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsFloatLiteral(
+  FloatLiteralAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsIdentifier(
-  IdentifierAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsIdentifier(
+  IdentifierAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsIntegerLiteral(
-  IntegerLiteralAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsIntegerLiteral(
+  IntegerLiteralAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsStringLiteral(
-  StringLiteralAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsStringLiteral(
+  StringLiteralAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsTupleLiteral(
-  TupleLiteralAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsTupleLiteral(
+  TupleLiteralAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsTypeIdentifier(
-  TypeIdentifierAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsTypeIdentifier(
+  TypeIdentifierAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsTypeUnaryExpression(
-  TypeUnaryExpressionAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsTypeUnaryExpression(
+  TypeUnaryExpressionAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::EqualsTypePostfixExpression(
-  TypePostfixExpressionAst const &) const
-  -> Ordering {
+auto ExpressionAst::EqualsTypePostfixExpression(
+  TypePostfixExpressionAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::Equals(
-  ExpressionAst const &) const
-  -> Ordering {
+auto ExpressionAst::Equals(
+  ExpressionAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto spp::asts::ExpressionAst::ExprParts() const
-  -> Vec<IdentifierAst*> {
+auto ExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
+  // The default "parts" list is empty, and certain asts
+  // add a part.
   return {};
 }
 
-auto spp::asts::ExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &) const
-  -> Shared<ExpressionAst> {
+auto ExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &) const -> Shared<ExpressionAst> {
   // The default operation is to do nothing, because all
-  // other ASTs will specialize.
+  // other asts will specialize.
   return AstCloneShared(this);
 }
 

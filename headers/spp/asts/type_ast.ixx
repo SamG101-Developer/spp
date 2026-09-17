@@ -48,15 +48,17 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
 
+  /// A clone of this type with "arg_group" on its right-most part.
+  /// A plain name builds its own ("TypeIdentifierAst").
+  SPP_ATTR_NODISCARD auto WithGenerics(Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
+
   /// Get the symbol this type resolved to the last time it was
   /// looked up in "scope", if that answer still stands. An
   /// answer remembered under an earlier "TypeLookupGeneration"
   /// is discarded. "out" is only set when there is an answer.
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto TryCachedLookup(
-    Scope const *const scope,
-    const std::uint64_t generation,
-    TypeSymbol *&out) const
-    -> bool {
+    Scope const *const scope, const std::uint64_t generation,
+    TypeSymbol *&out) const -> bool {
     if (_LookupScope != scope or _LookupGen != generation) { return false; }
     out = _LookupSym;
     return true;
@@ -74,6 +76,21 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
     _LookupScope = scope;
     _LookupSym = sym;
     _LookupGen = generation;
+  }
+
+  /// The symbol this type resolved to where it was written, if it
+  /// was stamped with one ("TypeSymbol::FqName" stamps the names it
+  /// hands out). A lookup of a stamped type asks "Scope::Canon" what
+  /// that symbol means from the scope asking, instead of resolving
+  /// the spelling again there - which binds a caller's "T" to a
+  /// callee's parameter of the same name.
+  SPP_ATTR_NODISCARD auto Stamp() const noexcept -> TypeSymbol* {
+    return _Stamp;
+  }
+
+  /// Stamp this type with the symbol it resolved to; see "Stamp".
+  auto SetStamp(TypeSymbol *const sym) const noexcept -> void {
+    _Stamp = sym;
   }
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
@@ -100,6 +117,7 @@ protected:
   mutable Scope const *_LookupScope;
   mutable TypeSymbol *_LookupSym;
   mutable std::uint64_t _LookupGen;
+  mutable TypeSymbol *_Stamp = nullptr;
   mutable Str _CachedStringification;
 
   /// Whether this type reports "_SpanStart" to "_SpanEnd" as its

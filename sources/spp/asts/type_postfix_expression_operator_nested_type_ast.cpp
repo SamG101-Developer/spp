@@ -11,7 +11,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
+TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
   decltype(TokSep) &&tok_sep,
   decltype(Name) name) :
   TokSep(std::move(tok_sep)),
@@ -19,78 +19,66 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOper
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokSep, lex::SppTokenType::TK_DOUBLE_COLON, "::");
 }
 
-spp::asts::TypePostfixExpressionOperatorNestedTypeAst::~TypePostfixExpressionOperatorNestedTypeAst() = default;
+TypePostfixExpressionOperatorNestedTypeAst::~TypePostfixExpressionOperatorNestedTypeAst() = default;
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::EqualsNestedType(
-  TypePostfixExpressionOperatorNestedTypeAst const &other) const
-  -> Ordering {
+auto TypePostfixExpressionOperatorNestedTypeAst::EqualsNestedType(
+  TypePostfixExpressionOperatorNestedTypeAst const &other) const -> Ordering {
   // Equality is based on the internal name.
   return *Name <=> *other.Name;
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::Equals(
-  const TypePostfixExpressionOperatorAst &other) const
-  -> Ordering {
+auto TypePostfixExpressionOperatorNestedTypeAst::Equals(
+  const TypePostfixExpressionOperatorAst &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsNestedType(*this);
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::PosStart() const
-  -> std::size_t {
+auto TypePostfixExpressionOperatorNestedTypeAst::PosStart() const -> std::size_t {
   // Use the "::" token.
   return TokSep->PosStart();
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::PosEnd() const
-  -> std::size_t {
+auto TypePostfixExpressionOperatorNestedTypeAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::Clone() const
-  -> Unique<Ast> {
+auto TypePostfixExpressionOperatorNestedTypeAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
     AstClone(TokSep),
     AstCloneShared(Name));
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ToString() const
-  -> Str {
+auto TypePostfixExpressionOperatorNestedTypeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSep);
   SPP_STRING_APPEND(Name);
   SPP_STRING_END;
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts() const
-  -> Vec<IdentifierAst const*> {
+auto TypePostfixExpressionOperatorNestedTypeAst::NsParts() const -> Vec<IdentifierAst const*> {
   return {};
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsParts()
-  -> Vec<IdentifierAst*> {
+auto TypePostfixExpressionOperatorNestedTypeAst::NsParts() -> Vec<IdentifierAst*> {
   return {};
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts() const
-  -> Vec<TypeIdentifierAst const*> {
+auto TypePostfixExpressionOperatorNestedTypeAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
   return {Name.get()};
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypeParts()
-  -> Vec<TypeIdentifierAst*> {
+auto TypePostfixExpressionOperatorNestedTypeAst::TypeParts() -> Vec<TypeIdentifierAst*> {
   return {Name.get()};
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::NsPartsInto(
-  Vec<IdentifierAst const*>&) const
-  -> void {
+auto TypePostfixExpressionOperatorNestedTypeAst::NsPartsInto(
+  Vec<IdentifierAst const*>&) const -> void {
 }
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePartsInto(
-  Vec<TypeIdentifierAst const*> &out) const
-  -> void {
+auto TypePostfixExpressionOperatorNestedTypeAst::TypePartsInto(
+  Vec<TypeIdentifierAst const*> &out) const -> void {
   out.EmplaceBack(Name.get());
 }
 

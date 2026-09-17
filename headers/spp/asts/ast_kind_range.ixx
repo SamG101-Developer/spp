@@ -62,24 +62,10 @@ namespace spp::asts {
   SPP_EXP_CLS struct GenExpressionAst;
   SPP_EXP_CLS struct GenWithExpressionAst;
   SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct GenericArgumentCompAst;
-  SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
-  SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
   SPP_EXP_CLS struct GenericArgumentGroupAst;
-  SPP_EXP_CLS struct GenericArgumentTypeAst;
-  SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
-  SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
   SPP_EXP_CLS struct GenericParameterAst;
-  SPP_EXP_CLS struct GenericParameterCompAst;
-  SPP_EXP_CLS struct GenericParameterCompOptionalAst;
-  SPP_EXP_CLS struct GenericParameterCompRequiredAst;
-  SPP_EXP_CLS struct GenericParameterCompVariadicAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct GenericParameterTypeAst;
   SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
-  SPP_EXP_CLS struct GenericParameterTypeOptionalAst;
-  SPP_EXP_CLS struct GenericParameterTypeRequiredAst;
-  SPP_EXP_CLS struct GenericParameterTypeVariadicAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
   SPP_EXP_CLS struct IntegerLiteralAst;
@@ -542,28 +528,7 @@ namespace spp::asts {
   struct AstKindRange<GenericArgumentAst> {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kGenericArgumentAst;
-    static constexpr auto Last = AstKind::kGenericArgumentTypePositionalAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericArgumentCompAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericArgumentCompAst;
-    static constexpr auto Last = AstKind::kGenericArgumentCompPositionalAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericArgumentCompKeywordAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericArgumentCompKeywordAst;
-    static constexpr auto Last = AstKind::kGenericArgumentCompKeywordAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericArgumentCompPositionalAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericArgumentCompPositionalAst;
-    static constexpr auto Last = AstKind::kGenericArgumentCompPositionalAst;
+    static constexpr auto Last = AstKind::kGenericArgumentAst;
   };
 
   template <>
@@ -574,59 +539,10 @@ namespace spp::asts {
   };
 
   template <>
-  struct AstKindRange<GenericArgumentTypeAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericArgumentTypeAst;
-    static constexpr auto Last = AstKind::kGenericArgumentTypePositionalAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericArgumentTypeKeywordAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericArgumentTypeKeywordAst;
-    static constexpr auto Last = AstKind::kGenericArgumentTypeKeywordAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericArgumentTypePositionalAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericArgumentTypePositionalAst;
-    static constexpr auto Last = AstKind::kGenericArgumentTypePositionalAst;
-  };
-
-  template <>
   struct AstKindRange<GenericParameterAst> {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kGenericParameterAst;
-    static constexpr auto Last = AstKind::kGenericParameterTypeVariadicAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericParameterCompAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterCompAst;
-    static constexpr auto Last = AstKind::kGenericParameterCompVariadicAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericParameterCompOptionalAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterCompOptionalAst;
-    static constexpr auto Last = AstKind::kGenericParameterCompOptionalAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericParameterCompRequiredAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterCompRequiredAst;
-    static constexpr auto Last = AstKind::kGenericParameterCompRequiredAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericParameterCompVariadicAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterCompVariadicAst;
-    static constexpr auto Last = AstKind::kGenericParameterCompVariadicAst;
+    static constexpr auto Last = AstKind::kGenericParameterAst;
   };
 
   template <>
@@ -637,38 +553,10 @@ namespace spp::asts {
   };
 
   template <>
-  struct AstKindRange<GenericParameterTypeAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterTypeAst;
-    static constexpr auto Last = AstKind::kGenericParameterTypeVariadicAst;
-  };
-
-  template <>
   struct AstKindRange<GenericParameterTypeInlineConstraintsAst> {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kGenericParameterTypeInlineConstraintsAst;
     static constexpr auto Last = AstKind::kGenericParameterTypeInlineConstraintsAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericParameterTypeOptionalAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterTypeOptionalAst;
-    static constexpr auto Last = AstKind::kGenericParameterTypeOptionalAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericParameterTypeRequiredAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterTypeRequiredAst;
-    static constexpr auto Last = AstKind::kGenericParameterTypeRequiredAst;
-  };
-
-  template <>
-  struct AstKindRange<GenericParameterTypeVariadicAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterTypeVariadicAst;
-    static constexpr auto Last = AstKind::kGenericParameterTypeVariadicAst;
   };
 
   template <>

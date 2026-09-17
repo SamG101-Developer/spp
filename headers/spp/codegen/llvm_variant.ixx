@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 use(spp::analyse::scopes, class Scope);
-use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 namespace spp::codegen {
   /// Get the type of a tag on a variant-lowered type. This is
@@ -19,7 +19,7 @@ namespace spp::codegen {
   /// the definition "type Opt[S32] = Some[S32] or None" means
   /// that "None" is at index 1 for the "Opt" variant type.
   SPP_EXP_FUN auto GetVariantIndexOfMember(
-    TypeAst const &variant_type, TypeAst const &member_type, Scope const &scope) -> std::optional<std::uint64_t>;
+    TypeRef const &variant, TypeRef const &member, Scope const &scope) -> std::optional<std::uint64_t>;
 
   /// Get the LLVM pointer of the variant, which is structured as
   /// "{ tag, ptr }". A simple GEP into the field indexed at 1.
@@ -54,8 +54,8 @@ namespace spp::codegen {
   /// guaranteed subset).
   SPP_EXP_FUN auto CoerceToVariant(
     llvm::Value *llvm_val,
-    TypeAst const &target_type,
-    TypeAst const &source_type,
+    TypeRef const &target,
+    TypeRef const &source,
     Scope const &scope,
     Str const &name,
     LlvmCtx *ctx)

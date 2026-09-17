@@ -17,6 +17,7 @@ use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct PatternGuardAst);
 use(spp::asts, struct StatementAst);
 use(spp::asts, struct TokenAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 
 /// A branch on a "case" block. It contains the patterns to
@@ -57,6 +58,8 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   auto MarkForIterLoopYield() -> void;
 

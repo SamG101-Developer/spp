@@ -51,8 +51,6 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -88,6 +86,9 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_ATTR_NODISCARD auto WithConvention(Unique<ConventionAst> &&conv) const -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto WithoutGenerics() const -> Shared<TypeAst> override;
+
+  /// Stamp this name's head with the template (or alias) it names wherever it is read; see "_TemplateStamp".
+  auto SetTemplateStamp(TypeSymbol *const sym) const noexcept -> void { _TemplateStamp = sym; }
 
   SPP_ATTR_NODISCARD auto SubstituteGenerics(Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> override;
 
@@ -146,6 +147,11 @@ private:
   bool _Resolved;
 
   bool _IsSourceWritten;
+
+  /// The template (or alias) this name's head resolved to where it was analysed with arguments ("Alloc" of "Alloc[T]").
+  /// Kept through "Clone", "SubstituteGenerics" and "WithGenerics", and handed to "WithoutGenerics", so the stripped
+  /// name resolves to that declaration from anywhere ("Scope::Canon") rather than by its spelling.
+  mutable TypeSymbol *_TemplateStamp = nullptr;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)

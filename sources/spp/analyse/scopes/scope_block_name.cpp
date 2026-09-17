@@ -9,15 +9,13 @@ import spp.asts.type_identifier_ast;
 import spp.utils.ptr;
 
 SPP_MOD_BEGIN
-spp::analyse::scopes::ScopeBlockName::ScopeBlockName(
+ScopeBlockName::ScopeBlockName(
   Str &&name) :
   Name(std::move(name)) {
 }
 
-auto spp::analyse::scopes::ScopeBlockName::FromParts(
-  Str &&header,
-  Vec<asts::Ast*> const &parts,
-  const std::size_t pos)
+auto ScopeBlockName::FromParts(
+  Str &&header, Vec<Ast*> const &parts, const std::size_t pos)
   -> ScopeBlockName {
   // Build the name string.
   auto builder = Str();
@@ -30,18 +28,18 @@ auto spp::analyse::scopes::ScopeBlockName::FromParts(
   return ScopeBlockName(std::move(builder));
 }
 
-spp::analyse::scopes::ScopeIdentifierName::ScopeIdentifierName(
-  Shared<asts::IdentifierAst> const &name) :
+ScopeIdentifierName::ScopeIdentifierName(
+  Shared<IdentifierAst> const &name) :
   Name(name) {
 }
 
-spp::analyse::scopes::ScopeTypeIdentifierName::ScopeTypeIdentifierName(
-  Shared<asts::TypeAst> const &name) :
-  Name(dynamic_shared_cast<asts::TypeIdentifierAst>(name)) {
+ScopeTypeIdentifierName::ScopeTypeIdentifierName(
+  Shared<TypeAst> const &name) :
+  Name(dynamic_shared_cast<TypeIdentifierAst>(name)) {
 }
 
-spp::analyse::scopes::ScopeTypeIdentifierName::ScopeTypeIdentifierName(
-  Shared<asts::TypeIdentifierAst> const &name) :
+ScopeTypeIdentifierName::ScopeTypeIdentifierName(
+  Shared<TypeIdentifierAst> const &name) :
   Name(name) {
 }
 

@@ -12,7 +12,6 @@ import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -27,37 +26,36 @@ import genex;
 import llvm;
 
 namespace {
-  /**
-   * The symbols whose compile-time values are currently being resolved. A "cmp" constant is resolved by walking the
-   * identifiers its value names, so a constant that reaches itself is a cycle and therefore an error.
-   */
-  thread_local spp::Vec<spp::analyse::scopes::VariableSymbol const*> _ResolvingCompTimeSyms;
+  /// List of the symbols those comp-time values are in the
+  /// process of being resolved. A "cmp" constant is resolved by
+  /// walking the identifiers its value names, so a constant
+  /// that reaches itself is a cycle => error.
+  thread_local spp::Vec<VariableSymbol const*> _ResolvingCompTimeSyms;
 
-  /**
-   * Push a symbol onto the resolution stack for as long as the enclosing block runs, including when it is left by a
-   * thrown semantic error - a caught error must not leave the stack claiming a resolution is still in progress.
-   */
+  /// Push a symbol onto the resolution stack for as long as
+  /// the enclosing block runs, including when it is left by a
+  /// thrown semantic error. A caught error must not leave the
+  /// stack claiming a resolution is still in progress.
   struct ResolvingCompTimeSymGuard {
     explicit ResolvingCompTimeSymGuard(
-      spp::analyse::scopes::VariableSymbol const *const sym) { _ResolvingCompTimeSyms.EmplaceBack(sym); }
+      VariableSymbol const *const sym) { _ResolvingCompTimeSyms.EmplaceBack(sym); }
 
     ~ResolvingCompTimeSymGuard() { _ResolvingCompTimeSyms.PopBack(); }
 
-    ResolvingCompTimeSymGuard(ResolvingCompTimeSymGuard const&) = delete;
-    ResolvingCompTimeSymGuard(ResolvingCompTimeSymGuard&&) = delete;
-    auto operator=(ResolvingCompTimeSymGuard const&) -> ResolvingCompTimeSymGuard& = delete;
-    auto operator=(ResolvingCompTimeSymGuard&&) -> ResolvingCompTimeSymGuard& = delete;
+    ResolvingCompTimeSymGuard(ResolvingCompTimeSymGuard const &) = delete;
+    ResolvingCompTimeSymGuard(ResolvingCompTimeSymGuard &&) = delete;
+    auto operator=(ResolvingCompTimeSymGuard const &) -> ResolvingCompTimeSymGuard& = delete;
+    auto operator=(ResolvingCompTimeSymGuard &&) -> ResolvingCompTimeSymGuard& = delete;
   };
 }
 
 SPP_MOD_BEGIN
-auto spp::asts::IdentifierAst::FromType(
-  TypeAst const &val)
-  -> Unique<IdentifierAst> {
+auto IdentifierAst::FromType(
+  TypeAst const &val) -> Unique<IdentifierAst> {
   return MakeUnique<IdentifierAst>(val.PosStart(), Str(val.LastTypePart()->Name));
 }
 
-spp::asts::IdentifierAst::IdentifierAst(
+IdentifierAst::IdentifierAst(
   const std::size_t pos,
   decltype(Val) val) :
   Val(std::move(val)),
@@ -65,7 +63,7 @@ spp::asts::IdentifierAst::IdentifierAst(
   _NameId(utils::Intern(Val)) {
 }
 
-spp::asts::IdentifierAst::IdentifierAst(
+IdentifierAst::IdentifierAst(
   const std::size_t pos,
   decltype(Val) val,
   const utils::InternedId name_id) :
@@ -74,93 +72,84 @@ spp::asts::IdentifierAst::IdentifierAst(
   _NameId(name_id) {
 }
 
-auto spp::asts::IdentifierAst::MappedFromTok(
-  TokenAst const &tok,
-  decltype(Val) val)
-  -> Unique<IdentifierAst> {
+auto IdentifierAst::MappedFromTok(
+  TokenAst const &tok, decltype(Val) val) -> Unique<IdentifierAst> {
   //
   auto id = MakeUnique<IdentifierAst>(tok.PosStart(), std::move(val));
   id->_ForTok = tok.TokenData.length();
   return id;
 }
 
-spp::asts::IdentifierAst::~IdentifierAst() = default;
+IdentifierAst::~IdentifierAst() = default;
 
-auto spp::asts::IdentifierAst::operator<=>(
-  IdentifierAst const &that) const
-  -> Ordering {
+auto IdentifierAst::operator<=>(
+  IdentifierAst const &that) const -> Ordering {
   return Val <=> that.Val;
 }
 
-auto spp::asts::IdentifierAst::operator==(
-  IdentifierAst const &that) const
-  -> bool {
+auto IdentifierAst::operator==(
+  IdentifierAst const &that) const -> bool {
   return EqualsIdentifier(that) == Ordering::equal;
 }
 
-auto spp::asts::IdentifierAst::operator==(
-  ExpressionAst const &that) const
-  -> bool {
+auto IdentifierAst::operator==(
+  ExpressionAst const &that) const -> bool {
   return Equals(that) == Ordering::equal;
 }
 
-auto spp::asts::IdentifierAst::EqualsIdentifier(
-  IdentifierAst const &other) const
-  -> Ordering {
-  if (_NameId == other._NameId) {
-    return Ordering::equal;
-  }
-  return Ordering::less;
+auto IdentifierAst::EqualsIdentifier(
+  IdentifierAst const &other) const -> Ordering {
+  // Compare the interned identifiers.
+  return _NameId == other._NameId
+    ? Ordering::equal
+    : Ordering::less;
 }
 
-auto spp::asts::IdentifierAst::Equals(
-  ExpressionAst const &other) const
-  -> Ordering {
+auto IdentifierAst::Equals(
+  ExpressionAst const &other) const -> Ordering {
+  // Into reverse hook.
   return other.EqualsIdentifier(*this);
 }
 
-auto spp::asts::IdentifierAst::PosStart() const
-  -> std::size_t {
+auto IdentifierAst::PosStart() const -> std::size_t {
+  // Raw position field.
   return _Pos;
 }
 
-auto spp::asts::IdentifierAst::PosEnd() const
-  -> std::size_t {
+auto IdentifierAst::PosEnd() const -> std::size_t {
+  // Raw position field incremented by the token data length.
   return _ForTok ? _Pos + _ForTok : _Pos + Val.length();
 }
 
-auto spp::asts::IdentifierAst::Clone() const
-  -> Unique<Ast> {
+auto IdentifierAst::Clone() const -> Unique<Ast> {
   // The copy spells the same name, so it carries the
   // id over rather than interning the string again. A
   // name mapped from a token keeps that token's length.
   auto id = Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
   id->_ForTok = _ForTok;
+  id->_Stamp = _Stamp;
   return id;
 }
 
-auto spp::asts::IdentifierAst::ToString() const
-  -> Str {
+auto IdentifierAst::ToString() const -> Str {
+  // Just use the internal value.
   return Val;
 }
 
-auto spp::asts::IdentifierAst::operator+(
-  IdentifierAst const &that) const
-  -> IdentifierAst {
+auto IdentifierAst::operator+(
+  IdentifierAst const &that) const -> IdentifierAst {
+  // Append another identifier into this one.
   return IdentifierAst(_Pos, Val + that.Val);
 }
 
-auto spp::asts::IdentifierAst::operator+(
-  Str const &that) const
-  -> IdentifierAst {
+auto IdentifierAst::operator+(
+  Str const &that) const -> IdentifierAst {
+  // Append a raw string into this one.
   return IdentifierAst(_Pos, Val + that);
 }
 
-auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto IdentifierAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppSelfIdentifierInvalidContextError;
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
   using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
@@ -169,6 +158,15 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
   // current scope. Also check for invalid "self" (just
   // a custom error for "self" in a non-method context).
   const auto sym = sm->CurrentScope->GetVarSymbol(this);
+
+  // A comp parameter named here is stamped with it, as a
+  // type parameter's name is: wherever the name is read from
+  // then, it means this parameter ("Scope::CanonVar"), not
+  // whatever its spelling finds there.
+  if (sym != nullptr and Stamp() == nullptr
+    and sym->Kind == VariableKind::GenericCompParam
+    and sym->ParamId != 0) { SetStamp(sym); }
+
   if (sym == nullptr and not sm->CurrentScope->HasNsSymbol(this)) {
     RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
     RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
@@ -180,22 +178,19 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto IdentifierAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppCompileTimeConstantError;
 
   // Extract the value from the symbol table and return
   // it.
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
-  auto tm = analyse::scopes::ScopeManager(
+  auto tm = ScopeManager(
     sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
 
   // An unbound comp generic has no value yet, and stands for
   // itself - as it does in a template's signature.
-  if (var_sym != nullptr and var_sym->Kind == analyse::scopes::VariableKind::GenericCompParam) {
+  if (var_sym != nullptr and var_sym->Kind == VariableKind::GenericCompParam) {
     meta->CmpResult = AstClone(this);
     return;
   }
@@ -220,12 +215,8 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
   value->Stage9_CompTimeResolve(&tm, meta);
 }
 
-auto spp::asts::IdentifierAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
-  //
+auto IdentifierAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using analyse::errors::SppInternalCompilerError;
   using analyse::utils::type_predicates::IsTypeVoid;
 
@@ -236,9 +227,9 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
 
   // An identifier that reaches code generation with no symbol
-  // behind it is an internal error. Report it as one, naming the
-  // identifier, rather than reading through the null pointer -
-  // the same way the missing-allocation check below does. Todo:
+  // behind it is an internal error. Report it as one, naming
+  // the identifier, rather than reading through the null pointer
+  // - the same way the missing-allocation check below does. Todo:
   // This *can* trigger when a symbol is used on the left and right
   // like "let x = x.something()" when rebinding symbol names.
   RaiseIf<SppInternalCompilerError>(
@@ -248,7 +239,8 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   // Void identifiers could be created via generic
   // implementation, to prevent any usages of it as this
   // level too.
-  if (var_sym->Type != nullptr and IsTypeVoid(*var_sym->Type, *sm->CurrentScope)) {
+  if (var_sym->Type != nullptr
+    and IsTypeVoid(var_sym->TypeRefIn(*sm->CurrentScope), *sm->CurrentScope)) {
     return nullptr;
   }
 
@@ -284,7 +276,7 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   // symbol's own type instead of through the instruction that
   // produced the address.
   if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
-    const auto llvm_type = codegen::GetLlvmTypeOf(*var_sym->Type, *sm->CurrentScope, ctx);
+    const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
     SPP_ASSERT(llvm_type != nullptr);
     return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
   }
@@ -296,18 +288,23 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
     ERR_ARGS(*this, "Target identifier ie neither local nor global"));
 }
 
-auto spp::asts::IdentifierAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto IdentifierAst::InferType(
+  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   // Extract the symbol from the current scope, as a variable
   // symbol.
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
   return var_sym ? var_sym->Type : nullptr;
 }
 
-auto spp::asts::IdentifierAst::ToFuncIdentifier() const
-  -> Unique<IdentifierAst> {
+auto IdentifierAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *) -> TypeRef {
+  // The variable's type, resolved here as its "InferType"
+  // would be read.
+  const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
+  return var_sym ? var_sym->TypeRefIn(*sm->CurrentScope) : TypeRef{};
+}
+
+auto IdentifierAst::ToFuncIdentifier() const -> Unique<IdentifierAst> {
   // Convert the identifier into pascal case and wrap it with
   // the compiler-type "$" token; for example, "func_name"
   // becomes "$FuncName".
@@ -315,31 +312,27 @@ auto spp::asts::IdentifierAst::ToFuncIdentifier() const
     _Pos, "$" + spp::utils::strings::SnakeToPascal(Val));
 }
 
-auto spp::asts::IdentifierAst::AnkerlHash() const
-  -> std::size_t {
+auto IdentifierAst::AnkerlHash() const -> std::size_t {
   // Consistent with "EqualsIdentifier", which decides
   // equality on the id, and a multiply rather than a
   // pass over the string.
   return Hash<utils::InternedId>()(_NameId);
 }
 
-auto spp::asts::IdentifierAst::ExprParts() const
-  -> Vec<IdentifierAst*> {
+auto IdentifierAst::ExprParts() const -> Vec<IdentifierAst*> {
   return {const_cast<IdentifierAst*>(this)};
 }
 
-auto spp::asts::IdentifierAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<ExpressionAst> {
+auto IdentifierAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // A comp parameter's name is written as a type in the
   // parameter list and read as an identifier in an
   // expression, so the two spellings have to be brought
   // together before they can be compared.
   for (auto const *arg : args) {
-    auto const *comp_kw_arg = arg->To<GenericArgumentCompKeywordAst>();
-    if (comp_kw_arg == nullptr) { continue; }
-    if (*FromType(*comp_kw_arg->Name) != *this) { continue; }
-    return AstCloneShared(comp_kw_arg->Val.get());
+    if (arg->Name == nullptr or arg->CompVal == nullptr) { continue; }
+    if (*FromType(*arg->Name) != *this) { continue; }
+    return AstCloneShared(arg->CompVal.get());
   }
 
   // Any other identifier names something the bindings
@@ -347,13 +340,11 @@ auto spp::asts::IdentifierAst::SubstituteGenericsExpr(
   return AstCloneShared(this);
 }
 
-auto spp::asts::IdentifierAst::ToView() const noexcept
-  -> StrView {
+auto IdentifierAst::ToView() const noexcept -> StrView {
   return Val;
 }
 
-auto spp::asts::IdentifierAst::IsAllowedInDefault() const
-  -> bool {
+auto IdentifierAst::IsAllowedInDefault() const -> bool {
   // A name reads a value.
   return true;
 }

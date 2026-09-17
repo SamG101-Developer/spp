@@ -35,7 +35,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // Todo: Commented out - this crashes the compiler rather than failing.
-//  segfaults in GenericParameterGroupAst::Stage4_QualifyTypes (generic_parameter_group_ast.cpp:265) - a non-generic
+//  segfaults in GenericParameterGroupAst::Stage4_ResolveDeclarations (generic_parameter_group_ast.cpp:265) - a non-generic
 //  alias used as a generic parameter's constraint.
 // SPP_TEST_SHOULD_PASS_SEMANTIC(
 //   GenericTypeAliasAst,

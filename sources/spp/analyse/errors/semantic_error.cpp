@@ -394,6 +394,15 @@ SppRecursiveTypeError::SppRecursiveTypeError(
     "Remove the attribute, change the type, or use smart pointers to prevent the type recursion.");
 }
 
+SppGenericInstantiationDepthError::SppGenericInstantiationDepthError(
+  Ast const &type) {
+  AddHeader(109, "Generic Instantiation Depth Error");
+  AddErr(&type, "Generic instantiation nested too deeply here");
+  AddFooter(
+    "Instantiating this type keeps producing a more deeply nested one, so it never ends (polymorphic recursion).",
+    "Break the cycle, for example by not naming the type inside its own generic arguments.");
+}
+
 SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
   Ast const &literal,
   numex::BigDec const &value,

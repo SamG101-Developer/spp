@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.is_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -17,12 +16,13 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::IsExpressionAst::IsExpressionAst(
+IsExpressionAst::IsExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(TokOp) &&tok_op,
   decltype(Rhs) &&rhs) :
@@ -35,22 +35,19 @@ spp::asts::IsExpressionAst::IsExpressionAst(
   Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
 
-spp::asts::IsExpressionAst::~IsExpressionAst() = default;
+IsExpressionAst::~IsExpressionAst() = default;
 
-auto spp::asts::IsExpressionAst::PosStart() const
-  -> std::size_t {
+auto IsExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs, or the mapped function.
   return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
-auto spp::asts::IsExpressionAst::PosEnd() const
-  -> std::size_t {
+auto IsExpressionAst::PosEnd() const -> std::size_t {
   // Use the rhs, or the mapped function.
   return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto spp::asts::IsExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto IsExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<IsExpressionAst>(
     AstClone(Lhs),
@@ -60,8 +57,7 @@ auto spp::asts::IsExpressionAst::Clone() const
   return ast;
 }
 
-auto spp::asts::IsExpressionAst::ToString() const
-  -> Str {
+auto IsExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_MappedFunc) {
     SPP_STRING_APPEND(_MappedFunc);
@@ -73,14 +69,11 @@ auto spp::asts::IsExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::bin_utils::ConvertIsExprToFuncCall;
+auto IsExpressionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppInvalidPrimaryExpressionError;
+  using analyse::utils::bin_utils::ConvertIsExprToFuncCall;
+  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
   _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
 
@@ -94,24 +87,19 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
   if (not sm->CurrentScope->NameAsString().starts_with("<inner-scope#")) {
     const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->AllVarSymbols(true, true);
     for (auto const &x : destructure_syms) {
-      sm->CurrentScope->AddVarSymbol(x->SharedFromThis<analyse::scopes::VariableSymbol>());
+      sm->CurrentScope->AddVarSymbol(x->SharedFromThis<VariableSymbol>());
     }
   }
 }
 
-auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto IsExpressionAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the memory checking to the mapped function.
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::IsExpressionAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto IsExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // If the lhs was an identifier, the "is" causes it to get
   // flow typed, so we need to promote the original "alloca"
   // into the flow typed symbol.
@@ -128,17 +116,23 @@ auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto spp::asts::IsExpressionAst::InferType(
-  analyse::scopes::ScopeManager *,
-  meta::CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto IsExpressionAst::InferType(
+  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
   // Always return a boolean type (successful or failed
   // match).
-  return generate::common_types::BooleanType(_MappedFunc->PosStart());
+  using generate::common_types::BooleanType;
+  return BooleanType(_MappedFunc->PosStart());
 }
 
-auto spp::asts::IsExpressionAst::IsAllowedInDefault() const
-  -> bool {
+auto IsExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *) -> TypeRef {
+  // Always return a boolean type (successful or failed
+  // match)
+  using generate::common_types_precompiled::BOOL;
+  return TypeRef::Of(*BOOL, *sm->CurrentScope);
+}
+
+auto IsExpressionAst::IsAllowedInDefault() const -> bool {
   // The pattern tests and binds, and holds no control
   // flow of its own; only the tested value is an expression.
   // Todo: Remove nullptr guard?

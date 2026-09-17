@@ -12,6 +12,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorDerefAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorDerefAst final : PostfixExpressionOperatorAst {
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorDerefAst);
@@ -32,6 +33,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorDerefAst final : PostfixE
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 };

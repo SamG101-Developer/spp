@@ -14,6 +14,8 @@ SPP_AST_COMMON_FWD_DECL(IdentifierAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::scopes, struct TypeRef);
 
 GCC_BUGZILLA_127341_VTABLE_TYPEINFO_MISSING
 SPP_EXP_CLS struct spp::asts::IdentifierAst final :
@@ -63,6 +65,8 @@ public:
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+
   SPP_ATTR_NODISCARD auto ToFuncIdentifier() const -> Unique<IdentifierAst>;
 
   SPP_ATTR_NODISCARD auto AnkerlHash() const -> std::size_t override;
@@ -84,6 +88,20 @@ public:
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
+  /// The comp generic parameter this name resolved to where it was
+  /// written, if it was stamped with one. A lookup of a stamped name
+  /// asks "Scope::CanonVar" what that parameter means from the scope
+  /// asking, instead of resolving the spelling again there - which
+  /// would read a caller's "w" as a callee's parameter of that name.
+  SPP_ATTR_NODISCARD auto Stamp() const noexcept -> spp::analyse::scopes::VariableSymbol* {
+    return _Stamp;
+  }
+
+  /// Stamp this name with the comp parameter it resolved to.
+  auto SetStamp(spp::analyse::scopes::VariableSymbol *const sym) const noexcept -> void {
+    _Stamp = sym;
+  }
+
 private:
   std::size_t _Pos;
 
@@ -93,6 +111,8 @@ private:
   std::size_t _ForTok = 0;
 
   utils::InternedId _NameId;
+
+  mutable spp::analyse::scopes::VariableSymbol *_Stamp = nullptr;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

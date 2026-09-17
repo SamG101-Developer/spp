@@ -16,21 +16,16 @@ use(spp::asts, struct FunctionParameterAst);
 use(spp::asts, struct FunctionParameterGroupAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct GenericArgumentAst);
-use(spp::asts, struct GenericArgumentCompAst);
-use(spp::asts, struct GenericArgumentCompKeywordAst);
-use(spp::asts, struct GenericArgumentTypeAst);
-use(spp::asts, struct GenericArgumentTypeKeywordAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
-use(spp::asts, struct GenericParameterCompAst);
 use(spp::asts, struct GenericParameterGroupAst);
-use(spp::asts, struct GenericParameterTypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, class ScopeManager);
 
 namespace spp::analyse::utils::func_utils {
@@ -70,8 +65,7 @@ namespace spp::analyse::utils::func_utils {
   /// as a closure is an unnamed function by definition, so
   /// "nullptr". The scope returned is the parent of the overload.
   SPP_EXP_FUN auto GetFunctionValueName(
-    TypeAst const &type,
-    Scope const &scope)
+    TypeRef const &type)
     -> Pair<Shared<IdentifierAst>, Scope const*>;
 
   /// Given a mock function type like $Type, and a genuine
@@ -80,9 +74,8 @@ namespace spp::analyse::utils::func_utils {
   /// non-generic overloads, and handle generic functions by
   /// inferring of the "func_type".
   SPP_EXP_FUN auto MatchFunctionValue(
-    TypeAst const &mock_type,
-    TypeAst const &func_type,
-    Scope const &mock_scope,
+    TypeRef const &mock,
+    TypeRef const &func,
     Scope const &func_scope)
     -> std::optional<FunctionValueMatch>;
 
@@ -94,8 +87,8 @@ namespace spp::analyse::utils::func_utils {
   /// the analysis engine earlier, so the overload is ready
   /// by codegen-time.
   SPP_EXP_FUN auto InstantiateFunctionValue(
-    TypeAst const &value_type,
-    TypeAst const &target_type,
+    TypeRef const &value,
+    TypeRef const &target,
     ScopeManager *sm,
     meta::CompilerMetaData *meta)
     -> void;
@@ -104,8 +97,8 @@ namespace spp::analyse::utils::func_utils {
   /// on the function's "$Type" and the function "FunMov"
   /// type.
   SPP_EXP_FUN auto FindFunctionValue(
-    TypeAst const &value_type,
-    TypeAst const &target_type,
+    TypeRef const &value,
+    TypeRef const &target,
     ScopeManager const &sm)
     -> FunctionPrototypeAst*;
 

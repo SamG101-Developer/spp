@@ -35,7 +35,7 @@ import genex;
 import llvm;
 
 SPP_MOD_BEGIN
-spp::asts::ObjectInitializerAst::ObjectInitializerAst(
+ObjectInitializerAst::ObjectInitializerAst(
   decltype(Type) type,
   decltype(ArgGroup) &&arg_group) :
   Type(std::move(type)),
@@ -44,41 +44,38 @@ spp::asts::ObjectInitializerAst::ObjectInitializerAst(
   Source.OriginalType = AstClone(Type);
 }
 
-spp::asts::ObjectInitializerAst::~ObjectInitializerAst() = default;
+ObjectInitializerAst::~ObjectInitializerAst() = default;
 
-auto spp::asts::ObjectInitializerAst::PosStart() const
-  -> std::size_t {
+auto ObjectInitializerAst::PosStart() const -> std::size_t {
   // Use the type.
   return Source.OriginalType->PosStart();
 }
 
-auto spp::asts::ObjectInitializerAst::PosEnd() const
-  -> std::size_t {
+auto ObjectInitializerAst::PosEnd() const -> std::size_t {
   // Use the argument group.
   return ArgGroup->PosEnd();
 }
 
-auto spp::asts::ObjectInitializerAst::Clone() const
-  -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<ObjectInitializerAst>(
+auto ObjectInitializerAst::Clone() const -> Unique<Ast> {
+  // Clone all the members of the ast. The constructor records the
+  // type it is given as the written one, but "Type" may already be
+  // the resolved type by now, so the written one is carried over.
+  auto ast = MakeUnique<ObjectInitializerAst>(
     AstClone(Type),
     AstClone(ArgGroup));
+  ast->Source.OriginalType = Source.OriginalType;
+  return ast;
 }
 
-auto spp::asts::ObjectInitializerAst::ToString() const
-  -> Str {
+auto ObjectInitializerAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Type);
   SPP_STRING_APPEND(ArgGroup);
   SPP_STRING_END;
 }
 
-auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
-  //
+auto ObjectInitializerAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppSecondClassBorrowViolationError;
   using analyse::errors::SppObjectInitializerVariantError;
   using analyse::errors::SppObjectInitializerGeneratorError;
@@ -88,7 +85,7 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
 
   // Get the base class symbol (no generics) and check it exists.
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->SkipTypeAnalysisGenericChecks = true;
     Type->WithoutGenerics()->Stage7_AnalyseSemantics(sm, meta);
   }
@@ -99,21 +96,24 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
   const auto named_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics().get());
 
-  // "Self(...)" names the class it stands for, and the attribute walk below reads that class's prototype - which a
-  // stand-in symbol does not carry. An unbound generic parameter is prototype-less in the same way but links to the
-  // dummy scope standing in for it rather than to a class, so "A()" is left alone and takes the generic path.
+  // "Self(...)" names the class it stands for, and the
+  // attribute walk below reads that class's prototype - which
+  // a stand-in symbol does not carry. An unbound generic
+  // parameter is prototype-less in the same way but links to
+  // the dummy scope standing in for it rather than to a
+  // class, so "A()" is left alone and takes the generic path.
   const auto base_cls_sym = Type->IsSelfType() and named_cls_sym != nullptr
     ? named_cls_sym->AsClassSymbol()
     : named_cls_sym;
 
   // If the type is a variant type, prevent instantiation.
   RaiseIf<SppObjectInitializerVariantError>(
-    IsTypeVariant(*base_cls_sym->FqName(), *sm->CurrentScope),
+    IsTypeVariant(*base_cls_sym, *sm->CurrentScope),
     {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
 
   // Prepare the object initializer arguments.
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->ObjectInitType = Type->WithoutGenerics();
     ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   }
@@ -137,10 +137,10 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     : spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
 
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
-    meta->InferSource = MakeShared<meta::GenericInferenceBindings>(
+    const auto _meta_guard = MetaGuard(meta);
+    meta->InferSource = MakeShared<GenericInferenceBindings>(
       generic_infer_source.begin(), generic_infer_source.end());
-    meta->InferTarget = MakeShared<meta::GenericInferenceBindings>(
+    meta->InferTarget = MakeShared<GenericInferenceBindings>(
       generic_infer_target.begin(), generic_infer_target.end());
     Type = analyse::utils::type_utils::SubstituteSelfType(*Type, *sm->CurrentScope, *meta)->WithSourceSpanOf(*Type);
     Type->Stage7_AnalyseSemantics(sm, meta);
@@ -148,29 +148,27 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   }
 
   // A generator cannot be initialized either.
-  const auto [gen_type, _, _] = GetGenAndYieldTypes(
-    *Type, *sm->CurrentScope, *Source.OriginalType, "object initializer", false);
-  RaiseIf<SppObjectInitializerGeneratorError>(
-    gen_type != nullptr, {sm->CurrentScope},
-    ERR_ARGS(*Source.OriginalType, *gen_type));
+  const auto [gen_sym, _, _] = GetGenAndYieldTypes(
+    TypeRef::Of(*Type, *sm->CurrentScope), *sm->CurrentScope, *Source.OriginalType,
+    [&] { return Type; }, "object initializer", false);
+  if (gen_sym != nullptr) {
+    const auto gen_type = gen_sym->FqName();
+    Raise<SppObjectInitializerGeneratorError>({sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *gen_type));
+  }
 
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->ObjectInitType = Type;
   ArgGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::ObjectInitializerAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ObjectInitializerAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the object argument group.
   ArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::ObjectInitializerAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto ObjectInitializerAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
   for (auto const &elem : ArgGroup->Args) {
@@ -184,12 +182,8 @@ auto spp::asts::ObjectInitializerAst::Stage9_CompTimeResolve(
     Type, std::move(cmp_elems));
 }
 
-auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
-  //
+auto ObjectInitializerAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using analyse::utils::type_members::GetAllAttrs;
   using analyse::utils::type_predicates::GetSuperimposedFatPointerFieldCount;
 
@@ -202,7 +196,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  const auto attrs = GetAllAttrs(*type_sym->FqName(), *sm->CurrentScope);
+  const auto attrs = GetAllAttrs(*type_sym);
   const auto attr_names = attrs
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
@@ -224,8 +218,7 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   // ever fills in the class's own attributes, never the
   // synthesized fields, so every declared index has to be
   // shifted past them.
-  const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(
-    *type_sym->FqName(), *sm->CurrentScope);
+  const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(*type_sym);
 
   // Where an argument's attribute sits in the type's own
   // declaration order. Every argument names an attribute -
@@ -267,10 +260,11 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
       const auto attr_index = spp_attr_index_of(*arg->Name);
       if (const auto attr_type_sym = spp::get<1>(attrs[attr_index]); attr_type_sym != nullptr) {
         val = codegen::CoerceToFunctionValue(
-          val, *attr_type_sym->FqName(), *arg->Val->InferType(sm, meta), *sm, ctx);
+          val, TypeRef::Of(*attr_type_sym->FqName(), *sm->CurrentScope),
+          arg->Val->InferTypeRef(sm, meta), *sm, ctx);
         val = codegen::CoerceToVariant(
-          val, *attr_type_sym->FqName(), *arg->Val->InferType(sm, meta),
-          *sm->CurrentScope, "obj_init.variant" + uid, ctx);
+          val, TypeRef::Of(*attr_type_sym->FqName(), *sm->CurrentScope),
+          arg->Val->InferTypeRef(sm, meta), *sm->CurrentScope, "obj_init.variant" + uid, ctx);
       }
 
       arg_values.EmplaceBack(MakePair(llvm_attr_index(attr_index), val));
@@ -339,10 +333,8 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(struct_type, comp_fields.ToStdVector());
 }
 
-auto spp::asts::ObjectInitializerAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto ObjectInitializerAst::InferType(
+  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   // The type of the object initializer is the type being
   // initialized. The conventions are added for dummy types
   // being created into values during other ast's analysis.
@@ -351,17 +343,25 @@ auto spp::asts::ObjectInitializerAst::InferType(
   return sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
 }
 
-auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(
-  analyse::scopes::ScopeManager *,
-  meta::CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto ObjectInitializerAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *) -> TypeRef {
+  // The type being initialized, held as written.
+  auto ref = TypeRef::OfSym(*sm->CurrentScope->GetTypeSymbol(Type.get()), *sm->CurrentScope);
+  if (auto const *conv = Type->GetConvention(); conv != nullptr) {
+    ref.Conv = conv->Tag();
+    ref.IsNever = false;
+  }
+  return ref;
+}
+
+auto ObjectInitializerAst::InferTypeForDisplay(
+  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
   // Use the source original type.
   return Source.OriginalType;
 }
 
-auto spp::asts::ObjectInitializerAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<ExpressionAst> {
+auto ObjectInitializerAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // The initialiser names its type outright, and each
   // of its arguments is an expression in its own right.
   auto arg_group = AstClone(ArgGroup);
@@ -369,8 +369,7 @@ auto spp::asts::ObjectInitializerAst::SubstituteGenericsExpr(
   return MakeShared<ObjectInitializerAst>(Type->SubstituteGenerics(args), std::move(arg_group));
 }
 
-auto spp::asts::ObjectInitializerAst::IsAllowedInDefault() const
-  -> bool {
+auto ObjectInitializerAst::IsAllowedInDefault() const -> bool {
   // Check the argument group for validity of being used
   // in the default context.
   return ArgGroup->IsAllowedInDefault();

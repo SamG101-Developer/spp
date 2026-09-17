@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_prototype_ast;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.utils.annotation_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;
@@ -138,7 +139,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -198,6 +199,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     bool IsConcrete = false;
     bool BodyAnalysed = false;
 
+    /// The identity of the arguments ("Scope::InstanceIdentityKey"),
+    /// which is what finds this instantiation again: "f[T=T]" called
+    /// from two generic contexts is two instantiations, one per "T".
+    analyse::scopes::InstanceKey IdentityKey;
+
     /// The scope to position a scope manager on before running
     /// any stage over "Proto", and the scope every symbol this
     /// instantiation bound was registered into.
@@ -216,13 +222,14 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     Unique<GenericArgumentGroupAst> &&gn_args)
     -> void;
 
-  /// Find the instantiation of this prototype built from
-  /// exactly these generic arguments, or "{nullptr, nullptr}"
-  /// if there is not one yet. Reusing the match keeps a call
-  /// site and the Stage10 declaration walk pointing at a
-  /// single prototype object for a given instantiation.
+  /// Find the instantiation of this prototype whose arguments have
+  /// this identity ("GenericSubstitution::IdentityKey"), or
+  /// "{nullptr, nullptr}" if there is not one yet. Reusing the
+  /// match keeps a call site and the Stage10 declaration walk
+  /// pointing at a single prototype object for a given
+  /// instantiation.
   SPP_ATTR_NODISCARD auto FindGenericSubstitution(
-    GenericArgumentGroupAst const &gn_args) const
+    analyse::scopes::InstanceKey const &identity_key) const
     -> Pair<Scope*, FunctionPrototypeAst*>;
 
   SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions() const -> std::list<Pair<Scope*, FunctionPrototypeAst*>>;

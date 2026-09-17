@@ -10,132 +10,129 @@ import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-auto spp::asts::BooleanLiteralAst::FromCppVal(
-  const bool val)
-  -> Unique<BooleanLiteralAst> {
+auto BooleanLiteralAst::FromCppVal(
+  const bool val) -> Unique<BooleanLiteralAst> {
   return val ? True(0) : False(0);
 }
 
-spp::asts::BooleanLiteralAst::BooleanLiteralAst(
+BooleanLiteralAst::BooleanLiteralAst(
   decltype(TokBool) &&tok_bool) :
   TokBool(std::move(tok_bool)) {
 }
 
-spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
+BooleanLiteralAst::~BooleanLiteralAst() = default;
 
-auto spp::asts::BooleanLiteralAst::EqualsBooleanLiteral(
-  BooleanLiteralAst const &other) const
-  -> Ordering {
+auto BooleanLiteralAst::EqualsBooleanLiteral(
+  BooleanLiteralAst const &other) const -> Ordering {
   // Equality is based off the bool value.
-  return *TokBool == *other.TokBool ? Ordering::equal : Ordering::less;
+  return *TokBool == *other.TokBool
+    ? Ordering::equal
+    : Ordering::less;
 }
 
-auto spp::asts::BooleanLiteralAst::Equals(
-  ExpressionAst const &other) const
-  -> Ordering {
+auto BooleanLiteralAst::Equals(
+  ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsBooleanLiteral(*this);
 }
 
-auto spp::asts::BooleanLiteralAst::PosStart() const
-  -> std::size_t {
+auto BooleanLiteralAst::PosStart() const -> std::size_t {
   // Use the bool token.
   return TokBool->PosStart();
 }
 
-auto spp::asts::BooleanLiteralAst::PosEnd() const
-  -> std::size_t {
+auto BooleanLiteralAst::PosEnd() const -> std::size_t {
   // Use the bool token.
   return TokBool->PosEnd();
 }
 
-auto spp::asts::BooleanLiteralAst::Clone() const
-  -> Unique<Ast> {
+auto BooleanLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<BooleanLiteralAst>(
     AstClone(TokBool));
 }
 
-auto spp::asts::BooleanLiteralAst::ToString() const
-  -> Str {
+auto BooleanLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokBool);
   SPP_STRING_END;
 }
 
-auto spp::asts::BooleanLiteralAst::True(
-  const std::size_t pos)
-  -> Unique<BooleanLiteralAst> {
+auto BooleanLiteralAst::True(
+  const std::size_t pos) -> Unique<BooleanLiteralAst> {
   // Create a boolean literal AST representing the "true" value.
-  auto tok = MakeUnique<TokenAst>(pos, lex::SppTokenType::KW_TRUE, "true");
+  auto tok = MakeUnique<TokenAst>(
+    pos, lex::SppTokenType::KW_TRUE, "true");
   return MakeUnique<BooleanLiteralAst>(std::move(tok));
 }
 
-auto spp::asts::BooleanLiteralAst::False(
-  const std::size_t pos)
-  -> Unique<BooleanLiteralAst> {
+auto BooleanLiteralAst::False(
+  const std::size_t pos) -> Unique<BooleanLiteralAst> {
   // Create a boolean literal AST representing the "false" value.
-  auto tok = MakeUnique<TokenAst>(pos, lex::SppTokenType::KW_FALSE, "false");
+  auto tok = MakeUnique<TokenAst>(
+    pos, lex::SppTokenType::KW_FALSE, "false");
   return MakeUnique<BooleanLiteralAst>(std::move(tok));
 }
 
-auto spp::asts::BooleanLiteralAst::IsTrue() const
-  -> bool {
+auto BooleanLiteralAst::IsTrue() const -> bool {
   // Check if the boolean literal represents a true value.
   return TokBool->TokenType == lex::SppTokenType::KW_TRUE;
 }
 
-auto spp::asts::BooleanLiteralAst::CppVal() const
-  -> bool {
+auto BooleanLiteralAst::CppVal() const -> bool {
   // Return the C++ boolean value of the boolean literal.
   return IsTrue();
 }
 
-auto spp::asts::BooleanLiteralAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto BooleanLiteralAst::Stage9_CompTimeResolve(
+  ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the boolean literal as is for compile-time
   // resolution.
   meta->CmpResult = AstClone(this);
 }
 
-auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto BooleanLiteralAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  using lex::SppTokenType;
   SPP_ASSERT(
-    TokBool->TokenType == lex::SppTokenType::KW_TRUE or
-    TokBool->TokenType == lex::SppTokenType::KW_FALSE);
+    TokBool->TokenType == SppTokenType::KW_TRUE or
+    TokBool->TokenType == SppTokenType::KW_FALSE);
 
-  // Instead of hardcoding the i1 type here, we resolve the Bool type
-  // and then use the uniform LLVM type mapping function to evaluate
-  // what the LLVM type is, should Bool ever be changed from "i1".
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(
-    InferType(sm, meta).get());
+  // Instead of hardcoding the i1 type here, we resolve the
+  // Bool type and then use the uniform LLVM type mapping
+  // function to evaluate what the LLVM type is, should Bool
+  // ever be changed from "i1".
+  const auto type_sym = InferTypeRef(sm, meta).Sym;
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
-  // Create the "constant int" (this literal represents a known bool
-  // value), and return that into whatever is using it. This is an
-  // expression so much return the generated llvm value.
-  const auto value = TokBool->TokenType == lex::SppTokenType::KW_TRUE ? 1ul : 0ul;
+  // Create the "constant int" (this literal represents a known
+  // bool value), and return that into whatever is using it.
+  // This is an expression so much return the generated llvm
+  // value.
+  const auto value = TokBool->TokenType == SppTokenType::KW_TRUE
+    ? 1ul
+    : 0ul;
   return llvm::ConstantInt::get(llvm_type, value);
 }
 
-auto spp::asts::BooleanLiteralAst::InferType(
-  analyse::scopes::ScopeManager *,
-  meta::CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto BooleanLiteralAst::InferType(
+  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
   // The boolean ast is always inferred as "std::boolean::Bool".
   using generate::common_types::BooleanType;
   return BooleanType(PosStart());
+}
+
+auto BooleanLiteralAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *) -> TypeRef {
+  return TypeRef::Of(
+    *generate::common_types_precompiled::BOOL, *sm->CurrentScope);
 }
 
 SPP_MOD_END

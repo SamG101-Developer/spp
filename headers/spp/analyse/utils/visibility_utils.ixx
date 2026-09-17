@@ -47,15 +47,6 @@ namespace spp::analyse::utils::visibility_utils {
     CompilerMetaData const &meta)
     -> void;
 
-  /// Check if a module member is accessible from where it is
-  /// being named. The non-throwing core of normal module member
-  /// visibility.
-  SPP_EXP_FUN auto IsModuleMemberVisible(
-    VariableSymbol const &sym,
-    Scope const &definition_scope,
-    ScopeManager const &sm,
-    CompilerMetaData const &meta)
-    -> bool;
 
   /// Check if a module member is accessible from where it is
   /// being named. Throws an error on bad visibility, uses the

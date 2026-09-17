@@ -17,7 +17,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
+LetStatementUninitializedAst::LetStatementUninitializedAst(
   decltype(TokLet) &&tok_let,
   decltype(Var) &&var,
   decltype(TokColon) &&tok_colon,
@@ -27,25 +27,24 @@ spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
   TokColon(std::move(tok_colon)),
   Type(std::move(type)) {
   //
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokLet, SppTokenType::KW_LET, "let");
 }
 
-spp::asts::LetStatementUninitializedAst::~LetStatementUninitializedAst() = default;
+LetStatementUninitializedAst::~LetStatementUninitializedAst() = default;
 
-auto spp::asts::LetStatementUninitializedAst::PosStart() const
-  -> std::size_t {
+auto LetStatementUninitializedAst::PosStart() const -> std::size_t {
   // Use the "let" token.
   return TokLet->PosStart();
 }
 
-auto spp::asts::LetStatementUninitializedAst::PosEnd() const
-  -> std::size_t {
+auto LetStatementUninitializedAst::PosEnd() const -> std::size_t {
   // Use the type.
   return Type->PosEnd();
 }
 
-auto spp::asts::LetStatementUninitializedAst::Clone() const
-  -> Unique<Ast> {
+auto LetStatementUninitializedAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LetStatementUninitializedAst>(
     AstClone(TokLet),
@@ -54,8 +53,7 @@ auto spp::asts::LetStatementUninitializedAst::Clone() const
     AstCloneShared(Type));
 }
 
-auto spp::asts::LetStatementUninitializedAst::ToString() const
-  -> Str {
+auto LetStatementUninitializedAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokLet).append(" ");
   SPP_STRING_APPEND(Var);
@@ -64,49 +62,43 @@ auto spp::asts::LetStatementUninitializedAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::type_utils::ResolveWrittenType;
 
-  // Analyse the type.
+  // Analyse the type, and create a mock value for analysis.
   Type = ResolveWrittenType(*Type, *sm, *meta);
-
-  // Create a mock value for analysis.
-  const auto mock_init = MakeUnique<ObjectInitializerAst>(Type, nullptr);
+  const auto mock_init = MakeUnique<ObjectInitializerAst>(
+    Type, nullptr);
 
   // Update the meta arguments.
-  const auto _meta_guard = meta::MetaGuard(meta);
-  meta->LetStatementValue = mock_init.get(); // Safe, because only used within inner frame, then reset.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->LetStatementValue = mock_init.get();
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
   Var->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto LetStatementUninitializedAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the variable for memory issues.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->LetStatementValue = nullptr;
-  meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;
   Var->Stage8_CheckMemory(sm, meta);
+
+  // Mark all the parts as uninitialized.
   for (auto const &v : Var->ExtractNames()) {
-    sm->CurrentScope->GetVarSymbol(v.get())->MemInfo->MovedBy(*this, sm->CurrentScope);
+    sm->CurrentScope->GetVarSymbol(v.get())->MemInfo->MovedBy(
+      *this, sm->CurrentScope);
   }
 }
 
-auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto LetStatementUninitializedAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->LetStatementValue = nullptr;
   meta->LetStatementExplicitType = Type;
   meta->LetStatementFromUninitialized = true;

@@ -49,14 +49,12 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
   /// Check the element is equal with the element of the
   /// other array, and that the lengths are equal too.
   SPP_ATTR_NODISCARD auto EqualsArrayLiteralRepeatedElement(
-    ArrayLiteralRepeatedElementAst const &other) const
-    -> Ordering override;
+    ArrayLiteralRepeatedElementAst const &other) const -> Ordering override;
 
   /// Reverse hook to activate the array equality check
   /// from the other ast.
   SPP_ATTR_NODISCARD auto Equals(
-    ExpressionAst const &other) const
-    -> Ordering override;
+    ExpressionAst const &other) const -> Ordering override;
 
   /// Check the element and size are valid (size must be
   /// compile-time evaluatable), the type must be copyable,

@@ -14,15 +14,13 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
-auto spp::asts::FunctionImplementationAst::NewEmpty()
-  -> Unique<FunctionImplementationAst> {
+auto FunctionImplementationAst::NewEmpty() -> Unique<FunctionImplementationAst> {
   return MakeUnique<FunctionImplementationAst>(nullptr, decltype(Members)(), nullptr);
 }
 
-spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;
+FunctionImplementationAst::~FunctionImplementationAst() = default;
 
-auto spp::asts::FunctionImplementationAst::Clone() const
-  -> Unique<Ast> {
+auto FunctionImplementationAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<FunctionImplementationAst>(
     AstClone(TokL),
     AstCloneVec(Members),
@@ -30,24 +28,21 @@ auto spp::asts::FunctionImplementationAst::Clone() const
   return ast;
 }
 
-auto spp::asts::FunctionImplementationAst::DiscardsFinalMember() const
-  -> bool {
+auto FunctionImplementationAst::DiscardsFinalMember() const -> bool {
   // Values leave a function through "ret", so the final statement
   // of a body is discarded like every other statement in it.
   return true;
 }
 
-auto spp::asts::FunctionImplementationAst::Stage9_CompTimeResolve(
-  analyse::scopes::ScopeManager *sm,
-  meta::CompilerMetaData *meta)
-  -> void {
+auto FunctionImplementationAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // A function has one scope, shared by every call to it, so the values this call writes into that scope's symbols
   // are the caller's values as far as an enclosing call is concerned. Take them out for the duration of the call and
   // put them back on the way out, or a recursive call returns having overwritten the parameters and locals its caller
   // was still working with - and the recursion never converges. Moving them out is also what leaves this call's
   // locals unassigned, which is what entering a call should do.
-  auto caller_values = Vec<Pair<analyse::scopes::VariableSymbol*, Unique<Ast>>>();
-  const auto take_values = [&caller_values](auto const &self, analyse::scopes::Scope const &scope) -> void {
+  auto caller_values = Vec<Pair<VariableSymbol*, Unique<Ast>>>();
+  const auto take_values = [&caller_values](auto const &self, Scope const &scope) -> void {
     for (auto *sym : scope.AllVarSymbols(true)) {
       caller_values.EmplaceBack(sym, std::move(sym->CompTimeValue));
     }

@@ -9,66 +9,61 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::type_predicates {
-  /// The only two compile-time indexable types are the
-  /// array and tuple types. For now, directly these two
-  /// types (Arr, Tup), not superimpositions.
-  SPP_EXP_FUN auto IsTypeCompTimeIndexable(TypeAst const &type, Scope const &scope) -> bool;
-
-  /// Check if a type is the array type. Strip generics and
-  /// TypeEq against the non-generic Arr type.
-  SPP_EXP_FUN auto IsTypeArr(TypeAst const &type, Scope const &scope) -> bool;
-
-  /// Check if a type is the tuple type. Strip generics and
-  /// TypeEq against the non-generic Tup type.
-  SPP_EXP_FUN auto IsTypeTup(TypeAst const &type, Scope const &scope) -> bool;
-
   /// Check if a type symbol is the tuple type symbol. Used
   /// to optimize tuple-[early return guards].
   SPP_EXP_FUN auto IsTupSymbol(TypeSymbol const &sym) -> bool;
 
-  /// Check if a type is the variant type. Strip generics
-  /// *and conventions* and TypeEq against the non-generic
-  /// Var type.
-  SPP_EXP_FUN auto IsTypeVariant(TypeAst const &type, Scope const &scope) -> bool;
+  /// Check if "Self" appears anywhere in a type, at any depth
+  /// ("Opt[Self]", "&Self"), not only as the whole type.
+  SPP_EXP_FUN auto NamesSelfType(TypeAst const &type) -> bool;
 
-  /// Check if a type is the bool type. TypeEq against the
-  /// Bool type.
-  SPP_EXP_FUN auto IsTypeBool(TypeAst const &type, Scope const &scope) -> bool;
+  /// The template a symbol stands for where "scope" reads it ("Vec" for "Vec[Str]"), by the path its "FqName" takes:
+  /// a parameter is what the scope binds it to ("Scope::Canon"), a binding or "Self" the type it names, an alias its
+  /// target. A template, or a plain class, is its own.
+  SPP_EXP_FUN auto TemplateOf(TypeSymbol const &sym, Scope const &scope) -> TypeSymbol*;
 
-  /// Check if a type is the void type. TypeEq against the
-  /// Void type.
-  SPP_EXP_FUN auto IsTypeVoid(TypeAst const &type, Scope const &scope) -> bool;
+  /// Whether a symbol stands for the template a written type names ("Copy", or "Vec" for "Vec[Str]"), both taken to
+  /// the template they stand for, rather than comparing names.
+  SPP_EXP_FUN auto IsTemplate(TypeSymbol const &sym, TypeAst const &tmpl, Scope const &scope) -> bool;
 
-  /// Check if a type is the try type. Strip generics and
-  /// TypeEq against the non-generic try type.
-  SPP_EXP_FUN auto IsTypeTry(TypeAst const &type, Scope const &scope) -> bool;
+  /// The kind checks above for a symbol: they test the template it stands for ("TemplateOf"), rather than reading its
+  /// name back.
+  SPP_EXP_FUN auto IsTypeGen(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeTup(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeArr(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeVariant(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeFunc(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeCompTimeIndexable(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeBool(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeVoid(TypeSymbol const &sym, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeTry(TypeSymbol const &sym, Scope const &scope) -> bool;
 
-  /// Check if a type is one of the generator types. Strip
-  /// generics and TypeEq against the non-generic Gen and
-  /// GenOnce types.
-  SPP_EXP_FUN auto IsTypeGen(TypeAst const &type, Scope const &scope) -> bool;
-
-  /// Check if a type is the never type. TypeEq against the
-  /// Never type.
-  SPP_EXP_FUN auto IsTypeNever(TypeAst const &type, Scope const &scope) -> bool;
-
-  /// Check if a type is one of the functional types. Strip
-  /// generics and TypeEq against the non-generic FunMov,
-  /// FunMut and FunRef types.
-  SPP_EXP_FUN auto IsTypeFunc(TypeAst const &type, Scope const &scope) -> bool;
+  /// The kind checks for a resolved type, as a value of it is held ("TypeRef"); a written type is read through its head
+  /// ("TypeRef::OfHead"). A borrow is none of the kinds (a borrowed variant excepted), "!" is only itself, and a "$"
+  /// mock is a function value.
+  SPP_EXP_FUN auto IsTypeGen(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeTup(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeArr(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeVariant(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeFunc(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeCompTimeIndexable(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeBool(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeVoid(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypeTry(TypeRef const &ref, Scope const &scope) -> bool;
 
   /// Get the number of synthetic fat-pointer fields on this
   /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
   /// fields prepended ahead of a type's own declared fields.
   /// The fat pointer fields are always at the start of the
   /// types for simplicity.
-  SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(TypeAst const &type, Scope const &scope) -> std::size_t;
+  SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(TypeSymbol const &type_sym) -> std::size_t;
 
   /// Detect if a type is recursive by checking all the fields
   /// of the type recursively, and making sure a look in the
@@ -89,7 +84,7 @@ namespace spp::analyse::utils::type_predicates {
   /// genuinely reachable.
   SPP_EXP_FUN auto IsIndexWithinBound(
     std::size_t index,
-    TypeAst const &type,
+    TypeRef const &ref,
     Scope const &scope)
     -> Pair<bool, std::size_t>;
 
@@ -97,7 +92,7 @@ namespace spp::analyse::utils::type_predicates {
   /// are the same.
   SPP_EXP_FUN auto GetNthTypeOfIndexableType(
     std::size_t index,
-    TypeAst const &type,
+    TypeRef const &ref,
     Scope const &scope)
     -> Shared<TypeAst>;
 

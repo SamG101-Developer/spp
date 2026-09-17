@@ -20,6 +20,8 @@ SPP_AST_COMMON_FWD_DECL(IntegerLiteralAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   inline static const auto kBounds = utils::numbers::IntLimitMap{
@@ -72,6 +74,8 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+
   template <typename T> requires spp::utils::traits::integral<T>
   auto CppVal() const -> T;
 
@@ -100,6 +104,10 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   /// one that comp-time arithmetic produced is checked where
   /// that arithmetic is invoked from.
   auto ValidateBounds(Ast const &owner, Scope const &scope) const -> void;
+
+private:
+  /// The precompiled type this literal's suffix names, resolved where "sm" is.
+  auto _PrecompiledTypeSym(ScopeManager *sm) const -> TypeSymbol*;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IntegerLiteralAst)

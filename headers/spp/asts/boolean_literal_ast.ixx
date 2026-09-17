@@ -12,6 +12,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(BooleanLiteralAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 /// The boolean literal is either "true" or "false" expressed
 /// in S++ code.
@@ -65,6 +66,8 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
   /// The boolean literal's type is always "std::boolean::Bool",
   /// the compiler known boolean type.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BooleanLiteralAst);

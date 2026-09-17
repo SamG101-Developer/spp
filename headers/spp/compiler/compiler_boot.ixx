@@ -73,7 +73,7 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     analyse::scopes::ScopeManager *sm)
     -> void;
 
-  auto Stage4_QualifyTypes(
+  auto Stage4_ResolveDeclarations(
     utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
