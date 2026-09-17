@@ -58,7 +58,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   /// function, a "cmp" function, and !annotation bound. This
   /// is done is stage 4 because we rely on builtin annotations
   /// legitimately existing in stage 5.
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   /// For builtin annotations, set fields on context asts
   /// based on the annotations, like virtual/abstract, the
