@@ -123,8 +123,15 @@ namespace spp::analyse::utils::monomorphization_utils {
       //
       using errors::SppInternalCompilerError;
 
+      // An argument is a named type or a named comp value; anything else is a bug.
+      if (generic.Name == nullptr or (generic.TypeVal == nullptr and generic.CompVal == nullptr)) {
+        Raise<SppInternalCompilerError>(
+          {sm.CurrentScope},
+          ERR_ARGS(generic, "Unknown generic argument ast type"));
+      }
+
       // Handle the generic type argument => creates a type symbol.
-      if (generic.Name != nullptr and generic.TypeVal != nullptr) {
+      if (generic.TypeVal != nullptr) {
         // "Self" should not be looked up and changed.
         if (generic.TypeVal->IsSelfType()) {
           return MakeShared<TypeSymbol>(
@@ -163,32 +170,26 @@ namespace spp::analyse::utils::monomorphization_utils {
       }
 
       // Handle the generic comp argument => creates a variable symbol.
-      if (generic.Name != nullptr and generic.CompVal != nullptr) {
-        auto sym = MakeShared<VariableSymbol>(
-          IdentifierAst::FromType(*generic.Name),
-          generic.CompVal->InferType(tm ? tm : &sm, meta),
-          sm.CurrentScope,
-          VariableKind::GenericCompArg, false, asts::utils::Visibility::kPublic);
-        // A comp argument naming a bound comp generic binds what that is bound to where it is written, as a type
-        // argument binds the type it names there ("SizedInteger[w]" in a "[cmp w: U32]" instance binds 32, not "w").
-        // A closed value binds what it folds to ("n + 1_uz" with "n" bound to "1_uz" binds "2_uz").
-        auto value = cmp_utils::FoldCompExpr(*generic.CompVal, *sm.CurrentScope);
-        if (value == nullptr) {
-          value = AstClone(generic.CompVal);
-          if (auto const *const id = generic.CompVal->To<IdentifierAst>(); id != nullptr) {
-            if (auto const *const var = sm.CurrentScope->GetVarSymbol(id); var != nullptr) {
-              if (auto const *const bound = var->BoundCompValue(); bound != nullptr) { value = AstClone(bound); }
-            }
+      auto sym = MakeShared<VariableSymbol>(
+        IdentifierAst::FromType(*generic.Name),
+        generic.CompVal->InferType(tm ? tm : &sm, meta),
+        sm.CurrentScope,
+        VariableKind::GenericCompArg, false, asts::utils::Visibility::kPublic);
+
+      // A comp argument naming a bound comp generic binds what that is bound to where it is written, as a type
+      // argument binds the type it names there ("SizedInteger[w]" in a "[cmp w: U32]" instance binds 32, not "w").
+      // A closed value binds what it folds to ("n + 1_uz" with "n" bound to "1_uz" binds "2_uz").
+      auto value = cmp_utils::FoldCompExpr(*generic.CompVal, *sm.CurrentScope);
+      if (value == nullptr) {
+        value = AstClone(generic.CompVal);
+        if (auto const *const id = generic.CompVal->To<IdentifierAst>(); id != nullptr) {
+          if (auto const *const var = sm.CurrentScope->GetVarSymbol(id); var != nullptr) {
+            if (auto const *const bound = var->BoundCompValue(); bound != nullptr) { value = AstClone(bound); }
           }
         }
-        sym->CompTimeValue = std::move(value);
-        return sym;
       }
-
-      Raise<SppInternalCompilerError>(
-        {sm.CurrentScope},
-        ERR_ARGS(generic, "Unknown generic argument ast type"));
-      std::unreachable();
+      sym->CompTimeValue = std::move(value);
+      return sym;
     }
 
     /**
