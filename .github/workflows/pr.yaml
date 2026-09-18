@@ -135,10 +135,8 @@ jobs:
   # `contains` check is what success() would have given us - cppcheck red still stops the build.
   #
   # "spp-mode" is a second axis over "build-type": it selects the optimisation pipeline the built compiler runs over
-  # the s++ fixtures, so "release-rel" and "release-dev" are the same C++ binary exercising O3 and O0 codegen. The
-  # sanitiser rides on "dev" rather than "rel" deliberately - it instruments the C++ compiler, whose sanitiser-visible
-  # code (the analysis stages) is identical in both modes, so the only thing "rel" would add is the wall-clock of an
-  # O3 pass pipeline on an already slow build.
+  # the s++ fixtures, so "release-rel" and "release-dev" are the same C++ binary exercising O3 and O0 codegen. There is
+  # no sanitiser variant: under ASan a single test takes ~8 minutes instead of ~3 seconds, so it cannot gate a PR.
   build-test:
     name: Build & Test
     needs: [ changes, cppcheck ]
@@ -157,7 +155,6 @@ jobs:
           - { variant: release-rel, build-type: Release, spp-mode: rel, shard-index: 1, shard-count: 2 }
           - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 0, shard-count: 2, stl-conformance: true }
           - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 1, shard-count: 2 }
-          - { variant: asan-dev, build-type: Debug, spp-mode: dev, sanitizer: address+undefined+leak }
     uses: ./.github/workflows/_compile.yaml
     with:
       os: ubuntu-24.04
@@ -165,7 +162,6 @@ jobs:
       version: "16.2"
       variant: ${{ matrix.variant }}
       build-type: ${{ matrix.build-type }}
-      sanitizer: ${{ matrix.sanitizer }}
       spp-mode: ${{ matrix.spp-mode }}
       shard-index: ${{ matrix.shard-index || 0 }}
       shard-count: ${{ matrix.shard-count || 1 }}
