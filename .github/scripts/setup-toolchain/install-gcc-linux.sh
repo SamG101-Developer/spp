@@ -25,7 +25,11 @@ brew update --quiet
 # The newest major is plain "gcc"; the ones behind it keep a "gcc@N".
 formula="gcc@${major}"
 brew info --formula "$formula" > /dev/null 2>&1 || formula="gcc"
-brew install --quiet "$formula"
+
+# Homebrew's GCC is configured against Homebrew's binutils and emits
+# directives, ".base64" among them, that the assembler on the runner
+# image (2.42) does not know.
+brew install --quiet "$formula" binutils
 
 prefix="$(brew --prefix "$formula")"
 cc="${prefix}/bin/gcc-${major}"
@@ -46,11 +50,21 @@ case "${full}." in
     ;;
 esac
 
+# COMPILER_PATH is where GCC looks for "as" and "ld", and is read
+# before PATH, so only the compiler's own subprograms move - nothing
+# else on the runner sees a different binutils.
+binutils="$(brew --prefix binutils)/bin"
+if [ ! -x "${binutils}/as" ]; then
+  echo "::error::homebrew binutils installed no assembler under ${binutils}" >&2
+  exit 1
+fi
+
 # The build, and everything it produces, run against this GCC's
 # libstdc++ rather than the system one it is ahead of.
 libstdcxx="$(readlink -f "$("$cxx" -print-file-name=libstdc++.so)")"
 {
   echo "CC=${cc}"
   echo "CXX=${cxx}"
+  echo "COMPILER_PATH=${binutils}"
   echo "LD_LIBRARY_PATH=$(dirname "$libstdcxx")${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 } >> "$GITHUB_ENV"
