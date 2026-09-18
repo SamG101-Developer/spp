@@ -55,12 +55,12 @@
 
 #define SPP_AST_COMMON_FWD_DECL(_Ast)            \
   use(spp::analyse::scopes, class ScopeManager); \
-  use(spp::asts::meta, class CompilerMetaData);  \
+  use(spp::asts::meta, struct CompilerMetaData); \
   use(spp::asts, struct _Ast)
 
 #define SPP_AST_COMMON_FWD_DECL_TEMPLATED(_Ast)  \
   use(spp::analyse::scopes, class ScopeManager); \
-  use(spp::asts::meta, class CompilerMetaData);  \
+  use(spp::asts::meta, struct CompilerMetaData); \
   use(spp::asts, template <typename T> struct _Ast)
 
 #define SPP_STRING_START auto raw_string = Str()

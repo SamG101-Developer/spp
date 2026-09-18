@@ -6,7 +6,7 @@ import spp.utils.types;
 import sys;
 
 use(spp::analyse::scopes, class Scope);
-use(spp::analyse::scopes, struct ScopeManager);
+use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct NamespaceSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::scopes, struct TypeSymbol);

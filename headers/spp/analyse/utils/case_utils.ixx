@@ -14,7 +14,7 @@ use(spp::asts, struct CasePatternVariantAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts::meta, struct CompilerMetaData);
-use(spp::codegen, class LlvmCtx);
+use(spp::codegen, struct LlvmCtx);
 
 namespace spp::analyse::utils::case_utils {
   /// The codegen (stage 11) version of the core pattern
