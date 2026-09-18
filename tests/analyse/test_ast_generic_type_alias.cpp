@@ -51,3 +51,27 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppGenericConstraintError, R"(
     type ZzClosure[Ts, R] = std::function::FunMov[Ts, R]
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  GenericTypeAliasAst,
+  test_valid_alias_constraint_binding_both_a_method_and_a_block_generic, R"(
+    !public
+    cls ZzA[T] { }
+    !public
+    cls ZzB[E] { }
+    !public
+    type ZzR[T, E] = ZzA[T] or ZzB[E]
+
+    sup [T, E] ZzR[T, E] {
+        !public
+        fun and_then[U, F: std::function::FunMov[(T,), ZzR[U, E]]](self, mut pred: F) -> Void {
+            drop(pred)
+            drop(self)
+        }
+    }
+
+    fun f() -> Void {
+        let r: ZzR[S32, Bool] = ZzA[S32]()
+        r.and_then((x: S32) -> ZzR[S32, Bool] { ret ZzA[S32]() })
+    }
+)");

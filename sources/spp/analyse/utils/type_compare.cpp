@@ -101,9 +101,18 @@ namespace spp::analyse::utils::type_compare {
       Scope const &scope)
       -> Vec<Unique<GenericArgumentAst>> const& {
       // An alias's instantiation has a scope of its own, so the target's arguments are read off what it resolves to.
-      auto const *sym = scope.GetTypeSymbol(&type);
+      auto const *const sym = scope.GetTypeSymbol(&type);
       if (sym != nullptr and sym->Alias != nullptr and sym->Alias->Resolved != nullptr) {
         return sym->Alias->Resolved->LastTypePart()->GnArgGroup->Args;
+      }
+
+      // An alias name can also resolve straight to its target's symbol, with no alias instantiation of its own in
+      // between: a type is stamped with what it resolved to where it was written, and a stamp made through an alias
+      // names the target. That symbol holds the target's arguments ("Var[Variants=..]"), and the written ones are the
+      // alias's ("Res[T, E]") - lining the written list up against the target's would leave them unmatched.
+      if (sym != nullptr and sym->Alias == nullptr and not type.LastTypePart()->GnArgGroup->Args.IsEmpty()) {
+        auto const *const head = scope.GetTypeSymbol(type.WithoutGenerics()->WithoutConvention().get());
+        if (head != nullptr and head->Alias != nullptr) { return sym->Name->GnArgGroup->Args; }
       }
       return type.LastTypePart()->GnArgGroup->Args;
     }
