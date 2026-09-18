@@ -319,7 +319,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   ModuleTree &tree,
   analyse::scopes::ScopeManager *sm,
   const unsigned opt_level)
-  -> void {
+  -> bool {
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
@@ -389,7 +389,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
   // Link every module together now that all of them have been
   // built.
-  _LinkTimeOptimize(out, opt_level);
+  return _LinkTimeOptimize(out, opt_level);
 }
 
 auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
@@ -403,9 +403,9 @@ auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
 auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   OutLayout const &out,
   const unsigned opt_level)
-  -> void {
+  -> bool {
   // Guard.
-  if (_LlvmCtxs.IsEmpty()) { return; }
+  if (_LlvmCtxs.IsEmpty()) { return true; }
 
   const auto lto_module = MakeUnique<llvm::Module>("spp.lto", *_LlvmCtxs[0]->Context);
   codegen::ApplyTargetToModule(lto_module.get());
@@ -416,7 +416,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     if (codegen::LinkIntoLtoModule(lto_module.get(), ctx->Module.get())) { continue; }
     llvm::errs() << "Failed to link module into the lto module: " << ctx->Module->getName() << "\n";
     if (VerifyOnly) { throw std::runtime_error("Failed to link module into the lto module"); }
-    return;
+    return false;
   }
 
   // Do a final pass on the lto module before internalizing. This
@@ -424,12 +424,12 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   if (llvm::verifyModule(*lto_module, &llvm::errs())) {
     llvm::errs() << "Invalid lto module\n";
     if (VerifyOnly) { throw std::runtime_error("Invalid lto module, see the verifier above"); }
-    return;
+    return false;
   }
 
   // The unit tests stop here: the combined module is valid, and
   // optimising, emitting and linking it would add nothing more.
-  if (VerifyOnly) { return; }
+  if (VerifyOnly) { return true; }
 
   // Internalize all the definitions in the lto module before
   // optimizing. The C entry point is added before internalizing,
@@ -468,13 +468,13 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // Only a program gets built into something runnable. A library
   // has no entry point, so there is nothing for a linker to make an
   // executable out of, and the ir is the whole of what it produces.
-  if (not has_entry_point) { return; }
+  if (not has_entry_point) { return true; }
   const auto object_file = out.ObjectFile();
   FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
   FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
   FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
   codegen::ApplyUnwindTables(lto_module.get());
-  if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
+  if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
 
   // A cross build stops at the object, no linking available for
   // now.
@@ -483,14 +483,14 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
       << "Built object for " << codegen::TargetFolderName() << ": "
       << utils::files::DisplayString(object_file) << "\n"
       << "Not linking: a cross build has no linker or ffi runtime for its target here." << std::endl;
-    return;
+    return true;
   }
-  _LinkExecutable(out);
+  return _LinkExecutable(out);
 }
 
 auto spp::compiler::CompilerBoot::_LinkExecutable(
   OutLayout const &out)
-  -> void {
+  -> bool {
   // The object holds calls into the ffi runtime and nothing
   // else external, so the link is the object plus whatever
   // shared libraries the project's packages ship.
@@ -533,9 +533,10 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   std::cout << "Linking: " << exe_file << std::endl;
   if (const auto status = std::system(command.c_str()); status != 0) {
     llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
-    return;
+    return false;
   }
   std::cout << "Built executable: " << exe_file << std::endl;
+  return true;
 }
 
 auto spp::compiler::CompilerBoot::_FfiLibraries(

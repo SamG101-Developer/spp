@@ -67,7 +67,9 @@ namespace spp::cli {
     /**
      * Run a compilation, reporting a mistake in the source being compiled as the mistake it is.
      * @param[in,out] c The compiler to run.
-     * @return @c true if the compilation finished; @c false once the error has been printed.
+     * @return @c true if the build produced its artefact; @c false once the error has been printed, and for a back-end
+     * failure - a module llvm rejects, an object it cannot write, a linker that returns non-zero - which reports
+     * itself as it happens rather than by throwing.
      */
     auto CompileReportingErrors(
       spp::compiler::Compiler &c)
@@ -78,12 +80,10 @@ namespace spp::cli {
       // standing where the throw happened and a debugger can be pointed
       // at it. That build is the compiler's own; this is the one a
       // program is compiled with.
-      c.Compile();
-      return true;
+      return c.Compile();
 #else
       try {
-        c.Compile();
-        return true;
+        return c.Compile();
       }
       catch (spp::utils::errors::AbstractError const &e) {
         std::cerr << e.what() << "\n";
@@ -812,8 +812,10 @@ auto spp::cli::run_cpp_google_test(
   const auto m = mode == "dev"
     ? compiler::Compiler::Mode::DEV
     : compiler::Compiler::Mode::REL;
+  // Discarded on purpose: this path verifies rather than builds, and a
+  // verification that fails throws out of here rather than answering.
   const auto c = compiler::Compiler::ForCppGoogleTest(m, std::move(main_code));
-  c->Compile();
+  static_cast<void>(c->Compile());
   return c->CompTimeConstants();
 }
 

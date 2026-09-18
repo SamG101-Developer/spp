@@ -90,7 +90,12 @@ public:
 
   ~Compiler();
 
-  auto Compile() -> void;
+  /**
+   * Run every stage over the module tree. Analysis reports what it rejects by throwing, so a build that gets as far as
+   * the back end can still fail there with nothing thrown - see @c CompilerBoot::Stage11_CodeGen .
+   * @return @c true when the build produced its artefact, @c false when it did not.
+   */
+  SPP_ATTR_NODISCARD auto Compile() -> bool;
 
   /**
    * Restrict which unit tests the generated harness runs. Must be set before @c Compile , because the filters are
