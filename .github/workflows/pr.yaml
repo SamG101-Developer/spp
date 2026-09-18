@@ -226,6 +226,8 @@ jobs:
       contents: read
     uses: ./.github/workflows/_docs.yaml
 
+  # Dependency, secret and licence scanning. Ungated: these read the tree and the dependency graph rather than
+  # building it, so there is nothing to save by making them wait, and a leaked secret is worth hearing about at once.
   security:
     name: Security
     needs: [ changes ]
@@ -235,16 +237,37 @@ jobs:
       security-events: write
       actions: read
     uses: ./.github/workflows/_security.yaml
-    with:
-      code-scan: ${{ needs.changes.outputs.ci_pins_only != 'true' }}
+
+  # Behind cppcheck for the same reason as the builds: CodeQL configures and builds the whole project under its
+  # extractor, and cppcheck rejects the same code in well under a minute.
+  codeql:
+    name: CodeQL
+    needs: [ changes, cppcheck ]
+    if: |
+      !cancelled()
+      && needs.changes.outputs.security == 'true'
+      && needs.changes.outputs.ci_pins_only != 'true'
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/_codeql.yaml
 
   # Advisory: runs SonarQube Cloud analysis with PR decoration, but is deliberately omitted from ci-success, so a red
   # quality gate does not block a merge. Todo: Add it to the ci-success `needs` list to make it blocking.
+  #
+  # Behind cppcheck like the builds and CodeQL: Sonar's scanner wraps a full build, so there is no sense starting one
+  # over code static analysis has already rejected.
   sonar:
     name: Sonar
-    needs: [ changes ]
+    needs: [ changes, cppcheck ]
     if: |
-      needs.changes.outputs.sonar == 'true'
+      !cancelled()
+      && needs.changes.outputs.sonar == 'true'
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
       && (github.event_name != 'pull_request'
         || github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
@@ -277,7 +300,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ lint, version, cppcheck, build-test, docs, security ] # sonar
+    needs: [ lint, version, cppcheck, build-test, docs, security, codeql ] # sonar
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }

@@ -33,6 +33,18 @@ jobs:
     with:
       full-scan: true
 
+  # Unconditional here, unlike on a pull request: master has already been through the cppcheck gate, and there is no
+  # diff filter to read on a scheduled run.
+  codeql:
+    name: CodeQL (Full Scan)
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/_codeql.yaml
+    with:
+      full-scan: true
+
   # Grades the things that cannot be seen from inside a workflow: token permissions, whether actions are pinned, and
   # branch protection.
   scorecard:
