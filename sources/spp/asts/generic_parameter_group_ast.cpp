@@ -46,12 +46,12 @@ GenericParameterGroupAst::~GenericParameterGroupAst() = default;
 
 auto GenericParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Params.IsEmpty() ? 0 : Params.Front()->PosStart();
 }
 
 auto GenericParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Params.IsEmpty() ? 0 : Params.Back()->PosEnd();
 }
 
 auto GenericParameterGroupAst::Clone() const -> Unique<Ast> {

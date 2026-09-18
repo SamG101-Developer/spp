@@ -40,12 +40,12 @@ GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraints
 
 auto GenericParameterTypeInlineConstraintsAst::PosStart() const -> std::size_t {
   // Use the ":" token.
-  return TokColon->PosStart();
+  return TokColon != nullptr ? TokColon->PosStart() : Constraints.IsEmpty() ? 0 : Constraints.Front()->PosStart();
 }
 
 auto GenericParameterTypeInlineConstraintsAst::PosEnd() const -> std::size_t {
   // Use the last constraint.
-  return Constraints.IsEmpty() ? TokColon->PosEnd() : Constraints.Back()->PosEnd();
+  return not Constraints.IsEmpty() ? Constraints.Back()->PosEnd() : TokColon != nullptr ? TokColon->PosEnd() : 0;
 }
 
 auto GenericParameterTypeInlineConstraintsAst::Clone() const -> Unique<Ast> {

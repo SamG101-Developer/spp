@@ -121,12 +121,12 @@ GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
 
 auto GenericArgumentGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Args.IsEmpty() ? 0 : Args.Front()->PosStart();
 }
 
 auto GenericArgumentGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Args.IsEmpty() ? 0 : Args.Back()->PosEnd();
 }
 
 auto GenericArgumentGroupAst::Clone() const -> Unique<Ast> {

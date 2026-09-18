@@ -37,7 +37,7 @@ auto LocalVariableSingleIdentifierAliasAst::Clone() const -> Unique<Ast> {
 
 auto LocalVariableSingleIdentifierAliasAst::ToString() const -> Str {
   SPP_STRING_START;
-  SPP_STRING_APPEND(TokAs).append_range(" ");
+  SPP_STRING_APPEND(TokAs).append(" ");
   SPP_STRING_APPEND(Name);
   SPP_STRING_END;
 }

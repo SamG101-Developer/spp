@@ -48,12 +48,12 @@ ClosureExpressionCaptureGroupAst::~ClosureExpressionCaptureGroupAst() = default;
 
 auto ClosureExpressionCaptureGroupAst::PosStart() const -> std::size_t {
   // Use the "caps" token.
-  return TokCaps->PosStart();
+  return TokCaps != nullptr ? TokCaps->PosStart() : Captures.IsEmpty() ? 0 : Captures.Front()->PosStart();
 }
 
 auto ClosureExpressionCaptureGroupAst::PosEnd() const -> std::size_t {
   // Use the final capture.
-  return Captures.Back()->PosEnd();
+  return not Captures.IsEmpty() ? Captures.Back()->PosEnd() : TokCaps != nullptr ? TokCaps->PosEnd() : 0;
 }
 
 auto ClosureExpressionCaptureGroupAst::Clone() const -> Unique<Ast> {

@@ -36,12 +36,12 @@ FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
 
 auto FunctionParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "(" token.
-  return TokL->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Params.IsEmpty() ? 0 : Params.Front()->PosStart();
 }
 
 auto FunctionParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
-  return TokR->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Params.IsEmpty() ? 0 : Params.Back()->PosEnd();
 }
 
 auto FunctionParameterGroupAst::Clone() const -> Unique<Ast> {
