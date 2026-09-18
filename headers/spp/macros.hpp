@@ -11,11 +11,20 @@
 #define SPP_ATTR_UNLIKELY [[unlikely]]
 #define SPP_ATTR_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #define SPP_ATTR_ASSUME(x) [[assume(x)]]
-#define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]]
-#define SPP_ATTR_NOINLINE [[gnu::noinline]]
-#define SPP_ATTR_UNREACHABLE [[gnu::unreachable]]
-#define SPP_ATTR_HOT [[gnu::hot]]
-#define SPP_ATTR_COLD [[gnu::cold]]
+
+#if SPP_COMPILER_MSVC
+  #define SPP_ATTR_ALWAYS_INLINE [[msvc::forceinline]]
+  #define SPP_ATTR_NOINLINE [[msvc::noinline]]
+  #define SPP_ATTR_UNREACHABLE
+  #define SPP_ATTR_HOT
+  #define SPP_ATTR_COLD
+#else
+  #define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]]
+  #define SPP_ATTR_NOINLINE [[gnu::noinline]]
+  #define SPP_ATTR_UNREACHABLE [[gnu::unreachable]]
+  #define SPP_ATTR_HOT [[gnu::hot]]
+  #define SPP_ATTR_COLD [[gnu::cold]]
+#endif
 
 #if SPP_DEBUG
 #define SPP_ASSERT(x)                                                                                   \
