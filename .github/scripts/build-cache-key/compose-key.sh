@@ -20,7 +20,7 @@ generation="$(python3 .github/scripts/lib/pins.py get "cache.${FAMILY}.generatio
 # image drifts from 16.1 to 16.2 underneath it, and a module
 # BMI built by one is not readable by the other - so the
 # reported version is what the fingerprint tracks.
-COMPILER_REPORTED_VERSION="$("${CXX:-}" --version 2>&1 | grep -oE '[0-9]+(\.[0-9]+)+' | head -1 || true)"
+COMPILER_REPORTED_VERSION="$("${CXX:-}" --version 2>&1 | head -1 || true)"
 export COMPILER_REPORTED_VERSION
 
 # One short digest over everything that invalidates a tree
