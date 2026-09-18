@@ -128,7 +128,8 @@ auto SymbolTable::DeepCopyFrom(
   VarTbl.DeepCopyFrom(that.VarTbl);
 }
 
-template class IndividualSymbolTable<IdentifierAst, NamespaceSymbol>;
-template class IndividualSymbolTable<TypeIdentifierAst, TypeSymbol>;
-template class IndividualSymbolTable<IdentifierAst, VariableSymbol>;
+CLANG_STRICT_TEMPLATE_FULLY_QUALIFIED_INSTANTIATION
+template class spp::analyse::scopes::IndividualSymbolTable<IdentifierAst, NamespaceSymbol>;
+template class spp::analyse::scopes::IndividualSymbolTable<TypeIdentifierAst, TypeSymbol>;
+template class spp::analyse::scopes::IndividualSymbolTable<IdentifierAst, VariableSymbol>;
 SPP_MOD_END

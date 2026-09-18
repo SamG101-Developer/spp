@@ -142,5 +142,6 @@ auto InnerScopeAst<T>::FinalMember() const -> Ast* {
   return Members.IsEmpty() ? TokR->To<Ast>() : Members.Back()->template To<Ast>();
 }
 
-template struct InnerScopeAst<spp::Unique<Ast>>;
+CLANG_STRICT_TEMPLATE_FULLY_QUALIFIED_INSTANTIATION
+template struct spp::asts::InnerScopeAst<spp::Unique<Ast>>;
 SPP_MOD_END
