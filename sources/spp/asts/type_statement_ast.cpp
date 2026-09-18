@@ -117,7 +117,7 @@ auto TypeStatementAst::Stage2_GenTopLvlScopes(
 
   // Create the type symbol for this type, that will point to the old type.
   _AliasSym = MakeShared<TypeSymbol>(
-    NewType, nullptr, nullptr, sm->CurrentScope, sm->CurrentScope->ParentModule(), TypeKind::Alias);
+    NewType, nullptr, nullptr, sm->CurrentScope, TypeKind::Alias);
   _AliasSym->Alias = MakeShared<AliasInfo>();
   _AliasSym->Alias->Written = OldType;
   // Seeded with the written type, and refined in stage 3 once the chain behind it has been followed. It is never

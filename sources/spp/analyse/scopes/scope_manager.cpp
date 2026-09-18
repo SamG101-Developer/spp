@@ -503,7 +503,7 @@ auto ScopeManager::MakeSelfTypeSymbol(
   // Create a "Self" symbol with a provided set of scopes.
   return MakeShared<TypeSymbol>(
     MakeUnique<TypeIdentifierAst>(pos, "Self", nullptr),
-    nullptr, linked_scope, defined_in, nullptr, TypeKind::Self);
+    nullptr, linked_scope, defined_in, TypeKind::Self);
 }
 
 auto ScopeManager::AddSelfTypeSymbol(

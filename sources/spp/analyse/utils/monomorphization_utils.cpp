@@ -135,8 +135,7 @@ namespace spp::analyse::utils::monomorphization_utils {
         // "Self" should not be looked up and changed.
         if (generic.TypeVal->IsSelfType()) {
           return MakeShared<TypeSymbol>(
-            NameLastTypePart(*generic.Name), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
-            TypeKind::GenericArg);
+            NameLastTypePart(*generic.Name), nullptr, nullptr, sm.CurrentScope, TypeKind::GenericArg);
         }
 
         auto true_val_sym = sm.CurrentScope->GetTypeSymbol(generic.TypeVal.get());
@@ -152,8 +151,7 @@ namespace spp::analyse::utils::monomorphization_utils {
         // Build the type symbol for the generic type argument.
         auto sym = MakeShared<TypeSymbol>(
           NameLastTypePart(*generic.Name), true_val_sym ? true_val_sym->Type : nullptr,
-          true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
-          TypeKind::GenericArg,
+          true_val_sym ? true_val_sym->LinkedScope : nullptr, sm.CurrentScope, TypeKind::GenericArg,
           true_val_sym ? true_val_sym->IsDirectlyCopyable : false, asts::utils::Visibility::kPublic,
           AstClone(generic.TypeVal->GetConvention()));
         sym->GenericConstraints = true_val_sym
@@ -442,7 +440,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
   // copyable, and a zero type, exactly when the template it substitutes is.
   const auto new_cls_sym = MakeShared<TypeSymbol>(
     name_clone, AstAs<ClassPrototypeAst>(new_cls_scope->AstNode), new_cls_scope.get(), sm->CurrentScope,
-    old_cls_scope->Parent, old_cls_sym->Kind, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
+    old_cls_sym->Kind, old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
   new_cls_sym->DerivesFromSym = old_cls_sym;
 
   // Filed under its identity before anything below analyses a type naming it. Its own members can ("Self", or a class

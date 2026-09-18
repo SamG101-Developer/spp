@@ -357,9 +357,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// "ScopeDefinedIn" scope, and no-where else, so track it.
   Scope *ScopeDefinedIn;
 
-  // Todo: Remove, I think
-  Scope *ScopeModule;
-
   /// The kind of type symbol: a class, an alias, "Self", a
   /// generic parameter or argument, or a function / closure mock.
   TypeKind Kind;
@@ -449,7 +446,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     ClassPrototypeAst *type,
     Scope *scope,
     Scope *scope_defined_in,
-    Scope *scope_module,
     TypeKind kind,
     bool is_directly_copyable = false,
     asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate,

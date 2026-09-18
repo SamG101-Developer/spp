@@ -514,7 +514,7 @@ auto ClosureExpressionAst::_MakeMockType(
   // the symbol table.
   const auto mock_sym = MakeShared<TypeSymbol>(
     mock_name, mock_ast.get(), mock_scope.get(),
-    mod_scope, mod_scope, TypeKind::ClosureMock, false, utils::Visibility::kPublic);
+    mod_scope, TypeKind::ClosureMock, false, utils::Visibility::kPublic);
 
   // Hook the genuine function type into the closure mock type's
   // sup scope list, as happens with normal overload resolution

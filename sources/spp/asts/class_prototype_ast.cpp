@@ -347,7 +347,7 @@ auto ClassPrototypeAst::_GenerateSymbols(
   // Create the symbol for the type, include generics if
   // applicable, like Vec[T].
   symbol_1 = MakeShared<TypeSymbol>(
-    std::move(sym_name), this, sm->CurrentScope, sm->CurrentScope, sm->CurrentScope->ParentModule(),
+    std::move(sym_name), this, sm->CurrentScope, sm->CurrentScope,
     is_dollar_type ? TypeKind::FunctionMock : TypeKind::Class, is_dollar_type);
   sm->CurrentScope->TySym = symbol_1;
   sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_1);

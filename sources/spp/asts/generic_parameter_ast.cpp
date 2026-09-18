@@ -172,7 +172,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
   // Create the type symbol for the generic parameter.
   const auto sym = MakeShared<TypeSymbol>(
     AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(),
-    sm->CurrentScope, nullptr, TypeKind::GenericParam, false, Visibility::kPublic,
+    sm->CurrentScope, TypeKind::GenericParam, false, Visibility::kPublic,
     nullptr, Constraints->Constraints);
   sym->IsVariadic = TokEllipsis != nullptr;
   sym->ParamId = NextGenericParamId();
