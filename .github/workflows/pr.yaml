@@ -300,7 +300,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ lint, version, cppcheck, build-test, docs, security, codeql ] # sonar
+    needs: [ changes, lint, version, cppcheck, build-test, docs, security, codeql ] # sonar
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }
