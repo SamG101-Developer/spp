@@ -155,6 +155,7 @@ else ()
     PRIVATE
     -Wall
     -Wextra
+    -Wpedantic
     -Wcast-align
     -Wcast-qual
     -Wconversion

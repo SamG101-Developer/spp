@@ -421,7 +421,7 @@ auto spp::analyse::utils::monomorphization_utils::CreateGenericClsScope(
 
   // 1. Clone the template's scope. A class is the one construct whose instantiation gets a fresh scope rather than a
   // copy: its name is the instantiated type, not the template's, so only the symbols are carried over.
-  const auto old_cls_scope = old_cls_sym->LinkedScope ? : old_cls_sym->ScopeDefinedIn;
+  const auto old_cls_scope = old_cls_sym->LinkedScope ? old_cls_sym->LinkedScope : old_cls_sym->ScopeDefinedIn;
   const auto name_clone = AstCloneShared(&type_part);
 
   // The clone names the instantiation; it is not written where the instantiation is used, so it answers no access

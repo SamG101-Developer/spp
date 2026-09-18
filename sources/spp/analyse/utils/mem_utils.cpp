@@ -350,14 +350,16 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
   const auto is_rhs_borrow = override_borrow or (
     rhs_outermost and spp::get<0>(rhs_outermost->MemInfo->AstBorrowed) != nullptr);
   if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
-    const auto rhs_borrow_scope = spp::get<1>(rhs_outermost->MemInfo->AstBorrowed) ? : sm.CurrentScope;
+    const auto has_borrow_scope = spp::get<1>(rhs_outermost->MemInfo->AstBorrowed);
+    const auto rhs_borrow_scope = has_borrow_scope ? has_borrow_scope : sm.CurrentScope;
     const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
     if (lhs_init_scope != nullptr) {
       const auto scope_depth_difference = genex::position(
         lhs_init_scope->Ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
+      const auto has_borrow_ast = spp::get<0>(rhs_outermost->MemInfo->AstBorrowed);
       RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
         scope_depth_difference < 0, {sm.CurrentScope},
-        ERR_ARGS(*owner, *lhs_outermost->Name, *(spp::get<0>(rhs_outermost->MemInfo->AstBorrowed) ?: &rhs_expr)));
+        ERR_ARGS(*owner, *lhs_outermost->Name, *(has_borrow_ast ? has_borrow_ast : &rhs_expr)));
     }
   }
 

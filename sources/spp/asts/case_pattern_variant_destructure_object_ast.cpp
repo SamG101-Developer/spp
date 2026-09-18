@@ -199,8 +199,8 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSym->Kind = VariableKind::FlowNarrowing;
 
     if (Type->GetConvention() != nullptr) {
-      const auto borrow_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed)
-        ? : _CondSym->ScopeDefinedIn;
+      const auto has_ast_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed);
+      const auto borrow_scope = has_ast_scope ? has_ast_scope : _CondSym->ScopeDefinedIn;
       _FlowSym->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
     }
     sm->CurrentScope->AddVarSymbol(_FlowSym);

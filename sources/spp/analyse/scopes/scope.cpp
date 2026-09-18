@@ -320,7 +320,10 @@ auto Scope::AddVarSymbolCheckConflict(
 
     RaiseIf<errors::SppIdentifierDuplicateError>(
       not is_functional and not is_shadowed_import,
-      {existing_sym->ScopeDefinedIn ? : this, sym->ScopeDefinedIn ? : this},
+      {
+        existing_sym->ScopeDefinedIn ? existing_sym->ScopeDefinedIn : this,
+        sym->ScopeDefinedIn ? sym->ScopeDefinedIn : this
+      },
       ERR_ARGS(*existing_sym->Name, *sym->Name, "comptime variable identifier"));
   }
 
