@@ -1,0 +1,80 @@
+name: codeql
+
+# CodeQL, split out of _security.yaml so it can be sequenced behind cppcheck without holding the cheap scans up with
+# it. It configures and builds the whole project under its extractor, which makes it the one security job worth gating
+# on something faster; the rest read the tree and the dependency graph, and start straight away.
+
+on:
+  workflow_call:
+    inputs:
+      full-scan:
+        description: "Run a full security scan (security-and-quality rather than security-extended)."
+        required: false
+        type: boolean
+        default: false
+
+permissions: { }
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read          # checkout
+      security-events: write  # upload CodeQL results
+      actions: read           # read workflow run metadata (private repos)
+    steps:
+      # Secure the runner from external packages or actions.
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      # Provide the ability to git-checkout external packages and actions.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # setup-toolchain loads the manifest itself, but not until after its own `with:` has been evaluated, so the
+      # loader runs here as well to put GCC_VERSION within reach of the step below.
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
+      # CodeQL analyses the blocking toolchain's build, so it tracks GCC_VERSION rather than naming a compiler of its
+      # own. No compiler cache: a cache hit skips the real compiler, and the extractor never sees the translation unit.
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          runner-image: ubuntu-24.04
+          compiler: gcc
+          version: ${{ env.GCC_VERSION }}
+          compiler-cache: "false"
+
+      # Install the CodeQL action, with C/C++ support, and specify the query configurations. This is the only CodeQL
+      # setup needed.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          languages: c-cpp
+          build-mode: manual
+          config-file: ./.github/codeql-config.yaml
+          queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
+
+      # Configure the cmake build specifically in debug mode.
+      - name: Configure
+        uses: ./.github/actions/configure-cmake
+        with:
+          build-type: Debug
+
+      # Build the debug-mode project from scratch, which is the specific build that CodeQL will be analysing.
+      - name: Build
+        run: cmake --build build --parallel
+
+      # Run the analysis steps.
+      - name: Analyze
+        uses: github/codeql-action/analyze@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        with:
+          category: "/language:c-cpp"
