@@ -97,9 +97,11 @@ jobs:
   # Shards of a variant share its name and so its tree, and only shard 0 saves that tree, so splitting the sweep buys
   # wall-clock without a second copy of anything.
   build-test:
-    name: Build & Test
+    name: Build & Test · ${{ matrix.variant }} · shard ${{ matrix.shard-index }}
     needs: [ changes ]
     if: needs.changes.outputs.compile == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -110,17 +112,31 @@ jobs:
           - { variant: release-rel, build-type: Release, spp-mode: rel, shard-index: 1, shard-count: 2 }
           - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 0, shard-count: 2, stl-conformance: true }
           - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 1, shard-count: 2 }
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ubuntu-24.04
-      compiler: gcc
-      version: "16"
-      variant: ${{ matrix.variant }}
-      build-type: ${{ matrix.build-type }}
-      spp-mode: ${{ matrix.spp-mode }}
-      shard-index: ${{ matrix.shard-index || 0 }}
-      shard-count: ${{ matrix.shard-count || 1 }}
-      stl-conformance: ${{ matrix.stl-conformance || false }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      # Full history: restore-mtimes walks it to date the sources for the incremental build.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build and test
+        uses: ./.github/actions/compile
+        with:
+          os: ubuntu-24.04
+          compiler: gcc
+          version: "16"
+          variant: ${{ matrix.variant }}
+          build-type: ${{ matrix.build-type }}
+          spp-mode: ${{ matrix.spp-mode }}
+          shard-index: ${{ matrix.shard-index || 0 }}
+          shard-count: ${{ matrix.shard-count || 1 }}
+          stl-conformance: ${{ matrix.stl-conformance || false }}
 
   # Only a push that bumped VERSION, or a manual dispatch, is a release candidate. Without this, an unpublished version
   # is retried by every later push, so dependency bumps kick off the full cross-platform build. The tag check then stops
@@ -164,9 +180,11 @@ jobs:
 
   # Publish the released by building on master against the matrix, and using the version information.
   release-build:
-    name: Release Build
+    name: Release Build · ${{ matrix.label }}
     needs: [ release-gate ]
     if: needs.release-gate.outputs.release == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -177,15 +195,30 @@ jobs:
           - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", label: linux-arm64 }
           - { os: macos-15, compiler: clang, version: "23", label: macos-arm64 }
           - { os: windows-2025, compiler: msvc, version: "", label: windows-x64 }
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.compiler }}
-      version: ${{ matrix.version }}
-      run-tests: false
-      binary-artifact: spp-${{ needs.release-gate.outputs.version }}-${{ matrix.label }}
-      variant: release-rel
-      build-type: Release
+    steps:
+      # The action is Linux-only, so the Windows and macOS variants go without it.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build
+        uses: ./.github/actions/compile
+        with:
+          os: ${{ matrix.os }}
+          compiler: ${{ matrix.compiler }}
+          version: ${{ matrix.version }}
+          run-tests: false
+          binary-artifact: spp-${{ needs.release-gate.outputs.version }}-${{ matrix.label }}
+          variant: release-rel
+          build-type: Release
 
   # The tag is created here, by the release itself, so a matrix that goes red leaves nothing behind, and a manual
   # dispatch retries the same version cleanly. Needs every platform green: a release missing an architecture is worse

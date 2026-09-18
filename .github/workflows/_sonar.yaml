@@ -13,7 +13,7 @@ on:
         type: string
         default: "ubuntu-24.04"
       variant:
-        description: "Build variant whose tree to restore. Must be one _compile.yaml actually builds on that os."
+        description: "Build variant whose tree to restore. Must be one the compile action actually builds on that os."
         required: false
         type: string
         default: "release-rel"
@@ -60,7 +60,7 @@ jobs:
           version: ${{ env.GCC_VERSION }}
           cache-key-suffix: sonar
 
-      # The key comes from the same action _compile.yaml writes the tree with, so restoring it needs only the variant
+      # The key comes from the same action the compile action writes the tree with, so restoring it needs only the variant
       # name to agree.
       - name: Compose build tree cache key
         id: cache-key

@@ -18,7 +18,7 @@ jobs:
   # for ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled.
   #
   # One output per gated job rather than one shared boolean, because a CI-only change moves only the jobs that
-  # actually read the file it touched - a change confined to claude.yaml gates nothing, and one to _compile.yaml runs
+  # actually read the file it touched - a change confined to claude.yaml gates nothing, and one to the compile action runs
   # the builds without dragging cppcheck, security and sonar along with it.
   #
   # A grouped dependabot action-pin bump defeats that on its own: harden-runner and checkout are pinned in every
@@ -128,7 +128,7 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # Supported toolchain. Every variant is one call of the compile workflow.
+  # Supported toolchain. Every variant is one matrix cell over the shared compile action.
   #
   # The `if` opts out of the implicit success() over `needs` because `cppcheck` is now gated on its own filter output
   # and can legitimately be skipped while this job runs; a skipped need would otherwise skip this job too. The
@@ -138,13 +138,15 @@ jobs:
   # the s++ fixtures, so "release-rel" and "release-dev" are the same C++ binary exercising O3 and O0 codegen. There is
   # no sanitiser variant: under ASan a single test takes ~8 minutes instead of ~3 seconds, so it cannot gate a PR.
   build-test:
-    name: Build & Test
+    name: Build & Test · ${{ matrix.variant }} · shard ${{ matrix.shard-index }}
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
       && needs.changes.outputs.compile == 'true'
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -155,28 +157,44 @@ jobs:
           - { variant: release-rel, build-type: Release, spp-mode: rel, shard-index: 1, shard-count: 2 }
           - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 0, shard-count: 2, stl-conformance: true }
           - { variant: release-dev, build-type: Release, spp-mode: dev, shard-index: 1, shard-count: 2 }
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ubuntu-24.04
-      compiler: gcc
-      version: "16.2"
-      variant: ${{ matrix.variant }}
-      build-type: ${{ matrix.build-type }}
-      spp-mode: ${{ matrix.spp-mode }}
-      shard-index: ${{ matrix.shard-index || 0 }}
-      shard-count: ${{ matrix.shard-count || 1 }}
-      stl-conformance: ${{ matrix.stl-conformance || false }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      # Full history: restore-mtimes walks it to date the sources for the incremental build.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build and test
+        uses: ./.github/actions/compile
+        with:
+          os: ubuntu-24.04
+          compiler: gcc
+          version: "16.2"
+          variant: ${{ matrix.variant }}
+          build-type: ${{ matrix.build-type }}
+          spp-mode: ${{ matrix.spp-mode }}
+          shard-index: ${{ matrix.shard-index || 0 }}
+          shard-count: ${{ matrix.shard-count || 1 }}
+          stl-conformance: ${{ matrix.stl-conformance || false }}
 
   # Aspirational toolchains: they run and report red on failure, but are deliberately omitted from ci-success, so they
   # never block a merge.
   build-test-extra:
-    name: Build & Test (non-blocking)
+    name: Build & Test (non-blocking) · ${{ matrix.os }} · ${{ matrix.compiler }}
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
       && needs.changes.outputs.compile == 'true'
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -191,15 +209,30 @@ jobs:
           - { os: windows-2025, compiler: msvc, version: "", cache-tree: true }
           - { os: windows-2025, compiler: clang-cl, version: "", cache-tree: true }
           # - { os: windows-2022, compiler: msvc, version: "", cache-tree: false }
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.compiler }}
-      version: ${{ matrix.version }}
-      cache-build-tree: ${{ matrix.cache-tree }}
-      variant: release
-      build-type: RelWithDebInfo
-      stl-conformance: true
+    steps:
+      # The action is Linux-only, so the Windows and macOS variants go without it.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build and test
+        uses: ./.github/actions/compile
+        with:
+          os: ${{ matrix.os }}
+          compiler: ${{ matrix.compiler }}
+          version: ${{ matrix.version }}
+          cache-build-tree: ${{ matrix.cache-tree }}
+          variant: release
+          build-type: RelWithDebInfo
+          stl-conformance: true
 
   # Emit for architectures unlike the host - 32-bit, big-endian, non-x86 - and check the object and the datalayout
   # that came out. Non-blocking to begin with. Todo: Add to ci-success once the matrix has been green for a while.

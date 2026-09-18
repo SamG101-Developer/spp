@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Compose a build-tree cache key, and publish it as the
 # `prefix` and `key` step outputs. This script is the only
-# place a key is spelled out: _compile.yaml and
+# place a key is spelled out: the compile action and
 # _cross_codegen.yaml write the trees, _sonar.yaml restores
 # one, and a key written separately in each is a key that
 # drifts apart silently, into a permanent cold build.

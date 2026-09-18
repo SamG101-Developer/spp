@@ -120,7 +120,7 @@ runs:
           compile:
             - '.github/workflows/pr.yaml'
             - '.github/workflows/post_merge.yaml'
-            - '.github/workflows/_compile.yaml'
+            - '.github/actions/compile/**'
             - '.github/actions/restore-mtimes/**'
             - '.github/actions/setup-toolchain/**'
             - '.github/actions/build-cache-key/**'
