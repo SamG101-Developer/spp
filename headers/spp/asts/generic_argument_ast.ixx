@@ -3,89 +3,85 @@ module;
 
 export module spp.asts.generic_argument_ast;
 import spp.asts.ast;
+import spp.asts.ast_kind;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct GenericArgumentCompAst;
-  SPP_EXP_CLS struct GenericArgumentTypeAst;
-  SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
-  SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
-  SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
-  SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
-}
+SPP_AST_COMMON_FWD_DECL(GenericArgumentAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct VariableSymbol);
 
-namespace spp::asts::detail {
-  SPP_EXP_CLS
+/// A generic argument: a type, passed like "std::Vec[Str]", or
+/// a compile time value, passed like "std::Arr[Str, 100_uz]".
+/// Either is given by keyword ("T=Str") or by position. Exactly
+/// one of "TypeVal" and "CompVal" is set.
+SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableAst {
+  SPP_GCC_VTABLE_FIX;
+  SPP_AST_KEY_FUNCTIONS(GenericArgumentAst);
 
-  template <typename GenericArgType>
-  struct make_keyword_arg {
-    using type = GenericArgType;
-  };
+  /// The name of a keyword argument, used to refer to the
+  /// argument in the generic call. Null for a positional one.
+  Shared<TypeAst> Name;
 
-  template <>
-  struct make_keyword_arg<GenericArgumentCompAst> {
-    using type = GenericArgumentCompKeywordAst;
-  };
+  /// The "=" token separating a keyword argument's name from
+  /// its value. Null for a positional one.
+  Unique<TokenAst> TokAssign;
 
-  template <>
-  struct make_keyword_arg<GenericArgumentTypeAst> {
-    using type = GenericArgumentTypeKeywordAst;
-  };
+  /// The value of a type argument. Null for a comp argument.
+  Shared<TypeAst> TypeVal;
 
-  SPP_EXP_CLS
-  template <typename T>
-  using make_keyword_arg_t = typename make_keyword_arg<T>::type;
+  /// The value of a comp argument. Any type is allowed, as any
+  /// type can be represented at compile time. Null for a type
+  /// argument.
+  Unique<ExpressionAst> CompVal;
 
-  SPP_EXP_CLS
+  static auto NewType(decltype(Name) name, decltype(TypeVal) val) -> Unique<GenericArgumentAst>;
 
-  template <typename GenericArgType>
-  struct make_positional_arg {
-    using type = GenericArgType;
-  };
+  static auto NewComp(decltype(Name) name, decltype(CompVal) &&val) -> Unique<GenericArgumentAst>;
 
-  template <>
-  struct make_positional_arg<GenericArgumentCompAst> {
-    using type = GenericArgumentCompPositionalAst;
-  };
+  static auto FromSym(TypeSymbol const &sym) -> Unique<GenericArgumentAst>;
 
-  template <>
-  struct make_positional_arg<GenericArgumentTypeAst> {
-    using type = GenericArgumentTypePositionalAst;
-  };
+  static auto FromSym(VariableSymbol const &sym) -> Unique<GenericArgumentAst>;
 
-  SPP_EXP_CLS
-  template <typename T>
-  using make_positional_arg_t = typename make_positional_arg<T>::type;
-}
+  GenericArgumentAst(
+    decltype(Name) name,
+    decltype(TokAssign) &&tok_assign,
+    decltype(TypeVal) type_val,
+    decltype(CompVal) &&comp_val);
 
-/**
- * The GenericArgumentAst is the base class for all generic arguments. It is inherited by the @c GenericArgumentCompAst
- * and @c GenericArgumentTypeAst, which represent the two types of generic arguments in the language. These in turn are
- * inherited for the positional and keyword variants.
- */
-SPP_EXP_CLS struct spp::asts::GenericArgumentAst : Ast, mixins::OrderableAst {
-  SPP_GCC_VTABLE_FIX
-
-  explicit GenericArgumentAst(utils::OrderableTag order_tag);
   ~GenericArgumentAst() override;
-  auto operator<=>(GenericArgumentAst const &other) const -> Ordering;
+
   auto operator==(GenericArgumentAst const &other) const -> bool;
 
-  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompKeyword(
-    GenericArgumentCompKeywordAst const &) const -> Ordering;
-  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentCompPositional(
-    GenericArgumentCompPositionalAst const &) const -> Ordering;
-  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypeKeyword(
-    GenericArgumentTypeKeywordAst const &) const -> Ordering;
-  SPP_ATTR_NODISCARD virtual auto EqualsGenericArgumentTypePositional(
-    GenericArgumentTypePositionalAst const &) const -> Ordering;
-  SPP_ATTR_NODISCARD virtual auto Equals(GenericArgumentAst const &other) const -> Ordering = 0;
+  /// The value, of whichever kind this argument is.
+  SPP_ATTR_NODISCARD auto Value() const -> ExpressionAst*;
 
-  SPP_ATTR_NODISCARD virtual auto ViewName() const -> StrView;
+  /// The keyword name, or "" for a positional argument.
+  SPP_ATTR_NODISCARD auto ViewName() const -> StrView;
+
+  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+private:
+  /// Analyse a type value and rewrite it as its qualified name,
+  /// so it reads the same from a module that never imports it.
+  /// A "Self" outside a function body is kept, for the caller
+  /// to decide per use; a value naming a generic keeps its own
+  /// node and stamp, and is resolved on read instead.
+  auto AnalyseTypeVal(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Analyse a comp value: one that folds is checked against its
+  /// type's bounds and not analysed further, anything else is
+  /// analysed (an operator expression on a copy), and every comp
+  /// generic it names is stamped with the parameter it means
+  /// here.
+  auto AnalyseCompVal(ScopeManager *sm, CompilerMetaData *meta) -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentAst)

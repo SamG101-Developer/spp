@@ -9,37 +9,24 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantDestructureTupleAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureTupleAst);
+use(spp::asts, struct LocalVariableAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : CasePatternVariantAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantDestructureTupleAst);
 
-  /**
-   * The @code (@endcode token that indicates the start of a tuple destructuring pattern.
-   */
+  /// The "(" token starting the tuple destructuring pattern.
   Unique<TokenAst> TokL;
 
-  /**
-   * The elements of the tuple destructuring pattern. This is a list of patterns that will be destructured from the
-   * tuple. Each element can be a single identifier, a nested destructuring pattern, or a literal.
-   */
+  /// The patterns destructured from the tuple. Each element can
+  /// be a single identifier, a nested destructuring pattern, or
+  /// a literal.
   Vec<Unique<CasePatternVariantAst>> Elems;
 
-  /**
-   * The @code )@endcode token that indicates the end of an tuple destructuring pattern.
-   */
+  /// The ")" token ending the tuple destructuring pattern.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the CasePatternVariantDestructureTupleAst with the arguments matching the members.
-   * @param[in] tok_l The @code (@endcode token that indicates the start of a tuple destructuring pattern.
-   * @param[in] elems The elements of the tuple destructuring pattern.
-   * @param[in] tok_r The @code )@endcode token that indicates the end of a tuple destructuring pattern.
-   */
   CasePatternVariantDestructureTupleAst(
     decltype(TokL) &&tok_l,
     decltype(Elems) &&elems,
@@ -59,5 +46,3 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : Case
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantDestructureTupleAst)

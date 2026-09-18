@@ -12,8 +12,8 @@ import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -35,7 +35,7 @@ import spp.utils.uid;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
+PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
   decltype(TokDot) &&tok_dot,
   decltype(TokRes) &&tok_res,
   decltype(FnArgGroup) &&arg_group) :
@@ -46,22 +46,19 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeyw
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
 }
 
-spp::asts::PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKeywordResAst() = default;
+PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKeywordResAst() = default;
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosStart() const
-  -> std::size_t {
+auto PostfixExpressionOperatorKeywordResAst::PosStart() const -> std::size_t {
   // Use the "." token.
   return TokDot != nullptr ? TokDot->PosStart() : 0;
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosEnd() const
-  -> std::size_t {
+auto PostfixExpressionOperatorKeywordResAst::PosEnd() const -> std::size_t {
   // Use the argument group if it exists, otherwise use the "res" token.
   return FnArgGroup != nullptr ? FnArgGroup->PosEnd() : TokRes != nullptr ? TokRes->PosEnd() : 0;
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const
-  -> Unique<Ast> {
+auto PostfixExpressionOperatorKeywordResAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionOperatorKeywordResAst>(
     AstClone(TokDot),
@@ -71,8 +68,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const
   return ast;
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::ToString() const
-  -> Str {
+auto PostfixExpressionOperatorKeywordResAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW(".");
   SPP_STRING_APPEND_RAW("res");
@@ -80,18 +76,17 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
   using analyse::utils::type_utils::GetGenAndYieldTypes;
   if (_MappedFunc != nullptr) { return; }
 
   // Check the left-hand-side is a generator type (for specific errors).
-  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+  const auto lhs = meta->PostfixExpressionLhs;
   GetGenAndYieldTypes(
-    *lhs_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
+    lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
+    "resume expression");
 
   // Check the argument (send value) is valid, by passing it into the ".send" function call.
   auto send = MakeUnique<IdentifierAst>(PosStart(), "send");
@@ -101,24 +96,19 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   func_call->Source.OriginalExpr = this;
   _MappedFunc = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
 
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->IgnoreAccessModifierViolations = true; // Because of "Generated" Todo: Too broad?
   _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the memory check to the mapped function, which will check the arguments, and the function call.
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // The three-step operation for the "res" operation is to
   // store the potential argument into the send slot of the
   // env, resume the coroutine, then use the yielded value.
@@ -138,8 +128,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // environment from the value in storage, the same way and with the same field.
   auto rebuilt_generator = Unique<codegen::LlvmGenerator>(nullptr);
   if (llvm_generator_it == ctx->LlvmGenerators.end()) {
-    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta)->WithoutConvention();
-    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
+    const auto lhs_type_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Sym;
 
     const auto no_env_msg = Str(
       "No generator environment was registered for this resumption, and none could be rebuilt from the value. The "
@@ -167,15 +156,16 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
   // and storing those into a narrower binding writes past it.
   const auto uid = spp::utils::Uid(this);
-  const auto lhs_gen_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-  auto [generator_type, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
-    *lhs_gen_type, *sm->CurrentScope, *meta->PostfixExpressionLhs, "resume expression");
-  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*yield_type, *sm->CurrentScope, ctx);
+  const auto lhs = meta->PostfixExpressionLhs;
+  auto [generator_sym, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
+    lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
+    "resume expression");
+  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*yield_type, *sm->CurrentScope), ctx);
 
   const auto send_type = is_once
     ? generate::common_types_precompiled::VOID
-    : generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
-  const auto llvm_send_ty = codegen::GetLlvmTypeOf(*send_type, *sm->CurrentScope, ctx);
+    : generator_sym->TypeArgType("Send");
+  const auto llvm_send_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*send_type, *sm->CurrentScope), ctx);
   const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(llvm_yield_ty, llvm_send_ty, ctx);
 
   // Step 1: Place the value of the argument (if it exists),
@@ -221,10 +211,13 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
 
   // The result type is "Yield or None", so both edges tag their way into it.
   const auto res_type = InferType(sm, meta);
-  const auto llvm_res_ty = codegen::GetLlvmTypeOf(*res_type, *sm->CurrentScope, ctx);
+  const auto llvm_res_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*res_type, *sm->CurrentScope), ctx);
   const auto none_type = generate::common_types::None(PosStart());
-  const auto yield_tag = codegen::GetVariantIndexOfMember(*res_type, *yield_type, *sm->CurrentScope);
-  const auto none_tag = codegen::GetVariantIndexOfMember(*res_type, *none_type, *sm->CurrentScope);
+  const auto res_ref = TypeRef::Of(*res_type, *sm->CurrentScope);
+  const auto yield_tag = codegen::GetVariantIndexOfMember(
+    res_ref, TypeRef::Of(*yield_type, *sm->CurrentScope), *sm->CurrentScope);
+  const auto none_tag = codegen::GetVariantIndexOfMember(
+    res_ref, TypeRef::Of(*none_type, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto bad_shape_msg = Str(
     "The result of a resumption is not the \"Yield or None\" variant it has to be, so there is no discriminant to "
@@ -255,21 +248,17 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   return llvm_res;
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto PostfixExpressionOperatorKeywordResAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The mapped ".send()" call is what says how much a resumption tells the caller: "Gen" declares it as
   // "Generated[Yield or None]", because a "Gen" may be exhausted, and "GenOnce" as "Generated[Yield]", because it
   // cannot be. Reading it off the declaration keeps the two in step instead of deciding it a second time here.
   // "Generated" is the compiler-known wrapper the coroutine machinery travels in, and is unwrapped on the way out.
-  const auto send_type = _MappedFunc->InferType(sm, meta);
-  return send_type->LastTypePart()->GnArgGroup->TypeAt("Yield")->Val;
+  return _MappedFunc->InferTypeRef(sm, meta).Sym->TypeArgType("Yield");
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Unique<PostfixExpressionOperatorAst> {
+auto PostfixExpressionOperatorKeywordResAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Unique<PostfixExpressionOperatorAst> {
   // The potential resume arguments are expressions.
   auto fn_arg_group = AstClone(FnArgGroup);
   for (auto const &fn_arg : fn_arg_group->Args) {
@@ -278,6 +267,13 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::SubstituteGenericsExpr(
 
   return MakeUnique<PostfixExpressionOperatorKeywordResAst>(
     AstClone(TokDot), AstClone(TokRes), std::move(fn_arg_group));
+}
+
+auto PostfixExpressionOperatorKeywordResAst::IsAllowedInDefault() const -> bool {
+  // Resumes a generator the way a call runs a function,
+  // so nothing leaves the code it is in. Should be safe
+  // although I can't see where this would even be used.
+  return true;
 }
 
 SPP_MOD_END

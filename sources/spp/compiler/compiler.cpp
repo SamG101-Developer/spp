@@ -51,13 +51,14 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
   c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
   c->m_path = std::filesystem::current_path() / "src";
   c->m_boot = MakeUnique<CompilerBoot>();
+  c->m_boot->VerifyOnly = true;
   c->m_for_cpp_google_test = true;
   return c;
 }
 
 spp::compiler::Compiler::~Compiler() = default;
 
-auto spp::compiler::Compiler::Compile() -> void {
+auto spp::compiler::Compiler::Compile() -> bool {
   // The global scope is anchored to the first module in the
   // tree, and every stage below walks that tree, so an empty
   // one has nothing to compile and nowhere to put it. Error
@@ -65,7 +66,7 @@ auto spp::compiler::Compiler::Compile() -> void {
   if (m_modules->GetModules().IsEmpty()) {
     std::cerr
       << "Error: No modules found. A project needs at least one '.spp' file under 'src'.\n";
-    return;
+    return false;
   }
 
   const auto is_exe = m_build_type == BuildType::EXE;
@@ -80,6 +81,10 @@ auto spp::compiler::Compiler::Compile() -> void {
     bar = MakeUnique<utils::ProgressBar>(*stage_name++, num_modules, not m_for_cpp_google_test);
     return *bar;
   };
+
+  // Whether the back end produced what it set out to; every
+  // stage before it reports a rejection by throwing.
+  auto built = false;
 
   // We need the cleanup on error for the test suite runs
   // (parallel), but in debug it's one shot, and error checking
@@ -98,7 +103,7 @@ auto spp::compiler::Compiler::Compile() -> void {
     m_boot->Stage1_PreProcess(next_bar(), *m_modules, nullptr);
     m_boot->Stage2_GenTopLvlScopes(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage3_GenTopLvlAliases(next_bar(), *m_modules, m_scope_manager.get());
-    m_boot->Stage4_QualifyTypes(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage4_ResolveDeclarations(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage5_LoadSupScopes(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage5_5_AttachSupScopes(next_bar(), m_scope_manager.get());
     m_boot->Stage6_PreAnalyseSemantics(next_bar(), *m_modules, m_scope_manager.get());
@@ -106,11 +111,9 @@ auto spp::compiler::Compiler::Compile() -> void {
     m_boot->Stage8_CheckMemory(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage9_CompTimeResolve(next_bar(), *m_modules, m_scope_manager.get());
     CollectCompTimeConstants();
-    if (not m_for_cpp_google_test) {
-      m_boot->Stage9_5_Monomorphise(next_bar(), *m_modules, m_scope_manager.get());
-      m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
-      m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
-    }
+    m_boot->Stage9_5_Monomorphise(next_bar(), *m_modules, m_scope_manager.get());
+    m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
+    built = m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
 #if !SPP_DEBUG
   }
   catch (...) {
@@ -122,6 +125,7 @@ auto spp::compiler::Compiler::Compile() -> void {
   }
 #endif
   Cleanup();
+  return built;
 }
 
 auto spp::compiler::Compiler::SetTestFilters(

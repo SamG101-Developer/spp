@@ -23,29 +23,31 @@ import genex;
 
 namespace spp::analyse::utils::drop_utils {
   namespace {
+    using func_utils::FunctionOverload;
 
-    /**
-     * The whole overload record for a type's destructor, rather than just its prototype: instantiating it needs the
-     * block that declares it and the arguments that block was bound with as well.
-     * @param type_sym The symbol of the type being destroyed.
-     * @param sm The scope manager, positioned anywhere the type resolves from.
-     * @param meta Associated metadata.
-     * @return The overload, or one with a null @c Proto if this type has no destructor of its own.
-     */
+    /// Find an overload for a types destructor, rather than
+    /// just the prototype; instantiating it needs the block
+    /// that declares it and the arguments that block was bound
+    /// with too.
     auto FindDropOverloadInfo(
-      scopes::TypeSymbol const &type_sym,
-      scopes::ScopeManager &sm,
-      asts::meta::CompilerMetaData *meta)
-      -> func_utils::FunctionOverload {
-      //
-      using type_compare::TypeEq;
-      using asts::generate::common_types_precompiled::DROP;
+      TypeSymbol const &type_sym, ScopeManager &sm,
+      CompilerMetaData *meta) -> FunctionOverload {
+      using generate::common_types_precompiled::DROP;
 
-      const auto none = [] { return func_utils::FunctionOverload{nullptr, nullptr, nullptr, nullptr}; };
+      // The "none" mini-constructor for the function overload
+      // type, setting every field to nullptr.
+      const auto none = [] {
+        return FunctionOverload{
+          .FnScope = nullptr,
+          .Proto = nullptr,
+          .SupGenerics = nullptr,
+          .FwdType = nullptr
+        };
+      };
 
       // A bound generic parameter stands for its argument, and it
       // is the argument that has the methods.
-      if (auto *const bound = type_sym.AsBoundSymbol(); bound != &type_sym) {
+      if (const auto bound = type_sym.AsBoundSymbol(); bound != &type_sym) {
         return FindDropOverloadInfo(*bound, sm, meta);
       }
 
@@ -61,7 +63,7 @@ namespace spp::analyse::utils::drop_utils {
       const auto superimposes_drop = genex::any_of(
         type_sym.LinkedScope->SupScopes(), [&](auto const *sup_scope) {
           if (sup_scope->TySym == nullptr) { return false; }
-          return TypeEq(*sup_scope->TySym->FqName(), *DROP, *sup_scope, *sm.CurrentScope);
+          return type_predicates::IsTemplate(*sup_scope->TySym, *DROP, *sup_scope);
         });
       if (not superimposes_drop) { return none(); }
 
@@ -70,7 +72,7 @@ namespace spp::analyse::utils::drop_utils {
       // so an override on the type itself and an
       // implementation inherited from a type it extends
       // are both found here.
-      const auto drop_name = asts::IdentifierAst(0, "drop");
+      const auto drop_name = IdentifierAst(0, "drop");
       auto overloads = func_utils::GetAllFunctionScopes(
         drop_name, type_sym.LinkedScope, sm, meta);
 
@@ -94,28 +96,26 @@ namespace spp::analyse::utils::drop_utils {
       return none();
     }
 
-    /**
-     * The prototype a destructor call is actually made against, which for a destructor declared in a generic @c sup
-     * block is the instantiation for that block's arguments rather than the template. The lookup and the minting are
-     * driven from the same scope - the type's own - so that both normalise the arguments identically.
-     * @param type_sym The symbol of the type being destroyed.
-     * @param sm The scope manager, positioned anywhere the type resolves from.
-     * @param meta Associated metadata.
-     * @param instantiate Whether to mint the instantiation when there is not one yet.
-     * @return The prototype, or @c nullptr if this type has no destructor of its own (or has one that has not been
-     * instantiated and @p instantiate is false).
-     */
+    /// The prototype a destructor call is actually made against,
+    /// which for a destructor declared in a generic "sup" block
+    /// is the instantiation for that block's arguments rather
+    /// than the template. The lookup and the minting are driven
+    /// from the same scope (the type symbol's), so that both
+    /// normalise the arguments identically.
     auto DropProtoFor(
-      scopes::TypeSymbol const &type_sym,
-      scopes::ScopeManager &sm,
-      asts::meta::CompilerMetaData *meta,
-      const bool instantiate)
-      -> asts::FunctionPrototypeAst* {
+      TypeSymbol const &type_sym, ScopeManager &sm, CompilerMetaData *meta,
+      const bool instantiate) -> FunctionPrototypeAst* {
+      // Get the type symbol and find the drop overload. A nullptr
+      // overload means that std::mem::ops::drop will be used (ie
+      // consume all and drop in reverse attribute order). Todo
+      // verify this about nullptr overload proto retrieved.
       auto const &sym = *type_sym.AsBoundSymbol();
       const auto overload = FindDropOverloadInfo(sym, sm, meta);
       if (overload.Proto == nullptr or sym.LinkedScope == nullptr) { return overload.Proto; }
 
-      auto tm = scopes::ScopeManager(sm.GlobalScope, sym.LinkedScope);
+      // Either just find the overload or instantiate it too (this
+      // will only instantiate it if it hasn't already been).
+      auto tm = ScopeManager(sm.GlobalScope, sym.LinkedScope);
       return instantiate
         ? overload_utils::InstantiateOverload(
           overload.Proto, overload.FnScope, *overload.SupGenerics, &tm, meta)
@@ -126,19 +126,15 @@ namespace spp::analyse::utils::drop_utils {
 }
 
 auto spp::analyse::utils::drop_utils::FindDropOverload(
-  scopes::TypeSymbol const &type_sym,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
-  -> asts::FunctionPrototypeAst* {
+  TypeSymbol const &type_sym, ScopeManager &sm,
+  CompilerMetaData *meta) -> FunctionPrototypeAst* {
+  // Wrap the implementation, specifying no instantiation.
   return DropProtoFor(type_sym, sm, meta, false);
 }
 
 auto spp::analyse::utils::drop_utils::NeedsDrop(
-  scopes::TypeSymbol const &type_sym,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
-  -> bool {
-  //
+  TypeSymbol const &type_sym, ScopeManager &sm,
+  CompilerMetaData *meta) -> bool {
   using type_members::GetAllParts;
   using type_predicates::IsTypeGen;
 
@@ -148,13 +144,16 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   if (type_sym.Convention != nullptr) { return false; }
   if (type_sym.LinkedScope == nullptr) { return false; }
 
-  // Everything below - copyability, the sup chain, the attributes - is a property of the type actually being
-  // destroyed rather than of the name it arrived under, so resolve a bound parameter through first. An unbound
-  // parameter has no linked scope and is handled by the check below.
-  if (auto *const bound = type_sym.AsBoundSymbol(); bound != &type_sym) {
+  // Everything below - copyability, the sup chain, the
+  // attributes - is a property of the type actually being
+  // destroyed rather than of the name it arrived under,
+  // so resolve a bound parameter through first. An unbound
+  // parameter has no linked scope and is handled by the
+  // check below.
+  if (const auto bound = type_sym.AsBoundSymbol(); bound != &type_sym) {
     return NeedsDrop(*bound, sm, meta);
   }
-  if (IsTypeGen(*type_sym.FqName(), *sm.CurrentScope)) { return true; }
+  if (IsTypeGen(type_sym, *sm.CurrentScope)) { return true; }
 
   // A copyable value does not need dropping because it
   // can't ever be moved, so "dropping" it is meaningless.
@@ -169,30 +168,28 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   // the recursion is bounded by the nesting depth of the
   // type.
   return genex::any_of(
-    GetAllParts(*type_sym.FqName(), *sm.CurrentScope, true), [&](auto const &part) {
+    GetAllParts(type_sym, *sm.CurrentScope, true), [&](auto const &part) {
       return part.Sym != nullptr and part.Sym != &type_sym and NeedsDrop(*part.Sym, sm, meta);
     });
 }
 
 auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
-  scopes::TypeSymbol const &type_sym,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
-  -> void {
+  TypeSymbol const &type_sym, ScopeManager &sm,
+  CompilerMetaData *meta) -> void {
   //
-  using type_members::GetAllParts;
-  using type_predicates::IsTypeGen;
-  auto seen = Set<scopes::TypeSymbol const*>();
+  auto seen = Set<TypeSymbol const*>();
 
   // Todo: can we use c++23/26 explicit "self" here?
-  const auto walk = [&](auto const &self, scopes::TypeSymbol const &sym) -> void {
+  // MSVC does not see block-scope using-declarations from inside
+  // this generic lambda, so the calls below are qualified.
+  const auto walk = [&](auto const &self, TypeSymbol const &sym) -> void {
     if (sym.Convention != nullptr or sym.LinkedScope == nullptr) { return; }
     if (not seen.insert(&sym).second) { return; }
 
     // A bound generic parameter stands for its argument, so
     // everything below is a property of the type actually being
     // destroyed rather than of the name it arrived under.
-    if (sym.IsGeneric and sym.LinkedScope->TySym != nullptr and sym.LinkedScope->TySym.get() != &sym) {
+    if (sym.IsTypeGeneric() and sym.LinkedScope->TySym != nullptr and sym.LinkedScope->TySym.get() != &sym) {
       self(self, *sym.LinkedScope->TySym);
       return;
     }
@@ -200,7 +197,7 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     // A generator is destroyed by "llvm.coro.destroy", which
     // calls nothing of ours, and anything that destroys to
     // nothing needs nothing minted for it.
-    if (IsTypeGen(*sym.FqName(), *sm.CurrentScope)) { return; }
+    if (type_predicates::IsTypeGen(sym, *sm.CurrentScope)) { return; }
     if (not NeedsDrop(sym, sm, meta)) { return; }
 
     // A destructor of its own is the whole of this type's
@@ -210,7 +207,7 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
 
     // Otherwise destruction is part by part, and it is their
     // destructors that have to exist.
-    for (auto const &part : GetAllParts(*sym.FqName(), *sm.CurrentScope, true)) {
+    for (auto const &part : type_members::GetAllParts(sym, *sm.CurrentScope, true)) {
       if (part.Sym == nullptr or part.Sym == &sym) { continue; }
       self(self, *part.Sym);
     }

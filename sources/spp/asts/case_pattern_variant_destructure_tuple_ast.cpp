@@ -31,33 +31,33 @@ import spp.lex.tokens;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
+CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elems,
   decltype(TokR) &&tok_r) :
   TokL(std::move(tok_l)),
   Elems(std::move(elems)),
   TokR(std::move(tok_r)) {
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokL, SppTokenType::TK_LEFT_PARENTHESIS, "(");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokR, SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
 
-spp::asts::CasePatternVariantDestructureTupleAst::~CasePatternVariantDestructureTupleAst() = default;
+CasePatternVariantDestructureTupleAst::~CasePatternVariantDestructureTupleAst() = default;
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::PosStart() const
-  -> std::size_t {
+auto CasePatternVariantDestructureTupleAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::PosEnd() const
-  -> std::size_t {
+auto CasePatternVariantDestructureTupleAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::Clone() const
-  -> Unique<Ast> {
+auto CasePatternVariantDestructureTupleAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<CasePatternVariantDestructureTupleAst>(
     AstClone(TokL),
@@ -67,8 +67,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Clone() const
   return c;
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::ToString() const
-  -> Str {
+auto CasePatternVariantDestructureTupleAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Elems, ", ");
@@ -76,81 +75,40 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::BindsByMove() const
-  -> bool {
+auto CasePatternVariantDestructureTupleAst::BindsByMove() const -> bool {
   // A destructure binds if any of its elements does. An
   // empty one, or one made only of skips, is a shape test
   // and takes nothing.
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
-
-  // Create the new variable from the pattern in the patterns
-  // scope.
-  auto var = ConvToVar(meta);
-  _MappedLet = MakeUnique<LetStatementInitializedAst>(
-    nullptr, std::move(var), nullptr, nullptr, AstClone(meta->CaseCondition));
-  _MappedLet->Stage7_AnalyseSemantics(sm, meta);
-
-  // Note there is no nested analysis of "elems", because the
-  // "let" statement handles it.
-  CreateAndAnalysePatternEqFuncsDummyCore(
-    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+auto CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Map the pattern to a "let" over the condition, introducing its bindings.
+  AnalyseDestructure(
+    meta->CaseCondition, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto CasePatternVariantDestructureTupleAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward memory checking to the mapped let statement.
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
-
-  // Transform the pattern into comptime values; all need
-  // to be true.
-  auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
-    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
-
-  // All must be true for the pattern to match (look for any
-  // false).
-  const auto all_true = genex::all_of(
-    comptime_transforms,
-    [](auto const &x) { return x->template To<BooleanLiteralAst>()->IsTrue(); });
-
-  // Generate the "let" statement to introduce all the symbols.
-  _MappedLet->Stage9_CompTimeResolve(sm, meta);
-
-  // Based on the result, return the corresponding comptime
-  // value.
-  const auto p = PosStart();
-  meta->CmpResult = all_true ? BooleanLiteralAst::True(p) : BooleanLiteralAst::False(p);
+auto CasePatternVariantDestructureTupleAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Match when every element does.
+  ResolveDestructure(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
-  //
+auto CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
 
   // Run the codegen on the transformed "let" ast to introduce
   // symbols into the llvm function.
   if (_MappedLet != nullptr) {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
     _MappedLet->Stage11_CodeGen(sm, meta, ctx);
   }
@@ -170,9 +128,8 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
   return llvm_master_transform;
 }
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::ConvToVar(
-  CompilerMetaData *meta)
-  -> Unique<LocalVariableAst> {
+auto CasePatternVariantDestructureTupleAst::ConvToVar(
+  CompilerMetaData *meta) -> Unique<LocalVariableAst> {
   // Recursively map the elements to their local variable
   // counterparts.
   auto mapped_elems = Elems
@@ -180,7 +137,8 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::ConvToVar(
     | genex::to<Vec>();
 
   // Create the final local variable wrapping, tag it and return it.
-  auto var = MakeUnique<LocalVariableDestructureTupleAst>(nullptr, std::move(mapped_elems), nullptr);
+  auto var = MakeUnique<LocalVariableDestructureTupleAst>(
+    AstClone(TokL), std::move(mapped_elems), AstClone(TokR));
   var->MarkFromCasePattern();
   return var;
 }

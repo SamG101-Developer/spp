@@ -7,39 +7,23 @@ import spp.asts.function_call_argument_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionCallArgumentKeywordAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentKeywordAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TokenAst);
 
-/**
- * The FunctionCallArgumentKeywordAst represents a keyword argument in a function call. It is forces the argument
- * to be matched by a keyword rather than an index.
- */
+/// A keyword argument in a function call, which forces the
+/// argument to be matched by keyword rather than by index.
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionCallArgumentKeywordAst);
 
-  /**
-   * The name of the keyword argument. This is the identifier that is used to refer to the argument in the function
-   * call.
-   */
+  /// The name used to refer to the argument in the function
+  /// call.
   Shared<IdentifierAst> Name;
 
-  /**
-   * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
-   * argument from the expression that is being passed as the argument's value.
-   */
+  /// The "=" token, separating the name of the argument from
+  /// the expression being passed as its value.
   Unique<TokenAst> TokAssign;
 
-  /**
-   * Construct the FunctionCallArgumentKeywordAst with the arguments matching the members.
-   * @param name The name of the keyword argument.
-   * @param tok_assign The token that represents the assignment operator @c = in the keyword argument.
-   * @param conv The convention on the argument being passed into the function call.
-   * @param val The expression that is being passed as the argument to the function call.
-   */
   FunctionCallArgumentKeywordAst(
     decltype(Name) name,
     decltype(TokAssign) &&tok_assign,
@@ -48,5 +32,3 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCal
 
   ~FunctionCallArgumentKeywordAst() override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionCallArgumentKeywordAst)

@@ -7,27 +7,19 @@ import spp.asts.local_variable_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct LocalVariableDestructureSkipSingleArgumentAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureSkipSingleArgumentAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVariableAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureSkipSingleArgumentAst);
 
-  /**
-   * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
-   * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object
-   * destructuring as it is purely keyword based, and not positional.
-   */
+  /// The "_" token indicating the next element sequentially is
+  /// being skipped, often seen in array and tuple
+  /// destructuring. Invalid in object destructuring, as that
+  /// is purely keyword based, not positional.
   Unique<TokenAst> TokUnderscore;
 
-  /**
-   * Construct the LocalVariableDestructureSkipSingleArgumentAst with the arguments matching the members.
-   * @param tok_underscore The @c _ token that indicates the skip single argument pattern.
-   */
   explicit LocalVariableDestructureSkipSingleArgumentAst(
     decltype(TokUnderscore) &&tok_underscore);
 
@@ -37,5 +29,3 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst fina
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LocalVariableDestructureSkipSingleArgumentAst)

@@ -6,6 +6,7 @@ module spp.asts.parenthesised_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.token_ast;
@@ -13,7 +14,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
-spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
+ParenthesisedExpressionAst::ParenthesisedExpressionAst(
   decltype(TokL) &&tok_open_paren,
   decltype(Expr) &&expr,
   decltype(TokR) &&tok_close_paren) :
@@ -22,22 +23,19 @@ spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
   TokR(std::move(tok_close_paren)) {
 }
 
-spp::asts::ParenthesisedExpressionAst::~ParenthesisedExpressionAst() = default;
+ParenthesisedExpressionAst::~ParenthesisedExpressionAst() = default;
 
-auto spp::asts::ParenthesisedExpressionAst::PosStart() const
-  -> std::size_t {
+auto ParenthesisedExpressionAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto spp::asts::ParenthesisedExpressionAst::PosEnd() const
-  -> std::size_t {
+auto ParenthesisedExpressionAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::ParenthesisedExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto ParenthesisedExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ParenthesisedExpressionAst>(
     AstClone(TokL),
@@ -45,8 +43,7 @@ auto spp::asts::ParenthesisedExpressionAst::Clone() const
     AstClone(TokR));
 }
 
-auto spp::asts::ParenthesisedExpressionAst::ToString() const
-  -> Str {
+auto ParenthesisedExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_APPEND(Expr);
@@ -54,11 +51,8 @@ auto spp::asts::ParenthesisedExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
+auto ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
@@ -69,11 +63,8 @@ auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
 }
 
-auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
+auto ParenthesisedExpressionAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
   // Check the memory of the expression.
@@ -81,39 +72,41 @@ auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
   ValidateSymbolMemory(*Expr, *this, *sm, true, true, true, false, meta);
 }
 
-auto spp::asts::ParenthesisedExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto ParenthesisedExpressionAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward comptime resolution into the expression.
   Expr->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto ParenthesisedExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the inner expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto spp::asts::ParenthesisedExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto ParenthesisedExpressionAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Get the inner expression's type.
   return Expr->InferType(sm, meta);
 }
 
-auto spp::asts::ParenthesisedExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<ExpressionAst> {
+auto ParenthesisedExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  return Expr->InferTypeRef(sm, meta);
+}
+
+auto ParenthesisedExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // Substitute into the inner expression.
   return MakeShared<ParenthesisedExpressionAst>(
     AstClone(TokL),
     AstClone(Expr->SubstituteGenericsExpr(args)),
     AstClone(TokR));
+}
+
+auto ParenthesisedExpressionAst::IsAllowedInDefault() const -> bool {
+  // Move into the internal expression.
+  return Expr->IsAllowedInDefault();
 }
 
 SPP_MOD_END

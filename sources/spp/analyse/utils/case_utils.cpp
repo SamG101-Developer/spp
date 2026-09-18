@@ -30,9 +30,8 @@ import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
-import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
@@ -61,23 +60,12 @@ import std;
 
 namespace spp::analyse::utils::case_utils {
   namespace {
-    /**
-     * The value of one field of an already-generated aggregate, indexed rather than rebuilt.
-     * @param[in] base_type The aggregate's type, as written at this level.
-     * @param[in] field_name The field being selected: a number for a tuple or array element, a name for an attribute.
-     * @param[in] llvm_base The aggregate's already-generated value, or a pointer to it for a borrowed subject.
-     * @param[in, out] sm The scope manager, positioned where @p base_type resolves.
-     * @param[in, out] ctx The LLVM context to generate into.
-     * @return The field's value, or @c nullptr when the field carries none.
-     */
+    /// The value of one field of an already-generated aggregate,
+    /// indexed rather than rebuilt.
     auto NarrowOntoField(
-      asts::TypeAst const &base_type,
-      asts::IdentifierAst const &field_name,
-      llvm::Value *const llvm_base,
-      scopes::ScopeManager &sm,
-      codegen::LlvmCtx *const ctx)
-      -> llvm::Value* {
-      //
+      TypeAst const &base_type, IdentifierAst const &field_name,
+      llvm::Value *const llvm_base, ScopeManager const &sm,
+      LlvmCtx *const ctx) -> llvm::Value* {
       using type_members::GetFieldIndexInType;
       using type_predicates::IsTypeArr;
 
@@ -93,7 +81,7 @@ namespace spp::analyse::utils::case_utils {
       // access does for a non-symbolic base.
       auto base_ptr = llvm_base;
       if (not llvm_base->getType()->isPointerTy()) {
-        base_ptr = codegen::LlvmEntryAlloca(llvm_base_ty, "case.pattern.subject" + uid, ctx);
+        base_ptr = LlvmEntryAlloca(llvm_base_ty, "case.pattern.subject" + uid, ctx);
         ctx->Builder.CreateStore(llvm_base, base_ptr);
       }
 
@@ -108,7 +96,7 @@ namespace spp::analyse::utils::case_utils {
 
         // An array lowers to "[n x T]" rather than to a struct,
         // so it is indexed through the array itself.
-        if (IsTypeArr(*bare_type, *sm.CurrentScope)) {
+        if (IsTypeArr(*base_type_sym, *sm.CurrentScope)) {
           const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
           field_ptr = ctx->Builder.CreateGEP(
             llvm_base_ty, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
@@ -130,8 +118,8 @@ namespace spp::analyse::utils::case_utils {
       // named attribute's declaration index has to be resolved
       // through the type's own field index map.
       else {
-        const auto decl_index = GetFieldIndexInType(*bare_type, field_name, *sm.CurrentScope);
-        const auto field_index = codegen::GetPhysicalFieldIndex(*base_type_sym->LlvmInfo, decl_index);
+        const auto decl_index = GetFieldIndexInType(*base_type_sym, field_name);
+        const auto field_index = GetPhysicalFieldIndex(*base_type_sym->LlvmInfo, decl_index);
         field_ptr = ctx->Builder.CreateStructGEP(
           llvm_base_ty, base_ptr, field_index, "case.pattern.field_ptr" + uid);
       }
@@ -139,17 +127,20 @@ namespace spp::analyse::utils::case_utils {
       return field_ptr;
     }
 
-    /**
-     * Compare two escaping-borrow container lists by the memory regions they name, rather than by ast identity. Each
-     * branch of a "case" builds its own ast nodes, so the same borrow written in two branches is two pointers but one
-     * region, and only the region is what makes the branches agree or disagree.
-     */
+    /// Compare two escaping-borrow container lists by the memory
+    /// regions they each name. Each branch of a "case" builds
+    /// its own ast nodes, so the same borrow written in two
+    /// branches is two pointers but one region, and only the
+    /// region is that makes the branches disagree or agree.
+    /// Todo: Verify this.
     auto EscapingBorrowContainersDiffer(
-      Vec<spp::Tup<asts::Ast const*, asts::Ast const*>> const &lhs,
-      Vec<spp::Tup<asts::Ast const*, asts::Ast const*>> const &rhs)
+      Vec<Tup<Ast const*, Ast const*>> const &lhs,
+      Vec<Tup<Ast const*, Ast const*>> const &rhs)
       -> bool {
+      // The region converter takes the escaping borrows lists
+      // and stringifies them, then sorts and compares.
       const auto regions = [](auto const &list) {
-        auto out = Vec<spp::Str>();
+        auto out = Vec<Str>();
         for (auto const &[container, borrow] : list) {
           out.EmplaceBack(container->ToString() + " <- " + borrow->ToString());
         }
@@ -159,20 +150,50 @@ namespace spp::analyse::utils::case_utils {
       return regions(lhs) != regions(rhs);
     }
 
+    /// Build the "cond.<field>.eq(&literal)" for a literal
+    /// element of a pattern, analyse it where the pattern is
+    /// (and walk back the scope as the condition might
+    /// introduce scopes).
+    template <typename T>
+    auto MapFieldEqLiteral(
+      Unique<PostfixExpressionOperatorRuntimeMemberAccessAst> &&field,
+      ExpressionAst const &literal, ScopeManager *sm, CompilerMetaData *meta,
+      Function<T(Ast *)> const &mapper) -> T {
+      // Build the asts up.
+      auto pf_expr = MakeUnique<PostfixExpressionAst>(
+        AstClone(meta->CaseCondition), std::move(field));
+      auto eq_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
+        MakeUnique<ConventionRefAst>(nullptr), nullptr, AstClone(&literal));
+      auto eq_field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+        nullptr, MakeShared<IdentifierAst>(0uz, "eq"));
+      auto eq_pf_expr = MakeUnique<PostfixExpressionAst>(
+        std::move(pf_expr), std::move(eq_field));
+      auto eq_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+        nullptr, nullptr, nullptr);
+      eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
+      const auto eq_call_expr = MakeUnique<PostfixExpressionAst>(
+        std::move(eq_pf_expr), std::move(eq_call));
+
+      // Analyse and walk back the scope.
+      const auto current_scope = sm->CurrentScope;
+      const auto current_scope_iter = sm->CurrentIterator();
+      eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
+      sm->Reset(current_scope, current_scope_iter);
+      return mapper(eq_call_expr.get());
+    }
+
     template <typename T>
     auto CreateAndAnalysePatternEqFuncsCore(
-      Vec<asts::CasePatternVariantAst*> const &elems,
-      scopes::ScopeManager *sm,
-      asts::meta::CompilerMetaData *meta,
-      Function<T(asts::Ast *)> &&mapper,
-      Function<void(asts::ExpressionAst *)> &&on_nested_subject = {})
+      Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
+      CompilerMetaData *meta, Function<T(Ast *)> &&mapper,
+      Function<void(ExpressionAst *)> &&on_nested_subject = {})
       -> Vec<T> {
       auto transformed = Vec<T>();
       transformed.reserve(elems.Len());
 
-      if (not elems.IsEmpty() and elems[0]->To<asts::CasePatternVariantExpressionAst>()) {
+      if (not elems.IsEmpty() and elems[0]->To<CasePatternVariantExpressionAst>()) {
         // For expression patterns, just generate the expression once.
-        const auto expr_part = elems[0]->To<asts::CasePatternVariantExpressionAst>();
+        const auto expr_part = elems[0]->To<CasePatternVariantExpressionAst>();
         auto transform = mapper(expr_part->Expr.get());
         transformed.EmplaceBack(std::move(transform));
         return transformed;
@@ -186,7 +207,7 @@ namespace spp::analyse::utils::case_utils {
       // early.
       auto skip_index = std::optional<std::size_t>{};
       for (auto const &[i, part] : elems | genex::views::enumerate) {
-        if (part->To<asts::CasePatternVariantDestructureSkipMultipleArgumentsAst>() != nullptr) {
+        if (part->To<CasePatternVariantDestructureSkipMultipleArgumentsAst>() != nullptr) {
           skip_index = i;
           break;
         }
@@ -200,11 +221,10 @@ namespace spp::analyse::utils::case_utils {
         if (not num_rhs_elems.has_value()) {
           const auto cond_type = meta->CaseCondition->InferType(sm, meta);
           const auto &gn_arg_group = cond_type->LastTypePart()->GnArgGroup;
-          num_rhs_elems = type_predicates::IsTypeArr(*cond_type, *sm->CurrentScope)
+          const auto cond_ref = TypeRef::OfHead(*cond_type, *sm->CurrentScope);
+          num_rhs_elems = type_predicates::IsTypeArr(cond_ref, *sm->CurrentScope)
             ? std::stoull(
-              gn_arg_group->Args[1]->template ToUnchecked<
-                asts::GenericArgumentCompAst>()->Val->ToUnchecked<
-                asts::IntegerLiteralAst>()->Val->TokenData)
+              gn_arg_group->Args[1]->CompVal->ToUnchecked<IntegerLiteralAst>()->Val->TokenData)
             : gn_arg_group->Args.Len();
         }
         return *num_rhs_elems - (elems.Len() - i);
@@ -212,91 +232,38 @@ namespace spp::analyse::utils::case_utils {
 
       for (auto const &[i, part] : elems | genex::views::enumerate) {
         // For literals and expressions, generate the equality checks.
-        if (part->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
-          // Generate the extraction on the condition for this part, like "cond.0".
-          auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
-          auto field = MakeUnique<
-            asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-          auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-          // Turn the "literal part" into a function argument.
-          auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
-          auto eq_arg_val = asts::AstClone(
-            part->To<asts::CasePatternVariantLiteralAst>()->Literal->To<asts::ExpressionAst>());
-          auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
-                                                                            std::move(eq_arg_val));
-
-          // Create the ".eq" part.
-          auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
-          auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
-            nullptr, std::move(eq_field_name));
-          auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
-
-          // Make the ".eq" part callable, as ".eq()" (no arguments right now)
-          auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-          eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
-          const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
-          const auto current_scope = sm->CurrentScope;
-          const auto current_scope_iter = sm->CurrentIterator();
-          eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
-          sm->Reset(current_scope, current_scope_iter);
-
-          // Generate the equality check.
-          auto transform = mapper(eq_call_expr.get());
-          transformed.EmplaceBack(std::move(transform));
+        if (auto const *const literal = part->To<CasePatternVariantLiteralAst>(); literal != nullptr) {
+          // The element by its position: "cond.<i>.eq(&literal)".
+          auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+            nullptr, MakeShared<IdentifierAst>(0uz, std::to_string(real_index(i))));
+          transformed.EmplaceBack(MapFieldEqLiteral(
+            std::move(field), *literal->Literal->To<ExpressionAst>(), sm, meta, mapper));
         }
 
         // For named attribute bindings whose value is a literal, like "field=literal".
-        else if (const auto cast_attr = part->To<asts::CasePatternVariantDestructureAttributeBindingAst>();
-          cast_attr != nullptr and cast_attr->Val->To<asts::CasePatternVariantLiteralAst>() != nullptr) {
-          const auto literal_part = cast_attr->Val->To<asts::CasePatternVariantLiteralAst>();
-
-          // Generate the extraction on the condition by attribute name, like "cond.field".
-          auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
-            nullptr, asts::AstCloneShared(cast_attr->Name));
-          auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
-
-          // Turn the "literal part" into a function argument.
-          auto eq_arg_conv = MakeUnique<asts::ConventionRefAst>(nullptr);
-          auto eq_arg_val = asts::AstClone(literal_part->Literal->To<asts::ExpressionAst>());
-          auto eq_arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr,
-                                                                            std::move(eq_arg_val));
-
-          // Create the ".eq" part.
-          auto eq_field_name = MakeShared<asts::IdentifierAst>(0uz, "eq");
-          auto eq_field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(
-            nullptr, std::move(eq_field_name));
-          auto eq_pf_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
-
-          // Make the ".eq" part callable, as ".eq()"
-          auto eq_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-          eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
-          const auto eq_call_expr = MakeUnique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
-          const auto current_scope = sm->CurrentScope;
-          const auto current_scope_iter = sm->CurrentIterator();
-          eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
-          sm->Reset(current_scope, current_scope_iter);
-
-          // Generate the equality check.
-          auto transform = mapper(eq_call_expr.get());
-          transformed.EmplaceBack(std::move(transform));
+        else if (const auto cast_attr = part->To<CasePatternVariantDestructureAttributeBindingAst>();
+          cast_attr != nullptr and cast_attr->Val->To<CasePatternVariantLiteralAst>() != nullptr) {
+          // The attribute by its name: "cond.field.eq(&literal)".
+          const auto literal_part = cast_attr->Val->To<CasePatternVariantLiteralAst>();
+          auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+            nullptr, AstCloneShared(cast_attr->Name));
+          transformed.EmplaceBack(MapFieldEqLiteral(
+            std::move(field), *literal_part->Literal->To<ExpressionAst>(), sm, meta, mapper));
         }
 
         // For nested objects (array, tuple, object)
         else if (
-          part->To<asts::CasePatternVariantDestructureArrayAst>() != nullptr or
-          part->To<asts::CasePatternVariantDestructureTupleAst>() != nullptr or
-          part->To<asts::CasePatternVariantDestructureObjectAst>() != nullptr) {
+          part->To<CasePatternVariantDestructureArrayAst>() != nullptr or
+          part->To<CasePatternVariantDestructureTupleAst>() != nullptr or
+          part->To<CasePatternVariantDestructureObjectAst>() != nullptr) {
           // Generate the extraction on the condition for this part, like "cond.0".
-          auto field_name = MakeShared<asts::IdentifierAst>(0uz, std::to_string(real_index(i)));
+          auto field_name = MakeShared<IdentifierAst>(0uz, std::to_string(real_index(i)));
           auto field = MakeUnique<
-            asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-          auto pf_expr = MakeUnique<asts::PostfixExpressionAst>(asts::AstClone(meta->CaseCondition), std::move(field));
+            PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+          auto pf_expr = MakeUnique<PostfixExpressionAst>(AstClone(meta->CaseCondition), std::move(field));
 
           // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
-          const auto _meta_guard = asts::meta::MetaGuard(meta);
+          const auto _meta_guard = MetaGuard(meta);
           meta->CaseCondition = pf_expr.get();
           if (on_nested_subject) { on_nested_subject(pf_expr.get()); }
 
@@ -312,13 +279,10 @@ namespace spp::analyse::utils::case_utils {
 }
 
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
-  Vec<asts::CasePatternVariantAst*> const &elems,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> Vec<llvm::Value*> {
+  Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
+  CompilerMetaData *meta, LlvmCtx *ctx) -> Vec<llvm::Value*> {
   // Get the expression and map then to LLVM values.
-  Function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {
+  Function<llvm::Value*(Ast *)> map = [&](Ast *x) {
     return x->Stage11_CodeGen(sm, meta, ctx);
   };
 
@@ -327,9 +291,9 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
   // to be analysed before it can be generated - the literal
   // branches above do the same, saving and restoring the scope
   // around it because analysis walks into the condition's own scope.
-  Function<void(asts::ExpressionAst *)> on_nested_subject = [&](asts::ExpressionAst *subject) {
+  Function<void(ExpressionAst *)> on_nested_subject = [&](ExpressionAst *subject) {
     // Analyse the subject, and then walk back the scope iterator,
-    // asthe value itself might have introduced new scopes.
+    // as the value itself might have introduced new scopes.
     const auto current_scope = sm->CurrentScope;
     const auto current_scope_iter = sm->CurrentIterator();
     subject->Stage7_AnalyseSemantics(sm, meta);
@@ -337,9 +301,9 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
 
     // If the subject is a postfix expression, extract the runtime
     // member access as the operator (otherwise nullptr).
-    const auto access = subject->To<asts::PostfixExpressionAst>();
+    const auto access = subject->To<PostfixExpressionAst>();
     const auto field = access != nullptr
-      ? access->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
+      ? access->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()
       : nullptr;
 
     // Anything that is not the plain field access requires code
@@ -362,9 +326,8 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
 
     // A field carrying no value is not laid out, so there is
     // nothing to read and "load void" is not valid ir.
-    const auto field_type = subject->InferType(sm, meta);
-    const auto field_llvm_ty = sm->CurrentScope->GetTypeSymbol(field_type.get())->LlvmInfo->LlvmType;
-    meta->LlvmCaseCondition = codegen::IsValuelessType(field_llvm_ty)
+    const auto field_llvm_ty = subject->InferTypeRef(sm, meta).Sym->LlvmInfo->LlvmType;
+    meta->LlvmCaseCondition = IsValuelessType(field_llvm_ty)
       ? nullptr
       : ctx->Builder.CreateLoad(field_llvm_ty, field_ptr, "case.pattern.subject.value");
   };
@@ -377,12 +340,10 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
 }
 
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime(
-  Vec<asts::CasePatternVariantAst*> const &elems,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> Vec<Unique<asts::ExpressionAst>> {
+  Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
+  CompilerMetaData *meta) -> Vec<Unique<ExpressionAst>> {
   // Get the expression and map then to Comptime values.
-  Function<Unique<asts::ExpressionAst>(asts::Ast *)> map = [&](asts::Ast *x) {
+  Function<Unique<ExpressionAst>(Ast *)> map = [&](Ast *x) {
     x->Stage9_CompTimeResolve(sm, meta);
     return std::move(meta->CmpResult);
   };
@@ -392,23 +353,18 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime(
 }
 
 auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
-  Vec<asts::CasePatternVariantAst*> const &elems,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> void {
+  Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
+  CompilerMetaData *meta) -> void {
   //
-  Function<std::monostate(asts::Ast *)> noop = [](asts::Ast *) { return std::monostate{}; };
+  Function<std::monostate(Ast *)> noop = [](Ast *) { return std::monostate{}; };
   CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(noop));
 }
 
 auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
-  Vec<asts::CaseExpressionBranchAst*> const &branches,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
-  -> Tup<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>> {
+  Vec<CaseExpressionBranchAst*> const &branches, ScopeManager &sm,
+  CompilerMetaData *meta) -> Tup<Pair<Ast*, Shared<TypeAst>>, Vec<Pair<Ast*, Shared<TypeAst>>>> {
   //
   using errors::SppTypeMismatchError;
-  using asts::generate::common_types_precompiled::NEVER;
 
   // Collect type information for each branch, pairing the
   // branch with its inferred type.
@@ -428,15 +384,26 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   // Filter the branch types down to variant types for custom
   // analysis.
   auto variant_branches_type_info = valued_branches_type_info
-    | genex::views::filter([&sm](auto &&x) { return type_predicates::IsTypeVariant(*x.second, *sm.CurrentScope); })
+    | genex::views::filter([&sm](auto &&x) {
+      return type_predicates::IsTypeVariant(TypeRef::OfHead(*x.second, *sm.CurrentScope), *sm.CurrentScope);
+    })
     | genex::to<Vec>();
 
-  // Set the master branch type to the first branch's type, if
-  // it exists. This is the default and may be subsequently
+  // Set the master branch type to the first branch that has a
+  // value: a branch that diverges ("!") has none for the others
+  // to agree with, and only a case whose every branch diverges
+  // is "!" itself. This is the default and may be subsequently
   // changed. Override it if an assignment type is given.
-  auto master_branch_type_info = not valued_branches_type_info.IsEmpty()
-    ? MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second)
-    : MakePair<asts::CaseExpressionBranchAst*, Shared<asts::TypeAst>>(nullptr, nullptr);
+  auto master_branch_type_info = MakePair<CaseExpressionBranchAst*, Shared<TypeAst>>(nullptr, nullptr);
+  for (auto const &[branch, type] : valued_branches_type_info) {
+    if (not type->IsNeverType()) {
+      master_branch_type_info = MakePair(branch, type);
+      break;
+    }
+  }
+  if (master_branch_type_info.first == nullptr and not valued_branches_type_info.IsEmpty()) {
+    master_branch_type_info = MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second);
+  }
   if (meta->AssignmentTargetType != nullptr) {
     master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType);
   }
@@ -446,7 +413,8 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   else if (not variant_branches_type_info.IsEmpty()) {
     auto most_inner_types = 0uz;
     for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-      const auto variant_size = type_compare::DedupVariableInnerTypes(*variant_type, *sm.CurrentScope).Len();
+      const auto variant_size = type_compare::VariantMembers(
+        TypeRef::Of(*variant_type, *sm.CurrentScope), *sm.CurrentScope).Len();
       if (variant_size > most_inner_types) {
         master_branch_type_info = {variant_branch, variant_type};
         most_inner_types = variant_size;
@@ -455,12 +423,9 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   }
 
   // Remove the master branch pointer from the list of remaining
-  // branch types and check all types match.
-  // Todo: Shouldn't need to auto-remove "!" type, because TypeEq handles it?
+  // branch types and check all types match. A "!" branch fits
+  // the master type like any value would, so "TypeEq" drops it.
   auto mismatch_branches_type_info = valued_branches_type_info
-    | genex::views::remove_if([&](auto const &x) {
-      return type_compare::TypeEq(*NEVER, *x.second, *sm.CurrentScope, *sm.CurrentScope);
-    })
     | genex::views::remove_if([&](auto const &x) {
       return x.first == master_branch_type_info.first;
     })
@@ -483,47 +448,45 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   // `To<>()` through that null pointer is UB, so guard it and keep
   // the null.
   const auto cast_master_branch_type_info = MakePair(
-    master_branch_type_info.first ? master_branch_type_info.first->template ToUnchecked<asts::Ast>() : nullptr,
+    master_branch_type_info.first ? master_branch_type_info.first->template ToUnchecked<Ast>() : nullptr,
     master_branch_type_info.second);
 
   // Cast to common AST nodes and return with the types.
   const auto cast_branches_type_info = branches_type_info
     | genex::views::transform([](auto &&x) {
-      return MakePair(x.first->template ToUnchecked<asts::Ast>(), x.second);
+      return MakePair(x.first->template ToUnchecked<Ast>(), x.second);
     })
     | genex::to<Vec>();
   return {cast_master_branch_type_info, cast_branches_type_info};
 }
 
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
-  asts::Ast *parent,
-  Vec<asts::CaseExpressionBranchAst*> const &branches,
-  scopes::VariableSymbol *const subject,
-  scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta)
-  -> void {
+  Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
+  VariableSymbol *const subject, ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Define a simple alias for a list of symbols and their
   // memory.
-  using SymbolMemoryList = Vec<Pair<asts::CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
-  using SymbolMemoryMap = Map<scopes::VariableSymbol*, mem_info_utils::MemoryInfoSnapshot>;
+  using SymbolMemoryList = Vec<Pair<CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
+  using SymbolMemoryMap = Map<VariableSymbol*, mem_info_utils::MemoryInfoSnapshot>;
 
   // Create a map of the symbols' memory  information before
   // any branches are analysed.
-  auto sym_mem_info = Map<scopes::VariableSymbol*, SymbolMemoryList>();
+  auto sym_mem_info = Map<VariableSymbol*, SymbolMemoryList>();
 
   // The lookup walks ancestors and super scopes, which can
   // reach one symbol by more than one route, and every list
   // below is built with one entry per branch per occurrence.
   // Deduplicate.
-  auto vs = Vec<scopes::VariableSymbol*>();
-  auto seen_syms = Set<scopes::VariableSymbol*>();
+  auto vs = Vec<VariableSymbol*>();
+  auto seen_syms = Set<VariableSymbol*>();
   for (auto *sym : sm->CurrentScope->AllVarSymbols()) {
     if (seen_syms.insert(sym).second) { vs.EmplaceBack(sym); }
   }
 
-  // The states before any branch has run. Each branch is restored to these before the next one is analysed, and they
-  // stand in as a final pseudo-branch for the consistency comparison below - the same snapshot serving both, since
-  // nothing between the two uses moves them apart.
+  // The states before any branch has run. Each branch is restored
+  // to these before the next one is analysed, and they stand in
+  // as a final pseudo-branch for the consistency comparison below
+  // - the same snapshot serving both, since nothing between the
+  // two uses moves them apart.
   auto pre_analysis_mem_info = vs
     | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
     | genex::to<Vec>();
@@ -542,10 +505,10 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       branch->Patterns, [](auto const &pattern) { return pattern->BindsByMove(); });
     if (branch_binds) {
       if (const auto skipped = linear_utils::FirstUnaccountedPart(
-        *subject, Vec{subject->Name->Val}, *sm); not skipped.empty()) {
+        *subject, Vec<IdentifierAst*>{subject->Name.get()}, *sm); not skipped.empty()) {
         auto const *const blamed = branch->Patterns.IsEmpty()
-          ? static_cast<asts::Ast const*>(branch)
-          : static_cast<asts::Ast const*>(branch->Patterns[0].get());
+          ? static_cast<Ast const*>(branch)
+          : static_cast<Ast const*>(branch->Patterns[0].get());
 
         Raise<errors::SppDestructureSkipsOwnedPartError>(
           {sm->CurrentScope}, ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
@@ -593,7 +556,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   };
 
   const auto has_else_branch = not branches.IsEmpty()
-    ? branches.Back()->Patterns[0]->To<asts::CasePatternVariantElseAst>()
+    ? branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>()
     : nullptr;
   const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
 

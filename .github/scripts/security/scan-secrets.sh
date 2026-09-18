@@ -8,15 +8,12 @@ mode="${2:-dir}"
 
 case "$mode" in
   dir)
-    # The working tree at this commit: what the repository
-    # holds now, which is what has to come back clean.
+    # The working tree at this commit.
     scan=(dir .)
     ;;
   git)
-    # Every reachable commit, which needs the full history
-    # the caller checked out. Reserved for the nightly run:
-    # rewriting history is the only way to clear a finding
-    # here, so it is not a per-push gate.
+    # Every reachable commit. Nightly only: rewriting history is
+    # the only way to clear a finding here, so it cannot gate a push.
     scan=(git . --log-opts=--all)
     ;;
   *)
@@ -43,9 +40,7 @@ case "$status" in
     ;;
 esac
 
-# Both surviving paths are meant to have written a report,
-# so its absence means the scanner exited without doing the
-# one thing it was asked to do.
+# Both surviving paths are meant to have written a report.
 if ! [ -f "$output" ]; then
   echo "::error::gitleaks exited ${status} but wrote no report to ${output}"
   exit 1

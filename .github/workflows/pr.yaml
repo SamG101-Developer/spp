@@ -15,11 +15,8 @@ concurrency:
 
 jobs:
   # Skips the expensive jobs on changes that cannot move their result, and only those: a skipped job counts as a pass
-  # for ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled.
-  #
-  # One output per gated job rather than one shared boolean, because a CI-only change (a dependabot action-pin bump,
-  # say) moves only the jobs that actually read the file it touched - a bump confined to claude.yaml gates nothing,
-  # and one to _compile.yaml runs the builds without dragging cppcheck, security and sonar along with it.
+  # for ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled. One
+  # output per gated job, because a CI-only change moves only the jobs that read the file it touched.
   changes:
     name: Detect Code Changes
     runs-on: ubuntu-24.04
@@ -27,7 +24,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      ci_pins_only: ${{ steps.filter.outputs.ci_pins_only }}
       release_gate: ${{ steps.filter.outputs.release_gate }}
       cppcheck: ${{ steps.filter.outputs.cppcheck }}
       compile: ${{ steps.filter.outputs.compile }}
@@ -35,7 +32,6 @@ jobs:
       security: ${{ steps.filter.outputs.security }}
       sonar: ${{ steps.filter.outputs.sonar }}
     steps:
-      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
@@ -48,14 +44,13 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Provide the ability to git-checkout external packages and actions.
+      # Full history so the base..head diff can be resolved.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      # Full history so the base..head diff below can be resolved.
       - name: Detect changed paths
         id: filter
         uses: ./.github/actions/detect-changes
@@ -63,8 +58,8 @@ jobs:
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha || github.sha }}
 
-  # Every code change ships as a release, so the VERSION file needs updating to a newer version. Non-code changes like
-  # docs or CI don't need the bump.
+  # Every code change ships as a release, so it has to bump VERSION and bring its changelog entry. Docs and CI-only
+  # changes do not.
   version:
     name: Version & Changelog
     needs: [ changes ]
@@ -86,9 +81,8 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Full history and tags: the check diffs VERSION against the base and refuses a number that is already tagged.
-      # The "fetch-tags" key is used rather than left to fetch-depth, because a tag lookup that fails open would let a
-      # version already released through.
+      # Tags as well as history: the check refuses a version that is already released, and a tag lookup that failed
+      # open would let one through.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -102,17 +96,16 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: bash .github/scripts/version-check/check-version.sh
 
-  # pre-commit over the whole tree. The PR title is checked by pr_title.yaml, which needs an `edited`
-  # trigger this workflow deliberately does not have.
+  # pre-commit over the whole tree. The PR title is checked by pr_title.yaml, which needs an `edited` trigger this
+  # workflow deliberately does not have.
   lint:
     name: Lint
     permissions:
       contents: read
     uses: ./.github/workflows/_lint.yaml
 
-  # Static analysis, gating the builds so a dozen toolchains are not spent on code cppcheck already rejects. It does
-  # not wait on `lint`: the only way to fix a pre-commit failure is another commit, which re-runs this workflow from
-  # scratch anyway, so serialising the two only lengthens the critical path of every green PR.
+  # Gates the builds so a dozen toolchains are not spent on code cppcheck already rejects. It does not wait on
+  # `lint`: fixing a pre-commit failure needs another commit, which re-runs this workflow from scratch anyway.
   cppcheck:
     name: Static Analysis
     needs: [ changes ]
@@ -122,94 +115,90 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # Supported toolchain. Every variant builds in parallel and fail-fast, so one broken variant stops the others
-  # immediately.
-  #
-  # The `if` opts out of the implicit success() over `needs` because `cppcheck` is now gated on its own filter output
-  # and can legitimately be skipped while this job runs; a skipped need would otherwise skip this job too. The
-  # `contains` check is what success() would have given us - cppcheck red still stops the build.
-  #
-  # "spp-mode" is a second axis over "build-type": it selects the optimisation pipeline the built compiler runs over
-  # the s++ fixtures, so "release-rel" and "release-dev" are the same C++ binary exercising O3 and O0 codegen. The
-  # sanitiser rides on "dev" rather than "rel" deliberately - it instruments the C++ compiler, whose sanitiser-visible
-  # code (the analysis stages) is identical in both modes, so the only thing "rel" would add is the wall-clock of an
-  # O3 pass pipeline on an already slow build.
+  # The `if` opts out of the implicit success() over `needs`, because cppcheck has its own filter and can be skipped
+  # while this runs; a skipped need would otherwise skip this too. Red cppcheck still stops the build.
   build-test:
     name: Build & Test
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.compile == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
     permissions:
       contents: read
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ubuntu-24.04
-      compiler: gcc
-      version: "16"
-      fail-fast: false
-      variants: >-
-        [
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 0, "shard-count": 2},
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel", "shard-index": 1, "shard-count": 2},
-          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 0, "shard-count": 2},
-          {"name": "release-dev", "build-type": "Release", "sanitizer": "", "spp-mode": "dev", "shard-index": 1, "shard-count": 2},
-          {"name": "asan-dev", "build-type": "Debug", "sanitizer": "address+undefined+leak", "spp-mode": "dev"}
-        ]
+    uses: ./.github/workflows/_build.yaml
 
-  # Aspirational toolchains: they run and report red on failure, but are deliberately omitted from ci-success, so they
-  # never block a merge.
+  # Aspirational toolchains: they run and report red on failure, but are deliberately omitted from ci-success, so
+  # they never block a merge.
   build-test-extra:
-    name: Build & Test (non-blocking)
+    name: Build & Test (non-blocking) · ${{ matrix.os }} · ${{ matrix.compiler }}
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.compile == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", cache-tree: true }
-          - { os: ubuntu-24.04-arm, compiler: clang, version: "23", cache-tree: true }
-          - { os: ubuntu-24.04, compiler: clang, version: "23", cache-tree: true }
-          # - { os: macos-26, compiler: clang, version: "23", cache-tree: true }
-          - { os: macos-15, compiler: clang, version: "23", cache-tree: true }
-          - { os: windows-2025, compiler: msvc, version: "", cache-tree: true }
-          - { os: windows-2025, compiler: clang-cl, version: "", cache-tree: true }
-          # - { os: windows-2022, compiler: msvc, version: "", cache-tree: false }
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.compiler }}
-      version: ${{ matrix.version }}
-      fail-fast: false
-      cache-build-tree: ${{ matrix.cache-tree }}
-      variants: '[{"name": "release", "build-type": "RelWithDebInfo", "sanitizer": ""}]'
+          - { os: ubuntu-24.04-arm, compiler: gcc }
+          - { os: ubuntu-24.04-arm, compiler: clang }
+          - { os: ubuntu-24.04, compiler: clang }
+          - { os: macos-15, compiler: clang }
+          - { os: windows-2025, compiler: msvc }
+          - { os: windows-2025, compiler: clang-cl }
+    steps:
+      # The action is Linux-only, so the Windows and macOS variants go without it.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build and test
+        uses: ./.github/actions/compile
+        with:
+          os: ${{ matrix.os }}
+          compiler: ${{ matrix.compiler }}
+          variant: release
+          build-type: Release
+          stl-conformance: true
 
   # Emit for architectures unlike the host - 32-bit, big-endian, non-x86 - and check the object and the datalayout
-  # that came out. Non-blocking to begin with. Todo: Add to ci-success once the matrix has been green for a while.
+  # that came out. Todo: Add to ci-success once the matrix has been green for a while.
   cross-codegen:
     name: Cross Codegen (non-blocking)
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.cross_codegen == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs.cppcheck.result)
     permissions:
       contents: read
     uses: ./.github/workflows/_cross_codegen.yaml
 
-  # Independent of the compilation chain: doc breakage is worth hearing about even while the build is still running.
+  # Independent of the compilation chain: doc breakage is worth hearing about while the build is still running.
   docs:
     name: Docs
     permissions:
       contents: read
     uses: ./.github/workflows/_docs.yaml
 
+  # Ungated by cppcheck: these read the tree and the dependency graph rather than building it, so there is nothing to
+  # save by making them wait, and a leaked secret is worth hearing about at once.
   security:
     name: Security
     needs: [ changes ]
@@ -220,13 +209,33 @@ jobs:
       actions: read
     uses: ./.github/workflows/_security.yaml
 
-  # Advisory: runs SonarQube Cloud analysis with PR decoration, but is deliberately omitted from ci-success, so a red
-  # quality gate does not block a merge. Todo: Add it to the ci-success `needs` list to make it blocking.
-  sonar:
-    name: Sonar
-    needs: [ changes ]
+  # Behind cppcheck for the same reason as the builds: CodeQL builds the whole project under its extractor, and
+  # cppcheck rejects the same code in well under a minute.
+  codeql:
+    name: CodeQL
+    needs: [ changes, cppcheck ]
     if: |
-      needs.changes.outputs.sonar == 'true'
+      !cancelled()
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
+      && needs.changes.outputs.security == 'true'
+      && needs.changes.outputs.ci_pins_only != 'true'
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/_codeql.yaml
+
+  # Advisory: Sonar's scanner wraps a full build, so it sits behind cppcheck like the builds, and a red quality gate
+  # does not block a merge. Todo: Add it to the ci-success `needs` list to make it blocking.
+  sonar:
+    name: Sonar (non-blocking)
+    needs: [ changes, cppcheck ]
+    if: |
+      !cancelled()
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
+      && needs.changes.outputs.sonar == 'true'
       && (github.event_name != 'pull_request'
         || github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
@@ -235,12 +244,16 @@ jobs:
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # Advisory, like Sonar, and omitted from ci-success for the same reason.
+  # Advisory, like Sonar. There is nothing to review in a pin bump, so it sits behind `changes` to skip those rather
+  # than spend a review on a pair of SHAs.
   claude-review:
-    name: Claude Review
+    name: Claude Review (non-blocking)
+    needs: [ changes ]
     if: |
       github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
       && github.event.pull_request.head.repo.full_name == github.repository
+      && needs.changes.outputs.ci_pins_only != 'true'
     permissions:
       contents: read
       pull-requests: write
@@ -255,7 +268,7 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ lint, version, cppcheck, build-test, docs, security ] # sonar
+    needs: [ changes, lint, version, cppcheck, build-test, docs, security, codeql ] # sonar
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }

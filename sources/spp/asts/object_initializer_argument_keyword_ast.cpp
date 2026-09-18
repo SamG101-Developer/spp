@@ -8,7 +8,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
+ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
   decltype(Name) name,
   decltype(TokAssign) &&tok_assign,
   decltype(Val) &&val) :
@@ -16,22 +16,19 @@ spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeyword
   TokAssign(std::move(tok_assign)) {
 }
 
-spp::asts::ObjectInitializerArgumentKeywordAst::~ObjectInitializerArgumentKeywordAst() = default;
+ObjectInitializerArgumentKeywordAst::~ObjectInitializerArgumentKeywordAst() = default;
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::PosStart() const
-  -> std::size_t {
+auto ObjectInitializerArgumentKeywordAst::PosStart() const -> std::size_t {
   // Use the name.
   return Name->PosStart();
 }
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::PosEnd() const
-  -> std::size_t {
+auto ObjectInitializerArgumentKeywordAst::PosEnd() const -> std::size_t {
   // Use the val.
   return Val->PosEnd();
 }
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::Clone() const
-  -> Unique<Ast> {
+auto ObjectInitializerArgumentKeywordAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<ObjectInitializerArgumentKeywordAst>(
     AstCloneShared(Name),
@@ -41,8 +38,7 @@ auto spp::asts::ObjectInitializerArgumentKeywordAst::Clone() const
   return ast;
 }
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::ToString() const
-  -> Str {
+auto ObjectInitializerArgumentKeywordAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Name);
   SPP_STRING_APPEND_RAW("=");

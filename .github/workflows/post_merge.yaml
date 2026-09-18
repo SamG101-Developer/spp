@@ -1,9 +1,8 @@
 name: Post-merge
 
-# The "post-merge" workflow publishes the site, rebuilds master so its build-tree caches are fresh, and cuts the
-# release for the version the merged PR bumped to. The cache part is important as GitHub only lets a PR branch read
-# caches from its own branch and from the base branch, so a warm master is what lets a brand-new PR compile
-# incrementally. As this is post-merge, it doesn't slow down the merge process or act as a blocker.
+# Publishes the site, rebuilds master so its build-tree caches are fresh, and cuts the release for the version the
+# merged PR bumped to. The cache part matters: a PR branch can only read caches from itself and from the base
+# branch, so a warm master is what lets a brand-new PR compile incrementally.
 
 on:
   push:
@@ -24,11 +23,11 @@ jobs:
     permissions:
       contents: read
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      ci_pins_only: ${{ steps.filter.outputs.ci_pins_only }}
       compile: ${{ steps.filter.outputs.compile }}
       sonar: ${{ steps.filter.outputs.sonar }}
+      version: ${{ steps.filter.outputs.version }}
     steps:
-      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
@@ -41,15 +40,13 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Provide the ability to git-checkout external packages and actions.
+      # Full history so the before..sha diff can be resolved.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      # Full history so the before..sha diff below can be resolved. Nothing is built here, so the mtime pass is not
-      # needed.
       - name: Detect changed paths
         id: filter
         uses: ./.github/actions/detect-changes
@@ -59,6 +56,8 @@ jobs:
 
   docs:
     name: Docs
+    needs: [ changes ]
+    if: needs.changes.outputs.ci_pins_only != 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/_docs.yaml
@@ -87,31 +86,23 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346
 
-  # Doubles as the master health check and as the cache warmer. The variant list must stay identical to the PR
-  # pipeline's: the build-cache-key action folds `variant.name` in, so a variant missing here is a variant that compiles
-  # from cold on every PR. fail-fast is off for the same reason - one red variant must not cost the others their cache.
+  # Doubles as the master health check and as the cache warmer, which is why it is the same workflow the PR pipeline
+  # runs: a variant missing here is a variant that compiles from cold on every PR.
   build-test:
     name: Build & Test
     needs: [ changes ]
     if: needs.changes.outputs.compile == 'true'
     permissions:
       contents: read
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ubuntu-24.04
-      compiler: gcc
-      version: "16"
-      fail-fast: false
-      variants: >-
-        [
-          {"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"},
-        ]
+    uses: ./.github/workflows/_build.yaml
 
-  # What the release is for this commit, decided from the tag rather than from the diff: a re-run of the same push
-  # and a merge that bumped nothing both land on a tag that already exists, and neither should build a second set of
-  # binaries for a version that is already published.
+  # Only a push that bumped VERSION, or a manual dispatch, is a release candidate. Without this an unpublished
+  # version is retried by every later push. The tag check then stops a re-run of the same push from building a second
+  # set of binaries for a version that is already published.
   release-gate:
     name: Release Gate
+    needs: [ changes ]
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.version == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -145,34 +136,49 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: bash .github/scripts/release/resolve-version.sh
 
-  # Publish the released by building on master against the matrix, and using the version information.
   release-build:
-    name: Release Build
+    name: Release Build · ${{ matrix.label }}
     needs: [ release-gate ]
     if: needs.release-gate.outputs.release == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, compiler: gcc, version: "16", label: linux-x64 }
-          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", label: linux-arm64 }
-          - { os: macos-15, compiler: clang, version: "23", label: macos-arm64 }
-          - { os: windows-2025, compiler: msvc, version: "", label: windows-x64 }
-    uses: ./.github/workflows/_compile.yaml
-    with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.compiler }}
-      version: ${{ matrix.version }}
-      fail-fast: false
-      run-tests: false
-      binary-artifact: spp-${{ needs.release-gate.outputs.version }}-${{ matrix.label }}
-      variants: '[{"name": "release-rel", "build-type": "Release", "sanitizer": "", "spp-mode": "rel"}]'
+          - { os: ubuntu-24.04, compiler: gcc, label: linux-x64 }
+          - { os: ubuntu-24.04-arm, compiler: gcc, label: linux-arm64 }
+          - { os: macos-15, compiler: clang, label: macos-arm64 }
+          - { os: windows-2025, compiler: msvc, label: windows-x64 }
+    steps:
+      # The action is Linux-only, so the Windows and macOS variants go without it.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
 
-  # The tag is created here, by the release itself, so a matrix that goes red leaves nothing behind, and the next
-  # push retries the same version cleanly. Needs every platform green: a release missing an architecture is worse
-  # than a release that arrives one push later.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build
+        uses: ./.github/actions/compile
+        with:
+          os: ${{ matrix.os }}
+          compiler: ${{ matrix.compiler }}
+          run-tests: false
+          binary-artifact: spp-${{ needs.release-gate.outputs.version }}-${{ matrix.label }}
+          variant: release-rel
+          build-type: Release
+
+  # The tag is created here, by the release itself, so a matrix that goes red leaves nothing behind and a manual
+  # dispatch retries the same version cleanly. Needs every platform green: a release missing an architecture is worse
+  # than a release that arrives one dispatch later.
   publish-release:
     name: Publish Release
     needs: [ release-gate, release-build ]
@@ -234,7 +240,8 @@ jobs:
     if: |
       !cancelled()
       && needs.changes.outputs.sonar == 'true'
-      && !contains(fromJSON('["failure", "cancelled"]'), needs['build-test'].result)
+      && needs['build-test'].result != 'failure'
+      && needs['build-test'].result != 'cancelled'
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml

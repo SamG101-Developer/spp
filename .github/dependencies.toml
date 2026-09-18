@@ -5,7 +5,7 @@
 # <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
 
 [pin.gcc]
-version = "16"
+version = "16.2"
 
 [pin.cmake]
 version = "4.4.0"
@@ -76,7 +76,6 @@ version = "1.92.0"
 osv-ecosystem = "OSS-Fuzz"
 osv-name = "boost"
 sha256-ubuntu-2404 = "9e95ffa5c2de721acc9e91db67c0393058b16cf643047462d719a41a76958b8c"
-sha256-ubuntu-2204 = "c24626810f61bc1363dd600aac18cf0cdec1f3962db5ea2381dd951c1782ef51"
 sha256-ubuntu-2204-arm64 = "8eeeb9c33af4d1d70c046f46557f95e389e1b549d5853bc2c4e3b55f21e1e136"
 sha256-macos-15 = "57897ee9a536a8cb159f635a6d59ed2e1e7705408bdc9c058c1e078c15ad7ebf"
 sha256-macos-26 = "71d0bbe7466921d0989777a7a01c7955225b7afde00fd5b687c8790a67886f2a"
@@ -95,8 +94,8 @@ commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 # Tools the pipeline runs, tracking published releases
 # rather than a branch tip.
 [pin.osv-scanner]
-version = "2.5.1"
-sha256 = "f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be"
+version = "2.6.0"
+sha256 = "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108"
 
 # Keep the version in step with the gitleaks rev in
 # .pre-commit-config.yaml.
@@ -142,18 +141,18 @@ generation = "v1"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "c3b4667c7cb5b059f2df100db4ff7203203ad564"
+commit = "760cfb829243e09e564752b35faae0e4625ef861"
 
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "c9cc3394059edfb018ca2906753c4b0e857df00c"
+commit = "31d034d94cdb8e22f7d7ed55967f581a2d6e831d"
 cmake-flags = ["-DMI_SECURE=OFF"]
 
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "b17c272f469c2ba0ca6439e3f77470862a19f739"
+commit = "c41152e62092c16cf4fc4625becacc3eb9d9319f"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -164,7 +163,7 @@ commit = "1e8829b793b66ad17011732a146b8077d379b011"
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "be66674517474760bb98c238367544705212bce7"
+commit = "adf50a7880514138442b6ab4f31e783f42d3243a"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
@@ -186,7 +185,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "c1cfe00d2f3d862aecfe6e69ec810414d5f4c906"
+commit = "6076763c74089466bbfa7ce88a52374464d32e88"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
@@ -207,15 +206,15 @@ commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
 [[library]]
 name = "ColEx"
 repo = "https://github.com/SamG101-Developer/ColEx.git"
-commit = "ed1fa93c3aaea8deb558948fa8d9f7901f245ecc"
+commit = "badae2b5e668084412cef496283a345bd8bd9744"
 
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "dadaff62b39cf2785d711f4ddea08b3390f31d50"
+commit = "aeb9e018ac33cb336f97916eef4602ece2816f88"
 
 [[library]]
 name = "NumEx"
 repo = "https://github.com/SamG101-Developer/NumEx.git"
-commit = "cd012e527528627339d89268a4c3aa480627d0f1"
+commit = "ac33b7bfb64ed60a25adbb9c0fd2d201a89e6bb4"
 cmake-flags = ["-DNUMEX_BUILD_TESTS=OFF", "-DNUMEX_BUILD_BENCHMARKS=OFF"]

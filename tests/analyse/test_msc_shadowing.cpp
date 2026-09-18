@@ -38,6 +38,38 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestShadowing,
+  test_shadow_same_scope_different_type_each_keeps_its_own_storage, R"(
+    fun f() -> Void {
+        let v = Vec[S32]::from(&[1, 2, 3])
+        std::mem::ops::drop(v)
+        let v = Vec[Bool]::from(&[true])
+        std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestShadowing,
+  test_shadow_same_scope_value_reads_the_binding_before, R"(
+    fun f() -> Bool {
+        let x = 5
+        let x = x == 5
+        ret x
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestShadowing,
+  test_shadow_same_scope_chain_of_three, R"(
+    fun f() -> S32 {
+        let a = 1
+        let a = a + 1
+        let a = a + 1
+        ret a
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestShadowing,
   test_shadow_same_scope_different_mutability, R"(
     fun f() -> Void {
         let x = 1

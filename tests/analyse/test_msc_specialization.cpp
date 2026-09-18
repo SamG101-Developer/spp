@@ -1,8 +1,8 @@
 #include "../test_macros.hpp"
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestSpecialization,
-    test_specialization_vector_string, R"(
+  TestSpecialization,
+  test_specialization_vector_string, R"(
     sup Vec[Str] {
         !public
         fun test_func(&self) -> S32 {
@@ -27,9 +27,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestSpecialization,
-    test_specialization_failure_different_generic,
-    SppIdentifierUnknownError, R"(
+  TestSpecialization,
+  test_specialization_failure_different_generic,
+  SppIdentifierUnknownError, R"(
     sup Vec[Str] {
         !public
         fun test_func(&self) -> S32 {
@@ -44,8 +44,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestSpecialization,
-    test_methods_on_different_generic_names, R"(
+  TestSpecialization,
+  test_methods_on_different_generic_names, R"(
     cls MyType[T] {
         !public
         a: T
@@ -54,14 +54,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T] MyType[T] {
         !public
         fun test_func_0(self) -> T {
-            ret self.a
+            let MyType[T](a) = self
+            ret a
         }
     }
 
     sup [U] MyType[U] {
         !public
         fun test_func_1(self) -> U {
-            ret self.a
+            let MyType[U](a) = self
+            ret a
         }
     }
 
@@ -85,8 +87,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestSpecialization,
-    test_blanket_specialization, R"(
+  TestSpecialization,
+  test_blanket_specialization, R"(
     sup [T] T {
         !public
         fun test_func(&self) -> S32 {
@@ -100,8 +102,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestSpecialization,
-    test_constraint_specialization_valid, R"(
+  TestSpecialization,
+  test_constraint_specialization_valid, R"(
     cls MyType[T] { }
     sup [T: Copy] MyType[T] {
         !public
@@ -117,9 +119,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestSpecialization,
-    test_constraint_specialization_invalid,
-    SppIdentifierUnknownError, R"(
+  TestSpecialization,
+  test_constraint_specialization_invalid,
+  SppIdentifierUnknownError, R"(
     cls MyType[T] { }
     sup [T: Copy] MyType[T] {
         !public
@@ -133,8 +135,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestSpecialization,
-    test_partial_specialization_valid, R"(
+  TestSpecialization,
+  test_partial_specialization_valid, R"(
     cls Pair[A, B] { }
     sup [A] Pair[A, S32] {
         !public
@@ -150,9 +152,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestSpecialization,
-    test_partial_specialization_invalid,
-    SppIdentifierUnknownError, R"(
+  TestSpecialization,
+  test_partial_specialization_invalid,
+  SppIdentifierUnknownError, R"(
     cls Pair[A, B] { }
     sup [A] Pair[A, S32] {
         !public

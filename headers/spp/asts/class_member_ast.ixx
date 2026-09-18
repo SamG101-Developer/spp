@@ -4,15 +4,11 @@ module;
 export module spp.asts.class_member_ast;
 import spp.asts.ast;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ClassMemberAst;
-}
+SPP_AST_COMMON_FWD_DECL(ClassMemberAst);
 
-/**
- * The ClassMemberAst class is the base class for all members of a class in the abstract syntax tree. This is only
- * applicable to the ClassAttributeAst, but allows for simple expansion in the future.
- * @note: This is a tag-based base class.
- */
+/// Tag-based base class for all members of a class. Only
+/// ClassAttributeAst uses it for now, but it allows for simple
+/// expansion in the future.
 SPP_EXP_CLS struct spp::asts::ClassMemberAst {
   ClassMemberAst();
 

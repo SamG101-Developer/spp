@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -19,13 +20,13 @@ import genex;
 // Todo: second-class borrow violation unit test.
 
 SPP_MOD_BEGIN
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::NewEmpty()
-  -> Unique<GenericParameterTypeInlineConstraintsAst> {
+auto GenericParameterTypeInlineConstraintsAst::NewEmpty() -> Unique<GenericParameterTypeInlineConstraintsAst> {
+  // New empty constraint set.
   return MakeUnique<GenericParameterTypeInlineConstraintsAst>(
     nullptr, Vec<Unique<TypeAst>>{});
 }
 
-spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
+GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
   decltype(TokColon) &&tok_colon,
   Vec<Unique<TypeAst>> &&constraints) :
   TokColon(std::move(tok_colon)) {
@@ -35,44 +36,36 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineC
   }
 }
 
-spp::asts::GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraintsAst() = default;
+GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraintsAst() = default;
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::PosStart() const
-  -> std::size_t {
+auto GenericParameterTypeInlineConstraintsAst::PosStart() const -> std::size_t {
   // Use the ":" token.
-  return TokColon->PosStart();
+  return TokColon != nullptr ? TokColon->PosStart() : Constraints.IsEmpty() ? 0 : Constraints.Front()->PosStart();
 }
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::PosEnd() const
-  -> std::size_t {
+auto GenericParameterTypeInlineConstraintsAst::PosEnd() const -> std::size_t {
   // Use the last constraint.
-  return Constraints.IsEmpty() ? TokColon->PosEnd() : Constraints.Back()->PosEnd();
+  return not Constraints.IsEmpty() ? Constraints.Back()->PosEnd() : TokColon != nullptr ? TokColon->PosEnd() : 0;
 }
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::Clone() const
-  -> Unique<Ast> {
+auto GenericParameterTypeInlineConstraintsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<GenericParameterTypeInlineConstraintsAst>(
     AstClone(TokColon),
     AstCloneVec(Constraints));
 }
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::ToString() const
-  -> Str {
+auto GenericParameterTypeInlineConstraintsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokColon);
   SPP_STRING_EXTEND(Constraints, " & ");
   SPP_STRING_END;
 }
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Prepare the fully qualified constraints vector.
+auto GenericParameterTypeInlineConstraintsAst::Stage4_ResolveDeclarations(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppSecondClassBorrowViolationError;
-  auto fq_constraints = decltype(Constraints)();
-  fq_constraints.reserve(Constraints.Len());
+  using analyse::utils::type_utils::StampWrittenParts;
 
   // Analyse each constraint type.
   for (auto const &constraint : Constraints) {
@@ -85,22 +78,16 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
     // whole point of an abstract type: "[T: Add]" accepts every
     // addable type, but never "Add" itself.
     {
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = true;
       constraint->Stage7_AnalyseSemantics(sm, meta);
     }
 
-    // Fix qualification for constraint as a known type vs as an
-    // alias. Todo: should this have been pre-qualified?
-    auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics().get());
-    fq_constraints.EmplaceBack(
-      constraint_type_sym->Alias != nullptr
-        ? constraint_type_sym->FqName()->SubstituteGenerics(constraint->LastTypePart()->GnArgGroup->GetAllArgs())
-        : constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->LastTypePart()->GnArgGroup)));
+    // Stamp it with what it means here, as it is read from wherever
+    // the parameter is bound. A constraint imported by a "use" is
+    // an alias here, which "type_utils::StampWrittenParts" follows.
+    StampWrittenParts(*constraint, *sm->CurrentScope);
   }
-
-  // Replace the constraints with their fully qualified versions.
-  Constraints = std::move(fq_constraints);
 }
 
 SPP_MOD_END

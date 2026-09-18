@@ -6,6 +6,7 @@ module spp.asts.function_parameter_optional_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
@@ -18,44 +19,45 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 SPP_MOD_BEGIN
-spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
+FunctionParameterOptionalAst::FunctionParameterOptionalAst(
   decltype(Var) &&var,
   decltype(TokColon) &&tok_colon,
   decltype(Type) type,
   decltype(TokAssign) &&tok_assign,
   decltype(DefaultVal) &&default_val) :
-  FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::kOptionalParam),
+  FunctionParameterAst(
+    std::move(var), std::move(tok_colon), std::move(type),
+    utils::OrderableTag::kOptionalParam),
   TokAssign(std::move(tok_assign)),
   DefaultVal(std::move(default_val)) {
+  Source.OriginalDefaultVal = AstClone(DefaultVal);
 }
 
-spp::asts::FunctionParameterOptionalAst::~FunctionParameterOptionalAst() = default;
+FunctionParameterOptionalAst::~FunctionParameterOptionalAst() = default;
 
-auto spp::asts::FunctionParameterOptionalAst::PosStart() const
-  -> std::size_t {
+auto FunctionParameterOptionalAst::PosStart() const -> std::size_t {
   // Use the variable.
   return Var->PosStart();
 }
 
-auto spp::asts::FunctionParameterOptionalAst::PosEnd() const
-  -> std::size_t {
+auto FunctionParameterOptionalAst::PosEnd() const -> std::size_t {
   // Use the default value.
   return DefaultVal->PosEnd();
 }
 
-auto spp::asts::FunctionParameterOptionalAst::Clone() const
-  -> Unique<Ast> {
+auto FunctionParameterOptionalAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<FunctionParameterOptionalAst>(
+  auto ast = MakeUnique<FunctionParameterOptionalAst>(
     AstClone(Var),
     AstClone(TokColon),
     AstCloneShared(Type),
     AstClone(TokAssign),
     AstClone(DefaultVal));
+  ast->Source.OriginalDefaultVal = AstClone(Source.OriginalDefaultVal);
+  return ast;
 }
 
-auto spp::asts::FunctionParameterOptionalAst::ToString() const
-  -> Str {
+auto FunctionParameterOptionalAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Var);
   SPP_STRING_APPEND(TokColon).append(" ");
@@ -65,40 +67,59 @@ auto spp::asts::FunctionParameterOptionalAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Perform default analysis steps.
+auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppTypeMismatchError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
+  using analyse::errors::SppInvalidDefaultValueError;
   using analyse::utils::type_compare::TypeEq;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+
+  // Perform default analysis steps.
+  if (_DefaultAnalysed) { return; }
   FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);
 
-  DefaultVal->Stage7_AnalyseSemantics(sm, meta);
-  const auto default_type = DefaultVal->InferType(sm, meta);
+  // What a default may hold is limited, because it is
+  // copied into every call that leaves it out. Ensure
+  // it is valid.
+  auto const &written = Source.OriginalDefaultVal != nullptr
+    ? *Source.OriginalDefaultVal
+    : *DefaultVal;
 
+  RaiseIf<SppInvalidDefaultValueError>(
+    not written.IsAllowedInDefault(),
+    {sm->CurrentScope}, ERR_ARGS(written, "parameter", "call"));
+
+  // Standard ast shape check on what's valid as a primary
+  // expression.
+  DefaultVal->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not IsPrimaryExprTypeValid(*DefaultVal, *sm),
     {sm->CurrentScope}, ERR_ARGS(*DefaultVal));
 
-  RaiseIf<SppTypeMismatchError>(
-    not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
-    {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
+  // Do a type check on the default value's type vs the type
+  // given; the default's type is only spelled out for the
+  // error.
+  if (not TypeEq(
+    TypeRef::Of(*Type, *sm->CurrentScope), DefaultVal->InferTypeRef(sm, meta),
+    *sm->CurrentScope, *sm->CurrentScope)) {
+    const auto default_type = DefaultVal->InferType(sm, meta);
+    Raise<SppTypeMismatchError>(
+      {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
+  }
+  _DefaultAnalysed = true;
 }
 
-auto spp::asts::FunctionParameterOptionalAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto FunctionParameterOptionalAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Perform default memory checking steps.
   using analyse::utils::mem_utils::ValidateSymbolMemory;
   FunctionParameterAst::Stage8_CheckMemory(sm, meta);
 
   // Check the memory status of the default value expression.
   DefaultVal->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
+  ValidateSymbolMemory(
+    *DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
 }
 
 SPP_MOD_END

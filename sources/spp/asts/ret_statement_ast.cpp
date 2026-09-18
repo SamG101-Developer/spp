@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
@@ -27,6 +28,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_defer;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
@@ -34,7 +36,7 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
-spp::asts::RetStatementAst::RetStatementAst(
+RetStatementAst::RetStatementAst(
   decltype(TokRet) &&tok_ret,
   decltype(Expr) &&val) :
   TokRet(std::move(tok_ret)),
@@ -44,44 +46,38 @@ spp::asts::RetStatementAst::RetStatementAst(
   Source._OriginalRetType = nullptr;
 }
 
-spp::asts::RetStatementAst::~RetStatementAst() = default;
+RetStatementAst::~RetStatementAst() = default;
 
-auto spp::asts::RetStatementAst::PosStart() const
-  -> std::size_t {
+auto RetStatementAst::PosStart() const -> std::size_t {
   // Use the "ret" token.
   return TokRet->PosStart();
 }
 
-auto spp::asts::RetStatementAst::PosEnd() const
-  -> std::size_t {
+auto RetStatementAst::PosEnd() const -> std::size_t {
   // Use the expression if it exists, otherwise use the "ret" token.
   return Expr ? Expr->PosEnd() : TokRet->PosEnd();
 }
 
-auto spp::asts::RetStatementAst::Clone() const
-  -> Unique<Ast> {
+auto RetStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<RetStatementAst>(
     AstClone(TokRet),
     AstClone(Expr));
 }
 
-auto spp::asts::RetStatementAst::ToString() const
-  -> Str {
+auto RetStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokRet).append(" ");
   SPP_STRING_APPEND(Expr);
   SPP_STRING_END;
 }
 
-auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto RetStatementAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
   using analyse::errors::SppCoroutineContainsReturnStatementError;
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::errors::SppTypeMismatchError;
@@ -103,7 +99,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   auto expr_type = VoidType(PosStart());
   _RetType = VoidType(PosStart());
   if (Expr != nullptr) {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
 
     // For case conditions, we need an assignment target in case of variants. Closures have no declared return
     // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
@@ -111,13 +107,18 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
       ? nullptr
       : meta->EnclosingFunctionRetType.Back();
     if (meta->AssignmentTargetType != nullptr) {
-      meta->AssignmentTargetType = ResolveAndSubstituteSelfType(
+      meta->AssignmentTargetType = SubstituteSelfTypeAndAnalyse(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
     }
     meta->AssignmentTarget = meta->AssignmentTargetType
       ? IdentifierAst::FromType(*meta->AssignmentTargetType)
       : nullptr;
-    SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) { meta->ReturnTypeOverloadResolverType = meta->AssignmentTargetType; }
+    SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
+      meta->ReturnTypeOverloadResolverType = meta->AssignmentTargetType != nullptr
+        ? MakeShared<TypeRef>(
+          TypeRef::Of(*meta->AssignmentTargetType, *sm->CurrentScope))
+        : nullptr;
+    }
 
     Expr->Stage7_AnalyseSemantics(sm, meta);
     expr_type = Expr->InferType(sm, meta);
@@ -143,13 +144,19 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     RaiseIf<SppTypeMismatchError>(
       not direct_match, {meta->EnclosingFunctionScope, sm->CurrentScope},
       ERR_ARGS(*Source._OriginalRetType, *_RetType, *expr_for_err, *expr_type));
+
+    // A function named as the value stands for the overload the
+    // return type asks for.
+    if (Expr != nullptr) {
+      analyse::utils::func_utils::InstantiateFunctionValue(
+        TypeRef::Of(*expr_type, *sm->CurrentScope),
+        TypeRef::Of(*_RetType, *sm->CurrentScope), sm, meta);
+    }
   }
 }
 
-auto spp::asts::RetStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto RetStatementAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
@@ -167,10 +174,8 @@ auto spp::asts::RetStatementAst::Stage8_CheckMemory(
     *TokRet, "Return", *sm, meta);
 }
 
-auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto RetStatementAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Mark the frame as returned either way, so the statements after the "case" this "ret" may sit inside are not
   // resolved on top of it.
   meta->CmpReturned = true;
@@ -180,11 +185,8 @@ auto spp::asts::RetStatementAst::Stage9_CompTimeResolve(
   Expr->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::RetStatementAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto RetStatementAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // A "GenOnce" is lowered into an ordinary subroutine, where
   // a "gen" reads as the return. A "ret" written after one is
   // therefore unreachable: the block it lands in has already
@@ -238,11 +240,16 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
 
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
+    const auto expr_type = Expr->InferType(sm, meta);
+    llvm_ret_val = codegen::CoerceToFunctionValue(
+      llvm_ret_val, TypeRef::Of(*ret_type, *sm->CurrentScope),
+      TypeRef::Of(*expr_type, *sm->CurrentScope), *sm, ctx);
     return codegen::CoerceToVariant(
-      llvm_ret_val, *ret_type, *Expr->InferType(sm, meta), *sm->CurrentScope, "ret.variant" + uid, ctx);
+      llvm_ret_val, TypeRef::Of(*ret_type, *sm->CurrentScope),
+      TypeRef::Of(*expr_type, *sm->CurrentScope), *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTargetType = _RetType;
   if (meta->AssignmentTarget == nullptr) {
     meta->AssignmentTarget = MakeShared<IdentifierAst>(PosStart(), "$ret");
@@ -268,8 +275,7 @@ auto spp::asts::RetStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::RetStatementAst::Terminates() const
-  -> bool {
+auto RetStatementAst::Terminates() const -> bool {
   // This is the only statement that always terminates.
   return true;
 }

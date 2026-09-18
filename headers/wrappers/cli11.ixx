@@ -1,4 +1,5 @@
 module;
+#define CLI11_COMPILE
 #include <CLI/CLI.hpp>
 
 export module cli11;

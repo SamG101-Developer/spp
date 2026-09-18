@@ -20,49 +20,44 @@ import spp.lex.tokens;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::DeferStatementAst::DeferStatementAst(
+DeferStatementAst::DeferStatementAst(
   decltype(TokDefer) &&tok_defer,
   decltype(Expr) &&expr) :
   TokDefer(std::move(tok_defer)),
   Expr(std::move(expr)) {
+  using lex::SppTokenType;
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
-    this->TokDefer, lex::SppTokenType::KW_DEFER, "defer", Expr ? Expr->PosStart() : 0);
+    this->TokDefer, SppTokenType::KW_DEFER, "defer", Expr ? Expr->PosStart() : 0);
 }
 
-spp::asts::DeferStatementAst::~DeferStatementAst() = default;
+DeferStatementAst::~DeferStatementAst() = default;
 
-auto spp::asts::DeferStatementAst::PosStart() const
-  -> std::size_t {
+auto DeferStatementAst::PosStart() const -> std::size_t {
   // Use the "defer" token.
   return TokDefer->PosStart();
 }
 
-auto spp::asts::DeferStatementAst::PosEnd() const
-  -> std::size_t {
+auto DeferStatementAst::PosEnd() const -> std::size_t {
   // Use the expression.
   return Expr->PosEnd();
 }
 
-auto spp::asts::DeferStatementAst::Clone() const
-  -> Unique<Ast> {
+auto DeferStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<DeferStatementAst>(
     AstClone(TokDefer),
     AstClone(Expr));
 }
 
-auto spp::asts::DeferStatementAst::ToString() const
-  -> Str {
+auto DeferStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDefer).append(" ");
   SPP_STRING_APPEND(Expr);
   SPP_STRING_END;
 }
 
-auto spp::asts::DeferStatementAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto DeferStatementAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppDeferTerminatesError;
   using analyse::utils::expr_utils::ValidateDiscardedValue;
@@ -90,13 +85,11 @@ auto spp::asts::DeferStatementAst::Stage7_AnalyseSemantics(
   ValidateDiscardedValue(*Expr, sm->CurrentScope, *sm, meta);
 }
 
-auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto DeferStatementAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   auto saved = Vec<Pair<
-    Shared<analyse::scopes::VariableSymbol>,
+    Shared<VariableSymbol>,
     analyse::utils::mem_info_utils::MemoryInfoSnapshot>>();
 
   // The expression has to be walked here, in the place it
@@ -108,7 +101,7 @@ auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
   // it produced is rolled back.
   for (auto const *scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
     for (auto *sym : scope->AllVarSymbols(true)) {
-      saved.EmplaceBack(sym->SharedFromThis<analyse::scopes::VariableSymbol>(), sym->MemInfo->Snapshot());
+      saved.EmplaceBack(sym->SharedFromThis<VariableSymbol>(), sym->MemInfo->Snapshot());
     }
     if (scope == meta->EnclosingFunctionScope) { break; }
   }
@@ -138,27 +131,22 @@ auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
   }
 }
 
-auto spp::asts::DeferStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *)
-  -> void {
-  //
+auto DeferStatementAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *) -> void {
   using analyse::errors::SppDeferInCompileTimeFunctionError;
 
   // Only a body being evaluated at compile time reaches this:
   // a function prototype exhausts its scope at stage 9 rather
   // than descending into it. The comptime evaluator has no
-  // notion of a scope exit to run the expression at, so
-  // rather than silently skipping it, say so.
+  // notion of a scope exit to run the expression at, so rather
+  // than silently skipping it, say so.
   // Todo: Use the generic comptime error?
-  Raise<SppDeferInCompileTimeFunctionError>({sm->CurrentScope}, ERR_ARGS(*TokDefer));
+  Raise<SppDeferInCompileTimeFunctionError>(
+    {sm->CurrentScope}, ERR_ARGS(*TokDefer));
 }
 
-auto spp::asts::DeferStatementAst::Stage11_CodeGen(
-  ScopeManager *const sm,
-  CompilerMetaData *,
-  codegen::LlvmCtx *)
-  -> llvm::Value* {
+auto DeferStatementAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
   // Nothing is emitted here: the expression is generated at
   // each of the scope's exits, by "EmitDeferredScope". What
   // reaching this statement does is register it, so that only

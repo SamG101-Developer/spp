@@ -9,38 +9,24 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TupleLiteralAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(TupleLiteralAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(TupleLiteralAst);
 
-  /**
-   * The left parenthesis token that represents the start of the tuple literal.
-   */
+  /// The "(" token that starts the tuple literal.
   Unique<TokenAst> TokL;
 
-  /**
-   * The elements of the tuple literal. This is a list of expressions that are contained within the tuple.
-   */
+  /// The elements of the tuple literal.
   Vec<Unique<ExpressionAst>> Elems;
 
-  /**
-   * The right parenthesis token that represents the end of the tuple literal.
-   */
+  /// The ")" token that ends the tuple literal.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the TupleLiteralAst with the arguments matching the members.
-   * @param tok_l The left parenthesis token.
-   * @param elements The elements of the tuple literal.
-   * @param tok_r The right parenthesis token.
-   */
   TupleLiteralAst(
     decltype(TokL) &&tok_l,
     decltype(Elems) &&elements,
@@ -65,6 +51,8 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Shared<ExpressionAst> override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TupleLiteralAst)

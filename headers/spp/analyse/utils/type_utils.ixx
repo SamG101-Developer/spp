@@ -7,96 +7,164 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct CaseExpressionBranchAst;
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct PostfixExpressionAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-  SPP_EXP_CLS struct TypeStatementAst;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-  SPP_EXP_CLS struct TypeSymbol;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts, struct Ast);
+use(spp::asts, struct CaseExpressionBranchAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct GenericParameterGroupAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct PostfixExpressionAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts, struct TypeStatementAst);
 
 namespace spp::analyse::utils::type_utils {
-  // Type utilities: aliases, variants, forwarding, "Self" resolution, and lookup-or-error helpers.
-
+  /// Check the type and search the supertypes to identify a
+  /// functional superimposition. Retrieve it. There is a hack
+  /// here where generic constraints are considered beforehand,
+  /// because if we have a FunRef that must be a FunMov by
+  /// constraint, for behaviour to be consistent, it must be
+  /// treated like the FunMov would be.
   SPP_EXP_FUN auto GetFunctionalType(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> Shared<const asts::TypeAst>;
+    TypeAst const &type,
+    Scope const &scope)
+    -> Shared<const TypeAst>;
 
+  /// Check the type and search the supertypes to identifier a
+  /// generator superimposition. Retrieve its symbol along with the
+  /// Yield type in the generator's generics, and if its Gen or
+  /// GenOnce. Fallible with >1 generator candidates. The errors
+  /// are placed on "expr" and print the type "spell" gives, which
+  /// is only asked for when one is raised.
   SPP_EXP_FUN auto GetGenAndYieldTypes(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope,
-    asts::ExpressionAst const &expr,
+    TypeRef const &ref,
+    Scope const &scope,
+    ExpressionAst const &expr,
+    std::function<Shared<TypeAst>()> const &spell,
     StrView what,
     bool raise = true)
-    -> Tup<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool>;
+    -> Tup<TypeSymbol*, Shared<TypeAst>, bool>;
 
+  /// Check the type and search the supertypes to identifier a
+  /// try-type superimposition. Retrieve its symbol, whose "Value"
+  /// and "Residual" arguments are what an early return reads. The
+  /// errors print the type "spell" gives, as above.
   SPP_EXP_FUN auto GetTryType(
-    asts::TypeAst const &type,
-    asts::ExpressionAst const &expr,
-    scopes::ScopeManager const &sm,
+    TypeRef const &ref,
+    ExpressionAst const &expr,
+    std::function<Shared<TypeAst>()> const &spell,
+    ScopeManager const &sm,
     StrView what,
     bool raise = true)
-    -> Shared<const asts::TypeAst>;
+    -> TypeSymbol*;
 
+  /// Check the type and search the supertypes to identify a
+  /// forwarding superimposition (pair). Retrieve the ref/mut
+  /// forwarding super classes ("FwdRef[T=StrView]" for "Str"),
+  /// whose "T" is what is forwarded to.
   SPP_EXP_FUN auto GetFwdTypes(
-    asts::TypeAst const &type,
-    scopes::ScopeManager const &sm)
-    -> Pair<Shared<asts::TypeAst>, Shared<asts::TypeAst>>;
+    TypeSymbol const &sym,
+    Scope const &scope)
+    -> Pair<TypeSymbol*, TypeSymbol*>;
 
-  /**
-   * Build the call that forwards a receiver to the type it forwards to, that is @code x.fwd_ref()@endcode for a type
-   * superimposing @c FwdRef (or @code x.fwd_mut()@endcode for @c FwdMut). Because the forwarding coroutines return a
-   * @c GenOnce, the call resumes automatically and evaluates to the borrow of the forwarded-to value, which is the
-   * receiver every forwarded member access and method call actually operates on. The returned expression is fully
-   * analysed, so it can be inferred from and generated like any other expression.
-   * @param[in] receiver The expression that forwards, which is cloned into the built call.
-   * @param[in] receiver_type The type of the receiver, whose superimpositions are searched for the forwarding marker.
-   * @param[in,out] sm The scope manager to analyse the built call with.
-   * @param[in,out] meta Associated metadata.
-   * @return The forwarding call, or @c nullptr if the receiver's type does not forward.
-   */
+  /// Manually build the hidden forwarding call that is
+  /// abstracted over for things like member access, assignment,
+  /// returning etc. This is needed to the llvm codegen can
+  /// access the forwarded object.
   SPP_EXP_FUN auto BuildFwdCall(
-    asts::ExpressionAst const &receiver,
-    asts::TypeAst const &receiver_type,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Unique<asts::PostfixExpressionAst>;
+    ExpressionAst const &receiver,
+    TypeRef const &receiver_ref,
+    ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Unique<PostfixExpressionAst>;
 
+  /// Get the type symbol specified by "type_part" in the type
+  /// scope "scope". If it cannot be found, raise an error.
+  /// Standard type analysis.
   SPP_EXP_FUN auto GetTypeSymOrError(
-    scopes::Scope const &scope,
-    asts::TypeIdentifierAst const &type_part,
-    scopes::ScopeManager const &sm)
-    -> scopes::TypeSymbol*;
+    Scope const &scope,
+    TypeIdentifierAst const &type_part,
+    ScopeManager const &sm)
+    -> TypeSymbol*;
 
+  /// Get the scope specified by "ns" in the scope "scope". If
+  /// it cannot be found, raise an error. Standard type analysis.
   SPP_EXP_FUN auto GetNsScopeOrError(
-    scopes::Scope const &scope,
-    asts::IdentifierAst const &ns,
-    scopes::ScopeManager const &sm)
-    -> scopes::Scope*;
+    Scope const &scope,
+    IdentifierAst const &ns,
+    ScopeManager const &sm)
+    -> Scope*;
 
+  /// The core alias resolver, taking a type statement ast and
+  /// determining its genuine original mapped type, untangling
+  /// multi-stage aliasing, generics, etc.
   SPP_EXP_FUN auto RecursiveAliasSearch(
-    asts::TypeStatementAst const &alias_stmt,
+    TypeStatementAst const &alias_stmt,
     bool from_use_stmt,
-    scopes::Scope *tracking_scope,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> Tup<Shared<asts::TypeAst>, Shared<asts::GenericParameterGroupAst>, scopes::Scope*>;
+    Scope *tracking_scope,
+    ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*>;
 
-  SPP_EXP_FUN auto ResolveAndSubstituteSelfType(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta)
-    -> Shared<asts::TypeAst>;
+  /// Resolve the "Self" type for the scope, and do a substitution
+  /// on the type to translate all the generics into the true type.
+  SPP_EXP_FUN auto SubstituteSelfType(
+    TypeAst const &type,
+    Scope const &scope,
+    meta::CompilerMetaData const &meta,
+    bool *substituted = nullptr)
+    -> Shared<TypeAst>;
+
+  /// Resolve the "Self" type for the scope, and do a substitution
+  /// on the type to translate all the generics into the true type.
+  /// Do an analysis afterwards if a substitution actually happened,
+  /// which "substituted" reports.
+  SPP_EXP_FUN auto SubstituteSelfTypeAndAnalyse(
+    TypeAst const &type,
+    Scope const &scope,
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta,
+    bool *substituted = nullptr)
+    -> Shared<TypeAst>;
+
+  /// Replace every "Self" part of a written type with a type given
+  /// outright, for the callers that decide what "Self" stands for
+  /// themselves rather than reading it off the scope - overload
+  /// resolution picks between the type owning the function and the
+  /// type at the call site's receiver.
+  SPP_EXP_FUN auto SubstituteSelfTypeWith(
+    TypeAst const &type,
+    TypeAst const &replacement)
+    -> Shared<TypeAst>;
+
+  /// Whether "ResolveWrittenType" replaces "Self" from the scope, or
+  /// leaves it for a caller that decides per use what it stands for
+  /// (function parameter and return types).
+  SPP_EXP_CLS enum class SelfPolicy { kSubstitute, kKeep };
+
+  /// Resolve a type as written in source: substitute "Self", analyse,
+  /// qualify through its symbol, then restore the written convention
+  /// and source span. A type that had "Self" replaced is analysed with
+  /// abstract types allowed, as "Self" may name an abstract class.
+  SPP_EXP_FUN auto ResolveWrittenType(
+    TypeAst const &written,
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta,
+    SelfPolicy self = SelfPolicy::kSubstitute)
+    -> Shared<TypeAst>;
+
+  /// Stamp every name in a type whose meaning is fixed with
+  /// what it means in the scope the type is written in: a
+  /// generic parameter, a closed class, and the template at
+  /// the head of a name written with arguments. A copy read
+  /// again from any other scope then resolves through the
+  /// stamps ("Scope::Canon"), not by its spelling.
+  SPP_EXP_FUN auto StampWrittenParts(
+    TypeAst const &type,
+    Scope const &scope)
+    -> void;
 }

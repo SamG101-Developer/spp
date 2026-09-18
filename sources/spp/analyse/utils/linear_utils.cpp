@@ -26,7 +26,7 @@ import std;
 namespace spp::analyse::utils::linear_utils {
   namespace {
     using Saved = Vec<Pair<
-      Shared<scopes::VariableSymbol>,
+      Shared<VariableSymbol>,
       mem_info_utils::MemoryInfoSnapshot>>;
 
     /**
@@ -35,11 +35,11 @@ namespace spp::analyse::utils::linear_utils {
      * walks statements in order rather than following branches, so without this the code after the branch a "ret" sits
      * in would read as though the deferred releases had already happened.
      */
-    auto SnapshotFrom(scopes::Scope const *from, scopes::Scope const *boundary) -> Saved {
+    auto SnapshotFrom(Scope const *from, Scope const *boundary) -> Saved {
       auto saved = Saved();
       for (auto const *scope = from; scope != nullptr; scope = scope->Parent) {
         for (auto *sym : scope->AllVarSymbols(true)) {
-          saved.EmplaceBack(sym->SharedFromThis<scopes::VariableSymbol>(), sym->MemInfo->Snapshot());
+          saved.EmplaceBack(sym->SharedFromThis<VariableSymbol>(), sym->MemInfo->Snapshot());
         }
         if (scope == boundary) { break; }
       }
@@ -51,19 +51,19 @@ namespace spp::analyse::utils::linear_utils {
     }
 
     /**
-     * The type of one part of a type, and the scope that type resolves in: an attribute by name, or an element of a
+     * The type symbol of one part of a type, and the scope it resolves in: an attribute by name, or an element of a
      * tuple or an array by index. Nothing when the type has no such part.
      */
-    auto IndividualPartType(
-      asts::TypeAst const &type,
-      scopes::Scope const &scope,
-      Str const &step)
-      -> Pair<Shared<asts::TypeAst>, scopes::Scope const*> {
+    auto IndividualPart(
+      TypeSymbol const &sym,
+      Scope const &scope,
+      IdentifierAst const &step)
+      -> Pair<TypeSymbol*, Scope const*> {
       // Find the part the step names, which is an attribute's own
       // name for a struct and an element's index for a tuple or
       // an array.
-      for (auto const &[part_step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(type, scope)) {
-        if (part_step == step) { return {part_type, part_scope}; }
+      for (auto const &[part_step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(sym, scope)) {
+        if (part_step->NameId() == step.NameId()) { return {part_sym, part_scope}; }
       }
 
       // Failsafe, should never be reached.
@@ -71,25 +71,25 @@ namespace spp::analyse::utils::linear_utils {
     }
 
     /**
-     * The type of the place @p steps names after @p count of its steps, and the scope that type resolves in. Step
-     * zero is the symbol itself, so a @p count of zero is the symbol's own type and a count of @c {steps.Len() - 1}
-     * is the place the whole path names. Nothing when any step along the way has no such part.
+     * The type symbol of the place @p steps names after @p count of its steps, and the scope it resolves in. Step zero
+     * is the symbol itself, so a @p count of zero is the symbol's own type and a count of @c {steps.Len() - 1} is the
+     * place the whole path names. Nothing when any step along the way has no such part.
      */
     auto DescendToPart(
-      Shared<asts::TypeAst> root_type,
-      scopes::Scope const &root_scope,
-      Vec<Str> const &steps,
+      TypeSymbol *root_sym,
+      Scope const &root_scope,
+      Vec<IdentifierAst*> const &steps,
       const std::size_t count)
-      -> Pair<Shared<asts::TypeAst>, scopes::Scope const*> {
-      auto part_type = std::move(root_type);
+      -> Pair<TypeSymbol*, Scope const*> {
+      auto *part_sym = root_sym;
       auto const *part_scope = &root_scope;
       for (auto i = std::size_t{1}; i <= count and i < steps.Len(); ++i) {
-        if (part_type == nullptr or part_scope == nullptr) { break; }
-        auto [next_type, next_scope] = IndividualPartType(*part_type, *part_scope, steps[i]);
-        part_type = std::move(next_type);
+        if (part_sym == nullptr or part_scope == nullptr) { break; }
+        const auto [next_sym, next_scope] = IndividualPart(*part_sym, *part_scope, *steps[i]);
+        part_sym = next_sym;
         part_scope = next_scope;
       }
-      return {std::move(part_type), part_scope};
+      return {part_sym, part_scope};
     }
 
     /**
@@ -100,16 +100,16 @@ namespace spp::analyse::utils::linear_utils {
      * only covered by finding that both of its own parts were taken. The parts of a class are its attributes; the
      * parts of a tuple or an array are its elements, which a destructure records by index.
      * @param region The names of the steps of the place being accounted for, outermost first.
-     * @param type The type of that place.
-     * @param scope The scope @p type resolves in.
+     * @param sym The symbol of that place's type.
+     * @param scope The scope @p sym resolves in.
      * @param moves Every partial move recorded against the owning symbol.
      * @return Whether the place has nothing left to consume.
      */
     auto RegionConsumed(
-      Vec<Str> const &region,
-      asts::TypeAst const &type,
-      scopes::Scope const &scope,
-      Vec<asts::Ast const*> const &moves,
+      Vec<IdentifierAst*> const &region,
+      TypeSymbol const &sym,
+      Scope const &scope,
+      Vec<Ast const*> const &moves,
       Str *const unaccounted = nullptr,
       const bool descend_regardless = false)
       -> bool {
@@ -118,7 +118,7 @@ namespace spp::analyse::utils::linear_utils {
       // detect if a different move contains the region.
       auto touched = false;
       for (auto const *move : moves) {
-        const auto relation = mem_utils::MemRegionRelate(*move, region);
+        const auto relation = mem_utils::MemRegionRelate(mem_utils::RegionPath(*move), region);
         if (relation == mem_utils::MemRegionRelation::Contains) { return true; }
         if (relation == mem_utils::MemRegionRelation::ContainedBy) { touched = true; }
       }
@@ -128,21 +128,21 @@ namespace spp::analyse::utils::linear_utils {
       // return optimization.
       if (not touched and not descend_regardless) {
         if (unaccounted != nullptr and unaccounted->empty()) {
-          for (auto const &step : region) { *unaccounted += unaccounted->empty() ? step : "." + step; }
+          for (auto const *step : region) { *unaccounted += unaccounted->empty() ? step->Val : "." + step->Val; }
         }
         return false;
       }
 
       auto part = region;
-      part.EmplaceBack(Str()); // Extra spot for temp "final" part.
+      part.EmplaceBack(nullptr); // Extra spot for temp "final" part.
 
       // Each part is checked on its own, under the name a destructure would have recorded it by - an attribute's own
       // name, or an element's index. A copyable part was never owed to anyone, so it never has to be accounted for.
       // If any part is unaccounted for, then nor is the value holding it.
-      for (auto const &[step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(type, scope)) {
+      for (auto const &[step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(sym, scope)) {
         if (part_sym == nullptr or part_sym->IsCopyable()) { continue; }
-        part.Back() = step;
-        if (not RegionConsumed(part, *part_type, *part_scope, moves, unaccounted)) { return false; }
+        part.Back() = step.get();
+        if (not RegionConsumed(part, *part_sym, *part_scope, moves, unaccounted)) { return false; }
       }
 
       // Nothing left behind, so at this point we know the value
@@ -159,27 +159,20 @@ namespace spp::analyse::utils::linear_utils {
      * @return Whether the symbol still owns an unconsumed value.
      */
     auto IsLive(
-      scopes::VariableSymbol const &sym,
-      scopes::ScopeManager const &sm)
+      VariableSymbol const &sym,
+      ScopeManager const &sm)
       -> bool {
-      // A symbol that never owned a value has nothing to answer for:
-      // an unbound generic, a compile-time constant (which has no
-      // runtime existence), or a symbol with no type to reason about.
-      if (sym.IsGeneric) { return false; }
-
-      // A flow-narrowing symbol is a view of another symbol's value,
-      // typed as whatever a pattern matched. It shares the storage
-      // rather than owning it, so the obligation stays with the symbol
-      // it narrows.
-      if (sym.IsFlowNarrowing) { return false; }
+      // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, a
+      // flow-narrowing symbol is a view of another symbol's value (which keeps the obligation), and a capture belongs
+      // to the closure's environment, which is read again on every call - it is the closure value that is held to
+      // being consumed.
+      //
+      // Todo: A "$" temporary is exempted too - the iterator behind a "loop ... in", the subject a destructure was
+      //  bound to, the slot an early return writes through - since reporting it blames code nobody can fix. That is a
+      //  real gap rather than a nicety: "$_iter" holds an iterator that genuinely goes unconsumed. The desugarings
+      //  have to be made linear-correct, and then "Temporary" is checked here too.
+      if (sym.Kind != VariableKind::Local) { return false; }
       if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
-      if (sym.MemInfo->AstCompTime != nullptr) { return false; }
-
-      // Todo: A "$" name is a desugaring temporary - the iterator behind a "loop ... in", the subject a destructure was
-      //  bound to, the slot an early return writes through - and none of it is written by the programmer, so reporting it
-      //  blames code nobody can fix. Exempting it is a real gap rather than a nicety: "$_iter" holds an iterator that
-      //  genuinely goes unconsumed. The desugarings have to be made linear-correct, and then this goes away.
-      if (sym.Name != nullptr and sym.Name->Val.starts_with("$")) { return false; }
 
       // A borrow points at a value that belongs to someone else, so
       // consuming it is not this scope's job.
@@ -215,7 +208,7 @@ namespace spp::analyse::utils::linear_utils {
       // is to go on.
       if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return true; }
       return not RegionConsumed(
-        Vec{sym.Name->Val}, *sym.Type, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
+        Vec<IdentifierAst*>{sym.Name.get()}, *type_sym, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
     }
 
     /**
@@ -230,10 +223,10 @@ namespace spp::analyse::utils::linear_utils {
      * @param meta Associated metadata, for resolving the destructor overload.
      */
     auto CheckDestructorStillReachable(
-      scopes::VariableSymbol const &sym,
-      asts::Ast const &exit_point,
-      scopes::ScopeManager &sm,
-      asts::meta::CompilerMetaData *const meta)
+      VariableSymbol const &sym,
+      Ast const &exit_point,
+      ScopeManager &sm,
+      CompilerMetaData *const meta)
       -> void {
       // Nothing taken out of it is nothing to put back.
       if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return; }
@@ -244,29 +237,25 @@ namespace spp::analyse::utils::linear_utils {
       if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return; }
       if (sym.Type->GetConvention() != nullptr) { return; }
 
+      const auto root_sym = sm.CurrentScope->GetTypeSymbol(sym.Type.get());
       for (auto const *move : sym.MemInfo->AstPartialMoves) {
         // A move leaves a hole in every place it reached *through*, so each of those is asked in turn: the symbol's
         // own type first, then one step further in for each name the path passes on its way. The place the move
         // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
         // it, and only taking something from inside a value strands the value's own. That is what stops the last
         // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
-        const auto path = mem_utils::RegionPath(*move)
-          | genex::views::transform([](const auto step) { return step->Val; })
-          | genex::to<Vec>();
+        const auto path = mem_utils::RegionPath(*move);
 
         for (auto i = 0uz; i + 1 < path.Len(); ++i) {
-          const auto [part_type, part_scope] = DescendToPart(sym.Type, *sm.CurrentScope, path, i);
-          if (part_type == nullptr or part_scope == nullptr) { break; }
-
-          const auto type_sym = part_scope->GetTypeSymbol(part_type.get());
-          if (type_sym == nullptr) { continue; }
+          const auto [type_sym, part_scope] = DescendToPart(root_sym, *sm.CurrentScope, path, i);
+          if (type_sym == nullptr or part_scope == nullptr) { break; }
 
           const auto destructor = drop_utils::FindDropOverload(*type_sym, sm, meta);
           if (destructor == nullptr) { continue; }
 
           // Held in a local so the view handed to the error
           // outlives it.
-          const auto owner_name = part_type->WithoutGenerics()->ToString();
+          const auto owner_name = type_sym->FqName()->WithoutGenerics()->ToString();
           Raise<errors::SppPartialMoveOfDestructibleValueError>(
             {sm.CurrentScope}, ERR_ARGS(exit_point, *move, *destructor->Name, StrView(owner_name)));
         }
@@ -276,9 +265,9 @@ namespace spp::analyse::utils::linear_utils {
 }
 
 auto spp::analyse::utils::linear_utils::FirstUnaccountedPart(
-  scopes::VariableSymbol const &sym,
-  Vec<Str> const &region,
-  scopes::ScopeManager const &sm)
+  VariableSymbol const &sym,
+  Vec<IdentifierAst*> const &region,
+  ScopeManager const &sm)
   -> Str {
   // No region parts -> no unaccounted parts. Simple optimization
   // guard.
@@ -286,23 +275,24 @@ auto spp::analyse::utils::linear_utils::FirstUnaccountedPart(
 
   // Walk the whole region, so that "a.b.c" lands on the type of
   // "c" and the scope that type resolves in.
-  const auto [region_type, region_scope] = DescendToPart(sym.Type, *sm.CurrentScope, region, region.Len() - 1);
-  if (region_type == nullptr or region_scope == nullptr) { return Str(); }
+  const auto [region_sym, region_scope] = DescendToPart(
+    sm.CurrentScope->GetTypeSymbol(sym.Type.get()), *sm.CurrentScope, region, region.Len() - 1);
+  if (region_sym == nullptr or region_scope == nullptr) { return Str(); }
 
   // The caller has established that the pattern took this place
   // apart, so its parts are walked whether or not any of them
   // recorded a move.
   auto unaccounted = Str();
   auto _ = RegionConsumed(
-    region, *region_type, *region_scope, sym.MemInfo->AstPartialMoves, &unaccounted, true);
+    region, *region_sym, *region_scope, sym.MemInfo->AstPartialMoves, &unaccounted, true);
   return unaccounted;
 }
 
 auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
-  scopes::Scope const &scope,
-  asts::Ast const &exit_point,
+  Scope const &scope,
+  Ast const &exit_point,
   const StrView exit_what,
-  scopes::ScopeManager &sm)
+  ScopeManager &sm)
   -> void {
   // Reverse order: the statements run last-registered-first,
   // so a value deferred after another is released first.
@@ -349,11 +339,11 @@ auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
 }
 
 auto spp::analyse::utils::linear_utils::CheckScopeExit(
-  scopes::Scope const &scope,
-  asts::Ast const &exit_point,
+  Scope const &scope,
+  Ast const &exit_point,
   const StrView exit_what,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
+  ScopeManager &sm,
+  CompilerMetaData *meta)
   -> void {
   //
   using errors::SppLinearValueNotConsumedError;
@@ -388,7 +378,7 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     // whatever initialized it. A parameter is initialized by the
     // whole "name: Type" ast, so pointing at that underlines the
     // type as well, which reads as though the type were at fault.
-    const auto def = static_cast<asts::Ast const*>(sym->Name.get());
+    const auto def = static_cast<Ast const*>(sym->Name.get());
 
     // Held in locals so the views handed to the error outlive it.
     const auto sym_name = sym->Name->ToString();
@@ -399,10 +389,10 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
 }
 
 auto spp::analyse::utils::linear_utils::CheckLiveUpToFunction(
-  asts::Ast const &exit_point,
+  Ast const &exit_point,
   const StrView exit_what,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
+  ScopeManager &sm,
+  CompilerMetaData *meta)
   -> void {
   // Outside a function there is no linear obligation to discharge:
   // a module-level constant outlives every scope that reads it.
@@ -418,12 +408,12 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToFunction(
 }
 
 auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
-  asts::Ast const &exit_point,
+  Ast const &exit_point,
   const StrView exit_what,
   const std::size_t num_exits,
   const bool has_skip,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
+  ScopeManager &sm,
+  CompilerMetaData *meta)
   -> void {
   //
   auto loops_seen = 0uz;
@@ -433,7 +423,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
     // An iterable loop is rewritten into a conditional one before
     // this stage, so matching the conditional form covers both.
     const auto is_loop = scope->AstNode != nullptr
-      and AstAs<asts::LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
+      and AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
 
     if (is_loop) {
       // The loop after the ones being exited is the one a trailing

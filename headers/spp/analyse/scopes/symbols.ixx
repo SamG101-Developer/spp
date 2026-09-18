@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbols;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.utils.mem_info_utils;
 import spp.asts.ast;
 import spp.asts.convention_ast;
@@ -11,434 +12,538 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct AnnotationAst;
-  SPP_EXP_CLS struct ClassPrototypeAst;
-  SPP_EXP_CLS struct ConventionAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-  SPP_EXP_CLS struct TypeStatementAst;
-  SPP_EXP_CLS struct GenericParameterGroupAst;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct AliasInfo);
+use(spp::analyse::scopes, struct Symbol);
+use(spp::analyse::scopes, struct NamespaceSymbol);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::scopes, enum class VariableKind);
+use(spp::analyse::scopes, enum class TypeKind);
+use(spp::asts, struct AnnotationAst);
+use(spp::asts, struct ClassPrototypeAst);
+use(spp::asts, struct ConventionAst);
+use(spp::asts, struct GenericParameterGroupAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts, struct TypeStatementAst);
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct AliasInfo;
-  SPP_EXP_CLS struct Symbol;
-  SPP_EXP_CLS struct NamespaceSymbol;
-  SPP_EXP_CLS struct TypeSymbol;
-  SPP_EXP_CLS struct VariableSymbol;
-}
+/// What a type resolves to: the symbol of the type, and how
+/// a value of it is held. The convention is not part of the
+/// symbol ("&mut Str" and "Str" are one type symbol, borrowed
+/// differently), and "!" is marked rather than resolved: it
+/// names the "Never" class, but fits anywhere that class would
+/// not.
+SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
+  /// The type's symbol; null when the type resolved to none.
+  TypeSymbol *Sym = nullptr;
 
-/**
- * The base Symbol type for all symb variations to inherit from. This provides a common interface for all symbols, and
- * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
- * need for a base class.
- */
-SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
-  SPP_GCC_VTABLE_FIX_BASE
+  /// How the value is held. "MOV" is no convention, as
+  /// "ConventionAst" compares it.
+  ConventionTag Conv = ConventionTag::MOV;
 
-  /**
-   * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
-   * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
-   * as it allows for proper cleanup of resources when a derived class is deleted.
-   */
-  virtual ~Symbol();
+  /// Whether the type is "!".
+  bool IsNever = false;
 
-  /**
-   * Whether a generic instantiation cloning a scope has to be given its own copy of this symbol, or can share the
-   * template's. Only what monomorphization goes on to rewrite, or what carries per-instantiation state, needs its own;
-   * everything else is written once and read from every instantiation. See @c IndividualSymbolTable::DeepCopyFrom .
-   * @return Whether this symbol must be copied rather than shared.
-   */
-  SPP_ATTR_NODISCARD virtual auto NeedsDeepCopy() const -> bool = 0;
+  /// A written or inferred type, resolved where "scope" reads
+  /// it.
+  static auto Of(TypeAst const &type, Scope const &scope) -> TypeRef;
 
-  /**
-   * Obtain a @c Shared owning pointer to this symbol, downcast to the requested derived symbol type. Symbols are
-   * always created via @c MakeShared and stored in symbol tables, so the enclosing control block is guaranteed to
-   * exist; this mints an owning pointer lazily at the call sites that actually need shared ownership, without the
-   * ancestor-walking traversals having to copy @c Shared pointers per element.
-   * @tparam Derived The concrete symbol type to downcast to (defaults to @c Symbol for no downcast).
-   * @return A @c Shared pointer to this symbol as @c Derived.
-   */
-  template <typename Derived = Symbol>
-  SPP_ATTR_NODISCARD auto SharedFromThis() -> Shared<Derived> {
-    if constexpr (std::is_same_v<Derived, Symbol>) {
-      return shared_from_this();
-    }
-    else {
-      return spp::static_shared_cast<Derived>(shared_from_this());
-    }
+  /// The template of the type being passed in; for "Vec[Str]",
+  /// this will resolve to "Vec", and the symbol gotten from
+  /// the provided "scope".
+  static auto OfHead(TypeAst const &type, Scope const &scope) -> TypeRef;
+
+  /// What "sym"'s qualified name ("TypeSymbol::FqName") resolves
+  /// to where "scope" reads it, without building the name where
+  /// the symbol already says.
+  static auto OfSym(TypeSymbol &sym, Scope const &scope) -> TypeRef;
+
+  SPP_ATTR_NODISCARD auto IsBorrowed() const -> bool {
+    return Conv != ConventionTag::MOV;
+  }
+
+  /// The same type held by value ("Str" for "&Str"), without the
+  // clone a type's own "WithoutConvention" makes.
+  SPP_ATTR_NODISCARD auto WithoutConvention() const -> TypeRef {
+    return TypeRef{.Sym = Sym, .Conv = ConventionTag::MOV, .IsNever = IsNever};
+  }
+
+  /// The symbol a kind check ("type_predicates") reads: none for
+  /// a borrow or "!", which no template matches.
+  SPP_ATTR_NODISCARD auto KindSym() const -> TypeSymbol* {
+    return IsBorrowed() or IsNever ? nullptr : Sym;
   }
 };
 
+/// The base symbol type for all symbol variations to inherit
+/// from. This provides a common interface for them, and some
+/// abstract method that must be implemented by all derived
+/// classes.
+SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
+  SPP_GCC_VTABLE_FIX_BASE;
+
+  virtual ~Symbol();
+
+  /// Simple function determining whether the symbol actually
+  /// needs to be deeply copied, or we can do a shallow copy and
+  /// it will act the same. Good optimization for cloning.
+  SPP_ATTR_NODISCARD virtual auto NeedsDeepCopy() const -> bool = 0;
+
+  /// Add a customized "shared_from_this()" implementation for
+  /// derived classes. This allows a simple way to get the shared
+  /// version of this struct, downcast to any of the specialised
+  /// symbols.
+  template <typename Derived = Symbol>
+  SPP_ATTR_NODISCARD auto SharedFromThis() -> Shared<Derived> {
+    if constexpr (std::is_same_v<Derived, Symbol>) { return shared_from_this(); }
+    else { return spp::static_shared_cast<Derived>(shared_from_this()); }
+  }
+};
+
+/// The namespace symbol is the simplest symbol, and allows the
+/// discovery of a nested module namespace from a given module
+/// scope.
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
-  Shared<asts::IdentifierAst> Name;
+  /// The name of the namespace; this will be the same as the
+  /// namespace scope whom this symbol represents.
+  Shared<IdentifierAst> Name;
 
+  /// The namespace scope that this symbol represents. This
+  /// symbol will be the "NsSym" on the linked scope.
   Scope *LinkedScope;
 
-  NamespaceSymbol(
-    Shared<asts::IdentifierAst> name,
-    Scope *scope);
-
-  NamespaceSymbol(
-    NamespaceSymbol const &that);
-
+  NamespaceSymbol(Shared<IdentifierAst> name, Scope *scope);
+  NamespaceSymbol(NamespaceSymbol const &that);
   ~NamespaceSymbol() override;
 
-  /**
-   * A namespace is the same namespace from inside every instantiation, and nothing about one is rewritten by a
-   * substitution, so it is always shared. It is unlikely it is ever in a place that needs copying, but for future
-   * namespace aliasing, is included.
-   */
+  /// A namespace symbol never needs to be deep copied - nothing
+  /// is ever mutated and shared.
   SPP_ATTR_NODISCARD auto NeedsDeepCopy() const -> bool override;
 
-  auto operator==(
-    NamespaceSymbol const &that) const
-    -> bool;
+  /// Equality is done by pointer comparison. We only want to
+  /// know if two pointers are the same effectively.
+  auto operator==(NamespaceSymbol const &that) const -> bool;
 };
 
+/// What a variable symbol names. Several different things share
+/// the variable table, and this is how they are told apart,
+/// rather than by which other fields happen to be set.
+SPP_EXP_CLS enum class spp::analyse::scopes::VariableKind {
+  Local, // A "let" binding or a function parameter.
+  Temporary, // A "$" desugaring temporary, never written by the programmer.
+  Import, // A "use" import whose target is not found yet; takes the target's kind in stage 3.
+  Capture, // A closure's capture, owned by the closure's environment.
+  FlowNarrowing, // A narrowed view of another symbol's value, from a case pattern.
+  Attribute, // A class attribute, reached with ".".
+  Constant, // A "cmp" constant, reached with "::".
+  Function, // A function's "$" mock constant, reached with "." or "::".
+  GenericCompParam, // A comp generic parameter, not yet bound.
+  GenericCompArg, // A comp generic bound to an argument.
+};
+
+/// What a type symbol names, the counterpart of "VariableKind".
+/// Whether a generic is bound, and to what, is still read off
+/// its "LinkedScope" and "GenericVal" - a binding to another
+/// generic behaves like an unbound one, which no kind captures.
+SPP_EXP_CLS enum class spp::analyse::scopes::TypeKind {
+  Class, // A class, or an instantiation of one.
+  Alias, // A "type" statement or a "use" of a type; see "AliasInfo".
+  Self, // The "Self" of a class, "sup" block or alias.
+  GenericParam, // A generic type parameter, not yet bound.
+  GenericArg, // A generic type parameter bound to an argument.
+  FunctionMock, // A function's "$" mock class, which its overloads are superimposed over.
+  ClosureMock, // A closure's "$closure" mock class, with its function type attached directly.
+};
+
+namespace spp::analyse::scopes {
+  /// A fresh identity for a generic parameter's symbol ("ParamId"),
+  /// never zero. Declared "extern C++" like the rest of this module,
+  /// whose definitions sit in the global module ("SPP_MOD_BEGIN").
+  SPP_EXP_CLS auto NextGenericParamId() -> std::uint64_t;
+}
+
+/// A variable symbol is used extremely often, for class fields,
+/// constants, parameters, variables, captures, etc etc. It has
+/// a host of flags for fine-tuning usage.
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
-  Shared<asts::IdentifierAst> Name;
+  /// The name of the symbol as the identifier ast, used for
+  /// matching on a "get symbol" operation.
+  Shared<IdentifierAst> Name;
 
-  Shared<asts::TypeAst> Type;
+  /// The type that this variable is. This is always provided
+  /// on declaration of a variable, so should never be nullptr
+  /// or even deferred.
+  Shared<TypeAst> Type;
 
+  /// "Type" resolved where "scope" reads it ("TypeRef::Of");
+  /// empty while there is no type.
+  SPP_ATTR_NODISCARD auto TypeRefIn(Scope const &scope) const -> TypeRef;
+
+  /// The scope that this symbol was defined in (this will happen
+  /// to be the scope that the symbol resides in, which is not
+  /// always the case for type symbols).
   Scope *ScopeDefinedIn;
 
+  /// The kind of variable symbol, such as a comptime constant,
+  /// a capture, a flow types narrower, etc.
+  VariableKind Kind;
+
+  /// A comp generic parameter's identity: non-zero on the
+  /// parameter, unique to its declaration and kept by every copy
+  /// of the symbol - the name alone is shared by every parameter
+  /// spelled the same.
+  std::uint64_t ParamId = 0;
+
+  /// On a binding, the "ParamId" of the parameter it binds, so a
+  /// lookup finds the binding of one particular parameter rather
+  /// than of whatever shares its name.
+  std::uint64_t BindsParamId = 0;
+
+  /// Whether the symbol is mutable, ie can the variable it
+  /// represents be re-assigned a new value.
   bool IsMutable = false;
 
-  bool IsGeneric = false;
-
-  bool IsFlowNarrowing = false;
-
-  /**
-   * For a flow-narrowing symbol, the symbol it narrows: same name, same storage, wider type. Consuming through the
-   * narrowed name discharges the value itself, so a move recorded against this symbol is recorded against that one
-   * too - otherwise the original reads as live and is reported as never discharged at whatever exit follows.
-   */
-  Shared<VariableSymbol> NarrowsSym;
-
-  /**
-   * The functional type this symbol is called through, when that is not simply its own type. A parameter declared
-   * against a generic ("mut pred: F", with "F: FunMov") is callable through what its constraint promised, whatever
-   * the instantiation substituted for it - and a "FunMut" satisfies a "FunMov" constraint while also being callable
-   * through a borrow. Deciding from the substituted type instead made the same body consume the value in one
-   * instantiation and borrow it in another, which linear ownership cannot account for: the body would have to discard
-   * the value in one and must not in the other. Null for everything else, which is called through its own type.
-   */
-  Shared<const asts::TypeAst> CallableAsType;
-
-  asts::utils::Visibility Visibility;
-
-  asts::AnnotationAst *VisibilityAnnotation = nullptr;
-
-  Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
-
-  Shared<codegen::LlvmVarSymInfo> LlvmInfo;
-
-  Unique<asts::Ast> CompTimeValue;
-
+  /// For a "use" import, the symbol it names (its target). This
+  /// is nullptr for anything not imported, and for an import
+  /// before stage 3 - whose kind is "Import" until then.
   Shared<VariableSymbol> AliasSym;
 
+  /// For flow typing, store the variable that this symbol has
+  /// narrowed down from. If this is a variable of "Some[S32]",
+  /// the "NarrowsSym" might be the "Opt[S32]" type variable.
+  Shared<VariableSymbol> NarrowsSym;
+
+  /// There is a unique cases with functional types; if we constrain
+  /// a generic F to FunMov, and then supply a FunRef, the "f: F"
+  /// would get called with the convention based on the actual type.
+  /// To enforce consistency of memory rules, we call it with the
+  /// constraint type, so whether FunMov/Mut/Ref is passed in, it
+  /// always uses the FunMov technique and memory analysis.
+  Shared<const TypeAst> CallableAsType;
+
+  /// The visibility that this variable has. This is only
+  /// applicable in contexts such as module/sup-level constants,
+  /// and is only queried when needed (nullptr is fine).
+  asts::utils::Visibility Visibility;
+
+  /// Reflecting the above "Visibility", the ast representing
+  /// the visibility is also used, for error reporting diagnostics.
+  /// This is needed to ensure there are no visibility conflicts
+  /// for all overloads of the same function.
+  AnnotationAst *VisibilityAnnotation = nullptr;
+
+  /// The memory info for this variable, unique per symbol and
+  /// used extensively in stage 8 memory analysis. Holds all move,
+  /// initialization-stage, branch-inconsistencies, etc.
+  Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
+
+  /// The LLVM symbol information used during stage 10 and 11 of
+  /// the compilation pipeline. Currently, tracks the "alloca".
+  Shared<codegen::LlvmVarSymInfo> LlvmInfo;
+
+  /// The compile-time value: a constant's (folded) value, a bound
+  /// comp generic's argument, or a local's value while a comp-time
+  /// call runs. Null when there is none, as for an unbound comp
+  /// generic.
+  Unique<Ast> CompTimeValue;
+
   VariableSymbol(
-    Shared<asts::IdentifierAst> name,
-    Shared<asts::TypeAst> type,
+    Shared<IdentifierAst> name,
+    Shared<TypeAst> type,
     Scope *ScopeDefinedIn,
+    VariableKind kind,
     bool is_mutable = false,
-    bool is_generic = false,
     asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate);
 
-  VariableSymbol(
-    VariableSymbol const &that);
-
+  VariableSymbol(VariableSymbol const &that);
   ~VariableSymbol() override;
 
-  /**
-   * A variable symbol carries state that belongs to one instantiation and not to the template: the memory state the
-   * memory checker writes, and the alloca (or global) code generation gives it. Two instantiations sharing one would
-   * be two functions sharing one stack slot, so a variable symbol is always copied.
-   */
+  /// A variable symbol must be deep copied, as it contains
+  /// lots of mutable state that we don't want to be shared,
+  /// especially as the analysis is what mutates it (stages
+  /// 7, 8, 11 in particular).
   SPP_ATTR_NODISCARD auto NeedsDeepCopy() const -> bool override;
 
-  auto operator==(
-    VariableSymbol const &that) const
-    -> bool;
+  /// Equality is done by pointer comparison. We only want to
+  /// know if two pointers are the same effectively.
+  auto operator==(VariableSymbol const &that) const -> bool;
 
-  SPP_ATTR_NODISCARD auto FqName() const
-    -> Shared<asts::ExpressionAst>;
+  /// Get the fully qualified name of a variable by moving
+  /// through ancestors - applicable to constants etc.
+  SPP_ATTR_NODISCARD auto FqName() const -> Shared<ExpressionAst>;
 
-  /**
-   * The value this symbol's generic parameter was bound to, for a comp generic that has been given an argument. A
-   * bound type generic's binding is reachable from its symbol's @c TypeSymbol::FqName; a comp generic's lives on the
-   * comp-time ast @c type_utils::CreateGenericSym left behind, encoded as the argument itself for an instantiation
-   * and as the parameter for a template. This is the one place that knows that encoding.
-   * @return The bound value, or @c nullptr if this symbol is not a comp generic, or is one that is still unbound.
-   */
-  SPP_ATTR_NODISCARD auto BoundCompValue() const
-    -> asts::ExpressionAst*;
+  /// The value a comp generic was bound to: its compile-time
+  /// value, for a bound one only. Null for anything else,
+  /// including a comp generic that is still unbound.
+  SPP_ATTR_NODISCARD auto BoundCompValue() const -> ExpressionAst*;
+
+  /// Whether this is a comp generic, bound or not.
+  SPP_ATTR_NODISCARD auto IsCompGeneric() const -> bool;
+
+  /// Whether this has no runtime storage of its own: a "cmp"
+  /// constant, a function's mock constant, or a comp generic.
+  SPP_ATTR_NODISCARD auto IsCompTime() const -> bool;
+
+  /// Whether this names something brought in by a "use" rather
+  /// than declared here: an import still waiting for its target,
+  /// or one that has found it. A declaration may shadow an import,
+  /// but importing a name twice is a redefinition.
+  SPP_ATTR_NODISCARD auto IsImport() const -> bool;
 };
 
-/**
- * Everything an alias is: the type it was written as, the type that turns out to be, and the parameters it declares
- * of its own. An alias is transparent - it introduces a second name for a type rather than a type of its own - so
- * @c Resolved is what every consumer of the symbol actually means by it, and is the only field most of them read.
- *
- * @n
- * Held as a value on the symbol rather than as a pointer to the statement that produced it. The statement belongs to
- * the module tree, and an instantiation of a generic alias has no statement of its own to point at - it is the same
- * alias under substituted arguments, which is a new @c AliasInfo and not a new piece of syntax.
- */
+/// All required information about aliases - how it was
+/// written, how it resolved, generic information scopes, etc.
+/// Aliases aren't "new types", they are transparent secondary
+/// names for already existing types, so the genuine type is
+/// the "Resolved" type
 SPP_EXP_CLS struct spp::analyse::scopes::AliasInfo {
-  /** The target as written ("SizedIntegerUnsigned[8_u32]"), before any alias in the chain has been followed. */
-  Shared<asts::TypeAst> Written;
+  /// The target as it was written, before any alias in the
+  /// chain has been followed.
+  Shared<TypeAst> Written;
 
-  /**
-   * What @c Written names once every alias in the chain has been followed ("SizedInteger[w=8_u32, signed=false]").
-   * Seeded with @c Written and refined during resolution, so it is never null: analysing an alias's target reads
-   * this off the very symbol still being resolved.
-   */
-  Shared<asts::TypeAst> Resolved;
+  /// The resolved type that came out of the core alias
+  /// analyser.
+  Shared<TypeAst> Resolved;
 
-  /**
-   * The parameters the alias declares itself: the "T" of @code type MyVec[T] = Vec[T]@endcode .
-   */
-  Shared<asts::GenericParameterGroupAst> Params;
+  /// The parameters the alias declares itself: the "T" of
+  /// "type MyVec[T] = Vec[T]".
+  Shared<GenericParameterGroupAst> Params;
 
-  /**
-   * The scope the final target was found in, which is where an instantiation of this alias is attached.
-   */
+  /// The scope the final target was found in, which is where
+  /// an instantiation of this alias is attached.
   Scope *TrackingScope = nullptr;
 
-  /**
-   * The scope the alias was written in.
-   */
+  /// The scope the alias was written in.
   Scope *DeclScope = nullptr;
 
-  /**
-   * Whether a @c use statement produced this alias; generics propagate differently along such a link.
-   */
+  /// Whether a "use" statement produced this alias; generics
+  /// propagate differently along such a link.
   bool FromUseStmt = false;
 
-  /**
-   * Whether @c Params was adopted from the target rather than written on the alias itself, which a @c use statement
-   * does to carry the target's parameters across. Adopted parameters name their constraint and @c cmp types in the
-   * target's file, so they only resolve against @c TrackingScope ; ones the alias declared itself name them in its
-   * own file, and resolve against the statement's own scope.
-   */
+  /// Whether the "Params" was adopted from the target rather
+  /// then written on the alias itself (like being carried
+  /// through from a "use" statement). This modified how generic
+  /// and constraint resolution is performed, scope-wise.
   bool ParamsFromTarget = false;
 
-  /**
-   * The statement this describes, for diagnostics. Not owned: the module tree owns it, and an instantiation shares
-   * the statement of the alias it was instantiated from.
-   */
-  asts::TypeStatementAst *Stmt = nullptr;
+  /// The statement this describes, for diagnostics.
+  TypeStatementAst *Stmt = nullptr;
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX
+  SPP_GCC_VTABLE_FIX;
 
-  Shared<asts::TypeIdentifierAst> Name;
+  /// The name of the type symbol, provided from the type it
+  /// represents.
+  Shared<TypeIdentifierAst> Name;
 
-  asts::ClassPrototypeAst *Type;
+  /// The class prototype that this symbol is for, bound when
+  /// the class is analysed.
+  ClassPrototypeAst *Type;
 
+  /// The scope representing the type. This scope's "TySym" is
+  /// this symbol. Simple 2-way pointer link.
   Scope *LinkedScope;
 
+  /// The scope that this symbol was defined in, almost never the
+  /// "LinkedScope". If "Vec[U]" is created, "U" will be in the
+  /// "ScopeDefinedIn" scope, and no-where else, so track it.
   Scope *ScopeDefinedIn;
 
-  Scope *ScopeModule;
+  /// The kind of type symbol: a class, an alias, "Self", a
+  /// generic parameter or argument, or a function / closure mock.
+  TypeKind Kind;
 
-  bool IsGeneric = false;
-
-  /**
-   * Whether this names a variadic generic parameter (@c "..Ts"), which stands for however many arguments are left
-   * rather than for exactly one. Only meaningful alongside @c IsGeneric . Written as the last argument of a variadic
-   * type it swallows the remainder, which is what lets @c "Tup[Ts]" name a tuple of any size where @c "Tup[T, U, V]"
-   * names a three element one and nothing else.
-   */
+  /// Whether this symbol names a variadic generic parameter
+  /// like "..Ts" or not. Required for monomorphisation and
+  /// overload management.
   bool IsVariadic = false;
 
-  /**
-   * Whether this names a real type the whole way down. False only for a generic instantiation built from arguments
-   * that are themselves still parameters - @c "Pass[T=T]" or @c "Vec[T=U8, A=A]", which a generic body produces
-   * simply by naming a type in terms of its own parameters. Such a type has no layout to give and no size to answer
-   * with, so code generation leaves its struct opaque and never builds anything against it.
-   *
-   * @n
-   * Decided where the instantiation is created (see @c CreateGenericClsScope ), for the same reason
-   * @c FunctionPrototypeAst::GenericSubstitution::IsConcrete is: every reader has to reach the same answer, and
-   * asking separately is how they come to disagree.
-   */
+  /// Whether this symbol names a concrete type all the way down;
+  /// are all the generic arguments concrete etc.
   bool IsConcrete = true;
 
-  Vec<Shared<asts::TypeAst>> GenericConstraints;
+  /// A generic type parameter's identity: non-zero on the
+  /// parameter, unique to its declaration and kept by every copy
+  /// of the symbol - the name alone is shared by every parameter
+  /// spelled the same.
+  std::uint64_t ParamId = 0;
 
-  /**
-   * For a symbol created from a generic argument ("Yield=T"), the argument's value type ("T"). The binding is
-   * normally recoverable from @c LinkedScope, but when the value is itself an unresolved generic parameter there is
-   * no scope to link to, and the mapping would otherwise be lost.
-   */
-  Shared<asts::TypeAst> GenericVal;
+  /// On a binding, the "ParamId" of the parameter it binds, so a
+  /// lookup finds the binding of one particular parameter rather
+  /// than of whatever shares its name.
+  std::uint64_t BindsParamId = 0;
 
-  /**
-   * The symbol this one takes its derived properties from - copyability, zero-type-ness - when it does not carry
-   * them itself: the template a generic substitution was made from, or the type an alias resolves to. Held as a
-   * symbol rather than as a closure over one so that copying a @c TypeSymbol copies what it means - a closure
-   * capturing the symbol it describes would go on describing the symbol it was copied from, which is what stops a
-   * symbol table from being deep-copied.
-   */
+  /// For an instantiation, the template it instantiates, and the
+  /// identity of its arguments ("Scope::InstanceIdentityKey") it is
+  /// filed under in the template's "Instances". Spelling does not
+  /// identify an instantiation: "Box[T]" over two different "T"s is
+  /// two types, and "Vec[S32]" however it is written is one.
+  TypeSymbol *InstanceOf = nullptr;
+  InstanceKey IdentityKey;
+
+  /// For a template, its instantiations by argument identity.
+  Map<InstanceKey, TypeSymbol*, InstanceKeyHash> Instances;
+
+  /// For a generic symbol, the constraints that are used on that
+  /// generic, so they can be re-pulled for inference validation.
+  Vec<Shared<TypeAst>> GenericConstraints;
+
+  /// For generic-to-generic bindings, we need to store the lexical
+  /// value of the next generic symbol.
+  Shared<TypeAst> GenericVal;
+
+  /// There is sometimes a case where we want to derive information
+  /// off of another symbol, such as a generic base might be copyable
+  /// so any instantiation also needs to be.
   Shared<TypeSymbol> DerivesFromSym;
 
+  /// The visibility tag on the type symbol, like for the variable
+  /// symbol/ Needed for checking this type is accessible outside
+  /// it's module or type (sup-defined).
   asts::utils::Visibility Visibility;
 
-  Unique<asts::ConventionAst> Convention;
+  /// The symbol's type convention. Todo: Why is needed again
+  /// as opposed to how it gets used with "&" tokens etc.
+  Unique<ConventionAst> Convention;
 
-  TypeSymbol *GenericImpl;
-
+  /// The LLVM metadata for this type, used during stage 10 and 11
+  /// of the compilation pipeline. Currently, tracks the LLVM type
+  /// and the field index map for S++ layout convention.
   Shared<codegen::LlvmTypeSymInfo> LlvmInfo;
 
-  /** Set when this symbol names an alias rather than a class; see @c AliasInfo . */
+  /// Set when this symbol names an alias rather than a class. It
+  /// contains all the alias information required.
   Shared<AliasInfo> Alias;
 
-  Vec<Shared<TypeSymbol>> AliasedBySyms;
-
+  /// Track whether this type has been marked as copyable, with
+  /// the Copy type superimposition.
   bool IsDirectlyCopyable = false;
 
-  bool IsDirectlyZeroType;
+  /// Track whether this type has been marked as zero-type, with
+  /// the "!zero_type" annotation.
+  bool IsDirectlyZeroType = false;
 
+  /// Track whether this type has been marked as a thread hazard
+  /// with the "!thread_hazard" annotation.
   bool IsDirectlyThreadHazard = false;
 
-
-  /**
-   * The result of the qualifying walk in @c FqName , and the scope-linkage generation it was computed under. The walk
-   * builds a namespace-qualified ast chain from the scopes above @c LinkedScope , all of which are fixed once the
-   * symbol is in place, so the answer only changes when a scope moves in the tree - which the generation records. A
-   * zero generation means nothing is cached yet.
-   */
-  mutable Shared<asts::TypeAst> _CachedFqName;
+  /// The cached fully qualified name of this symbol. This is an
+  /// expensive operation given how often it's used, so we can
+  /// cache it until a cache generation bump occurs.
+  mutable Shared<TypeAst> _CachedFqName;
   mutable std::uint64_t _CachedFqNameGen = 0;
 
   TypeSymbol(
-    Shared<asts::TypeIdentifierAst> name,
-    asts::ClassPrototypeAst *type,
+    Shared<TypeIdentifierAst> name,
+    ClassPrototypeAst *type,
     Scope *scope,
     Scope *scope_defined_in,
-    Scope *scope_module = nullptr,
-    bool is_generic = false,
+    TypeKind kind,
     bool is_directly_copyable = false,
     asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate,
-    Unique<asts::ConventionAst> &&convention = nullptr,
-    Vec<Shared<asts::TypeAst>> const &generic_constraints = {});
+    Unique<ConventionAst> &&convention = nullptr,
+    Vec<Shared<TypeAst>> const &generic_constraints = {});
 
-  TypeSymbol(
-    TypeSymbol const &that);
+  TypeSymbol(TypeSymbol const &that);
+
+  /// Whether this is a generic type parameter, bound or not.
+  SPP_ATTR_NODISCARD auto IsTypeGeneric() const -> bool;
+
+  /// Whether this is a compiler-generated "$" mock class: a
+  /// function's or a closure's.
+  SPP_ATTR_NODISCARD auto IsMock() const -> bool;
+
+  /// Whether this stands for "Self": a class / "sup" block / alias
+  /// "Self", or the generic argument an instantiation registers when
+  /// overload resolution pins "Self" to the receiver - which is also
+  /// a generic argument, so has that kind, but is named "Self".
+  SPP_ATTR_NODISCARD auto IsSelf() const -> bool;
 
   ~TypeSymbol() override;
 
-  /**
-   * Only an alias is rewritten per instantiation ("type T = ..." becomes "type T = Str"). Everything else a type symbol
-   * holds is either the same from every instantiation, or - in the case of @c LlvmInfo - deliberately shared with the
-   * template, because one written type is one llvm type however many instantiations name it.
-   */
+  /// Only if this is an alias symbol do we want to do the
+  /// deep copy, because of the rewrite per instantiation.
+  /// Like with "type T = ,,," becomes "type T = Str" etc.
   SPP_ATTR_NODISCARD auto NeedsDeepCopy() const -> bool override;
 
-  /**
-   * Whether a value of this type is copied rather than moved.
-   * @return Whether this type, or the type it derives copyability from, is copyable.
-   */
+  /// Whether this symbol is directly copyable, or it has
+  /// inherited copyability from the derives-from symbol.
   SPP_ATTR_NODISCARD auto IsCopyable() const -> bool;
 
-  /**
-   * Whether this type has no runtime representation.
-   * @return Whether this type, or the type it derives it from, is a zero type.
-   */
+  /// Whether this symbol is directly zero-type, or it has
+  /// inherited zero-typedness from the derives-from symbol.
   SPP_ATTR_NODISCARD auto IsZeroType() const -> bool;
 
-  /**
-   * Whether a value of this type may cross a thread boundary. Every type may, unless @c !thread_hazard was written on
-   * it or on something it reaches through its generic arguments or attributes,. A generic parameter is the one exception to "safe by
-   * default": until it is bound there is nothing stopping it being instantiated with a hazard, so it answers yes only
-   * where it was constrained to.
-   *
-   * @n
-   * There is no separate "shareable" answer to give, the way Rust separates @c Send from @c Sync : the two differ only
-   * where a value can be mutated through a shared borrow, and the exclusivity law leaves no way to do that. Nor is there an
-   * opposite marker: nothing may claim to be safe while holding a hazard, and the types that guard shared state hold
-   * their value behind a pointer rather than behind anything hazardous, so they answer honestly here.
-   * @return Whether this type is thread-safe.
-   */
+  /// This is more complex. If this type is a direct thread
+  /// hazard, it inherits a thread-hazardous property, or any
+  /// of its fields are a type hazard - then this symbol is a
+  /// thread hazard type. Opposite: thread safe.
   SPP_ATTR_NODISCARD auto IsThreadSafe() const -> bool;
 
-  auto operator==(
-    TypeSymbol const &that) const
-    -> bool;
+  /// Equality is done by pointer comparison. We only want to
+  /// know if two pointers are the same effectively.
+  auto operator==(TypeSymbol const &that) const -> bool;
 
-  /**
-   * The symbol for the class this one names. Usually that is this symbol; the exception is a symbol that stands in for
-   * a class without carrying its prototype - @c "Self", which links to the class's scope but has a null @c Type (see
-   * @c AddSelfTypeSym ). Anything wanting the class rather than the name has to come through here, because reading
-   * @c Type off a stand-in gets nothing.
-   *
-   * @n
-   * The null @c Type on a stand-in is deliberate and must stay: it is what lets two @c "Self" symbols compare equal to
-   * each other, which is how a method written in terms of @c "Self" is recognised as overriding an abstract one. So
-   * the resolution is done by the readers that need a class, never by filling the prototype in.
-   *
-   * @return The class's symbol, or this symbol when it is already one (or names nothing at all).
-   */
-  SPP_ATTR_NODISCARD auto AsClassSymbol() const
-    -> TypeSymbol*;
+  /// Almost always is the "LinkedScope->TySym" this symbol;
+  /// but for "Self", there isn't the link, so we pull the
+  /// type symbol from the linked scope. This is because "Self"
+  /// has a nullptr type, which is required for "Self" to match
+  /// when they are on different sup-levels (ie override match).
+  SPP_ATTR_NODISCARD auto AsClassSymbol() const -> TypeSymbol*;
 
-  /**
-   * The symbol a bound generic parameter ultimately stands for. A bound parameter keeps the parameter's own name
-   * ("T") but links to the argument's scope, and it is the argument that has the attributes, the methods and the sup
-   * chain - so anything asking a property of the type rather than of the name it arrived under comes through here.
-   * Resolved all the way, since an argument can itself be a parameter bound one level out.
-   * @return The argument's symbol, or this symbol when it is not a bound parameter.
-   */
-  SPP_ATTR_NODISCARD auto AsBoundSymbol() const
-    -> TypeSymbol*;
+  /// When this is a generic, link through the "LinkedScope" to
+  /// get the actual scope, then get the "TySym" from there. It
+  /// resolves continuously, until we arrive at a non-generic,
+  /// resolving though any amount of generic links.
+  SPP_ATTR_NODISCARD auto AsBoundSymbol() const -> TypeSymbol*;
 
-  /**
-   * Discard this symbol's cached fully qualified name. Needed when @c LinkedScope is re-pointed after the symbol has
-   * been built, which changes the chain the name is read off without moving any scope in the tree.
-   */
-  auto InvalidateFqNameCache() const
-    -> void;
+  /// Discard this symbol's cached fully qualified name. Needed
+  /// when the "LinkedScope" is re-pointed after the symbol has
+  /// been built, which changes the chain the name is read off
+  /// without moving any scope in the tree.
+  auto InvalidateFqNameCache() const -> void;
 
-  /**
-   * The fully qualified name of the type, as a type AST that re-resolves to this symbol from any scope.
-   * @param ignore_dollar Leave a compiler-generated ("$Func") mock as a bare, module-local name. Defaults to
-   * qualifying it like any other type: the name has to survive crossing a module boundary, because a function value
-   * bound to a generic ("mod_a::a(b)" binding "F = mod_b::$B") is resolved in the caller's scope during inference,
-   * before any generic substitution runs. Only opt out where a bare name is genuinely wanted.
-   */
-  SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = false) const
-    -> Shared<asts::TypeAst>;
+  /// Qualify this type name with the scope it belongs too,
+  /// produces a fully namespaced type name, subject to some
+  /// generic, alias, and $Type rules. There is a rare occasion
+  /// where we don't want to qualify the $Types, so we have a
+  /// flag for it.
+  SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = false) const -> Shared<TypeAst>;
 
-  /**
-   * The type this symbol stands for where it is written.
-   *
-   * @n
-   * For anything but a generic parameter that is simply its fully qualified name. A parameter is the interesting case:
-   * an instantiation binds it, and a type written in terms of it - the @c "Pass[T]" of @c "is Pass[T](val)" - stands
-   * for what it was bound to once that body is being analysed as the instantiation's own. @c FqName cannot answer
-   * that, because a parameter's own name is exactly what it has to keep giving back while the template is analysed in
-   * its own terms, and both readings come through the same symbol.
-   *
-   * @n
-   * An unbound parameter has nothing to follow and stands for itself, which is what leaves a template's body written
-   * the way its author wrote it. A parameter bound to another parameter (@c "T=T", passing an enclosing body's
-   * parameter along) is that same case reached the long way round, and gives back the name it was bound to.
-   *
-   * @return The bound type, or this parameter's own name when it is unbound.
-   */
-  SPP_ATTR_NODISCARD auto BoundName() const
-    -> Shared<asts::TypeAst>;
+  /// The value an instantiation's comp argument "name" is bound to,
+  /// read from its own binding, as its type arguments are read
+  /// through its linked scope; null if there is no such binding.
+  SPP_ATTR_NODISCARD auto BoundCompArg(Str const &name) const -> ExpressionAst const*;
+
+  /// The type an instantiation's type argument "name" is bound to,
+  /// read from its own binding as "BoundCompArg" is; null if there
+  /// is no such binding.
+  SPP_ATTR_NODISCARD auto BoundTypeArg(Str const &name) const -> TypeSymbol*;
+
+  /// The type an instantiation's type argument "name" is, as its own
+  /// name holds it - convention, "Self" and all, which a binding
+  /// ("BoundTypeArg") does not keep; null if there is none. Read off
+  /// the instantiation this stands for: an alias's target, a
+  /// binding's bound type, "Self"'s class.
+  SPP_ATTR_NODISCARD auto TypeArgType(Str const &name) const -> Shared<TypeAst>;
+
+  /// Every type argument of that instantiation, in order - a tuple's,
+  /// which stay positional and so have no names or bindings to read.
+  SPP_ATTR_NODISCARD auto TypeArgTypes() const -> Vec<Shared<TypeAst>>;
+
+  /// This type as a pattern: a template (named as written,
+  /// "Vec") over its own parameters ("Vec[T=T]"), and any other
+  /// type as its own name. What "Self" means inside a template,
+  /// and what the sup blocks written over it are matched against.
+  SPP_ATTR_NODISCARD auto GenericSelfName() const -> Shared<TypeAst>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)

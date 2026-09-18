@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Publish the pinned Python version as SPP_PYTHON_VERSION.
-#
-# Deliberately awk and not pins.py: this runs before Python
-# is installed, so the one value needed to install it cannot
-# itself be read by Python. Everything else goes through
-# pins.py once the interpreter exists.
+# Publish the pinned Python version as SPP_PYTHON_VERSION. awk and
+# not pins.py, because this runs before Python is installed: the
+# one value needed to install it cannot be read by it.
 set -euo pipefail
 
 MANIFEST=".github/dependencies.toml"

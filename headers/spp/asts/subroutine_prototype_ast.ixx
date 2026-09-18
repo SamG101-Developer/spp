@@ -9,12 +9,9 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct SubroutinePrototypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(SubroutinePrototypeAst);
 
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KIND(SubroutinePrototypeAst)
 
   SubroutinePrototypeAst(
@@ -38,5 +35,3 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
 
   SPP_ATTR_NODISCARD auto IsCoroutine() const -> bool override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::SubroutinePrototypeAst)

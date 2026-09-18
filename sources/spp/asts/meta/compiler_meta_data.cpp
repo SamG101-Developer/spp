@@ -7,7 +7,7 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 
 SPP_MOD_BEGIN
-spp::asts::meta::CompilerMetaData::CompilerMetaData() {
+CompilerMetaData::CompilerMetaData() {
   CurrentStage = CompilerStage::kNone;
   ReturnTypeOverloadResolverType = nullptr;
   AssignmentTarget = nullptr;
@@ -15,7 +15,6 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
   CaseConsumedSubjects.Clear();
-  ClsSym = nullptr;
   EnclosingFunctionScope = nullptr;
   EnclosingFunctionFlavour = nullptr;
   EnclosingFunctionRetType = {};
@@ -25,14 +24,13 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   CurrentLambdaOuterScope = nullptr;
   TargetCallFunctionPrototype = nullptr;
   TargetCallWasFunctionAsync = false;
-  PreventAutoGeneratorResume = false;
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
   LetStatementPrecomputedValue = nullptr;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
-  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>>();
+  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>>();
   ObjectInitType = nullptr;
   InferSource = MakeShared<GenericInferenceBindings>();
   InferTarget = MakeShared<GenericInferenceBindings>();
@@ -40,13 +38,10 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   UnaryExpressionRhs = nullptr;
   SkipTypeAnalysisGenericChecks = false;
   TypeAnalysisTypeScope = nullptr;
-  IgnoreCmpGeneric = nullptr;
   AllowMoveDeref = false;
   LlvmEndBB = nullptr;
-  LlvmCtx = nullptr;
   LlvmWantAddress = false;
   LlvmAssignmentTarget = nullptr;
-  LlvmAssignmentTargetType = nullptr;
   LlvmCaseCondition = nullptr;
   LlvmPhi = nullptr;
   LlvmLoopStack = {};
@@ -54,12 +49,11 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
-  ResolveBoundCompGenerics = false;
   LlvmGenerator = nullptr;
   LlvmGeneratorState = nullptr;
 }
 
-auto spp::asts::meta::CompilerMetaData::Save() -> void {
+auto CompilerMetaData::Save() -> void {
   // Reuse a parked slot at this depth if one exists, otherwise grow the pool by one. Copy-assigning into an existing
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
   // storage persists across cycles. `CmpArgs` is moved (the guarded scope rebuilds it); `CmpResult` is not tracked.
@@ -75,7 +69,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.CaseCondition = CaseCondition;
   s.CaseConsumedSubjects = CaseConsumedSubjects;
   s.WithinDeferTok = WithinDeferTok;
-  s.ClsSym = ClsSym;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   s.EnclosingFunctionScope = EnclosingFunctionScope;
   s.EnclosingFunctionFlavour = EnclosingFunctionFlavour;
@@ -85,7 +78,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
   s.TargetCallFunctionPrototype = TargetCallFunctionPrototype;
   s.TargetCallWasFunctionAsync = TargetCallWasFunctionAsync;
-  s.PreventAutoGeneratorResume = PreventAutoGeneratorResume;
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
@@ -100,13 +92,10 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.UnaryExpressionRhs = UnaryExpressionRhs;
   s.SkipTypeAnalysisGenericChecks = SkipTypeAnalysisGenericChecks;
   s.TypeAnalysisTypeScope = TypeAnalysisTypeScope;
-  s.IgnoreCmpGeneric = IgnoreCmpGeneric;
   s.AllowMoveDeref = AllowMoveDeref;
   s.LlvmEndBB = LlvmEndBB;
-  s.LlvmCtx = LlvmCtx;
   s.LlvmWantAddress = LlvmWantAddress;
   s.LlvmAssignmentTarget = LlvmAssignmentTarget;
-  s.LlvmAssignmentTargetType = LlvmAssignmentTargetType;
   s.LlvmCaseCondition = LlvmCaseCondition;
   s.LlvmPhi = LlvmPhi;
   s.LlvmLoopStack = LlvmLoopStack;
@@ -123,12 +112,13 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
-  s.ResolveBoundCompGenerics = ResolveBoundCompGenerics;
+  s.CmpCallSite = CmpCallSite;
+  s.CmpCallSiteScope = CmpCallSiteScope;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
 
-auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
+auto CompilerMetaData::Restore(const bool heavy) -> void {
   // Pop the top slot and move its owning fields back out. The slot is logically dead (the next Save overwrites it),
   // so stealing its shared_ptrs/maps/vecs avoids the atomic-refcount traffic and container copies that copy-assignment
   // would incur. Trivially-copyable fields are assigned directly.
@@ -140,9 +130,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AssignmentTargetType = std::move(state.AssignmentTargetType);
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
-  CaseConsumedSubjects = state.CaseConsumedSubjects;
+  CaseConsumedSubjects = std::move(state.CaseConsumedSubjects);
   WithinDeferTok = state.WithinDeferTok;
-  ClsSym = state.ClsSym;
   if (heavy) {
     EnclosingFunctionScope = state.EnclosingFunctionScope;
     EnclosingFunctionFlavour = state.EnclosingFunctionFlavour;
@@ -154,7 +143,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   CurrentLambdaOuterScope = state.CurrentLambdaOuterScope;
   TargetCallFunctionPrototype = state.TargetCallFunctionPrototype;
   TargetCallWasFunctionAsync = state.TargetCallWasFunctionAsync;
-  PreventAutoGeneratorResume = state.PreventAutoGeneratorResume;
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
@@ -169,13 +157,10 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   UnaryExpressionRhs = state.UnaryExpressionRhs;
   SkipTypeAnalysisGenericChecks = state.SkipTypeAnalysisGenericChecks;
   TypeAnalysisTypeScope = state.TypeAnalysisTypeScope;
-  IgnoreCmpGeneric = std::move(state.IgnoreCmpGeneric);
   AllowMoveDeref = state.AllowMoveDeref;
   LlvmEndBB = state.LlvmEndBB;
-  LlvmCtx = state.LlvmCtx;
   LlvmWantAddress = state.LlvmWantAddress;
   LlvmAssignmentTarget = state.LlvmAssignmentTarget;
-  LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
   LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
@@ -189,18 +174,19 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
-  ResolveBoundCompGenerics = state.ResolveBoundCompGenerics;
+  CmpCallSite = state.CmpCallSite;
+  CmpCallSiteScope = state.CmpCallSiteScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
 }
 
-auto spp::asts::meta::CompilerMetaData::Depth() const
+auto CompilerMetaData::Depth() const
   -> std::size_t {
   // Get the number of live history items.
   return _Depth;
 }
 
-spp::asts::meta::MetaGuard::MetaGuard(
+MetaGuard::MetaGuard(
   CompilerMetaData *const meta,
   const bool heavy) :
   _Meta(meta),
@@ -208,7 +194,7 @@ spp::asts::meta::MetaGuard::MetaGuard(
   _Meta->Save();
 }
 
-spp::asts::meta::MetaGuard::~MetaGuard() {
+MetaGuard::~MetaGuard() {
   _Meta->Restore(_Heavy);
 }
 

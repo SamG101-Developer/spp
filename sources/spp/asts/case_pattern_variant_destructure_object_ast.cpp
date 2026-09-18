@@ -24,8 +24,8 @@ import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
@@ -51,50 +51,43 @@ import genex;
 SPP_MOD_BEGIN
 namespace spp::asts {
   namespace {
-    /**
-     * The next level down of a pattern that narrows further than the alternative it matched.
-     *
-     * @n
-     * A pattern can name a type narrower than any one alternative of its subject: @c "Some[Some[T]]" against an
-     * @c "Opt[Opt[T]]" - whose alternatives are @c "Some[Opt[T]]" and @c "None" - also claims the inner @c "Opt[T]"
-     * is a @c "Some" . That claim needs its own discriminant check, against the payload the outer one selected.
-     *
-     * There is another level exactly when the alternative holds a variant that the pattern names one alternative of.
-     * Arguments that are already equal mean the pattern describes this level exactly, so the ordinary
-     * @c "is Some[T](val)" ends here and is checked once.
-     *
-     * @param pattern The pattern type at this level.
-     * @param alt The alternative it matched.
-     * @param scope The scope to resolve both in.
-     * @return The pattern and subject for the level below, or two nulls when this was the last one.
-     */
+    /// A pattern can name a type narrower than any one alternative
+    /// of its subject. For example, given a condition of the type
+    /// "Opt[Opt[T]]", we need to allow "Some[Some[T]]" - ie inner
+    /// variant narrowing.
     auto NarrowedLevel(
-      TypeAst const &pattern,
-      TypeAst const &alt,
-      analyse::scopes::Scope const &scope)
-      -> Pair<Shared<TypeAst>, Shared<TypeAst>> {
+      TypeAst const &pattern, TypeAst const &alt,
+      Scope const &scope) -> Pair<Shared<TypeAst>, Shared<TypeAst>> {
       using analyse::utils::type_compare::TypeEq;
       using analyse::utils::type_predicates::IsTypeVariant;
 
       const auto arg_at = [](TypeAst const &t, const std::size_t i) -> Shared<TypeAst> {
         auto const &args = t.LastTypePart()->GnArgGroup->Args;
-        const auto arg = i < args.Len() ? args[i]->To<GenericArgumentTypeAst>() : nullptr;
-        return arg != nullptr ? arg->Val : nullptr;
+        return i < args.Len() ? args[i]->TypeVal : nullptr;
       };
 
       for (auto i = 0uz; i < pattern.LastTypePart()->GnArgGroup->Args.Len(); ++i) {
         const auto p = arg_at(pattern, i);
         const auto a = arg_at(alt, i);
-        if (p == nullptr or a == nullptr or not IsTypeVariant(*a, scope)) { continue; }
+        // An argument can be absent on either side: the accessor above reads "TypeVal", which a comp argument
+        // does not have, and the two argument lists need not be the same length.
+        if (p == nullptr or a == nullptr) { continue; }
+
+        // Check that a variant is being considered, and that
+        // we don't have a direct (non-narrowing) match.
+        if (not IsTypeVariant(TypeRef::OfHead(*a, scope), scope)) { continue; }
         if (TypeEq(*a, *p, scope, scope, false)) { continue; }
-        if (codegen::GetVariantIndexOfMember(*a, *p, scope).has_value()) { return {p, a}; }
+        if (codegen::GetVariantIndexOfMember(
+          TypeRef::Of(*a, scope), TypeRef::Of(*p, scope), scope).has_value()) {
+          return {p, a};
+        }
       }
       return {nullptr, nullptr};
     }
   }
 }
 
-spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
+CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
   decltype(Type) type,
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elems,
@@ -105,34 +98,35 @@ spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructure
   TokR(std::move(tok_r)),
   _CondSym(nullptr),
   _FlowSym(nullptr) {
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
-  Source.OriginalType = AstClone(Type);
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
 
-spp::asts::CasePatternVariantDestructureObjectAst::~CasePatternVariantDestructureObjectAst() = default;
+CasePatternVariantDestructureObjectAst::~CasePatternVariantDestructureObjectAst() = default;
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::FromType(
-  Shared<TypeAst> const &type)
-  -> Unique<CasePatternVariantDestructureObjectAst> {
+auto CasePatternVariantDestructureObjectAst::FromType(
+  Shared<TypeAst> const &type) -> Unique<CasePatternVariantDestructureObjectAst> {
+  // Build a destructure from a type, ie from "T" to make
+  // "T()" for "case x of { T() { ... } }"
   auto empty_elems = Vec<Unique<CasePatternVariantAst>>{};
-  return MakeUnique<CasePatternVariantDestructureObjectAst>(type, nullptr, std::move(empty_elems), nullptr);
+  return MakeUnique<CasePatternVariantDestructureObjectAst>(
+    type, nullptr, std::move(empty_elems), nullptr);
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::PosStart() const
-  -> std::size_t {
+auto CasePatternVariantDestructureObjectAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return Source.OriginalType->PosStart();
+  return Type->PosStart();
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::PosEnd() const
-  -> std::size_t {
+auto CasePatternVariantDestructureObjectAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::Clone() const
-  -> Unique<Ast> {
+auto CasePatternVariantDestructureObjectAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<CasePatternVariantDestructureObjectAst>(
     AstClone(Type),
@@ -143,8 +137,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Clone() const
   return c;
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::ToString() const
-  -> Str {
+auto CasePatternVariantDestructureObjectAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Type);
   SPP_STRING_APPEND(TokL);
@@ -153,83 +146,73 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::BindsByMove() const
-  -> bool {
+auto CasePatternVariantDestructureObjectAst::BindsByMove() const -> bool {
   // A destructure binds if any of its elements does. An
   // empty one, or one made only of skips, is a shape test
   // and takes nothing.
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
+auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::type_predicates::IsTypeVariant;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::ResolveWrittenType;
   using analyse::errors::SppTypeMismatchError;
 
-  auto conv = AstClone(Type->GetConvention());
-  Type->Stage7_AnalyseSemantics(sm, meta);
+  // All factors type analysis.
+  Type = ResolveWrittenType(*Type, *sm, *meta);
 
-  // A pattern may name "Self" inside its generic arguments - "is Some[Self](val)" in a method of a generic type - and
-  // the symbol lookup below takes the name as written. Left alone, "Self" reaches code generation unsubstituted and
-  // the destructure indexes into "Some[T=Self]", a type with no size. Resolve it against the enclosing type first,
-  // the way a parameter or return type written as "Self" already is.
-  Type = ResolveAndSubstituteSelfType(*Type, *sm->CurrentScope, *sm, *meta);
-  Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName();
-  Type = Type->WithConvention(std::move(conv));
-
-  // Handle "@" in the condition and move into it. Todo
-  // is this still needed? It helps with the variant
-  // breakdown within the deref type.
+  // Handle "@" in the condition and move into it. Todo is
+  // this still needed? It helps with the variant breakdown
+  // within the deref type.
   auto *mapped_cond = meta->CaseCondition;
   if (analyse::utils::assignment_utils::IsDeref(mapped_cond)) {
     auto *const inner = mapped_cond->To<PostfixExpressionAst>()->Lhs.get();
     if (inner->To<IdentifierAst>() != nullptr) { mapped_cond = inner; }
   }
 
-  // Flow-type the case condition (when it is a simple identifier) so that both the eq-check expressions generated by
-  // CreateAndAnalysePatternEqFuncs* and the member-access bindings inside _MappedLet resolve against the narrowed
-  // variant type (Pass[T] rather than the outer declared type Res[T,E] for example).
+  // Flow-type the case condition (when it's a simple
+  // identifier) so that both the eq-check expressions generated
+  // by CreateAndAnalysePatternEqFuncs* and the member-access
+  // bindings inside _MappedLet resolve against the narrowed
+  // variant type (Pass[T] rather than the outer declared
+  // type Res[T,E] for example).
   const auto cond_as_id = mapped_cond->To<IdentifierAst>();
   auto *const cond_sym = cond_as_id != nullptr ? sm->CurrentScope->GetVarSymbol(cond_as_id) : nullptr;
-  _CondSym = cond_sym != nullptr ? cond_sym->SharedFromThis<analyse::scopes::VariableSymbol>() : nullptr;
-  if (_CondSym != nullptr and IsTypeVariant(*_CondSym->Type, *sm->CurrentScope)) {
+  _CondSym = cond_sym != nullptr ? cond_sym->SharedFromThis<VariableSymbol>() : nullptr;
+  if (_CondSym != nullptr
+    and IsTypeVariant(_CondSym->TypeRefIn(*sm->CurrentScope), *sm->CurrentScope)) {
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*_CondSym->Type, *Type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*meta->CaseCondition, *_CondSym->Type, *Source.OriginalType, *Type));
-    _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
+      not TypeEq(
+        _CondSym->TypeRefIn(*sm->CurrentScope),
+        TypeRef::Of(*Type, *sm->CurrentScope),
+        *sm->CurrentScope, *sm->CurrentScope),
+      {sm->CurrentScope}, ERR_ARGS(*meta->CaseCondition, *_CondSym->Type, *Type, *Type));
+    _FlowSym = MakeShared<VariableSymbol>(*_CondSym);
     _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
 
     // What this narrows, so that consuming through the
     // narrowed name discharges the value itself.
     _FlowSym->NarrowsSym = _CondSym;
     _FlowSym->Type = Type;
-    _FlowSym->IsFlowNarrowing = true;
+    _FlowSym->Kind = VariableKind::FlowNarrowing;
 
     if (Type->GetConvention() != nullptr) {
-      const auto borrow_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed) ? : _CondSym->ScopeDefinedIn;
+      const auto has_ast_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed);
+      const auto borrow_scope = has_ast_scope ? has_ast_scope : _CondSym->ScopeDefinedIn;
       _FlowSym->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
     }
     sm->CurrentScope->AddVarSymbol(_FlowSym);
   }
 
-  auto var = ConvToVar(meta);
-  _MappedLet = MakeUnique<LetStatementInitializedAst>(
-    nullptr, std::move(var), nullptr, nullptr, AstClone(mapped_cond));
-  _MappedLet->Stage7_AnalyseSemantics(sm, meta);
-
-  CreateAndAnalysePatternEqFuncsDummyCore(
-    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+  AnalyseDestructure(mapped_cond, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Snapshot the case condition memory info into the
+  // flow symbol.
   if (_FlowSym != nullptr and _CondSym != nullptr) {
     _FlowSym->MemInfo->FillFromSnapshot(_CondSym->MemInfo->Snapshot());
   }
@@ -238,37 +221,16 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
-
+auto CasePatternVariantDestructureObjectAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // TODO: Do a non-variant type comparison first.
   // TODO: Do not allow if the condition type is variant.
-  // Transform the pattern into comptime values; all need to be true.
-  auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
-    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
-
-  // All must be true for the pattern to match (look for any false).
-  const auto all_true = genex::all_of(
-    comptime_transforms,
-    [](auto const &x) { return x->template To<BooleanLiteralAst>()->IsTrue(); });
-
-  // Generate the "let" statement to introduce all the symbols.
-  _MappedLet->Stage9_CompTimeResolve(sm, meta);
-
-  // Based on the result, return the corresponding comptime value.
-  const auto p = PosStart();
-  meta->CmpResult = all_true ? BooleanLiteralAst::True(p) : BooleanLiteralAst::False(p);
+  // Match when every element does.
+  ResolveDestructure(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Stupidly complex method but I think all parts are
   // covered now. Heavy documentation *READ IT ALL* when
   // making changes to this class.
@@ -283,7 +245,6 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   const auto uid = "." + spp::utils::Uid(this);
   auto llvm_tag_check = static_cast<llvm::Value*>(nullptr);
   if (_FlowSym and _CondSym) {
-
     // The subject's storage is read through the symbol the
     // scope holds now, not the one captured during analysis.
     // A second binding of the same name in the same scope
@@ -293,7 +254,6 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     // with none, which is what two "case" blocks over two
     // values both called "ip" used to crash on.
     if (_CondSym->LlvmInfo->Alloca == nullptr and _CondSym->ScopeDefinedIn != nullptr) {
-
       // The lookup goes in the scope the subject was declared
       // in, not the current one: this branch's own scope holds
       // the narrowed symbol under that same name, and it has
@@ -349,10 +309,13 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       // of what identifies the member rather than something
       // attached to the pattern, so the exact type is tried
       // first.
-      auto tag = codegen::GetVariantIndexOfMember(*subject_type, *pattern_type, *sm->CurrentScope);
+      const auto subject_ref = TypeRef::Of(*subject_type, *sm->CurrentScope);
+      const auto pattern_ref = TypeRef::Of(*pattern_type, *sm->CurrentScope);
+      auto tag = codegen::GetVariantIndexOfMember(
+        subject_ref, pattern_ref, *sm->CurrentScope);
       if (not tag.has_value()) {
         tag = codegen::GetVariantIndexOfMember(
-          *subject_type, *pattern_type->WithoutConvention(), *sm->CurrentScope);
+          subject_ref, pattern_ref.WithoutConvention(), *sm->CurrentScope);
       }
       if (not tag.has_value()) { break; }
 
@@ -390,15 +353,16 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   // flow-type - "self@" is a deref, not a name - but its
   // discriminant still has to be checked.
   else if (meta->CaseCondition != nullptr and meta->LlvmCaseCondition != nullptr) {
-    using analyse::utils::type_predicates::IsTypeVariant;
     const auto cond_type = meta->CaseCondition->InferType(sm, meta);
     const auto bare_cond_type = cond_type != nullptr ? cond_type->WithoutConvention() : nullptr;
 
-    if (bare_cond_type != nullptr and IsTypeVariant(*bare_cond_type, *sm->CurrentScope)) {
-      auto tag = codegen::GetVariantIndexOfMember(*bare_cond_type, *Type, *sm->CurrentScope);
+    if (bare_cond_type != nullptr
+      and IsTypeVariant(TypeRef::OfHead(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
+      const auto cond_ref = TypeRef::Of(*bare_cond_type, *sm->CurrentScope);
+      const auto type_ref = TypeRef::Of(*Type, *sm->CurrentScope);
+      auto tag = codegen::GetVariantIndexOfMember(cond_ref, type_ref, *sm->CurrentScope);
       if (not tag.has_value()) {
-        tag = codegen::GetVariantIndexOfMember(
-          *bare_cond_type, *Type->WithoutConvention(), *sm->CurrentScope);
+        tag = codegen::GetVariantIndexOfMember(cond_ref, type_ref.WithoutConvention(), *sm->CurrentScope);
       }
 
       // The condition was generated once by the enclosing "case",
@@ -430,7 +394,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   // symbols into the llvm function.
   if (_MappedLet != nullptr) {
     {
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
       _MappedLet->Stage11_CodeGen(sm, meta, ctx);
     }
@@ -457,9 +421,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   return llvm_master_transform;
 }
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::ConvToVar(
-  CompilerMetaData *meta)
-  -> Unique<LocalVariableAst> {
+auto CasePatternVariantDestructureObjectAst::ConvToVar(
+  CompilerMetaData *meta) -> Unique<LocalVariableAst> {
   // Recursively map the elements to their local variable
   // counterparts.
   auto mapped_elems = Elems
@@ -469,7 +432,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::ConvToVar(
   // Create the final local variable wrapping, tag it and
   // return it.
   auto var = MakeUnique<LocalVariableDestructureObjectAst>(
-    AstCloneShared(Type), nullptr, std::move(mapped_elems), nullptr);
+    AstCloneShared(Type), AstClone(TokL), std::move(mapped_elems), AstClone(TokR));
   var->MarkFromCasePattern();
   return var;
 }

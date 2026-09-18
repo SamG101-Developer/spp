@@ -1,0 +1,54 @@
+name: build
+
+# The blocking build matrix, shared by pr.yaml and post_merge.yaml so the two cannot drift: the build-cache-key
+# action folds `variant` in, and a variant master never builds is a variant every PR compiles from cold.
+#
+# "spp-mode" is a second axis over the build type: it selects the optimisation pipeline the built compiler runs over
+# the s++ fixtures, so release-rel and release-dev are the same C++ binary exercising O3 and O0 codegen.
+#
+# Shards of a variant share its name and so its build tree, and only shard 0 saves that tree, so splitting the sweep
+# buys wall-clock without a second copy of anything. The test sweep is ~95% of the job, so this is what sets the
+# pipeline's critical path.
+
+on:
+  workflow_call: { }
+
+permissions: { }
+
+jobs:
+  build-test:
+    name: ${{ matrix.variant }} · shard ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [ release-rel, release-dev ]
+        # Keep `shard-count` below equal to the length of this list.
+        shard: [ 0, 1, 2, 3 ]
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      # Full history: restore-mtimes walks it to date the sources for the incremental build.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build and test
+        uses: ./.github/actions/compile
+        with:
+          os: ubuntu-24.04
+          compiler: gcc
+          variant: ${{ matrix.variant }}
+          build-type: Release
+          spp-mode: ${{ matrix.variant == 'release-rel' && 'rel' || 'dev' }}
+          shard-index: ${{ matrix.shard }}
+          shard-count: 4
+          stl-conformance: ${{ matrix.shard == 0 }}

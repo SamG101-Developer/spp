@@ -9,24 +9,16 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CasePatternVariantElseAst;
-  SPP_EXP_CLS struct TokenAst;
-}
+SPP_AST_COMMON_FWD_DECL(CasePatternVariantElseAst);
+use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CasePatternVariantElseAst);
 
-  /**
-   * The @c else keyword that indicates this is an else branch of the case pattern variant.
-   */
+  /// The "else" keyword marking this as an else branch of the
+  /// case pattern variant.
   Unique<TokenAst> TokElse;
 
-  /**
-   * Construct the CasePatternVariantElseAst with the arguments matching the members.
-   * @param tok_else The @c else keyword that indicates this is an else branch of the case pattern variant.
-   */
   explicit CasePatternVariantElseAst(
     decltype(TokElse) &&tok_else);
 
@@ -43,5 +35,3 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVaria
 private:
   bool _ForIterLoopExit;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CasePatternVariantElseAst)

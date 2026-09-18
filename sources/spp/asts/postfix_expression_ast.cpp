@@ -26,7 +26,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionAst::PostfixExpressionAst(
+PostfixExpressionAst::PostfixExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(Op) &&op) :
   Lhs(std::move(lhs)),
@@ -35,49 +35,43 @@ spp::asts::PostfixExpressionAst::PostfixExpressionAst(
   Source.CachedInference = nullptr;
 }
 
-spp::asts::PostfixExpressionAst::~PostfixExpressionAst() = default;
+PostfixExpressionAst::~PostfixExpressionAst() = default;
 
-auto spp::asts::PostfixExpressionAst::PosStart() const
-  -> std::size_t {
+auto PostfixExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs.
   return Lhs->PosStart();
 }
 
-auto spp::asts::PostfixExpressionAst::PosEnd() const
-  -> std::size_t {
+auto PostfixExpressionAst::PosEnd() const -> std::size_t {
   // Use the operator.
   return Op->PosEnd();
 }
 
-auto spp::asts::PostfixExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto PostfixExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<PostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(Op));
 }
 
-auto spp::asts::PostfixExpressionAst::ToString() const
-  -> Str {
+auto PostfixExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Lhs);
   SPP_STRING_APPEND(Op);
   SPP_STRING_END;
 }
 
-auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
   using analyse::utils::expr_utils::PrimaryExpressionOptions;
-  using analyse::utils::type_utils::ResolveAndSubstituteSelfType;
+  using analyse::utils::type_utils::ResolveWrittenType;
   using analyse::errors::SppInvalidPrimaryExpressionError;
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
     {
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->PostfixExpressionLhs = Lhs.get();
       Op->Stage7_AnalyseSemantics(sm, meta);
     }
@@ -87,14 +81,11 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
   // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
-    meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
-      temp_lhs->Stage7_AnalyseSemantics(sm, meta);
-      temp_lhs = ResolveAndSubstituteSelfType(*temp_lhs, *sm->CurrentScope, *sm, *meta);
-      temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs.get())->FqName();
+      temp_lhs = ResolveWrittenType(*temp_lhs, *sm, *meta);
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
@@ -115,15 +106,13 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   }
 
   // Re-attach the meta info, as it is targeting the lhs.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
 
@@ -136,7 +125,7 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
     {
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->PostfixExpressionLhs = Lhs.get();
       Op->Stage8_CheckMemory(sm, meta);
     }
@@ -162,7 +151,7 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
   if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
   meta->AssignmentTarget = saved_assignment_target;
 
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   if (Lhs->To<IdentifierAst>() != nullptr) {
     // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
@@ -172,21 +161,16 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
   Op->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward into the operator AST.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   Op->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto PostfixExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Memory analysis used the transformed AST to not
   // repeat lhs as self.
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
@@ -196,28 +180,32 @@ auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
   }
 
   // Forward into the operator AST.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return ret_val;
 }
 
-auto spp::asts::PostfixExpressionAst::InferType(
-  analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto PostfixExpressionAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Check cache.
   // if (Source.CachedInference != nullptr) { return Source.CachedInference; }
 
   // Forward into the operator AST.
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   auto x = Op->InferType(sm, meta);
   return x;
 }
 
-auto spp::asts::PostfixExpressionAst::ExprParts() const
-  -> Vec<IdentifierAst*> {
+auto PostfixExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  const auto _meta_guard = MetaGuard(meta);
+  meta->PostfixExpressionLhs = Lhs.get();
+  return Op->InferTypeRef(sm, meta);
+}
+
+auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
   // Recursively search the lhs, and add the rhs if it
   // exists.
   auto lhs_parts = Lhs->ExprParts();
@@ -228,9 +216,8 @@ auto spp::asts::PostfixExpressionAst::ExprParts() const
   return lhs_parts;
 }
 
-auto spp::asts::PostfixExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<ExpressionAst> {
+auto PostfixExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // The left-hand side is where a type is written - the
   // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
   // and the operator carries whatever a call, an index or
@@ -238,6 +225,15 @@ auto spp::asts::PostfixExpressionAst::SubstituteGenericsExpr(
   return MakeShared<PostfixExpressionAst>(
     AstClone(Lhs->SubstituteGenericsExpr(args)),
     Op->SubstituteGenericsExpr(args));
+}
+
+auto PostfixExpressionAst::IsAllowedInDefault() const -> bool {
+  // Check both the lhs and the postfix op on this ast.
+  // Leaving the nullptr guards in because there is some
+  // std::move(ast) for postfix iirc.
+  return
+    (Lhs == nullptr or Lhs->IsAllowedInDefault()) and
+    (Op == nullptr or Op->IsAllowedInDefault());
 }
 
 SPP_MOD_END

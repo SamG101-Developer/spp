@@ -13,6 +13,7 @@ import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_array_ast;
 import spp.asts.local_variable_destructure_attribute_binding_ast;
@@ -33,53 +34,47 @@ import genex;
 import llvm;
 
 auto spp::analyse::utils::destructure_utils::GetNestedBindingIdentifiers(
-  Vec<Unique<asts::LocalVariableAst>> const &elems)
-  -> Vec<Shared<asts::IdentifierAst>> {
+  Vec<Unique<LocalVariableAst>> const &elems) -> Vec<Shared<IdentifierAst>> {
   // Recursively walk the destructure pattern to extract all
   // identifiers.
   return elems
-    | genex::views::transform(&asts::LocalVariableAst::ExtractNames)
+    | genex::views::transform(&LocalVariableAst::ExtractNames)
     | genex::views::join
     | genex::to<Vec>();
 }
 
 auto spp::analyse::utils::destructure_utils::UnmatchableSingleIdentifier(
-  const std::size_t pos)
-  -> Shared<asts::IdentifierAst> {
+  const std::size_t pos) -> Shared<IdentifierAst> {
   // No single identifier represents a binding destructuring.
-  return MakeShared<asts::IdentifierAst>(pos, kUnmatchableTag);
+  return MakeShared<IdentifierAst>(pos, kUnmatchableTag);
 }
 
 auto spp::analyse::utils::destructure_utils::IsDestructurePlaceExpression(
-  asts::ExpressionAst const &expr)
-  -> bool {
+  ExpressionAst const &expr) -> bool {
   // Strip the member accesses off the expression: "a.b.c"
   // becomes "a". Any other postfix operator (a function call,
   // an early return etc) means the expression produces a new
   // value rather than naming existing storage.
-  auto cur = static_cast<asts::Ast const*>(&expr);
-  while (auto const *postfix = cur->To<asts::PostfixExpressionAst>()) {
-    if (postfix->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
+  auto cur = static_cast<Ast const*>(&expr);
+  while (auto const *postfix = cur->To<PostfixExpressionAst>()) {
+    if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
     cur = postfix->Lhs.get();
   }
 
-  return cur->To<asts::IdentifierAst>() != nullptr;
+  return cur->To<IdentifierAst>() != nullptr;
 }
 
 auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
-  asts::Ast const &owner,
-  asts::ExpressionAst *const val,
-  Shared<asts::TypeAst> const &val_type,
-  scopes::ScopeManager &sm)
-  -> Shared<asts::IdentifierAst> {
+  Ast const &owner, ExpressionAst *val, Shared<TypeAst> const &val_type,
+  ScopeManager &sm) -> Shared<IdentifierAst> {
   // The "$" prefix cannot be written in user code, so the
   // temporary can never collide with a real binding.
-  auto name = MakeShared<asts::IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid(&owner));
+  auto name = MakeShared<IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid(&owner));
 
   // Mirror the symbol an initialized single-identifier "let"
   // would create.
-  const auto sym = MakeShared<scopes::VariableSymbol>(
-    name, val_type, sm.CurrentScope, true);
+  const auto sym = MakeShared<VariableSymbol>(
+    name, val_type, sm.CurrentScope, VariableKind::Temporary, true);
   sym->MemInfo->AstInitialization = {name.get(), sm.CurrentScope};
   sym->MemInfo->AstInitializationOrigin = {name.get(), sm.CurrentScope};
   sym->MemInfo->InitializationCounter = 1;
@@ -94,31 +89,9 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
   return name;
 }
 
-auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
-  asts::Ast const &owner,
-  asts::IdentifierAst const &tmp_name,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *const meta)
-  -> void {
-  // The value is moved into the temporary as a whole, so it
-  // is checked (and consumed) once here, rather than once
-  // per expanded "let". This traversal is also what walks
-  // the scopes the value created in stage 7.
-  meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
-  mem_utils::ValidateSymbolMemory(*meta->LetStatementValue, owner, sm, true, true, true, true, meta);
-
-  // Mark the temporary as initialized by the value.
-  const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
-  sym->MemInfo->InitializedBy(tmp_name, sm.CurrentScope);
-}
-
 auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
-  asts::Ast const &owner,
-  const bool from_case_pattern,
-  const bool any_binding_is_moving,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData const *meta)
-  -> void {
+  Ast const &owner, const bool from_case_pattern, const bool any_binding_is_moving,
+  ScopeManager &sm, CompilerMetaData const *meta) -> void {
   // If the destructure is not from a case pattern, then
   // nothing is consumed. The case ast must've also specified
   // that the condition is meant to be consumed.
@@ -148,9 +121,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     // Get the region path of the value, and check if any parts
     // have not been considered by the destructure. These cannot
     // be left unbound, because they would silently drop.
-    const auto region = mem_utils::RegionPath(*val)
-      | genex::views::transform([](const auto step) { return step->Val; })
-      | genex::to<Vec>();
+    const auto region = mem_utils::RegionPath(*val);
 
     if (const auto skipped = linear_utils::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
       Raise<errors::SppDestructureSkipsOwnedPartError>(
@@ -161,7 +132,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   // "let Self(x) = self" takes the symbol itself, so the
   // symbol is moved. "let Self(x) = self.inner" takes one
   // region of it, which is a partial move like any other.
-  if (val->To<asts::IdentifierAst>() != nullptr) {
+  if (val->To<IdentifierAst>() != nullptr) {
     if (from_case_pattern) { return; }
     sym->MemInfo->MovedBy(owner, sm.CurrentScope);
     sym->MemInfo->AstPartialMoves.Clear();
@@ -172,9 +143,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
 }
 
 auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
-  asts::IdentifierAst const &tmp_name,
-  scopes::ScopeManager const &sm)
-  -> void {
+  IdentifierAst const &tmp_name, ScopeManager const &sm) -> void {
   // Every part the bindings read came off the temporary, so
   // between them they took all of it.
   const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
@@ -183,11 +152,26 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
   sym->MemInfo->AstPartialMoves.Clear();
 }
 
+auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
+  Ast const &owner, IdentifierAst const &tmp_name,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  using mem_utils::ValidateSymbolMemory;
+  // The value is moved into the temporary as a whole, so it
+  // is checked (and consumed) once here, rather than once
+  // per expanded "let". This traversal is also what walks
+  // the scopes the value created in stage 7.
+  meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
+  ValidateSymbolMemory(
+    *meta->LetStatementValue, owner, sm, true, true, true, true, meta);
+
+  // Mark the temporary as initialized by the value.
+  const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
+  sym->MemInfo->InitializedBy(tmp_name, sm.CurrentScope);
+}
+
 auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
-  Shared<asts::IdentifierAst> const &tmp_name,
-  scopes::ScopeManager const &sm,
-  asts::meta::CompilerMetaData const *meta)
-  -> void {
+  Shared<IdentifierAst> const &tmp_name, ScopeManager const &sm,
+  CompilerMetaData const *meta) -> void {
   // The owning "let" statement has already resolved the
   // value, so the temporary takes a copy of that result
   // rather than resolving the value a second time (which
@@ -197,12 +181,8 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
-  Shared<asts::IdentifierAst> const &tmp_name,
-  llvm::Value *const llvm_subject,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *const meta,
-  codegen::LlvmCtx *const ctx)
-  -> void {
+  Shared<IdentifierAst> const &tmp_name, llvm::Value *llvm_subject,
+  ScopeManager &sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void {
   // Give the temporary its own stack slot.
   const auto uid = "." + spp::utils::Uid(tmp_name.get());
   const auto sym = sm.CurrentScope->GetVarSymbol(tmp_name.get());
@@ -215,19 +195,64 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
     sym == nullptr, {sm.CurrentScope},
     ERR_ARGS(*tmp_name, no_tmp_msg));
 
-  const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym->Type.get());
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto type_sym = sym->TypeRefIn(*sm.CurrentScope).Sym;
+  const auto llvm_type = GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  const auto alloca = codegen::LlvmEntryAlloca(
+  const auto alloca = LlvmEntryAlloca(
     llvm_type, "destructure.alloca" + uid, ctx);
   sym->LlvmInfo->Alloca = alloca;
 
-  // Generate the value exactly once, into the temporary. The expanded "let" statements then index the temporary.
-  const auto _meta_guard = asts::meta::MetaGuard(meta);
+  // Generate the value exactly once, into the temporary. The
+  // expanded "let" statements then index the temporary.
+  const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTarget = tmp_name;
   const auto llvm_val = llvm_subject != nullptr
     ? llvm_subject
     : meta->LetStatementValue->Stage11_CodeGen(&sm, meta, ctx);
   ctx->Builder.CreateStore(llvm_val, alloca);
+}
+
+auto spp::analyse::utils::destructure_utils::DestructureStage8(
+  LocalVariableAst const &destructure, Vec<Unique<LocalVariableAst>> const &elems,
+  Vec<Unique<LetStatementInitializedAst>> const &new_asts, Shared<IdentifierAst> const &tmp_name,
+  LetStatementInitializedAst *const cond_let, const bool from_case_pattern, ScopeManager &sm,
+  CompilerMetaData *meta) -> void {
+  // The hidden temporary holds the only analysis of the value,
+  // so the value is checked (and its scopes walked) here, then
+  // the flow-typing variable, if flow typing introduced one.
+  if (tmp_name != nullptr) { DestructureTempStage8(destructure, *tmp_name, sm, meta); }
+  if (cond_let != nullptr) { cond_let->Stage8_CheckMemory(&sm, meta); }
+
+  // Check the memory state of the elements. Each expanded
+  // binding reads one field off the value, so each records
+  // a partial move of it, and the destructure marks the
+  // whole value moved once they are done.
+  for (auto const &x : new_asts) { x->Stage8_CheckMemory(&sm, meta); }
+
+  // Taking every element off a value takes the value, so the
+  // symbol holding it is left moved rather than partly moved.
+  if (tmp_name != nullptr) {
+    ConsumeDestructureTemp(*tmp_name, sm);
+    return;
+  }
+
+  // A pattern that takes something apart has to account for
+  // every owned part of what it took; one that only tests
+  // the shape, or that binds the rest into a name of its own,
+  // has nothing left over to answer for.
+  const auto accounts_for_parts = destructure.BindsByMove()
+    and not genex::any_of(elems, [](auto const &elem) { return elem->TakesRest(); });
+  ConsumeDestructureSource(destructure, from_case_pattern, accounts_for_parts, sm, meta);
+}
+
+auto spp::analyse::utils::destructure_utils::DestructureStage9(
+  Vec<Unique<LetStatementInitializedAst>> const &new_asts, Shared<IdentifierAst> const &tmp_name,
+  LetStatementInitializedAst *cond_let, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Hand the already-resolved value to the hidden temporary
+  // so the elements can index it, then resolve the flow-typing
+  // variable, if flow typing introduced one, and each element.
+  if (tmp_name != nullptr) { DestructureTempStage9(tmp_name, sm, meta); }
+  if (cond_let != nullptr) { cond_let->Stage9_CompTimeResolve(&sm, meta); }
+  for (auto const &x : new_asts) { x->Stage9_CompTimeResolve(&sm, meta); }
 }

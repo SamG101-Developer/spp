@@ -1,8 +1,5 @@
 #include "../test_macros.hpp"
 
-// The base class. A literal names nothing, so it is carried through untouched even while its neighbours are being
-// rewritten - and it still has to survive being cloned and re-analysed at the call site, which is new work the
-// substitution does for every comp default.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_literal_default_is_carried_through, R"(
@@ -16,9 +13,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "TypeAst", reached through "PostfixExpressionAst". A type only ever sits in expression position underneath a postfix
-// operator, so the two nodes are pinned together rather than by two near-identical tests. "Wrap[T]" has to become
-// "Wrap[S32]" before the caller can make sense of it.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_type_named_in_a_default, R"(
@@ -37,9 +31,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "IdentifierAst". A comp parameter's name is written as a type in the parameter list and read as an identifier in an
-// expression, so a default naming a sibling parameter is only substitutable once those two spellings are brought
-// together. Nothing else in the compiler rewrites an identifier against a binding.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_identifier_naming_a_sibling_comp_parameter, R"(
@@ -52,8 +43,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "ParenthesisedExpressionAst". The parentheses hold nothing themselves, so the whole of the work is recursing through
-// them - and not recursing leaves the type inside written in the callee's terms.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_parenthesised_default, R"(
@@ -72,8 +61,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "TupleLiteralAst". Each element is an expression in its own right, and only one of them names anything - which is
-// what catches a walk that stops at the first element or rewrites the tuple as a whole.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_tuple_literal_default, R"(
@@ -93,8 +80,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "ArrayLiteralExplicitElementsAst". As above, but the elements are all of one type, so every one of them has to be
-// rewritten rather than just the first.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_explicit_element_array_default, R"(
@@ -115,9 +100,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "ArrayLiteralRepeatedElementAst". A repeated element must superimpose "Copy", so the generic is carried by a sized
-// integer rather than by a class of this file's own. The count is walked by the same override, and takes the identifier
-// path above when it names a comp parameter.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_repeated_element_array_default, R"(
@@ -132,8 +114,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "ObjectInitializerAst". It names its type outright rather than through a postfix operator, which is the one shape a
-// walk that only handles "A::b()" misses.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_object_initializer_default, R"(
@@ -150,9 +130,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "BinaryExpressionAst". Both operands are walked, and the node is rebuilt rather than cloned: a clone carries over the
-// function the expression was already mapped onto, and that mapping was made for the operands as they were *written*,
-// so keeping it would leave the substitution with no effect and no diagnostic.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_binary_expression_default, R"(
@@ -165,8 +142,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "PostfixExpressionOperatorFunctionCallAst", generic-argument half. The arguments written at a call *inside* a default
-// are in the callee's terms too, so "make[T]()" has to become "make[S32]()".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_generic_arguments_of_a_call_in_a_default, R"(
@@ -185,8 +160,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "PostfixExpressionOperatorFunctionCallAst", function-argument half. The same walk, one field over: the runtime
-// arguments of that call are expressions in their own right.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_call_arguments_of_a_call_in_a_default, R"(
@@ -203,11 +176,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// "UnaryExpressionAst". "async" is the only unary operator, and it is a keyword - so the whole of the work is the
-// operand, which is a call carrying the generic.
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestExpressionGenericSubstitution,
-  test_valid_async_default, R"(
+  test_invalid_async_default,
+  SppInvalidDefaultValueError, R"(
     cls Wrap[T] { }
 
     fun make[T]() -> Wrap[T] {
@@ -223,9 +195,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Two instantiations of one default, so that the substituted clone really is per-instantiation. A walk that rewrote the
-// prototype's own default in place rather than answering with a new tree would pass every test above and fail this one:
-// the second call would see the first call's arguments already baked in.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_one_default_substituted_two_ways, R"(
@@ -245,9 +214,74 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: "PostfixExpressionOperatorIndexAst", "PostfixExpressionOperatorSliceAst" and
-//  "PostfixExpressionOperatorKeywordResAst" override the walk but have no test, because neither consumer can reach
-//  them. Both materialise an expression that has no receiver in scope - a default is written where no local exists -
-//  and each of those three operators needs one. Indexing or slicing a temporary hands back a borrow of it, and ".res"
-//  needs a generator to resume. The overrides are there so that the walk is complete rather than because a default can
-//  use them today; add tests here if a third consumer of "SubstituteGenericsExpr" ever appears.
+// The four below pin down that a comp parameter is substituted by the scope that declares it, even where two nested
+// scopes spell theirs the same. Type substitution matches a parameter by "ParamId" and comp substitution still matches
+// by spelling ("IdentifierAst::SubstituteGenericsExpr"), which looks like a hygiene hole and is not one: every driver
+// of "SubstituteGenericsExpr" substitutes an expression against the arguments of the very scope that wrote it, and one
+// name is one parameter within a scope. Each same-spelling test is paired with a distinct-spelling control, so a
+// failure says whether the spelling is what broke it. The comp value is surfaced through a type, because that is what
+// makes a wrong binding observable to the analyser rather than only to a running program.
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_method_comp_parameter_spelled_like_its_sup_blocks, R"(
+    !public cls A[cmp n: U8] { }
+    !public cls H[cmp n: U8] { }
+
+    sup [cmp n: U8] H[n] {
+        !public fun m[cmp n: U8](&self) -> A[n] { ret A[n]() }
+    }
+
+    fun g() -> Void {
+        let h = H[3_u8]()
+        let x: A[7_u8] = h.m[7_u8]()
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(h)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_method_comp_parameter_spelled_unlike_its_sup_blocks, R"(
+    !public cls A[cmp n: U8] { }
+    !public cls H[cmp n: U8] { }
+
+    sup [cmp n: U8] H[n] {
+        !public fun m[cmp q: U8](&self) -> A[q] { ret A[q]() }
+    }
+
+    fun g() -> Void {
+        let h = H[3_u8]()
+        let x: A[7_u8] = h.m[7_u8]()
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(h)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_callee_comp_parameter_spelled_like_its_callers, R"(
+    !public cls A[cmp n: U8] { }
+
+    fun inner[cmp n: U8]() -> A[n] { ret A[n]() }
+    fun outer[cmp n: U8]() -> A[4_u8] { ret inner[4_u8]() }
+
+    fun g() -> Void {
+        let x: A[4_u8] = outer[9_u8]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestExpressionGenericSubstitution,
+  test_valid_callee_comp_parameter_spelled_unlike_its_callers, R"(
+    !public cls A[cmp n: U8] { }
+
+    fun inner[cmp k: U8]() -> A[k] { ret A[k]() }
+    fun outer[cmp n: U8]() -> A[4_u8] { ret inner[4_u8]() }
+
+    fun g() -> Void {
+        let x: A[4_u8] = outer[9_u8]()
+        std::mem::ops::drop(x)
+    }
+)");

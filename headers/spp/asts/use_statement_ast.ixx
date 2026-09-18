@@ -10,45 +10,30 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct AnnotationAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeStatementAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct UseStatementAst;
-}
+SPP_AST_COMMON_FWD_DECL(UseStatementAst);
+use(spp::asts, struct AnnotationAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeStatementAst);
+use(spp::asts, struct TypeAst);
 
-/**
- * The UseStatementAst reduces a fully qualified type into the current scope, making the symbol accessible without the
- * associated namespace. It is internal mapped to a TypeStatementAst: @code use std::Str@endcode is equivalent to
- * @code type Str = std::Str@endcode.
- */
+/// Reduces a fully qualified type into the current scope,
+/// making the symbol accessible without its namespace. It is
+/// internally mapped to a TypeStatementAst: "use std::Str" is
+/// equivalent to "type Str = std::Str".
 SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMemberAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(UseStatementAst);
 
-  /**
-   * The list of annotations that are applied to this use statement. Typically, access modifiers in this context.
-   */
+  /// The annotations applied to this use statement; typically
+  /// access modifiers.
   Vec<Unique<AnnotationAst>> Annotations;
 
-  /**
-   * The @c use token that starts this statement.
-   */
+  /// The "use" token that starts this statement.
   Unique<TokenAst> TokUse;
 
-  /**
-   * The old (fully qualified) type that this use statement is reducing. For example, for @code use
-   * Str::Str@endcode, the fully qualified type is @c Str::Str.
-   */
+  /// The old (fully qualified) type being reduced: for
+  /// "use std::Str", this is "std::Str".
   Shared<TypeAst> OldType;
 
-  /**
-   * Construct the UseStatementAst with the arguments matching the members.
-   * @param annotations The list of annotations that are applied to this use statement.
-   * @param tok_use The @c use token that starts this statement.
-   * @param old_type The old (fully qualified) type that this use statement is reducing.
-   */
   UseStatementAst(
     decltype(Annotations) &&annotations,
     decltype(TokUse) &&tok_use,
@@ -62,7 +47,7 @@ SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMember
 
   auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -79,18 +64,15 @@ SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMember
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
 private:
-  /**
-   * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
-   * @c use statements can be defined at the top level (module/sup) or inside function bodies. If defined inside a
-   * function body, all steps of the analysis must be run together, otherwise they are ran in their correct layer.
-   */
+  /// Whether this use statement has been generated yet. Use
+  /// statements can be defined at the top level (module/sup)
+  /// or inside function bodies; inside a function body all
+  /// analysis steps must run together, otherwise they run in
+  /// their correct stage.
   bool _Generated;
 
-  /**
-   * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new
-   * types in a uniform way with @code type Str = std::Str@endcode.
-   */
+  /// The type statement generated from this use statement, so
+  /// new types are analysed uniformly with
+  /// "type Str = std::Str".
   Unique<TypeStatementAst> _Conversion;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::UseStatementAst)

@@ -22,7 +22,6 @@ import spp.asts.convention_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
@@ -38,8 +37,42 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
 
+namespace spp::asts {
+  namespace {
+    /**
+     * The first block in @p scopes extending a type matching @p name with a super class matching @p super_class. The
+     * super class is compared first: it rejects the large majority of candidates for a fraction of the cost of a name
+     * comparison, which is the type-symbol lookup this compiler spends most of its time on. The names are then tried
+     * both ways round, because a variadic pack binds an argument list only when it sits on the right, so which of two
+     * blocks was attached first would otherwise decide whether they are seen to match.
+     */
+    auto FindMatchingExtension(
+      Vec<Scope*> const &scopes,
+      TypeAst const &super_class,
+      TypeAst const &name,
+      Scope const &check_scope,
+      const bool check_constraints)
+      -> Pair<Scope*, SupPrototypeExtensionAst const*> {
+      using analyse::utils::type_compare::GenericInferenceMap;
+      using analyse::utils::type_compare::RelaxedTypeEq;
+      using analyse::utils::type_compare::TypeEq;
+      for (auto *const sc : scopes) {
+        const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
+        if (ext == nullptr or not TypeEq(*ext->SuperClass, super_class, *sc, check_scope, false)) { continue; }
+        auto fwd = GenericInferenceMap();
+        auto rev = GenericInferenceMap();
+        if (RelaxedTypeEq(*ext->Name, name, *sc, check_scope, fwd, false, check_constraints)
+          or RelaxedTypeEq(name, *ext->Name, check_scope, *sc, rev, false, check_constraints)) {
+          return {sc, ext};
+        }
+      }
+      return {nullptr, nullptr};
+    }
+  }
+}
+
 SPP_MOD_BEGIN
-spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
+SupPrototypeExtensionAst::SupPrototypeExtensionAst(
   decltype(TokSup) &&tok_sup,
   decltype(GnParamGroup) &&generic_param_group,
   decltype(Name) name,
@@ -56,26 +89,21 @@ spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokExt, lex::SppTokenType::KW_EXT, "ext");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
-  Source.OriginalName = AstClone(Name);
-  Source.OriginalSuperClass = AstClone(SuperClass);
 }
 
-spp::asts::SupPrototypeExtensionAst::~SupPrototypeExtensionAst() = default;
+SupPrototypeExtensionAst::~SupPrototypeExtensionAst() = default;
 
-auto spp::asts::SupPrototypeExtensionAst::PosStart() const
-  -> std::size_t {
+auto SupPrototypeExtensionAst::PosStart() const -> std::size_t {
   // Use the "sup" token.
   return TokSup->PosStart();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::PosEnd() const
-  -> std::size_t {
+auto SupPrototypeExtensionAst::PosEnd() const -> std::size_t {
   // Use the superclass.
-  return Source.OriginalSuperClass->PosEnd();
+  return SuperClass->PosEnd();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Clone() const
-  -> Unique<Ast> {
+auto SupPrototypeExtensionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<SupPrototypeExtensionAst>(
     AstClone(TokSup),
@@ -89,8 +117,7 @@ auto spp::asts::SupPrototypeExtensionAst::Clone() const
   return ast;
 }
 
-auto spp::asts::SupPrototypeExtensionAst::ToString() const
-  -> Str {
+auto SupPrototypeExtensionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSup).append(" ");
   SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.IsEmpty() ? "" : " ");
@@ -101,9 +128,8 @@ auto spp::asts::SupPrototypeExtensionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage1_PreProcess(
-  Ast *ctx)
-  -> void {
+auto SupPrototypeExtensionAst::Stage1_PreProcess(
+  Ast *ctx) -> void {
   // Don't need to pre-process function-classes -- they are introduced from preprocessing functions.
   if (Name->IsCompilerGeneratedType()) { return; }
   Ast::Stage1_PreProcess(ctx);
@@ -114,16 +140,14 @@ auto spp::asts::SupPrototypeExtensionAst::Stage1_PreProcess(
   // Todo: some sort of check that prevents something like "sup [T] T ext Borrow[T]", because this is infinite generation
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppSuperimpositionOptionalGenericParameterError;
   using analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError;
 
   // Create a new scope for the superimposition extension.
-  auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+  auto scope_name = ScopeBlockName::FromParts(
     "sup-prototype-extension", {Name.get(), SuperClass.get()}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
@@ -152,33 +176,37 @@ auto spp::asts::SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage3_GenTopLvlAliases(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Forward to the implementation.
+auto SupPrototypeExtensionAst::Stage3_GenTopLvlAliases(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Register "Self" before any alias in the block is resolved,
+  // so that one naming it has something to resolve to. The name
+  // is not qualified yet, so the base symbol is what answers
+  // here; Stage 5 replaces this with the precise one.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  if (not Name->IsCompilerGeneratedType()) {
+    // The name need not resolve to anything here: a superimposition over a type that does not exist is reported by
+    // the stage that qualifies it, not this one, so this asks for the symbol rather than assuming it.
+    if (const auto base_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())) {
+      sm->AddSelfTypeSymbol(base_sym->LinkedScope, Name->PosStart());
+    }
+  }
   Impl->Stage3_GenTopLvlAliases(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage4_QualifyTypes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the implementation.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-  GnParamGroup->Stage4_QualifyTypes(sm, meta);
-  Impl->Stage4_QualifyTypes(sm, meta);
+  GnParamGroup->Stage4_ResolveDeclarations(sm, meta);
+  Impl->Stage4_ResolveDeclarations(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::errors::SppGenericTypeInvalidUsageError;
@@ -193,7 +221,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // abstract methods are declared, and where a derived
   // type implements them.
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
     Name->Stage7_AnalyseSemantics(sm, meta);
   }
@@ -206,26 +234,26 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // declaration site, always in the same module as the
   // mock class it names. Keep it as the original
   // identifier in terms of namespacing.
-  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true);
+  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true)->WithSourceSpanOf(*Name);
 
-  // Register the superimposition against the base symbol.
+  // Register the superimposition against the base symbol. A
+  // method's "$" mock block sits inside its "sup" block rather
+  // than the module, and still has to reach its mock class.
   const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
-  if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
-    if (not base_cls_sym->IsGeneric) {
-      analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
+  if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule() or Name->IsCompilerGeneratedType()) {
+    if (not base_cls_sym->IsTypeGeneric()) {
+      ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
     }
     else {
-      analyse::scopes::ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
+      ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
     }
   }
 
-  // Add the "Self" symbol into the scope.
+  // Re-register "Self" against the fully-resolved name, replacing
+  // the provisional one from Stage 3.
   if (not Name->IsCompilerGeneratedType()) {
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-    const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
-      MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-      sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
-    sm->CurrentScope->AddTypeSymbol(self_sym);
+    sm->AddSelfTypeSymbol(
+      sm->CurrentScope->GetTypeSymbol(Name.get())->LinkedScope, Name->PosStart());
   }
 
   // Analyse the supertype after Self has been added
@@ -234,23 +262,21 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   RaiseIf<SppSecondClassBorrowViolationError>(
     IsTypeBorrowed(*SuperClass, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *SuperClass, "superimposition supertype"));
-  SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->FqName();
+  SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->FqName()->WithSourceSpanOf(*SuperClass);
 
   // Check the supertype is not generic.
   const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
   RaiseIf<SppGenericTypeInvalidUsageError>(
-    sup_sym->IsGeneric, {sm->CurrentScope},
-    ERR_ARGS(*SuperClass, *Source.OriginalSuperClass, "superimposition supertype"));
+    sup_sym->IsTypeGeneric(), {sm->CurrentScope},
+    ERR_ARGS(*SuperClass, *SuperClass, "superimposition supertype"));
 
   // Load the implementation and move out of the scope.
   Impl->Stage5_LoadSupScopes(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::func_utils::CheckForConflictingOverride;
   using analyse::utils::type_members::CheckShadowedCmpAgreesInType;
@@ -271,7 +297,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   // because when something else correctly fails, a missing
   // constraint enforcement spews some inference error..
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
@@ -293,8 +319,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   // Mark the class as copyable if the "Copy" type is the
   // supertype.
   for (const auto sup_scope : sup_scopes) {
-    const auto fq_name = sup_scope->TySym->FqName();
-    if (TypeEq(*fq_name, *COPY, *sup_scope, *sm->CurrentScope)) {
+    if (analyse::utils::type_predicates::IsTemplate(*sup_scope->TySym, *COPY, *sup_scope)) {
       sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())->IsDirectlyCopyable = true;
       cls_sym->IsDirectlyCopyable = true;
       break;
@@ -314,12 +339,12 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
       // Check the base method exists.
       RaiseIf<SppSuperimpositionExtensionMethodInvalidError>(
         base_method == nullptr, {sm->CurrentScope},
-        ERR_ARGS(*this_method->Name, *Source.OriginalSuperClass));
+        ERR_ARGS(*this_method->Name, *SuperClass));
 
       // Check the base method is virtual or abstract.
       RaiseIf<SppSuperimpositionExtensionNonVirtualMethodOverriddenError>(
         not(base_method->AbstractAnnotation or base_method->VirtualAnnotation), {sm->CurrentScope},
-        ERR_ARGS(*this_method->Name, *base_method->Name, *Source.OriginalSuperClass));
+        ERR_ARGS(*this_method->Name, *base_method->Name, *SuperClass));
 
       // Sync up the annotations from the base function.
       // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
@@ -337,8 +362,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
 
       // Check to see if the base type exists.
       RaiseIf<SppSuperimpositionExtensionTypeStatementInvalidError>(
-        base_type == nullptr, {member->GetAstScope(), sm->CurrentScope},
-        ERR_ARGS(*type_member, *Source.OriginalSuperClass));
+        base_type == nullptr, {sm->CurrentScope, member->GetAstScope()},
+        ERR_ARGS(*type_member, *SuperClass));
     }
 
     else if (const auto cmp_member = member->To<CmpStatementAst>()) {
@@ -352,7 +377,7 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
       // declaration.
       RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
         base_const == nullptr, {sm->CurrentScope},
-        ERR_ARGS(*cmp_member, *Source.OriginalSuperClass));
+        ERR_ARGS(*cmp_member, *SuperClass));
 
       // Check the constant agrees in type with every declaration
       // of that name on the type and its super types.
@@ -366,48 +391,36 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
-  using generate::common_types_precompiled::SELF_TYPE;
 
   // Move to the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Re-map "Self" to the true type.
-  if (not Name->IsCompilerGeneratedType()) {
-    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
-    const auto self_sym = sm->CurrentScope->GetTypeSymbol(SELF_TYPE.get(), true);
-    self_sym->Type = cls_sym->Type;
-    cls_sym->AliasedBySyms.EmplaceBack(self_sym->SharedFromThis<analyse::scopes::TypeSymbol>());
-  }
+  sm->SyncSelfTypeSymbol(*Name);
 
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
   // Both the superimposition target and the superclass are allowed to be abstract, as neither names a value.
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
 
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     if (cls_sym->Type)
-      EnforceGenericConstraintsAllArgs(
-        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
-        *sm->CurrentScope, *sm, *meta);
+      analyse::utils::generic_bindings::EnforceGenericConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
 
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
-    if (cls_sym->Type and not cls_sym->Type->Name->IsCompilerGeneratedType()) {
+    if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
-      EnforceGenericConstraintsAllArgs(
-        *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
-        *sm->CurrentScope, *sm, *meta);
+      analyse::utils::generic_bindings::EnforceGenericConstraintsOfParams(*sup_sym, *GnParamGroup, *sm, *meta);
     }
   }
 
@@ -415,10 +428,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SupPrototypeExtensionAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -426,10 +437,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SupPrototypeExtensionAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -437,11 +446,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage9_CompTimeResolve(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto SupPrototypeExtensionAst::Stage10_PreCodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -450,11 +456,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto SupPrototypeExtensionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
   Impl->Stage11_CodeGen(sm, meta, ctx);
@@ -462,93 +465,30 @@ auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::SupPrototypeExtensionAst::CheckCyclicExtension(
-  analyse::scopes::TypeSymbol const &sup_sym,
-  analyse::scopes::Scope &check_scope) const
-  -> void {
-  //
+auto SupPrototypeExtensionAst::CheckCyclicExtension(
+  TypeSymbol const &sup_sym, Scope &check_scope) const -> void {
+  // Prevent cyclic inheritance: this block's super class already extending its type, at any level.
   using analyse::errors::SppSuperimpositionCyclicExtensionError;
-  using analyse::utils::type_compare::GenericInferenceMap;
-  using analyse::utils::type_compare::RelaxedTypeEq;
-  using analyse::utils::type_compare::TypeEq;
-
-  // Both directions are tried, for the reason given over "check_double" below: a variadic pack binds an argument
-  // list only when it sits on the right, so which of the two blocks was attached first would otherwise decide
-  // whether the cycle is seen at all.
-  auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
-    const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-    if (ext == nullptr) { return false; }
-    if (not TypeEq(*ext->SuperClass, *Name, *sc, check_scope, false)) { return false; }
-
-    auto fwd = GenericInferenceMap();
-    auto rev = GenericInferenceMap();
-    return
-      RelaxedTypeEq(*ext->Name, *SuperClass, *sc, check_scope, fwd, false) or
-      RelaxedTypeEq(*SuperClass, *ext->Name, check_scope, *sc, rev, false);
-  };
-
-  // Prevent cyclic inheritance by checking if the scopes
-  // are already registered the other way around (at any level).
-  const auto existing_sup_scopes = sup_sym.LinkedScope->SupScopes()
-    | genex::views::filter(check_cycle)
-    | genex::views::transform([](auto *x) {
-      return MakePair(x, AstAs<SupPrototypeExtensionAst>(x->AstNode));
-    })
-    | genex::to<Vec>();
-
+  const auto cycle = FindMatchingExtension(sup_sym.LinkedScope->SupScopes(), *Name, *SuperClass, check_scope, true);
   RaiseIf<SppSuperimpositionCyclicExtensionError>(
-    not existing_sup_scopes.IsEmpty(), {&check_scope},
-    ERR_ARGS(*existing_sup_scopes[0].second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+    cycle.second != nullptr, {&check_scope}, ERR_ARGS(*cycle.second->SuperClass, *SuperClass));
 }
 
-auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
-  analyse::scopes::TypeSymbol const &cls_sym,
-  analyse::scopes::Scope &check_scope) const
-  -> void {
-  // Early return for function-classes.
-  using analyse::utils::type_compare::GenericInferenceMap;
-  using analyse::utils::type_compare::RelaxedTypeEq;
-  using analyse::utils::type_compare::TypeEq;
+auto SupPrototypeExtensionAst::CheckDoubleExtension(
+  TypeSymbol const &cls_sym, Scope &check_scope) const -> void {
+  // Prevent double inheritance: the same type extended by the same super class, at this level. A function class's
+  // blocks are generated one per overload, so it is not checked.
   using analyse::errors::SppSuperimpositionDoubleExtensionError;
-  if (cls_sym.Name->IsCompilerGeneratedType()) { return; }
-
-  auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
-    const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-    if (ext == nullptr) { return false; }
-
-    // The superclass is compared first: it rejects the large
-    // majority of candidates for a fraction of the cost of a
-    // name comparison, which is the type-symbol lookup this
-    // compiler spends most of its time on.
-    if (not TypeEq(*ext->SuperClass, *SuperClass, *sc, check_scope, false)) { return false; }
-
-    auto fwd = GenericInferenceMap();
-    auto rev = GenericInferenceMap();
-    return
-      RelaxedTypeEq(*ext->Name, *Name, *sc, check_scope, fwd, false, false) or
-      RelaxedTypeEq(*Name, *ext->Name, check_scope, *sc, rev, false, false);
-  };
-
-  // Prevent double inheritance by checking if the scopes
-  // are already registered this way around (at this level).
-  auto all_sup_scopes = cls_sym.LinkedScope->DirectSupScopes;
-  const auto existing_sup_scopes = all_sup_scopes
-    | genex::views::filter(check_double)
-    | genex::views::transform([](auto *x) {
-      return MakePair(x, AstAs<SupPrototypeExtensionAst>(x->AstNode));
-    })
-    | genex::to<Vec>();
-
-  if (not existing_sup_scopes.IsEmpty()) {
+  if (cls_sym.IsMock()) { return; }
+  const auto twin = FindMatchingExtension(cls_sym.LinkedScope->DirectSupScopes, *SuperClass, *Name, check_scope, false);
+  if (twin.second != nullptr) {
     Raise<SppSuperimpositionDoubleExtensionError>(
-      {&check_scope, existing_sup_scopes[0].first},
-      ERR_ARGS(*existing_sup_scopes[0].second->Source.OriginalSuperClass, *Source.OriginalSuperClass));
+      {twin.first, &check_scope}, ERR_ARGS(*twin.second->SuperClass, *SuperClass));
   }
 }
 
-auto spp::asts::SupPrototypeExtensionAst::CheckSelfExtension(
-  analyse::scopes::Scope &check_scope) const
-  -> void {
+auto SupPrototypeExtensionAst::CheckSelfExtension(
+  Scope &check_scope) const -> void {
   //
   using analyse::errors::SppSuperimpositionSelfExtensionError;
   using analyse::utils::type_compare::TypeEq;
@@ -561,7 +501,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckSelfExtension(
   // Check if the superimposition is extending itself.
   RaiseIf<SppSuperimpositionSelfExtensionError>(
     TypeEq(*Name, *SuperClass, check_scope, check_scope), {&check_scope},
-    ERR_ARGS(*Source.OriginalName, *Source.OriginalSuperClass));
+    ERR_ARGS(*Name, *SuperClass));
 }
 
 SPP_MOD_END

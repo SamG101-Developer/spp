@@ -6,6 +6,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_compare;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
@@ -31,7 +32,7 @@ import spp.utils.uid;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
+CaseExpressionBranchAst::CaseExpressionBranchAst(
   decltype(Op) &&op,
   decltype(Patterns) &&patterns,
   decltype(Guard) &&guard,
@@ -45,23 +46,21 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Body);
 }
 
-spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
+CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 
-auto spp::asts::CaseExpressionBranchAst::PosStart() const
-  -> std::size_t {
+auto CaseExpressionBranchAst::PosStart() const -> std::size_t {
   // Use the op or first pattern
   return Op ? Op->PosStart() : Patterns.Front()->PosStart();
 }
 
-auto spp::asts::CaseExpressionBranchAst::PosEnd() const
-  -> std::size_t {
-  // // Use the final pattern.
+auto CaseExpressionBranchAst::PosEnd() const -> std::size_t {
+  // Use the final pattern.
   return Patterns.Back()->PosEnd();
 }
 
-auto spp::asts::CaseExpressionBranchAst::Clone() const
-  -> Unique<Ast> {
-  // Clone all the members of the ast, carrying over the desugaring marker.
+auto CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
+  // Clone all the members of the ast, carrying over the
+  // desugaring marker.
   auto cloned = MakeUnique<CaseExpressionBranchAst>(
     AstClone(Op),
     AstCloneVec(Patterns),
@@ -71,8 +70,7 @@ auto spp::asts::CaseExpressionBranchAst::Clone() const
   return cloned;
 }
 
-auto spp::asts::CaseExpressionBranchAst::ToString() const
-  -> Str {
+auto CaseExpressionBranchAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Op).append(" ");
   SPP_STRING_EXTEND(Patterns, ", ");
@@ -82,30 +80,33 @@ auto spp::asts::CaseExpressionBranchAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Create a scope for the branch - this is where destructures of patterns will reside.
-  auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+auto CaseExpressionBranchAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Create a scope for the branch - this is where
+  // destructures of patterns will reside.
+  auto scope_name = ScopeBlockName::FromParts(
     "case-branch", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
 
-  // Analyse the patterns, ensuring comparison methods exist is needed.
+  // Analyse the patterns, ensuring comparison methods
+  // exist is needed.
   for (auto const &p : Patterns) {
     p->Stage7_AnalyseSemantics(sm, meta);
   }
 
-  // Ensure the functions exist for the comparisons (whichever op is used except "is").
-  // Todo: Is thick mocking okay? Conventions had to be removed from LHS, idk about RHS though.
+  // Ensure the functions exist for the comparisons
+  // (whichever op is used except "is"). Todo: Is this
+  // mocking okay? Conventions had to be removed from
+  // LHS, idk about RHS though.
   if (Op.get() and Op->TokenType != lex::SppTokenType::KW_IS) {
     for (auto const &p : Patterns) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();
       const auto bin_ast = MakeUnique<BinaryExpressionAst>(
-        MakeUnique<ObjectInitializerAst>(AstClone(meta->CaseCondition->InferType(sm, meta)->WithoutConvention()),
-                                         nullptr),
+        MakeUnique<ObjectInitializerAst>(
+          AstClone(meta->CaseCondition->InferType(sm, meta)->WithoutConvention()), nullptr),
         AstClone(Op),
-        MakeUnique<ObjectInitializerAst>(AstClone(pe->Expr->InferType(sm, meta)->WithoutConvention()), nullptr));
+        MakeUnique<ObjectInitializerAst>(
+          AstClone(pe->Expr->InferType(sm, meta)->WithoutConvention()), nullptr));
       bin_ast->Stage7_AnalyseSemantics(sm, meta);
     }
   }
@@ -133,10 +134,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto CaseExpressionBranchAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move into the branch's scope.
   sm->MoveToNextScope();
 
@@ -149,10 +148,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Combine the case expression with the pattern to determine
   // if this branch should be taken, at compile-time.
   sm->MoveToNextScope();
@@ -197,11 +194,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage9_CompTimeResolve(
   sm->MoveOutOfCurrentScope();
 }
 
-auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto CaseExpressionBranchAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the branch architecture. Start by defining blocks
   // for the branch's "body" and "next" (after body) zones.
   sm->MoveToNextScope();
@@ -219,10 +213,14 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   const auto cond = _CodegenCombinePatterns(sm, meta, ctx);
 
   if (Guard) {
-    // The guard is user-written and may assume the pattern actually matched (eg. "is Some(v) and v.foo()" reading
-    // "v" as a genuine payload) or have observable side effects, so it must only run once the pattern is known to
-    // have matched. Branch first, and only evaluate the guard in the block reached exclusively when "cond" was
-    // true, rather than eagerly ANDing it into "cond" and evaluating it unconditionally.
+    // The guard is user-written and may assume the pattern
+    // actually matched (eg. "is Some(v) and v.foo()" reading
+    // "v" as a genuine payload) or have observable side
+    // effects, so it must only run once the pattern is known
+    // to have matched. Branch first, and only evaluate the
+    // guard in the block reached exclusively when "cond" was
+    // true, rather than eagerly ANDing it into "cond" and
+    // evaluating it unconditionally.
     const auto guard_bb = llvm::BasicBlock::Create(
       *ctx->Context, "case.branch.guard" + uid, func);
     ctx->Builder.CreateCondBr(cond, guard_bb, next_bb);
@@ -251,24 +249,23 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   auto llvm_val = Body->Stage11_CodeGen(sm, meta, ctx);
   const auto incoming_bb = ctx->Builder.GetInsertBlock();
 
-  // Sometimes, a type is returned from a branch that is part of the variant type on the lhs. For example, a Opt[T]
-  // might receive a Some[T] in one branch, and a None in another. In this case the member value has to be tagged and
-  // copied into the variant's payload (a bit-cast cannot express that).
+  // Sometimes, a type is returned from a branch that is part of
+  // the variant type on the lhs. For example, a Opt[T] might
+  // receive a Some[T] in one branch, and a None in another. In
+  // this case the member value has to be tagged and copied into
+  // the variant's payload (a bit-cast cannot express that).
   if (meta->AssignmentTarget != nullptr and meta->AssignmentTargetType != nullptr and llvm_val != nullptr) {
     llvm_val = codegen::CoerceToVariant(
-      llvm_val, *meta->AssignmentTargetType,
-      *Body->InferType(sm, meta), *sm->CurrentScope,
-      "case.branch.variant" + uid, ctx);
+      llvm_val, TypeRef::Of(*meta->AssignmentTargetType, *sm->CurrentScope),
+      Body->InferTypeRef(sm, meta), *sm->CurrentScope, "case.branch.variant" + uid, ctx);
   }
 
   // Add a special case for the "!" type being used as the
   // returning type of one of the branches.
   const auto body_is_never = [&] {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
-    return analyse::utils::type_compare::TypeEq(
-      *Body->InferType(sm, meta), *generate::common_types_precompiled::NEVER,
-      *sm->CurrentScope, *sm->CurrentScope);
+    return Body->InferTypeRef(sm, meta).IsNever;
   }();
 
   // Add the value generated from the branch's body into the PHI
@@ -291,24 +288,25 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::CaseExpressionBranchAst::MarkForIterLoopYield()
-  -> void {
+auto CaseExpressionBranchAst::MarkForIterLoopYield() -> void {
+  // Getter for detecting if this loop came from a loop iteration
+  // lowering,
   _ForIterLoopYield = true;
 }
 
-auto spp::asts::CaseExpressionBranchAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto CaseExpressionBranchAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Forward type inference to the body.
   return Body->InferType(sm, meta);
 }
 
-auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx) const
-  -> llvm::Value* {
+auto CaseExpressionBranchAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  return Body->InferTypeRef(sm, meta);
+}
+
+auto CaseExpressionBranchAst::_CodegenCombinePatterns(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value* {
   // The "case c { ... }" form desugars to a branch with no
   // operator and a synthesised "true" pattern, meaning "taken
   // when c is true". Skip the pattern codegen.

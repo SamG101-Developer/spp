@@ -5,13 +5,13 @@ module;
 #include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
-    if (not handle_validate(is_exe)) { return; }
+  if (not handle_validate(is_exe)) { return; }
 
 #define SPP_VALIDATE_STRUCTURE_OR(is_exe, ...) \
-    if (not handle_validate(is_exe)) { return __VA_ARGS__; }
+  if (not handle_validate(is_exe)) { return __VA_ARGS__; }
 
 #define SPP_CLI_NULL \
-    bp::v1::std_out > bp::v1::null
+  bp::v1::std_out > bp::v1::null
 
 module spp.cli;
 import spp.analyse.scopes.scope_manager;
@@ -40,7 +40,7 @@ inline constexpr spp::Str STUB_FILE = "stub.spp";
 
 inline const spp::Str MAIN_FILE_CONTENTS = R"(
 fun main() -> Void {
-    std::io::println("Hello world!")
+  std::console::println("Hello world!")
 })";
 
 inline const spp::Str CONFIG_FILE_CONTENTS = R"(
@@ -67,7 +67,9 @@ namespace spp::cli {
     /**
      * Run a compilation, reporting a mistake in the source being compiled as the mistake it is.
      * @param[in,out] c The compiler to run.
-     * @return @c true if the compilation finished; @c false once the error has been printed.
+     * @return @c true if the build produced its artefact; @c false once the error has been printed, and for a back-end
+     * failure - a module llvm rejects, an object it cannot write, a linker that returns non-zero - which reports
+     * itself as it happens rather than by throwing.
      */
     auto CompileReportingErrors(
       spp::compiler::Compiler &c)
@@ -78,12 +80,10 @@ namespace spp::cli {
       // standing where the throw happened and a debugger can be pointed
       // at it. That build is the compiler's own; this is the one a
       // program is compiled with.
-      c.Compile();
-      return true;
+      return c.Compile();
 #else
       try {
-        c.Compile();
-        return true;
+        return c.Compile();
       }
       catch (spp::utils::errors::AbstractError const &e) {
         std::cerr << e.what() << "\n";
@@ -325,7 +325,7 @@ auto spp::cli::handle_vcs()
   // section. A project with no dependencies has nothing to
   // fetch, which is a successful outcome rather than a failure.
   const auto toml = toml::parse_file(CONFIG_FILE);
-  if (not toml.contains("vcs")) { return true; }
+  if (not toml["vcs"]) { return true; }
 
   // Move into the VCS folder.
   const auto cwd = std::filesystem::current_path();
@@ -812,8 +812,10 @@ auto spp::cli::run_cpp_google_test(
   const auto m = mode == "dev"
     ? compiler::Compiler::Mode::DEV
     : compiler::Compiler::Mode::REL;
+  // Discarded on purpose: this path verifies rather than builds, and a
+  // verification that fails throws out of here rather than answering.
   const auto c = compiler::Compiler::ForCppGoogleTest(m, std::move(main_code));
-  c->Compile();
+  static_cast<void>(c->Compile());
   return c->CompTimeConstants();
 }
 

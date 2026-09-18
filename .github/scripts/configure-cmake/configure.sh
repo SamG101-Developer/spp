@@ -1,61 +1,53 @@
 #!/usr/bin/env bash
 # Run the project's CMake configure step into the `build`
-# directory. Handle all conditional flags and configurations
-# in this script.
+# directory. Every conditional flag is decided here rather
+# than in the workflows.
 set -euo pipefail
 
 args=()
 
-# The SPP_NO_COMPILER_LAUNCHER flag is set when the compiler
-# cache is off (CodeQL), forcing the compiler to be invoked
-# directly. Otherwise, the cache configuration is added;
-# sccache or ccache. The flags go into the cmake configuration.
+# SPP_NO_COMPILER_LAUNCHER is set when the compiler cache is
+# off (CodeQL), which forces the compiler to be invoked
+# directly. Windows gets sccache, which can drive cl and
+# clang-cl; everything else gets ccache.
 if [ -z "${SPP_NO_COMPILER_LAUNCHER:-}" ]; then
   if [ "$RUNNER_OS" = "Windows" ]; then LAUNCHER=sccache; else LAUNCHER=ccache; fi
   args+=(-DCMAKE_C_COMPILER_LAUNCHER="$LAUNCHER" -DCMAKE_CXX_COMPILER_LAUNCHER="$LAUNCHER")
 fi
 
-# For a sanitizer build, append the flags into the
-# SPP_SANITIZER option, which is read in the
-# CMakeLists.txt file. This reuses the Debug profile with
-# additional args.
+# SPP_SANITIZER reuses the Debug profile with extra flags.
 if [ -n "$SANITIZER" ]; then
   args+=(-DSPP_SANITIZER="$SANITIZER")
 fi
 
-# Fix for mac-os which needs the xcode commands to be ran
-# on certain values to unlock macros that are currently
-# blocking type definitions.
+# macOS needs the SDK spelled out to unlock the macros that
+# otherwise block type definitions.
 if [ "$RUNNER_OS" = "macOS" ]; then
   args+=(-DCMAKE_OSX_SYSROOT="$(xcrun --show-sdk-path)")
 fi
 
-# Ubuntu injects -D_FORTIFY_SOURCE=3, which triggers a GCC
-# 16 ICE. Disable it otherwise the entire cmake build will
-# fail. Don't think it's an issue on GCC 17 but runner must
-# use GCC 16.
+# Ubuntu injects -D_FORTIFY_SOURCE=3, which trips a GCC 16
+# ICE and fails the whole build.
 FORTIFY_OFF="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
 
 # Ninja lives in a per-run RUNNER_TEMP directory, so its
-# absolute path changes on every workflow run. A build tree
-# restored from the cache still names the previous run's
-# path in CMAKE_MAKE_PROGRAM, and CMake runs that dead path
-# from project() before it ever looks at PATH. Pin the entry
-# to the Ninja on this run's PATH.
+# absolute path changes every run. A restored build tree
+# still names the previous run's path in CMAKE_MAKE_PROGRAM,
+# and CMake runs that dead path from project() before it
+# looks at PATH.
 if ! NINJA="$(command -v ninja)"; then
   echo "configure: ninja is not on PATH; setup-toolchain must run before this step" >&2
   exit 1
 fi
 
 # Git Bash reports an MSYS path (/c/...) that CMake cannot
-# execute; -m gives the mixed C:/... form CMake wants.
+# execute; -m gives the mixed C:/... form.
 if [ "$RUNNER_OS" = "Windows" ]; then
   NINJA="$(cygpath -m "$NINJA")"
 fi
 args+=(-DCMAKE_MAKE_PROGRAM="$NINJA")
 
-# Launch the cmake configuration script into the "build"
-# folder. Ninja must be used for the c++ module support.
+# Ninja is required for the C++ module support.
 run_configure() {
   # shellcheck disable=SC2086
   cmake -S . -B build -G Ninja \
@@ -70,12 +62,11 @@ run_configure() {
 }
 
 # A restored tree carries the results of every compile check
-# the last configure ran, as cache entries that are only ever
-# computed once. One bad configure - a half-installed toolchain,
-# a compiler that was not on PATH yet - therefore fails every
-# later run identically, with no output, because the failed
-# check is read from the cache instead of being redone. Retry
-# from a clean tree when the tree came out of the cache.
+# the last configure ran, as entries that are only computed
+# once. One bad configure - a half-installed toolchain, a
+# compiler not yet on PATH - therefore fails every later run
+# identically and with no output, because the failed check
+# is read from the cache instead of redone.
 restored=false
 if [ -f build/CMakeCache.txt ]; then
   restored=true
@@ -93,9 +84,8 @@ if [ "$restored" = true ]; then
   fi
 fi
 
-# The command line and output of every try_compile lands here,
-# which is where a find_package() that failed on a compile check
-# says what actually went wrong.
+# Where a find_package() that failed on a compile check says
+# what actually went wrong.
 log="build/CMakeConfigureLog.yaml"
 if [ -f "$log" ]; then
   echo "configure: last 300 lines of ${log}" >&2

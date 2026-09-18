@@ -7,71 +7,70 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ClassAttributeAst;
-  SPP_EXP_CLS struct CmpStatementAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::utils::type_members, struct TypePart);
+use(spp::asts, struct ClassAttributeAst);
+use(spp::asts, struct CmpStatementAst);
+use(spp::asts, struct FunctionPrototypeAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeAst);
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS class ScopeManager;
-  SPP_EXP_CLS struct TypeSymbol;
-}
+/// A uniform way to handle "parts" of types, making attribute
+/// vs indexing a lot easier / cleaner. Provides one way to
+/// handle both.
+SPP_EXP_CLS struct spp::analyse::utils::type_members::TypePart {
+  /// The attribute's name, or the element's index written out
+  Shared<IdentifierAst> Step;
+
+  /// Position in the walk, which for a tuple or an array is
+  /// the element's index.
+  std::size_t Index;
+
+  /// The part's own type.
+  Shared<TypeAst> Type;
+
+  /// The symbol of the part's own type.
+  TypeSymbol *Sym;
+
+  /// The scope that the part's type resolves in.
+  Scope const *Where;
+};
 
 namespace spp::analyse::utils::type_members {
-  /**
-   * One part of a type: an attribute, or an element of a tuple or an array. The two are held differently - attributes
-   * by name, elements by position - and every caller that walks what a type is made of has to cope with both, so the
-   * difference is settled here once rather than at each of them.
-   */
-  SPP_EXP_CLS struct TypePart {
-    Str Step; // The attribute's name, or the element's index written out
-    std::size_t Index; // Position in the walk, which for a tuple or an array is the element's index.
-    Shared<asts::TypeAst> Type; // The part's own type.
-    scopes::TypeSymbol *Sym; // The symbol of the part's own type.
-    scopes::Scope const *Where; // The scope that the part's type resolves in.
-  };
-
-  /**
-   * The parts a type is made of, in declaration order: its elements when it is a tuple or an array, its attributes
-   * (and its super types') otherwise.
-   * @param type The type being taken apart.
-   * @param scope A scope to look @p type up from.
-   * @param collapse_arrays Answer with only the first element of an array. Every element of an array has the same
-   * type, so one of them answers for all of them wherever the question is about the type rather than the storage.
-   * @return Its parts, empty when it has none.
-   */
+  /// Get all the parts of a type, either the fields for a type
+  /// (and its super types' fields), or the indexes for a tuple
+  /// or array. Use the new type part struct.
   SPP_EXP_FUN auto GetAllParts(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope,
+    TypeSymbol const &sym,
+    Scope const &scope,
     bool collapse_arrays = false)
     -> Vec<TypePart>;
 
-  /**
-   * The attributes of a type and all of its super types, each with the symbol of its own type and the scope that type
-   * resolves in. All this needs is a scope to look @p type up from.
-   */
+  /// Get all the fields on a type, and all of it's super types,
+  /// tracking the field, symbol, and scope. The scope is so
+  /// we know which super class it came from if it's not on the
+  /// actual type itself.
   SPP_EXP_FUN auto GetAllAttrs(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> Vec<Tup<Shared<asts::IdentifierAst>, scopes::TypeSymbol*, scopes::Scope*>>;
+    TypeSymbol const &cls_sym)
+    -> Vec<Tup<Shared<IdentifierAst>, TypeSymbol*, Scope*>>;
 
-  /**
-   * Check all instances of the constant in the scope and super scopes have the same type.
-   * @param cmp_member The constant being declared.
-   * @param cls_scope The scope of the type the superimposition is over.
-   * @param own_scope The scope of the superimposition block declaring it, whose own declaration is not compared
-   * against itself.
-   * @param sm The scope manager, for the scope errors are reported against.
-   */
+  /// Similar to the "GetAllAttrs", but in ast form, so that
+  /// the default values can be extracted for object initializers,
+  /// if required.
+  SPP_EXP_FUN auto GetAllAttrAsts(
+    TypeSymbol const &cls_sym)
+    -> Vec<ClassAttributeAst*>;
+
+  /// Check that all the instances of a "cmp" constant, in a
+  /// type and its super types it is extending, have a consistent
+  /// type.
   SPP_EXP_FUN auto CheckShadowedCmpAgreesInType(
-    asts::CmpStatementAst const &cmp_member,
-    scopes::Scope &cls_scope,
-    scopes::Scope const &own_scope,
-    scopes::ScopeManager const &sm)
+    CmpStatementAst const &cmp_member,
+    Scope &cls_scope,
+    Scope const &own_scope,
+    ScopeManager const &sm)
     -> void;
 
   /**
@@ -82,35 +81,20 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto ClearUnimplementedAbstractMethodsCache()
     -> void;
 
-  /**
-   * Collect the methods that are visible on a type but left unimplemented, that is, the methods declared with the
-   * @c !abstract_method annotation that no superimposition on the type provides a same-signature implementation for.
-   * A type with any such method is abstract: it cannot be instantiated, because calling one of them would have no
-   * body to dispatch to. Abstractness propagates, so a type that superimposes an abstract type and implements only
-   * some of its abstract methods is itself abstract, and reports the ones that are still outstanding.
-   * @param type_scope The scope of the type whose methods are being collected.
-   * @return The abstract methods that the type never implements, empty if the type is concrete.
-   */
+  /// Collect all the methods on a type that are abstract,
+  /// which in turn indicates the type itself is abstract.
+  /// Check the abstract methods don't have same signature
+  /// overrides on this type or its superimposition classes
+  /// upto the base who contains abstract methods.
   SPP_EXP_FUN auto GetUnimplementedAbstractMethods(
-    scopes::Scope const &type_scope)
-    -> Vec<asts::FunctionPrototypeAst const*>;
+    Scope const &type_scope)
+    -> Vec<FunctionPrototypeAst const*>;
 
-  /**
-   * Get the class attribute ASTs of a type and all of its super types, in the same order as @c GetAllAttrs, so the
-   * two line up index for index. This gives access to per-attribute information that isn't carried on the variable
-   * symbols, such as an attribute's default value.
-   * @param type The type whose attribute ASTs are being collected.
-   * @param sm The scope manager, used to resolve the type.
-   * @return The attribute ASTs of the type and its super types.
-   */
-  SPP_EXP_FUN auto GetAllAttrAsts(
-    asts::TypeAst const &type,
-    scopes::Scope const &scope)
-    -> Vec<asts::ClassAttributeAst*>;
-
+  /// Get the index of a field on its type, so that LLVM
+  /// can determine which slot to push data into. Takes into
+  /// account hidden fat pointer fields too.
   SPP_EXP_FUN auto GetFieldIndexInType(
-    asts::TypeAst const &type_sym,
-    asts::IdentifierAst const &field_name,
-    scopes::Scope const &scope)
+    TypeSymbol const &type_sym,
+    IdentifierAst const &field_name)
     -> std::size_t;
 }

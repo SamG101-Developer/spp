@@ -7,73 +7,68 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
-spp::asts::PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeywordNotAst(
+PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeywordNotAst(
   decltype(TokDot) &&tok_dot,
   decltype(TokNot) &&tok_not) :
   TokDot(std::move(tok_dot)),
   TokNot(std::move(tok_not)) {
 }
 
-spp::asts::PostfixExpressionOperatorKeywordNotAst::~PostfixExpressionOperatorKeywordNotAst() = default;
+PostfixExpressionOperatorKeywordNotAst::~PostfixExpressionOperatorKeywordNotAst() = default;
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::PosStart() const
-  -> std::size_t {
+auto PostfixExpressionOperatorKeywordNotAst::PosStart() const -> std::size_t {
   // Use the "." token.
   return TokDot->PosStart();
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::PosEnd() const
-  -> std::size_t {
+auto PostfixExpressionOperatorKeywordNotAst::PosEnd() const -> std::size_t {
   // Use the "not" token.
   return TokNot->PosEnd();
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Clone() const
-  -> Unique<Ast> {
+auto PostfixExpressionOperatorKeywordNotAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<PostfixExpressionOperatorKeywordNotAst>(
     AstClone(TokDot),
     AstClone(TokNot));
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::ToString() const
-  -> Str {
+auto PostfixExpressionOperatorKeywordNotAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDot);
   SPP_STRING_APPEND(TokNot);
   SPP_STRING_END;
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::errors::SppExpressionNotBooleanError;
   using analyse::utils::type_predicates::IsTypeBool;
 
   // Check the left-hand-side is an owned boolean expression.
-  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-  RaiseIf<SppExpressionNotBooleanError>(
-    lhs_type->GetConvention() != nullptr or not IsTypeBool(*lhs_type, *sm->CurrentScope),
-    {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, "not expression"));
+  if (not IsTypeBool(meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+    Raise<SppExpressionNotBooleanError>(
+      {sm->CurrentScope},
+      ERR_ARGS(*meta->PostfixExpressionLhs, *meta->PostfixExpressionLhs->InferType(sm, meta), "not expression"));
+  }
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // The "lhs" will be boolean based on previous analysis.
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
   const auto cmp_lhs_bool = meta->CmpResult->To<BooleanLiteralAst>();
@@ -83,11 +78,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
   meta->CmpResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the left-hand-side expression, which analysis has
   // guaranteed is a boolean, owned or borrowed.
   const auto uid = "." + spp::utils::Uid(this);
@@ -103,13 +95,22 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   return ctx->Builder.CreateNot(lhs_val, "not" + uid);
 }
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::InferType(
-  ScopeManager *,
-  CompilerMetaData *)
-  -> Shared<TypeAst> {
+auto PostfixExpressionOperatorKeywordNotAst::InferType(
+  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
   // The type of a "not" expression is always boolean.
   using generate::common_types::BooleanType;
   return BooleanType(PosStart());
+}
+
+auto PostfixExpressionOperatorKeywordNotAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *) -> TypeRef {
+  return TypeRef::Of(*generate::common_types_precompiled::BOOL, *sm->CurrentScope);
+}
+
+auto PostfixExpressionOperatorKeywordNotAst::IsAllowedInDefault() const -> bool {
+  // Reads what it is applied to, and holds nothing of
+  // its own.
+  return true;
 }
 
 SPP_MOD_END

@@ -7,41 +7,28 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(GenericParameterTypeInlineConstraintsAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericParameterTypeInlineConstraintsAst);
 
-  /**
-   * The @code :@endcode token that introduces the inline constraints.
-   */
+  /// The ":" token that introduces the inline constraints.
   Unique<TokenAst> TokColon;
 
-  /**
-   * The constraints for the generic type parameter. Any generic argument passed into the generic parameter must
-   * satisfy these constraints.
-   */
+  /// The constraints for the generic type parameter. Any
+  /// generic argument passed into the generic parameter must
+  /// satisfy these constraints.
   Vec<Shared<TypeAst>> Constraints;
 
   static auto NewEmpty() -> Unique<GenericParameterTypeInlineConstraintsAst>;
 
-  /**
-   * Construct the GenericParameterTypeInlineConstraintsAst with the arguments matching the members.
-   * @param tok_colon The @c : token that introduces the inline constraints.
-   * @param constraints The constraints for the generic type parameter.
-   */
   GenericParameterTypeInlineConstraintsAst(
     decltype(TokColon) &&tok_colon,
     Vec<Unique<TypeAst>> &&constraints);
 
   ~GenericParameterTypeInlineConstraintsAst() override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeInlineConstraintsAst)

@@ -7,7 +7,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
-spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
+TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
   decltype(TokL) &&tok_l,
   decltype(Expr) expr,
   decltype(TokR) &&tok_r) :
@@ -16,29 +16,25 @@ spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
   TokR(std::move(tok_r)) {
 }
 
-spp::asts::TypeParenthesisedExpressionAst::~TypeParenthesisedExpressionAst() = default;
+TypeParenthesisedExpressionAst::~TypeParenthesisedExpressionAst() = default;
 
-auto spp::asts::TypeParenthesisedExpressionAst::PosStart() const
-  -> std::size_t {
+auto TypeParenthesisedExpressionAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto spp::asts::TypeParenthesisedExpressionAst::PosEnd() const
-  -> std::size_t {
+auto TypeParenthesisedExpressionAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::TypeParenthesisedExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto TypeParenthesisedExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<TypeParenthesisedExpressionAst>(
     AstClone(TokL), AstCloneShared(Expr), AstClone(TokR));
 }
 
-auto spp::asts::TypeParenthesisedExpressionAst::ToString() const
-  -> Str {
+auto TypeParenthesisedExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_APPEND(Expr);
@@ -46,8 +42,7 @@ auto spp::asts::TypeParenthesisedExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::TypeParenthesisedExpressionAst::Convert()
-  -> Unique<TypeAst> {
+auto TypeParenthesisedExpressionAst::Convert() -> Unique<TypeAst> {
   return AstClone(Expr);
 }
 

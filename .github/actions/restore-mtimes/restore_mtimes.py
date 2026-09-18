@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 """Set every tracked file's mtime to the time of the last commit that touched it.
 
-`actions/checkout` writes the whole tree at once, so every source file lands with
-the same brand-new mtime. Ninja compares source mtimes against object mtimes, so a
-build tree restored from the cache looks entirely stale and the runner recompiles
-from scratch, which defeats the point of caching the tree at all.
+`actions/checkout` writes the whole tree at once, so every file lands with the same brand-new mtime, and Ninja - which
+compares source mtimes against object mtimes - sees a restored build tree as entirely stale. Dating each file by its
+last commit makes an unchanged file older than the cached objects and a changed one newer, so Ninja rebuilds exactly
+what moved. That is what makes CI incremental.
 
-Rewriting mtimes from commit history makes them stable: a file that has not changed
-since the cached build keeps the same mtime it had then (older than the cached
-objects, so Ninja skips it), and a file touched by a new commit gets a newer one
-(so Ninja rebuilds exactly it and its dependents). That powers the incremental
-compilation system.
-
-Note: Equivalent to MestreLion/git-tools' `git-restore-mtime`, vendored to avoid a
-network dependency in the hot path of every job.
+Equivalent to MestreLion/git-tools' `git-restore-mtime`, vendored to keep a network dependency out of every job.
 """
 
 from __future__ import annotations

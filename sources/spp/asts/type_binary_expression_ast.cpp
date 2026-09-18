@@ -9,7 +9,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
+TypeBinaryExpressionAst::TypeBinaryExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(TokOp) &&tok_op,
   decltype(Rhs) &&rhs) :
@@ -18,22 +18,19 @@ spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
   Rhs(std::move(rhs)) {
 }
 
-spp::asts::TypeBinaryExpressionAst::~TypeBinaryExpressionAst() = default;
+TypeBinaryExpressionAst::~TypeBinaryExpressionAst() = default;
 
-auto spp::asts::TypeBinaryExpressionAst::PosStart() const
-  -> std::size_t {
+auto TypeBinaryExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs.
   return Lhs->PosStart();
 }
 
-auto spp::asts::TypeBinaryExpressionAst::PosEnd() const
-  -> std::size_t {
+auto TypeBinaryExpressionAst::PosEnd() const -> std::size_t {
   // Use the rhs.
   return Rhs->PosEnd();
 }
 
-auto spp::asts::TypeBinaryExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto TypeBinaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<TypeBinaryExpressionAst>(
     AstCloneShared(Lhs),
@@ -41,8 +38,7 @@ auto spp::asts::TypeBinaryExpressionAst::Clone() const
     AstCloneShared(Rhs));
 }
 
-auto spp::asts::TypeBinaryExpressionAst::ToString() const
-  -> Str {
+auto TypeBinaryExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Lhs);
   SPP_STRING_APPEND(TokOp);
@@ -50,8 +46,7 @@ auto spp::asts::TypeBinaryExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::TypeBinaryExpressionAst::Convert()
-  -> Unique<TypeAst> {
+auto TypeBinaryExpressionAst::Convert() -> Unique<TypeAst> {
   //
   using generate::common_types::VariantType;
 

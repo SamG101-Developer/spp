@@ -12,19 +12,18 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import std;
 
 auto spp::analyse::utils::assignment_utils::IsIdentifier(
-  asts::Ast const *expr) -> bool {
+  Ast const *expr) -> bool {
   // Determine if the AST node is an identifier.
-  return expr->To<asts::IdentifierAst>() != nullptr;
+  return expr->To<IdentifierAst>() != nullptr;
 }
 
 auto spp::analyse::utils::assignment_utils::IsAttr(
-  asts::Ast const *expr,
-  scopes::ScopeManager const *sm) -> bool {
+  Ast const *expr, ScopeManager const *sm) -> bool {
   // Determine if the AST node is an attribute (ie not
   // an identifier).
-  const auto *const postfix = expr->To<asts::PostfixExpressionAst>();
+  const auto *const postfix = expr->To<PostfixExpressionAst>();
   if (postfix == nullptr) { return false; }
-  if (postfix->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
+  if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
 
   // Perform validation on the actual attribute too.
   auto const var_symbol_outermost = sm->CurrentScope->GetVarSymbolOutermost(*expr);
@@ -32,13 +31,13 @@ auto spp::analyse::utils::assignment_utils::IsAttr(
 }
 
 auto spp::analyse::utils::assignment_utils::IsDeref(
-  asts::Ast const *expr) -> bool {
+  Ast const *expr) -> bool {
   // Determine if the AST node is a deref op (ie not
   // an identifier or an attribute).
-  const auto *const postfix = expr->To<asts::PostfixExpressionAst>();
+  const auto *const postfix = expr->To<PostfixExpressionAst>();
   if (postfix == nullptr) { return false; }
 
   // Check the operator on the postfix expression ast
   // node.
-  return postfix->Op->To<asts::PostfixExpressionOperatorDerefAst>() != nullptr;
+  return postfix->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr;
 }

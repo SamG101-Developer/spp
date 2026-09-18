@@ -1,11 +1,9 @@
 name: PR Title
 
-# Standalone, and deliberately not part of the PR pipeline. A title can change without the commit changing, so this
-# has to run on `edited`; putting `edited` on pr.yaml instead made every title tweak cancel the in-flight run through
-# that workflow's cancel-in-progress, taking a 90-minute CodeQL job with it.
+# Standalone, because a title can change without the commit changing and so this has to run on `edited`: that
+# trigger on pr.yaml made every title tweak cancel the in-flight run, 90-minute CodeQL job included.
 #
-# It is its own required status check. pr.yaml no longer checks the title at all, so this is the only thing enforcing
-# it: add "PR Title Format" to the branch protection rule alongside "CI Success".
+# Its own required status check - add "PR Title Format" to branch protection alongside "CI Success".
 
 on:
   pull_request:
@@ -37,7 +35,6 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Enforce the regex rules on the PR title and description.
       - name: Check PR title
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50
         env:

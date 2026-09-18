@@ -5,72 +5,53 @@ export module spp.analyse.scopes.scope_block_name;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS struct ScopeBlockName;
-  SPP_EXP_CLS struct ScopeIdentifierName;
-  SPP_EXP_CLS struct ScopeTypeIdentifierName;
-}
+use(spp::analyse::scopes, struct ScopeBlockName);
+use(spp::analyse::scopes, struct ScopeIdentifierName);
+use(spp::analyse::scopes, struct ScopeTypeIdentifierName);
+use(spp::asts, struct Ast);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeAst);
+use(spp::asts, struct TypeIdentifierAst);
 
-namespace spp::asts {
-  SPP_EXP_CLS struct Ast;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeIdentifierAst;
-}
-
-/**
- * For scopes that aren't for a function or type, they don't have an @c IdentifierAst or @c TypeIdentifierAst to name
- * them. Instead, they have a simple name, which is just a string. This is used for things like loops, conditionals,
- * and other blocks of code that don't have a specific name. The string is wrapped into this struct to provide type
- * safety.
- */
+/// A scope block name wraps the a string into a struct, such
+/// as "case" or "loop" for specific asts. This differentiates
+/// them from function/module/type scopes.
 SPP_EXP_CLS struct spp::analyse::scopes::ScopeBlockName {
-  /**
-   * The name of the scope block. This is just a string, and can be anything that makes sense for the block.
-   * Typically, a scope name may be "<loop#30>" for a loop block starting at token number 30.
-   */
+  /// The internal string name of the scope being created.
+  /// This will look like "loop#30" for a loop ast starting
+  /// at token 30. The actual token number isn't important.
   Str Name;
 
-private:
-  /**
-   * The constructor for the ScopeBlockName. This takes a string and moves it into the struct. This is to avoid
-   * unnecessary copies.
-   * @param name The name of the scope block.
-   */
-  explicit ScopeBlockName(Str &&name);
+  /// Take a "header" name, like "loop" or "case", a "parts"
+  /// vector, for additional identifying metadata, and a token
+  /// position. These are combined into one name, calling the
+  /// private constructor. Often, the parts vector is empty.
+  static auto FromParts(Str &&header, Vec<Ast*> const &parts, std::size_t pos) -> ScopeBlockName;
 
-public:
-  /**
-   * Create a ScopeBlockName from a header and parts. The format created is "<header#part1#part2#...>". This is
-   * the standard format for scope block names in SPP.
-   * @param header The header of the scope block name, like "type-stmt" or "loop".
-   * @param parts The parts to append to the header, typically strings representing metadata of the AST.
-   * @param pos The position of the AST in the source code, to make scope names unique.
-   * @return The constructed ScopeBlockName.
-   */
-  static auto FromParts(Str &&header, Vec<asts::Ast*> const &parts, std::size_t pos) -> ScopeBlockName;
-
-  /**
-   * Allow default copy constructors for easy passing around of scope block names.
-   */
   ScopeBlockName(ScopeBlockName const &) = default;
-
-  /**
-   * Allow default move constructors for easy passing around of scope block names.
-   */
   ScopeBlockName(ScopeBlockName &&) noexcept = default;
+
+private:
+  explicit ScopeBlockName(Str &&name);
 };
 
+/// The module and function scopes use their associated
+/// identifier ast to name their scope.
 SPP_EXP_CLS struct spp::analyse::scopes::ScopeIdentifierName {
-  Shared<asts::IdentifierAst> Name;
+  /// The internal identifier name, shared with the module
+  /// or function prototype ast this scope represents.
+  Shared<IdentifierAst> Name;
 
-  explicit ScopeIdentifierName(Shared<asts::IdentifierAst> const &name);
+  explicit ScopeIdentifierName(Shared<IdentifierAst> const &name);
 };
 
+/// The class scopes using a type ast representing the
+/// type's name to name their scope.
 SPP_EXP_CLS struct spp::analyse::scopes::ScopeTypeIdentifierName {
-  Shared<asts::TypeIdentifierAst> Name;
+  /// The internal identifier name, shared with the
+  /// class prototype ast this scope represents.
+  Shared<TypeIdentifierAst> Name;
 
-  explicit ScopeTypeIdentifierName(Shared<asts::TypeAst> const &name);
-
-  explicit ScopeTypeIdentifierName(Shared<asts::TypeIdentifierAst> const &name);
+  explicit ScopeTypeIdentifierName(Shared<TypeAst> const &name);
+  explicit ScopeTypeIdentifierName(Shared<TypeIdentifierAst> const &name);
 };

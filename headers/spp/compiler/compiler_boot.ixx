@@ -38,6 +38,13 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
   /** The fully qualified name of each test the harness runs, in the order it runs them. */
   Vec<Str> TestNames;
 
+  /**
+   * For the c++ unit tests: code generation stops once every module has been verified and the modules link together
+   * into one. Nothing is optimised, written or linked, and an invalid module throws rather than aborting the process,
+   * so a "should pass" test fails on the code it generates as well as on its analysis.
+   */
+  bool VerifyOnly = false;
+
   auto Lex(
     utils::ProgressBar &bar,
     ModuleTree &tree)
@@ -66,7 +73,7 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     analyse::scopes::ScopeManager *sm)
     -> void;
 
-  auto Stage4_QualifyTypes(
+  auto Stage4_ResolveDeclarations(
     utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
@@ -120,12 +127,18 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     analyse::scopes::ScopeManager *sm)
     -> void;
 
-  auto Stage11_CodeGen(
+  /**
+   * Generate, optimise, emit and link. Unlike the stages above it, this one has a back end under it that can fail
+   * without an error to throw - a module llvm rejects, an object it cannot write, a linker that returns non-zero -
+   * so it answers whether the build actually produced what it set out to.
+   * @return @c true when the build produced its artefact, @c false when the back end failed.
+   */
+  SPP_ATTR_NODISCARD auto Stage11_CodeGen(
     utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm,
     unsigned opt_level)
-    -> void;
+    -> bool;
 
 private:
   Vec<asts::ModulePrototypeAst*> _Modules;
@@ -153,19 +166,21 @@ private:
    * boundaries the per-module walk leaves in place. Written beside the per-module ir as @c lto.ll rather than
    * replacing it.
    * @param[in] out Where this build writes; the combined ir and the object come off it.
+   * @return @c true when there is nothing left to do or the executable was produced, @c false when a step failed.
    */
-  auto _LinkTimeOptimize(
+  SPP_ATTR_NODISCARD auto _LinkTimeOptimize(
     OutLayout const &out,
     unsigned opt_level)
-    -> void;
+    -> bool;
 
   /**
    * Link the emitted object against the ffi runtimes the project's packages ship, producing the executable.
    * @param[in] out Where this build writes; the object, the staged library folder and the executable all come off it.
+   * @return @c true when the linker produced the executable, @c false when it returned non-zero.
    */
-  auto _LinkExecutable(
+  SPP_ATTR_NODISCARD auto _LinkExecutable(
     OutLayout const &out)
-    -> void;
+    -> bool;
 
   /**
    * Every native library a package ships, found by shape: @c \<package\>/ffi/\<name\>/lib\<name\>.so , which is

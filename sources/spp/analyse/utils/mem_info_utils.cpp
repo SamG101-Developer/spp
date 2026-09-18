@@ -7,9 +7,9 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 SPP_MOD_BEGIN
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::InitializedBy(
-  asts::Ast const &ast,
-  scopes::Scope *scope)
+auto MemoryInfo::InitializedBy(
+  Ast const &ast,
+  Scope *scope)
   -> void {
   AstInitialization = {&ast, scope};
   AstInitializationOrigin = {&ast, scope};
@@ -19,47 +19,51 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::InitializedBy(
   IsInconsistentlyInitialized = std::nullopt;
   IsInconsistentlyMoved = std::nullopt;
   IsInconsistentlyPartiallyMoved = std::nullopt;
+  IsInconsistentlyBorrowEscaping = std::nullopt;
 }
 
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::MovedBy(
-  asts::Ast const &ast, scopes::Scope *scope)
+auto MemoryInfo::MovedBy(
+  Ast const &ast, Scope *scope)
   -> void {
   AstMoved = {&ast, scope};
   AstInitialization = {nullptr, nullptr};
 }
 
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::RemovePartialMoves(
-  asts::Ast const &ast,
-  scopes::Scope *scope)
+auto MemoryInfo::RemovePartialMoves(
+  Ast const &ast,
+  Scope * /*scope*/)
   -> void {
   // Use "string" comparison; same as overlap checking mechanism.
+  // Writing a moved-out part back puts only that part back: the
+  // symbol is not re-initialised, which would clear what the
+  // branches disagreed about while other parts are still missing.
+  // Once no part is missing, none can be inconsistently missing.
   genex::actions::remove(
     AstPartialMoves, ast.ToString(),
     [](auto const &x) { return x->ToString(); });
-  if (not AstPartialMoves.IsEmpty()) {
-    InitializedBy(ast, scope);
+  if (AstPartialMoves.IsEmpty()) {
+    IsInconsistentlyPartiallyMoved = std::nullopt;
   }
 }
 
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::Snapshot() const
+auto MemoryInfo::Snapshot() const
   -> MemoryInfoSnapshot {
   // A snapshot is the saved part of this struct, so taking
   // one is just a copy of that part.
   return *this;
 }
 
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
+auto MemoryInfo::Clone() const
   -> Unique<MemoryInfo> {
   auto out = MakeUnique<MemoryInfo>();
   static_cast<MemoryState&>(*out) = *this;
   static_cast<MemoryConsistency&>(*out) = *this;
   out->AstInitializationOrigin = AstInitializationOrigin;
   out->AstBorrowed = AstBorrowed;
-  out->AstCompTime = asts::AstClone(AstCompTime);
   return out;
 }
 
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::FillFromSnapshot(
+auto MemoryInfo::FillFromSnapshot(
   MemoryInfoSnapshot const &snapshot)
   -> void {
   // Everything a snapshot holds is the saved part of this

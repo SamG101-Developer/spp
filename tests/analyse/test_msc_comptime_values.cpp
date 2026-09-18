@@ -440,6 +440,62 @@ SPP_TEST_CMP_VALUES(
 
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
+  test_float_rounding, R"(
+  cmp half_up: F64 = 2.5_f64.round()
+  cmp below_half: F64 = 2.4_f64.round()
+  cmp negative_half: F64 = (-2.5_f64).round()
+  cmp truncated: F64 = 2.7_f64.trunc()
+  cmp ceiled: F64 = 2.2_f64.ceil()
+  cmp floored: F64 = 2.7_f64.floor()
+)", {"half_up", "3.0_f64"}, {"below_half", "2.0_f64"}, {"negative_half", "-3.0_f64"}, {"truncated", "2.0_f64"},
+  {"ceiled", "3.0_f64"}, {"floored", "2.0_f64"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_attribute_assignment, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+
+  sup Point ext Copy { }
+
+  cmp fun set_x() -> S32 {
+    let mut p = Point(x=3, y=4)
+    p.x = 10
+    ret p.x + p.y
+  }
+
+  cmp a: S32 = set_x()
+)", {"a", "14_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_nested_attribute_assignment, R"(
+  cls Inner {
+    !public a: S32
+    !public b: S32
+  }
+
+  cls Outer {
+    !public inner: Inner
+    !public c: S32
+  }
+
+  sup Inner ext Copy { }
+  sup Outer ext Copy { }
+
+  cmp fun set_inner_a() -> S32 {
+    let mut o = Outer(inner=Inner(a=1, b=2), c=3)
+    o.inner.a = 10
+    ret o.inner.a + o.inner.b + o.c
+  }
+
+  cmp a: S32 = set_inner_a()
+)", {"a", "15_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
   test_integer_division_and_bitwise, R"(
   cmp band: S32 = 12 & 10
   cmp bior: S32 = 12 | 10

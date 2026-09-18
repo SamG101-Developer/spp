@@ -9,13 +9,10 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct FunctionImplementationLoweredAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(FunctionImplementationLoweredAst);
+use(spp::asts, struct FunctionPrototypeAst);
 
 SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final : FunctionImplementationAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KIND(FunctionImplementationLoweredAst)
 
 private:
@@ -23,15 +20,9 @@ private:
 
   FunctionPrototypeAst *_ProtoPtr = nullptr;
 
-  auto _ValidateZeroDivision(
-    Vec<Unique<ExpressionAst>> const &args,
-    ScopeManager const *sm) const
-    -> void;
+  auto _ValidateZeroDivision(Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, meta::CompilerMetaData const *meta) const -> void;
 
-  auto _ValidateShiftAmount(
-    Vec<Unique<ExpressionAst>> const &args,
-    ScopeManager const *sm) const
-    -> void;
+  auto _ValidateShiftAmount(Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, meta::CompilerMetaData const *meta) const -> void;
 
 public:
   static auto NewEmpty() -> Unique<FunctionImplementationLoweredAst>;
@@ -50,5 +41,3 @@ public:
 
   auto SetProtoPtr(FunctionPrototypeAst *proto) -> void;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionImplementationLoweredAst)

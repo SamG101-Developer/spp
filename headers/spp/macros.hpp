@@ -11,11 +11,20 @@
 #define SPP_ATTR_UNLIKELY [[unlikely]]
 #define SPP_ATTR_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #define SPP_ATTR_ASSUME(x) [[assume(x)]]
-#define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]]
-#define SPP_ATTR_NOINLINE [[gnu::noinline]]
-#define SPP_ATTR_UNREACHABLE [[gnu::unreachable]]
-#define SPP_ATTR_HOT [[gnu::hot]]
-#define SPP_ATTR_COLD [[gnu::cold]]
+
+#if SPP_COMPILER_MSVC
+  #define SPP_ATTR_ALWAYS_INLINE [[msvc::forceinline]]
+  #define SPP_ATTR_NOINLINE [[msvc::noinline]]
+  #define SPP_ATTR_UNREACHABLE
+  #define SPP_ATTR_HOT
+  #define SPP_ATTR_COLD
+#else
+  #define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]]
+  #define SPP_ATTR_NOINLINE [[gnu::noinline]]
+  #define SPP_ATTR_UNREACHABLE [[gnu::unreachable]]
+  #define SPP_ATTR_HOT [[gnu::hot]]
+  #define SPP_ATTR_COLD [[gnu::cold]]
+#endif
 
 #if SPP_DEBUG
 #define SPP_ASSERT(x)                                                                                   \
@@ -52,6 +61,16 @@
   if ((ast_attr) == nullptr) {                                                          \
     (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmptyShared(__VA_ARGS__); \
   }
+
+#define SPP_AST_COMMON_FWD_DECL(_Ast)            \
+  use(spp::analyse::scopes, class ScopeManager); \
+  use(spp::asts::meta, struct CompilerMetaData); \
+  use(spp::asts, struct _Ast)
+
+#define SPP_AST_COMMON_FWD_DECL_TEMPLATED(_Ast)  \
+  use(spp::analyse::scopes, class ScopeManager); \
+  use(spp::asts::meta, struct CompilerMetaData); \
+  use(spp::asts, template <typename T> struct _Ast)
 
 #define SPP_STRING_START auto raw_string = Str()
 
@@ -98,10 +117,10 @@
 #if SPP_COMPILER_GCC
 
 #define SPP_GCC_VTABLE_FIX_BASE \
-  virtual auto _spp_key_function() const -> void;
+  virtual auto _spp_key_function() const -> void
 
 #define SPP_GCC_VTABLE_FIX \
-  auto _spp_key_function() const -> void override;
+  auto _spp_key_function() const -> void override
 
 #define SPP_GCC_VTABLE_FIX_IMPL(Type)             \
   SPP_MOD_BEGIN                                   \
@@ -135,3 +154,10 @@
 #define SPP_NO_ANNOTATIONS Vec<Unique<asts::AnnotationAst>>()
 
 #define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager *sm, asts::FunctionPrototypeAst const *proto, asts::meta::CompilerMetaData *meta
+
+#define use(ns, _Type, ...) \
+  namespace ns { SPP_EXP_CLS _Type __VA_OPT__(, __VA_ARGS__); } \
+  using namespace ns
+
+#define use_ns(ns) \
+  using namespace ns

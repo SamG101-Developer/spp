@@ -14,8 +14,8 @@ import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.subroutine_prototype_ast;
@@ -34,36 +34,36 @@ import genex;
 import llvm;
 
 namespace {
-  /**
-   * The runtime's allocator, as the module sees it. A coroutine frame is allocated and released by the coroutine
-   * itself rather than through the s++ allocator types, because the size is not known until llvm has laid the frame
-   * out - there is no s++ expression to hand a "USize" to at this point, only the "llvm.coro.size" intrinsic.
-   * Todo: Move this to stack not heap allocation.
-   * @param[in,out] ctx The context whose module the declaration belongs to.
-   * @return The "sppc_malloc" declaration, taking a byte count and returning the storage.
-   */
+  /// The runtime's allocator. A coroutine frame is allocated
+  /// and released by the coroutine itself rather then through
+  /// the S++ allocator types.
+  /// Todo: Move to stack only coroutine frame allocation?
   auto CoroFrameAllocFn(
-    spp::codegen::LlvmCtx *ctx)
+    spp::codegen::LlvmCtx const *ctx)
     -> llvm::Function* {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto size_ty = llvm::Type::getInt64Ty(*ctx->Context);
     const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
-    return llvm::cast<llvm::Function>(ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
+    return llvm::cast<llvm::Function>(
+      ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
   }
 
-  /** The release half of @c CoroFrameAllocFn ; takes the storage that "llvm.coro.free" handed back. */
+  /// The runtime's release. Provides the other half of the above
+  /// allocation function.
+  /// Todo: Remove once the stack allocation is in place.
   auto CoroFrameFreeFn(
-    spp::codegen::LlvmCtx *ctx)
+    spp::codegen::LlvmCtx const *ctx)
     -> llvm::Function* {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
     const auto fn_ty = llvm::FunctionType::get(void_ty, {ptr_ty}, false);
-    return llvm::cast<llvm::Function>(ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
+    return llvm::cast<llvm::Function>(
+      ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
   }
 }
 
 SPP_MOD_BEGIN
-spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
+CoroutinePrototypeAst::CoroutinePrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
@@ -81,13 +81,14 @@ spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
   _YieldType(nullptr),
   _SendType(nullptr),
   _GenOnceLowered(nullptr) {
-  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_COR, "cor");
+  using lex::SppTokenType;
+  SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
+    this->TokFun, SppTokenType::KW_COR, "cor");
 }
 
-spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
+CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
-auto spp::asts::CoroutinePrototypeAst::Clone() const
-  -> Unique<Ast> {
+auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<CoroutinePrototypeAst>(
     AstCloneVec(Annotations),
     nullptr, // "cmp cor" not syntactically allowed. Todo: Raise semantic error instead?
@@ -102,7 +103,6 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
     ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
     : nullptr;
   ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
-  ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->AbstractAnnotation = AbstractAnnotation;
@@ -113,17 +113,14 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
   ast->TestAnnotation = TestAnnotation;
   ast->InlineAnnotation = InlineAnnotation;
   ast->Visibility = Visibility;
-  ast->_LlvmFunc = _LlvmFunc;
   ast->VariadicPackType = VariadicPackType;
+  ast->_LlvmFunc = _LlvmFunc;
   for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
   return ast;
 }
 
-auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
+auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Perform default function prototype semantic analysis
@@ -132,34 +129,32 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
   // Update the meta information for enclosing function information.
   {
-    const auto _meta_guard = meta::MetaGuard(meta, true);
+    const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
     meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     meta->EnclosingFunctionScope = sm->CurrentScope;
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the return type superimposes the generator type.
-    auto [generator_type, yield_type, is_once] = GetGenAndYieldTypes(
-      *ret_type_sym->FqName(), *sm->CurrentScope,
-      *Source.OriginalReturnType, "coroutine return type");
+    auto [generator_sym, yield_type, is_once] = GetGenAndYieldTypes(
+      TypeRef::Of(*ret_type_sym->FqName(), *sm->CurrentScope), *sm->CurrentScope,
+      *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
     _YieldType = yield_type;
     _SendType = is_once
       ? generate::common_types_precompiled::VOID
-      : generator_type->LastTypePart()->GnArgGroup->TypeAt("Send")->Val;
+      : generator_sym->TypeArgType("Send");
     _IsOnce = is_once;
 
-    // Analyse the semantics of the function body, and move out the scope.
+    // Analyse the semantics of the function body, and move
+    // out the scope.
     sm->MoveOutOfCurrentScope();
   }
   meta->LoopReturnTypes->clear();
 }
 
-auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto CoroutinePrototypeAst::Stage10_PreCodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // For "GenOnce" coroutines, we can desugar them into
   // subroutines returning the yielded value. This is memory
   // safe as we have finished stage 8 already.
@@ -202,11 +197,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto CoroutinePrototypeAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // The lowering emits this prototype's body, but it is this
   // prototype the instantiations are registered against, so their
   // bodies (each emitted through its own lowering) are still driven
@@ -251,20 +243,25 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
 
   // The generator environment holding the yield and send
   // slots, which "gen" and "res" load/store/GEP through.
-  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(*_YieldType, *sm->CurrentScope, ctx);
-  const auto llvm_send_ty = codegen::GetLlvmTypeOf(*_SendType, *sm->CurrentScope, ctx);
+  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*_YieldType, *sm->CurrentScope), ctx);
+  const auto llvm_send_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*_SendType, *sm->CurrentScope), ctx);
   const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(llvm_yield_ty, llvm_send_ty, ctx);
   const auto llvm_gen_state = ctx->Builder.CreateAlloca(
     llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
-  // The same alignment "GetLlvmGeneratorFrameAlign" reports, because "llvm.coro.promise" reads the promise back out
+  // The same alignment "GetLlvmGeneratorFrameAlign" reports,
+  // because "llvm.coro.promise" reads the promise back out
   // of the frame on that assumption.
   llvm_gen_state->setAlignment(llvm::Align(alignof(std::max_align_t)));
 
-  // "llvm.coro.id" is "[token] (i32, ptr, ptr, ptr)". The third operand is the coroutine's own address, which is what
-  // identifies this coroutine to the elision pass: given it, "CoroElide" can recognise a frame whose lifetime is
-  // contained in its caller and place it in the caller's stack frame instead of allocating one. Passing null there
-  // leaves every frame on the heap. The fourth (fnaddrs) is filled in by "CoroSplit" once the resume and destroy
-  // functions exist, so it stays a null constant here.
+  // "llvm.coro.id" is "[token] (i32, ptr, ptr, ptr)". The
+  // third operand is the coroutine's own address, which is
+  // what identifies this coroutine to the elision pass: given
+  // it, "CoroElide" can recognise a frame whose lifetime is
+  // contained in its caller and place it in the caller's stack
+  // frame instead of allocating one. Passing null there leaves
+  // every frame on the heap. The fourth (fnaddrs) is filled in
+  // by "CoroSplit" once the resume and destroy functions exist,
+  // so it stays a null constant here.
   const auto llvm_null_ptr = llvm::ConstantPointerNull::get(llvm_ptr_ty);
   const auto coro_id = ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_id, {}, {llvm_coro_align, llvm_gen_state, llvm_func_target, llvm_null_ptr}, {},
@@ -274,8 +271,10 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   const auto coro_need_alloc = ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::coro_alloc, {}, {coro_id}, {}, "coro.need.alloc" + uid);
 
-  const auto dyn_alloc_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.dyn.alloc" + uid, llvm_func_target);
-  const auto begin_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.begin.block" + uid, llvm_func_target);
+  const auto dyn_alloc_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "coro.dyn.alloc" + uid, llvm_func_target);
+  const auto begin_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "coro.begin.block" + uid, llvm_func_target);
   ctx->Builder.CreateCondBr(coro_need_alloc, dyn_alloc_bb, begin_bb);
 
   // The size is only known once the frame has been laid out,
@@ -291,7 +290,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // frame was provided rather than allocated, and is the value
   // that survives when the frame is elided into the caller.
   ctx->Builder.SetInsertPoint(begin_bb);
-  const auto coro_mem = ctx->Builder.CreatePHI(llvm_ptr_ty, 2, "coro.frame.mem" + uid);
+  const auto coro_mem = ctx->Builder.CreatePHI(
+    llvm_ptr_ty, 2, "coro.frame.mem" + uid);
   coro_mem->addIncoming(llvm_null_ptr, entry_bb);
   coro_mem->addIncoming(coro_alloc_mem, dyn_alloc_bb);
   const auto coro_handle = ctx->Builder.CreateIntrinsic(
@@ -303,30 +303,33 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
   GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
 
-  // Load the return type type symbol and the other
-  // meta information values that the children asts
-  // in the coroutine body might need to use.
+  // Load the return type type symbol and the other meta
+  // information values that the children asts in the
+  // coroutine body might need to use.
   const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
     ReturnType.get());
 
-  // Create the two blocks that every suspend point branches to.
-  // They are made up-front (detached, and inserted by the epilogue
-  // below) because a "gen" expression in the body needs them as
-  // targets of its suspend switch long before this function gets
-  // to emit them.
-  const auto cleanup_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.cleanup" + uid);
-  const auto suspend_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.suspend" + uid);
-  const auto final_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.final" + uid);
+  // Create the two blocks that every suspend point branches
+  // to. They are made up-front (detached, and inserted by the
+  // epilogue below) because a "gen" expression in the body needs
+  // them as targets of its suspend switch long before this
+  // function gets to emit them.
+  const auto cleanup_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "coro.cleanup" + uid);
+  const auto suspend_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "coro.suspend" + uid);
+  const auto final_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "coro.final" + uid);
 
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->LlvmGenerator = MakeShared<codegen::LlvmGenerator>(coro_handle);
     meta->LlvmGenerator->CleanupBlock = cleanup_bb;
     meta->LlvmGenerator->SuspendBlock = suspend_bb;
     meta->LlvmGenerator->FinalBlock = final_bb;
     meta->LlvmGeneratorState = llvm_gen_state;
     meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
     meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     meta->EnclosingFunctionScope = sm->CurrentScope;
 
@@ -372,7 +375,9 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
       final_bb->insertInto(llvm_func_target);
       ctx->Builder.SetInsertPoint(final_bb);
       codegen::EmitLlvmGeneratorSuspend(
-        true, suspend_bb, cleanup_bb, "coro.final.suspend" + uid, "coro.final.resume" + uid, ctx);
+        true, suspend_bb, cleanup_bb,
+        "coro.final.suspend" + uid,
+        "coro.final.resume" + uid, ctx);
       ctx->Builder.CreateUnreachable();
     }
     else {
@@ -387,7 +392,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     ctx->Builder.SetInsertPoint(cleanup_bb);
     const auto coro_free_mem = ctx->Builder.CreateIntrinsic(
       llvm::Intrinsic::coro_free, {}, {coro_id, coro_handle}, {}, "coro.free.mem" + uid);
-    const auto coro_was_alloced = ctx->Builder.CreateIsNotNull(coro_free_mem, "coro.was.alloced" + uid);
+    const auto coro_was_alloced = ctx->Builder.CreateIsNotNull(
+      coro_free_mem, "coro.was.alloced" + uid);
 
     const auto free_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.free" + uid, llvm_func_target);
     ctx->Builder.CreateCondBr(coro_was_alloced, free_bb, suspend_bb);
@@ -418,34 +424,39 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
       const auto handle_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
       const auto empty_ret_val = llvm::Constant::getNullValue(llvm_ret_type);
       ctx->Builder.CreateRet(
-        ctx->Builder.CreateInsertValue(empty_ret_val, coro_handle, {handle_idx}, "coro.handle.wrap" + uid));
+        ctx->Builder.CreateInsertValue(
+          empty_ret_val, coro_handle, {handle_idx},
+          "coro.handle.wrap" + uid));
     }
     VALIDATE_LLVM;
-
   }
   sm->MoveOutOfCurrentScope();
   _CodeGenGenericSubstitutions(sm, meta, ctx);
   return nullptr;
 }
 
-auto spp::asts::CoroutinePrototypeAst::IsCoroutine() const
-  -> bool {
+auto CoroutinePrototypeAst::IsCoroutine() const -> bool {
   return true;
 }
 
-auto spp::asts::CoroutinePrototypeAst::IsOnce() const
-  -> bool {
+auto CoroutinePrototypeAst::IsOnce() const -> bool {
   return _IsOnce;
 }
 
-auto spp::asts::CoroutinePrototypeAst::GenOnceLowered() const
-  -> SubroutinePrototypeAst* {
+auto CoroutinePrototypeAst::GenOnceLowered() const -> SubroutinePrototypeAst* {
   return _GenOnceLowered.get();
 }
 
-auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce()
-  -> void {
+auto CoroutinePrototypeAst::_LowerGenOnce() -> void {
   if (not _IsOnce or _GenOnceLowered != nullptr) { return; }
+
+  // Todo: A body that defers anything is miscompiled here. A deferred expression is meant to run after the yield -
+  //  a lock defers releasing its guard so the lock is still held while the caller holds the borrow - but once the
+  //  "gen" reads as the return, everything the scope deferred runs on the way out of it, so the release happens
+  //  before the caller ever sees the value. Declining to lower such a body is not the answer on its own: nothing at
+  //  a call site resumes an unlowered "GenOnce", reads its yield slot, or destroys its frame, so the caller is handed
+  //  a raw handle typed as the value. Fixing this means implementing that path, and binding the frame to the caller's
+  //  scope so the deferred release runs when it ends. "std::threading" avoids the shape entirely - see "MutexGuard".
 
   // The signature is this coroutine's with the generator return
   // type replaced by what it yields; the body is taken over
@@ -462,9 +473,8 @@ auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce()
   _GenOnceLowered->SetNonGenericImpl(this);
 }
 
-auto spp::asts::CoroutinePrototypeAst::_ForceInlineBorrowedYield(
-  SubroutinePrototypeAst const &lowered) const
-  -> void {
+auto CoroutinePrototypeAst::_ForceInlineBorrowedYield(
+  SubroutinePrototypeAst const &lowered) const -> void {
   // A "GenOnce" that yields a borrow hands back the address of something the body built, and a body that yields a
   // view over its argument ("fwd_ref", "slice_ref") has nowhere to build it but its own frame. That was sound while
   // this was a coroutine, because the frame is elided into the caller's and outlives the yield; it is not sound once
@@ -481,9 +491,8 @@ auto spp::asts::CoroutinePrototypeAst::_ForceInlineBorrowedYield(
   llvm_func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
 }
 
-auto spp::asts::CoroutinePrototypeAst::_DeclareBorrowedYieldStorage(
-  SubroutinePrototypeAst const &lowered) const
-  -> void {
+auto CoroutinePrototypeAst::_DeclareBorrowedYieldStorage(
+  SubroutinePrototypeAst const &lowered) const -> void {
   // The other half of "_ForceInlineBorrowedYield", and it has to come after the body exists rather than beside the
   // attribute, because there are no allocas to describe until the body is generated.
   //

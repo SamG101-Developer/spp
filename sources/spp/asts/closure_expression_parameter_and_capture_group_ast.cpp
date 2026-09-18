@@ -23,7 +23,7 @@ import spp.utils.algorithms;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
+ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
   decltype(TokL) &&tok_l,
   decltype(ParamGroup) &&param_group,
   decltype(CaptureGroup) &&capture_group,
@@ -35,22 +35,19 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParame
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->CaptureGroup)
 }
 
-spp::asts::ClosureExpressionParameterAndCaptureGroupAst::~ClosureExpressionParameterAndCaptureGroupAst() = default;
+ClosureExpressionParameterAndCaptureGroupAst::~ClosureExpressionParameterAndCaptureGroupAst() = default;
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::PosStart() const
-  -> std::size_t {
+auto ClosureExpressionParameterAndCaptureGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL->PosStart();
 }
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::PosEnd() const
-  -> std::size_t {
+auto ClosureExpressionParameterAndCaptureGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Clone() const
-  -> Unique<Ast> {
+auto ClosureExpressionParameterAndCaptureGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ClosureExpressionParameterAndCaptureGroupAst>(
     AstClone(TokL),
@@ -59,8 +56,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Clone() const
     AstClone(TokR));
 }
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ToString() const
-  -> Str {
+auto ClosureExpressionParameterAndCaptureGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_APPEND(ParamGroup);
@@ -69,11 +65,10 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Analyse the arguments against the outer scope's symbols (temp move asts).
+auto ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Analyse the arguments against the outer scope's symbols
+  // (temp move asts).
   auto caps = CaptureGroup->Captures
     | genex::views::move
     | spp::views::cast_unique<FunctionCallArgumentAst>();
@@ -83,9 +78,11 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
   cap_group->Stage7_AnalyseSemantics(sm, meta);
 
   // New scope for parameters.
-  // Todo: The closure scope is parented at the module to prevent locals leakage. But doe this pull in module
-  //  constants still? Potentially need to route in the topmost global scope?
-  auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+  // Todo: The closure scope is parented at the module to
+  //  prevent locals leakage. But does this pull in module
+  //  constants still? Potentially need to route in the topmost
+  //  global scope? Add unit tests.
+  auto scope_name = ScopeBlockName::FromParts(
     "closure-outer", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   CaptureGroup->Captures = cap_group->Args
@@ -97,16 +94,17 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
   CaptureGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Analyse the arguments against the outer scope's symbols (temp move asts).
+auto ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Analyse the arguments against the outer scope's symbols
+  // (temp move asts).
   meta->CurrentLambdaOuterScope = sm->CurrentScope;
   auto caps = CaptureGroup->Captures
     | genex::views::move
     | spp::views::cast_unique<FunctionCallArgumentAst>();
-  const auto cap_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(caps), nullptr);
+
+  const auto cap_group = MakeUnique<FunctionCallArgumentGroupAst>(
+    nullptr, std::move(caps), nullptr);
   cap_group->Stage8_CheckMemory(sm, meta);
 
   // New scope for parameters.
@@ -120,11 +118,8 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory
   CaptureGroup->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the parameters into the current scope.
   meta->CurrentLambdaOuterScope = sm->CurrentScope;
   sm->MoveToNextScope();

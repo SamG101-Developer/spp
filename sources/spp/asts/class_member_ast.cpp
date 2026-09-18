@@ -4,6 +4,6 @@ module;
 module spp.asts.class_member_ast;
 
 SPP_MOD_BEGIN
-spp::asts::ClassMemberAst::ClassMemberAst() = default;
-spp::asts::ClassMemberAst::~ClassMemberAst() = default;
+ClassMemberAst::ClassMemberAst() = default;
+ClassMemberAst::~ClassMemberAst() = default;
 SPP_MOD_END

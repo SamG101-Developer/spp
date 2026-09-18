@@ -2,7 +2,7 @@ name: cross-codegen
 
 # Prove the compiler can emit for a target that is not the one it is running on. This is code generation only: the
 # object is emitted and inspected, never linked or executed. Linking a foreign object needs a cross linker and a
-# cross-built sppc runtime, and the runtime a project ships is a host binary, so there is nothing here to link against.
+# cross-built sppc runtime, and the runtime a project ships is a host binary, so there is nothing to link against.
 
 on:
   workflow_call:
@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - { triple: "i686-unknown-linux-gnu", arch: "Intel 80386", layout: "p:32:32" }
+          - { triple: "i686-unknown-linux-gnu", arch: "Intel (80386|i386)", layout: "p:32:32" }
           - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e" }
           - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64" }
           - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32" }
@@ -45,11 +45,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Restore source mtimes
-        uses: ./.github/actions/restore-mtimes
-
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
+
+      - name: Restore source mtimes
+        uses: ./.github/actions/restore-mtimes
 
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
@@ -59,8 +59,8 @@ jobs:
           version: ${{ env.GCC_VERSION }}
           cache-key-suffix: cross
 
-      # Its own family: SPP_ALL_TARGETS changes what is linked in, so this tree cannot be shared with the ordinary
-      # build, and it has one configuration rather than a variant list.
+      # Its own cache family: SPP_ALL_TARGETS changes what is linked in, so this tree cannot be shared with the
+      # ordinary build, and it has one configuration rather than a variant list.
       - name: Compose build tree cache key
         id: cache-key
         uses: ./.github/actions/build-cache-key
@@ -76,9 +76,8 @@ jobs:
           key: ${{ steps.cache-key.outputs.key }}
           restore-keys: ${{ steps.cache-key.outputs.prefix }}
 
-      # SPP_ALL_TARGETS links every backend this llvm has, which
-      # is what "--target" needs and what an ordinary build
-      # deliberately does not pay for. No unit tests.
+      # SPP_ALL_TARGETS links every backend this LLVM has, which is what `--target` needs and what an ordinary
+      # build deliberately does not pay for.
       - name: Configure
         id: configure
         uses: ./.github/actions/configure-cmake
@@ -98,6 +97,7 @@ jobs:
           key: ${{ steps.cache-key.outputs.key }}
 
       - name: Emit and check ${{ matrix.target.triple }}
+        id: emit
         run: >-
           bash .github/scripts/cross-codegen/check-target.sh
           '${{ matrix.target.triple }}'
@@ -105,10 +105,10 @@ jobs:
           '${{ matrix.target.layout }}'
 
       - name: Upload emitted IR on failure
-        if: failure()
+        if: failure() && steps.emit.outputs.ir != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: cross-ir-${{ matrix.target.triple }}
-          path: project/out/${{ matrix.target.triple }}/rel/llvm/lto.ll
+          path: ${{ steps.emit.outputs.ir }}
           if-no-files-found: ignore
           retention-days: 3

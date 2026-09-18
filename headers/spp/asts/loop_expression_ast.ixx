@@ -6,45 +6,30 @@ import spp.asts.primary_expression_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-}
-
-namespace spp::asts {
-  SPP_EXP_CLS struct LoopElseStatementAst;
-  SPP_EXP_CLS struct LoopExpressionAst;
-  SPP_EXP_CLS struct InnerScopeExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(LoopExpressionAst);
+use(spp::asts, struct LoopElseStatementAst);
+use(spp::asts, struct InnerScopeExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::LoopExpressionAst : PrimaryExpressionAst {
 protected:
-  std::optional<Tup<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
+  std::optional<Tup<ExpressionAst*, Shared<TypeAst>, Scope*>> m_loop_exit_type_info;
 
 public:
-  /**
-   * The @c loop token that indicates the start of a loop expression.
-   */
+  /// The "loop" token starting the loop expression.
   Unique<TokenAst> TokLoop;
 
-  /**
-   * The body of the loop. This is a block of statements that will be executed for each iteration of the loop.
-   */
+  /// The body of the loop, executed for each iteration.
   Unique<InnerScopeExpressionAst> Body;
 
-  /**
-   * The optional @c else block of the loop. This will be executed if the original condition is immediately false, or
-   * the iterable is already exhausted (no loops take place).
-   */
+  /// The optional "else" block of the loop, executed if the
+  /// original condition is immediately false, or the iterable
+  /// is already exhausted (no loops take place).
   Unique<LoopElseStatementAst> ElseBlock;
 
-  /**
-   * Construct the LoopExpressionAst with the arguments matching the members.
-   * @param[in] tok_loop The @c loop token that indicates the start of a loop expression.
-   * @param[in] body The body of the loop.
-   * @param[in] else_block The optional @c else block of the loop.
-   */
   LoopExpressionAst(
     decltype(TokLoop) &&tok_loop,
     decltype(Body) &&body,

@@ -51,6 +51,23 @@ import llvm;
   meta.CurrentStage = (s)
 
 SPP_MOD_BEGIN
+namespace {
+  /// Lets a lookup make an instantiation not made yet ("Scope::OnInstantiationMissing") while an analysis stage runs,
+  /// analysed as that stage would analyse it.
+  auto InstallInstantiateOnLookup(
+    spp::analyse::scopes::ScopeManager *sm,
+    const spp::asts::meta::CompilerStage stage)
+    -> void {
+    spp::analyse::scopes::Scope::OnInstantiationMissing = [sm, stage](
+      spp::analyse::scopes::TypeSymbol &open_instance, spp::analyse::scopes::Scope const &scope) {
+      auto meta = spp::asts::meta::CompilerMetaData();
+      meta.CurrentStage = stage;
+      return spp::analyse::utils::monomorphization_utils::InstantiateForScope(
+        open_instance, scope, sm->GlobalScope, &meta);
+    };
+  }
+}
+
 auto spp::compiler::CompilerBoot::Lex(
   utils::ProgressBar &bar,
   ModuleTree &tree)
@@ -139,15 +156,15 @@ auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
   bar.Finish();
 }
 
-auto spp::compiler::CompilerBoot::Stage4_QualifyTypes(
+auto spp::compiler::CompilerBoot::Stage4_ResolveDeclarations(
   utils::ProgressBar &bar,
   ModuleTree &tree,
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Qualify types stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kQualifyTypes);
-    mod->Stage4_QualifyTypes(sm, &meta);
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kResolveDeclarations);
+    mod->Stage4_ResolveDeclarations(sm, &meta);
     sm->Reset();
     bar.Next();
   }
@@ -179,6 +196,7 @@ auto spp::compiler::CompilerBoot::Stage5_5_AttachSupScopes(
   // thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAttachSupScopes);
   sm->AttachAllSuperScopes(&meta);
   bar.Finish();
 }
@@ -189,12 +207,15 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Pre-analyse semantics stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kPreAnalyseSemantics);
+  asts::FunctionPrototypeAst::ClearPendingDefaults();
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Stage6_PreAnalyseSemantics(sm, &meta);
     sm->Reset();
     bar.Next();
   }
+  asts::FunctionPrototypeAst::AnalysePendingDefaults(sm);
   bar.Finish();
 }
 
@@ -205,6 +226,7 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Analyse semantics stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAnalyseSemantics);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kAnalyseSemantics);
     mod->Stage7_AnalyseSemantics(sm, &meta);
@@ -223,6 +245,7 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Check memory stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCheckMemory);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCheckMemory);
     mod->Stage8_CheckMemory(sm, &meta);
@@ -245,6 +268,7 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Comptime resolution stage.
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCompTimeResolve);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCompTimeResolve);
     mod->Stage9_CompTimeResolve(sm, &meta);
@@ -267,6 +291,7 @@ auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   // progress to report, only the whole thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kMonomorphise;
+  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kMonomorphise);
   MonomorphiseToFixedPoint(sm, &meta);
   bar.Finish();
 }
@@ -276,6 +301,9 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
   ModuleTree &tree,
   analyse::scopes::ScopeManager *sm)
   -> void {
+  // An instantiation made from here on would never be generated, so lookups stop making them.
+  analyse::scopes::Scope::OnInstantiationMissing = nullptr;
+
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreCodeGen);
@@ -291,21 +319,24 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   ModuleTree &tree,
   analyse::scopes::ScopeManager *sm,
   const unsigned opt_level)
-  -> void {
+  -> bool {
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
-    meta.LlvmCtx = ctx;
     mod->Stage11_CodeGen(sm, &meta, ctx);
     sm->Reset();
     bar.Next();
   }
   bar.Finish();
 
-  // Write the llvm modules to file.
+  // Write the llvm modules to file. The unit tests only verify:
+  // their parallel processes share one project directory, and
+  // nothing reads the files back.
   const auto &out = tree.Out();
-  std::filesystem::create_directories(out.LlvmRoot());
-  std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
+  if (not VerifyOnly) {
+    std::filesystem::create_directories(out.LlvmRoot());
+    std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
+  }
 
   // Paired with the modules, because the file each context belongs
   // to comes from the module's own path. Every module is verified
@@ -333,6 +364,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     // Written last, so the file on disk is the module as it will
     // actually be built.
+    if (VerifyOnly) { continue; }
     const auto file = tree.LlvmOutPathFor(mod->FilePath);
     std::filesystem::create_directories(file.parent_path());
 
@@ -349,12 +381,15 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   if (not invalid_modules.IsEmpty()) {
     llvm::errs() << invalid_modules.Len() << " invalid module(s):\n";
     for (auto const &name : invalid_modules) { llvm::errs() << "  " << name << "\n"; }
+    if (VerifyOnly) {
+      throw std::runtime_error(std::to_string(invalid_modules.Len()) + " invalid module(s), see the verifier above");
+    }
     std::abort();
   }
 
   // Link every module together now that all of them have been
   // built.
-  _LinkTimeOptimize(out, opt_level);
+  return _LinkTimeOptimize(out, opt_level);
 }
 
 auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
@@ -368,9 +403,9 @@ auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
 auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   OutLayout const &out,
   const unsigned opt_level)
-  -> void {
+  -> bool {
   // Guard.
-  if (_LlvmCtxs.IsEmpty()) { return; }
+  if (_LlvmCtxs.IsEmpty()) { return true; }
 
   const auto lto_module = MakeUnique<llvm::Module>("spp.lto", *_LlvmCtxs[0]->Context);
   codegen::ApplyTargetToModule(lto_module.get());
@@ -380,15 +415,21 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   for (auto const &ctx : _LlvmCtxs | genex::views::ptr) {
     if (codegen::LinkIntoLtoModule(lto_module.get(), ctx->Module.get())) { continue; }
     llvm::errs() << "Failed to link module into the lto module: " << ctx->Module->getName() << "\n";
-    return;
+    if (VerifyOnly) { throw std::runtime_error("Failed to link module into the lto module"); }
+    return false;
   }
 
   // Do a final pass on the lto module before internalizing. This
   // checks for errors in the combined module.
   if (llvm::verifyModule(*lto_module, &llvm::errs())) {
     llvm::errs() << "Invalid lto module\n";
-    return;
+    if (VerifyOnly) { throw std::runtime_error("Invalid lto module, see the verifier above"); }
+    return false;
   }
+
+  // The unit tests stop here: the combined module is valid, and
+  // optimising, emitting and linking it would add nothing more.
+  if (VerifyOnly) { return true; }
 
   // Internalize all the definitions in the lto module before
   // optimizing. The C entry point is added before internalizing,
@@ -427,12 +468,13 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // Only a program gets built into something runnable. A library
   // has no entry point, so there is nothing for a linker to make an
   // executable out of, and the ir is the whole of what it produces.
-  if (not has_entry_point) { return; }
+  if (not has_entry_point) { return true; }
   const auto object_file = out.ObjectFile();
   FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
   FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
   FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
-  if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return; }
+  codegen::ApplyUnwindTables(lto_module.get());
+  if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
 
   // A cross build stops at the object, no linking available for
   // now.
@@ -441,14 +483,14 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
       << "Built object for " << codegen::TargetFolderName() << ": "
       << utils::files::DisplayString(object_file) << "\n"
       << "Not linking: a cross build has no linker or ffi runtime for its target here." << std::endl;
-    return;
+    return true;
   }
-  _LinkExecutable(out);
+  return _LinkExecutable(out);
 }
 
 auto spp::compiler::CompilerBoot::_LinkExecutable(
   OutLayout const &out)
-  -> void {
+  -> bool {
   // The object holds calls into the ffi runtime and nothing
   // else external, so the link is the object plus whatever
   // shared libraries the project's packages ship.
@@ -491,9 +533,10 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   std::cout << "Linking: " << exe_file << std::endl;
   if (const auto status = std::system(command.c_str()); status != 0) {
     llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
-    return;
+    return false;
   }
   std::cout << "Built executable: " << exe_file << std::endl;
+  return true;
 }
 
 auto spp::compiler::CompilerBoot::_FfiLibraries(

@@ -18,7 +18,7 @@ import spp.codegen.llvm_ctx;
 import llvm;
 
 SPP_MOD_BEGIN
-spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
+CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
   decltype(Conv) &&conv,
   decltype(TokMut) &&tok_mut,
   decltype(Name) &&name,
@@ -29,22 +29,19 @@ spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdenti
   Alias(std::move(alias)) {
 }
 
-spp::asts::CasePatternVariantSingleIdentifierAst::~CasePatternVariantSingleIdentifierAst() = default;
+CasePatternVariantSingleIdentifierAst::~CasePatternVariantSingleIdentifierAst() = default;
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::PosStart() const
-  -> std::size_t {
+auto CasePatternVariantSingleIdentifierAst::PosStart() const -> std::size_t {
   // Use the "mut" token, or the name if there is no "mut" (matches LocalVariableSingleIdentifierAst).
   return TokMut ? TokMut->PosStart() : Name->PosStart();
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::PosEnd() const
-  -> std::size_t {
+auto CasePatternVariantSingleIdentifierAst::PosEnd() const -> std::size_t {
   // Use the alias, or the name if there is no alias (matches LocalVariableSingleIdentifierAst).
   return Alias ? Alias->PosEnd() : Name->PosEnd();
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::Clone() const
-  -> Unique<Ast> {
+auto CasePatternVariantSingleIdentifierAst::Clone() const -> Unique<Ast> {
   auto a = MakeUnique<CasePatternVariantSingleIdentifierAst>(
     AstClone(Conv),
     AstClone(TokMut),
@@ -54,8 +51,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Clone() const
   return a;
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::ToString() const
-  -> Str {
+auto CasePatternVariantSingleIdentifierAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokMut);
   SPP_STRING_APPEND(Name);
@@ -63,17 +59,14 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::BindsByMove() const
-  -> bool {
+auto CasePatternVariantSingleIdentifierAst::BindsByMove() const -> bool {
   // A name binds what it stands for, unless it asks for it
   // through a borrow, which leaves the value where it was.
   return Conv == nullptr;
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Get the variable name.
   auto var = ConvToVar(meta);
 
@@ -83,28 +76,22 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward memory checks into the name and alias.
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Emit the binding, then report a constant "true" match so
   // the branch is always taken.
   _MappedLet->Stage11_CodeGen(sm, meta, ctx);
   return llvm::ConstantInt::getTrue(*ctx->Context);
 }
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::ConvToVar(
-  CompilerMetaData *)
-  -> Unique<LocalVariableAst> {
+auto CasePatternVariantSingleIdentifierAst::ConvToVar(
+  CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Create the local variable single identifier binding AST.
   // (Note no convention is propagated into the variable, as
   // conventions are only relevant at the pattern matching site,

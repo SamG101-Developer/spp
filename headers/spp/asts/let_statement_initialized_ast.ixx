@@ -9,59 +9,34 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct LetStatementInitializedAst;
-  SPP_EXP_CLS struct LocalVariableAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(LetStatementInitializedAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct LocalVariableAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LetStatementInitializedAst);
 
-  /**
-   * The @c let token that starts this statement. It is used to indicate the beginning of a let statement.
-   */
+  /// The "let" token that starts this statement.
   Unique<TokenAst> TokLet;
 
-  /**
-   * The variable that is being declared in the let statement. This names the symbols that will be created in the
-   * scope that the @c let statement is defined in.
-   */
+  /// The variable being declared, naming the symbols that
+  /// will be created in the scope the "let" is defined in.
   Unique<LocalVariableAst> Var;
 
-  /**
-   * The optionally provided type of the variable. Variable type's can always be inferred from their value, but
-   * providing the type allows for variant types to be used with values of an inner type.
-   */
+  /// The optional type of the variable. It can always be
+  /// inferred from the value, but providing it allows variant
+  /// types to be used with values of an inner type.
   Shared<TypeAst> Type;
 
-  /**
-   * The @c = token that indicates the assignment of a value to the variable. This is used to indicate that the
-   * variable is being initialized with a value.
-   */
+  /// The "=" token that precedes the initial value.
   Unique<TokenAst> TokAssign;
 
-  /**
-   * The value that is being assigned to the variable. This is the expression that will be evaluated and assigned to
-   * the variable.
-   */
+  /// The value that is evaluated and assigned to the
+  /// variable.
   Unique<ExpressionAst> Val;
 
-  struct {
-    Shared<TypeAst> OriginalType;
-  } Source;
-
-  /**
-   * Construct the LetStatementInitializedAst with the arguments matching the members.
-   * @param tok_let The @c let token that starts this statement.
-   * @param var The variable that is being declared in the let statement.
-   * @param type The optionally provided type of the variable.
-   * @param tok_assign The @c = token that indicates the assignment of a value to the variable.
-   * @param val The value that is being assigned to the variable.
-   */
   LetStatementInitializedAst(
     decltype(TokLet) &&tok_let,
     decltype(Var) &&var,
@@ -79,5 +54,3 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LetStatementInitializedAst)

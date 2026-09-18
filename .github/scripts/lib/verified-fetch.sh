@@ -1,14 +1,10 @@
-# Checksum-verified download helper, shared by every step
-# that pulls an artefact off the network. After a deliberate
-# version bump the recorded digests will no longer match.
-# Run .github/scripts/security/refresh-pins.sh to recompute
-# them, then commit the result.
+# Checksum-verified download, shared by every step that pulls an
+# artefact off the network. After a version bump the digests no
+# longer match: run .github/scripts/security/refresh-pins.sh.
 # shellcheck shell=bash
 
-# Get the sha256 of a file. Ubuntu and the Git-for-Windows
-# coreutils have sha256sum; macOS ships shasum instead and
-# has no sha256sum at all, and install-boost.sh runs on all
-# three.
+# macOS ships shasum and no sha256sum; install-boost.sh runs on
+# all three platforms.
 _sha256_of() {
   if command -v sha256sum > /dev/null 2>&1; then
     sha256sum "$1" | cut -d ' ' -f 1
@@ -31,9 +27,8 @@ verified_fetch() {
     --retry 3 --retry-all-errors \
     --output "$dest" "$url"
 
-  # Verify the download against the pinned digest. A mismatch is
-  # a security failure, so delete the file to avoid leaving
-  # malformed or malicious content behind after the failure.
+  # A mismatch is a security failure, so the file goes rather than
+  # being left behind.
   got="$(_sha256_of "$dest")"
   if [ "$got" != "$want" ]; then
     rm -f "$dest"

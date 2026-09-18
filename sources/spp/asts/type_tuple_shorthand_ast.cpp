@@ -9,7 +9,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
+TypeTupleShorthandAst::TypeTupleShorthandAst(
   decltype(TokL) &&tok_l,
   decltype(ElemTypes) &&element_types,
   decltype(TokR) &&tok_r) :
@@ -18,22 +18,19 @@ spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
   TokR(std::move(tok_r)) {
 }
 
-spp::asts::TypeTupleShorthandAst::~TypeTupleShorthandAst() = default;
+TypeTupleShorthandAst::~TypeTupleShorthandAst() = default;
 
-auto spp::asts::TypeTupleShorthandAst::PosStart() const
-  -> std::size_t {
+auto TypeTupleShorthandAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto spp::asts::TypeTupleShorthandAst::PosEnd() const
-  -> std::size_t {
+auto TypeTupleShorthandAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto spp::asts::TypeTupleShorthandAst::Clone() const
-  -> Unique<Ast> {
+auto TypeTupleShorthandAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<TypeTupleShorthandAst>(
     AstClone(TokL),
@@ -41,8 +38,7 @@ auto spp::asts::TypeTupleShorthandAst::Clone() const
     AstClone(TokR));
 }
 
-auto spp::asts::TypeTupleShorthandAst::ToString() const
-  -> Str {
+auto TypeTupleShorthandAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(ElemTypes, ", ");
@@ -50,8 +46,7 @@ auto spp::asts::TypeTupleShorthandAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::TypeTupleShorthandAst::Convert()
-  -> Unique<TypeAst> {
+auto TypeTupleShorthandAst::Convert() -> Unique<TypeAst> {
   using generate::common_types::TupleType;
   const auto type = TupleType(
     PosStart(), std::move(ElemTypes));

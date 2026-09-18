@@ -11,9 +11,8 @@ import spp.asts.class_prototype_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
@@ -72,7 +71,7 @@ namespace spp::codegen {
 }
 
 auto spp::codegen::GetFatPointerFields(
-  asts::TypeAst const &type,
+  analyse::scopes::TypeSymbol const &sym,
   analyse::scopes::Scope const &scope,
   LlvmCtx const *ctx)
   -> std::optional<Vec<llvm::Type*>> {
@@ -85,7 +84,7 @@ auto spp::codegen::GetFatPointerFields(
   // "GetSuperimposedFatPointerFieldCount"; this function only
   // adds the LLVM-specific type materialization on top.
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  if (IsTypeFunc(type, scope)) { return Vec<llvm::Type*>{ptr_ty, ptr_ty}; }
+  if (IsTypeFunc(sym, scope)) { return Vec<llvm::Type*>{ptr_ty, ptr_ty}; }
   return std::nullopt;
 }
 
@@ -124,7 +123,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // to the same { fn_ptr, env_ptr } pair as the function
   // type it superimposes. Walking its (empty) definition
   // instead would measure it as a zero-sized struct.
-  if (cls_sym != nullptr and cls_sym->Name != nullptr and cls_sym->Name->IsCompilerGeneratedType()) {
+  if (cls_sym != nullptr and cls_sym->IsMock()) {
     const auto mock_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {mock_ptr_ty, mock_ptr_ty});
     return;
@@ -157,8 +156,8 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
   if (parts == kSizedIntegerParts) {
-    const auto bit_width_ast = scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<
-      asts::IntegerLiteralAst>();
+    const auto *const bit_width_val = scope->TySym->BoundCompArg("w");
+    const auto bit_width_ast = bit_width_val != nullptr ? bit_width_val->To<asts::IntegerLiteralAst>() : nullptr;
     if (bit_width_ast == nullptr) { return; }
     const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
@@ -167,8 +166,8 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
   if (parts == kSizedFloatParts) {
-    const auto bit_width_ast = scope->TySym->FqName()->LastTypePart()->GnArgGroup->CompAt("w")->Val->To<
-      asts::IntegerLiteralAst>();
+    const auto *const bit_width_val = scope->TySym->BoundCompArg("w");
+    const auto bit_width_ast = bit_width_val != nullptr ? bit_width_val->To<asts::IntegerLiteralAst>() : nullptr;
     if (bit_width_ast == nullptr) { return; }
     const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(w));
@@ -177,9 +176,11 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ Arr" to the llvm "[T * n]" type.
   if (parts == kArrParts) {
-    const auto gn_arg_group = cls_sym->FqName()->LastTypePart()->GnArgGroup.get();
-    const auto length_ast = gn_arg_group->CompAt("n")->Val->To<asts::IntegerLiteralAst>();
-    const auto elem_sym = scope->GetTypeSymbol(gn_arg_group->TypeAt("T")->Val.get());
+    // The template ("Arr", named as written) has no layout; only an instantiation carries its element type and length.
+    if (not cls_sym->IsConcrete or cls_sym->InstanceOf == nullptr) { return; }
+    const auto *const length_val = cls_sym->BoundCompArg("n");
+    const auto length_ast = length_val != nullptr ? length_val->To<asts::IntegerLiteralAst>() : nullptr;
+    const auto elem_sym = cls_sym->BoundTypeArg("T");
     if (length_ast != nullptr and elem_sym != nullptr) {
       if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
         RegisterLlvmTypeInfo(elem_sym->Type, sm, ctx);
@@ -211,7 +212,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // Lower the "Fun*" family to a { fn_ptr, env_ptr } fat
   // pointer. Allows for compatibility with closures too;
   // one uniform system for all function type storage.
-  if (const auto fields = GetFatPointerFields(*cls_sym->FqName(), *scope, ctx); fields.has_value()) {
+  if (const auto fields = GetFatPointerFields(*cls_sym, *scope, ctx); fields.has_value()) {
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, fields->ToStdVector());
     return;
   }
@@ -241,8 +242,9 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     const auto member_sm = analyse::scopes::ScopeManager(
       sm.GlobalScope, const_cast<analyse::scopes::Scope*>(scope));
 
-    for (auto const &member : analyse::utils::type_compare::DedupVariableInnerTypes(*cls_sym->FqName(), *scope)) {
-      const auto member_sym = scope->GetTypeSymbol(member.get());
+    const auto variant_ref = analyse::scopes::TypeRef::Of(*cls_sym->FqName(), *scope);
+    for (auto const &member : analyse::utils::type_compare::VariantMembers(variant_ref, *scope)) {
+      const auto member_sym = member.Sym;
       if (member_sym == nullptr) { continue; }
 
       // A variant can be registered before its members
@@ -253,7 +255,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
       }
 
       EnsureLlvmTypeComplete(*member_sym, member_sm, ctx);
-      const auto member_llvm_type = GetLlvmTypeOf(*member, *scope, ctx);
+      const auto member_llvm_type = GetLlvmTypeOf(member, ctx);
       if (member_llvm_type == nullptr or not member_llvm_type->isSized()) { continue; }
       max_size = std::max(max_size, dl.getTypeAllocSize(member_llvm_type).getFixedValue());
       max_align = std::max(max_align, dl.getABITypeAlign(member_llvm_type).value());
@@ -295,6 +297,14 @@ auto spp::codegen::GetLlvmType(
     EnsureLlvmTypeComplete(type_sym, *ctx->Sm, ctx);
   }
   return type_sym.LlvmInfo->LlvmType;
+}
+
+auto spp::codegen::GetLlvmTypeOf(
+  analyse::scopes::TypeRef const &ref,
+  LlvmCtx const *ctx)
+  -> llvm::Type* {
+  if (ref.IsBorrowed()) { return llvm::PointerType::get(*ctx->Context, 0); }
+  return ref.Sym != nullptr ? GetLlvmType(*ref.Sym, ctx) : nullptr;
 }
 
 auto spp::codegen::EnsureLlvmTypeComplete(
@@ -369,18 +379,4 @@ auto spp::codegen::IsValuelessType(
   llvm::Type const *type)
   -> bool {
   return type == nullptr or type->isVoidTy();
-}
-
-auto spp::codegen::GetLlvmTypeOf(
-  asts::TypeAst const &type,
-  analyse::scopes::Scope const &scope,
-  LlvmCtx const *ctx)
-  -> llvm::Type* {
-  // A borrow is a pointer to the borrowee regardless of what
-  // the borrowee is, and "GetTypeSymbol" resolves through to
-  // the borrowee's symbol, losing the convention that made it
-  // a pointer, so the type is asked directly first.
-  if (type.GetConvention() != nullptr) { return llvm::PointerType::get(*ctx->Context, 0); }
-  const auto type_sym = scope.GetTypeSymbol(&type);
-  return type_sym != nullptr ? GetLlvmType(*type_sym, ctx) : nullptr;
 }

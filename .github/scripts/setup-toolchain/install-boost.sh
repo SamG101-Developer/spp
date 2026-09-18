@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
-# Unpack the prebuilt Boost for this runner into $HOME/boost
-# and export BOOST_ROOT. Building Boost from source costs
-# far more than the download. The directory is not one of
-# the SPP_*_PREFIX paths because it is not ours to pick: the
-# tarball carries a top-level boost/ and is unpacked into $HOME.
+# Unpack the prebuilt Boost for this runner into $HOME/boost and
+# export BOOST_ROOT: building it from source costs far more than
+# the download. The path is the tarball's own top-level boost/,
+# which is why it is not an SPP_*_PREFIX.
 set -euo pipefail
 source .github/scripts/lib/verified-fetch.sh
 
 base="https://github.com/MarkusJx/prebuilt-boost/releases/download/${BOOST_VERSION}"
 
-# Keyed on the image rather than on RUNNER_OS/RUNNER_ARCH,
-# because those cannot tell 22.04 from 24.04 or a 2022 image
-# from a 2025 one, and the tarballs are not interchangeable
-# across either: each is built against that image's libstdc++
-# or msvc runtime.
+# Keyed on the image, not RUNNER_OS/RUNNER_ARCH: each tarball is
+# built against that image's libstdc++ or MSVC runtime, and the
+# two cannot tell 22.04 from 24.04.
 if [ -z "${SPP_RUNNER_IMAGE:-}" ]; then
   echo "::error::SPP_RUNNER_IMAGE is not set; setup-toolchain must be given its runner-image input"
   exit 1
@@ -45,10 +42,8 @@ case "$SPP_RUNNER_IMAGE" in
     sha="$BOOST_SHA256_WINDOWS_2022"
     ;;
   *)
-    # Don't guess on the version, so error if we have a genuine
-    # mismatch between the given and known runner images. Note
-    # to self: can request updates from boost precompiled repo;
-    # very quick response time.
+    # Never guess: an unknown image is an error. Updates can be
+    # requested from the prebuilt-boost repository.
     echo "::error::no Boost asset is pinned for ${SPP_RUNNER_IMAGE}"
     echo "::error::Add one to .github/scripts/setup-toolchain/install-boost.sh, .github/dependencies.toml and refresh-pins.sh."
     exit 1

@@ -7,53 +7,57 @@ import spp.analyse.scopes.scope_manager;
 import std;
 
 SPP_MOD_BEGIN
-spp::asts::Ast::Ast() = default;
+Ast::Ast() = default;
 
-spp::asts::Ast::~Ast() = default;
+Ast::~Ast() = default;
 
-auto spp::asts::Ast::Size() const
-  -> std::size_t {
+auto Ast::Size() const -> std::size_t {
+  // The size is the difference between the two positions.
   return PosEnd() - PosStart();
 }
 
-auto spp::asts::Ast::AnkerlHash() const
-  -> std::size_t {
+auto Ast::AnkerlHash() const -> std::size_t {
+  // Default hash is empty (0).
   return 0uz;
 }
 
-auto spp::asts::Ast::Stage1_PreProcess(
-  Ast *ctx)
-  -> void {
+auto Ast::Stage1_PreProcess(
+  Ast *ctx) -> void {
+  // Bind the context by default.
   _Ctx = ctx;
 }
 
-auto spp::asts::Ast::Stage2_GenTopLvlScopes(
-  ScopeManager *sm,
-  CompilerMetaData *)
-  -> void {
+auto Ast::Stage2_GenTopLvlScopes(
+  ScopeManager *sm, CompilerMetaData *) -> void {
+  // Bind the scope by default.
   _Scope = sm->CurrentScope;
 }
 
-auto spp::asts::Ast::GetAstCtx() const
-  -> Ast* {
+auto Ast::GetAstCtx() const -> Ast* {
+  // Context getter.
   return _Ctx;
 }
 
-auto spp::asts::Ast::GetAstScope() const
-  -> analyse::scopes::Scope* {
+auto Ast::GetAstScope() const -> Scope* {
+  // Scope getter.
   return _Scope;
 }
 
-auto spp::asts::Ast::SetAstCtx(
-  Ast *ctx)
-  -> void {
+auto Ast::SetAstCtx(
+  Ast *ctx) -> void {
+  // Context setter.
   _Ctx = ctx;
 }
 
-auto spp::asts::Ast::SetAstScope(
-  analyse::scopes::Scope *scope)
-  -> void {
+auto Ast::SetAstScope(
+  Scope *scope) -> void {
+  // Scope setter.
   _Scope = scope;
+}
+
+auto Ast::IsAllowedInDefault() const -> bool {
+  // Default implementation is to prevent it.
+  return false;
 }
 
 SPP_MOD_END

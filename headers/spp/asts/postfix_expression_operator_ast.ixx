@@ -7,16 +7,15 @@ import spp.asts.mixins.type_inferrable_ast;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct PostfixExpressionOperatorAst;
-  SPP_EXP_CLS struct TypeAst; // TODO: GCC BUG REQUIRES THIS
-}
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct IdentifierAst);
+
+GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeInferrableAst {
-  SPP_GCC_VTABLE_FIX
-
   PostfixExpressionOperatorAst();
 
   ~PostfixExpressionOperatorAst() override;
@@ -27,5 +26,3 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeIn
     Vec<GenericArgumentAst*> const &args) const
     -> Unique<PostfixExpressionOperatorAst>;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorAst)

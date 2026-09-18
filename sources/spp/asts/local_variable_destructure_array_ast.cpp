@@ -6,11 +6,12 @@ module spp.asts.local_variable_destructure_array_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.type_predicates;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.expression_ast;
-import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
@@ -30,7 +31,7 @@ import spp.utils.algorithms;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
+LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elems,
   decltype(TokR) &&tok_r) :
@@ -40,22 +41,19 @@ spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
   _TmpName(nullptr) {
 }
 
-spp::asts::LocalVariableDestructureArrayAst::~LocalVariableDestructureArrayAst() = default;
+LocalVariableDestructureArrayAst::~LocalVariableDestructureArrayAst() = default;
 
-auto spp::asts::LocalVariableDestructureArrayAst::PosStart() const
-  -> std::size_t {
+auto LocalVariableDestructureArrayAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Elems.Front()->PosStart();
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::PosEnd() const
-  -> std::size_t {
+auto LocalVariableDestructureArrayAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Elems.Back()->PosEnd();
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::Clone() const
-  -> Unique<Ast> {
+auto LocalVariableDestructureArrayAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<LocalVariableDestructureArrayAst>(
     AstClone(TokL),
@@ -66,8 +64,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Clone() const
   return c;
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::ToString() const
-  -> Str {
+auto LocalVariableDestructureArrayAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("[");
   SPP_STRING_EXTEND(Elems, ", ");
@@ -75,18 +72,15 @@ auto spp::asts::LocalVariableDestructureArrayAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::BindsByMove() const
-  -> bool {
-  // A destructure binds if any of its elements does. An empty one, or one made only of skips, is a shape test and
-  // takes nothing.
+auto LocalVariableDestructureArrayAst::BindsByMove() const -> bool {
+  // A destructure binds if any of its elements does. An empty
+  // one, or one made only of skips, is a shape test and takes
+  // nothing.
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
+auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppMultipleRestPatternsError;
   using analyse::errors::SppVariableArrayDestructureArraySizeMismatchError;
   using analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError;
@@ -108,16 +102,17 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   const auto val = meta->LetStatementValue;
   const auto val_type = val->InferType(sm, meta);
   RaiseIf<SppVariableArrayDestructureArrayTypeMismatchError>(
-    not IsTypeArr(*val_type, *sm->CurrentScope),
+    not IsTypeArr(TypeRef::OfHead(*val_type, *sm->CurrentScope), *sm->CurrentScope),
     {sm->CurrentScope}, ERR_ARGS(*this, *val, *val_type));
 
   // Determine number of elements in the left-hand-side and
-  // right-hand-side arrays.
+  // right-hand-side arrays. The length is the instantiation's
+  // own binding of "n", however its argument was written.
   // Todo: Test destructuring generic array - how would that work? like Arr[Str, n] => don't allow.
   const auto num_lhs_arr_elems = Elems.Len();
   const auto num_rhs_arr_elems = std::stoul(
-    val_type->LastTypePart()->GnArgGroup->Args[1]->To<GenericArgumentCompAst>()->Val->To<IntegerLiteralAst>()->Val->
-                                                   TokenData);
+    sm->CurrentScope->GetTypeSymbol(val_type.get())->BoundCompArg("n")->To<IntegerLiteralAst>()->Val->TokenData);
+
   RaiseIf<SppVariableArrayDestructureArraySizeMismatchError>(
     (num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.IsEmpty()) or (num_lhs_arr_elems > num_rhs_arr_elems),
     {sm->CurrentScope}, ERR_ARGS(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems));
@@ -205,61 +200,28 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // The hidden temporary holds the only analysis of the value,
-  // so the value is checked (and its scopes walked) here.
-  using analyse::utils::destructure_utils::DestructureTempStage8;
-  if (_TmpName != nullptr) {
-    DestructureTempStage8(*this, *_TmpName, *sm, meta);
-  }
-
-  // Check the memory state of the elements. Each expanded binding reads one field off the value, so each records a
-  // partial move of it, and the destructure marks the whole value moved once they are done.
-  for (auto const &x : _NewAsts) { x->Stage8_CheckMemory(sm, meta); }
-
-  // Taking every element off a value takes the value, so the
-  // symbol holding it is left moved rather than partly moved.
-  if (_TmpName != nullptr) {
-    analyse::utils::destructure_utils::ConsumeDestructureTemp(*_TmpName, *sm);
-  }
-  else {
-    // A pattern that takes something apart has to account for every owned part of what it took; one that only tests
-    // the shape, or that binds the rest into a name of its own, has nothing left over to answer for.
-    const auto accounts_for_parts = BindsByMove()
-      and not genex::any_of(Elems, [](auto const &elem) { return elem->TakesRest(); });
-    analyse::utils::destructure_utils::ConsumeDestructureSource(
-      *this, _FromCasePattern, accounts_for_parts, *sm, meta);
-  }
+auto LocalVariableDestructureArrayAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Use shared helper.
+  using analyse::utils::destructure_utils::DestructureStage8;
+  DestructureStage8(
+    *this, Elems, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Hand the already-resolved value to the hidden temporary,
-  // so the elements can index it.
-  using analyse::utils::destructure_utils::DestructureTempStage9;
-  if (_TmpName != nullptr) {
-    DestructureTempStage9(_TmpName, *sm, meta);
-  }
-
-  // Comptime resolve each element.
-  for (auto const &x : _NewAsts) { x->Stage9_CompTimeResolve(sm, meta); }
+auto LocalVariableDestructureArrayAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Use shared helper.
+  using analyse::utils::destructure_utils::DestructureStage9;
+  DestructureStage9(_NewAsts, _TmpName, nullptr, *sm, meta);
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto LocalVariableDestructureArrayAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the value into the hidden temporary once,
   // before the elements index it.
   using analyse::utils::destructure_utils::DestructureTempStage11;
 
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   const auto llvm_subject = meta->LetStatementPrecomputedValue;
   meta->LetStatementPrecomputedValue = nullptr;
 
@@ -272,15 +234,13 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::ExtractNames() const
-  -> Vec<Shared<IdentifierAst>> {
+auto LocalVariableDestructureArrayAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // Walk the nested bindings for variable names.
   using analyse::utils::destructure_utils::GetNestedBindingIdentifiers;
   return GetNestedBindingIdentifiers(Elems);
 }
 
-auto spp::asts::LocalVariableDestructureArrayAst::ExtractName() const
-  -> Shared<IdentifierAst> {
+auto LocalVariableDestructureArrayAst::ExtractName() const -> Shared<IdentifierAst> {
   // No single identifier for destructured bindings.
   using analyse::utils::destructure_utils::UnmatchableSingleIdentifier;
   return UnmatchableSingleIdentifier(PosStart());

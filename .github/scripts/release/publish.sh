@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Create the GitHub release for this version and attach one
-# binary per platform. The tag is created here rather than
-# before the builds, so a matrix that goes red leaves no tag
-# behind and the next push retries the same version cleanly.
+# Create the release and attach one binary per platform. The tag is
+# created here rather than before the builds, so a red matrix
+# leaves no tag behind and the next push retries cleanly.
 set -euo pipefail
 
 CHANGELOG_DIR="${CHANGELOG_DIR:-changelog}"
@@ -11,9 +10,7 @@ notes="${CHANGELOG_DIR}/${VERSION}.md"
 
 [ -f "$notes" ] || { echo "::error::${notes} is missing"; exit 1; }
 
-# The matrix names one asset per platform; an empty directory
-# means every upload silently produced nothing, which would
-# otherwise publish an assetless release.
+# An empty directory would otherwise publish an assetless release.
 mapfile -t assets < <(find "$DIST_DIR" -type f | sort)
 [ "${#assets[@]}" -gt 0 ] || { echo "::error::no binaries found under ${DIST_DIR}"; exit 1; }
 

@@ -9,32 +9,24 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct IsExpressionAst;
-  SPP_EXP_CLS struct CaseExpressionAst;
-  SPP_EXP_CLS struct CasePatternVariantAst;
-  SPP_EXP_CLS struct IdentifierAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(IsExpressionAst);
+use(spp::asts, struct CaseExpressionAst);
+use(spp::asts, struct CasePatternVariantAst);
+use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(IsExpressionAst);
 
-  /**
-   * The left-hand side expression of the is expression. This is the first operand.
-   */
+  /// The left-hand-side value being tested.
   Unique<ExpressionAst> Lhs;
 
-  /**
-   * The operator token that represents the is operation. This indicates the type of operation being performed.
-   */
+  /// The "is" operator token.
   Unique<TokenAst> TokOp;
 
-  /**
-   * The right-hand side expression of the is expression. This is the second operand.
-   */
+  /// The right-hand-side pattern being tested against.
   Unique<CasePatternVariantAst> Rhs;
 
   struct {
@@ -42,12 +34,6 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
     std::size_t OriginalPosEnd;
   } Source;
 
-  /**
-   * Construct the IsExpressionAst with the arguments matching the members.
-   * @param[in] lhs The left-hand side expression of the is expression.
-   * @param[in] tok_op The operator token that represents the is operation.
-   * @param[in] rhs The right-hand side expression of the is expression.
-   */
   IsExpressionAst(
     decltype(Lhs) &&lhs,
     decltype(TokOp) &&tok_op,
@@ -63,10 +49,12 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
 private:
   Shared<CaseExpressionAst> _MappedFunc;
 
   Shared<IdentifierAst> _LhsAsId;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IsExpressionAst)

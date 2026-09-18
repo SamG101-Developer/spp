@@ -1,5 +1,4 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.func_utils;
@@ -10,7 +9,9 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.overload_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
@@ -31,24 +32,10 @@ import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_comp_positional_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_argument_type_positional_ast;
 import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_comp_ast;
-import spp.asts.generic_parameter_comp_optional_ast;
-import spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.generic_parameter_type_optional_ast;
-import spp.asts.generic_parameter_type_variadic_ast;
-import spp.asts.identifier_ast;
-import spp.asts.identifier_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
@@ -79,75 +66,60 @@ import genex;
 
 namespace spp::analyse::utils::func_utils {
   namespace {
-    /**
-     * Temporarily re-parent a scope, putting the original parent back however the enclosing block is left - including by
-     * a thrown semantic error.
-     *
-     * Overload resolution catches per-candidate exceptions, so a bare restore after a call that raises leaves the scope
-     * tree permanently wrongly-parented: every later lookup through that scope silently resolves against the wrong
-     * ancestors, with no failure at the point the damage is done.
-     */
-    struct ScopeParentSwap {
-      scopes::Scope *Scope;
-      scopes::Scope *Original;
-
-      ScopeParentSwap(
-        scopes::Scope *const scope,
-        scopes::Scope *const replacement) :
-        Scope(scope), Original(scope->Parent) {
-        scope->Parent = replacement;
-        scopes::BumpScopeLinkageGeneration();
+    /// The owning scope of a function, where the scope's ast
+    /// is the function, and the parent is the "sup $FuncName
+    /// ext ..."
+    auto OwningBlockOf(
+      Scope const &found_in, FunctionPrototypeAst const *fn) -> Scope const* {
+      for (const auto block : found_in.Children | genex::views::ptr) {
+        if (block->AstNode == nullptr or block->AstNode->To<SupPrototypeExtensionAst>() == nullptr) { continue; }
+        const auto body = AstBody(block->AstNode);
+        if (not body.IsEmpty() and body[0]->template To<FunctionPrototypeAst>() == fn) { return block; }
       }
+      return nullptr;
+    }
 
-      ~ScopeParentSwap() {
-        Scope->Parent = Original;
-        scopes::BumpScopeLinkageGeneration();
-      }
-
-      ScopeParentSwap(ScopeParentSwap const&) = delete;
-      ScopeParentSwap(ScopeParentSwap&&) = delete;
-      auto operator=(ScopeParentSwap const&) -> ScopeParentSwap& = delete;
-      auto operator=(ScopeParentSwap&&) -> ScopeParentSwap& = delete;
-    };
-
-    /**
-     * Get the "sup" block a function prototype was declared in, or @c nullptr for a free function (whose context is the
-     * module prototype, which superimposes nothing).
-     */
+    /// Get the "sup" block a function prototype was declared
+    /// in (or nullptr for a free function, whose context is the
+    /// module prototype => no superimposition).
     auto _SupBlockOf(
-      asts::FunctionPrototypeAst const &fn)
-      -> asts::Ast* {
-      auto *ctx = fn.GetAstCtx();
+      FunctionPrototypeAst const &fn) -> Ast* {
+      const auto ctx = fn.GetAstCtx();
       if (ctx == nullptr) { return nullptr; }
-      const auto is_sup = ctx->To<asts::SupPrototypeFunctionsAst>() != nullptr
-        or ctx->To<asts::SupPrototypeExtensionAst>() != nullptr;
+      const auto is_sup = ctx->To<SupPrototypeFunctionsAst>() != nullptr
+        or ctx->To<SupPrototypeExtensionAst>() != nullptr;
       return is_sup ? ctx : nullptr;
     }
 
-    /**
-     * Determine whether two "sup" blocks can ever apply to the same instantiation. Blocks over the same generic type can
-     * carry disjoint constraints ("sup [T: Integer] Atom[T]" against "sup [T: FloatingPoint] Atom[T]"), which makes them
-     * specializations that never both attach to one type, so their members never see each other.
-     */
+    /// Determine if two "sup" blocks can ever apply to the same
+    /// instantiation. This is because blocks over the same generic
+    /// type, can carry disjoint constraints. Atom[T: Integer] and
+    /// Atom[T: FloatingPoint] are two different instantiations of
+    /// the same generic type, but they are not the same block,
+    /// so they never see each other. But, they can have
+    /// "conflicting" functions.
     auto _SupBlocksOverlap(
-      asts::Ast *const sup_a,
-      asts::Ast *const sup_b)
-      -> bool {
-      // Free functions, and members of one block, always share a context.
+      Ast *const sup_a, Ast *const sup_b) -> bool {
+      // Free functions, and members of one block, always share
+      // a context.
       if (sup_a == nullptr or sup_b == nullptr or sup_a == sup_b) { return true; }
 
+      // Either block may hold the generic, so both orders are
+      // tried.
       auto generics = type_compare::GenericInferenceMap();
-      return type_compare::RelaxedTypeEq(
-        *asts::AstName(sup_a), *asts::AstName(sup_b),
-        *sup_a->GetAstScope(), *sup_b->GetAstScope(), generics);
+      auto const &a = *AstName(sup_a);
+      auto const &b = *AstName(sup_b);
+      return
+        type_compare::RelaxedTypeEq(a, b, *sup_a->GetAstScope(), *sup_b->GetAstScope(), generics) or
+        type_compare::RelaxedTypeEq(b, a, *sup_b->GetAstScope(), *sup_a->GetAstScope(), generics);
     }
 
+    /// Check for invalid arguments being present in a function
+    /// call.
     auto EnforceNoInvalidFnArgs(
-      Vec<asts::FunctionParameterAst*> const &params,
-      Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
-      scopes::ScopeManager &sm)
-      -> void {
-      //
+      Vec<FunctionParameterAst*> const &params,
+      Vec<FunctionCallArgumentKeywordAst*> const &named_args,
+      ScopeManager &sm) -> void {
       using errors::SppArgumentNameInvalidError;
 
       // Get the parameter names using the extraction method.
@@ -165,55 +137,48 @@ namespace spp::analyse::utils::func_utils {
         | genex::views::not_in(p_names, genex::meta::deref, genex::meta::deref)
         | genex::to<Vec>();
 
-      // Raise an error if any invalid argument names were found. The context is the first parameter, but there may not
-      // be one - "fun f()" called as "f(x=1)" has an invalid name and nothing to point at - so fall back to the
-      // offending argument rather than indexing an empty list. Written as a guarded raise because the fallback itself
-      // reads "invalid_arg_names[0]", which only "RaiseIf"'s lazy error arguments would have protected.
+      // Raise an error if any invalid argument names were found.
+      // The context is the first parameter, but there may not
+      // be one - "fun f()" called as "f(x=1)" has an invalid
+      // name and nothing to point at - so fall back to the
+      // offending argument rather than indexing an empty list.
       if (not invalid_arg_names.IsEmpty()) {
         auto const *const param_ctx = params.IsEmpty()
-          ? static_cast<asts::Ast const*>(invalid_arg_names[0].get())
-          : static_cast<asts::Ast const*>(params[0]);
+          ? static_cast<Ast const*>(invalid_arg_names[0].get())
+          : static_cast<Ast const*>(params[0]);
+
         Raise<SppArgumentNameInvalidError>(
-          {sm.CurrentScope}, ERR_ARGS(*param_ctx, "fn param", *invalid_arg_names[0], "fn arg"));
+          {sm.CurrentScope},
+          ERR_ARGS(*param_ctx, "fn param", *invalid_arg_names[0], "fn arg"));
       }
     }
 
-    /**
-     * Drop base-class overloads that a derived class has overridden, so that a call reaches the derived version. The
-     * depth difference from the scope the lookup started at is what identifies which of a pair is the derived one.
-     * @param overload_scopes The overloads found so far, pruned in place.
-     * @param target_scope The scope the lookup started from, which depths are measured against.
-     * @param sm The scope manager.
-     * @param meta Associated metadata.
-     */
+    /// When analysing lists of function overloads that can be
+    /// called, we need to prune off base class functions that
+    /// have overrides present, otherwise we get false
+    /// ambiguities being reported. The depth difference is what
+    /// is used to determine the override.
     auto PruneOverriddenOverloads(
-      Vec<FunctionOverload> &overload_scopes,
-      scopes::Scope const *target_scope,
-      scopes::ScopeManager &sm,
-      asts::meta::CompilerMetaData *meta)
-      -> void {
+      Vec<FunctionOverload> &overload_scopes, Scope const *target_scope,
+      ScopeManager &sm, meta::CompilerMetaData *meta) -> void {
       for (auto const &o1 : overload_scopes) {
         for (auto const &o2 : overload_scopes) {
           // This depth difference checker ensures the derived version is kept.
           if (o1.Proto != o2.Proto
             and target_scope->DepthDiff(o1.FnScope) < target_scope->DepthDiff(o2.FnScope)) {
-            // The prototype reached here belongs to the template's subtree, not to the instantiation the overload was
-            // found through: a substituted "sup" scope shares its ast node with the template it was cloned from (see
-            // "Scope"'s copy constructor), so reading the block's members off that ast yields the template's, whose
-            // scopes sit under the template's own generic parameters - unbound. Splicing the found scope in is what
-            // makes the type comparison below resolve against this instantiation's bindings instead.
-            //
-            // Todo: this is a band-aid over one ast node being aliased by a template scope and its instantiations, which
-            //  is what makes "GetAstScope" ambiguous in the first place. The instantiation owning its own subtree would
-            //  remove the need for it entirely; passing the scope to "CheckForConflictingOverride" would not, because
-            //  the comparison inside resolves through that scope's *ancestors*, which is what is really being supplied.
-            //  There is no substituted block scope to use instead - "CreateGenericSupScope" clones a block's own symbols
-            //  but not its subtree, so the instantiation has no member scopes of its own.
-            const auto swap = ScopeParentSwap(
-              o1.Proto->GetAstScope()->Parent, const_cast<scopes::Scope*>(o1.FnScope));
-
-            auto conflict =
-              CheckForConflictingOverride(*o1.Proto->GetAstScope()->Parent, o2.FnScope, *o1.Proto, sm, meta);
+            // The prototype comes off the ast, which a generic "sup"
+            // block's instantiations share with its template, so its
+            // own scope is the template's, under the template's
+            // unbound parameters. The instantiation it was found
+            // through clones the block's member scopes along with it,
+            // and its copy of the function's block resolves the
+            // signature against the instantiation's bindings instead.
+            // Without one - the template itself, or a blanket block
+            // attached unsubstituted - the template's block is the right
+            // one.
+            const auto own_block = OwningBlockOf(*o1.FnScope, o1.Proto);
+            auto const &sig_scope = own_block != nullptr ? *own_block : *o1.Proto->GetAstScope()->Parent;
+            auto conflict = CheckForConflictingOverride(sig_scope, o2.FnScope, *o1.Proto, sm, meta);
             if (conflict != nullptr) {
               overload_scopes |= genex::actions::remove_if([conflict](auto const &info) {
                 return info.Proto == conflict;
@@ -224,47 +189,47 @@ namespace spp::analyse::utils::func_utils {
       }
     }
 
-    /**
-     * Point each overload at the "sup" block that actually declares it, rather than the scope it was found through.
-     * @param overload_scopes The overloads to adjust in place.
-     * @param is_valid_ext_scope Predicate picking the candidate "sup" blocks out of a scope's children.
-     */
+    /// Point each overload at the "sup" block that actually
+    /// declares it, rather than the scope it was found through.
+    /// Todo: This is a bit of a hack, but it works. Tidy module
+    ///  and eliminate this.
     auto NarrowToOwningBlock(
       Vec<FunctionOverload> &overload_scopes,
       auto const &is_valid_ext_scope)
       -> void {
       for (auto &info : overload_scopes) {
-        const auto blocks = info.FnScope->Children
-          | genex::views::ptr
-          | genex::views::filter(is_valid_ext_scope)
-          | genex::to<Vec>();
-
-        auto owning_block = static_cast<scopes::Scope const*>(nullptr);
-        for (auto const *block : blocks) {
-          auto const body = asts::AstBody(block->AstNode);
-          if (not body.IsEmpty() and body[0]->template To<asts::FunctionPrototypeAst>() == info.Proto) {
-            owning_block = block;
-            break;
-          }
+        // "Any block will do" as a fallback, but there may be
+        // none at all, in which case the scope stays as it was.
+        auto owning_block = OwningBlockOf(*info.FnScope, info.Proto);
+        if (owning_block == nullptr) {
+          const auto blocks = info.FnScope->Children
+            | genex::views::ptr
+            | genex::views::filter(is_valid_ext_scope)
+            | genex::to<Vec>();
+          if (not blocks.IsEmpty()) { owning_block = blocks[0]; }
         }
-
-        // "Any block will do" as a fallback, but there may be none at all, in which case the scope stays as it was.
-        if (owning_block == nullptr and not blocks.IsEmpty()) { owning_block = blocks[0]; }
         if (owning_block != nullptr) { info.FnScope = owning_block; }
       }
+    }
+
+    /// The "sup $F ext FunXXX { ... }" block an overload was
+    /// lowered to, and the overload; or nullptrs.
+    auto FunctionBlockOf(
+      Scope const &scope) -> Pair<SupPrototypeExtensionAst*, FunctionPrototypeAst*> {
+      const auto ext = AstAs<SupPrototypeExtensionAst>(scope.AstNode);
+      const auto body = ext != nullptr ? AstBody(ext) : Vec<Ast*>();
+      const auto proto = not body.IsEmpty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
+      return {proto != nullptr ? ext : nullptr, proto};
     }
   }
 }
 
 auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
-  asts::IdentifierAst const &target_fn_name,
-  scopes::Scope const *target_scope,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
-  -> Vec<FunctionOverload> {
+  IdentifierAst const &target_fn_name, Scope const *target_scope,
+  ScopeManager &sm, meta::CompilerMetaData *meta) -> Vec<FunctionOverload> {
   // If the name is empty (non-symbolic call) then return
-  // "no scopes". If the target scope is nullptr, then
-  // the functions are being superimposed over a generic type.
+  // "no scopes". If the target scope is nullptr, then the
+  // functions are being superimposed over a generic type.
   if (target_fn_name.Val.empty() or target_scope == nullptr) { return {}; }
 
   // Get the function-type name from the function: "func()"
@@ -273,9 +238,9 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
   auto overload_scopes = Vec<FunctionOverload>();
 
   auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
-    const auto ext = AstAs<asts::SupPrototypeExtensionAst>(scope->AstNode);
+    const auto ext = AstAs<SupPrototypeExtensionAst>(scope->AstNode);
     if (ext == nullptr) { return false; }
-    const auto ext_name = dynamic_shared_cast<asts::TypeIdentifierAst>(ext->Name);
+    const auto ext_name = dynamic_shared_cast<TypeIdentifierAst>(ext->Name);
     return ext_name != nullptr and ext_name->Name == mapped_name->Val;
   };
 
@@ -289,8 +254,8 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
            | genex::views::filter(is_valid_ext_scope)) {
         overload_scopes.EmplaceBack(FunctionOverload{
           .FnScope = sup_scope,
-          .Proto = asts::AstBody(sup_scope->AstNode)[0]->To<asts::FunctionPrototypeAst>(),
-          .SupGenerics = asts::GenericArgumentGroupAst::NewEmpty(),
+          .Proto = AstBody(sup_scope->AstNode)[0]->To<FunctionPrototypeAst>(),
+          .SupGenerics = GenericArgumentGroupAst::NewEmpty(),
           .FwdType = nullptr
         });
       }
@@ -303,25 +268,31 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     // If a class scope was provided, get all the sup scopes
     // attached to it, otherwise use the specific sup scope
     // exclusively.
-    const auto sup_scopes = AstAs<asts::ClassPrototypeAst>(target_scope->AstNode) != nullptr
-      ? target_scope->SupScopesConst()
-      : Vec{target_scope};
-
     // From the super scopes, check each one for the structure
     // "sup $Func ext FunXXX { ... }" super-imposition.
     // Todo: use the "is_valid_ext_scope"?
-    for (auto *sup_scope : sup_scopes) {
-      for (auto *sup_ast : asts::AstBody(sup_scope->AstNode)
-           | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
-        if (sup_ast->Name->ToUnchecked<asts::TypeIdentifierAst>()->Name == mapped_name->Val) {
+    const auto collect_from = [&](Scope const *const sup_scope) -> void {
+      for (auto *sup_ast : AstBody(sup_scope->AstNode)
+           | genex::views::cast_dynamic<SupPrototypeExtensionAst*>()) {
+        if (sup_ast->Name->ToUnchecked<TypeIdentifierAst>()->Name == mapped_name->Val) {
           overload_scopes.EmplaceBack(FunctionOverload{
             .FnScope = sup_scope,
-            .Proto = asts::AstBody(sup_ast)[0]->To<asts::FunctionPrototypeAst>(),
-            .SupGenerics = MakeUnique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->GetGenerics(), nullptr),
+            .Proto = AstBody(sup_ast)[0]->To<FunctionPrototypeAst>(),
+            .SupGenerics = MakeUnique<GenericArgumentGroupAst>(nullptr, sup_scope->GetGenerics(), nullptr),
             .FwdType = nullptr
           });
         }
       }
+    };
+
+    // A class scope contributes every super scope attached to it, read from its own list rather than copied out of it;
+    // anything else contributes itself, exclusively. Each "Scope*" converts to "Scope const*" as it is read, which a
+    // vector of one cannot do for a vector of the other.
+    if (AstAs<ClassPrototypeAst>(target_scope->AstNode) != nullptr) {
+      for (auto const *sup_scope : target_scope->SupScopes()) { collect_from(sup_scope); }
+    }
+    else {
+      collect_from(target_scope);
     }
 
     PruneOverriddenOverloads(overload_scopes, target_scope, sm, meta);
@@ -334,20 +305,20 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
   // without this, a type whose forwarded-to type also forwards
   // (eg "NonNull[Str]" -> "&Str" -> "&StrView") sees both
   // "fwd_ref" overloads and the forwarding call is ambiguous.
-  if (target_scope->TySym != nullptr and meta->CurrentStage >= asts::meta::CompilerStage::kAnalyseSemantics and overload_scopes.IsEmpty()) {
+  if (target_scope->TySym != nullptr and meta->CurrentStage >= meta::CompilerStage::kAnalyseSemantics and
+    overload_scopes.IsEmpty()) {
     // Either forwarding type carries the methods. "FwdMut" was bound and then never read, so a type superimposing only
     // "FwdMut" got no forwarded methods here, while "BuildFwdCall" would happily build a "fwd_mut()" call for it in
     // argument position - the two forwarding paths disagreed.
-    auto [fwd_ref_type, fwd_mut_type] = type_utils::GetFwdTypes(*target_scope->TySym->FqName(), sm);
-    const auto fwd_type = fwd_ref_type != nullptr ? fwd_ref_type : fwd_mut_type;
-    if (fwd_type != nullptr) {
-      const auto inner_type = fwd_type->LastTypePart()->GnArgGroup->TypeAt("T")->Val;
-      const auto inner_sym = sm.CurrentScope->GetTypeSymbol(inner_type.get());
+    const auto [fwd_ref_sym, fwd_mut_sym] = type_utils::GetFwdTypes(*target_scope->TySym, *sm.CurrentScope);
+    const auto fwd_sym = fwd_ref_sym != nullptr ? fwd_ref_sym : fwd_mut_sym;
+    if (fwd_sym != nullptr) {
+      const auto inner_sym = fwd_sym->BoundTypeArg("T");
       auto inner_scopes = inner_sym != nullptr
         ? GetAllFunctionScopes(target_fn_name, inner_sym->LinkedScope, sm, meta)
         : Vec<FunctionOverload>{};
       for (auto &i : inner_scopes) {
-        i.FwdType = asts::AstCloneShared(inner_type);
+        i.FwdType = AstCloneShared(inner_sym->FqName());
       }
       overload_scopes.AppendRange(std::move(inner_scopes));
     }
@@ -367,13 +338,155 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
   return unique_overloads;
 }
 
+auto spp::analyse::utils::func_utils::GetFunctionValueName(
+  TypeRef const &type) -> Pair<Shared<IdentifierAst>, Scope const*> {
+  // Only a function's own "$" mock names a function, and only held by value: a borrow of one is not that function.
+  // A closure's mock is unnamed by definition (its function type is attached directly), and has no block to walk.
+  const auto mock_sym = type.KindSym();
+  if (mock_sym == nullptr or mock_sym->Kind != TypeKind::FunctionMock) { return {nullptr, nullptr}; }
+  if (mock_sym->LinkedScope == nullptr) { return {nullptr, nullptr}; }
+
+  // Iterate the scopes on the function type ie $Type,
+  // extracting the function prototype out of it. Return
+  // a match. Always only 1 sup-ext for the $Types, so
+  // the name and scope are always correct here.
+  for (auto const *ext_scope : mock_sym->LinkedScope->DirectSupScopes) {
+    const auto proto = FunctionBlockOf(*ext_scope).second;
+    if (proto == nullptr) { continue; }
+
+    // A method's overloads can be spread over several "sup" blocks
+    // of its owner, so a non-generic owner's class scope is named,
+    // which gathers the overloads from all of them.
+    const auto block = ext_scope->Parent;
+    const auto block_node = block->AstNode;
+    if (AstAs<SupPrototypeFunctionsAst>(block_node) != nullptr
+      or AstAs<SupPrototypeExtensionAst>(block_node) != nullptr) {
+      const auto owner_sym = block->GetTypeSymbol(AstName(block_node)->WithoutGenerics().get());
+      if (owner_sym != nullptr and not owner_sym->IsTypeGeneric() and owner_sym->LinkedScope != nullptr
+        and owner_sym->Type != nullptr and owner_sym->Type->GnParamGroup->Params.IsEmpty()) {
+        return {proto->Name, owner_sym->LinkedScope};
+      }
+    }
+    return {proto->Name, block};
+  }
+
+  // Failsafe against no matches (doubt this will ever
+  // be reached even, but c++ type safety).
+  return {nullptr, nullptr};
+}
+
+auto spp::analyse::utils::func_utils::MatchFunctionValue(
+  TypeRef const &mock, TypeRef const &func,
+  Scope const &func_scope) -> std::optional<FunctionValueMatch> {
+  //
+  using type_compare::RelaxedTypeEq;
+  using type_compare::TypeEq;
+
+  // The target has to be a function type held by value, and the
+  // value a named function's mock.
+  if (func.Sym == nullptr or func.IsBorrowed() or func.Sym->IsMock()
+    or not type_predicates::IsTypeFunc(func, func_scope)
+    or GetFunctionValueName(mock).first == nullptr) {
+    return std::nullopt;
+  }
+
+  // The mock carries the superimposed function type of each overload.
+  const auto mock_sym = mock.Sym;
+  const auto func_type_ast = func.Sym->FqName();
+  auto const &func_type = *func_type_ast;
+
+  // Each overload attaches its own "sup $F ext FunXxx { fun ... }"
+  // block to the mock. Its function type is compared along with the
+  // ones above it, as a "FunRef" is also a "FunMut" and a "FunMov".
+  auto match = std::optional<FunctionValueMatch>();
+  for (auto const *ext_scope : mock_sym->LinkedScope->DirectSupScopes) {
+    const auto [ext, proto] = FunctionBlockOf(*ext_scope);
+    const auto kind_sym = proto != nullptr
+      ? ext_scope->GetTypeSymbol(ext->SuperClass->WithoutGenerics().get())
+      : nullptr;
+    if (kind_sym == nullptr or kind_sym->LinkedScope == nullptr) { continue; }
+
+    // The kind is compared bare, so it resolves anywhere; the
+    // signature where the overload's own generics do.
+    auto const *target_kind = func_scope.GetTypeSymbol(func_type.WithoutConvention()->WithoutGenerics().get());
+    if (target_kind == nullptr) { continue; }
+    auto kinds = Vec<Scope const*>{kind_sym->LinkedScope};
+    kinds.AppendRange(kind_sym->LinkedScope->SupScopes());
+    if (not genex::any_of(kinds, [&](auto const *kind) {
+      return kind->TySym != nullptr
+        and type_predicates::TemplateOf(*kind->TySym, *kind) == type_predicates::TemplateOf(*target_kind, func_scope);
+    })) { continue; }
+
+    const auto own_generics = ext->SuperClass->LastTypePart()->GnArgGroup.get();
+    const auto target_generics = func_type.WithoutConvention()->LastTypePart()->GnArgGroup.get();
+    const auto own_args = own_generics->At("Args");
+    const auto target_args = target_generics->At("Args");
+    const auto own_out = own_generics->At("Out");
+    const auto target_out = target_generics->At("Out");
+    if (own_args == nullptr or own_out == nullptr or target_args == nullptr or target_out == nullptr) { continue; }
+
+    // A generic overload binds its own generics off the target,
+    // which is why its own signature is on the right. Either way
+    // the signature is then checked exactly, as the inference
+    // accepts a generic bound twice.
+    auto const &own_params = proto->GnParamGroup->Params;
+    auto inferred = type_compare::GenericInferenceMap();
+    if (not own_params.IsEmpty() and (
+      not RelaxedTypeEq(*target_args->TypeVal, *own_args->TypeVal, func_scope, *ext_scope, inferred)
+      or not RelaxedTypeEq(*target_out->TypeVal, *own_out->TypeVal, func_scope, *ext_scope, inferred))) { continue; }
+
+    auto own_inferred = type_compare::GenericInferenceMap();
+    for (auto const &[name, val] : inferred) {
+      if (genex::any_of(own_params, [&](auto const &p) { return *p->Name == *name; })) {
+        own_inferred.insert({name, val});
+      }
+    }
+    if (own_inferred.size() != own_params.Len()) { continue; }
+
+    auto generic_args = GenericArgumentGroupAst::FromMap(own_inferred);
+    if (not TypeEq(
+        *own_args->TypeVal->SubstituteGenerics(generic_args->GetAllArgs()),
+        *target_args->TypeVal, *ext_scope, func_scope)
+      or not TypeEq(
+        *own_out->TypeVal->SubstituteGenerics(generic_args->GetAllArgs()),
+        *target_out->TypeVal, *ext_scope, func_scope)) {
+      continue;
+    }
+
+    // A non-generic overload wins outright; a generic one only if
+    // none does.
+    if (own_params.IsEmpty()) {
+      return FunctionValueMatch{.Proto = proto, .FnScope = ext_scope, .GenericArgs = std::move(generic_args)};
+    }
+    if (not match.has_value()) {
+      match = FunctionValueMatch{.Proto = proto, .FnScope = ext_scope, .GenericArgs = std::move(generic_args)};
+    }
+  }
+  return match;
+}
+
+auto spp::analyse::utils::func_utils::InstantiateFunctionValue(
+  TypeRef const &value, TypeRef const &target,
+  ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
+  const auto match = MatchFunctionValue(value, target, *sm->CurrentScope);
+  if (not match.has_value() or match->GenericArgs->Args.IsEmpty()) { return; }
+  auto tm = ScopeManager(sm->GlobalScope, const_cast<Scope*>(match->FnScope));
+  overload_utils::InstantiateOverload(match->Proto, match->FnScope, *match->GenericArgs, &tm, meta);
+}
+
+auto spp::analyse::utils::func_utils::FindFunctionValue(
+  TypeRef const &value, TypeRef const &target,
+  ScopeManager const &sm) -> FunctionPrototypeAst* {
+  const auto match = MatchFunctionValue(value, target, *sm.CurrentScope);
+  if (not match.has_value()) { return nullptr; }
+  if (match->GenericArgs->Args.IsEmpty()) { return match->Proto; }
+  return overload_utils::FindInstantiatedOverload(match->Proto, *match->GenericArgs, &sm);
+}
+
 auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
-  scopes::Scope const &this_scope,
-  scopes::Scope const *target_scope,
-  asts::FunctionPrototypeAst const &new_fn,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
-  -> asts::FunctionPrototypeAst* {
+  Scope const &this_scope, Scope const *target_scope,
+  FunctionPrototypeAst const &new_fn, ScopeManager &sm,
+  meta::CompilerMetaData *meta) -> FunctionPrototypeAst* {
   //
   using type_compare::TypeEq;
 
@@ -407,8 +520,8 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
 
     // Get the two parameter lists and create copies to
     // remove duplicate parameters from.
-    auto params_new = asts::AstCloneVec(new_fn.FnParamGroup->Params);
-    auto params_old = asts::AstCloneVec(old_fn->FnParamGroup->Params);
+    auto params_new = AstCloneVec(new_fn.FnParamGroup->Params);
+    auto params_old = AstCloneVec(old_fn->FnParamGroup->Params);
 
     // Remove all the required parameters on the first
     // parameter list off of the other parameter list.
@@ -430,7 +543,7 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
       params_new | genex::views::ptr,
       params_old | genex::views::ptr) | genex::to<Vec>();
     if (genex::operations::empty(tmp
-      | genex::views::cast_dynamic<asts::FunctionParameterRequiredAst*>()
+      | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
       | genex::to<Vec>())) {
       return old_fn;
     }
@@ -439,23 +552,20 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
 }
 
 auto spp::analyse::utils::func_utils::SameSignature(
-  asts::FunctionPrototypeAst const &fn_a,
-  scopes::Scope const &scope_a,
-  asts::FunctionPrototypeAst const &fn_b,
-  scopes::Scope const &scope_b)
-  -> bool {
+  FunctionPrototypeAst const &fn_a, Scope const &scope_a,
+  FunctionPrototypeAst const &fn_b, Scope const &scope_b) -> bool {
   //
   using type_compare::TypeEq;
 
   // Helper function to check whether a "self" parameter
   // is present.
-  auto hs = [](asts::FunctionPrototypeAst const *f) {
+  auto hs = [](FunctionPrototypeAst const *f) {
     return f->FnParamGroup->GetSelfParam() != nullptr;
   };
 
   // Helper function to get the type of the convention AST
   // applied to the "self" parameter.
-  auto sc = [&hs](asts::FunctionPrototypeAst const *f) {
+  auto sc = [&hs](FunctionPrototypeAst const *f) {
     return hs(f) ? f->FnParamGroup->GetSelfParam()->Conv.get() : nullptr;
   };
 
@@ -508,13 +618,10 @@ auto spp::analyse::utils::func_utils::SameSignature(
 }
 
 auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
-  scopes::Scope const &this_scope,
-  scopes::Scope const *target_scope,
-  asts::FunctionPrototypeAst const &new_fn,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta,
-  scopes::Scope const *exclude_scope)
-  -> asts::FunctionPrototypeAst* {
+  Scope const &this_scope, Scope const *target_scope,
+  FunctionPrototypeAst const &new_fn, ScopeManager &sm,
+  meta::CompilerMetaData *meta, Scope const *exclude_scope)
+  -> FunctionPrototypeAst* {
   // Get the existing functions that belong to this
   // type, or any of its supertypes.
   const auto existing = GetAllFunctionScopes(*new_fn.Name, target_scope, sm, meta);
@@ -535,13 +642,10 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
 }
 
 auto spp::analyse::utils::func_utils::NameFnArgs(
-  asts::FunctionCallArgumentGroupAst &a_group,
-  asts::FunctionParameterGroupAst const &p_group,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *const meta,
-  Vec<asts::GenericArgumentAst*> const &generic_args)
+  FunctionCallArgumentGroupAst &a_group, FunctionParameterGroupAst const &p_group,
+  ScopeManager &sm, meta::CompilerMetaData *const meta,
+  Vec<GenericArgumentAst*> const &generic_args, Scope *const callee_scope)
   -> void {
-  //
   // Validate the named arguments against the parameters.
   EnforceNoInvalidFnArgs(p_group.GetAllParams(), a_group.GetKeywordArgs(), sm);
 
@@ -560,9 +664,11 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   const auto is_variadic = p_group.GetVariadicParams() != nullptr;
 
   for (auto [i, positional_arg] : a_group.GetPositionalArgs() | genex::views::enumerate) {
-    // Create the keyword argument from the positional argument.
-    auto kw_arg = MakeUnique<asts::FunctionCallArgumentKeywordAst>(
-      p_names.Front(), nullptr, nullptr, nullptr);
+    // Create the keyword argument from the positional argument. It
+    // is named after the parameter, but placed where the argument
+    // was written, as the parameter's own name is in the callee.
+    auto kw_arg = MakeUnique<FunctionCallArgumentKeywordAst>(
+      MakeShared<IdentifierAst>(positional_arg->PosStart(), Str(p_names.Front()->Val)), nullptr, nullptr, nullptr);
     p_names |= genex::actions::pop_front();
 
     // The variadic parameter requires a tuple of the remaining arguments.
@@ -577,7 +683,7 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
         | genex::views::drop(i)
         | genex::views::transform([](auto &&x) { return asts::AstClone(x->Val); })
         | genex::to<Vec>();
-      kw_arg->Val = MakeUnique<asts::TupleLiteralAst>(nullptr, std::move(elems), nullptr);
+      kw_arg->Val = MakeUnique<TupleLiteralAst>(nullptr, std::move(elems), nullptr);
       a_group.Args[i] = std::move(kw_arg);
       a_group.Args |= genex::actions::take(i + 1);
       break;
@@ -594,14 +700,14 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
   // a default value for every optional parameter the call left out.
   // Ordering by parameter is needed for LLVM to do an ordinal match
   // despite S++ operating with keyword-matching.
-  auto ordered_args = Vec<Unique<asts::FunctionCallArgumentAst>>();
+  auto ordered_args = Vec<Unique<FunctionCallArgumentAst>>();
   for (auto const *param : p_group.GetAllParams()) {
     const auto param_name = param->ExtractName();
 
     auto matched = false;
     for (auto &&arg : a_group.Args) {
       const auto kw_arg = arg != nullptr
-        ? arg->To<asts::FunctionCallArgumentKeywordAst>()
+        ? arg->To<FunctionCallArgumentKeywordAst>()
         : nullptr;
 
       if (kw_arg == nullptr or kw_arg->Name->Val != param_name->Val) { continue; }
@@ -616,18 +722,18 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     // for a variadic function parameter: `fun f[..Ts](..a: Ts)` -
     // then no argument leaves `Ts` as "uninferred". Instead, force
     // `Tup[]`.
-    if (param->To<asts::FunctionParameterVariadicAst>() != nullptr) {
-      auto empty_pack = MakeUnique<asts::TupleLiteralAst>(
-        nullptr, Vec<Unique<asts::ExpressionAst>>(), nullptr);
-      ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
+    if (param->To<FunctionParameterVariadicAst>() != nullptr) {
+      auto empty_pack = MakeUnique<TupleLiteralAst>(
+        nullptr, Vec<Unique<ExpressionAst>>(), nullptr);
+      ordered_args.EmplaceBack(MakeUnique<FunctionCallArgumentKeywordAst>(
         param_name, nullptr, nullptr, std::move(empty_pack)));
       continue;
     }
 
     // Leftover optional parameters inject their argument into the
-    // callsite (unlike Python, which executes once for all func
+    // call site (unlike Python, which executes once for all func
     // calls).
-    const auto optional_param = param->To<asts::FunctionParameterOptionalAst>();
+    const auto optional_param = param->To<FunctionParameterOptionalAst>();
     if (optional_param == nullptr or optional_param->DefaultVal == nullptr) { continue; }
 
     // Translate the default out of the callee's terms as it is
@@ -636,26 +742,30 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     // an expression, so it needs the expression-level walk for
     // the same reason - otherwise "alloc: A = A()" arrives here
     // as an "A()" the caller has no "A" for.
+    auto const &written = optional_param->Source.OriginalDefaultVal != nullptr
+      ? optional_param->Source.OriginalDefaultVal
+      : optional_param->DefaultVal;
     auto default_val = generic_args.IsEmpty()
-      ? asts::AstClone(optional_param->DefaultVal)
-      : asts::AstClone(optional_param->DefaultVal->SubstituteGenericsExpr(generic_args));
+      ? AstClone(optional_param->DefaultVal)
+      : AstClone(written->SubstituteGenericsExpr(generic_args));
 
-    // Analyse the substitution.
+    // Analyse the substitution where the default was written.
     if (not generic_args.IsEmpty() and meta != nullptr) {
+      const auto outer_scope = sm.CurrentScope;
+      if (callee_scope != nullptr) { sm.CurrentScope = callee_scope; }
       default_val->Stage7_AnalyseSemantics(&sm, meta);
+      sm.CurrentScope = outer_scope;
     }
 
-    ordered_args.EmplaceBack(MakeUnique<asts::FunctionCallArgumentKeywordAst>(
+    ordered_args.EmplaceBack(MakeUnique<FunctionCallArgumentKeywordAst>(
       param_name, nullptr, nullptr, std::move(default_val)));
   }
   a_group.Args = std::move(ordered_args);
 }
 
 auto spp::analyse::utils::func_utils::IsTargetCallable(
-  asts::ExpressionAst &expr,
-  scopes::ScopeManager &sm,
-  asts::meta::CompilerMetaData *meta)
-  -> Shared<const asts::TypeAst> {
+  ExpressionAst &expr, ScopeManager &sm,
+  meta::CompilerMetaData *meta) -> Shared<const TypeAst> {
   // Get the type of the expression, then find its functional
   // type. The functional type is the "FunRef|FunMut|FunMov" the
   // expression is or superimposes - a generic gets its one from

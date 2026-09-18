@@ -9,28 +9,17 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ModuleImplementationAst;
-}
+SPP_AST_COMMON_FWD_DECL(ModuleImplementationAst);
 
-/**
- * The ModuleImplementationAst represents the implementation of a module in the SPP language. It contains a list of
- * module members that define the functionality and structure of the module.
- */
+/// The implementation of a module, containing the module
+/// members that define its functionality and structure.
 SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : Ast {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ModuleImplementationAst);
 
-  /**
-   * The list of module members in the implementation. This can include function implementations, class implementations,
-   * and other module-level constructs.
-   */
+  /// The module members in the implementation: function and
+  /// class implementations, and other module-level constructs.
   Vec<Unique<Ast>> Members;
 
-  /**
-   * Construct the ModuleImplementationAst with the arguments matching the members.
-   * @param[in] members The list of module members in the implementation.
-   */
   explicit ModuleImplementationAst(
     decltype(Members) &&members);
 
@@ -42,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : Ast {
 
   auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -58,5 +47,3 @@ SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : Ast {
 
   auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ModuleImplementationAst)

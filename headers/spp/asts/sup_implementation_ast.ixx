@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.sup_implementation_ast;
+import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.inner_scope_ast;
 import spp.codegen.llvm_ctx;
@@ -9,13 +10,10 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct SupImplementationAst;
-  SPP_EXP_CLS struct Ast;
-}
+SPP_AST_COMMON_FWD_DECL(SupImplementationAst);
+use(spp::asts, struct Ast);
 
 SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<Ast>> {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KIND(SupImplementationAst)
 
   static auto NewEmpty() -> Unique<SupImplementationAst>;
@@ -32,7 +30,7 @@ SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<
 
   auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -48,5 +46,3 @@ SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::SupImplementationAst)

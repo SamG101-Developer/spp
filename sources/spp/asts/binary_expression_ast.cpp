@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.bin_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
@@ -16,6 +17,7 @@ import spp.asts.fold_expression_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
@@ -31,15 +33,23 @@ import llvm;
 
 SPP_MOD_BEGIN
 namespace {
+  /// Check if the binary operation is a logical "and" or
+  /// a logical "or", as these two have special behaviour;
+  /// they use intrinsics, not function mappings, allowing
+  /// for short-circuiting.
   auto IsLogicalToken(
-    spp::asts::TokenAst const *const tok)
+    TokenAst const *tok)
     -> bool {
+    // Simple token type check. The token can be absent: rewriting a comparison chain moves the operator out of the
+    // node it replaces ("CombineComparisonChain"), and a clone of that node is built with no token at all.
     using spp::lex::SppTokenType;
-    return tok != nullptr and (tok->TokenType == SppTokenType::KW_AND or tok->TokenType == SppTokenType::KW_OR);
+    return tok != nullptr
+      and (tok->TokenType == SppTokenType::KW_AND
+        or tok->TokenType == SppTokenType::KW_OR);
   }
 }
 
-spp::asts::BinaryExpressionAst::BinaryExpressionAst(
+BinaryExpressionAst::BinaryExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(TokOp) &&tok_op,
   decltype(Rhs) &&rhs) :
@@ -53,34 +63,31 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
   Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
 
-spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
+BinaryExpressionAst::~BinaryExpressionAst() = default;
 
-auto spp::asts::BinaryExpressionAst::PosStart() const
-  -> std::size_t {
+auto BinaryExpressionAst::PosStart() const -> std::size_t {
   // Use the left hand side operand.
   return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
-auto spp::asts::BinaryExpressionAst::PosEnd() const
-  -> std::size_t {
+auto BinaryExpressionAst::PosEnd() const -> std::size_t {
   // Use the right hand side operand.
   return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto spp::asts::BinaryExpressionAst::Clone() const
-  -> Unique<Ast> {
+auto BinaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<BinaryExpressionAst>(
     AstClone(Lhs),
     AstClone(TokOp),
     AstClone(Rhs));
   ast->_MappedFunc = _MappedFunc;
+  ast->_ChainTemps = AstCloneVec(_ChainTemps);
   ast->Source = Source;
   return ast;
 }
 
-auto spp::asts::BinaryExpressionAst::ToString() const
-  -> Str {
+auto BinaryExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (Lhs != nullptr) {
     raw_string.append("(");
@@ -94,16 +101,14 @@ auto spp::asts::BinaryExpressionAst::ToString() const
   SPP_STRING_END;
 }
 
-auto spp::asts::BinaryExpressionAst::IsLogicalOperator() const
-  -> bool {
+auto BinaryExpressionAst::IsLogicalOperator() const -> bool {
+  // Simple getter on the flag determining if this is a
+  // logic operation.
   return _IsLogical;
 }
 
-auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Alias the common utils functions and types.
+auto BinaryExpressionAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::bin_utils::CombineComparisonChain;
   using analyse::utils::bin_utils::ConvertBinExprToFuncCall;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -123,17 +128,25 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
       not IsPrimaryExprTypeValid(*Rhs, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Rhs));
 
-    // Check the rhs is a tuple.
-    const auto rhs_tuple_type = Rhs->InferType(sm, meta);
-    RaiseIf<SppMemberAccessNonIndexableError>(
-      not IsTypeTup(*rhs_tuple_type, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_tuple_type, *Lhs));
+    // Check the rhs is a tuple, and error otherwise. Todo:
+    // Maybe allow arrays too?
+    const auto rhs_tuple_ref = Rhs->InferTypeRef(sm, meta);
+    if (not IsTypeTup(rhs_tuple_ref, *sm->CurrentScope)) {
+      const auto rhs_tuple_type = Rhs->InferType(sm, meta);
+      Raise<SppMemberAccessNonIndexableError>(
+        {sm->CurrentScope},
+        ERR_ARGS(*Rhs, *rhs_tuple_type, *Lhs));
+    }
 
-    // Get the parts of the tuple.
-    const auto rhs_num_elems = rhs_tuple_type->TypeParts()[0]->GnArgGroup->Args.Len();
-    RaiseIf<SppInvalidBinaryFoldExpressionError>(
-      rhs_num_elems < 2,
-      {sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_tuple_type, rhs_num_elems));
+    // Get the parts of the tuple, and check there are at
+    // minimum 2 elements in the tuple.
+    const auto rhs_num_elems = rhs_tuple_ref.Sym->TypeArgTypes().Len();
+    if (rhs_num_elems < 2) {
+      const auto rhs_tuple_type = Rhs->InferType(sm, meta);
+      Raise<SppInvalidBinaryFoldExpressionError>(
+        {sm->CurrentScope},
+        ERR_ARGS(*Rhs, *rhs_tuple_type, rhs_num_elems));
+    }
 
     auto new_asts = Vec<Unique<PostfixExpressionAst>>();
     for (auto i = 0u; i < rhs_num_elems; ++i) {
@@ -145,7 +158,8 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
       new_asts.EmplaceBack(std::move(new_ast));
     }
 
-    // Convert "t = (0, 1, 2, 3)", ".. + t" into "(((t.0 + t.1) + t.2) + t.3)".
+    // Convert "t = (0, 1, 2, 3)", ".. + t" into
+    // "(((t.0 + t.1) + t.2) + t.3)".
     Lhs = std::move(new_asts[0]);
     Rhs = std::move(new_asts[1]);
     for (auto &&new_ast : new_asts | genex::views::move | genex::views::drop(2)) {
@@ -162,17 +176,21 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
       not IsPrimaryExprTypeValid(*Lhs, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Lhs));
 
-    // Check the lhs is a tuple.
-    const auto lhs_tuple_type = Lhs->InferType(sm, meta);
-    RaiseIf<SppMemberAccessNonIndexableError>(
-      not IsTypeTup(*lhs_tuple_type, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
+    // Check the rhs is a tuple, and error otherwise. Todo:
+    // Maybe allow arrays too?
+    const auto lhs_tuple_ref = Lhs->InferTypeRef(sm, meta);
+    if (not IsTypeTup(lhs_tuple_ref, *sm->CurrentScope)) {
+      const auto lhs_tuple_type = Lhs->InferType(sm, meta);
+      Raise<SppMemberAccessNonIndexableError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
+    }
 
-    // Get the parts of the tuple.
-    const auto lhs_num_elems = lhs_tuple_type->TypeParts()[0]->GnArgGroup->Args.Len();
-    RaiseIf<SppInvalidBinaryFoldExpressionError>(
-      lhs_num_elems < 2,
-      {sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
+    // Get the parts of the tuple, and check there are at
+    // minimum 2 elements in the tuple.
+    const auto lhs_num_elems = lhs_tuple_ref.Sym->TypeArgTypes().Len();
+    if (lhs_num_elems < 2) {
+      const auto lhs_tuple_type = Lhs->InferType(sm, meta);
+      Raise<SppInvalidBinaryFoldExpressionError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
+    }
 
     auto new_asts = Vec<Unique<PostfixExpressionAst>>();
     for (auto i = 0U; i < lhs_num_elems; ++i) {
@@ -184,7 +202,8 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
       new_asts.EmplaceBack(std::move(new_ast));
     }
 
-    // Convert "t = (0, 1, 2, 3)", "t + .." into "(t.0 + (t.1 + (t.2 + t.3)))".
+    // Convert "t = (0, 1, 2, 3)", "t + .." into
+    // "(t.0 + (t.1 + (t.2 + t.3)))".
     Lhs = std::move(new_asts[new_asts.Len() - 2]);
     Rhs = std::move(new_asts[new_asts.Len() - 1]);
     for (auto &&new_ast : new_asts | genex::views::move_reverse | genex::views::drop(2)) {
@@ -200,7 +219,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     // its pairs first, so that the "and" it produces is
     // analysed as one - conditional right operand and all -
     // rather than being turned straight into a call.
-    const auto combined = CombineComparisonChain(*this, sm, meta);
+    const auto combined = CombineComparisonChain(*this, sm, meta, _ChainTemps);
     Lhs = std::move(combined->Lhs);
     TokOp = std::move(combined->TokOp);
     Rhs = std::move(combined->Rhs);
@@ -222,15 +241,13 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
       Rhs->Stage7_AnalyseSemantics(sm, meta);
 
       const auto what = Str("\"") + TokOp->TokenData + "\" expression";
-      const auto lhs_type = Lhs->InferType(sm, meta);
-      RaiseIf<SppExpressionNotBooleanError>(
-        lhs_type->GetConvention() != nullptr or not IsTypeBool(*lhs_type, *sm->CurrentScope),
-        {sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_type, what));
-
-      const auto rhs_type = Rhs->InferType(sm, meta);
-      RaiseIf<SppExpressionNotBooleanError>(
-        rhs_type->GetConvention() != nullptr or not IsTypeBool(*rhs_type, *sm->CurrentScope),
-        {sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_type, what));
+      // An owned "Bool" each (a borrow is not one); the type is only spelled out for the error.
+      if (not IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *Lhs->InferType(sm, meta), what));
+      }
+      if (not IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Rhs, *Rhs->InferType(sm, meta), what));
+      }
 
       _LogicalAnalysed = true;
       return;
@@ -242,16 +259,17 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
-  //
+auto BinaryExpressionAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::mem_utils::ValidateSymbolMemory;
+  // Run memory analysis on the temporary materialized
+  // comparison chain values.
+  for (auto const &temp : _ChainTemps) { temp->Stage8_CheckMemory(sm, meta); }
 
-  // A logical operator has no mapped function to forward to.
-  // Both operands are checked as at worst, they both evaluate,
-  // so must both be valid. Maintains consistency in all code.
+  // A logical operator has no mapped function to forward
+  // to. Both operands are checked as at worst, they both
+  // evaluate, so must both be valid. Maintains consistency
+  // in all code.
   if (IsLogicalOperator()) {
     Lhs->Stage8_CheckMemory(sm, meta);
     ValidateSymbolMemory(*Lhs, *this, *sm, true, true, false, false, meta);
@@ -264,10 +282,12 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   _MappedFunc->Stage8_CheckMemory(sm, meta);
 }
 
-auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto BinaryExpressionAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Run comptime resolution on the temporary materialized
+  // comparison chain values (checks validity).
+  for (auto const &temp : _ChainTemps) { temp->Stage9_CompTimeResolve(sm, meta); }
+
   // Do the short-circuiting at compile time by evaluating
   // the left-hand-side, and if it is true, and we are not
   // doing an "and", then we can return true already.
@@ -283,11 +303,8 @@ auto spp::asts::BinaryExpressionAst::Stage9_CompTimeResolve(
   _MappedFunc->Stage9_CompTimeResolve(sm, meta);
 }
 
-auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
-  ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto BinaryExpressionAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward the code generation to the mapped function. The common
   // expressions like "1 + 2" follow these steps:
   // |- 1 + 2
@@ -298,6 +315,13 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   //    |- add #1 #2
   // This allows the optimal instruction to be used, whilst maintaining
   // the uniform function processing for all operations in s++.
+
+  // Run codegen on the temporary materialized comparison
+  // chain values.
+  for (auto const &temp : _ChainTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
+
+  // Codegen via the mapped function if there is one. For
+  // logical operators, move to the next steps below.
   if (not IsLogicalOperator()) { return _MappedFunc->Stage11_CodeGen(sm, meta, ctx); }
 
   // The "and" and "or" operations cannot map from the function
@@ -312,15 +336,18 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   const auto llvm_lhs = Lhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(llvm_lhs->getType()->isIntegerTy(1));
   const auto func = ctx->Builder.GetInsertBlock()->getParent();
-  const auto rhs_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs" + uid, func);
-  const auto join_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.join" + uid, func);
+  const auto rhs_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "logical.rhs" + uid, func);
+  const auto join_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "logical.join" + uid, func);
 
   // Taken from here rather than from before the operand was
   // generated, because generating it may have left the builder
   // in a block of its own making, like from a "case" on the left
   // of an "and" expression.
   const auto lhs_end_bb = ctx->Builder.GetInsertBlock();
-  ctx->Builder.CreateCondBr(llvm_lhs, is_and ? rhs_bb : join_bb, is_and ? join_bb : rhs_bb);
+  ctx->Builder.CreateCondBr(
+    llvm_lhs, is_and ? rhs_bb : join_bb, is_and ? join_bb : rhs_bb);
 
   // Do the right-hand-side codegen (doesn't execute the LLVM,
   // just creates it), and hook it into the short-circuiting
@@ -341,26 +368,59 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   return llvm_res;
 }
 
-auto spp::asts::BinaryExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> Shared<TypeAst> {
-  // A logical operator is boolean by construction - both operands
-  // are required to be, and the result is one of them.
-  if (IsLogicalOperator()) { return generate::common_types::BooleanType(PosStart()); }
+auto BinaryExpressionAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  // A logical operator is boolean by construction - both
+  // operands are required to be, and the result is one of
+  // them.
+  if (IsLogicalOperator()) {
+    return generate::common_types::BooleanType(PosStart());
+  }
 
-  // Infer the type from the function mapping of the binary expression.
+  // Not yet analysed - a comp argument waits for the sup
+  // scopes its operator is resolved through: a comparison
+  // is boolean, and comp-time arithmetic keeps its left
+  // operand's type.
+  // Todo: Remove this I think.
+  if (_MappedFunc == nullptr) {
+    using lex::SppTokenType;
+    const auto op = TokOp->TokenType;
+    if (op == SppTokenType::TK_EQ or op == SppTokenType::TK_NE or op == SppTokenType::TK_LT
+      or op == SppTokenType::TK_LE or op == SppTokenType::TK_GT or op == SppTokenType::TK_GE) {
+      return generate::common_types::BooleanType(PosStart());
+    }
+    return Lhs->InferType(sm, meta);
+  }
+
+  // Infer the type from the function mapping of the binary
+  // expression.
   return _MappedFunc->InferType(sm, meta);
 }
 
-auto spp::asts::BinaryExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const
-  -> Shared<ExpressionAst> {
+auto BinaryExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // Before analysis maps it onto a function, the type is
+  // decided by the operator ("InferType").
+  if (IsLogicalOperator() or _MappedFunc == nullptr) {
+    return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
+  }
+  return _MappedFunc->InferTypeRef(sm, meta);
+}
+
+auto BinaryExpressionAst::SubstituteGenericsExpr(
+  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // Both operands are expressions.
   return MakeShared<BinaryExpressionAst>(
     AstClone(Lhs->SubstituteGenericsExpr(args)),
     AstClone(TokOp),
     AstClone(Rhs->SubstituteGenericsExpr(args)));
+}
+
+auto BinaryExpressionAst::IsAllowedInDefault() const -> bool {
+  // Check the left-hand-side and right-hand-side elems.
+  return
+    (Lhs == nullptr or Lhs->IsAllowedInDefault()) and
+    (Rhs == nullptr or Rhs->IsAllowedInDefault());
 }
 
 SPP_MOD_END

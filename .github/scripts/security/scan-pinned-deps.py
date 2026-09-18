@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 """Query OSV about the pins in .github/dependencies.toml and write SARIF.
 
-osv-scanner reads lockfiles. Nothing in this repository's C++ dependency set is a lockfile: the libraries are git
-commits and the prebuilt archives are versions, so osv-scanner never sees them. This closes that gap by asking OSV
-directly.
-
-Two mechanisms, both verified against the live API:
-  - libraries are matched by commit, which OSV resolves against the GIT ranges in its records
-  - a pin carrying osv-name/osv-ecosystem metadata is matched by version
-
-purl-based matching is deliberately not used: pkg:github/<owner>/<repo>@<commit> returns nothing from OSV, so an SBOM
-would look like a scan without being one.
+osv-scanner reads lockfiles, and the C++ dependency set is not one: libraries are git commits and prebuilt archives
+are versions, so it never sees them. Libraries are matched by commit, against the GIT ranges in OSV's records; a pin
+carrying osv-name/osv-ecosystem metadata is matched by version. purl matching is deliberately not used -
+pkg:github/<owner>/<repo>@<commit> returns nothing, so an SBOM would look like a scan without being one.
 
 Findings are a warning and a SARIF entry; a scan that could not run is a failure. Change the `return 0` at the end of
 main() to make findings blocking.
@@ -47,13 +41,11 @@ def post(url: str, payload: dict) -> dict:
     request = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # noqa: S310 - fixed https URL
         return json.load(response)
-    return None
 
 
 def get(url: str) -> dict:
     with urllib.request.urlopen(url, timeout=TIMEOUT) as response:  # noqa: S310 - fixed https URL
         return json.load(response)
-    return None
 
 
 def ignored() -> dict[str, str]:

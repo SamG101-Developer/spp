@@ -12,31 +12,30 @@ import spp.asts.utils.orderable;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
+FunctionParameterVariadicAst::FunctionParameterVariadicAst(
   decltype(TokEllipsis) &&tok_ellipsis,
   decltype(Var) &&var,
   decltype(TokColon) &&tok_colon,
   decltype(Type) type) :
-  FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::kVariadicParam),
+  FunctionParameterAst(
+    std::move(var), std::move(tok_colon), std::move(type),
+    utils::OrderableTag::kVariadicParam),
   TokEllipsis(std::move(tok_ellipsis)) {
 }
 
-spp::asts::FunctionParameterVariadicAst::~FunctionParameterVariadicAst() = default;
+FunctionParameterVariadicAst::~FunctionParameterVariadicAst() = default;
 
-auto spp::asts::FunctionParameterVariadicAst::PosStart() const
-  -> std::size_t {
+auto FunctionParameterVariadicAst::PosStart() const -> std::size_t {
   // Use the ".." token.
   return TokEllipsis->PosStart();
 }
 
-auto spp::asts::FunctionParameterVariadicAst::PosEnd() const
-  -> std::size_t {
+auto FunctionParameterVariadicAst::PosEnd() const -> std::size_t {
   // Use the type.
   return Source.OriginalType->PosEnd();
 }
 
-auto spp::asts::FunctionParameterVariadicAst::Clone() const
-  -> Unique<Ast> {
+auto FunctionParameterVariadicAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<FunctionParameterVariadicAst>(
     AstClone(TokEllipsis),
@@ -45,8 +44,7 @@ auto spp::asts::FunctionParameterVariadicAst::Clone() const
     AstCloneShared(Type));
 }
 
-auto spp::asts::FunctionParameterVariadicAst::ToString() const
-  -> Str {
+auto FunctionParameterVariadicAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("..");
   SPP_STRING_APPEND(Var);

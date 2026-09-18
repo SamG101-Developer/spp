@@ -9,58 +9,35 @@ import spp.utils.types;
 import llvm;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct ExpressionAst;
-  SPP_EXP_CLS struct GenericArgumentAst;
-  SPP_EXP_CLS struct PostfixExpressionOperatorSliceAst;
-  SPP_EXP_CLS struct PostfixExpressionAst;
-  SPP_EXP_CLS struct TokenAst;
-  SPP_EXP_CLS struct TypeAst;
-}
+SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorSliceAst);
+use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct PostfixExpressionAst);
+use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorSliceAst);
 
-  /**
-   * The @code [@endcode token that indicates the start of the slice expression.
-   */
+  /// The "[" token that starts the slice expression.
   Unique<TokenAst> TokL;
 
-  /**
-   * The optional @c mut token that indicates that the slice operation is mutable.
-   */
+  /// The optional "mut" token, making the slice mutable.
   Unique<TokenAst> TokMut;
 
-  /**
-   * The lower bound expression used for the slice.
-   */
+  /// The lower bound expression used for the slice.
   Unique<ExpressionAst> ExprLBound;
 
-  /**
-   * The @c to keyword, separating the bounds of the slice.
-   */
+  /// The "to" keyword, separating the bounds of the slice.
   Unique<TokenAst> TokTo;
 
-  /**
-   * The upper bound expression used for the slice.
-   */
+  /// The upper bound expression used for the slice.
   Unique<ExpressionAst> ExprRBound;
 
-  /**
-   * The @code ]@endcode token that indicates the end of the slice expression.
-   */
+  /// The "]" token that ends the slice expression.
   Unique<TokenAst> TokR;
 
-  /**
-   * Construct the PostfixExpressionOperatorIndexAst with the arguments matching the members.
-   * @param[in] tok_l The @code [@endcode token that indicates the start of the index expression.
-   * @param[in] tok_mut The optional @c mut token that indicates that the index operation is mutable.
-   * @param[in] expr_l_bound The lower bound expression used for the slice.
-   * @param[in] tok_to The @c to keyword, separating the bounds of the slice.
-   * @param[in] expr_r_bound The upper bound expression used for the slice.
-   * @param[in] tok_r The @code ]@endcode token that indicates the end of the index expression.
-   */
   PostfixExpressionOperatorSliceAst(
     decltype(TokL) &&tok_l,
     decltype(TokMut) &&tok_mut,
@@ -69,18 +46,13 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
     decltype(ExprRBound) &&expr_r_bound,
     decltype(TokR) &&tok_r);
 
-  /**
-   * Default destructor.
-   */
   ~PostfixExpressionOperatorSliceAst() override;
 
-  /**
-   * The analysis stage requires that the left-hand-side is "sliceable", in the same way that an iterator-based loop
-   * expression's condition must be "iterable". Either @c SliceRef or @c SliceMut must be superimposed over the
-   * left-hand-side, depending on the presence of the @c mut keyword.
-   * @param[in,out] sm The scope manager to use for analysis.
-   * @param[in,out] meta Associated metadata.
-   */
+  /// The left-hand-side must be "sliceable", in the same way
+  /// that an iterator-based loop's condition must be
+  /// "iterable". Either "SliceRef" or "SliceMut" must be
+  /// superimposed over the left-hand-side, depending on the
+  /// presence of the "mut" keyword.
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -89,22 +61,19 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  /**
-   * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For
-   * example, @code "hello"[5 to 7]@endcode will become @code "hello".slice_ref(5, 6)@endcode, and this method's
-   * return type will be used.
-   * @param[in,out] sm The scope manager to use for type inference.
-   * @param[in,out] meta Associated metadata.
-   * @return
-   */
+  /// Infer the type from the mapped slice function on the
+  /// left-hand-side type. For example, "hello"[5 to 7] becomes
+  /// "hello".slice_ref(5, 6), and its return type is used.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
     Vec<GenericArgumentAst*> const &args) const
     -> Unique<PostfixExpressionOperatorAst> override;
 
+  SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
 private:
   Shared<PostfixExpressionAst> _MappedFunc;
 };
-
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorSliceAst)

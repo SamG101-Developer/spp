@@ -69,3 +69,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppTypeMismatchError, R"(
     fun f[cmp n: USize = false]() -> Void { }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  GenericParameterCompGenericClass,
+  test_valid_comp_parameter_typed_by_the_class_generic, R"(
+    !public cls Box[T] { !public v: T }
+    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+    sup [T: std::copy::Copy] Box[T] {
+        !public fun g[cmp p: Box[T]](&self) -> Void { }
+    }
+    fun f() -> Void {
+        let b = Box(v=1)
+        b.g[Box(v=2)]()
+    }
+)");

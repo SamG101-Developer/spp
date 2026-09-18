@@ -30,7 +30,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 SPP_MOD_BEGIN
-spp::asts::LoopExpressionAst::LoopExpressionAst(
+LoopExpressionAst::LoopExpressionAst(
   decltype(TokLoop) &&tok_loop,
   decltype(Body) &&body,
   decltype(ElseBlock) &&else_block) :
@@ -41,12 +41,10 @@ spp::asts::LoopExpressionAst::LoopExpressionAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Body);
 }
 
-spp::asts::LoopExpressionAst::~LoopExpressionAst() = default;
+LoopExpressionAst::~LoopExpressionAst() = default;
 
-auto spp::asts::LoopExpressionAst::InferType(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> Shared<TypeAst> {
+auto LoopExpressionAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   using analyse::errors::SppTypeMismatchError;
   using analyse::utils::type_compare::TypeEq;
@@ -54,18 +52,30 @@ auto spp::asts::LoopExpressionAst::InferType(
 
   // Get the loop's exit type (or Void if there are no
   // exits from inside the loop).
-  auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
+  auto [exit_expr, loop_type, exit_scope] = m_loop_exit_type_info.has_value()
     ? *m_loop_exit_type_info
-    : Tup(static_cast<ExpressionAst*>(nullptr), VoidType(PosStart()), static_cast<analyse::scopes::Scope*>(nullptr));
+    : Tup(static_cast<ExpressionAst*>(nullptr), VoidType(PosStart()), static_cast<Scope*>(nullptr));
   exit_expr = exit_expr ? exit_expr : this;
 
-  // Check the else block's type is the same as the loop
-  // exit type.
+  // Check the else block's type is the same as the loop exit
+  // type. An exit that diverges ("!") has no value for the else
+  // block to agree with, so the loop takes the else block's type
+  // instead; it is only "!" when that diverges too. The exit type
+  // is read in the scope its "exit" was written in.
   if (ElseBlock != nullptr and not meta->IgnoreMissingElseBranchForInference) {
     const auto else_type = ElseBlock->InferType(sm, meta);
     const auto final_member = ElseBlock->Body->FinalMember();
+    if (loop_type->IsNeverType()) {
+      loop_type = else_type;
+      exit_scope = nullptr;
+    }
+
+    const auto loop_scope = exit_scope != nullptr
+      ? *exit_scope
+      : *sm->CurrentScope;
+
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*loop_type, *else_type, *sm->CurrentScope, *sm->CurrentScope),
+      not TypeEq(*loop_type, *else_type, loop_scope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
   }
 

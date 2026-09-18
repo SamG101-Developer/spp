@@ -17,7 +17,6 @@ import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.identifier_ast;
 import spp.asts.ret_statement_ast;
@@ -30,7 +29,7 @@ import spp.lex.tokens;
 import genex;
 
 SPP_MOD_BEGIN
-spp::asts::SubroutinePrototypeAst::SubroutinePrototypeAst(
+SubroutinePrototypeAst::SubroutinePrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
@@ -47,10 +46,9 @@ spp::asts::SubroutinePrototypeAst::SubroutinePrototypeAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_FUN, "fun");
 }
 
-spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
+SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
-auto spp::asts::SubroutinePrototypeAst::Clone() const
-  -> Unique<Ast> {
+auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<SubroutinePrototypeAst>(
     AstCloneVec(Annotations),
     AstClone(TokCmp),
@@ -65,7 +63,6 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
     ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
     : nullptr;
   ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
-  ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->AbstractAnnotation = AbstractAnnotation;
@@ -82,14 +79,11 @@ auto spp::asts::SubroutinePrototypeAst::Clone() const
   return ast;
 }
 
-auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm,
-  CompilerMetaData *meta)
-  -> void {
+auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::type_compare::TypeEq;
   using generate::common_types_precompiled::VOID;
-  using generate::common_types_precompiled::NEVER;
 
   // Perform default function prototype semantic analysis
   FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
@@ -105,13 +99,12 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   Impl->Stage7_AnalyseSemantics(sm, meta);
 
   // Handle the "!" never type.
-  auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope->Children[0].get());
+  auto tm = ScopeManager(
+    sm->GlobalScope, sm->CurrentScope->Children[0].get());
   const auto is_never = [&] {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
-    return not Impl->Members.IsEmpty() and TypeEq(
-      *Impl->FinalMember()->To<StatementAst>()->InferType(&tm, meta), *NEVER,
-      *tm.CurrentScope, *sm->CurrentScope);
+    return not Impl->Members.IsEmpty() and Impl->FinalMember()->To<StatementAst>()->InferTypeRef(&tm, meta).IsNever;
   }();
 
   // Check for a void return type.
@@ -124,7 +117,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   const auto final_member_check = (not Impl->Members.IsEmpty() and Impl->Members.Back()->To<RetStatementAst>());
   RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
     is_void or is_never or annotation_blocks_ret or final_member_check,
-    {sm->CurrentScope}, ERR_ARGS(*final_member, *Source.OriginalReturnType, *ReturnType));
+    {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType, *ReturnType));
 
   // Ffi functions cannot be generic, otherwise we get
   // multiple prototypes for the singular C function,
@@ -142,11 +135,8 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   meta->LoopReturnTypes->clear();
 }
 
-auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
-  analyse::scopes::ScopeManager *sm,
-  CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx)
-  -> llvm::Value* {
+auto SubroutinePrototypeAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Build the function body.
   // Todo: Move all to the subroutine prototype. Given coroutine
   //  ast overrides this.
@@ -192,7 +182,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
   const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
     ReturnType.get());
   {
-    const auto _meta_guard = meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->EnclosingFunctionFlavour = TokFun.get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
     meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
@@ -230,8 +220,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto spp::asts::SubroutinePrototypeAst::IsCoroutine() const
-  -> bool {
+auto SubroutinePrototypeAst::IsCoroutine() const -> bool {
   return false;
 }
 

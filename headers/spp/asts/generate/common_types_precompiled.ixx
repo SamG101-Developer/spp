@@ -56,15 +56,14 @@ namespace spp::asts::generate::common_types_precompiled {
   SPP_EXP_CMP Shared<TypeAst> SELF_TYPE = nullptr;
   SPP_EXP_CMP Shared<IdentifierAst> SELF_VAR = nullptr;
 
-  /**
-   * Initialize the precompiled common types. This must be called before using any of the precompiled types.
-   */
+  /// Initialize the precompiled common types. This must be
+  /// called before using any of the precompiled types.
   SPP_EXP_FUN auto InitTypes() -> void;
 
-  /**
-   * Reset all precompiled type globals to nullptr. This releases the TypeAst objects (and their
-   * CachedTypeSymbols maps) so that stale cache entries do not accumulate across compilation runs.
-   * Must be called during cleanup, before the scope tree is destroyed.
-   */
+  /// Reset all precompiled type globals to nullptr. This
+  /// releases the TypeAst objects (and their CachedTypeSymbols
+  /// maps) so that stale cache entries do not accumulate
+  /// across compilation runs. Must be called during cleanup,
+  /// before the scope tree is destroyed.
   SPP_EXP_FUN auto ClearTypes() -> void;
 }

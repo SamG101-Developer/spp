@@ -7,27 +7,25 @@ import spp.codegen.llvm_func_impls;
 
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name)
 #define SPP_DEFINE_BUILTIN_FUNC(scoped_name, func_name) \
-    map.emplace(scoped_name, LoweredFuncImpl{           \
-        .llvm_fn=codegen::func_impls::func_name,        \
-        .cmp_fn=nullptr,                                \
-        .name=scoped_name})
+  map.emplace(scoped_name, LoweredFuncImpl{             \
+    .llvm_fn=codegen::func_impls::func_name,            \
+    .cmp_fn=nullptr,                                    \
+    .name=scoped_name})
 
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name),
 #define SPP_DEFINE_BUILTIN_FUNC_CMP(scoped_name, func_name, ...) \
-    map.emplace(scoped_name, LoweredFuncImpl{                    \
-        .llvm_fn=codegen::func_impls::func_name,                 \
-        .cmp_fn=cmp_utils::make_cmp_fn __VA_OPT__(<__VA_ARGS__>) (cmp_utils::func_name),    \
-        .name=scoped_name})
+  map.emplace(scoped_name, LoweredFuncImpl{                      \
+    .llvm_fn=codegen::func_impls::func_name,                     \
+    .cmp_fn=cmp_utils::make_cmp_fn __VA_OPT__(<__VA_ARGS__>) (cmp_utils::func_name), \
+    .name=scoped_name})
 
-// As "SPP_DEFINE_BUILTIN_FUNC_CMP", for a builtin whose codegen and comptime implementations are not named the same.
-// The trapping "+"/"-"/"*" are split by signedness for codegen, because llvm integers carry no signedness and the
-// overflow check needs it; comptime arithmetic is arbitrary-precision and range-checked against the literal's own
-// type, so the two halves of each pair share one comptime implementation.
+// As "SPP_DEFINE_BUILTIN_FUNC_CMP", for a builtin whose
+// codegen and comptime implementations are not named the same.
 #define SPP_DEFINE_BUILTIN_FUNC_CMP2(scoped_name, llvm_name, cmp_name, ...) \
-    map.emplace(scoped_name, LoweredFuncImpl{                               \
-        .llvm_fn=codegen::func_impls::llvm_name,                            \
-        .cmp_fn=cmp_utils::make_cmp_fn __VA_OPT__(<__VA_ARGS__>) (cmp_utils::cmp_name),    \
-        .name=scoped_name})
+  map.emplace(scoped_name, LoweredFuncImpl{                                 \
+    .llvm_fn=codegen::func_impls::llvm_name,                                \
+    .cmp_fn=cmp_utils::make_cmp_fn __VA_OPT__(<__VA_ARGS__>) (cmp_utils::cmp_name), \
+    .name=scoped_name})
 
 auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   -> Map<Str, LoweredFuncImpl> {
@@ -102,14 +100,14 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.smul_assign", std_intrinsics_smul_assign, std_intrinsics_mul_assign);
   SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.umul", std_intrinsics_umul, std_intrinsics_mul);
   SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.umul_assign", std_intrinsics_umul_assign, std_intrinsics_mul_assign);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.sdiv", std_intrinsics_sdiv);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.sdiv_assign", std_intrinsics_sdiv_assign);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.udiv", std_intrinsics_udiv);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.udiv_assign", std_intrinsics_udiv_assign);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.srem", std_intrinsics_srem);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.srem_assign", std_intrinsics_srem_assign);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.urem", std_intrinsics_urem);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.urem_assign", std_intrinsics_urem_assign);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.sdiv", std_intrinsics_sdiv, std_intrinsics_div);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.sdiv_assign", std_intrinsics_sdiv_assign, std_intrinsics_div_assign);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.udiv", std_intrinsics_udiv, std_intrinsics_div);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.udiv_assign", std_intrinsics_udiv_assign, std_intrinsics_div_assign);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.srem", std_intrinsics_srem, std_intrinsics_rem);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.srem_assign", std_intrinsics_srem_assign, std_intrinsics_rem_assign);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.urem", std_intrinsics_urem, std_intrinsics_rem);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.urem_assign", std_intrinsics_urem_assign, std_intrinsics_rem_assign);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.sneg", std_intrinsics_sneg);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.bit_shl", std_intrinsics_bit_shl);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.bit_shl_assign", std_intrinsics_bit_shl_assign);
@@ -128,26 +126,26 @@ auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.oeq", std_intrinsics_oeq);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ne", std_intrinsics_ne);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.one", std_intrinsics_one);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.slt", std_intrinsics_slt);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ult", std_intrinsics_ult);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.slt", std_intrinsics_slt, std_intrinsics_lt);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.ult", std_intrinsics_ult, std_intrinsics_lt);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.olt", std_intrinsics_olt);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.sle", std_intrinsics_sle);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ule", std_intrinsics_ule);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.sle", std_intrinsics_sle, std_intrinsics_le);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.ule", std_intrinsics_ule, std_intrinsics_le);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ole", std_intrinsics_ole);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.sgt", std_intrinsics_sgt);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ugt", std_intrinsics_ugt);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.sgt", std_intrinsics_sgt, std_intrinsics_gt);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.ugt", std_intrinsics_ugt, std_intrinsics_gt);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ogt", std_intrinsics_ogt);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.sge", std_intrinsics_sge);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.uge", std_intrinsics_uge);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.sge", std_intrinsics_sge, std_intrinsics_ge);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.uge", std_intrinsics_uge, std_intrinsics_ge);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.oge", std_intrinsics_oge);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.min_val", std_intrinsics_min_val, true);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.max_val", std_intrinsics_max_val, true);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.smax", std_intrinsics_smax);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.umax", std_intrinsics_umax);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.smin", std_intrinsics_smin);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.umin", std_intrinsics_umin);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.scmp", std_intrinsics_scmp);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ucmp", std_intrinsics_ucmp);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.smax", std_intrinsics_smax, std_intrinsics_max);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.umax", std_intrinsics_umax, std_intrinsics_max);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.smin", std_intrinsics_smin, std_intrinsics_min);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.umin", std_intrinsics_umin, std_intrinsics_min);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.scmp", std_intrinsics_scmp, std_intrinsics_cmp);
+  SPP_DEFINE_BUILTIN_FUNC_CMP2("std.intrinsics.ucmp", std_intrinsics_ucmp, std_intrinsics_cmp);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_add", std_intrinsics_fadd);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_add_assign", std_intrinsics_fadd_assign);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.float_sub", std_intrinsics_fsub);
