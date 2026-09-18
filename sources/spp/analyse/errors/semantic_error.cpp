@@ -1,14 +1,19 @@
 module;
 #include <spp/macros.hpp>
 
-#define INLINE_INFO(info) \
-    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_white)
+// Has to be done like this until MSVC supports P2591, allowing
+// std::string and std::string_view to be concatenated.
+#define INLINE_INFO(info)                                          \
+    ((colex::fg_bright_yellow + colex::st_italic) + Str(info)      \
+      + (colex::reset + colex::st_bold + colex::fg_bright_white))
 
-#define INLINE_NOTE(info) \
-    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_cyan)
+#define INLINE_NOTE(info)                                          \
+    ((colex::fg_bright_yellow + colex::st_italic) + Str(info)      \
+      + (colex::reset + colex::st_bold + colex::fg_bright_cyan))
 
-#define INLINE_HELP(info) \
-    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_red)
+#define INLINE_HELP(info)                                          \
+    ((colex::fg_bright_yellow + colex::st_italic) + Str(info)      \
+      + (colex::reset + colex::st_bold + colex::fg_bright_red))
 
 module spp.analyse.errors.semantic_error;
 import spp.asts.annotation_ast;
@@ -217,7 +222,7 @@ SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
   AddCtxForErr(&type, "Second-class borrow type declared here");
   AddErr(&expr, "Expression used here");
   AddFooter(
-    "Second-class borrow types cannot be used in the " + INLINE_NOTE(Str(ctx)) + " context.",
+    "Second-class borrow types cannot be used in the " + INLINE_NOTE(ctx) + " context.",
     "Use a first-class type ensuring ownership in this context.");
 }
 
@@ -361,13 +366,13 @@ SppIdentifierDuplicateError::SppIdentifierDuplicateError(
   const StrView what) {
   AddHeader(14, "Identifier Duplicate Error");
   AddCtxForErr(&first_identifier,
-               "First " + INLINE_INFO(Str(what)) + " named " + INLINE_INFO(first_identifier.ToString()) +
+               "First " + INLINE_INFO(what) + " named " + INLINE_INFO(first_identifier.ToString()) +
                " defined here");
   AddErr(&duplicate_identifier,
-         "Duplicate " + INLINE_INFO(Str(what)) + " named " + INLINE_INFO(duplicate_identifier.ToString()) +
+         "Duplicate " + INLINE_INFO(what) + " named " + INLINE_INFO(duplicate_identifier.ToString()) +
          " defined here");
   AddFooter(
-    "This " + INLINE_NOTE(Str(what)) + " identifier has already been used.",
+    "This " + INLINE_NOTE(what) + " identifier has already been used.",
     "Rename or remove the duplicate identifier");
 }
 
@@ -376,10 +381,10 @@ SppIdentifierDuplicateError::SppIdentifierDuplicateError(
   const StrView what) {
   AddHeader(14, "Identifier Duplicate Error");
   AddErr(&duplicate_identifier,
-         "Duplicate " + INLINE_INFO(Str(what)) + " named " + INLINE_INFO(duplicate_identifier.ToString()) +
+         "Duplicate " + INLINE_INFO(what) + " named " + INLINE_INFO(duplicate_identifier.ToString()) +
          " defined here");
   AddFooter(
-    "The prelude already imports a " + INLINE_NOTE(Str(what)) + " with this name.",
+    "The prelude already imports a " + INLINE_NOTE(what) + " with this name.",
     "Remove this import; the name is already in scope");
 }
 
@@ -412,7 +417,7 @@ SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
   AddHeader(16, "Float Out Of Bounds Error");
   AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.Decimal()));
   AddFooter(
-    "The value of this float is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
+    "The value of this float is out of bounds for the " + INLINE_NOTE(what) + " type.",
     "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.Decimal()) + INLINE_HELP(", ") +
     INLINE_HELP(upper.Decimal()) + INLINE_HELP("]") + ".");
 }
@@ -426,7 +431,7 @@ SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
   AddHeader(17, "Integer Out Of Bounds Error");
   AddErr(&literal, "Integer introduced here with value " + INLINE_INFO(value.ToString()));
   AddFooter(
-    "The value of this integer is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
+    "The value of this integer is out of bounds for the " + INLINE_NOTE(what) + " type.",
     "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.ToString()) + INLINE_HELP(", ") +
     INLINE_HELP(upper.ToString()) + INLINE_HELP("]") + ".");
 }
@@ -437,8 +442,8 @@ SppOrderInvalidError::SppOrderInvalidError(
   const StrView second_what,
   Ast const &second) {
   AddHeader(18, "Order Invalid Error");
-  AddCtxForErr(&first, INLINE_INFO(Str(first_what)) + " defined here");
-  AddErr(&second, INLINE_INFO(Str(second_what)) + " defined here");
+  AddCtxForErr(&first, INLINE_INFO(first_what) + " defined here");
+  AddErr(&second, INLINE_INFO(second_what) + " defined here");
   AddFooter(
     "The order of these two asts is invalid.",
     "Switch the order of these asts.");
@@ -530,11 +535,11 @@ SppIdentifierUnknownError::SppIdentifierUnknownError(
   const StrView what,
   std::optional<Str> const &closest) {
   AddHeader(26, "Identifier Unknown Error");
-  AddErr(&name, "Unknown " + INLINE_INFO(Str(what)) + " introduced here" + (closest
+  AddErr(&name, "Unknown " + INLINE_INFO(what) + " introduced here" + (closest
            ? " (did you mean '" + *closest + "'?)"
            : ""));
   AddFooter(
-    "The " + INLINE_NOTE(Str(what)) + " of " + INLINE_NOTE(name.ToString()) + " is not defined in the current scope.",
+    "The " + INLINE_NOTE(what) + " of " + INLINE_NOTE(name.ToString()) + " is not defined in the current scope.",
     "Define the identifier or correct its name.");
 }
 
@@ -679,7 +684,7 @@ SppExpressionNotBooleanError::SppExpressionNotBooleanError(
   AddHeader(36, "Expression Not Boolean Error");
   AddErr(&expr, "Type inferred as " + INLINE_INFO(TypeForMessage(expr_type)));
   AddFooter(
-    "This expression must be an owned boolean to be used in a " + INLINE_NOTE(Str(what)) + " context.",
+    "This expression must be an owned boolean to be used in a " + INLINE_NOTE(what) + " context.",
     "Change this expression to a boolean type expression, or take one out of a borrow with " + INLINE_HELP("@") + ".");
 }
 
@@ -815,8 +820,8 @@ SppArgumentMissingError::SppArgumentMissingError(
   Ast const &source,
   const StrView source_what) {
   AddHeader(47, "Argument Missing Error");
-  AddCtxForErr(&target, "Missing " + INLINE_INFO(Str(target_what)) + " defined here");
-  AddErr(&source, "Existing " + INLINE_INFO(Str(source_what)) + " defined here");
+  AddCtxForErr(&target, "Missing " + INLINE_INFO(target_what) + " defined here");
+  AddErr(&source, "Existing " + INLINE_INFO(source_what) + " defined here");
   AddFooter(
     "A required argument is missing in the current context.",
     "Provide the missing argument.");
@@ -1317,7 +1322,7 @@ SppEmptyBodyRequiredError::SppEmptyBodyRequiredError(
   const auto *as_annotation = dynamic_cast<AnnotationAst const*>(&annotation);
   auto marker = as_annotation != nullptr ? "!" + as_annotation->Name->ToString() : annotation.ToString();
   AddFooter(
-    "The body of " + INLINE_NOTE(Str(what)) + " must be empty: " + Str(reason) + ".",
+    "The body of " + INLINE_NOTE(what) + " must be empty: " + Str(reason) + ".",
     "Empty the body, or remove the " + INLINE_HELP(std::move(marker)) + " annotation.");
 }
 
@@ -1440,12 +1445,12 @@ SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
   const StrView type_name,
   const StrView exit_what) {
   AddHeader(94, "Linear Value Not Consumed Error");
-  AddCtxForErr(&symbol_definition, "Value of type " + INLINE_INFO(Str(type_name)) + " introduced here");
-  AddErr(&exit_point, Str(exit_what) + " reached with " + INLINE_INFO(Str(symbol_name)) + " still holding it");
+  AddCtxForErr(&symbol_definition, "Value of type " + INLINE_INFO(type_name) + " introduced here");
+  AddErr(&exit_point, Str(exit_what) + " reached with " + INLINE_INFO(symbol_name) + " still holding it");
   AddFooter(
     "A value of a non-" + INLINE_NOTE("Copy") + " type must be used exactly once, so no symbol can still own one "
     "when its scope ends.",
-    "Move " + INLINE_HELP(Str(symbol_name)) + " into a consuming function, return it, or take it apart with "
+    "Move " + INLINE_HELP(symbol_name) + " into a consuming function, return it, or take it apart with "
     + INLINE_HELP("let " + Str(type_name) + "(..) = " + Str(symbol_name)) + ".");
 }
 
@@ -1453,7 +1458,7 @@ SppDiscardedValueError::SppDiscardedValueError(
   Ast const &expr,
   const StrView type_name) {
   AddHeader(95, "Discarded Value Error");
-  AddErrExact(&expr, "Expression of type " + INLINE_INFO(Str(type_name)) + " produces a value nothing takes");
+  AddErrExact(&expr, "Expression of type " + INLINE_INFO(type_name) + " produces a value nothing takes");
   AddFooter(
     "An expression in statement position produces a value that nothing consumes; only " + INLINE_NOTE("Void")
     + " and " + INLINE_NOTE("Never") + " may be discarded.",
@@ -1468,10 +1473,10 @@ SppLinearValueSkippedInDestructureError::SppLinearValueSkippedInDestructureError
   const StrView type_name) {
   AddHeader(96, "Linear Value Skipped In Destructure Error");
   AddCtxForErr(&destructure, "Destructure of " + INLINE_INFO(destructure.ToString()) + " here");
-  AddErr(&skip, "Skip covers " + INLINE_INFO(Str(attr_name)) + " of non-Copy type " + INLINE_INFO(Str(type_name)));
+  AddErr(&skip, "Skip covers " + INLINE_INFO(attr_name) + " of non-Copy type " + INLINE_INFO(type_name));
   AddFooter(
     "A destructure consumes the whole value, so an attribute a skip covers is discarded rather than used.",
-    "Bind " + INLINE_HELP(Str(attr_name)) + " explicitly in the destructure instead of skipping it.");
+    "Bind " + INLINE_HELP(attr_name) + " explicitly in the destructure instead of skipping it.");
 }
 
 SppDeferTerminatesError::SppDeferTerminatesError(
@@ -1533,12 +1538,12 @@ SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
   AddHeader(99, "Defer Consumes Moved Value Error");
   AddCtxForErr(&deferred, "Deferred here, so it runs at every exit of this scope");
   AddErrExact(
-    &consumed_at, Str(exit_what) + " reached with " + INLINE_INFO(Str(symbol_name)) + " already consumed here");
+    &consumed_at, Str(exit_what) + " reached with " + INLINE_INFO(symbol_name) + " already consumed here");
   AddFooter(
     "A deferred expression is not conditional - it is emitted at every exit,\n\t"
     "with nothing at runtime to record that one path already consumed the\n\t"
     "value - so this one would consume it a second time.",
-    "Discharge " + INLINE_HELP(Str(symbol_name)) + " in each branch that does\n\t"
+    "Discharge " + INLINE_HELP(symbol_name) + " in each branch that does\n\t"
     "not already consume it, rather than deferring it for all of them.");
 }
 
