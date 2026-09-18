@@ -261,7 +261,7 @@ jobs:
   # Behind cppcheck like the builds and CodeQL: Sonar's scanner wraps a full build, so there is no sense starting one
   # over code static analysis has already rejected.
   sonar:
-    name: Sonar
+    name: Sonar (non-blocking)
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
@@ -279,7 +279,7 @@ jobs:
   # Advisory, like Sonar, and omitted from ci-success for the same reason. There is nothing to review in a pin bump,
   # so it sits behind `changes` to skip those rather than spend a review on a pair of SHAs.
   claude-review:
-    name: Claude Review
+    name: Claude Review (non-blocking)
     needs: [ changes ]
     if: |
       github.event_name == 'pull_request'

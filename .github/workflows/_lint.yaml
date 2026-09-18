@@ -13,7 +13,7 @@ jobs:
   # The "pre-commit" step runs the pre-commit-config.yaml file, which runs the simple linting such as missing or extra
   # newlines, whitespace, yaml/toml/jaon/action checks, cmake formatting, etc.
   pre-commit:
-    name: Format & Lint
+    name: pre-commit
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:

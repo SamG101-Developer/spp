@@ -16,7 +16,7 @@ jobs:
     # Build the documentation using the custom python script that already exists in the "docs" folder. The python env
     # setup is required here with package management, followed by all the Doxygen config and building.
 
-    name: Build Docs
+    name: Doxygen
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
