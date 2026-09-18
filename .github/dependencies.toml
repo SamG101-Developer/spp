@@ -5,7 +5,7 @@
 # <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
 
 [pin.gcc]
-version = "16"
+version = "16.2"
 
 [pin.cmake]
 version = "4.4.0"

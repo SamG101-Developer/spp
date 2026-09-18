@@ -162,7 +162,7 @@ jobs:
     with:
       os: ubuntu-24.04
       compiler: gcc
-      version: "16"
+      version: "16.2"
       variant: ${{ matrix.variant }}
       build-type: ${{ matrix.build-type }}
       sanitizer: ${{ matrix.sanitizer }}
@@ -187,7 +187,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16", cache-tree: true }
+          - { os: ubuntu-24.04-arm, compiler: gcc, version: "16.2", cache-tree: true }
           - { os: ubuntu-24.04-arm, compiler: clang, version: "23", cache-tree: true }
           - { os: ubuntu-24.04, compiler: clang, version: "23", cache-tree: true }
           # - { os: macos-26, compiler: clang, version: "23", cache-tree: true }

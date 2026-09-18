@@ -11,7 +11,7 @@ inputs:
     description: "Compiler family to install: gcc, clang, msvc or clang-cl."
     required: true
   version:
-    description: "Major version of the compiler; empty means the runner default."
+    description: "Compiler version: a major, or a full release for GCC on Linux; empty means the runner default."
     required: false
     default: ""
   compiler-cache:
