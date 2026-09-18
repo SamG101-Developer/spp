@@ -10,8 +10,8 @@ import spp.utils.types;
 import llvm;
 import std;
 
-use(std::analyse::scopes, class ScopeManager);
-use(std::asts, struct FunctionPrototypeAst);
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::asts, struct FunctionPrototypeAst);
 use(spp::analyse::utils::builtins, struct LoweredFuncImpl);
 
 /// A lowered function implementation is an implementation
@@ -19,9 +19,9 @@ use(spp::analyse::utils::builtins, struct LoweredFuncImpl);
 /// intrinsic functions, or non s++ expressible logic.
 SPP_EXP_CLS struct spp::analyse::utils::builtins::LoweredFuncImpl {
   Function<void(
-    scopes::ScopeManager *,
-    asts::FunctionPrototypeAst const *,
-    asts::meta::CompilerMetaData *,
+    ScopeManager *,
+    FunctionPrototypeAst const *,
+    meta::CompilerMetaData *,
     codegen::LlvmCtx *,
     llvm::Type *)> llvm_fn;
   Unique<cmp_utils::CmpFn> cmp_fn;
