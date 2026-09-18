@@ -4,6 +4,7 @@ module;
 module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
