@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionReturnTypeAst,
   test_valid_declared_return_type_passed_as_an_argument, R"(
-    fun g(func: std::function::FunRef[(S32), std::option::Opt[S32]]) -> Void { }
+    fun g(func: std::function::FunRef[(S32,), std::option::Opt[S32]]) -> Void { }
 
     fun f() -> Void {
         g((x: S32) -> std::option::Opt[S32] { ret std::option::Some(val=x) })
