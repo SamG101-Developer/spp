@@ -13,7 +13,7 @@ inputs:
   shard-count:
     description: "Total shards the sweep is split across, one job per shard."
     required: false
-    default: ""
+    default: "1"
   shard-index:
     description: "Zero-indexed shard this job runs. Ignored unless shard-count is above 1."
     required: false
@@ -22,10 +22,6 @@ inputs:
 runs:
   using: composite
   steps:
-    # Cache-key versions and toolchain pins all live in ".github/dependencies.toml".
-    - name: Set up Python and load pins
-      uses: ./.github/actions/setup-python
-
     - name: Cache gtest-parallel
       id: gtp-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9

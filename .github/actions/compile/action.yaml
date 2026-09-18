@@ -1,13 +1,12 @@
 name: compile
 description: "Configure, build, test and optionally stage the compiler for one toolchain/variant."
 
-# Every boolean and number arrives as a string here, unlike the reusable workflow this replaced, so
-# every flag is compared against a literal rather than tested for truthiness: `if: inputs.run-tests`
-# is true for the string "false".
+# Every input arrives as a string, so flags are compared against a literal rather than tested for truthiness:
+# `if: inputs.run-tests` is true for the string "false".
 
 inputs:
   variant:
-    description: "The build variant name."
+    description: "Build variant name; names the build tree's cache entry and the job's artefacts."
     required: true
   build-type:
     description: "CMake build type (Release | RelWithDebInfo | Debug)."
@@ -21,15 +20,13 @@ inputs:
     required: false
     default: "rel"
   shard-count:
-    description: >-
-      Total shards this variant's test sweep is split across, one job per shard. 1 runs the
-      whole sweep in one job.
+    description: "Total shards this variant's test sweep is split across, one job per shard."
     required: false
     default: "1"
   shard-index:
     description: >-
-      Zero-indexed shard this job runs. Shard 0 is the one that saves the build tree and
-      stages the binary, so a sharded variant still writes each exactly once.
+      Zero-indexed shard this job runs. Shard 0 saves the build tree and stages the binary, so a sharded
+      variant still writes each exactly once.
     required: false
     default: "0"
   stl-conformance:
@@ -41,86 +38,65 @@ inputs:
     required: false
     default: "ubuntu-24.04"
   compiler:
-    description: "Compiler (gcc | clang | msvc | clang-cl)."
+    description: "Compiler (gcc | clang | msvc | clang-cl). Its version comes from the manifest."
     required: false
     default: "gcc"
-  version:
-    description: "Major version of the compiler; empty means the runner default."
-    required: false
-    default: "16"
   run-tests:
     description: "Run the test suite after a successful build."
     required: false
     default: "true"
-  cache-build-tree:
-    description: >-
-      Restore and save the Ninja build tree. This is what makes CI incremental; turn it off
-      for a variant whose tree is not worth its share of the 10 GB repository cache budget.
-    required: false
-    default: "true"
   binary-artifact:
-    description: >-
-      Upload the built `spp` executable under this artifact name, renamed to match it. Empty means
-      the binary is not kept.
+    description: "Upload the built `spp` executable under this artifact name, renamed to match. Empty keeps nothing."
     required: false
     default: ""
 
 runs:
   using: composite
   steps:
+    # Once per job: every action below reads the pins this publishes.
+    - name: Set up Python and load pins
+      uses: ./.github/actions/setup-python
+
     # A composite action cannot carry a job-level `env`, so the block is exported once here instead.
-    # The sanitiser options are inert for a non-sanitiser variant, so they are set unconditionally.
     - name: Export build environment
       shell: bash
       env:
+        COMPILER: ${{ inputs.compiler }}
         SPP_MODE: ${{ inputs.spp-mode }}
         SHARD_COUNT: ${{ inputs.shard-count }}
         SHARD_INDEX: ${{ inputs.shard-index }}
-      run: |
-        {
-          echo "ASAN_OPTIONS=abort_on_error=1:halt_on_error=1:detect_leaks=1:strict_string_checks=1"
-          echo "UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1"
-          echo "TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1"
-          echo "SPP_TEST_MODE=$SPP_MODE"
-          if [ "$SHARD_COUNT" -gt 1 ]; then
-            echo "SPP_SHARD_SUFFIX=-shard$SHARD_INDEX"
-          else
-            echo "SPP_SHARD_SUFFIX="
-          fi
-        } >> "$GITHUB_ENV"
-
-    - name: Restore source mtimes
-      uses: ./.github/actions/restore-mtimes
+      run: bash .github/scripts/compile/export-env.sh
 
     - name: Set up toolchain
       uses: ./.github/actions/setup-toolchain
       with:
         runner-image: ${{ inputs.os }}
         compiler: ${{ inputs.compiler }}
-        version: ${{ inputs.version }}
+        version: ${{ env.SPP_TOOLCHAIN_VERSION }}
         cache-key-suffix: ${{ inputs.variant }}
 
-    # The key is composed by the shared action rather than spelled out here, so the workflows that
-    # write the tree and the ones that read it cannot drift apart.
+    - name: Restore source mtimes
+      uses: ./.github/actions/restore-mtimes
+
+    # The key is composed by the shared action rather than spelled out here, so the workflows that write the tree
+    # and the ones that read it cannot drift apart.
     - name: Compose build tree cache key
       id: cache-key
       uses: ./.github/actions/build-cache-key
       with:
         os: ${{ inputs.os }}
         compiler: ${{ inputs.compiler }}
-        version: ${{ inputs.version }}
+        version: ${{ env.SPP_TOOLCHAIN_VERSION }}
         variant: ${{ inputs.variant }}
 
     # Falls back to the newest tree for this variant on this branch, then on the base branch.
     - name: Restore build tree
-      if: inputs.cache-build-tree == 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: build
         key: ${{ steps.cache-key.outputs.key }}
         restore-keys: ${{ steps.cache-key.outputs.prefix }}
 
-    # Launch the cmake configuration steps.
     - name: Configure
       id: configure
       uses: ./.github/actions/configure-cmake
@@ -128,8 +104,7 @@ runs:
         build-type: ${{ inputs.build-type }}
         sanitizer: ${{ inputs.sanitizer }}
 
-    # Build the cmake project with the parallel flag set. The output is teed so a failed build can
-    # be uploaded whole.
+    # Teed so a failed build can be uploaded whole.
     - name: Build
       id: build
       shell: bash
@@ -137,30 +112,27 @@ runs:
         mkdir -p build-logs
         cmake --build build --parallel 2>&1 | tee build-logs/build.log
 
-    # If the build failed, then upload the log as an artefact so it can be downloaded for analysis.
     - name: Upload build logs on failure
       if: failure()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: buildlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ inputs.variant }}${{ env.SPP_SHARD_SUFFIX }}
+        name: buildlog-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.variant }}${{ env.SPP_SHARD_SUFFIX }}
         path: build-logs
         if-no-files-found: ignore
         retention-days: 3
 
-    # Save the build tree to the cache. A tree whose configure failed is worse than no tree: its
-    # cached check results come back on every later run, so the configure gate is the whole of the
-    # check.
+    # A tree whose configure failed is worse than no tree: its cached check results come back on every later run.
     - name: Save build tree
-      if: ${{ always() && inputs.cache-build-tree == 'true' && steps.configure.outcome == 'success' && inputs.shard-index == '0' }}
+      if: ${{ always() && steps.configure.outcome == 'success' && inputs.shard-index == '0' }}
       continue-on-error: true
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: build
         key: ${{ steps.cache-key.outputs.key }}
 
-    # Named on the way out rather than on the way in, so the artifact and the file inside it carry
-    # the same release-identifying name and the publish step can attach them without a rename.
-    - name: Stage binary for release
+    # Named on the way out, so the artifact and the file inside it carry the same release-identifying name and the
+    # publish step can attach them without a rename.
+    - name: Stage and upload binary
       if: inputs.binary-artifact != '' && inputs.shard-index == '0'
       shell: bash
       env:
@@ -182,15 +154,13 @@ runs:
         if-no-files-found: error
         retention-days: 7
 
-    # Takes a project from nothing - `spp init`, `spp build`, `spp test --all-libs` - and so covers
-    # the STL, which the gtest suite never links or executes. This step and the gtest one gate on
-    # the build, not on each other, so a red STL cannot hide the compiler's own results.
+    # `spp init` / `spp build` / `spp test --all-libs` covers the STL, which the gtest suite never links or executes.
+    # This and the gtest step gate on the build, not on each other, so a red STL cannot hide the compiler's results.
     - name: s++ STL conformance
       if: ${{ !cancelled() && steps.build.outcome == 'success' && inputs.run-tests == 'true' && inputs.stl-conformance == 'true' }}
       shell: bash
       run: bash .github/scripts/stl-conformance/run.sh
 
-    # Launch the specialised parallel googletest script.
     - name: Run tests
       id: tests
       if: ${{ !cancelled() && steps.build.outcome == 'success' && inputs.run-tests == 'true' }}
@@ -199,12 +169,11 @@ runs:
         shard-count: ${{ inputs.shard-count }}
         shard-index: ${{ inputs.shard-index }}
 
-    # If any tests failed, then upload the log as an artefact so it can be downloaded for analysis.
     - name: Upload test logs on failure
       if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: testlog-${{ inputs.os }}-${{ inputs.compiler }}${{ inputs.version }}-${{ inputs.variant }}${{ env.SPP_SHARD_SUFFIX }}
+        name: testlog-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.variant }}${{ env.SPP_SHARD_SUFFIX }}
         path: tests/test_output
         if-no-files-found: ignore
         retention-days: 3

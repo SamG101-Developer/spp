@@ -1,8 +1,6 @@
 name: lint
 
-# The cheap gate: pre-commit over the whole tree. It runs before anything expensive starts, so a formatting slip costs
-# seconds rather than a full compilation. The PR title check lives in pr_title.yaml, which needs an `edited` trigger
-# this workflow's caller must not have.
+# The cheap gate: pre-commit over the whole tree, so a formatting slip costs seconds rather than a compilation.
 
 on:
   workflow_call: { }
@@ -10,8 +8,6 @@ on:
 permissions: { }
 
 jobs:
-  # The "pre-commit" step runs the pre-commit-config.yaml file, which runs the simple linting such as missing or extra
-  # newlines, whitespace, yaml/toml/jaon/action checks, cmake formatting, etc.
   pre-commit:
     name: pre-commit
     runs-on: ubuntu-24.04
@@ -19,24 +15,20 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
           egress-policy: audit
           disable-sudo: true
 
-      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      # Installs the pinned Python that pre-commit itself runs under, and publishes the pins.
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
 
-      # Run the pre-commit steps.
       - name: Run pre-commit
         uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd

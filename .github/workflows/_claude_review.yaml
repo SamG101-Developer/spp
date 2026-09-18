@@ -1,10 +1,7 @@
 name: claude-review
 
-# Automated review pass over a pull request. Advisory in exactly the way Sonar is: it runs inside the PR pipeline and
-# reports, but it is deliberately left out of the ci-success `needs` list, so nothing it says blocks a merge.
-#
-# This has no trigger of its own. It is called from pr.yaml, which owns the concurrency group, so a new push cancels
-# the run this belongs to rather than leaving a stale review to post twice.
+# Advisory, like Sonar: left out of the ci-success `needs` list, so nothing it says blocks a merge. It has no
+# trigger of its own - pr.yaml owns the concurrency group, so a new push cancels the run rather than posting twice.
 
 on:
   workflow_call:
@@ -25,13 +22,11 @@ jobs:
       issues: read
       id-token: write
     steps:
-      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
           egress-policy: audit
 
-      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

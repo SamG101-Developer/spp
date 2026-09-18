@@ -1,8 +1,7 @@
 name: cppcheck
 
-# Static analysis gate. This sits between the cheap PR checks and the builds on purpose: it costs about half a minute
-# once cppcheck is cached, and there is no sense spending build minutes across five toolchains on code that static
-# analysis already rejects.
+# Static analysis gate, between the cheap PR checks and the builds: about half a minute once cppcheck is cached,
+# against a dozen toolchains spent on code it already rejects.
 
 on:
   workflow_call: { }
@@ -18,9 +17,7 @@ jobs:
       contents: read
       security-events: write  # upload the cppcheck SARIF
     steps:
-      # Audit rather than block, deliberately. This job gates the builds, so an egress rule that turns out to be one
-      # endpoint short would stop every merge rather than one job. Tighten it once the audit output for a cache-miss
-      # run confirms what the cppcheck build actually reaches for.
+      # Audit, not block: this job gates the builds, so an endpoint missing from the list would stop every merge.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
@@ -35,8 +32,7 @@ jobs:
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
 
-      # Keyed on the pinned commit and on the script that decides how it is built, so a change to either rebuilds and
-      # anything else reuses the tree.
+      # Keyed on the pinned commit and the script that builds it, so a change to either rebuilds.
       - name: Cache cppcheck
         id: cppcheck-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -44,8 +40,7 @@ jobs:
           path: ~/.tools/cppcheck
           key: cppcheck-${{ runner.os }}-${{ env.CPPCHECK_COMMIT }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lint/install-cppcheck.sh') }}
 
-      # Only needed to build cppcheck itself, so both of these are skipped entirely on a cache hit. The runner's own
-      # GCC compiles it; this job never configures the project, so no project toolchain is set up here.
+      # Only needed to build cppcheck itself: the runner's own GCC compiles it, and no project toolchain is set up.
       - name: Install CMake & Ninja (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb
@@ -60,16 +55,11 @@ jobs:
       - name: Expose cppcheck
         run: echo "$SPP_CPPCHECK_PREFIX/bin" >> "$GITHUB_PATH"
 
-      - name: Check version
-        run: cppcheck --version
-
-      # Findings fail the job. The rule selection and the reasoning behind it live in the script and in
-      # .cppcheck-suppressions.
+      # Findings fail the job. The rule selection lives in the script and in .cppcheck-suppressions.
       - name: Run cppcheck
         run: bash .github/scripts/lint/run-cppcheck.sh cppcheck.sarif
 
-      # continue-on-error because a pull request from a fork gets a read-only token: the upload would fail there and
-      # take a merge gate down with it, and the findings are in the job log either way.
+      # continue-on-error: a fork's PR gets a read-only token, and the findings are in the job log either way.
       - name: Upload cppcheck results
         if: always() && hashFiles('cppcheck.sarif') != ''
         continue-on-error: true

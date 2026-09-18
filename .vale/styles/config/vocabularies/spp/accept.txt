@@ -53,7 +53,7 @@ Todo
 [Ss]ubfolders?
 [Ss]ubstring
 [Ss]uperimpositions?
-[Tt]oolchain
+[Tt]oolchains?
 [Uu]ntaken
 [Uu]serspaces?
 [Uu]noptimised
@@ -89,3 +89,12 @@ Retpolines?
 CMake
 CMakelists
 Dependabot
+[Mm]times?
+gtest
+sha
+SARIF
+ccache
+sccache
+cppcheck
+[Uu]npruned
+[Aa]llowlists?

@@ -1,9 +1,7 @@
 name: security
 
-# The security actions runs a set of steps to ensure that the build is secure, from a dependency and general
-# vulnerability perspective. These all read the tree or the dependency graph and cost minutes at most, so nothing
-# gates them. CodeQL used to live here too and no longer does: it builds the project, so it waits on cppcheck, and
-# it is now _codeql.yaml.
+# Dependency, secret and licence scanning. These read the tree or the dependency graph rather than building it, so
+# nothing gates them. CodeQL builds the project and therefore waits on cppcheck; it lives in _codeql.yaml.
 
 on:
   workflow_call:
@@ -25,46 +23,38 @@ jobs:
       contents: read          # read the dependency manifests
       security-events: write  # upload the OSV SARIF
     steps:
-      # Lock down the workflow with the harden-runner action, as external packages or actions are fetched and executed.
-      # This ensures better security in CI/CD pipeline.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
           egress-policy: audit
           disable-sudo: true
 
-      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      # This job installs no toolchain, but the scanner's pinned release and digest live in the manifest with
-      # everything else, so the loader still has to run before the installation step can read them.
+      # No toolchain here, but the scanner's pinned release and digest come from the manifest.
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
 
       - name: Install osv-scanner
         run: bash .github/scripts/security/install-osv-scanner.sh
 
-      # Two scans of different things, writing different reports: the lockfile sweep and the pinned-dependency
-      # lookup. Both are network-bound and neither reads the other's output, so they run together. Running them in
-      # parallel also means a failing scan no longer skips the other - before, the pinned sweep sat behind the
-      # osv-scanner step and was lost whenever it went red, which is exactly when both reports are worth having.
+      # Two scans of different things, writing different reports. Both are network-bound and neither reads the
+      # other's output, so they run together - and a failing scan no longer costs the other its report.
       - parallel:
-          # Vulnerabilities are a warning and a SARIF entry; a scanner that could not run is a failure. See the
-          # script for why those two are separated and for the one-line change that makes findings blocking.
+          # Findings are a warning and a SARIF entry; a scanner that could not run is a failure.
           - name: Scan dependencies
             run: bash .github/scripts/security/scan-dependencies.sh osv.sarif
 
-          # The osv-scanner reads lockfiles, and the C++ dependency set is not one: the libraries are git commits
-          # and the prebuilt archives are versions, so it never sees them. This asks OSV about them directly.
+          # osv-scanner reads lockfiles, and the C++ dependency set is not one: the libraries are git commits and
+          # the prebuilt archives are versions. This asks OSV about them directly.
           - name: Scan pinned dependencies
             run: python3 .github/scripts/security/scan-pinned-deps.py osv-pins.sarif
 
-      # Still uploaded when a scan failed, so a partial report is not thrown away, but only if a report actually
-      # exists: without the guard these fail over a missing file and bury the real error above them.
+      # Uploaded even when a scan failed - that is when the findings matter most - but only if a report exists.
       - name: Upload OSV results
         if: always() && hashFiles('osv.sarif') != ''
         uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
@@ -99,15 +89,14 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Full history unconditionally. The nightly scan reads every reachable commit, and a depth chosen by an
-      # expression is a trap here: `inputs.full-scan && 0 || 1` evaluates to 1 either way, because 0 is falsy.
+      # Full history unconditionally: the nightly scan reads every reachable commit, and a depth chosen by an
+      # expression is a trap - `inputs.full-scan && 0 || 1` is 1 either way, because 0 is falsy.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      # No toolchain here either, but the scanner's release and digest live in the manifest with everything else.
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
 
@@ -118,8 +107,7 @@ jobs:
       - name: Scan for secrets
         run: bash .github/scripts/security/scan-secrets.sh gitleaks.sarif ${{ inputs.full-scan && 'git' || 'dir' }}
 
-      # Uploaded even when the scan failed, because a failed scan is precisely the one whose findings are worth
-      # reading, but only when a report exists: without the guard a missing file fails here and buries the real error.
+      # Uploaded even when the scan failed, but only when a report exists.
       - name: Upload gitleaks results
         if: always() && hashFiles('gitleaks.sarif') != ''
         uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
@@ -154,9 +142,8 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # Blocks a pull request that introduces a high-severity advisory or a copyleft dependency. The licence list
-      # matters here specifically: this project ships under a dual licence, so a GPL dependency is not merely a
-      # preference to argue about but a thing that would make the commercial half unshippable.
+      # Blocks a high-severity advisory or a copyleft dependency: this project ships under a dual licence, so a
+      # GPL dependency would make the commercial half unshippable.
       - name: Review dependency changes
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
         with:

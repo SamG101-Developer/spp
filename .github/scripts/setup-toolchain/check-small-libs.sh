@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# Decide whether the restored SPP_LOCAL_PREFIX already holds
-# every small library. install-small-libs.sh writes the stamp
-# as its last act, so a prefix cached from an install that
-# died halfway reads as incomplete and gets rebuilt rather
-# than trusted. The stamp holds the library records it was
-# built from, so a tree that predates a manifest edit is
-# rejected too.
+# Decide whether the restored SPP_LOCAL_PREFIX holds every small
+# library. The stamp is written last and holds the records it was
+# built from, so a half-finished install or one that predates a
+# manifest edit reads as incomplete rather than being trusted.
 set -euo pipefail
 
 PREFIX="$SPP_LOCAL_PREFIX"

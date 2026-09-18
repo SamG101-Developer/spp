@@ -1,8 +1,7 @@
 name: Nightly
 
-# The Nightly script runs as 4am every day, to perform long actions that will conflict with pushing code. They key jobs
-# are pruning stale caches (force external package rebuild every day for updates). Cache keys also use a manual version
-# so can be bumped within the day.
+# The long jobs that would conflict with pushing code: the full-history scans, the Scorecard grade, and pruning the
+# caches and runs that have gone stale. Link rot is checked by the lychee pre-commit hook, not here.
 
 on:
   schedule:
@@ -21,8 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Re-run the security steps just as a failsafe; anything else should have been picked up, but this also covers
-  # multiple individually scanned branches now in combination on master.
+  # A failsafe over master: covers branches that were scanned individually and are only now in combination.
   security:
     name: Security (Full Scan)
     permissions:
@@ -45,8 +43,7 @@ jobs:
     with:
       full-scan: true
 
-  # Grades the things that cannot be seen from inside a workflow: token permissions, whether actions are pinned, and
-  # branch protection.
+  # Grades what cannot be seen from inside a workflow: token permissions, action pinning, branch protection.
   scorecard:
     name: OpenSSF Scorecard
     runs-on: ubuntu-24.04
@@ -84,11 +81,8 @@ jobs:
           sarif_file: scorecard.sarif
           category: scorecard
 
-  # Link rot is checked by the lychee pre-commit hook, not here.
-
-  # Superseded entries are never read again but still count against the repository's 10GB budget until they are
-  # evicted: every compiler cache behind the newest one on its branch, every dependency tree whose key hash has moved
-  # on, and every Doxygen build older than the pinned release. Prune them once they are stale.
+  # Superseded entries are never restored again but still count against the repository's 10 GB budget until they
+  # are evicted, and that budget is what decides whether master's warm build trees survive the night.
   prune-caches:
     name: Prune Stale Caches
     runs-on: ubuntu-24.04
@@ -97,7 +91,6 @@ jobs:
       contents: read
       actions: write  # delete the repository's Actions caches
     steps:
-      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
@@ -110,14 +103,12 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      # Run the prune-cache script.
       - name: Delete superseded caches
         env:
           GH_TOKEN: ${{ github.token }}
@@ -127,16 +118,14 @@ jobs:
   prune-runs:
     name: Prune Old Workflow Runs
     runs-on: ubuntu-24.04
-    # Octokit's throttling plugin serialises writes onto one connection at a minimum of a second apart, so the job's
-    # wall-clock is roughly one second per run deleted. A steady night is a minute; the first run has a backlog of
-    # hundreds and needs the headroom, and anything it does not reach is simply picked up by the next night.
+    # Roughly one second per run deleted: Octokit's throttling plugin serialises the writes. A steady night is a
+    # minute, and whatever a backlog does not reach is picked up by the next night.
     timeout-minutes: 60
     permissions:
       actions: write  # list and delete the repository's workflow runs
     steps:
-      # Secure the runner from external packages or actions.
       - name: Harden Runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
           egress-policy: block
           disable-sudo: true

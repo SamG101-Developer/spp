@@ -5,9 +5,8 @@ set -euo pipefail
 
 PINS=".github/scripts/lib/pins.py"
 
-# Outside CI there is no GITHUB_ENV to append to, so print
-# instead: the same output, useful for checking what a
-# change to the manifest would export.
+# Outside CI there is no GITHUB_ENV, so print instead: useful for
+# checking what a manifest change would export.
 if [ -n "${GITHUB_ENV:-}" ]; then
   python3 "$PINS" env >> "$GITHUB_ENV"
 else

@@ -13,35 +13,28 @@ permissions: { }
 
 jobs:
   docs:
-    # Build the documentation using the custom python script that already exists in the "docs" folder. The python env
-    # setup is required here with package management, followed by all the Doxygen config and building.
-
     name: Doxygen
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
     steps:
-      # Secure the runner from external packages or actions.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
           egress-policy: audit
           disable-sudo: true
 
-      # Provide the ability to git-checkout external packages and actions.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      # Cache-key versions and toolchain pins all live in .github/dependencies.toml.
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
 
-      # Download and set up the "uv" library. This manages the entire python env, setup and package management systems.
-      # The lockfile is attached from the root of this repository.
+      # uv manages the documentation build's own Python environment, from the lockfile at the repository root.
       - name: Set up uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
@@ -49,7 +42,6 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
-      # Set up the cache steps for the doxygen installation, keyed on the pinned release.
       - name: Cache Doxygen
         id: doxygen-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -57,9 +49,8 @@ jobs:
           path: ~/.tools/doxygen
           key: doxygen-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/docs/install-doxygen.sh') }}
 
-      # Two independent downloads - Doxygen into ~/.tools, the Python env into .venv - so they overlap rather than
-      # queue. `Expose Doxygen` stays outside the group: a background step's GITHUB_PATH write only lands at the
-      # implicit wait that closes it, which is too late for anything inside.
+      # Two independent downloads, so they overlap rather than queue. `Expose Doxygen` stays outside the group: a
+      # background step's GITHUB_PATH write only lands at the implicit wait that closes it.
       - parallel:
           - name: Install Doxygen (cache miss)
             if: steps.doxygen-cache.outputs.cache-hit != 'true'
@@ -79,8 +70,7 @@ jobs:
       - name: Build documentation
         run: uv run python docs/generate2.py
 
-      # Unlike the test logs, an empty site is not a valid outcome: it means the build produced
-      # nothing, so fail rather than upload an empty artefact.
+      # An empty site is not a valid outcome: it means the build produced nothing.
       - name: Upload HTML artefact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

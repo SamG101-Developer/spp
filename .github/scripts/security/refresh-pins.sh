@@ -147,8 +147,6 @@ echo "prebuilt Boost (${MANIFEST})"
 boost="$(pinned pin.boost.version)"
 set_pin pin.boost.sha256-ubuntu-2404 \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-24.04-gcc-static+shared-x86.tar.gz")"
-set_pin pin.boost.sha256-ubuntu-2204 \
-  "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-22.04-gcc-static+shared-x86.tar.gz")"
 set_pin pin.boost.sha256-ubuntu-2204-arm64 \
   "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-ubuntu-22.04-gcc-static+shared-aarch64.tar.gz")"
 set_pin pin.boost.sha256-macos-15 \

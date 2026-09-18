@@ -1,7 +1,5 @@
 name: detect-changes
-description: >-
-  Decide, per gated CI job, whether this ref changed anything that can affect that job's result. A diff that is
-  nothing but pinned `uses:` bumps affects none of them, whichever files it touched.
+description: "Decide, per gated CI job, whether this ref changed anything that can affect that job's result."
 
 inputs:
   base:
@@ -16,151 +14,39 @@ inputs:
 outputs:
   code:
     description: "'true' when a source, build-system, toolchain-pin or test-data path changed."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || steps.filter.outputs.code_any_changed != 'false' }}
+    value: ${{ steps.classify.outputs.code }}
   ci_pins_only:
-    description: "'true' when every changed file is a workflow whose diff is only pinned `uses:` bumps."
-    value: ${{ steps.pins.outputs.pins_only == 'true' }}
+    description: "'true' when every change in the diff is a pinned `uses:` bump."
+    value: ${{ steps.classify.outputs.ci_pins_only }}
   release_gate:
-    description: "'true' when `code` is true, or the release gate's own inputs or check script changed; never for a pin-only diff."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || (steps.pins.outputs.pins_only != 'true'
-        && (steps.filter.outputs.code_any_changed != 'false'
-          || steps.filter.outputs.release_gate_any_changed != 'false')) }}
+    description: "'true' when the diff has to carry a version bump and a changelog entry."
+    value: ${{ steps.classify.outputs.release_gate }}
   version:
     description: "'true' when VERSION changed, i.e. the diff bumped the release version."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || steps.filter.outputs.version_any_changed != 'false' }}
+    value: ${{ steps.classify.outputs.version }}
   cppcheck:
-    description: "'true' when `code` is true, or a CI path the static analysis job reads changed; never for a pin-only diff."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || (steps.pins.outputs.pins_only != 'true'
-        && (steps.filter.outputs.code_any_changed != 'false'
-          || steps.filter.outputs.cppcheck_any_changed != 'false')) }}
+    description: "'true' when the static analysis job has to run."
+    value: ${{ steps.classify.outputs.cppcheck }}
   compile:
-    description: "'true' when `code` is true, or a CI path the build/test job reads changed; never for a pin-only diff."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || (steps.pins.outputs.pins_only != 'true'
-        && (steps.filter.outputs.code_any_changed != 'false'
-          || steps.filter.outputs.compile_any_changed != 'false')) }}
+    description: "'true' when the build/test jobs have to run."
+    value: ${{ steps.classify.outputs.compile }}
   cross_codegen:
-    description: "'true' when `code` is true, or a CI path the cross-codegen job reads changed; never for a pin-only diff."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || (steps.pins.outputs.pins_only != 'true'
-        && (steps.filter.outputs.code_any_changed != 'false'
-          || steps.filter.outputs.cross_codegen_any_changed != 'false')) }}
+    description: "'true' when the cross-codegen job has to run."
+    value: ${{ steps.classify.outputs.cross_codegen }}
   security:
-    description: "'true' when `code` is true, or a CI path the security job reads changed."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || steps.filter.outputs.code_any_changed != 'false'
-      || steps.filter.outputs.security_any_changed != 'false' }}
+    description: "'true' when the security jobs have to run."
+    value: ${{ steps.classify.outputs.security }}
   sonar:
-    description: "'true' when `code` is true, or a CI path the Sonar job reads changed; never for a pin-only diff."
-    value: ${{ steps.base.outputs.usable != 'true'
-      || (steps.pins.outputs.pins_only != 'true'
-        && (steps.filter.outputs.code_any_changed != 'false'
-          || steps.filter.outputs.sonar_any_changed != 'false')) }}
+    description: "'true' when the Sonar job has to run."
+    value: ${{ steps.classify.outputs.sonar }}
 
 runs:
   using: composite
   steps:
-    - name: Check the base commit is usable
-      id: base
-      shell: bash
-      env:
-        BASE_SHA: ${{ inputs.base }}
-      run: bash .github/scripts/detect-changes/check-base.sh
-
-    # An unusable base leaves this empty, which reads as "not a pin bump" and suppresses nothing.
-    - name: Classify the diff as pin bumps or not
-      id: pins
-      if: steps.base.outputs.usable == 'true'
+    - name: Classify the diff
+      id: classify
       shell: bash
       env:
         BASE_SHA: ${{ inputs.base }}
         HEAD_SHA: ${{ inputs.head }}
-      run: bash .github/scripts/detect-changes/check-pins-only.sh
-
-    - name: Filter changed paths
-      id: filter
-      if: steps.base.outputs.usable == 'true'
-      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96  # v47.0.6
-      with:
-        base_sha: ${{ inputs.base }}
-        sha: ${{ inputs.head }}
-        files_yaml: |
-          code:
-            - '**'
-            - '!docs/**'
-            - '!.vale/**'
-            - '!.idea/**'
-            - '!*.md'
-            - '!.gitignore'
-            - '!pyproject.toml'
-            - '!uv.lock'
-            - '!VERSION'
-            - '!changelog/**'
-            - '!.github/**'
-            - '.github/dependencies.toml'
-            - '.github/scripts/lib/**'
-            - '.github/actions/detect-changes/**'
-            - '.github/scripts/detect-changes/**'
-          release_gate:
-            - 'VERSION'
-            - 'changelog/**'
-            - '.github/workflows/pr.yaml'
-            - '.github/scripts/version-check/**'
-          version:
-            - 'VERSION'
-          cppcheck:
-            - '.github/workflows/pr.yaml'
-            - '.github/workflows/_cppcheck.yaml'
-            - '.github/actions/setup-python/**'
-            - '.github/scripts/lint/**'
-          compile:
-            - '.github/workflows/pr.yaml'
-            - '.github/workflows/post_merge.yaml'
-            - '.github/actions/compile/**'
-            - '.github/actions/restore-mtimes/**'
-            - '.github/actions/setup-toolchain/**'
-            - '.github/actions/build-cache-key/**'
-            - '.github/actions/configure-cmake/**'
-            - '.github/actions/run-tests/**'
-            - '.github/scripts/setup-toolchain/**'
-            - '.github/scripts/build-cache-key/**'
-            - '.github/scripts/configure-cmake/**'
-            - '.github/scripts/run-tests/**'
-            - '.github/scripts/stl-conformance/**'
-          cross_codegen:
-            - '.github/workflows/pr.yaml'
-            - '.github/workflows/_cross_codegen.yaml'
-            - '.github/actions/restore-mtimes/**'
-            - '.github/actions/setup-python/**'
-            - '.github/actions/setup-toolchain/**'
-            - '.github/actions/build-cache-key/**'
-            - '.github/actions/configure-cmake/**'
-            - '.github/scripts/setup-toolchain/**'
-            - '.github/scripts/build-cache-key/**'
-            - '.github/scripts/configure-cmake/**'
-            - '.github/scripts/cross-codegen/**'
-          security:
-            - '.github/workflows/pr.yaml'
-            - '.github/workflows/_security.yaml'
-            - '.github/actions/setup-python/**'
-            - '.github/actions/setup-toolchain/**'
-            - '.github/actions/configure-cmake/**'
-            - '.github/scripts/setup-toolchain/**'
-            - '.github/scripts/configure-cmake/**'
-            - '.github/scripts/security/**'
-          sonar:
-            - '.github/workflows/pr.yaml'
-            - '.github/workflows/post_merge.yaml'
-            - '.github/workflows/_sonar.yaml'
-            - '.github/actions/restore-mtimes/**'
-            - '.github/actions/setup-python/**'
-            - '.github/actions/setup-toolchain/**'
-            - '.github/actions/build-cache-key/**'
-            - '.github/actions/configure-cmake/**'
-            - '.github/scripts/setup-toolchain/**'
-            - '.github/scripts/build-cache-key/**'
-            - '.github/scripts/configure-cmake/**'
+      run: bash .github/scripts/detect-changes/classify.sh

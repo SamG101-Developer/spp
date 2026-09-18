@@ -15,15 +15,13 @@ url="https://github.com/llvm/llvm-project/releases/download/${LLVM_MAC_TAG}/${LL
 verified_fetch "$url" "$tarball" "$LLVM_MAC_SHA256"
 mkdir -p "$prefix"
 
-# Unpacked whole, the tarball is 8.2 GB of which most is mlir, lldb
-# and tools nothing here runs; the runner has 14 GB of disk and the
-# cache has to hold a copy as well. So take a listing of the archive
-# and unpack only the members named below.
+# Whole, the tarball is 8.2 GB, most of it mlir, lldb and tools
+# nothing here runs - against 14 GB of runner disk and a cache that
+# holds a copy too. So unpack only the members listed below.
 tar tf "$tarball" > "$listing"
 
-# The library side comes from the CMake package: LLVMExports names
-# every file find_package(LLVM) checks for - a missing one is a fatal
-# configure error - and nothing it does not name is needed.
+# LLVMExports names every file find_package(LLVM) checks for - a
+# missing one is a fatal configure error - and nothing else is needed.
 tar xf "$tarball" -C "$prefix" --strip-components=1 "${root}/lib/cmake/llvm"
 grep -o '_IMPORT_PREFIX}/[^"]*' "${prefix}/lib/cmake/llvm/LLVMExports-release.cmake" \
   | sed 's|_IMPORT_PREFIX}/||' | sort -u > "$exported"
@@ -47,9 +45,9 @@ while read -r tool; do
 done < <(grep '^bin/' "$exported")
 rm -f "$tarball"
 
-# A piece missing here surfaces much later as something inscrutable -
-# a configure that falls back to the system clang, a link that cannot
-# read the archives - so fail now, while the cause is still on screen.
+# A missing piece surfaces much later as something inscrutable: a
+# configure that falls back to the system clang, a link that cannot
+# read the archives.
 for needed in bin/clang++ bin/clang-scan-deps lib/libLTO.dylib; do
   if [ ! -e "${prefix}/${needed}" ]; then
     echo "::error::${LLVM_MAC_ASSET} has no ${needed}; macOS cannot build against this release" >&2
