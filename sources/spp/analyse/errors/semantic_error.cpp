@@ -4,15 +4,15 @@ module;
 // Has to be done like this until MSVC supports P2591, allowing
 // std::string and std::string_view to be concatenated.
 #define INLINE_INFO(info)                                          \
-    ((colex::fg_bright_yellow + colex::st_italic) + Str(info)      \
+    ((colex::fg_bright_yellow + colex::st_italic) + AsStr(info)    \
       + (colex::reset + colex::st_bold + colex::fg_bright_white))
 
 #define INLINE_NOTE(info)                                          \
-    ((colex::fg_bright_yellow + colex::st_italic) + Str(info)      \
+    ((colex::fg_bright_yellow + colex::st_italic) + AsStr(info)    \
       + (colex::reset + colex::st_bold + colex::fg_bright_cyan))
 
 #define INLINE_HELP(info)                                          \
-    ((colex::fg_bright_yellow + colex::st_italic) + Str(info)      \
+    ((colex::fg_bright_yellow + colex::st_italic) + AsStr(info)    \
       + (colex::reset + colex::st_bold + colex::fg_bright_red))
 
 module spp.analyse.errors.semantic_error;
@@ -83,6 +83,15 @@ auto SemanticError::AddHeader(
 
 namespace spp::analyse::errors {
   namespace {
+    /// Owned text for the `INLINE_*` macros. A function rather than
+    /// `Str(...)` at the splice: the argument is as often a `Str`
+    /// already, which `-Wuseless-cast` rejects.
+    auto AsStr(
+      const StrView text)
+      -> Str {
+      return Str(text);
+    }
+
     /// Name a type for an error message. A type rebuilt from its
     /// symbol keeps the text it replaced in source; when that
     /// differs from the qualified form, both are shown, as
