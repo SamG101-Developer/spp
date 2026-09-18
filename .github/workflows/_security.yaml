@@ -48,24 +48,29 @@ jobs:
       - name: Install osv-scanner
         run: bash .github/scripts/security/install-osv-scanner.sh
 
-      # Vulnerabilities are a warning and a SARIF entry; a scanner that could not run is a failure. See the script for
-      # why those two are separated and for the one-line change that makes findings blocking.
-      - name: Scan dependencies
-        run: bash .github/scripts/security/scan-dependencies.sh osv.sarif
+      # Two scans of different things, writing different reports: the lockfile sweep and the pinned-dependency
+      # lookup. Both are network-bound and neither reads the other's output, so they run together. Running them in
+      # parallel also means a failing scan no longer skips the other - before, the pinned sweep sat behind the
+      # osv-scanner step and was lost whenever it went red, which is exactly when both reports are worth having.
+      - parallel:
+          # Vulnerabilities are a warning and a SARIF entry; a scanner that could not run is a failure. See the
+          # script for why those two are separated and for the one-line change that makes findings blocking.
+          - name: Scan dependencies
+            run: bash .github/scripts/security/scan-dependencies.sh osv.sarif
 
-      # Still uploaded when an earlier step failed, so a partial report is not thrown away, but only if a report
-      # actually exists: without the guard this step fails over a missing file and buries the real error above it.
+          # The osv-scanner reads lockfiles, and the C++ dependency set is not one: the libraries are git commits
+          # and the prebuilt archives are versions, so it never sees them. This asks OSV about them directly.
+          - name: Scan pinned dependencies
+            run: python3 .github/scripts/security/scan-pinned-deps.py osv-pins.sarif
+
+      # Still uploaded when a scan failed, so a partial report is not thrown away, but only if a report actually
+      # exists: without the guard these fail over a missing file and bury the real error above them.
       - name: Upload OSV results
         if: always() && hashFiles('osv.sarif') != ''
         uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:
           sarif_file: osv.sarif
           category: osv-scanner
-
-      # The osv-scanner reads lockfiles, and the C++ dependency set is not one: the libraries are git commits and the
-      # prebuilt archives are versions, so it never sees them. This asks OSV about them directly.
-      - name: Scan pinned dependencies
-        run: python3 .github/scripts/security/scan-pinned-deps.py osv-pins.sarif
 
       - name: Upload pinned dependency results
         if: always() && hashFiles('osv-pins.sarif') != ''

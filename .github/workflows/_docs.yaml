@@ -57,15 +57,19 @@ jobs:
           path: ~/.tools/doxygen
           key: doxygen-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/docs/install-doxygen.sh') }}
 
-      - name: Install Doxygen (cache miss)
-        if: steps.doxygen-cache.outputs.cache-hit != 'true'
-        run: bash .github/scripts/docs/install-doxygen.sh
+      # Two independent downloads - Doxygen into ~/.tools, the Python env into .venv - so they overlap rather than
+      # queue. `Expose Doxygen` stays outside the group: a background step's GITHUB_PATH write only lands at the
+      # implicit wait that closes it, which is too late for anything inside.
+      - parallel:
+          - name: Install Doxygen (cache miss)
+            if: steps.doxygen-cache.outputs.cache-hit != 'true'
+            run: bash .github/scripts/docs/install-doxygen.sh
+
+          - name: Install Python dependencies
+            run: uv sync --locked
 
       - name: Expose Doxygen
         run: echo "$SPP_DOXYGEN_PREFIX/bin" >> "$GITHUB_PATH"
-
-      - name: Install Python dependencies
-        run: uv sync --locked
 
       - name: Check versions
         run: |
