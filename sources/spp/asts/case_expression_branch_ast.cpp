@@ -25,6 +25,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
@@ -254,10 +255,16 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   // receive a Some[T] in one branch, and a None in another. In
   // this case the member value has to be tagged and copied into
   // the variant's payload (a bit-cast cannot express that).
+  // A named function is likewise built into the function value
+  // the target's type asks for, one branch at a time, as each
+  // branch may name a different one.
   if (meta->AssignmentTarget != nullptr and meta->AssignmentTargetType != nullptr and llvm_val != nullptr) {
+    const auto target_ref = TypeRef::Of(*meta->AssignmentTargetType, *sm->CurrentScope);
+    const auto body_ref = Body->InferTypeRef(sm, meta);
+    llvm_val = codegen::CoerceToFunctionValue(
+      llvm_val, target_ref, body_ref, *sm, ctx);
     llvm_val = codegen::CoerceToVariant(
-      llvm_val, TypeRef::Of(*meta->AssignmentTargetType, *sm->CurrentScope),
-      Body->InferTypeRef(sm, meta), *sm->CurrentScope, "case.branch.variant" + uid, ctx);
+      llvm_val, target_ref, body_ref, *sm->CurrentScope, "case.branch.variant" + uid, ctx);
   }
 
   // Add a special case for the "!" type being used as the
