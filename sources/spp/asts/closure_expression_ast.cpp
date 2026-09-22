@@ -32,7 +32,10 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_func;
+import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_materialize;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
@@ -289,9 +292,19 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   // into a second module the way an external symbol can - it has to
   // be created in the module that takes its address, which is the
   // one the enclosing function belongs to rather than "ctx->Module".
+  //
+  // It is named after the function it is written inside of, like:
+  // "run_server::{closure#0}", numbered in the order that function's
+  // closures are generated, so the name is the same every build.
+  auto *const emission_module = codegen::GetEmissionModule(*ctx);
+  const auto enclosing = ctx->Builder.GetInsertBlock() != nullptr
+    ? ctx->Builder.GetInsertBlock()->getParent()->getName().str()
+    : Str("closure");
+  auto index = 0uz;
+  while (emission_module->getFunction(codegen::mangle::mangle_closure_name(enclosing, index)) != nullptr) { ++index; }
   const auto llvm_fn = llvm::Function::Create(
     llvm_fn_ty, llvm::Function::InternalLinkage,
-    "closure.fn." + uid, codegen::GetEmissionModule(*ctx));
+    codegen::mangle::mangle_closure_name(enclosing, index), emission_module);
 
   const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
 
