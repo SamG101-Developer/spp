@@ -397,3 +397,46 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: A = g()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_namespace_member_in_default_from_other_module, R"(
+    fun f() -> Void {
+        std::time::time::sleep(std::time::duration::Duration::from_millis(5_u64))
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_self_type_member_in_default_from_outside_the_sup, R"(
+    cls A { }
+
+    sup A {
+        !public cmp k: S32 = 1
+        !public fun f(n: S32 = Self::k) -> Void { }
+    }
+
+    fun g() -> Void {
+        A::f()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_sup_alias_type_member_in_default_from_outside_the_sup, R"(
+    cls A { }
+    cls B { }
+
+    sup B {
+        !public cmp k: S32 = 1
+    }
+
+    sup A {
+        type Inner = B
+        !public fun f(n: S32 = Inner::k) -> Void { }
+    }
+
+    fun g() -> Void {
+        A::f()
+    }
+)");

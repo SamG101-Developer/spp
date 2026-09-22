@@ -160,12 +160,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// The value is taken twice: once where it is written, and again when the scope is left. Reported against the "defer",
-// which is what would run on a value that is already gone.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// The value is taken twice: once where it is written, and again when the scope is left. Reported against the exit
+// that runs the "defer", with the move and the "defer" as context.
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
   DeferStatementAst,
   test_invalid_value_consumed_explicitly_and_by_defer,
-  SppDeferConsumesMovedValueError, R"(
+  SppDeferConsumesMovedValueError, "}", R"(
     cls Handle { !public fd: S32 }
 
     sup Handle {
@@ -179,5 +179,52 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let h = Handle(fd=1)
         defer h.close()
         h.close()
+    }
+)");
+
+// As above, but the scope is left by an "exit", which is what the error points at.
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  DeferStatementAst,
+  test_invalid_value_consumed_explicitly_and_by_defer_at_loop_exit,
+  SppDeferConsumesMovedValueError, "exit", R"(
+    cls Handle { !public fd: S32 }
+
+    sup Handle {
+        !public
+        fun close(self) -> Void {
+            let Handle(fd) = self
+        }
+    }
+
+    fun f() -> Void {
+        loop true {
+            let h = Handle(fd=1)
+            defer h.close()
+            h.close()
+            exit
+        }
+    }
+)");
+
+// An exit written above a "defer" does not run it. A loop body is checked twice against the same scope, so the second
+// pass must not still hold the first pass's registration, or the "exit" reads the value as consumed by it.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  DeferStatementAst,
+  test_valid_loop_exit_above_defer_does_not_run_it, R"(
+    cls Handle { !public fd: S32 }
+
+    sup Handle {
+        !public
+        fun close(self) -> Void {
+            let Handle(fd) = self
+        }
+    }
+
+    fun f(b: Bool) -> Void {
+        loop true {
+            case b { exit }
+            let h = Handle(fd=1)
+            defer h.close()
+        }
     }
 )");

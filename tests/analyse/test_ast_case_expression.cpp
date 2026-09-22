@@ -386,3 +386,27 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_branches_naming_functions_into_a_function_type, R"(
+    fun add_one(x: S32) -> S32 { ret x + 1 }
+    fun sub_one(x: S32) -> S32 { ret x - 1 }
+
+    fun f(b: Bool) -> S32 {
+        let g: std::function::FunRef[(S32,), S32] = case b { add_one } else { sub_one }
+        ret g(10)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_value_passed_straight_to_a_call, R"(
+    fun g(s: &StrView) -> Void { }
+    fun h(n: S32) -> Void { }
+
+    fun f(b: Bool) -> Void {
+        g(case b { "x" } else { "y" })
+        h(case b { 1 } else { 2 })
+    }
+)");

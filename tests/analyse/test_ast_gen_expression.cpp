@@ -135,3 +135,28 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         gen x
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  GenExpressionAst,
+  test_valid_gen_named_function_into_a_function_yield_type, R"(
+    fun add_one(x: S32) -> S32 { ret x + 1 }
+
+    cor g() -> Gen[std::function::FunRef[(S32,), S32]] {
+        gen add_one
+    }
+
+    fun f() -> Void {
+        loop h in g() {
+            let r = h(1)
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  GenExpressionAst,
+  test_valid_gen_member_into_a_variant_yield_type, R"(
+    cor g() -> Gen[std::option::Opt[S32]] {
+        gen std::option::Some[S32](val=1)
+        gen std::option::None()
+    }
+)");

@@ -182,3 +182,57 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let y = a.res(s)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_loop_over_a_generator_yielding_an_optional, R"(
+    cor g() -> Gen[Opt[S32]] {
+        gen Some[S32](val=1)
+        gen None()
+    }
+
+    fun f() -> Void {
+        loop x in g() {
+            std::mem::ops::drop(x)
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_res_result_distinguishes_gen_done_from_a_yielded_none, R"(
+    cor g() -> Gen[Opt[S32]] {
+        gen None()
+    }
+
+    fun f() -> Void {
+        let mut a = g()
+        let finished = case a.res() of {
+            is std::generator::GenDone() { true }
+            else { false }
+        }
+        std::mem::ops::drop(a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_coroutine_yielding_gen_done,
+    SppYieldTypeContainsGenDoneError, "Gen", R"(
+    cor g() -> Gen[S32 or std::generator::GenDone] {
+        gen 1
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_loop_over_a_generator_yielding_gen_done,
+    SppYieldTypeContainsGenDoneError, "g", R"(
+    cls MyGen { }
+
+    sup MyGen ext Gen[S32 or std::generator::GenDone] { }
+
+    fun f(g: MyGen) -> Void {
+        loop x in g { }
+    }
+)");

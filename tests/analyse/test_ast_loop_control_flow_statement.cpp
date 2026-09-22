@@ -1,10 +1,9 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_invalid_exit_expr,
-    SppInvalidPrimaryExpressionError, R"(
+  LoopControlFlowStatementAst,
+  test_invalid_exit_expr,
+  SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         loop true {
             exit std::boolean::Bool
@@ -12,11 +11,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_invalid_too_many_control_statements,
-    SppLoopTooManyControlFlowStatementsError, R"(
+  LoopControlFlowStatementAst,
+  test_invalid_too_many_control_statements,
+  SppLoopTooManyControlFlowStatementsError, R"(
     fun f() -> std::void::Void {
         loop true {
             exit exit
@@ -24,11 +22,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_invalid_exit_types_1,
-    SppTypeMismatchError, R"(
+  LoopControlFlowStatementAst,
+  test_invalid_exit_types_1,
+  SppTypeMismatchError, R"(
     fun f() -> std::void::Void {
         loop true {
             case false of {
@@ -39,11 +36,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_invalid_exit_types_2,
-    SppTypeMismatchError, R"(
+  LoopControlFlowStatementAst,
+  test_invalid_exit_types_2,
+  SppTypeMismatchError, R"(
     fun f() -> std::void::Void {
         loop true {
             loop true {
@@ -54,10 +50,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_valid_exit_types, R"(
+  LoopControlFlowStatementAst,
+  test_valid_exit_types, R"(
     fun f() -> std::void::Void {
         let looped = loop true {
             case true {
@@ -70,10 +65,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_valid_exit_skip, R"(
+  LoopControlFlowStatementAst,
+  test_valid_exit_skip, R"(
     fun f() -> std::void::Void {
         loop true {
             loop true {
@@ -84,11 +78,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_valid_exit_types_nested, R"(
+  LoopControlFlowStatementAst,
+  test_valid_exit_types_nested, R"(
     fun f() -> std::void::Void {
         let looped = loop true {
             loop true {
@@ -99,14 +91,27 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    LoopControlFlowStatementAst,
-    test_valid_exit_types_assigned, R"(
+  LoopControlFlowStatementAst,
+  test_valid_exit_types_assigned, R"(
     fun f() -> std::void::Void {
         let mut x = loop true {
             exit "hello"
         }
         x = "goodbye"
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LoopControlFlowStatementAst,
+  test_valid_loop_exit_value_passed_straight_to_a_call, R"(
+    fun h(n: S32) -> Void { }
+
+    fun f() -> Void {
+        let mut i = 0
+        h(loop true {
+            i += 1
+            case i == 3 { exit i * 10 }
+        })
     }
 )");
