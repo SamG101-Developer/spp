@@ -366,7 +366,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     // because nothing ever resumes a finished generator: "res"
     // tests "llvm.coro.done" and takes its exhausted edge before
     // it reaches the "llvm.coro.resume" on the other one. That is
-    // why an exhausted generator keeps answering "None" instead
+    // why an exhausted generator keeps answering "GenDone" instead
     // of faulting, which is what a loop over a generator reads to
     // know it has ended. The frame stays allocated at this
     // suspend so that question stays answerable, and goes when
