@@ -60,7 +60,8 @@ PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticM
   decltype(Name) &&name) :
   TokDblColon(std::move(tok_dbl_colon)),
   Name(std::move(name)),
-  _LhsTypeSym(nullptr) {
+  _LhsTypeSym(nullptr),
+  _LhsNsScope(nullptr) {
 }
 
 PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
@@ -81,6 +82,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Clone() const -> Unique<Ast
     AstClone(TokDblColon),
     AstClone(Name));
   p->_LhsTypeSym = _LhsTypeSym;
+  p->_LhsNsScope = _LhsNsScope;
   return p;
 }
 
@@ -186,7 +188,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
 
   // Check the constant exists inside the namespace.
   // Todo: inconsistent "true" for exclusive here vs ns
-  const auto lhs_ns_sym = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs)->NsSym;
+  const auto lhs_ns_sym = LhsNsScope(sm, meta)->NsSym;
   if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name.get(), true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(
     Name.get(), true)) {
     RaiseMissingIdentifierAndClosestOptions(
@@ -214,8 +216,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
 
   // Handle accessing a variable on a namespace.
   // Todo: Do we need to call stage_9 on the value?
-  const auto lhs = meta->PostfixExpressionLhs;
-  const auto lhs_ns_sym = sm->CurrentScope->ConvertPostfixToNestedScope(lhs)->NsSym;
+  const auto lhs_ns_sym = LhsNsScope(sm, meta)->NsSym;
   const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name.get(), true);
   meta->CmpResult = AstClone(sym->CompTimeValue->To<ExpressionAst>());
 }
@@ -260,7 +261,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   }
 
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
-  const auto lhs_ns_scope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
+  const auto lhs_ns_scope = LhsNsScope(sm, meta);
   const auto var_sym = lhs_ns_scope->GetVarSymbol(Name.get(), true);
   if (var_sym->Kind == VariableKind::Function) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
@@ -301,9 +302,21 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   }
 
   // Get the left-hand-side namespace's member's type.
-  const auto lhs_ns_scope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
+  const auto lhs_ns_scope = LhsNsScope(sm, meta);
   const auto type = lhs_ns_scope->GetVarSymbol(Name.get(), true)->Type;
   return lhs_ns_scope->GetTypeSymbol(type.get())->FqName();
+}
+
+auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
+  ScopeManager const *sm, CompilerMetaData const *meta) -> Scope const* {
+  // Resolve the namespace once, from where the access was written. A
+  // parameter default is copied into each call site, and its lhs may
+  // be relative to the callee's module ("cffi::x" in std), which the
+  // caller's scope cannot reach.
+  if (_LhsNsScope == nullptr) {
+    _LhsNsScope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
+  }
+  return _LhsNsScope;
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
